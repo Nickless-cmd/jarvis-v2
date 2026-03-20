@@ -28,7 +28,6 @@ export default function App() {
   const [visibleControlError, setVisibleControlError] = useState("");
   const [visibleControlNotice, setVisibleControlNotice] = useState("");
   const [capabilityInvokeBusy, setCapabilityInvokeBusy] = useState("");
-  const [capabilityInvokeResult, setCapabilityInvokeResult] = useState(null);
 
   useEffect(() => {
     const ws = new WebSocket("ws://127.0.0.1:8010/ws");
@@ -235,8 +234,9 @@ export default function App() {
   }
 
   async function handleInvokeCapability(capabilityId) {
+    setVisibleControlNotice("");
+    setVisibleControlError("");
     setCapabilityInvokeBusy(capabilityId);
-    setCapabilityInvokeResult(null);
 
     try {
       const response = await fetch(
@@ -246,17 +246,15 @@ export default function App() {
         }
       );
       const data = await response.json();
-      setCapabilityInvokeResult(data);
+      if (!response.ok) {
+        throw new Error(data.detail || "Capability kunne ikke invokes.");
+      }
+      await loadVisibleControl({ quiet: true });
+      setVisibleControlNotice(`Capability ${capabilityId} kørt via runtime-truth.`);
     } catch (invokeError) {
-      setCapabilityInvokeResult({
-        ok: false,
-        capability: null,
-        status: "not-found",
-        execution_mode: "unsupported",
-        result: null,
-        detail:
-          invokeError instanceof Error ? invokeError.message : "Ukendt capability-fejl."
-      });
+      setVisibleControlError(
+        invokeError instanceof Error ? invokeError.message : "Ukendt capability-fejl."
+      );
     } finally {
       setCapabilityInvokeBusy("");
     }
@@ -509,37 +507,98 @@ export default function App() {
                               </article>
                             )
                           )}
-                          {capabilityInvokeResult ? (
-                            <div className="capability-result">
-                              <strong>Seneste capability-resultat</strong>
-                              <p>
-                                Status:{" "}
-                                <span
-                                  className={`status-chip ${statusTone(
-                                    capabilityInvokeResult.status
-                                  )}`}
-                                >
-                                  {capabilityInvokeResult.status}
-                                </span>
-                              </p>
-                              <p>
-                                Capability:{" "}
-                                {capabilityInvokeResult.capability?.capability_id || "ingen"}
-                              </p>
-                              <p>
-                                Mode: {capabilityInvokeResult.execution_mode || "ukendt"}
-                              </p>
-                              <p>
-                                Resultat:{" "}
-                                {capabilityInvokeResult.result?.text ||
-                                  capabilityInvokeResult.detail ||
-                                  "ingen"}
-                              </p>
-                            </div>
-                          ) : null}
                         </div>
                       ) : (
                         <p>Ingen deklarerede workspace capabilities endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
+                      <h3>Sidste capability invocation</h3>
+                      {visibleControl.capability_invocation?.last_invocation ? (
+                        <ul className="runtime-event-list compact">
+                          <li>
+                            <span>
+                              Aktiv:{" "}
+                              {visibleControl.capability_invocation.active ? "ja" : "nej"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${
+                                  visibleControl.capability_invocation.active
+                                    ? "status-live"
+                                    : "status-idle"
+                                }`}
+                              >
+                                {visibleControl.capability_invocation.active
+                                  ? "aktiv"
+                                  : "inaktiv"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>
+                              Capability:{" "}
+                              {visibleControl.capability_invocation.last_invocation
+                                .capability_id || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Navn:{" "}
+                              {visibleControl.capability_invocation.last_invocation
+                                .capability?.name || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Status:{" "}
+                              {visibleControl.capability_invocation.last_invocation.status ||
+                                "ingen"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${statusTone(
+                                  visibleControl.capability_invocation.last_invocation.status
+                                )}`}
+                              >
+                                {visibleControl.capability_invocation.last_invocation.status ||
+                                  "ingen"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>
+                              Mode:{" "}
+                              {visibleControl.capability_invocation.last_invocation
+                                .execution_mode || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Invoked:{" "}
+                              {visibleControl.capability_invocation.last_invocation
+                                .invoked_at || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Finished:{" "}
+                              {visibleControl.capability_invocation.last_invocation
+                                .finished_at || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Preview/detail:{" "}
+                              {visibleControl.capability_invocation.last_invocation
+                                .result_preview ||
+                                visibleControl.capability_invocation.last_invocation.detail ||
+                                "ingen"}
+                            </span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <p>Ingen capability invocation endnu.</p>
                       )}
                     </section>
                   </div>
@@ -581,7 +640,12 @@ export default function App() {
 }
 
 function statusTone(status) {
-  if (status === "completed" || status === "reachable" || status === "ready") {
+  if (
+    status === "completed" ||
+    status === "reachable" ||
+    status === "ready" ||
+    status === "executed"
+  ) {
     return "status-ok";
   }
   if (status === "started" || status === "active" || status === "cancelled") {
@@ -589,6 +653,7 @@ function statusTone(status) {
   }
   if (
     status === "failed" ||
+    status === "not-found" ||
     status === "auth-rejected" ||
     status === "missing-credentials" ||
     status === "missing-profile" ||

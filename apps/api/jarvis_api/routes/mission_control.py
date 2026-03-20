@@ -21,6 +21,7 @@ from core.runtime.config import (
 )
 from core.runtime.db import connect
 from core.runtime.settings import load_settings, update_visible_execution_settings
+from core.tools.workspace_capabilities import load_workspace_capabilities
 
 router = APIRouter(prefix="/mc", tags=["mission-control"])
 SUPPORTED_VISIBLE_PROVIDERS = ("phase1-runtime", "openai")
@@ -96,6 +97,7 @@ def mc_runtime() -> dict:
         "settings": settings.to_dict(),
         "visible_execution": visible_execution_readiness(),
         "visible_run": _visible_run_surface(),
+        "workspace_capabilities": load_workspace_capabilities(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),

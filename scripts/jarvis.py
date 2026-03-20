@@ -25,6 +25,7 @@ from core.runtime.bootstrap import ensure_runtime_dirs
 from core.runtime.config import SETTINGS_FILE
 from core.runtime.db import connect, init_db
 from core.runtime.settings import load_settings
+from core.tools.workspace_capabilities import load_workspace_capabilities
 
 
 def cmd_bootstrap(_: argparse.Namespace) -> None:
@@ -106,6 +107,7 @@ def cmd_config(_: argparse.Namespace) -> None:
                     visible_execution_source,
                     visible_execution_api_unavailable,
                 ),
+                "workspace_capabilities": load_workspace_capabilities(),
                 "path": str(SETTINGS_FILE),
                 "settings": settings.to_dict(),
             },

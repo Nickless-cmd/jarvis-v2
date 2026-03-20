@@ -4,6 +4,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
+from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 
 CAPABILITY_FILES = {
@@ -34,6 +35,13 @@ def invoke_workspace_capability(
     capability_id: str, *, name: str = "default"
 ) -> dict[str, object]:
     invoked_at = _now()
+    event_bus.publish(
+        "runtime.capability_invocation_started",
+        {
+            "capability_id": capability_id,
+            "invoked_at": invoked_at,
+        },
+    )
     workspace_dir = ensure_default_workspace(name=name)
     sections = [
         *_document_sections(workspace_dir / CAPABILITY_FILES["tools"], kind="tool"),
@@ -52,6 +60,7 @@ def invoke_workspace_capability(
                 "result": None,
             }
             _set_last_capability_invocation(result, invoked_at=invoked_at)
+            _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
         result = {
             "capability": summary,
@@ -63,6 +72,7 @@ def invoke_workspace_capability(
             },
         }
         _set_last_capability_invocation(result, invoked_at=invoked_at)
+        _publish_capability_invocation_completed(result, invoked_at=invoked_at)
         return result
 
     result = {
@@ -72,6 +82,11 @@ def invoke_workspace_capability(
         "result": None,
     }
     _set_last_capability_invocation(
+        result,
+        invoked_at=invoked_at,
+        capability_id=capability_id,
+    )
+    _publish_capability_invocation_completed(
         result,
         invoked_at=invoked_at,
         capability_id=capability_id,
@@ -207,6 +222,34 @@ def _set_last_capability_invocation(
         "result_preview": result_preview,
         "detail": detail,
     }
+
+
+def _publish_capability_invocation_completed(
+    invocation: dict[str, object],
+    *,
+    invoked_at: str,
+    capability_id: str | None = None,
+) -> None:
+    capability = invocation.get("capability")
+    result = invocation.get("result") or {}
+    result_preview = None
+    if isinstance(result, dict):
+        text = str(result.get("text", "")).strip()
+        if text:
+            result_preview = _preview_text(text)
+
+    event_bus.publish(
+        "runtime.capability_invocation_completed",
+        {
+            "capability_id": capability_id or (capability or {}).get("capability_id"),
+            "capability": capability,
+            "status": invocation.get("status"),
+            "execution_mode": invocation.get("execution_mode"),
+            "invoked_at": invoked_at,
+            "finished_at": _now(),
+            "result_preview": result_preview,
+        },
+    )
 
 
 def _preview_text(text: str, limit: int = 120) -> str:

@@ -38,6 +38,9 @@ export default function App() {
     ws.onmessage = (event) => {
       const item = JSON.parse(event.data);
       setActivityEvents((prev) => [item, ...prev].slice(0, 6));
+      if (item.kind?.startsWith("runtime.visible_run_")) {
+        loadVisibleControl({ quiet: true });
+      }
     };
 
     ws.onerror = () => {
@@ -176,9 +179,12 @@ export default function App() {
     }
   }
 
-  async function loadVisibleControl() {
-    setVisibleControlState("loading");
-    setVisibleControlError("");
+  async function loadVisibleControl(options = {}) {
+    const quiet = options.quiet === true;
+    if (!quiet) {
+      setVisibleControlState("loading");
+      setVisibleControlError("");
+    }
 
     try {
       const response = await fetch(`${API_BASE}/mc/visible-execution`);
@@ -189,10 +195,12 @@ export default function App() {
       setVisibleControl(data);
       setVisibleControlState("ready");
     } catch (fetchError) {
-      setVisibleControlState("error");
-      setVisibleControlError(
-        fetchError instanceof Error ? fetchError.message : "Ukendt authority-fejl."
-      );
+      if (!quiet) {
+        setVisibleControlState("error");
+        setVisibleControlError(
+          fetchError instanceof Error ? fetchError.message : "Ukendt authority-fejl."
+        );
+      }
     }
   }
 
@@ -344,6 +352,24 @@ export default function App() {
                   </ul>
                 ) : (
                   <p>Ingen visible run truth endnu.</p>
+                )}
+              </article>
+              <article className="work-card">
+                <strong>Visible run recent events</strong>
+                {visibleControl?.visible_run?.recent_events?.length ? (
+                  <ul className="runtime-event-list">
+                    {visibleControl.visible_run.recent_events.map((item) => (
+                      <li key={item.id}>
+                        <span>{item.kind}</span>
+                        <small>
+                          {item.payload?.status || "ukendt"} ·{" "}
+                          {item.payload?.run_id || "ingen"} · {item.created_at}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>Ingen visible run-events endnu.</p>
                 )}
               </article>
               <article className="work-card">

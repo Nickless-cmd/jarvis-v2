@@ -103,6 +103,9 @@ def cmd_config(_: argparse.Namespace) -> None:
     visible_execution, visible_execution_source, visible_execution_api_unavailable = (
         _visible_execution_truth()
     )
+    capability_invocation, capability_invocation_source, capability_invocation_api_unavailable = (
+        _capability_invocation_truth()
+    )
     print(
         json.dumps(
             {
@@ -112,7 +115,11 @@ def cmd_config(_: argparse.Namespace) -> None:
                     visible_execution_api_unavailable,
                 ),
                 "workspace_capabilities": load_workspace_capabilities(),
-                "capability_invocation": get_capability_invocation_truth(),
+                "capability_invocation": _capability_invocation_section(
+                    capability_invocation,
+                    capability_invocation_source,
+                    capability_invocation_api_unavailable,
+                ),
                 "path": str(SETTINGS_FILE),
                 "settings": settings.to_dict(),
             },
@@ -305,6 +312,13 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
     }, "local-fallback", api_error
 
 
+def _capability_invocation_truth() -> tuple[dict, str, str | None]:
+    response, api_error = _request_json("GET", "/mc/visible-execution")
+    if response is not None:
+        return response.get("capability_invocation") or {}, "api", None
+    return get_capability_invocation_truth(), "local-fallback", api_error
+
+
 def _fetch_visible_run_via_api() -> tuple[dict | None, str | None]:
     response, api_error = _request_json("GET", "/mc/visible-execution")
     if response is None:
@@ -383,6 +397,19 @@ def _visible_run_section(
     }
 
 
+def _capability_invocation_section(
+    capability_invocation: dict, source: str, api_unavailable: str | None
+) -> dict:
+    return {
+        "capability_invocation_source": source,
+        "capability_invocation_api_unavailable": api_unavailable,
+        "active": bool(capability_invocation.get("active")),
+        "last_invocation": _normalize_capability_invocation(
+            capability_invocation.get("last_invocation")
+        ),
+    }
+
+
 def _normalize_visible_authority(authority: dict | None) -> dict:
     authority = authority or {}
     return {
@@ -434,6 +461,21 @@ def _normalize_last_outcome(last_outcome: dict | None) -> dict | None:
         "finished_at": last_outcome.get("finished_at"),
         "error": last_outcome.get("error"),
         "text_preview": last_outcome.get("text_preview"),
+    }
+
+
+def _normalize_capability_invocation(last_invocation: dict | None) -> dict | None:
+    if not last_invocation:
+        return None
+    return {
+        "capability_id": last_invocation.get("capability_id"),
+        "capability": last_invocation.get("capability"),
+        "status": last_invocation.get("status"),
+        "execution_mode": last_invocation.get("execution_mode"),
+        "invoked_at": last_invocation.get("invoked_at"),
+        "finished_at": last_invocation.get("finished_at"),
+        "result_preview": last_invocation.get("result_preview"),
+        "detail": last_invocation.get("detail"),
     }
 
 

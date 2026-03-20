@@ -35,6 +35,10 @@ VISIBLE_RUN_EVENT_KINDS = (
     "runtime.visible_run_failed",
     "runtime.visible_run_cancelled",
 )
+CAPABILITY_INVOCATION_EVENT_KINDS = (
+    "runtime.capability_invocation_started",
+    "runtime.capability_invocation_completed",
+)
 
 
 @router.get("/overview")
@@ -65,7 +69,7 @@ def mc_overview() -> dict:
         },
         "visible_execution": visible,
         "visible_run": _visible_run_surface(),
-        "capability_invocation": get_capability_invocation_truth(),
+        "capability_invocation": _capability_invocation_surface(),
         "latest_event": latest_event,
         "latest_cost": latest_cost,
     }
@@ -103,7 +107,7 @@ def mc_runtime() -> dict:
         "visible_execution": visible_execution_readiness(),
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
-        "capability_invocation": get_capability_invocation_truth(),
+        "capability_invocation": _capability_invocation_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -200,7 +204,7 @@ def _visible_execution_surface(settings) -> dict:
         },
         "readiness": visible_execution_readiness(),
         "workspace_capabilities": load_workspace_capabilities(),
-        "capability_invocation": get_capability_invocation_truth(),
+        "capability_invocation": _capability_invocation_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),
@@ -234,7 +238,25 @@ def _visible_run_surface() -> dict:
     }
 
 
+def _capability_invocation_surface() -> dict:
+    truth = get_capability_invocation_truth()
+    return {
+        **truth,
+        "recent_events": _recent_capability_invocation_events(),
+    }
+
+
 def _recent_visible_run_events(limit: int = 5, scan_limit: int = 40) -> list[dict]:
     items = event_bus.recent(limit=max(scan_limit, limit))
     visible_items = [item for item in items if item["kind"] in VISIBLE_RUN_EVENT_KINDS]
     return visible_items[:limit]
+
+
+def _recent_capability_invocation_events(
+    limit: int = 5, scan_limit: int = 40
+) -> list[dict]:
+    items = event_bus.recent(limit=max(scan_limit, limit))
+    capability_items = [
+        item for item in items if item["kind"] in CAPABILITY_INVOCATION_EVENT_KINDS
+    ]
+    return capability_items[:limit]

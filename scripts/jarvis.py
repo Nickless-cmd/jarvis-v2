@@ -25,7 +25,10 @@ from core.runtime.bootstrap import ensure_runtime_dirs
 from core.runtime.config import SETTINGS_FILE
 from core.runtime.db import connect, init_db
 from core.runtime.settings import load_settings
-from core.tools.workspace_capabilities import load_workspace_capabilities
+from core.tools.workspace_capabilities import (
+    invoke_workspace_capability,
+    load_workspace_capabilities,
+)
 
 
 def cmd_bootstrap(_: argparse.Namespace) -> None:
@@ -212,6 +215,21 @@ def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_invoke_capability(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    result = invoke_workspace_capability(args.capability_id.strip())
+    print(
+        json.dumps(
+            {
+                "ok": result["status"] == "executed",
+                **result,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -239,6 +257,10 @@ def build_parser() -> argparse.ArgumentParser:
     cancel_visible = sub.add_parser("cancel-visible-run")
     cancel_visible.add_argument("--run-id", default="")
     cancel_visible.set_defaults(func=cmd_cancel_visible_run)
+
+    invoke_capability = sub.add_parser("invoke-capability")
+    invoke_capability.add_argument("capability_id")
+    invoke_capability.set_defaults(func=cmd_invoke_capability)
 
     return parser
 

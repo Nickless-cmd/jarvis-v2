@@ -11,6 +11,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
+from apps.api.jarvis_api.services.visible_runs import (
+    get_active_visible_run,
+    get_last_visible_run_outcome,
+)
 from core.costing.ledger import telemetry_summary
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -64,6 +68,11 @@ def cmd_overview(_: argparse.Namespace) -> None:
                 "output_tokens": costs["output_tokens"],
                 "total_cost_usd": costs["total_cost_usd"],
                 "visible_execution": visible_execution_readiness(),
+                "visible_run": {
+                    "active": bool(get_active_visible_run()),
+                    "active_run": get_active_visible_run(),
+                    "last_outcome": get_last_visible_run_outcome(),
+                },
                 "latest_event": items[0] if items else None,
             },
             indent=2,

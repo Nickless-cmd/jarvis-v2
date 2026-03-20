@@ -192,6 +192,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         set_last_visible_run_outcome(
             run,
             status="completed",
+            text_preview=_preview_text(result.text),
         )
         yield _sse(
             "done",
@@ -203,6 +204,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         )
     finally:
         unregister_visible_run(run.run_id)
+
+
+def _preview_text(text: str, limit: int = 120) -> str:
+    normalized = " ".join((text or "").split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 1].rstrip() + "…"
 
 
 def _sse(event: str, data: dict) -> str:
@@ -321,6 +329,7 @@ def set_last_visible_run_outcome(
     *,
     status: str,
     error: str | None = None,
+    text_preview: str | None = None,
 ) -> None:
     global _LAST_VISIBLE_RUN_OUTCOME
     outcome = {
@@ -329,7 +338,10 @@ def set_last_visible_run_outcome(
         "provider": run.provider,
         "model": run.model,
         "status": status,
+        "finished_at": datetime.now(UTC).isoformat(),
     }
     if error:
         outcome["error"] = error
+    if text_preview:
+        outcome["text_preview"] = text_preview
     _LAST_VISIBLE_RUN_OUTCOME = outcome

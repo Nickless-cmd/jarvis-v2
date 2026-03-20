@@ -329,6 +329,18 @@ export default function App() {
                         {visibleControl.visible_run.last_outcome?.run_id || ""}
                       </small>
                     </li>
+                    <li>
+                      <span>
+                        Afsluttet:{" "}
+                        {visibleControl.visible_run.last_outcome?.finished_at || "ingen"}
+                      </span>
+                    </li>
+                    <li>
+                      <span>
+                        Preview:{" "}
+                        {visibleControl.visible_run.last_outcome?.text_preview || "ingen"}
+                      </span>
+                    </li>
                   </ul>
                 ) : (
                   <p>Ingen visible run truth endnu.</p>

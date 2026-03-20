@@ -56,6 +56,10 @@ export default function App() {
   }, []);
 
   const currentActivity = useMemo(() => {
+    const visibleRun = visibleControl?.visible_run;
+    if (visibleRun?.active_run?.run_id) {
+      return `Visible run ${visibleRun.active_run.run_id} er aktiv via runtime-truth.`;
+    }
     if (!activityEvents.length) {
       return "Afventer runtime-aktivitet fra control-plane.";
     }
@@ -278,6 +282,35 @@ export default function App() {
               <article className="work-card">
                 <strong>Live arbejde</strong>
                 <p>{currentActivity}</p>
+              </article>
+              <article className="work-card">
+                <strong>Visible run truth</strong>
+                {visibleControl?.visible_run ? (
+                  <ul className="runtime-event-list">
+                    <li>
+                      <span>
+                        Aktiv: {visibleControl.visible_run.active ? "ja" : "nej"}
+                      </span>
+                    </li>
+                    <li>
+                      <span>
+                        Aktivt run:{" "}
+                        {visibleControl.visible_run.active_run?.run_id || "ingen"}
+                      </span>
+                    </li>
+                    <li>
+                      <span>
+                        Sidste udfald:{" "}
+                        {visibleControl.visible_run.last_outcome?.status || "ingen"}
+                      </span>
+                      <small>
+                        {visibleControl.visible_run.last_outcome?.run_id || ""}
+                      </small>
+                    </li>
+                  </ul>
+                ) : (
+                  <p>Ingen visible run truth endnu.</p>
+                )}
               </article>
               <article className="work-card">
                 <strong>Seneste runtime-events</strong>

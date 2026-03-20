@@ -3,6 +3,10 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
+from apps.api.jarvis_api.services.visible_runs import (
+    get_active_visible_run,
+    get_last_visible_run_outcome,
+)
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.costing.ledger import recent_costs, telemetry_summary
 from core.eventbus.bus import event_bus
@@ -49,6 +53,7 @@ def mc_overview() -> dict:
             "workspaces_dir": str(WORKSPACES_DIR),
         },
         "visible_execution": visible,
+        "visible_run": _visible_run_surface(),
         "latest_event": latest_event,
         "latest_cost": latest_cost,
     }
@@ -84,6 +89,7 @@ def mc_runtime() -> dict:
     return {
         "settings": settings.to_dict(),
         "visible_execution": visible_execution_readiness(),
+        "visible_run": _visible_run_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -172,6 +178,7 @@ def _visible_execution_surface(settings) -> dict:
         "readiness": visible_execution_readiness(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
+        "visible_run": _visible_run_surface(),
     }
 
 
@@ -189,3 +196,13 @@ def _available_openai_profiles() -> list[dict[str, str]]:
             }
         )
     return items
+
+
+def _visible_run_surface() -> dict:
+    active = get_active_visible_run()
+    last_outcome = get_last_visible_run_outcome()
+    return {
+        "active": bool(active),
+        "active_run": active,
+        "last_outcome": last_outcome,
+    }

@@ -49,6 +49,7 @@ class VisibleRunController:
 
 
 _VISIBLE_RUN_CONTROLLERS: dict[str, VisibleRunController] = {}
+_LAST_VISIBLE_RUN_OUTCOME: dict[str, str] | None = None
 
 
 def start_visible_run(message: str) -> AsyncIterator[str]:
@@ -113,15 +114,29 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     result = item.result
                     break
         except VisibleModelStreamCancelled:
+            set_last_visible_run_outcome(
+                run,
+                status="cancelled",
+            )
             for cancelled_chunk in _cancel_visible_run(run):
                 yield cancelled_chunk
             return
         except Exception as exc:
+            set_last_visible_run_outcome(
+                run,
+                status="failed",
+                error=str(exc) or "visible-run-failed",
+            )
             for failure_chunk in _fail_visible_run(run, str(exc) or "visible-run-failed"):
                 yield failure_chunk
             return
 
         if result is None:
+            set_last_visible_run_outcome(
+                run,
+                status="failed",
+                error="Visible model stream completed without final result",
+            )
             for failure_chunk in _fail_visible_run(
                 run, "Visible model stream completed without final result"
             ):
@@ -129,6 +144,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             return
 
         if controller.is_cancelled():
+            set_last_visible_run_outcome(
+                run,
+                status="cancelled",
+            )
             for cancelled_chunk in _cancel_visible_run(run):
                 yield cancelled_chunk
             return
@@ -164,6 +183,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "output_tokens": result.output_tokens,
                 "cost_usd": result.cost_usd,
             },
+        )
+        set_last_visible_run_outcome(
+            run,
+            status="completed",
         )
         yield _sse(
             "done",
@@ -260,3 +283,38 @@ def cancel_visible_run(run_id: str) -> bool:
 
 def unregister_visible_run(run_id: str) -> None:
     _VISIBLE_RUN_CONTROLLERS.pop(run_id, None)
+
+
+def get_active_visible_run() -> dict[str, str] | None:
+    if not _VISIBLE_RUN_CONTROLLERS:
+        return None
+    run_id = next(reversed(_VISIBLE_RUN_CONTROLLERS))
+    controller = _VISIBLE_RUN_CONTROLLERS[run_id]
+    return {
+        "active": True,
+        "run_id": controller.run_id,
+        "cancelled": controller.is_cancelled(),
+    }
+
+
+def get_last_visible_run_outcome() -> dict[str, str] | None:
+    return dict(_LAST_VISIBLE_RUN_OUTCOME) if _LAST_VISIBLE_RUN_OUTCOME else None
+
+
+def set_last_visible_run_outcome(
+    run: VisibleRun,
+    *,
+    status: str,
+    error: str | None = None,
+) -> None:
+    global _LAST_VISIBLE_RUN_OUTCOME
+    outcome = {
+        "run_id": run.run_id,
+        "lane": run.lane,
+        "provider": run.provider,
+        "model": run.model,
+        "status": status,
+    }
+    if error:
+        outcome["error"] = error
+    _LAST_VISIBLE_RUN_OUTCOME = outcome

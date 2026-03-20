@@ -347,6 +347,11 @@ a {
   gap: 10px;
 }
 
+.runtime-event-list.compact {
+  margin-top: 8px;
+  gap: 8px;
+}
+
 .runtime-event-list li {
   display: grid;
   gap: 4px;
@@ -360,6 +365,30 @@ a {
 
 .runtime-event-list small {
   color: var(--muted);
+}
+
+.truth-sections {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.truth-section {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.truth-section h3 {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+.truth-section p {
+  margin-top: 8px;
 }
 
 .mc-link {

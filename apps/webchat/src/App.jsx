@@ -292,84 +292,118 @@ export default function App() {
                 <p>{currentActivity}</p>
               </article>
               <article className="work-card">
-                <strong>Visible run truth</strong>
+                <strong>Visible lane truth</strong>
                 {visibleControl?.visible_run ? (
-                  <ul className="runtime-event-list">
-                    <li>
-                      <span>
-                        Aktiv: {visibleControl.visible_run.active ? "ja" : "nej"}
-                      </span>
-                    </li>
-                    <li>
-                      <span>
-                        Aktivt run:{" "}
-                        {visibleControl.visible_run.active_run?.run_id || "ingen"}
-                      </span>
-                    </li>
-                    <li>
-                      <span>
-                        Lane: {visibleControl.visible_run.active_run?.lane || "ingen"}
-                      </span>
-                    </li>
-                    <li>
-                      <span>
-                        Provider:{" "}
-                        {visibleControl.visible_run.active_run?.provider || "ingen"}
-                      </span>
-                    </li>
-                    <li>
-                      <span>
-                        Model: {visibleControl.visible_run.active_run?.model || "ingen"}
-                      </span>
-                    </li>
-                    <li>
-                      <span>
-                        Startet:{" "}
-                        {visibleControl.visible_run.active_run?.started_at || "ingen"}
-                      </span>
-                    </li>
-                    <li>
-                      <span>
-                        Sidste udfald:{" "}
-                        {visibleControl.visible_run.last_outcome?.status || "ingen"}
-                      </span>
-                      <small>
-                        {visibleControl.visible_run.last_outcome?.run_id || ""}
-                      </small>
-                    </li>
-                    <li>
-                      <span>
-                        Afsluttet:{" "}
-                        {visibleControl.visible_run.last_outcome?.finished_at || "ingen"}
-                      </span>
-                    </li>
-                    <li>
-                      <span>
-                        Preview:{" "}
-                        {visibleControl.visible_run.last_outcome?.text_preview || "ingen"}
-                      </span>
-                    </li>
-                  </ul>
+                  <div className="truth-sections">
+                    <section className="truth-section">
+                      <h3>Authority og readiness</h3>
+                      <ul className="runtime-event-list compact">
+                        <li>
+                          <span>
+                            Provider:{" "}
+                            {visibleControl.authority?.visible_model_provider || "ingen"}
+                          </span>
+                        </li>
+                        <li>
+                          <span>
+                            Model: {visibleControl.authority?.visible_model_name || "ingen"}
+                          </span>
+                        </li>
+                        <li>
+                          <span>
+                            Profil:{" "}
+                            {visibleControl.authority?.visible_auth_profile || "ingen"}
+                          </span>
+                        </li>
+                        <li>
+                          <span>
+                            Readiness: {visibleControl.readiness?.provider_status || "ukendt"}
+                          </span>
+                        </li>
+                      </ul>
+                    </section>
+                    <section className="truth-section">
+                      <h3>Aktivt run</h3>
+                      <ul className="runtime-event-list compact">
+                        <li>
+                          <span>Aktiv: {visibleControl.visible_run.active ? "ja" : "nej"}</span>
+                        </li>
+                        <li>
+                          <span>
+                            Run: {visibleControl.visible_run.active_run?.run_id || "ingen"}
+                          </span>
+                        </li>
+                        <li>
+                          <span>
+                            Lane: {visibleControl.visible_run.active_run?.lane || "ingen"}
+                          </span>
+                        </li>
+                        <li>
+                          <span>
+                            Provider:{" "}
+                            {visibleControl.visible_run.active_run?.provider || "ingen"}
+                          </span>
+                        </li>
+                        <li>
+                          <span>
+                            Model: {visibleControl.visible_run.active_run?.model || "ingen"}
+                          </span>
+                        </li>
+                        <li>
+                          <span>
+                            Startet:{" "}
+                            {visibleControl.visible_run.active_run?.started_at || "ingen"}
+                          </span>
+                        </li>
+                      </ul>
+                    </section>
+                    <section className="truth-section">
+                      <h3>Sidste udfald</h3>
+                      <ul className="runtime-event-list compact">
+                        <li>
+                          <span>
+                            Status:{" "}
+                            {visibleControl.visible_run.last_outcome?.status || "ingen"}
+                          </span>
+                          <small>
+                            {visibleControl.visible_run.last_outcome?.run_id || ""}
+                          </small>
+                        </li>
+                        <li>
+                          <span>
+                            Afsluttet:{" "}
+                            {visibleControl.visible_run.last_outcome?.finished_at || "ingen"}
+                          </span>
+                        </li>
+                        <li>
+                          <span>
+                            Preview:{" "}
+                            {visibleControl.visible_run.last_outcome?.text_preview || "ingen"}
+                          </span>
+                        </li>
+                      </ul>
+                    </section>
+                    <section className="truth-section">
+                      <h3>Recent events</h3>
+                      {visibleControl.visible_run.recent_events?.length ? (
+                        <ul className="runtime-event-list compact">
+                          {visibleControl.visible_run.recent_events.map((item) => (
+                            <li key={item.id}>
+                              <span>{item.kind}</span>
+                              <small>
+                                {item.payload?.status || "ukendt"} ·{" "}
+                                {item.payload?.run_id || "ingen"} · {item.created_at}
+                              </small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>Ingen visible run-events endnu.</p>
+                      )}
+                    </section>
+                  </div>
                 ) : (
                   <p>Ingen visible run truth endnu.</p>
-                )}
-              </article>
-              <article className="work-card">
-                <strong>Visible run recent events</strong>
-                {visibleControl?.visible_run?.recent_events?.length ? (
-                  <ul className="runtime-event-list">
-                    {visibleControl.visible_run.recent_events.map((item) => (
-                      <li key={item.id}>
-                        <span>{item.kind}</span>
-                        <small>
-                          {item.payload?.status || "ukendt"} ·{" "}
-                          {item.payload?.run_id || "ingen"} · {item.created_at}
-                        </small>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>Ingen visible run-events endnu.</p>
                 )}
               </article>
               <article className="work-card">

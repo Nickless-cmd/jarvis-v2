@@ -125,7 +125,13 @@ export default function App() {
           );
         },
         onDone(data) {
+          if (data.status === "failed") {
+            setError(data.error || "Visible run fejlede.");
+          }
           setActiveRunId(data.run_id);
+        },
+        onFailed(data) {
+          setError(data.error || "Visible run fejlede.");
         }
       });
     } catch (streamError) {
@@ -298,6 +304,8 @@ async function consumeSseStream(stream, handlers) {
         handlers.onRun?.(parsed.data);
       } else if (parsed.event === "delta") {
         handlers.onDelta?.(parsed.data);
+      } else if (parsed.event === "failed") {
+        handlers.onFailed?.(parsed.data);
       } else if (parsed.event === "done") {
         handlers.onDone?.(parsed.data);
       }

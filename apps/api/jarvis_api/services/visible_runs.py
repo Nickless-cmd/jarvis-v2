@@ -59,27 +59,36 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     )
 
     result = None
-    for item in stream_visible_model(
-        message=run.user_message,
-        provider=run.provider,
-        model=run.model,
-    ):
-        if isinstance(item, VisibleModelDelta):
-            yield _sse(
-                "delta",
-                {
-                    "type": "delta",
-                    "run_id": run.run_id,
-                    "delta": item.delta,
-                },
-            )
-            continue
-        if isinstance(item, VisibleModelStreamDone):
-            result = item.result
-            break
+    try:
+        for item in stream_visible_model(
+            message=run.user_message,
+            provider=run.provider,
+            model=run.model,
+        ):
+            if isinstance(item, VisibleModelDelta):
+                yield _sse(
+                    "delta",
+                    {
+                        "type": "delta",
+                        "run_id": run.run_id,
+                        "delta": item.delta,
+                    },
+                )
+                continue
+            if isinstance(item, VisibleModelStreamDone):
+                result = item.result
+                break
+    except Exception as exc:
+        for failure_chunk in _fail_visible_run(run, str(exc) or "visible-run-failed"):
+            yield failure_chunk
+        return
 
     if result is None:
-        raise RuntimeError("Visible model stream completed without final result")
+        for failure_chunk in _fail_visible_run(
+            run, "Visible model stream completed without final result"
+        ):
+            yield failure_chunk
+        return
 
     record_cost(
         lane=run.lane,
@@ -125,3 +134,34 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]:
+    event_bus.publish(
+        "runtime.visible_run_failed",
+        {
+            "run_id": run.run_id,
+            "lane": run.lane,
+            "provider": run.provider,
+            "model": run.model,
+            "error": error_message,
+        },
+    )
+    yield _sse(
+        "failed",
+        {
+            "type": "failed",
+            "run_id": run.run_id,
+            "status": "failed",
+            "error": error_message,
+        },
+    )
+    yield _sse(
+        "done",
+        {
+            "type": "done",
+            "run_id": run.run_id,
+            "status": "failed",
+            "error": error_message,
+        },
+    )

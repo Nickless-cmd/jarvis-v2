@@ -32,3 +32,20 @@
 - boredom/companionship
 - witness/paradox/tensions
 - richer internal cognition
+
+## Phase 1 additions
+- CLI command surface
+- OAuth/auth profile skeleton
+- token/cost telemetry skeleton
+- prompt caching metadata plumbing
+- React UI transport plan
+- streaming + WebSocket split
+- Mission Control live event stream skeleton
+
+## Phase 2 additions
+- attachments in composer
+- image upload support
+- dictation / voice input
+- conversation mode
+- artifact/work surface
+- GitHub/Codex connection flows

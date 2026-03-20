@@ -76,3 +76,37 @@ Jarvis V2 succeeds when:
 - inner voice does not contaminate core memory
 - hardware/code awareness is real
 - multi-channel continuity works
+
+## Addendum — OpenClaw-inspired locked rules
+
+### Runtime / State / Workspace split
+- code repo is not Jarvis' runtime home
+- runtime state lives under ~/.jarvis-v2/
+- workspace is Jarvis' home/mind/files
+- no duplicate settings authority between config and DB
+
+### OAuth / Auth profiles
+Jarvis V2 must support:
+- GitHub auth
+- Codex/OpenAI auth
+- profile-scoped credentials
+- workspace/agent-scoped connection policy
+
+### Caching / Heartbeat / Cost
+Jarvis V2 must support:
+- provider/native prompt caching where available
+- cache-aware heartbeat
+- token burn monitoring
+- per-lane budgets
+- Mission Control visibility for token/cost/cache signals
+
+### Workflow rule
+The LLM must do the work.
+The runtime must govern the work.
+
+### UI principle
+Jarvis V2 uses:
+- one primary React front door
+- chat streaming for visible replies
+- WebSocket realtime for control-plane/events
+- Mission Control as full observability and intervention plane

@@ -41,3 +41,26 @@ Codex must:
 - not the boredom ping path
 - not persisted by default
 - only promoted explicitly
+
+## Auth Rules
+- UI session auth is separate from provider OAuth auth
+- GitHub/Codex provider credentials must never be stored in repo
+- all provider auth is profile-scoped and revocable
+
+## Cache / Token / Cost Rules
+- prompt/native caching must be used where provider supports it
+- heartbeat must be cache-aware and budget-aware
+- token accounting is required per run, provider, lane and agent
+- Mission Control must expose token burn and cost trends
+- no hidden expensive background loops
+
+## UI Transport Rules
+- use HTTP streaming or SSE for assistant reply streaming
+- use WebSocket for realtime control-plane events
+- do not collapse both concerns into one opaque transport layer
+
+## File Size Rules
+- no file over 1500 lines without explicit exception
+- no core runtime file over 2000 lines
+- split at 1200 lines
+- one responsibility per module

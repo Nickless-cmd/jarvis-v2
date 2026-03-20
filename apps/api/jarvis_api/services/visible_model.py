@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from dataclasses import dataclass
 from pathlib import Path
 from urllib import error as urllib_error
@@ -9,6 +10,9 @@ from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.runtime.settings import load_settings
+
+READINESS_PROBE_TTL_SECONDS = 15
+_READINESS_PROBE_CACHE: dict[tuple[str, str, str], dict[str, str | bool]] = {}
 
 
 @dataclass(slots=True)
@@ -44,6 +48,8 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "provider_reachable": True,
             "live_verified": False,
             "provider_status": "local-fallback",
+            "probe_cache": "local",
+            "checked_at": None,
         }
 
     if provider == "openai":
@@ -51,12 +57,19 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
         provider_reachable = False
         live_verified = False
         provider_status = "auth-not-ready"
+        probe_cache = "not-run"
+        checked_at = None
 
         if status == "ready" and profile is not None:
-            provider_reachable, live_verified, provider_status = _probe_openai_model(
+            probe = _probe_openai_model(
                 profile=profile,
                 model=model,
             )
+            provider_reachable = bool(probe["provider_reachable"])
+            live_verified = bool(probe["live_verified"])
+            provider_status = str(probe["provider_status"])
+            probe_cache = str(probe["probe_cache"])
+            checked_at = str(probe["checked_at"])
         return {
             "provider": provider,
             "model": model,
@@ -67,6 +80,8 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "provider_reachable": provider_reachable,
             "live_verified": live_verified,
             "provider_status": provider_status,
+            "probe_cache": probe_cache,
+            "checked_at": checked_at,
         }
 
     return {
@@ -79,6 +94,8 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
         "provider_reachable": False,
         "live_verified": False,
         "provider_status": "unsupported-provider",
+        "probe_cache": "not-run",
+        "checked_at": None,
     }
 
 
@@ -189,7 +206,21 @@ def _post_openai_responses(*, payload: dict, api_key: str) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
-def _probe_openai_model(*, profile: str, model: str) -> tuple[bool, bool, str]:
+def _probe_openai_model(*, profile: str, model: str) -> dict[str, str | bool]:
+    cache_key = ("openai", profile, model)
+    now = datetime.now(UTC)
+    cached = _READINESS_PROBE_CACHE.get(cache_key)
+    if cached:
+        expires_at = _parse_utc(cached["expires_at"])
+        if expires_at > now:
+            return {
+                "provider_reachable": bool(cached["provider_reachable"]),
+                "live_verified": bool(cached["live_verified"]),
+                "provider_status": str(cached["provider_status"]),
+                "probe_cache": "cached",
+                "checked_at": str(cached["checked_at"]),
+            }
+
     api_key = _load_openai_api_key_for_profile(profile)
     model_ref = urllib_parse.quote(model, safe="")
     req = urllib_request.Request(
@@ -200,15 +231,48 @@ def _probe_openai_model(*, profile: str, model: str) -> tuple[bool, bool, str]:
     try:
         with urllib_request.urlopen(req, timeout=15) as response:
             response.read()
-        return True, True, "reachable"
+        result = {
+            "provider_reachable": True,
+            "live_verified": True,
+            "provider_status": "reachable",
+        }
     except urllib_error.HTTPError as exc:
         if exc.code == 404:
-            return True, False, "model-not-found"
-        if exc.code in {401, 403}:
-            return False, False, "auth-rejected"
-        return False, False, f"http-{exc.code}"
+            result = {
+                "provider_reachable": True,
+                "live_verified": False,
+                "provider_status": "model-not-found",
+            }
+        elif exc.code in {401, 403}:
+            result = {
+                "provider_reachable": False,
+                "live_verified": False,
+                "provider_status": "auth-rejected",
+            }
+        else:
+            result = {
+                "provider_reachable": False,
+                "live_verified": False,
+                "provider_status": f"http-{exc.code}",
+            }
     except urllib_error.URLError:
-        return False, False, "unreachable"
+        result = {
+            "provider_reachable": False,
+            "live_verified": False,
+            "provider_status": "unreachable",
+        }
+
+    checked_at = now.isoformat()
+    _READINESS_PROBE_CACHE[cache_key] = {
+        **result,
+        "checked_at": checked_at,
+        "expires_at": (now + timedelta(seconds=READINESS_PROBE_TTL_SECONDS)).isoformat(),
+    }
+    return {
+        **result,
+        "probe_cache": "fresh",
+        "checked_at": checked_at,
+    }
 
 
 def _extract_output_text(data: dict) -> str:
@@ -226,3 +290,7 @@ def _extract_output_text(data: dict) -> str:
 def _estimate_tokens(text: str) -> int:
     words = [part for part in text.strip().split() if part]
     return max(1, len(words))
+
+
+def _parse_utc(value: str) -> datetime:
+    return datetime.fromisoformat(value)

@@ -180,6 +180,14 @@ export default function StatusRail({
                 <span>Live verified</span>
                 <small>{readiness.live_verified ? "ja" : "nej"}</small>
               </li>
+              <li>
+                <span>Probe cache</span>
+                <small>{readiness.probe_cache || "ingen"}</small>
+              </li>
+              <li>
+                <span>Checked at</span>
+                <small>{readiness.checked_at || "ikke-probet"}</small>
+              </li>
             </ul>
           ) : (
             <p>Ingen readiness-data endnu.</p>

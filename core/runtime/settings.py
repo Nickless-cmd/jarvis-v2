@@ -17,6 +17,7 @@ class RuntimeSettings:
     cheap_model_lane: str = "cheap"
     visible_model_provider: str = "phase1-runtime"
     visible_model_name: str = "visible-placeholder"
+    visible_auth_profile: str = ""
 
     def to_dict(self) -> dict[str, str | int]:
         return {
@@ -29,6 +30,7 @@ class RuntimeSettings:
             "cheap_model_lane": self.cheap_model_lane,
             "visible_model_provider": self.visible_model_provider,
             "visible_model_name": self.visible_model_name,
+            "visible_auth_profile": self.visible_auth_profile,
         }
 
 
@@ -53,5 +55,8 @@ def load_settings() -> RuntimeSettings:
         ),
         visible_model_name=str(
             data.get("visible_model_name", defaults.visible_model_name)
+        ),
+        visible_auth_profile=str(
+            data.get("visible_auth_profile", defaults.visible_auth_profile)
         ),
     )

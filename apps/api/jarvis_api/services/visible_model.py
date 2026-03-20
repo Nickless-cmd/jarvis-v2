@@ -29,6 +29,7 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
     settings = load_settings()
     provider = settings.visible_model_provider
     model = settings.visible_model_name
+    configured_profile = settings.visible_auth_profile or None
 
     if provider == "phase1-runtime":
         return {
@@ -37,17 +38,17 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "mode": "fallback",
             "auth_ready": True,
             "auth_status": "not-required",
-            "auth_profile": None,
+            "auth_profile": configured_profile,
         }
 
     if provider == "openai":
-        profile = _find_openai_ready_profile()
+        profile, status = _resolve_openai_profile()
         return {
             "provider": provider,
             "model": model,
             "mode": "provider-backed",
-            "auth_ready": profile is not None,
-            "auth_status": "ready" if profile else "missing-credentials",
+            "auth_ready": status == "ready",
+            "auth_status": status,
             "auth_profile": profile,
         }
 
@@ -101,9 +102,9 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
 
 
 def _load_openai_api_key() -> str:
-    profile = _find_openai_ready_profile()
+    profile, status = _resolve_openai_profile()
     if profile is None:
-        raise RuntimeError("Missing active OpenAI credentials for visible execution")
+        raise RuntimeError(f"OpenAI visible execution not ready: {status}")
 
     state = get_provider_state(profile=profile, provider="openai")
     credentials_path = Path(str(state.get("credentials_path", "")))
@@ -111,27 +112,43 @@ def _load_openai_api_key() -> str:
     api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
     if api_key:
         return api_key
-    raise RuntimeError("Missing active OpenAI credentials for visible execution")
+    raise RuntimeError(f"OpenAI visible execution not ready: {status}")
 
 
-def _find_openai_ready_profile() -> str | None:
+def _resolve_openai_profile() -> tuple[str | None, str]:
+    settings = load_settings()
+    configured_profile = settings.visible_auth_profile.strip()
+    if configured_profile:
+        return _openai_profile_status(configured_profile)
+
     profiles = ["default", *[item["profile"] for item in list_auth_profiles()]]
     seen: set[str] = set()
     for profile in profiles:
         if profile in seen:
             continue
         seen.add(profile)
-        state = get_provider_state(profile=profile, provider="openai")
-        if not state or state.get("status") != "active":
-            continue
-        credentials_path = Path(str(state.get("credentials_path", "")))
-        if not credentials_path.exists():
-            continue
-        credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
-        api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
-        if api_key:
-            return profile
-    return None
+        resolved_profile, status = _openai_profile_status(profile)
+        if status == "ready":
+            return resolved_profile, status
+    return None, "missing-credentials"
+
+
+def _openai_profile_status(profile: str) -> tuple[str | None, str]:
+    state = get_provider_state(profile=profile, provider="openai")
+    if state is None:
+        return profile, "missing-profile"
+    if state.get("status") != "active":
+        return profile, "inactive-profile"
+
+    credentials_path = Path(str(state.get("credentials_path", "")))
+    if not credentials_path.exists():
+        return profile, "missing-credentials"
+
+    credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
+    api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
+    if not api_key:
+        return profile, "missing-credentials"
+    return profile, "ready"
 
 
 def _post_openai_responses(*, payload: dict, api_key: str) -> dict:

@@ -319,6 +319,15 @@ export default function App() {
                           <span>
                             Readiness: {visibleControl.readiness?.provider_status || "ukendt"}
                           </span>
+                          <small>
+                            <span
+                              className={`status-chip ${statusTone(
+                                visibleControl.readiness?.provider_status
+                              )}`}
+                            >
+                              {visibleControl.readiness?.provider_status || "ukendt"}
+                            </span>
+                          </small>
                         </li>
                       </ul>
                     </section>
@@ -327,6 +336,15 @@ export default function App() {
                       <ul className="runtime-event-list compact">
                         <li>
                           <span>Aktiv: {visibleControl.visible_run.active ? "ja" : "nej"}</span>
+                          <small>
+                            <span
+                              className={`status-chip ${
+                                visibleControl.visible_run.active ? "status-live" : "status-idle"
+                              }`}
+                            >
+                              {visibleControl.visible_run.active ? "aktiv" : "inaktiv"}
+                            </span>
+                          </small>
                         </li>
                         <li>
                           <span>
@@ -366,7 +384,16 @@ export default function App() {
                             {visibleControl.visible_run.last_outcome?.status || "ingen"}
                           </span>
                           <small>
-                            {visibleControl.visible_run.last_outcome?.run_id || ""}
+                            <span
+                              className={`status-chip ${statusTone(
+                                visibleControl.visible_run.last_outcome?.status
+                              )}`}
+                            >
+                              {visibleControl.visible_run.last_outcome?.status || "ingen"}
+                            </span>
+                            {visibleControl.visible_run.last_outcome?.run_id
+                              ? ` · ${visibleControl.visible_run.last_outcome.run_id}`
+                              : ""}
                           </small>
                         </li>
                         <li>
@@ -391,7 +418,14 @@ export default function App() {
                             <li key={item.id}>
                               <span>{item.kind}</span>
                               <small>
-                                {item.payload?.status || "ukendt"} ·{" "}
+                                <span
+                                  className={`status-chip ${statusTone(
+                                    item.payload?.status
+                                  )}`}
+                                >
+                                  {item.payload?.status || "ukendt"}
+                                </span>{" "}
+                                ·{" "}
                                 {item.payload?.run_id || "ingen"} · {item.created_at}
                               </small>
                             </li>
@@ -437,6 +471,27 @@ export default function App() {
       </main>
     </div>
   );
+}
+
+function statusTone(status) {
+  if (status === "completed" || status === "reachable" || status === "ready") {
+    return "status-ok";
+  }
+  if (status === "started" || status === "active" || status === "cancelled") {
+    return "status-live";
+  }
+  if (
+    status === "failed" ||
+    status === "auth-rejected" ||
+    status === "missing-credentials" ||
+    status === "missing-profile" ||
+    status === "unsupported-provider" ||
+    status === "model-not-found" ||
+    status === "unreachable"
+  ) {
+    return "status-bad";
+  }
+  return "status-idle";
 }
 
 async function consumeSseStream(stream, handlers) {

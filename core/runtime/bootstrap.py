@@ -3,6 +3,7 @@ from pathlib import Path
 
 from core.runtime.config import (
     AUTH_DIR,
+    AUTH_PROFILES_DIR,
     CACHE_DIR,
     CONFIG_DIR,
     JARVIS_HOME,
@@ -22,6 +23,7 @@ RUNTIME_DIRS = [
     CACHE_DIR,
     SESSIONS_DIR,
     AUTH_DIR,
+    AUTH_PROFILES_DIR,
     WORKSPACES_DIR,
 ]
 

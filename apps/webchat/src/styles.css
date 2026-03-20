@@ -1,0 +1,257 @@
+:root {
+  color-scheme: dark;
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(209, 132, 54, 0.18), transparent 28%),
+    radial-gradient(circle at right, rgba(43, 144, 126, 0.18), transparent 26%),
+    #071316;
+  color: #eff5ef;
+  --bg: #071316;
+  --panel: rgba(12, 31, 35, 0.82);
+  --panel-strong: rgba(19, 43, 48, 0.92);
+  --line: rgba(225, 235, 228, 0.1);
+  --muted: #98aaa0;
+  --accent: #f2a65a;
+  --accent-2: #74d3ae;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(140deg, rgba(8, 26, 29, 0.96), rgba(4, 12, 14, 0.98)),
+    var(--bg);
+}
+
+button,
+a {
+  font: inherit;
+}
+
+.webchat-shell {
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.topbar h1,
+.chat-panel-header h2,
+.rail-panel h2 {
+  margin: 4px 0 0;
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-weight: 600;
+}
+
+.topbar-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.topbar-meta span,
+.status-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.status-pill {
+  color: var(--accent-2);
+}
+
+.status-pill.muted {
+  color: var(--muted);
+}
+
+.eyebrow {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  color: var(--accent);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+  gap: 20px;
+}
+
+.chat-column,
+.work-column,
+.status-rail {
+  display: grid;
+  gap: 20px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: var(--panel);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px);
+}
+
+.chat-panel,
+.composer-shell,
+.work-panel,
+.rail-panel {
+  padding: 22px;
+}
+
+.chat-panel-header,
+.composer-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.transcript {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.message {
+  max-width: 88%;
+  padding: 16px 18px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+}
+
+.message p {
+  margin: 6px 0 0;
+  line-height: 1.55;
+}
+
+.message.system {
+  background: rgba(242, 166, 90, 0.08);
+}
+
+.message.user {
+  margin-left: auto;
+  background: rgba(116, 211, 174, 0.08);
+}
+
+.message.assistant {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.message-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+.composer-box {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+}
+
+.composer-placeholder {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.composer-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.composer-actions button,
+.mc-link {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #edf3ee;
+  text-decoration: none;
+}
+
+.composer-actions button.primary,
+.mc-link {
+  background: linear-gradient(135deg, rgba(242, 166, 90, 0.2), rgba(116, 211, 174, 0.18));
+}
+
+.composer-actions button:disabled {
+  opacity: 0.75;
+}
+
+.work-grid,
+.activity-list {
+  display: grid;
+  gap: 14px;
+}
+
+.work-grid {
+  margin-top: 20px;
+}
+
+.work-card,
+.activity-list li {
+  list-style: none;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.work-card p,
+.activity-list p,
+.rail-panel p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.activity-list {
+  margin: 18px 0 0;
+  padding: 0;
+}
+
+.mc-link {
+  display: inline-flex;
+  margin-top: 16px;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .webchat-shell {
+    padding: 18px;
+  }
+
+  .topbar {
+    flex-direction: column;
+  }
+}

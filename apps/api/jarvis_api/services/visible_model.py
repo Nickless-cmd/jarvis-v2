@@ -12,6 +12,7 @@ from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.runtime.settings import load_settings
+from core.tools.workspace_capabilities import load_workspace_capabilities
 
 READINESS_PROBE_TTL_SECONDS = 15
 _READINESS_PROBE_CACHE: dict[tuple[str, str, str], dict[str, str | bool]] = {}
@@ -154,12 +155,7 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
     api_key = _load_openai_api_key()
     payload = {
         "model": model,
-        "input": [
-            {
-                "role": "user",
-                "content": [{"type": "input_text", "text": message}],
-            }
-        ],
+        "input": _build_visible_input(message),
     }
     data = _post_openai_responses(payload=payload, api_key=api_key)
     text = _extract_output_text(data)
@@ -185,12 +181,7 @@ def _stream_openai_model(
     payload = {
         "model": model,
         "stream": True,
-        "input": [
-            {
-                "role": "user",
-                "content": [{"type": "input_text", "text": message}],
-            }
-        ],
+        "input": _build_visible_input(message),
     }
     req = urllib_request.Request(
         "https://api.openai.com/v1/responses",
@@ -400,6 +391,52 @@ def _extract_output_text(data: dict) -> str:
     if not text:
         raise RuntimeError("OpenAI visible execution returned no output_text")
     return text
+
+
+def _build_visible_input(message: str) -> list[dict]:
+    instruction = _capability_instruction()
+    if not instruction:
+        return [
+            {
+                "role": "user",
+                "content": [{"type": "input_text", "text": message}],
+            }
+        ]
+    return [
+        {
+            "role": "system",
+            "content": [{"type": "input_text", "text": instruction}],
+        },
+        {
+            "role": "user",
+            "content": [{"type": "input_text", "text": message}],
+        },
+    ]
+
+
+def _capability_instruction() -> str | None:
+    capabilities = load_workspace_capabilities().get("declared_capabilities", [])
+    runnable = [
+        item
+        for item in capabilities
+        if item.get("runnable") and str(item.get("capability_id", "")).strip()
+    ]
+    if not runnable:
+        return None
+    capability_lines = [
+        f'- {item["capability_id"]}: {item.get("name", "")}'
+        for item in runnable[:8]
+    ]
+    return "\n".join(
+        [
+            "Visible lane capability rule:",
+            "Use a workspace capability only by replying with exactly one line in this exact form and nothing else:",
+            '<capability-call id="capability_id" />',
+            "Only use one of these currently runnable capability_ids:",
+            *capability_lines,
+            "If no capability is needed, answer normally.",
+        ]
+    )
 
 
 def _estimate_tokens(text: str) -> int:

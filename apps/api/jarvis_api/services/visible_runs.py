@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 from dataclasses import dataclass
 from typing import AsyncIterator
@@ -15,6 +16,14 @@ from apps.api.jarvis_api.services.visible_model import (
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
 from core.runtime.settings import load_settings
+from core.tools.workspace_capabilities import (
+    invoke_workspace_capability,
+    load_workspace_capabilities,
+)
+
+CAPABILITY_CALL_PATTERN = re.compile(
+    r'^<capability-call id="(?P<capability_id>[a-z0-9:-]+)"\s*/>$'
+)
 
 
 @dataclass(slots=True)
@@ -95,6 +104,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     )
 
     result = None
+    visible_output_text = ""
     try:
         try:
             for item in stream_visible_model(
@@ -159,6 +169,46 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield cancelled_chunk
             return
 
+        capability_call = _extract_capability_call(result.text)
+        if capability_call and _is_runnable_workspace_capability(capability_call):
+            capability_result = invoke_workspace_capability(capability_call)
+            visible_output_text = _capability_visible_text(
+                capability_id=capability_call,
+                invocation=capability_result,
+            )
+            event_bus.publish(
+                "runtime.visible_run_capability_used",
+                {
+                    "run_id": run.run_id,
+                    "lane": run.lane,
+                    "provider": run.provider,
+                    "model": run.model,
+                    "capability_id": capability_call,
+                    "status": capability_result.get("status"),
+                    "execution_mode": capability_result.get("execution_mode"),
+                },
+            )
+            yield _sse(
+                "capability",
+                {
+                    "type": "capability",
+                    "run_id": run.run_id,
+                    "capability_id": capability_call,
+                    "status": capability_result.get("status"),
+                    "execution_mode": capability_result.get("execution_mode"),
+                },
+            )
+            yield _sse(
+                "delta",
+                {
+                    "type": "delta",
+                    "run_id": run.run_id,
+                    "delta": visible_output_text,
+                },
+            )
+        else:
+            visible_output_text = result.text
+
         record_cost(
             lane=run.lane,
             provider=run.provider,
@@ -198,7 +248,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         set_last_visible_run_outcome(
             run,
             status="completed",
-            text_preview=_preview_text(result.text),
+            text_preview=_preview_text(visible_output_text),
         )
         yield _sse(
             "done",
@@ -217,6 +267,44 @@ def _preview_text(text: str, limit: int = 120) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[: limit - 1].rstrip() + "…"
+
+
+def _extract_capability_call(text: str) -> str | None:
+    match = CAPABILITY_CALL_PATTERN.fullmatch((text or "").strip())
+    if not match:
+        return None
+    return match.group("capability_id")
+
+
+def _is_runnable_workspace_capability(capability_id: str) -> bool:
+    declared = load_workspace_capabilities().get("declared_capabilities", [])
+    for capability in declared:
+        if capability.get("capability_id") != capability_id:
+            continue
+        return bool(capability.get("runnable"))
+    return False
+
+
+def _capability_visible_text(*, capability_id: str, invocation: dict) -> str:
+    status = str(invocation.get("status") or "unknown")
+    execution_mode = str(invocation.get("execution_mode") or "unknown")
+    result = invocation.get("result") or {}
+    detail = str(invocation.get("detail") or "").strip()
+    text = ""
+    if isinstance(result, dict):
+        text = str(result.get("text") or "").strip()
+
+    if text:
+        return (
+            f"[Capability {capability_id} via {execution_mode}]\n"
+            f"{text}"
+        )
+    if detail:
+        return (
+            f"[Capability {capability_id} via {execution_mode}]\n"
+            f"{detail}"
+        )
+    return f"[Capability {capability_id} via {execution_mode}] {status}"
 
 
 def _bounded_error(error_message: str, limit: int = 160) -> str:

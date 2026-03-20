@@ -22,6 +22,10 @@ export default function App() {
   const [error, setError] = useState("");
   const [wsState, setWsState] = useState("connecting");
   const [activityEvents, setActivityEvents] = useState([]);
+  const [visibleControl, setVisibleControl] = useState(null);
+  const [visibleControlState, setVisibleControlState] = useState("loading");
+  const [visibleControlError, setVisibleControlError] = useState("");
+  const [visibleControlNotice, setVisibleControlNotice] = useState("");
 
   useEffect(() => {
     const ws = new WebSocket("ws://127.0.0.1:8010/ws");
@@ -44,6 +48,10 @@ export default function App() {
     };
 
     return () => ws.close();
+  }, []);
+
+  useEffect(() => {
+    loadVisibleControl();
   }, []);
 
   const currentActivity = useMemo(() => {
@@ -128,6 +136,54 @@ export default function App() {
     }
   }
 
+  async function loadVisibleControl() {
+    setVisibleControlState("loading");
+    setVisibleControlError("");
+
+    try {
+      const response = await fetch(`${API_BASE}/mc/visible-execution`);
+      if (!response.ok) {
+        throw new Error("Visible lane authority kunne ikke hentes.");
+      }
+      const data = await response.json();
+      setVisibleControl(data);
+      setVisibleControlState("ready");
+    } catch (fetchError) {
+      setVisibleControlState("error");
+      setVisibleControlError(
+        fetchError instanceof Error ? fetchError.message : "Ukendt authority-fejl."
+      );
+    }
+  }
+
+  async function handleVisibleControlSave(nextAuthority) {
+    setVisibleControlState("saving");
+    setVisibleControlError("");
+    setVisibleControlNotice("");
+
+    try {
+      const response = await fetch(`${API_BASE}/mc/visible-execution`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(nextAuthority)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Visible lane authority kunne ikke gemmes.");
+      }
+      setVisibleControl(data);
+      setVisibleControlState("ready");
+      setVisibleControlNotice("Visible lane authority opdateret.");
+    } catch (saveError) {
+      setVisibleControlState("error");
+      setVisibleControlError(
+        saveError instanceof Error ? saveError.message : "Ukendt save-fejl."
+      );
+    }
+  }
+
   return (
     <div className="webchat-shell">
       <header className="topbar">
@@ -204,7 +260,14 @@ export default function App() {
               </article>
             </div>
           </section>
-          <StatusRail />
+          <StatusRail
+            visibleControl={visibleControl}
+            visibleControlState={visibleControlState}
+            visibleControlError={visibleControlError}
+            visibleControlNotice={visibleControlNotice}
+            onRefresh={loadVisibleControl}
+            onSave={handleVisibleControlSave}
+          />
         </section>
       </main>
     </div>

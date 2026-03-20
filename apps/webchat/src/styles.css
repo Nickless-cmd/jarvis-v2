@@ -120,7 +120,8 @@ a {
 }
 
 .chat-panel-header,
-.composer-meta {
+.composer-meta,
+.rail-header {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -215,7 +216,8 @@ a {
 }
 
 .composer-actions button,
-.mc-link {
+.mc-link,
+.ghost-button {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 10px 14px;
@@ -225,11 +227,14 @@ a {
 }
 
 .composer-actions button.primary,
-.mc-link {
+.mc-link,
+.visible-control-actions .primary {
   background: linear-gradient(135deg, rgba(242, 166, 90, 0.2), rgba(116, 211, 174, 0.18));
 }
 
-.composer-actions button:disabled {
+.composer-actions button:disabled,
+.ghost-button:disabled,
+.visible-control-actions .primary:disabled {
   opacity: 0.75;
 }
 
@@ -265,6 +270,73 @@ a {
   padding: 0;
 }
 
+.visible-control-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.visible-control-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.visible-control-form span,
+.visible-readiness strong {
+  color: var(--muted);
+}
+
+.visible-control-form input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #edf3ee;
+  font: inherit;
+}
+
+.visible-control-form input:focus {
+  outline: 2px solid rgba(116, 211, 174, 0.35);
+  outline-offset: 2px;
+}
+
+.visible-control-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.visible-readiness {
+  margin-top: 18px;
+}
+
+.visible-readiness p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.readiness-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.readiness-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #edf3ee;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding-bottom: 8px;
+}
+
+.readiness-list small {
+  color: var(--muted);
+  text-align: right;
+}
+
 .runtime-event-list {
   list-style: none;
   padding: 0;
@@ -296,6 +368,19 @@ a {
 .chat-error {
   margin: 18px 0 0;
   color: #ffb29d;
+}
+
+.control-error,
+.control-success {
+  margin: 16px 0 0;
+}
+
+.control-error {
+  color: #ffb29d;
+}
+
+.control-success {
+  color: var(--accent-2);
 }
 
 @media (max-width: 980px) {

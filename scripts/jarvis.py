@@ -62,6 +62,9 @@ def cmd_overview(_: argparse.Namespace) -> None:
     costs = telemetry_summary()
     items = event_bus.recent(limit=1)
     visible_run, visible_run_source, api_unavailable = _visible_run_truth()
+    visible_execution, visible_execution_source, visible_execution_api_unavailable = (
+        _visible_execution_truth()
+    )
     print(
         json.dumps(
             {
@@ -71,7 +74,9 @@ def cmd_overview(_: argparse.Namespace) -> None:
                 "input_tokens": costs["input_tokens"],
                 "output_tokens": costs["output_tokens"],
                 "total_cost_usd": costs["total_cost_usd"],
-                "visible_execution": visible_execution_readiness(),
+                "visible_execution": visible_execution,
+                "visible_execution_source": visible_execution_source,
+                "visible_execution_api_unavailable": visible_execution_api_unavailable,
                 "visible_run": visible_run,
                 "visible_run_source": visible_run_source,
                 "visible_run_api_unavailable": api_unavailable,
@@ -243,6 +248,23 @@ def _visible_run_truth() -> tuple[dict, str, str | None]:
         "local-fallback",
         api_error,
     )
+
+
+def _visible_execution_truth() -> tuple[dict, str, str | None]:
+    response, api_error = _request_json("GET", "/mc/visible-execution")
+    if response is not None:
+        return {
+            "authority": response.get("authority"),
+            "readiness": response.get("readiness"),
+        }, "api", None
+    return {
+        "authority": {
+            "visible_model_provider": load_settings().visible_model_provider,
+            "visible_model_name": load_settings().visible_model_name,
+            "visible_auth_profile": load_settings().visible_auth_profile,
+        },
+        "readiness": visible_execution_readiness(),
+    }, "local-fallback", api_error
 
 
 def _fetch_visible_run_via_api() -> tuple[dict | None, str | None]:

@@ -39,7 +39,10 @@ export default function App() {
     ws.onmessage = (event) => {
       const item = JSON.parse(event.data);
       setActivityEvents((prev) => [item, ...prev].slice(0, 6));
-      if (item.kind?.startsWith("runtime.visible_run_")) {
+      if (
+        item.kind?.startsWith("runtime.visible_run_") ||
+        item.kind?.startsWith("runtime.capability_invocation_")
+      ) {
         loadVisibleControl({ quiet: true });
       }
     };
@@ -599,6 +602,30 @@ export default function App() {
                         </ul>
                       ) : (
                         <p>Ingen capability invocation endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
+                      <h3>Capability invocation recent events</h3>
+                      {visibleControl.capability_invocation?.recent_events?.length ? (
+                        <ul className="runtime-event-list compact">
+                          {visibleControl.capability_invocation.recent_events.map((item) => (
+                            <li key={item.id}>
+                              <span>{item.kind}</span>
+                              <small>
+                                <span
+                                  className={`status-chip ${statusTone(
+                                    item.payload?.status
+                                  )}`}
+                                >
+                                  {item.payload?.status || "ukendt"}
+                                </span>{" "}
+                                · {item.payload?.capability_id || "ingen"} · {item.created_at}
+                              </small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>Ingen capability invocation-events endnu.</p>
                       )}
                     </section>
                   </div>

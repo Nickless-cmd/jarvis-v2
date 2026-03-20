@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from core.runtime.config import (
@@ -7,9 +8,11 @@ from core.runtime.config import (
     JARVIS_HOME,
     LOG_DIR,
     SESSIONS_DIR,
+    SETTINGS_FILE,
     STATE_DIR,
     WORKSPACES_DIR,
 )
+from core.runtime.settings import RuntimeSettings
 
 RUNTIME_DIRS = [
     JARVIS_HOME,
@@ -25,3 +28,14 @@ RUNTIME_DIRS = [
 def ensure_runtime_dirs() -> None:
     for path in RUNTIME_DIRS:
         Path(path).mkdir(parents=True, exist_ok=True)
+    ensure_settings_file()
+
+
+def ensure_settings_file() -> None:
+    if SETTINGS_FILE.exists():
+        return
+
+    SETTINGS_FILE.write_text(
+        json.dumps(RuntimeSettings().to_dict(), indent=2) + "\n",
+        encoding="utf-8",
+    )

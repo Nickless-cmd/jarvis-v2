@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-import asyncio
 import json
 from dataclasses import dataclass
 from typing import AsyncIterator
 from uuid import uuid4
 
-from apps.api.jarvis_api.services.visible_model import execute_visible_model
+from apps.api.jarvis_api.services.visible_model import (
+    VisibleModelDelta,
+    VisibleModelStreamDone,
+    stream_visible_model,
+)
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
 from core.runtime.settings import load_settings
@@ -55,21 +58,28 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         },
     )
 
-    result = execute_visible_model(
+    result = None
+    for item in stream_visible_model(
         message=run.user_message,
         provider=run.provider,
         model=run.model,
-    )
-    for chunk in _chunk_text(result.text):
-        yield _sse(
-            "delta",
-            {
-                "type": "delta",
-                "run_id": run.run_id,
-                "delta": chunk,
-            },
-        )
-        await asyncio.sleep(0.05)
+    ):
+        if isinstance(item, VisibleModelDelta):
+            yield _sse(
+                "delta",
+                {
+                    "type": "delta",
+                    "run_id": run.run_id,
+                    "delta": item.delta,
+                },
+            )
+            continue
+        if isinstance(item, VisibleModelStreamDone):
+            result = item.result
+            break
+
+    if result is None:
+        raise RuntimeError("Visible model stream completed without final result")
 
     record_cost(
         lane=run.lane,
@@ -111,10 +121,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             "status": "completed",
         },
     )
-
-
-def _chunk_text(text: str, size: int = 48) -> list[str]:
-    return [text[i : i + size] for i in range(0, len(text), size)]
 
 
 def _sse(event: str, data: dict) -> str:

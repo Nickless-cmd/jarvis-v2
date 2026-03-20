@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
+from typing import Iterator
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
@@ -29,12 +30,35 @@ class VisibleModelResult:
     cost_usd: float
 
 
+@dataclass(slots=True)
+class VisibleModelDelta:
+    delta: str
+
+
+@dataclass(slots=True)
+class VisibleModelStreamDone:
+    result: VisibleModelResult
+
+
 def execute_visible_model(*, message: str, provider: str, model: str) -> VisibleModelResult:
     if provider == "openai":
         return _execute_openai_model(message=message, model=model)
     if provider == "phase1-runtime":
         return _execute_phase1_model(message=message, provider=provider, model=model)
     raise ValueError(f"Unsupported visible model provider: {provider}")
+
+
+def stream_visible_model(
+    *, message: str, provider: str, model: str
+) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+    if provider == "openai":
+        yield from _stream_openai_model(message=message, model=model)
+        return
+
+    result = execute_visible_model(message=message, provider=provider, model=model)
+    for chunk in _chunk_text(result.text):
+        yield VisibleModelDelta(delta=chunk)
+    yield VisibleModelStreamDone(result=result)
 
 
 def visible_execution_readiness() -> dict[str, str | bool | None]:
@@ -147,6 +171,69 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
         ),
+    )
+
+
+def _stream_openai_model(
+    *, message: str, model: str
+) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+    api_key = _load_openai_api_key()
+    payload = {
+        "model": model,
+        "stream": True,
+        "input": [
+            {
+                "role": "user",
+                "content": [{"type": "input_text", "text": message}],
+            }
+        ],
+    }
+    req = urllib_request.Request(
+        "https://api.openai.com/v1/responses",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+
+    parts: list[str] = []
+    usage: dict = {}
+
+    with urllib_request.urlopen(req, timeout=60) as response:
+        for event in _iter_sse_events(response):
+            event_type = str(event.get("type", ""))
+            if event_type == "response.output_text.delta":
+                delta = str(event.get("delta", ""))
+                if not delta:
+                    continue
+                parts.append(delta)
+                yield VisibleModelDelta(delta=delta)
+            elif event_type == "response.completed":
+                usage = dict(event.get("response", {}).get("usage", {}))
+            elif event_type == "error":
+                raise RuntimeError(
+                    f"OpenAI visible streaming failed: {event.get('message', 'unknown-error')}"
+                )
+
+    text = "".join(parts).strip()
+    if not text:
+        raise RuntimeError("OpenAI visible execution returned no streamed output_text")
+
+    input_tokens = int(usage.get("input_tokens", _estimate_tokens(message)))
+    output_tokens = int(usage.get("output_tokens", _estimate_tokens(text)))
+    yield VisibleModelStreamDone(
+        result=VisibleModelResult(
+            text=text,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=_calculate_openai_cost_usd(
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            ),
+        )
     )
 
 
@@ -319,3 +406,33 @@ def _calculate_openai_cost_usd(*, model: str, input_tokens: int, output_tokens: 
         + Decimal(int(output_tokens)) * output_rate / Decimal(1_000_000)
     )
     return float(total.quantize(Decimal("0.00000001")))
+
+
+def _chunk_text(text: str, size: int = 48) -> list[str]:
+    return [text[i : i + size] for i in range(0, len(text), size)]
+
+
+def _iter_sse_events(response) -> Iterator[dict]:
+    event_name = "message"
+    data_lines: list[str] = []
+
+    for raw_line in response:
+        line = raw_line.decode("utf-8").strip()
+        if not line:
+            if not data_lines:
+                event_name = "message"
+                continue
+            data = "\n".join(data_lines)
+            data_lines = []
+            if data == "[DONE]":
+                break
+            payload = json.loads(data)
+            if "type" not in payload:
+                payload["type"] = event_name
+            yield payload
+            event_name = "message"
+            continue
+        if line.startswith("event:"):
+            event_name = line[6:].strip()
+        elif line.startswith("data:"):
+            data_lines.append(line[5:].strip())

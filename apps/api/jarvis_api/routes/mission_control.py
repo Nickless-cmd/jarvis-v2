@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
+from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.costing.ledger import recent_costs, telemetry_summary
 from core.eventbus.bus import event_bus
 from core.runtime.config import (
@@ -18,6 +19,7 @@ from core.runtime.db import connect
 from core.runtime.settings import load_settings, update_visible_execution_settings
 
 router = APIRouter(prefix="/mc", tags=["mission-control"])
+SUPPORTED_VISIBLE_PROVIDERS = ("phase1-runtime", "openai")
 
 
 @router.get("/overview")
@@ -124,6 +126,17 @@ def mc_update_visible_execution(payload: dict) -> dict:
         normalized = value.strip()
         if field in {"visible_model_provider", "visible_model_name"} and not normalized:
             raise HTTPException(status_code=400, detail=f"{field} must not be empty")
+        if field == "visible_model_provider":
+            if normalized not in SUPPORTED_VISIBLE_PROVIDERS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "visible_model_provider must be one of: "
+                        + ", ".join(SUPPORTED_VISIBLE_PROVIDERS)
+                    ),
+                )
+            updates[field] = normalized
+            continue
         if field == "visible_auth_profile":
             if any(part in normalized for part in ("/", "\\")):
                 raise HTTPException(
@@ -157,4 +170,22 @@ def _visible_execution_surface(settings) -> dict:
             "visible_auth_profile": settings.visible_auth_profile,
         },
         "readiness": visible_execution_readiness(),
+        "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
+        "available_auth_profiles": _available_openai_profiles(),
     }
+
+
+def _available_openai_profiles() -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    for profile in list_auth_profiles():
+        name = str(profile.get("profile", "")).strip()
+        if not name:
+            continue
+        state = get_provider_state(profile=name, provider="openai")
+        items.append(
+            {
+                "profile": name,
+                "auth_status": str(state.get("status", "missing")) if state else "missing",
+            }
+        )
+    return items

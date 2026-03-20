@@ -48,6 +48,9 @@ export default function StatusRail({
   }
 
   const readiness = visibleControl?.readiness;
+  const supportedProviders = visibleControl?.supported_providers || [];
+  const availableProfiles = visibleControl?.available_auth_profiles || [];
+  const authProfileOptions = buildProfileOptions(availableProfiles, authority.visible_auth_profile);
 
   return (
     <aside className="status-rail">
@@ -80,7 +83,7 @@ export default function StatusRail({
         <form className="visible-control-form" onSubmit={handleSubmit}>
           <label>
             <span>Provider</span>
-            <input
+            <select
               value={authority.visible_model_provider}
               onChange={(event) =>
                 setAuthority((prev) => ({
@@ -89,7 +92,13 @@ export default function StatusRail({
                 }))
               }
               disabled={visibleControlState === "loading" || visibleControlState === "saving"}
-            />
+            >
+              {supportedProviders.map((provider) => (
+                <option key={provider} value={provider}>
+                  {provider}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             <span>Model</span>
@@ -106,7 +115,7 @@ export default function StatusRail({
           </label>
           <label>
             <span>Auth profile</span>
-            <input
+            <select
               value={authority.visible_auth_profile}
               onChange={(event) =>
                 setAuthority((prev) => ({
@@ -114,9 +123,16 @@ export default function StatusRail({
                   visible_auth_profile: event.target.value
                 }))
               }
-              placeholder="default"
               disabled={visibleControlState === "loading" || visibleControlState === "saving"}
-            />
+            >
+              <option value="">ingen</option>
+              {authProfileOptions.map((item) => (
+                <option key={item.profile} value={item.profile}>
+                  {item.profile}
+                  {item.auth_status === "active" ? "" : ` (${item.auth_status})`}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="visible-control-actions">
             <button
@@ -173,4 +189,26 @@ export default function StatusRail({
       </section>
     </aside>
   );
+}
+
+function buildProfileOptions(items, currentValue) {
+  const seen = new Set();
+  const next = [];
+
+  for (const item of items) {
+    if (!item.profile || seen.has(item.profile)) {
+      continue;
+    }
+    seen.add(item.profile);
+    next.push(item);
+  }
+
+  if (currentValue && !seen.has(currentValue)) {
+    next.unshift({
+      profile: currentValue,
+      auth_status: "configured"
+    });
+  }
+
+  return next;
 }

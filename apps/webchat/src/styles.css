@@ -286,7 +286,8 @@ a {
   color: var(--muted);
 }
 
-.visible-control-form input {
+.visible-control-form input,
+.visible-control-form select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -296,7 +297,8 @@ a {
   font: inherit;
 }
 
-.visible-control-form input:focus {
+.visible-control-form input:focus,
+.visible-control-form select:focus {
   outline: 2px solid rgba(116, 211, 174, 0.35);
   outline-offset: 2px;
 }

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
 from core.costing.ledger import recent_costs, telemetry_summary
@@ -15,7 +15,7 @@ from core.runtime.config import (
     WORKSPACES_DIR,
 )
 from core.runtime.db import connect
-from core.runtime.settings import load_settings
+from core.runtime.settings import load_settings, update_visible_execution_settings
 
 router = APIRouter(prefix="/mc", tags=["mission-control"])
 
@@ -94,6 +94,50 @@ def mc_runtime() -> dict:
     }
 
 
+@router.get("/visible-execution")
+def mc_visible_execution() -> dict:
+    settings = load_settings()
+    return _visible_execution_surface(settings)
+
+
+@router.put("/visible-execution")
+def mc_update_visible_execution(payload: dict) -> dict:
+    allowed_fields = {
+        "visible_model_provider",
+        "visible_model_name",
+        "visible_auth_profile",
+    }
+    unknown_fields = sorted(set(payload) - allowed_fields)
+    if unknown_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported visible execution fields: {', '.join(unknown_fields)}",
+        )
+
+    updates: dict[str, str] = {}
+    for field in allowed_fields:
+        if field not in payload:
+            continue
+        value = payload[field]
+        if not isinstance(value, str):
+            raise HTTPException(status_code=400, detail=f"{field} must be a string")
+        normalized = value.strip()
+        if field in {"visible_model_provider", "visible_model_name"} and not normalized:
+            raise HTTPException(status_code=400, detail=f"{field} must not be empty")
+        if field == "visible_auth_profile":
+            if any(part in normalized for part in ("/", "\\")):
+                raise HTTPException(
+                    status_code=400,
+                    detail="visible_auth_profile must be a simple profile name",
+                )
+            updates[field] = normalized
+            continue
+        updates[field] = normalized
+
+    settings = update_visible_execution_settings(**updates)
+    return _visible_execution_surface(settings)
+
+
 def _latest_item(items: list[dict]) -> dict | None:
     return items[0] if items else None
 
@@ -102,4 +146,15 @@ def _path_state(path) -> dict[str, str | bool]:
     return {
         "path": str(path),
         "exists": path.exists(),
+    }
+
+
+def _visible_execution_surface(settings) -> dict:
+    return {
+        "authority": {
+            "visible_model_provider": settings.visible_model_provider,
+            "visible_model_name": settings.visible_model_name,
+            "visible_auth_profile": settings.visible_auth_profile,
+        },
+        "readiness": visible_execution_readiness(),
     }

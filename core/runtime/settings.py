@@ -60,3 +60,25 @@ def load_settings() -> RuntimeSettings:
             data.get("visible_auth_profile", defaults.visible_auth_profile)
         ),
     )
+
+
+def update_visible_execution_settings(
+    *,
+    visible_model_provider: str | None = None,
+    visible_model_name: str | None = None,
+    visible_auth_profile: str | None = None,
+) -> RuntimeSettings:
+    settings = load_settings()
+
+    if visible_model_provider is not None:
+        settings.visible_model_provider = visible_model_provider
+    if visible_model_name is not None:
+        settings.visible_model_name = visible_model_name
+    if visible_auth_profile is not None:
+        settings.visible_auth_profile = visible_auth_profile
+
+    SETTINGS_FILE.write_text(
+        json.dumps(settings.to_dict(), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return settings

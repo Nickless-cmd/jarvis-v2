@@ -65,6 +65,7 @@ def mc_overview() -> dict:
         },
         "visible_execution": visible,
         "visible_run": _visible_run_surface(),
+        "capability_invocation": get_capability_invocation_truth(),
         "latest_event": latest_event,
         "latest_cost": latest_cost,
     }

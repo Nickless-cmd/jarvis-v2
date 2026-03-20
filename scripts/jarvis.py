@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
 
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
 from apps.api.jarvis_api.services.visible_runs import (
+    cancel_visible_run,
     get_active_visible_run,
     get_last_visible_run_outcome,
 )
@@ -114,6 +115,55 @@ def cmd_workspace(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+    run_id = (args.run_id or "").strip()
+    if not run_id:
+        active_run = get_active_visible_run()
+        if not active_run:
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "status": "not-found",
+                        "detail": "No active visible run",
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                )
+            )
+            return
+        run_id = str(active_run["run_id"])
+
+    if not cancel_visible_run(run_id):
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "run_id": run_id,
+                    "status": "not-found",
+                    "detail": "Visible run not active",
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "run_id": run_id,
+                "status": "cancelled",
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -137,6 +187,10 @@ def build_parser() -> argparse.ArgumentParser:
     workspace = sub.add_parser("workspace")
     workspace.add_argument("--name", default="default")
     workspace.set_defaults(func=cmd_workspace)
+
+    cancel_visible = sub.add_parser("cancel-visible-run")
+    cancel_visible.add_argument("--run-id", default="")
+    cancel_visible.set_defaults(func=cmd_cancel_visible_run)
 
     return parser
 

@@ -69,17 +69,21 @@ def cmd_overview(_: argparse.Namespace) -> None:
         json.dumps(
             {
                 "ok": True,
+                "visible_execution": _visible_execution_section(
+                    visible_execution,
+                    visible_execution_source,
+                    visible_execution_api_unavailable,
+                ),
+                "visible_run": _visible_run_section(
+                    visible_run,
+                    visible_run_source,
+                    api_unavailable,
+                ),
                 "events": _event_count(),
                 "cost_rows": costs["cost_rows"],
                 "input_tokens": costs["input_tokens"],
                 "output_tokens": costs["output_tokens"],
                 "total_cost_usd": costs["total_cost_usd"],
-                "visible_execution": visible_execution,
-                "visible_execution_source": visible_execution_source,
-                "visible_execution_api_unavailable": visible_execution_api_unavailable,
-                "visible_run": visible_run,
-                "visible_run_source": visible_run_source,
-                "visible_run_api_unavailable": api_unavailable,
                 "latest_event": items[0] if items else None,
             },
             indent=2,
@@ -97,11 +101,13 @@ def cmd_config(_: argparse.Namespace) -> None:
     print(
         json.dumps(
             {
+                "visible_execution": _visible_execution_section(
+                    visible_execution,
+                    visible_execution_source,
+                    visible_execution_api_unavailable,
+                ),
                 "path": str(SETTINGS_FILE),
                 "settings": settings.to_dict(),
-                "visible_execution": visible_execution,
-                "visible_execution_source": visible_execution_source,
-                "visible_execution_api_unavailable": visible_execution_api_unavailable,
             },
             indent=2,
             ensure_ascii=False,
@@ -249,6 +255,7 @@ def _visible_run_truth() -> tuple[dict, str, str | None]:
             "active": bool(get_active_visible_run()),
             "active_run": get_active_visible_run(),
             "last_outcome": get_last_visible_run_outcome(),
+            "recent_events": [],
         },
         "local-fallback",
         api_error,
@@ -324,6 +331,30 @@ def _http_error_detail(body: str) -> str | None:
         return None
     detail = data.get("detail")
     return str(detail) if detail else None
+
+
+def _visible_execution_section(
+    visible_execution: dict, source: str, api_unavailable: str | None
+) -> dict:
+    return {
+        "visible_execution_source": source,
+        "visible_execution_api_unavailable": api_unavailable,
+        "authority": visible_execution.get("authority"),
+        "readiness": visible_execution.get("readiness"),
+    }
+
+
+def _visible_run_section(
+    visible_run: dict, source: str, api_unavailable: str | None
+) -> dict:
+    return {
+        "visible_run_source": source,
+        "visible_run_api_unavailable": api_unavailable,
+        "active": visible_run.get("active"),
+        "active_run": visible_run.get("active_run"),
+        "last_outcome": visible_run.get("last_outcome"),
+        "recent_events": visible_run.get("recent_events", []),
+    }
 
 
 def main() -> None:

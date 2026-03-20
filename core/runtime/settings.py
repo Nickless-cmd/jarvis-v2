@@ -15,6 +15,8 @@ class RuntimeSettings:
     database_url: str = f"sqlite:///{CONFIG_DIR.parent / 'state' / 'jarvis.db'}"
     primary_model_lane: str = "primary"
     cheap_model_lane: str = "cheap"
+    visible_model_provider: str = "phase1-runtime"
+    visible_model_name: str = "visible-placeholder"
 
     def to_dict(self) -> dict[str, str | int]:
         return {
@@ -25,6 +27,8 @@ class RuntimeSettings:
             "database_url": self.database_url,
             "primary_model_lane": self.primary_model_lane,
             "cheap_model_lane": self.cheap_model_lane,
+            "visible_model_provider": self.visible_model_provider,
+            "visible_model_name": self.visible_model_name,
         }
 
 
@@ -44,4 +48,10 @@ def load_settings() -> RuntimeSettings:
             data.get("primary_model_lane", defaults.primary_model_lane)
         ),
         cheap_model_lane=str(data.get("cheap_model_lane", defaults.cheap_model_lane)),
+        visible_model_provider=str(
+            data.get("visible_model_provider", defaults.visible_model_provider)
+        ),
+        visible_model_name=str(
+            data.get("visible_model_name", defaults.visible_model_name)
+        ),
     )

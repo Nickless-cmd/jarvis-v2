@@ -12,10 +12,6 @@ from core.eventbus.bus import event_bus
 from core.runtime.settings import load_settings
 
 
-VISIBLE_PROVIDER = "phase1-runtime"
-VISIBLE_MODEL = "visible-placeholder"
-
-
 @dataclass(slots=True)
 class VisibleRun:
     run_id: str
@@ -30,8 +26,8 @@ def start_visible_run(message: str) -> AsyncIterator[str]:
     run = VisibleRun(
         run_id=f"visible-{uuid4().hex}",
         lane=settings.primary_model_lane,
-        provider=VISIBLE_PROVIDER,
-        model=VISIBLE_MODEL,
+        provider=settings.visible_model_provider,
+        model=settings.visible_model_name,
         user_message=(message or "").strip() or "Tom synlig forespoergsel",
     )
     return _stream_visible_run(run)

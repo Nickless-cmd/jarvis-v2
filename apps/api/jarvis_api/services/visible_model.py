@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from urllib import error as urllib_error
+from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
@@ -39,10 +41,22 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "auth_ready": True,
             "auth_status": "not-required",
             "auth_profile": configured_profile,
+            "provider_reachable": True,
+            "live_verified": False,
+            "provider_status": "local-fallback",
         }
 
     if provider == "openai":
         profile, status = _resolve_openai_profile()
+        provider_reachable = False
+        live_verified = False
+        provider_status = "auth-not-ready"
+
+        if status == "ready" and profile is not None:
+            provider_reachable, live_verified, provider_status = _probe_openai_model(
+                profile=profile,
+                model=model,
+            )
         return {
             "provider": provider,
             "model": model,
@@ -50,6 +64,9 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "auth_ready": status == "ready",
             "auth_status": status,
             "auth_profile": profile,
+            "provider_reachable": provider_reachable,
+            "live_verified": live_verified,
+            "provider_status": provider_status,
         }
 
     return {
@@ -59,6 +76,9 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
         "auth_ready": False,
         "auth_status": "unsupported-provider",
         "auth_profile": None,
+        "provider_reachable": False,
+        "live_verified": False,
+        "provider_status": "unsupported-provider",
     }
 
 
@@ -106,13 +126,17 @@ def _load_openai_api_key() -> str:
     if profile is None:
         raise RuntimeError(f"OpenAI visible execution not ready: {status}")
 
+    return _load_openai_api_key_for_profile(profile)
+
+
+def _load_openai_api_key_for_profile(profile: str) -> str:
     state = get_provider_state(profile=profile, provider="openai")
     credentials_path = Path(str(state.get("credentials_path", "")))
     credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
     api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
     if api_key:
         return api_key
-    raise RuntimeError(f"OpenAI visible execution not ready: {status}")
+    raise RuntimeError("OpenAI visible execution not ready: missing-credentials")
 
 
 def _resolve_openai_profile() -> tuple[str | None, str]:
@@ -163,6 +187,28 @@ def _post_openai_responses(*, payload: dict, api_key: str) -> dict:
     )
     with urllib_request.urlopen(req, timeout=60) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _probe_openai_model(*, profile: str, model: str) -> tuple[bool, bool, str]:
+    api_key = _load_openai_api_key_for_profile(profile)
+    model_ref = urllib_parse.quote(model, safe="")
+    req = urllib_request.Request(
+        f"https://api.openai.com/v1/models/{model_ref}",
+        headers={"Authorization": f"Bearer {api_key}"},
+        method="GET",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=15) as response:
+            response.read()
+        return True, True, "reachable"
+    except urllib_error.HTTPError as exc:
+        if exc.code == 404:
+            return True, False, "model-not-found"
+        if exc.code in {401, 403}:
+            return False, False, "auth-rejected"
+        return False, False, f"http-{exc.code}"
+    except urllib_error.URLError:
+        return False, False, "unreachable"
 
 
 def _extract_output_text(data: dict) -> str:

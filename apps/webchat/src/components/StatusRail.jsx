@@ -168,6 +168,18 @@ export default function StatusRail({
                 <span>Auth profile</span>
                 <small>{readiness.auth_profile || "ingen"}</small>
               </li>
+              <li>
+                <span>Provider status</span>
+                <small>{readiness.provider_status}</small>
+              </li>
+              <li>
+                <span>Provider reachable</span>
+                <small>{readiness.provider_reachable ? "ja" : "nej"}</small>
+              </li>
+              <li>
+                <span>Live verified</span>
+                <small>{readiness.live_verified ? "ja" : "nej"}</small>
+              </li>
             </ul>
           ) : (
             <p>Ingen readiness-data endnu.</p>

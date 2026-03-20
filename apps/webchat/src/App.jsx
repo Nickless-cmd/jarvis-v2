@@ -300,6 +300,28 @@ export default function App() {
                     </li>
                     <li>
                       <span>
+                        Lane: {visibleControl.visible_run.active_run?.lane || "ingen"}
+                      </span>
+                    </li>
+                    <li>
+                      <span>
+                        Provider:{" "}
+                        {visibleControl.visible_run.active_run?.provider || "ingen"}
+                      </span>
+                    </li>
+                    <li>
+                      <span>
+                        Model: {visibleControl.visible_run.active_run?.model || "ingen"}
+                      </span>
+                    </li>
+                    <li>
+                      <span>
+                        Startet:{" "}
+                        {visibleControl.visible_run.active_run?.started_at || "ingen"}
+                      </span>
+                    </li>
+                    <li>
+                      <span>
                         Sidste udfald:{" "}
                         {visibleControl.visible_run.last_outcome?.status || "ingen"}
                       </span>

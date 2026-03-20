@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from dataclasses import dataclass
 from typing import AsyncIterator
 from uuid import uuid4
@@ -28,6 +29,10 @@ class VisibleRun:
 @dataclass(slots=True)
 class VisibleRunController:
     run_id: str
+    lane: str
+    provider: str
+    model: str
+    started_at: str
     cancelled: bool = False
     active_stream: object | None = None
 
@@ -65,7 +70,7 @@ def start_visible_run(message: str) -> AsyncIterator[str]:
 
 
 async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
-    controller = register_visible_run(run.run_id)
+    controller = register_visible_run(run)
     event_bus.publish(
         "runtime.visible_run_started",
         {
@@ -263,9 +268,15 @@ def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     )
 
 
-def register_visible_run(run_id: str) -> VisibleRunController:
-    controller = VisibleRunController(run_id=run_id)
-    _VISIBLE_RUN_CONTROLLERS[run_id] = controller
+def register_visible_run(run: VisibleRun) -> VisibleRunController:
+    controller = VisibleRunController(
+        run_id=run.run_id,
+        lane=run.lane,
+        provider=run.provider,
+        model=run.model,
+        started_at=datetime.now(UTC).isoformat(),
+    )
+    _VISIBLE_RUN_CONTROLLERS[run.run_id] = controller
     return controller
 
 
@@ -293,6 +304,10 @@ def get_active_visible_run() -> dict[str, str] | None:
     return {
         "active": True,
         "run_id": controller.run_id,
+        "lane": controller.lane,
+        "provider": controller.provider,
+        "model": controller.model,
+        "started_at": controller.started_at,
         "cancelled": controller.is_cancelled(),
     }
 

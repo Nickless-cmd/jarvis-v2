@@ -226,11 +226,14 @@ def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
 
 def cmd_invoke_capability(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
-    result = invoke_workspace_capability(args.capability_id.strip())
+    capability_id = args.capability_id.strip()
+    result, source, api_unavailable = _invoke_capability_truth(capability_id)
     print(
         json.dumps(
             {
                 "ok": result["status"] == "executed",
+                "source": source,
+                "api_unavailable": api_unavailable,
                 **result,
             },
             indent=2,
@@ -317,6 +320,15 @@ def _capability_invocation_truth() -> tuple[dict, str, str | None]:
     if response is not None:
         return response.get("capability_invocation") or {}, "api", None
     return get_capability_invocation_truth(), "local-fallback", api_error
+
+
+def _invoke_capability_truth(capability_id: str) -> tuple[dict, str, str | None]:
+    response, api_error = _request_json(
+        "POST", f"/mc/workspace-capabilities/{capability_id}/invoke"
+    )
+    if response is not None:
+        return response, "api", None
+    return invoke_workspace_capability(capability_id), "local-fallback", api_error
 
 
 def _fetch_visible_run_via_api() -> tuple[dict | None, str | None]:

@@ -24,6 +24,12 @@ from core.runtime.settings import load_settings, update_visible_execution_settin
 
 router = APIRouter(prefix="/mc", tags=["mission-control"])
 SUPPORTED_VISIBLE_PROVIDERS = ("phase1-runtime", "openai")
+VISIBLE_RUN_EVENT_KINDS = (
+    "runtime.visible_run_started",
+    "runtime.visible_run_completed",
+    "runtime.visible_run_failed",
+    "runtime.visible_run_cancelled",
+)
 
 
 @router.get("/overview")
@@ -205,4 +211,11 @@ def _visible_run_surface() -> dict:
         "active": bool(active),
         "active_run": active,
         "last_outcome": last_outcome,
+        "recent_events": _recent_visible_run_events(),
     }
+
+
+def _recent_visible_run_events(limit: int = 5, scan_limit: int = 40) -> list[dict]:
+    items = event_bus.recent(limit=max(scan_limit, limit))
+    visible_items = [item for item in items if item["kind"] in VISIBLE_RUN_EVENT_KINDS]
+    return visible_items[:limit]

@@ -14,7 +14,7 @@ def cmd_bootstrap(_: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     init_db()
     workspace = ensure_default_workspace()
-    event_bus.publish("cli.bootstrap", {"workspace": str(workspace)})
+    event_bus.publish("runtime.bootstrap", {"workspace": str(workspace)})
     print(f"Bootstrapped workspace: {workspace}")
 
 

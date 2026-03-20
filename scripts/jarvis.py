@@ -91,12 +91,17 @@ def cmd_overview(_: argparse.Namespace) -> None:
 def cmd_config(_: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     settings = load_settings()
+    visible_execution, visible_execution_source, visible_execution_api_unavailable = (
+        _visible_execution_truth()
+    )
     print(
         json.dumps(
             {
                 "path": str(SETTINGS_FILE),
                 "settings": settings.to_dict(),
-                "visible_execution": visible_execution_readiness(),
+                "visible_execution": visible_execution,
+                "visible_execution_source": visible_execution_source,
+                "visible_execution_api_unavailable": visible_execution_api_unavailable,
             },
             indent=2,
             ensure_ascii=False,

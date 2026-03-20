@@ -22,6 +22,7 @@ from core.runtime.config import (
 from core.runtime.db import connect
 from core.runtime.settings import load_settings, update_visible_execution_settings
 from core.tools.workspace_capabilities import (
+    get_capability_invocation_truth,
     invoke_workspace_capability,
     load_workspace_capabilities,
 )
@@ -101,6 +102,7 @@ def mc_runtime() -> dict:
         "visible_execution": visible_execution_readiness(),
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
+        "capability_invocation": get_capability_invocation_truth(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -197,6 +199,7 @@ def _visible_execution_surface(settings) -> dict:
         },
         "readiness": visible_execution_readiness(),
         "workspace_capabilities": load_workspace_capabilities(),
+        "capability_invocation": get_capability_invocation_truth(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),

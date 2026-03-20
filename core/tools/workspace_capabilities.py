@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -10,6 +11,7 @@ CAPABILITY_FILES = {
     "skills": "SKILLS.md",
 }
 RUNNABLE_PREFIX = "RUNTIME_NOTE:"
+_LAST_CAPABILITY_INVOCATION: dict[str, object] | None = None
 
 
 def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
@@ -31,6 +33,7 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
 def invoke_workspace_capability(
     capability_id: str, *, name: str = "default"
 ) -> dict[str, object]:
+    invoked_at = _now()
     workspace_dir = ensure_default_workspace(name=name)
     sections = [
         *_document_sections(workspace_dir / CAPABILITY_FILES["tools"], kind="tool"),
@@ -42,13 +45,15 @@ def invoke_workspace_capability(
         if summary["capability_id"] != capability_id:
             continue
         if not summary["runnable"]:
-            return {
+            result = {
                 "capability": summary,
                 "status": "not-runnable",
                 "execution_mode": summary["execution_mode"],
                 "result": None,
             }
-        return {
+            _set_last_capability_invocation(result, invoked_at=invoked_at)
+            return result
+        result = {
             "capability": summary,
             "status": "executed",
             "execution_mode": summary["execution_mode"],
@@ -57,12 +62,29 @@ def invoke_workspace_capability(
                 "text": section["body"],
             },
         }
+        _set_last_capability_invocation(result, invoked_at=invoked_at)
+        return result
 
-    return {
+    result = {
         "capability": None,
         "status": "not-found",
         "execution_mode": "unsupported",
         "result": None,
+    }
+    _set_last_capability_invocation(
+        result,
+        invoked_at=invoked_at,
+        capability_id=capability_id,
+    )
+    return result
+
+
+def get_capability_invocation_truth() -> dict[str, object]:
+    return {
+        "active": False,
+        "last_invocation": dict(_LAST_CAPABILITY_INVOCATION)
+        if _LAST_CAPABILITY_INVOCATION
+        else None,
     }
 
 
@@ -156,3 +178,43 @@ def _normalize_body(lines: list[str]) -> str:
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return normalized or "unnamed"
+
+
+def _set_last_capability_invocation(
+    invocation: dict[str, object],
+    *,
+    invoked_at: str,
+    capability_id: str | None = None,
+) -> None:
+    global _LAST_CAPABILITY_INVOCATION
+    capability = invocation.get("capability")
+    result = invocation.get("result") or {}
+    detail = None
+    result_preview = None
+    if isinstance(result, dict):
+        text = str(result.get("text", "")).strip()
+        if text:
+            result_preview = _preview_text(text)
+
+    _LAST_CAPABILITY_INVOCATION = {
+        "active": False,
+        "capability_id": capability_id or (capability or {}).get("capability_id"),
+        "capability": capability,
+        "status": invocation.get("status"),
+        "execution_mode": invocation.get("execution_mode"),
+        "invoked_at": invoked_at,
+        "finished_at": _now(),
+        "result_preview": result_preview,
+        "detail": detail,
+    }
+
+
+def _preview_text(text: str, limit: int = 120) -> str:
+    normalized = " ".join((text or "").split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 1].rstrip() + "…"
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat()

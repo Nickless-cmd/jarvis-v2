@@ -26,6 +26,7 @@ from core.runtime.config import SETTINGS_FILE
 from core.runtime.db import connect, init_db
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
+    get_capability_invocation_truth,
     invoke_workspace_capability,
     load_workspace_capabilities,
 )
@@ -111,6 +112,7 @@ def cmd_config(_: argparse.Namespace) -> None:
                     visible_execution_api_unavailable,
                 ),
                 "workspace_capabilities": load_workspace_capabilities(),
+                "capability_invocation": get_capability_invocation_truth(),
                 "path": str(SETTINGS_FILE),
                 "settings": settings.to_dict(),
             },

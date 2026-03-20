@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import ComposerShell from "./components/ComposerShell.jsx";
 import StatusRail from "./components/StatusRail.jsx";
@@ -20,6 +20,46 @@ export default function App() {
   const [isRunning, setIsRunning] = useState(false);
   const [activeRunId, setActiveRunId] = useState(null);
   const [error, setError] = useState("");
+  const [wsState, setWsState] = useState("connecting");
+  const [activityEvents, setActivityEvents] = useState([]);
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://127.0.0.1:8010/ws");
+
+    ws.onopen = () => {
+      setWsState("live");
+    };
+
+    ws.onmessage = (event) => {
+      const item = JSON.parse(event.data);
+      setActivityEvents((prev) => [item, ...prev].slice(0, 6));
+    };
+
+    ws.onerror = () => {
+      setWsState("offline");
+    };
+
+    ws.onclose = () => {
+      setWsState("offline");
+    };
+
+    return () => ws.close();
+  }, []);
+
+  const currentActivity = useMemo(() => {
+    if (!activityEvents.length) {
+      return "Afventer runtime-aktivitet fra control-plane.";
+    }
+
+    const latest = activityEvents[0];
+    if (latest.kind === "runtime.visible_run_started") {
+      return `Visible run ${latest.payload.run_id} er startet via runtime-truth.`;
+    }
+    if (latest.kind === "runtime.visible_run_completed") {
+      return `Visible run ${latest.payload.run_id} er afsluttet i control-plane.`;
+    }
+    return `Seneste runtime-event: ${latest.kind}.`;
+  }, [activityEvents]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -136,25 +176,31 @@ export default function App() {
                 <span className="eyebrow">Work Area</span>
                 <h2>Activity and Output</h2>
               </div>
-              <span className={`status-pill${isRunning ? "" : " muted"}`}>
-                {isRunning ? "Run aktiv" : "Placeholder"}
+              <span className={`status-pill${wsState === "live" ? "" : " muted"}`}>
+                {wsState === "live" ? "Control-plane live" : "Control-plane offline"}
               </span>
             </div>
             <div className="work-grid">
               <article className="work-card">
                 <strong>Live arbejde</strong>
-                <p>
-                  {isRunning
-                    ? `Visible run ${activeRunId || "starter"} streamer nu via SSE.`
-                    : "Her lander senere trinvis aktivitet, tool-status og bounded workflow-signaler."}
-                </p>
+                <p>{currentActivity}</p>
               </article>
               <article className="work-card">
-                <strong>Artifacts</strong>
-                <p>
-                  Resultater, previews og filer faar deres egen flade, men ikke i
-                  Phase 1.
-                </p>
+                <strong>Seneste runtime-events</strong>
+                <ul className="runtime-event-list">
+                  {activityEvents.length ? (
+                    activityEvents.map((item) => (
+                      <li key={item.id}>
+                        <span>{item.kind}</span>
+                        <small>{item.created_at}</small>
+                      </li>
+                    ))
+                  ) : (
+                    <li>
+                      <span>Ingen runtime-events endnu.</span>
+                    </li>
+                  )}
+                </ul>
               </article>
             </div>
           </section>

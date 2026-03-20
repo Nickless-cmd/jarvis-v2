@@ -265,6 +265,29 @@ a {
   padding: 0;
 }
 
+.runtime-event-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.runtime-event-list li {
+  display: grid;
+  gap: 4px;
+  padding: 0;
+}
+
+.runtime-event-list span {
+  color: #edf3ee;
+  word-break: break-word;
+}
+
+.runtime-event-list small {
+  color: var(--muted);
+}
+
 .mc-link {
   display: inline-flex;
   margin-top: 16px;

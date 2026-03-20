@@ -24,6 +24,8 @@ from core.tools.workspace_capabilities import (
 CAPABILITY_CALL_PATTERN = re.compile(
     r'^<capability-call id="(?P<capability_id>[a-z0-9:-]+)"\s*/>$'
 )
+CAPABILITY_CALL_PREFIX = '<capability-call id="'
+CAPABILITY_CALL_SUFFIX = '" />'
 
 
 @dataclass(slots=True)
@@ -105,6 +107,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
     result = None
     visible_output_text = ""
+    buffered_capability_text = ""
+    buffering_capability_marker = False
     try:
         try:
             for item in stream_visible_model(
@@ -118,6 +122,28 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         yield cancelled_chunk
                     return
                 if isinstance(item, VisibleModelDelta):
+                    candidate = (
+                        f"{buffered_capability_text}{item.delta}"
+                        if buffering_capability_marker
+                        else item.delta
+                    )
+                    marker_state = _capability_call_state(candidate)
+                    if buffering_capability_marker or marker_state != "invalid":
+                        if marker_state == "invalid":
+                            yield _sse(
+                                "delta",
+                                {
+                                    "type": "delta",
+                                    "run_id": run.run_id,
+                                    "delta": candidate,
+                                },
+                            )
+                            buffered_capability_text = ""
+                            buffering_capability_marker = False
+                            continue
+                        buffered_capability_text = candidate
+                        buffering_capability_marker = True
+                        continue
                     yield _sse(
                         "delta",
                         {
@@ -160,6 +186,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield failure_chunk
             return
 
+        capability_call = _extract_capability_call(result.text)
+        if buffering_capability_marker and not capability_call and buffered_capability_text:
+            yield _sse(
+                "delta",
+                {
+                    "type": "delta",
+                    "run_id": run.run_id,
+                    "delta": buffered_capability_text,
+                },
+            )
+        buffered_capability_text = ""
+        buffering_capability_marker = False
+
         if controller.is_cancelled():
             set_last_visible_run_outcome(
                 run,
@@ -169,7 +208,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield cancelled_chunk
             return
 
-        capability_call = _extract_capability_call(result.text)
         if capability_call and _is_runnable_workspace_capability(capability_call):
             capability_result = invoke_workspace_capability(capability_call)
             visible_output_text = _capability_visible_text(
@@ -274,6 +312,32 @@ def _extract_capability_call(text: str) -> str | None:
     if not match:
         return None
     return match.group("capability_id")
+
+
+def _capability_call_state(text: str) -> str:
+    candidate = (text or "").strip()
+    if not candidate:
+        return "invalid"
+    if len(candidate) <= len(CAPABILITY_CALL_PREFIX):
+        return "prefix" if CAPABILITY_CALL_PREFIX.startswith(candidate) else "invalid"
+    if not candidate.startswith(CAPABILITY_CALL_PREFIX):
+        return "invalid"
+
+    remainder = candidate[len(CAPABILITY_CALL_PREFIX) :]
+    capability_id = ""
+    index = 0
+    while index < len(remainder) and re.fullmatch(r"[a-z0-9:-]", remainder[index]):
+        capability_id += remainder[index]
+        index += 1
+
+    tail = remainder[index:]
+    if not tail:
+        return "prefix"
+    if not capability_id:
+        return "invalid"
+    if CAPABILITY_CALL_SUFFIX.startswith(tail):
+        return "exact" if tail == CAPABILITY_CALL_SUFFIX else "prefix"
+    return "invalid"
 
 
 def _is_runnable_workspace_capability(capability_id: str) -> bool:

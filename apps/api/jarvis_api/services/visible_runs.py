@@ -83,6 +83,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 model=run.model,
             ):
                 if controller.is_cancelled():
+                    for cancelled_chunk in _cancel_visible_run(run):
+                        yield cancelled_chunk
                     return
                 if isinstance(item, VisibleModelDelta):
                     yield _sse(
@@ -110,6 +112,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             return
 
         if controller.is_cancelled():
+            for cancelled_chunk in _cancel_visible_run(run):
+                yield cancelled_chunk
             return
 
         record_cost(
@@ -187,6 +191,34 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
             "run_id": run.run_id,
             "status": "failed",
             "error": error_message,
+        },
+    )
+
+
+def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
+    event_bus.publish(
+        "runtime.visible_run_cancelled",
+        {
+            "run_id": run.run_id,
+            "lane": run.lane,
+            "provider": run.provider,
+            "model": run.model,
+        },
+    )
+    yield _sse(
+        "cancelled",
+        {
+            "type": "cancelled",
+            "run_id": run.run_id,
+            "status": "cancelled",
+        },
+    )
+    yield _sse(
+        "done",
+        {
+            "type": "done",
+            "run_id": run.run_id,
+            "status": "cancelled",
         },
     )
 

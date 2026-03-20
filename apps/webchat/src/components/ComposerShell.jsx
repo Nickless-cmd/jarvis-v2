@@ -1,4 +1,10 @@
-export default function ComposerShell({ draft, isRunning, onChange, onSubmit }) {
+export default function ComposerShell({
+  draft,
+  isRunning,
+  onCancel,
+  onChange,
+  onSubmit
+}) {
   return (
     <section className="composer-shell panel">
       <div className="composer-meta">
@@ -24,6 +30,9 @@ export default function ComposerShell({ draft, isRunning, onChange, onSubmit }) 
           </button>
           <button type="button" disabled>
             Diktat
+          </button>
+          <button type="button" onClick={onCancel} disabled={!isRunning}>
+            Stop
           </button>
           <button type="submit" className="primary" disabled={isRunning || !draft.trim()}>
             {isRunning ? "Streamer..." : "Send"}

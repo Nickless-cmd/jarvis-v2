@@ -367,9 +367,17 @@ a {
   margin-top: 16px;
 }
 
-.chat-error {
+.chat-error,
+.chat-notice {
   margin: 18px 0 0;
+}
+
+.chat-error {
   color: #ffb29d;
+}
+
+.chat-notice {
+  color: var(--accent-2);
 }
 
 .control-error,

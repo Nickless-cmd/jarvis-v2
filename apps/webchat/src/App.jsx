@@ -20,6 +20,7 @@ export default function App() {
   const [isRunning, setIsRunning] = useState(false);
   const [activeRunId, setActiveRunId] = useState(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [wsState, setWsState] = useState("connecting");
   const [activityEvents, setActivityEvents] = useState([]);
   const [visibleControl, setVisibleControl] = useState(null);
@@ -77,6 +78,7 @@ export default function App() {
     }
 
     setError("");
+    setNotice("");
     setDraft("");
     setIsRunning(true);
     setMessages((prev) => [
@@ -127,11 +129,16 @@ export default function App() {
         onDone(data) {
           if (data.status === "failed") {
             setError(data.error || "Visible run fejlede.");
+          } else if (data.status === "cancelled") {
+            setNotice("Visible run annulleret.");
           }
           setActiveRunId(data.run_id);
         },
         onFailed(data) {
           setError(data.error || "Visible run fejlede.");
+        },
+        onCancelled() {
+          setNotice("Visible run annulleret.");
         }
       });
     } catch (streamError) {
@@ -139,6 +146,29 @@ export default function App() {
     } finally {
       setIsRunning(false);
       setActiveRunId(null);
+    }
+  }
+
+  async function handleCancel() {
+    if (!activeRunId || !isRunning) {
+      return;
+    }
+
+    setError("");
+    setNotice("");
+
+    try {
+      const response = await fetch(`${API_BASE}/chat/runs/${activeRunId}/cancel`, {
+        method: "POST"
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Visible run kunne ikke annulleres.");
+      }
+    } catch (cancelError) {
+      setError(
+        cancelError instanceof Error ? cancelError.message : "Ukendt cancel-fejl."
+      );
     }
   }
 
@@ -222,11 +252,13 @@ export default function App() {
                 </article>
               ))}
             </div>
+            {notice ? <p className="chat-notice">{notice}</p> : null}
             {error ? <p className="chat-error">{error}</p> : null}
           </section>
           <ComposerShell
             draft={draft}
             isRunning={isRunning}
+            onCancel={handleCancel}
             onChange={setDraft}
             onSubmit={handleSubmit}
           />
@@ -304,6 +336,8 @@ async function consumeSseStream(stream, handlers) {
         handlers.onRun?.(parsed.data);
       } else if (parsed.event === "delta") {
         handlers.onDelta?.(parsed.data);
+      } else if (parsed.event === "cancelled") {
+        handlers.onCancelled?.(parsed.data);
       } else if (parsed.event === "failed") {
         handlers.onFailed?.(parsed.data);
       } else if (parsed.event === "done") {

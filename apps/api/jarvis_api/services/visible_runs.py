@@ -24,6 +24,21 @@ class VisibleRun:
     user_message: str
 
 
+@dataclass(slots=True)
+class VisibleRunController:
+    run_id: str
+    cancelled: bool = False
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+    def is_cancelled(self) -> bool:
+        return self.cancelled
+
+
+_VISIBLE_RUN_CONTROLLERS: dict[str, VisibleRunController] = {}
+
+
 def start_visible_run(message: str) -> AsyncIterator[str]:
     settings = load_settings()
     run = VisibleRun(
@@ -37,6 +52,7 @@ def start_visible_run(message: str) -> AsyncIterator[str]:
 
 
 async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
+    controller = register_visible_run(run.run_id)
     event_bus.publish(
         "runtime.visible_run_started",
         {
@@ -60,76 +76,84 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
     result = None
     try:
-        for item in stream_visible_model(
-            message=run.user_message,
+        try:
+            for item in stream_visible_model(
+                message=run.user_message,
+                provider=run.provider,
+                model=run.model,
+            ):
+                if controller.is_cancelled():
+                    return
+                if isinstance(item, VisibleModelDelta):
+                    yield _sse(
+                        "delta",
+                        {
+                            "type": "delta",
+                            "run_id": run.run_id,
+                            "delta": item.delta,
+                        },
+                    )
+                    continue
+                if isinstance(item, VisibleModelStreamDone):
+                    result = item.result
+                    break
+        except Exception as exc:
+            for failure_chunk in _fail_visible_run(run, str(exc) or "visible-run-failed"):
+                yield failure_chunk
+            return
+
+        if result is None:
+            for failure_chunk in _fail_visible_run(
+                run, "Visible model stream completed without final result"
+            ):
+                yield failure_chunk
+            return
+
+        if controller.is_cancelled():
+            return
+
+        record_cost(
+            lane=run.lane,
             provider=run.provider,
             model=run.model,
-        ):
-            if isinstance(item, VisibleModelDelta):
-                yield _sse(
-                    "delta",
-                    {
-                        "type": "delta",
-                        "run_id": run.run_id,
-                        "delta": item.delta,
-                    },
-                )
-                continue
-            if isinstance(item, VisibleModelStreamDone):
-                result = item.result
-                break
-    except Exception as exc:
-        for failure_chunk in _fail_visible_run(run, str(exc) or "visible-run-failed"):
-            yield failure_chunk
-        return
-
-    if result is None:
-        for failure_chunk in _fail_visible_run(
-            run, "Visible model stream completed without final result"
-        ):
-            yield failure_chunk
-        return
-
-    record_cost(
-        lane=run.lane,
-        provider=run.provider,
-        model=run.model,
-        input_tokens=result.input_tokens,
-        output_tokens=result.output_tokens,
-        cost_usd=result.cost_usd,
-    )
-    event_bus.publish(
-        "cost.recorded",
-        {
-            "run_id": run.run_id,
-            "lane": run.lane,
-            "provider": run.provider,
-            "model": run.model,
-            "input_tokens": result.input_tokens,
-            "output_tokens": result.output_tokens,
-            "cost_usd": result.cost_usd,
-        },
-    )
-    event_bus.publish(
-        "runtime.visible_run_completed",
-        {
-            "run_id": run.run_id,
-            "lane": run.lane,
-            "provider": run.provider,
-            "model": run.model,
-            "input_tokens": result.input_tokens,
-            "output_tokens": result.output_tokens,
-            "cost_usd": result.cost_usd,
-        },
-    )
-    yield _sse(
-        "done",
-        {
-            "type": "done",
-            "run_id": run.run_id,
-            "status": "completed",
-        },
-    )
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+            cost_usd=result.cost_usd,
+        )
+        event_bus.publish(
+            "cost.recorded",
+            {
+                "run_id": run.run_id,
+                "lane": run.lane,
+                "provider": run.provider,
+                "model": run.model,
+                "input_tokens": result.input_tokens,
+                "output_tokens": result.output_tokens,
+                "cost_usd": result.cost_usd,
+            },
+        )
+        event_bus.publish(
+            "runtime.visible_run_completed",
+            {
+                "run_id": run.run_id,
+                "lane": run.lane,
+                "provider": run.provider,
+                "model": run.model,
+                "input_tokens": result.input_tokens,
+                "output_tokens": result.output_tokens,
+                "cost_usd": result.cost_usd,
+            },
+        )
+        yield _sse(
+            "done",
+            {
+                "type": "done",
+                "run_id": run.run_id,
+                "status": "completed",
+            },
+        )
+    finally:
+        unregister_visible_run(run.run_id)
 
 
 def _sse(event: str, data: dict) -> str:
@@ -165,3 +189,25 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
             "error": error_message,
         },
     )
+
+
+def register_visible_run(run_id: str) -> VisibleRunController:
+    controller = VisibleRunController(run_id=run_id)
+    _VISIBLE_RUN_CONTROLLERS[run_id] = controller
+    return controller
+
+
+def get_visible_run_controller(run_id: str) -> VisibleRunController | None:
+    return _VISIBLE_RUN_CONTROLLERS.get(run_id)
+
+
+def cancel_visible_run(run_id: str) -> bool:
+    controller = get_visible_run_controller(run_id)
+    if controller is None:
+        return False
+    controller.cancel()
+    return True
+
+
+def unregister_visible_run(run_id: str) -> None:
+    _VISIBLE_RUN_CONTROLLERS.pop(run_id, None)

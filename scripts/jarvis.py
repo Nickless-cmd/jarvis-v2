@@ -339,8 +339,8 @@ def _visible_execution_section(
     return {
         "visible_execution_source": source,
         "visible_execution_api_unavailable": api_unavailable,
-        "authority": visible_execution.get("authority"),
-        "readiness": visible_execution.get("readiness"),
+        "authority": _normalize_visible_authority(visible_execution.get("authority")),
+        "readiness": _normalize_visible_readiness(visible_execution.get("readiness")),
     }
 
 
@@ -350,10 +350,64 @@ def _visible_run_section(
     return {
         "visible_run_source": source,
         "visible_run_api_unavailable": api_unavailable,
-        "active": visible_run.get("active"),
-        "active_run": visible_run.get("active_run"),
-        "last_outcome": visible_run.get("last_outcome"),
+        "active": bool(visible_run.get("active")),
+        "active_run": _normalize_active_run(visible_run.get("active_run")),
+        "last_outcome": _normalize_last_outcome(visible_run.get("last_outcome")),
         "recent_events": visible_run.get("recent_events", []),
+    }
+
+
+def _normalize_visible_authority(authority: dict | None) -> dict:
+    authority = authority or {}
+    return {
+        "visible_model_provider": authority.get("visible_model_provider"),
+        "visible_model_name": authority.get("visible_model_name"),
+        "visible_auth_profile": authority.get("visible_auth_profile"),
+    }
+
+
+def _normalize_visible_readiness(readiness: dict | None) -> dict:
+    readiness = readiness or {}
+    return {
+        "provider": readiness.get("provider"),
+        "model": readiness.get("model"),
+        "mode": readiness.get("mode"),
+        "auth_ready": readiness.get("auth_ready"),
+        "auth_status": readiness.get("auth_status"),
+        "auth_profile": readiness.get("auth_profile"),
+        "provider_reachable": readiness.get("provider_reachable"),
+        "live_verified": readiness.get("live_verified"),
+        "provider_status": readiness.get("provider_status"),
+        "probe_cache": readiness.get("probe_cache"),
+        "checked_at": readiness.get("checked_at"),
+    }
+
+
+def _normalize_active_run(active_run: dict | None) -> dict | None:
+    if not active_run:
+        return None
+    return {
+        "run_id": active_run.get("run_id"),
+        "lane": active_run.get("lane"),
+        "provider": active_run.get("provider"),
+        "model": active_run.get("model"),
+        "started_at": active_run.get("started_at"),
+        "cancelled": active_run.get("cancelled"),
+    }
+
+
+def _normalize_last_outcome(last_outcome: dict | None) -> dict | None:
+    if not last_outcome:
+        return None
+    return {
+        "run_id": last_outcome.get("run_id"),
+        "lane": last_outcome.get("lane"),
+        "provider": last_outcome.get("provider"),
+        "model": last_outcome.get("model"),
+        "status": last_outcome.get("status"),
+        "finished_at": last_outcome.get("finished_at"),
+        "error": last_outcome.get("error"),
+        "text_preview": last_outcome.get("text_preview"),
     }
 
 

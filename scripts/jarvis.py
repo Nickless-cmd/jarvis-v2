@@ -419,6 +419,7 @@ def _capability_invocation_section(
         "last_invocation": _normalize_capability_invocation(
             capability_invocation.get("last_invocation")
         ),
+        "recent_events": capability_invocation.get("recent_events", []),
     }
 
 

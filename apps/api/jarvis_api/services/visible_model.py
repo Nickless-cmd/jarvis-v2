@@ -40,6 +40,10 @@ class VisibleModelStreamDone:
     result: VisibleModelResult
 
 
+class VisibleModelStreamCancelled(RuntimeError):
+    pass
+
+
 def execute_visible_model(*, message: str, provider: str, model: str) -> VisibleModelResult:
     if provider == "openai":
         return _execute_openai_model(message=message, model=model)
@@ -49,10 +53,10 @@ def execute_visible_model(*, message: str, provider: str, model: str) -> Visible
 
 
 def stream_visible_model(
-    *, message: str, provider: str, model: str
+    *, message: str, provider: str, model: str, controller=None
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
     if provider == "openai":
-        yield from _stream_openai_model(message=message, model=model)
+        yield from _stream_openai_model(message=message, model=model, controller=controller)
         return
 
     result = execute_visible_model(message=message, provider=provider, model=model)
@@ -175,7 +179,7 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
 
 
 def _stream_openai_model(
-    *, message: str, model: str
+    *, message: str, model: str, controller=None
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
     api_key = _load_openai_api_key()
     payload = {
@@ -201,24 +205,36 @@ def _stream_openai_model(
     parts: list[str] = []
     usage: dict = {}
 
-    with urllib_request.urlopen(req, timeout=60) as response:
-        for event in _iter_sse_events(response):
-            event_type = str(event.get("type", ""))
-            if event_type == "response.output_text.delta":
-                delta = str(event.get("delta", ""))
-                if not delta:
-                    continue
-                parts.append(delta)
-                yield VisibleModelDelta(delta=delta)
-            elif event_type == "response.completed":
-                usage = dict(event.get("response", {}).get("usage", {}))
-            elif event_type == "error":
-                raise RuntimeError(
-                    f"OpenAI visible streaming failed: {event.get('message', 'unknown-error')}"
-                )
+    try:
+        with urllib_request.urlopen(req, timeout=60) as response:
+            if controller is not None:
+                controller.attach_stream(response)
+            for event in _iter_sse_events(response):
+                event_type = str(event.get("type", ""))
+                if event_type == "response.output_text.delta":
+                    delta = str(event.get("delta", ""))
+                    if not delta:
+                        continue
+                    parts.append(delta)
+                    yield VisibleModelDelta(delta=delta)
+                elif event_type == "response.completed":
+                    usage = dict(event.get("response", {}).get("usage", {}))
+                elif event_type == "error":
+                    raise RuntimeError(
+                        f"OpenAI visible streaming failed: {event.get('message', 'unknown-error')}"
+                    )
+    except Exception:
+        if controller is not None and controller.is_cancelled():
+            raise VisibleModelStreamCancelled("visible-run-cancelled")
+        raise
+    finally:
+        if controller is not None:
+            controller.clear_stream()
 
     text = "".join(parts).strip()
     if not text:
+        if controller is not None and controller.is_cancelled():
+            raise VisibleModelStreamCancelled("visible-run-cancelled")
         raise RuntimeError("OpenAI visible execution returned no streamed output_text")
 
     input_tokens = int(usage.get("input_tokens", _estimate_tokens(message)))

@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from apps.api.jarvis_api.services.visible_model import (
     VisibleModelDelta,
+    VisibleModelStreamCancelled,
     VisibleModelStreamDone,
     stream_visible_model,
 )
@@ -28,9 +29,20 @@ class VisibleRun:
 class VisibleRunController:
     run_id: str
     cancelled: bool = False
+    active_stream: object | None = None
+
+    def attach_stream(self, stream: object) -> None:
+        self.active_stream = stream
+
+    def clear_stream(self) -> None:
+        self.active_stream = None
 
     def cancel(self) -> None:
         self.cancelled = True
+        stream = self.active_stream
+        close = getattr(stream, "close", None)
+        if callable(close):
+            close()
 
     def is_cancelled(self) -> bool:
         return self.cancelled
@@ -81,6 +93,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 message=run.user_message,
                 provider=run.provider,
                 model=run.model,
+                controller=controller,
             ):
                 if controller.is_cancelled():
                     for cancelled_chunk in _cancel_visible_run(run):
@@ -99,6 +112,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
                     break
+        except VisibleModelStreamCancelled:
+            for cancelled_chunk in _cancel_visible_run(run):
+                yield cancelled_chunk
+            return
         except Exception as exc:
             for failure_chunk in _fail_visible_run(run, str(exc) or "visible-run-failed"):
                 yield failure_chunk

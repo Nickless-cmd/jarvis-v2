@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import AsyncIterator
 from uuid import uuid4
 
+from apps.api.jarvis_api.services.visible_model import execute_visible_model
+from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
 from core.runtime.settings import load_settings
 
@@ -57,8 +59,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         },
     )
 
-    reply = _visible_reply(run.user_message)
-    for chunk in _chunk_text(reply):
+    result = execute_visible_model(
+        message=run.user_message,
+        provider=run.provider,
+        model=run.model,
+    )
+    for chunk in _chunk_text(result.text):
         yield _sse(
             "delta",
             {
@@ -69,6 +75,26 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         )
         await asyncio.sleep(0.05)
 
+    record_cost(
+        lane=run.lane,
+        provider=run.provider,
+        model=run.model,
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+        cost_usd=result.cost_usd,
+    )
+    event_bus.publish(
+        "cost.recorded",
+        {
+            "run_id": run.run_id,
+            "lane": run.lane,
+            "provider": run.provider,
+            "model": run.model,
+            "input_tokens": result.input_tokens,
+            "output_tokens": result.output_tokens,
+            "cost_usd": result.cost_usd,
+        },
+    )
     event_bus.publish(
         "runtime.visible_run_completed",
         {
@@ -76,6 +102,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             "lane": run.lane,
             "provider": run.provider,
             "model": run.model,
+            "input_tokens": result.input_tokens,
+            "output_tokens": result.output_tokens,
+            "cost_usd": result.cost_usd,
         },
     )
     yield _sse(
@@ -85,14 +114,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             "run_id": run.run_id,
             "status": "completed",
         },
-    )
-
-
-def _visible_reply(user_message: str) -> str:
-    return (
-        "Jarvis visible lane behandler din besked gennem runtime-graensen. "
-        f"Phase 1 modtog: {user_message}. "
-        "Reel modelkoersel kobles paa her som naeste trin, uden at aendre transportkontrakten."
     )
 
 

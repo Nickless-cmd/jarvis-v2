@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
@@ -13,6 +14,11 @@ from core.runtime.settings import load_settings
 
 READINESS_PROBE_TTL_SECONDS = 15
 _READINESS_PROBE_CACHE: dict[tuple[str, str, str], dict[str, str | bool]] = {}
+OPENAI_TEXT_PRICING_PER_1M_TOKENS: dict[str, tuple[Decimal, Decimal]] = {
+    "gpt-5": (Decimal("1.25"), Decimal("10.00")),
+    "gpt-5-mini": (Decimal("0.25"), Decimal("2.00")),
+    "gpt-5-nano": (Decimal("0.05"), Decimal("0.40")),
+}
 
 
 @dataclass(slots=True)
@@ -130,11 +136,17 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
     data = _post_openai_responses(payload=payload, api_key=api_key)
     text = _extract_output_text(data)
     usage = data.get("usage", {})
+    input_tokens = int(usage.get("input_tokens", _estimate_tokens(message)))
+    output_tokens = int(usage.get("output_tokens", _estimate_tokens(text)))
     return VisibleModelResult(
         text=text,
-        input_tokens=int(usage.get("input_tokens", _estimate_tokens(message))),
-        output_tokens=int(usage.get("output_tokens", _estimate_tokens(text))),
-        cost_usd=0.0,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=_calculate_openai_cost_usd(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        ),
     )
 
 
@@ -294,3 +306,16 @@ def _estimate_tokens(text: str) -> int:
 
 def _parse_utc(value: str) -> datetime:
     return datetime.fromisoformat(value)
+
+
+def _calculate_openai_cost_usd(*, model: str, input_tokens: int, output_tokens: int) -> float:
+    pricing = OPENAI_TEXT_PRICING_PER_1M_TOKENS.get(model.strip().lower())
+    if pricing is None:
+        return 0.0
+
+    input_rate, output_rate = pricing
+    total = (
+        Decimal(int(input_tokens)) * input_rate / Decimal(1_000_000)
+        + Decimal(int(output_tokens)) * output_rate / Decimal(1_000_000)
+    )
+    return float(total.quantize(Decimal("0.00000001")))

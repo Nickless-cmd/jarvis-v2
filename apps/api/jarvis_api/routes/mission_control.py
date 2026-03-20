@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
 from core.costing.ledger import recent_costs, telemetry_summary
 from core.eventbus.bus import event_bus
 from core.runtime.config import (
@@ -27,6 +28,7 @@ def mc_overview() -> dict:
     latest_event = _latest_item(event_bus.recent(limit=1))
     latest_cost = _latest_item(recent_costs(limit=1))
     settings = load_settings()
+    visible = visible_execution_readiness()
 
     return {
         "ok": True,
@@ -44,6 +46,7 @@ def mc_overview() -> dict:
             "state_dir": str(STATE_DIR),
             "workspaces_dir": str(WORKSPACES_DIR),
         },
+        "visible_execution": visible,
         "latest_event": latest_event,
         "latest_cost": latest_cost,
     }
@@ -78,6 +81,7 @@ def mc_runtime() -> dict:
     settings = load_settings()
     return {
         "settings": settings.to_dict(),
+        "visible_execution": visible_execution_readiness(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),

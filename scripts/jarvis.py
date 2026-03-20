@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
 from core.costing.ledger import telemetry_summary
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -62,6 +63,7 @@ def cmd_overview(_: argparse.Namespace) -> None:
                 "input_tokens": costs["input_tokens"],
                 "output_tokens": costs["output_tokens"],
                 "total_cost_usd": costs["total_cost_usd"],
+                "visible_execution": visible_execution_readiness(),
                 "latest_event": items[0] if items else None,
             },
             indent=2,
@@ -78,6 +80,7 @@ def cmd_config(_: argparse.Namespace) -> None:
             {
                 "path": str(SETTINGS_FILE),
                 "settings": settings.to_dict(),
+                "visible_execution": visible_execution_readiness(),
             },
             indent=2,
             ensure_ascii=False,

@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
+from core.runtime.settings import load_settings
 
 
 @dataclass(slots=True)
@@ -22,6 +23,42 @@ def execute_visible_model(*, message: str, provider: str, model: str) -> Visible
     if provider == "phase1-runtime":
         return _execute_phase1_model(message=message, provider=provider, model=model)
     raise ValueError(f"Unsupported visible model provider: {provider}")
+
+
+def visible_execution_readiness() -> dict[str, str | bool | None]:
+    settings = load_settings()
+    provider = settings.visible_model_provider
+    model = settings.visible_model_name
+
+    if provider == "phase1-runtime":
+        return {
+            "provider": provider,
+            "model": model,
+            "mode": "fallback",
+            "auth_ready": True,
+            "auth_status": "not-required",
+            "auth_profile": None,
+        }
+
+    if provider == "openai":
+        profile = _find_openai_ready_profile()
+        return {
+            "provider": provider,
+            "model": model,
+            "mode": "provider-backed",
+            "auth_ready": profile is not None,
+            "auth_status": "ready" if profile else "missing-credentials",
+            "auth_profile": profile,
+        }
+
+    return {
+        "provider": provider,
+        "model": model,
+        "mode": "provider-backed",
+        "auth_ready": False,
+        "auth_status": "unsupported-provider",
+        "auth_profile": None,
+    }
 
 
 def _execute_phase1_model(
@@ -64,6 +101,20 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
 
 
 def _load_openai_api_key() -> str:
+    profile = _find_openai_ready_profile()
+    if profile is None:
+        raise RuntimeError("Missing active OpenAI credentials for visible execution")
+
+    state = get_provider_state(profile=profile, provider="openai")
+    credentials_path = Path(str(state.get("credentials_path", "")))
+    credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
+    api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
+    if api_key:
+        return api_key
+    raise RuntimeError("Missing active OpenAI credentials for visible execution")
+
+
+def _find_openai_ready_profile() -> str | None:
     profiles = ["default", *[item["profile"] for item in list_auth_profiles()]]
     seen: set[str] = set()
     for profile in profiles:
@@ -79,8 +130,8 @@ def _load_openai_api_key() -> str:
         credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
         api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
         if api_key:
-            return api_key
-    raise RuntimeError("Missing active OpenAI credentials for visible execution")
+            return profile
+    return None
 
 
 def _post_openai_responses(*, payload: dict, api_key: str) -> dict:

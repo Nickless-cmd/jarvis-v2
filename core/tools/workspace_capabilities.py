@@ -11,7 +11,9 @@ CAPABILITY_FILES = {
     "tools": "TOOLS.md",
     "skills": "SKILLS.md",
 }
-RUNNABLE_PREFIX = "RUNTIME_NOTE:"
+RUNTIME_NOTE_PREFIX = "RUNTIME_NOTE:"
+READ_FILE_PREFIX = "READ_FILE:"
+MAX_FILE_OUTPUT_CHARS = 4000
 _LAST_CAPABILITY_INVOCATION: dict[str, object] | None = None
 
 
@@ -62,15 +64,11 @@ def invoke_workspace_capability(
             _set_last_capability_invocation(result, invoked_at=invoked_at)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
-        result = {
-            "capability": summary,
-            "status": "executed",
-            "execution_mode": summary["execution_mode"],
-            "result": {
-                "type": "inline-text",
-                "text": section["body"],
-            },
-        }
+        result = _invoke_runnable_capability(
+            workspace_dir=workspace_dir,
+            section=section,
+            summary=summary,
+        )
         _set_last_capability_invocation(result, invoked_at=invoked_at)
         _publish_capability_invocation_completed(result, invoked_at=invoked_at)
         return result
@@ -172,16 +170,28 @@ def _document_sections(path: Path, *, kind: str) -> list[dict[str, str]]:
 
 def _section_summary(section: dict[str, str]) -> dict[str, object]:
     heading = section["heading"]
-    runnable = heading.startswith(RUNNABLE_PREFIX)
-    name = heading[len(RUNNABLE_PREFIX) :].strip() if runnable else heading
+    read_file_path = _declared_read_file_path(section["body"])
+    if heading.startswith(RUNTIME_NOTE_PREFIX):
+        name = heading[len(RUNTIME_NOTE_PREFIX) :].strip()
+        execution_mode = "inline-text"
+        runnable = True
+    elif heading.startswith(READ_FILE_PREFIX):
+        name = heading[len(READ_FILE_PREFIX) :].strip()
+        execution_mode = "workspace-file-read"
+        runnable = read_file_path is not None
+    else:
+        name = heading
+        execution_mode = "declared-only"
+        runnable = False
     return {
         "capability_id": f"{section['kind']}:{_slugify(name)}",
         "kind": section["kind"],
         "name": name,
         "source_doc": section["source_doc"],
         "runnable": runnable,
-        "execution_mode": "inline-text" if runnable else "declared-only",
+        "execution_mode": execution_mode if runnable else "declared-only",
         "status": "runnable" if runnable else "declared-only",
+        "target_path": read_file_path,
     }
 
 
@@ -195,6 +205,94 @@ def _slugify(value: str) -> str:
     return normalized or "unnamed"
 
 
+def _invoke_runnable_capability(
+    *, workspace_dir: Path, section: dict[str, str], summary: dict[str, object]
+) -> dict[str, object]:
+    if summary["execution_mode"] == "inline-text":
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "result": {
+                "type": "inline-text",
+                "text": section["body"],
+            },
+        }
+
+    if summary["execution_mode"] == "workspace-file-read":
+        target_path = str(summary.get("target_path") or "").strip()
+        candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
+        if candidate is None or not candidate.exists() or not candidate.is_file():
+            return {
+                "capability": summary,
+                "status": "executed",
+                "execution_mode": summary["execution_mode"],
+                "result": None,
+                "detail": f"Declared workspace file missing: {target_path or 'unknown'}",
+            }
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "result": {
+                "type": "workspace-file-read",
+                "path": target_path,
+                "text": _read_bounded_text(candidate),
+            },
+        }
+
+    return {
+        "capability": summary,
+        "status": "not-runnable",
+        "execution_mode": str(summary.get("execution_mode", "declared-only")),
+        "result": None,
+    }
+
+
+def _declared_read_file_path(body: str) -> str | None:
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if not line.startswith("path:"):
+            continue
+        declared = line[5:].strip()
+        if not declared:
+            return None
+        return declared if _is_valid_workspace_relative_path(declared) else None
+    return None
+
+
+def _is_valid_workspace_relative_path(value: str) -> bool:
+    path = Path(value)
+    if path.is_absolute():
+        return False
+    if not path.parts:
+        return False
+    if any(part in {"..", ""} for part in path.parts):
+        return False
+    return True
+
+
+def _resolve_workspace_relative_path(workspace_dir: Path, value: str) -> Path | None:
+    if not _is_valid_workspace_relative_path(value):
+        return None
+    root = workspace_dir.resolve()
+    candidate = (workspace_dir / value).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    return candidate
+
+
+def _read_bounded_text(path: Path) -> str:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if len(text) <= MAX_FILE_OUTPUT_CHARS:
+        return text
+    return text[: MAX_FILE_OUTPUT_CHARS - 1].rstrip() + "…"
+
+
 def _set_last_capability_invocation(
     invocation: dict[str, object],
     *,
@@ -204,7 +302,7 @@ def _set_last_capability_invocation(
     global _LAST_CAPABILITY_INVOCATION
     capability = invocation.get("capability")
     result = invocation.get("result") or {}
-    detail = None
+    detail = invocation.get("detail")
     result_preview = None
     if isinstance(result, dict):
         text = str(result.get("text", "")).strip()
@@ -232,6 +330,7 @@ def _publish_capability_invocation_completed(
 ) -> None:
     capability = invocation.get("capability")
     result = invocation.get("result") or {}
+    detail = invocation.get("detail")
     result_preview = None
     if isinstance(result, dict):
         text = str(result.get("text", "")).strip()
@@ -248,6 +347,7 @@ def _publish_capability_invocation_completed(
             "invoked_at": invoked_at,
             "finished_at": _now(),
             "result_preview": result_preview,
+            "detail": detail,
         },
     )
 

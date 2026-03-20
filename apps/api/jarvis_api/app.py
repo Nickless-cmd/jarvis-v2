@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.mission_control import router as mc_router
@@ -18,6 +19,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Jarvis V2 API")
 
+    app.include_router(chat_router)
     app.include_router(health_router)
     app.include_router(mc_router)
     app.include_router(live_router)

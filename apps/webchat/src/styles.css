@@ -179,6 +179,34 @@ a {
   line-height: 1.55;
 }
 
+.composer-label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.composer-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 120px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #edf3ee;
+  font: inherit;
+}
+
+.composer-input:focus {
+  outline: 2px solid rgba(116, 211, 174, 0.35);
+  outline-offset: 2px;
+}
+
+.composer-input:disabled {
+  opacity: 0.75;
+}
+
 .composer-actions {
   display: flex;
   gap: 10px;
@@ -240,6 +268,11 @@ a {
 .mc-link {
   display: inline-flex;
   margin-top: 16px;
+}
+
+.chat-error {
+  margin: 18px 0 0;
+  color: #ffb29d;
 }
 
 @media (max-width: 980px) {

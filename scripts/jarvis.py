@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +61,7 @@ def cmd_overview(_: argparse.Namespace) -> None:
     init_db()
     costs = telemetry_summary()
     items = event_bus.recent(limit=1)
+    visible_run, visible_run_source, api_unavailable = _visible_run_truth()
     print(
         json.dumps(
             {
@@ -69,11 +72,9 @@ def cmd_overview(_: argparse.Namespace) -> None:
                 "output_tokens": costs["output_tokens"],
                 "total_cost_usd": costs["total_cost_usd"],
                 "visible_execution": visible_execution_readiness(),
-                "visible_run": {
-                    "active": bool(get_active_visible_run()),
-                    "active_run": get_active_visible_run(),
-                    "last_outcome": get_last_visible_run_outcome(),
-                },
+                "visible_run": visible_run,
+                "visible_run_source": visible_run_source,
+                "visible_run_api_unavailable": api_unavailable,
                 "latest_event": items[0] if items else None,
             },
             indent=2,
@@ -118,9 +119,13 @@ def cmd_workspace(args: argparse.Namespace) -> None:
 def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     init_db()
-    run_id = (args.run_id or "").strip()
+    requested_run_id = (args.run_id or "").strip()
+    run_id = requested_run_id
+    api_unavailable = None
+
     if not run_id:
-        active_run = get_active_visible_run()
+        visible_run, visible_run_source, api_unavailable = _visible_run_truth()
+        active_run = visible_run.get("active_run")
         if not active_run:
             print(
                 json.dumps(
@@ -128,6 +133,8 @@ def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
                         "ok": False,
                         "status": "not-found",
                         "detail": "No active visible run",
+                        "source": visible_run_source,
+                        "api_unavailable": api_unavailable,
                     },
                     indent=2,
                     ensure_ascii=False,
@@ -135,6 +142,25 @@ def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
             )
             return
         run_id = str(active_run["run_id"])
+
+    api_cancelled, api_error = _cancel_visible_run_via_api(run_id)
+    if api_cancelled:
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "run_id": run_id,
+                    "status": "cancelled",
+                    "source": "api",
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if api_error != "not-found":
+        api_unavailable = api_error
 
     if not cancel_visible_run(run_id):
         print(
@@ -144,6 +170,8 @@ def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
                     "run_id": run_id,
                     "status": "not-found",
                     "detail": "Visible run not active",
+                    "source": "api" if api_error == "not-found" else "local-fallback",
+                    "api_unavailable": api_unavailable,
                 },
                 indent=2,
                 ensure_ascii=False,
@@ -157,6 +185,8 @@ def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
                 "ok": True,
                 "run_id": run_id,
                 "status": "cancelled",
+                "source": "local-fallback",
+                "api_unavailable": api_unavailable,
             },
             indent=2,
             ensure_ascii=False,
@@ -198,6 +228,75 @@ def build_parser() -> argparse.ArgumentParser:
 def _event_count() -> int:
     with connect() as conn:
         return int(conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"])
+
+
+def _visible_run_truth() -> tuple[dict, str, str | None]:
+    api_payload, api_error = _fetch_visible_run_via_api()
+    if api_payload is not None:
+        return api_payload, "api", None
+    return (
+        {
+            "active": bool(get_active_visible_run()),
+            "active_run": get_active_visible_run(),
+            "last_outcome": get_last_visible_run_outcome(),
+        },
+        "local-fallback",
+        api_error,
+    )
+
+
+def _fetch_visible_run_via_api() -> tuple[dict | None, str | None]:
+    response, api_error = _request_json("GET", "/mc/visible-execution")
+    if response is None:
+        return None, api_error
+    return response.get("visible_run"), None
+
+
+def _cancel_visible_run_via_api(run_id: str) -> tuple[bool, str | None]:
+    response, api_error = _request_json("POST", f"/chat/runs/{run_id}/cancel")
+    if response is None:
+        return False, api_error
+    return bool(response.get("ok")), None
+
+
+def _request_json(
+    method: str, path: str, payload: dict | None = None
+) -> tuple[dict | None, str | None]:
+    settings = load_settings()
+    url = f"http://{settings.host}:{settings.port}{path}"
+    data = None
+    headers = {}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    request = urllib_request.Request(url, method=method, data=data, headers=headers)
+    try:
+        with urllib_request.urlopen(request, timeout=0.75) as response:
+            body = response.read().decode("utf-8")
+            return json.loads(body) if body else {}, None
+    except urllib_error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        detail = _http_error_detail(body)
+        if exc.code == 404:
+            return None, "not-found"
+        return None, detail or f"http-{exc.code}"
+    except urllib_error.URLError as exc:
+        reason = getattr(exc, "reason", exc)
+        return None, f"api-unavailable: {reason}"
+    except TimeoutError:
+        return None, "api-unavailable: timeout"
+    except Exception as exc:
+        return None, f"api-unavailable: {exc}"
+
+
+def _http_error_detail(body: str) -> str | None:
+    try:
+        data = json.loads(body)
+    except Exception:
+        return None
+    detail = data.get("detail")
+    return str(detail) if detail else None
 
 
 def main() -> None:

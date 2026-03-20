@@ -428,6 +428,43 @@ a {
   margin-top: 8px;
 }
 
+.capability-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.capability-item,
+.capability-result {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.capability-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.capability-meta {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.capability-action {
+  margin-top: 10px;
+}
+
+.capability-result strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
 .mc-link {
   display: inline-flex;
   margin-top: 16px;

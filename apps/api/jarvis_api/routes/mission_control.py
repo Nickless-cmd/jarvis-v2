@@ -196,6 +196,7 @@ def _visible_execution_surface(settings) -> dict:
             "visible_auth_profile": settings.visible_auth_profile,
         },
         "readiness": visible_execution_readiness(),
+        "workspace_capabilities": load_workspace_capabilities(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),

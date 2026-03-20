@@ -27,6 +27,8 @@ export default function App() {
   const [visibleControlState, setVisibleControlState] = useState("loading");
   const [visibleControlError, setVisibleControlError] = useState("");
   const [visibleControlNotice, setVisibleControlNotice] = useState("");
+  const [capabilityInvokeBusy, setCapabilityInvokeBusy] = useState("");
+  const [capabilityInvokeResult, setCapabilityInvokeResult] = useState(null);
 
   useEffect(() => {
     const ws = new WebSocket("ws://127.0.0.1:8010/ws");
@@ -232,6 +234,34 @@ export default function App() {
     }
   }
 
+  async function handleInvokeCapability(capabilityId) {
+    setCapabilityInvokeBusy(capabilityId);
+    setCapabilityInvokeResult(null);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/mc/workspace-capabilities/${encodeURIComponent(capabilityId)}/invoke`,
+        {
+          method: "POST"
+        }
+      );
+      const data = await response.json();
+      setCapabilityInvokeResult(data);
+    } catch (invokeError) {
+      setCapabilityInvokeResult({
+        ok: false,
+        capability: null,
+        status: "not-found",
+        execution_mode: "unsupported",
+        result: null,
+        detail:
+          invokeError instanceof Error ? invokeError.message : "Ukendt capability-fejl."
+      });
+    } finally {
+      setCapabilityInvokeBusy("");
+    }
+  }
+
   return (
     <div className="webchat-shell">
       <header className="topbar">
@@ -433,6 +463,83 @@ export default function App() {
                         </ul>
                       ) : (
                         <p>Ingen visible run-events endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
+                      <h3>Workspace capabilities</h3>
+                      {visibleControl.workspace_capabilities?.declared_capabilities?.length ? (
+                        <div className="capability-list">
+                          {visibleControl.workspace_capabilities.declared_capabilities.map(
+                            (capability) => (
+                              <article
+                                key={capability.capability_id}
+                                className="capability-item"
+                              >
+                                <div className="capability-header">
+                                  <strong>{capability.name}</strong>
+                                  <span
+                                    className={`status-chip ${statusTone(
+                                      capability.status
+                                    )}`}
+                                  >
+                                    {capability.status}
+                                  </span>
+                                </div>
+                                <p className="capability-meta">
+                                  {capability.capability_id} · {capability.kind} ·{" "}
+                                  {capability.source_doc}
+                                </p>
+                                <p className="capability-meta">
+                                  Runnable: {capability.runnable ? "ja" : "nej"}
+                                </p>
+                                {capability.runnable ? (
+                                  <button
+                                    className="ghost-button capability-action"
+                                    type="button"
+                                    disabled={capabilityInvokeBusy === capability.capability_id}
+                                    onClick={() =>
+                                      handleInvokeCapability(capability.capability_id)
+                                    }
+                                  >
+                                    {capabilityInvokeBusy === capability.capability_id
+                                      ? "Kører..."
+                                      : "Invoke"}
+                                  </button>
+                                ) : null}
+                              </article>
+                            )
+                          )}
+                          {capabilityInvokeResult ? (
+                            <div className="capability-result">
+                              <strong>Seneste capability-resultat</strong>
+                              <p>
+                                Status:{" "}
+                                <span
+                                  className={`status-chip ${statusTone(
+                                    capabilityInvokeResult.status
+                                  )}`}
+                                >
+                                  {capabilityInvokeResult.status}
+                                </span>
+                              </p>
+                              <p>
+                                Capability:{" "}
+                                {capabilityInvokeResult.capability?.capability_id || "ingen"}
+                              </p>
+                              <p>
+                                Mode: {capabilityInvokeResult.execution_mode || "ukendt"}
+                              </p>
+                              <p>
+                                Resultat:{" "}
+                                {capabilityInvokeResult.result?.text ||
+                                  capabilityInvokeResult.detail ||
+                                  "ingen"}
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <p>Ingen deklarerede workspace capabilities endnu.</p>
                       )}
                     </section>
                   </div>

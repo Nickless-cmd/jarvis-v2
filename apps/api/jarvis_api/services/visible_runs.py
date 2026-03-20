@@ -78,6 +78,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             "lane": run.lane,
             "provider": run.provider,
             "model": run.model,
+            "status": "started",
+            "started_at": controller.started_at,
         },
     )
     yield _sse(
@@ -177,6 +179,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "cost_usd": result.cost_usd,
             },
         )
+        finished_at = datetime.now(UTC).isoformat()
         event_bus.publish(
             "runtime.visible_run_completed",
             {
@@ -184,6 +187,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "lane": run.lane,
                 "provider": run.provider,
                 "model": run.model,
+                "status": "completed",
+                "started_at": controller.started_at,
+                "finished_at": finished_at,
                 "input_tokens": result.input_tokens,
                 "output_tokens": result.output_tokens,
                 "cost_usd": result.cost_usd,
@@ -213,11 +219,21 @@ def _preview_text(text: str, limit: int = 120) -> str:
     return normalized[: limit - 1].rstrip() + "…"
 
 
+def _bounded_error(error_message: str, limit: int = 160) -> str:
+    normalized = " ".join((error_message or "").split()) or "visible-run-failed"
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 1].rstrip() + "…"
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
 def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]:
+    controller = get_visible_run_controller(run.run_id)
+    finished_at = datetime.now(UTC).isoformat()
+    bounded_error = _bounded_error(error_message)
     event_bus.publish(
         "runtime.visible_run_failed",
         {
@@ -225,7 +241,10 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
             "lane": run.lane,
             "provider": run.provider,
             "model": run.model,
-            "error": error_message,
+            "status": "failed",
+            "started_at": controller.started_at if controller else None,
+            "finished_at": finished_at,
+            "error": bounded_error,
         },
     )
     yield _sse(
@@ -234,7 +253,7 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
             "type": "failed",
             "run_id": run.run_id,
             "status": "failed",
-            "error": error_message,
+            "error": bounded_error,
         },
     )
     yield _sse(
@@ -243,12 +262,14 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
             "type": "done",
             "run_id": run.run_id,
             "status": "failed",
-            "error": error_message,
+            "error": bounded_error,
         },
     )
 
 
 def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
+    controller = get_visible_run_controller(run.run_id)
+    finished_at = datetime.now(UTC).isoformat()
     event_bus.publish(
         "runtime.visible_run_cancelled",
         {
@@ -256,6 +277,9 @@ def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             "lane": run.lane,
             "provider": run.provider,
             "model": run.model,
+            "status": "cancelled",
+            "started_at": controller.started_at if controller else None,
+            "finished_at": finished_at,
         },
     )
     yield _sse(

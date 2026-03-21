@@ -363,6 +363,58 @@ export default function App() {
                       </ul>
                     </section>
                     <section className="truth-section">
+                      <h3>Visible identity</h3>
+                      {visibleControl.visible_identity ? (
+                        <ul className="runtime-event-list compact">
+                          <li>
+                            <span>
+                              Aktiv: {visibleControl.visible_identity.active ? "ja" : "nej"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${
+                                  visibleControl.visible_identity.active
+                                    ? "status-ok"
+                                    : "status-idle"
+                                }`}
+                              >
+                                {visibleControl.visible_identity.active
+                                  ? "aktiv"
+                                  : "inaktiv"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>
+                              Workspace: {visibleControl.visible_identity.name || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Kilder:{" "}
+                              {visibleControl.visible_identity.source_files?.join(", ") ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Linjer:{" "}
+                              {visibleControl.visible_identity.extracted_line_count ??
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Fingerprint:{" "}
+                              {visibleControl.visible_identity.fingerprint || "ingen"}
+                            </span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <p>Ingen visible identity truth endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
                       <h3>Aktivt run</h3>
                       <ul className="runtime-event-list compact">
                         <li>

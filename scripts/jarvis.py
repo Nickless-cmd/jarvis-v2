@@ -306,6 +306,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
         return {
             "authority": response.get("authority"),
             "readiness": response.get("readiness"),
+            "visible_identity": response.get("visible_identity"),
         }, "api", None
     return {
         "authority": {
@@ -314,6 +315,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
             "visible_auth_profile": load_settings().visible_auth_profile,
         },
         "readiness": visible_execution_readiness(),
+        "visible_identity": {},
     }, "local-fallback", api_error
 
 
@@ -395,6 +397,9 @@ def _visible_execution_section(
         "visible_execution_api_unavailable": api_unavailable,
         "authority": _normalize_visible_authority(visible_execution.get("authority")),
         "readiness": _normalize_visible_readiness(visible_execution.get("readiness")),
+        "visible_identity": _normalize_visible_identity(
+            visible_execution.get("visible_identity")
+        ),
     }
 
 
@@ -451,6 +456,19 @@ def _normalize_visible_readiness(readiness: dict | None) -> dict:
         "provider_status": readiness.get("provider_status"),
         "probe_cache": readiness.get("probe_cache"),
         "checked_at": readiness.get("checked_at"),
+    }
+
+
+def _normalize_visible_identity(visible_identity: dict | None) -> dict:
+    visible_identity = visible_identity or {}
+    return {
+        "workspace": visible_identity.get("workspace"),
+        "name": visible_identity.get("name"),
+        "active": bool(visible_identity.get("active")),
+        "source_files": list(visible_identity.get("source_files") or []),
+        "extracted_line_count": visible_identity.get("extracted_line_count"),
+        "prompt_chars": visible_identity.get("prompt_chars"),
+        "fingerprint": visible_identity.get("fingerprint"),
     }
 
 

@@ -12,6 +12,7 @@ from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.identity.visible_identity import load_visible_identity_prompt
+from core.runtime.db import recent_visible_runs
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import load_workspace_capabilities
 
@@ -418,10 +419,36 @@ def _build_visible_input(message: str) -> list[dict]:
 def _visible_system_instruction() -> str | None:
     parts = [
         load_visible_identity_prompt(),
+        _visible_continuity_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
     return text or None
+
+
+def _visible_continuity_instruction() -> str | None:
+    recent_runs = recent_visible_runs(limit=2)
+    if not recent_runs:
+        return None
+
+    lines = ["Recent visible continuity:"]
+    for item in recent_runs:
+        status = str(item.get("status") or "unknown")
+        finished_at = str(item.get("finished_at") or "unknown")
+        preview = str(item.get("text_preview") or "").strip()
+        error = str(item.get("error") or "").strip()
+        capability_id = str(item.get("capability_id") or "").strip()
+        parts = [f"- {status} @ {finished_at}"]
+        if capability_id:
+            parts.append(f"capability={capability_id}")
+        if preview:
+            parts.append(f"preview={preview}")
+        elif error:
+            parts.append(f"error={error}")
+        lines.append(" | ".join(parts))
+
+    lines.append("Use this only as short recent continuity context, not as transcript memory.")
+    return "\n".join(lines)
 
 
 def _capability_instruction() -> str | None:

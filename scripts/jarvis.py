@@ -308,6 +308,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
             "authority": response.get("authority"),
             "readiness": response.get("readiness"),
             "visible_identity": response.get("visible_identity"),
+            "visible_session_continuity": response.get("visible_session_continuity"),
             "visible_continuity": response.get("visible_continuity"),
             "visible_capability_continuity": response.get("visible_capability_continuity"),
         }, "api", None
@@ -319,6 +320,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
         },
         "readiness": visible_execution_readiness(),
         "visible_identity": {},
+        "visible_session_continuity": {},
         "visible_continuity": {},
         "visible_capability_continuity": {},
     }, "local-fallback", api_error
@@ -407,6 +409,9 @@ def _visible_execution_section(
         "readiness": _normalize_visible_readiness(visible_execution.get("readiness")),
         "visible_identity": _normalize_visible_identity(
             visible_execution.get("visible_identity")
+        ),
+        "visible_session_continuity": _normalize_visible_session_continuity(
+            visible_execution.get("visible_session_continuity")
         ),
         "visible_continuity": _normalize_visible_continuity(
             visible_execution.get("visible_continuity")
@@ -504,6 +509,29 @@ def _normalize_visible_continuity(visible_continuity: dict | None) -> dict:
         "error_count": visible_continuity.get("error_count"),
         "capability_count": visible_continuity.get("capability_count"),
         "chars": visible_continuity.get("chars"),
+    }
+
+
+def _normalize_visible_session_continuity(
+    visible_session_continuity: dict | None,
+) -> dict:
+    visible_session_continuity = visible_session_continuity or {}
+    return {
+        "active": bool(visible_session_continuity.get("active")),
+        "source": visible_session_continuity.get("source"),
+        "latest_run_id": visible_session_continuity.get("latest_run_id"),
+        "latest_status": visible_session_continuity.get("latest_status"),
+        "latest_finished_at": visible_session_continuity.get("latest_finished_at"),
+        "latest_text_preview": visible_session_continuity.get("latest_text_preview"),
+        "latest_capability_id": visible_session_continuity.get("latest_capability_id"),
+        "recent_capability_ids": list(
+            visible_session_continuity.get("recent_capability_ids") or []
+        ),
+        "included_run_rows": visible_session_continuity.get("included_run_rows"),
+        "included_capability_rows": visible_session_continuity.get(
+            "included_capability_rows"
+        ),
+        "chars": visible_session_continuity.get("chars"),
     }
 
 

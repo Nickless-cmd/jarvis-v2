@@ -415,6 +415,82 @@ export default function App() {
                       )}
                     </section>
                     <section className="truth-section">
+                      <h3>Visible session continuity</h3>
+                      {visibleControl.visible_session_continuity ? (
+                        <ul className="runtime-event-list compact">
+                          <li>
+                            <span>
+                              Aktiv:{" "}
+                              {visibleControl.visible_session_continuity.active
+                                ? "ja"
+                                : "nej"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${
+                                  visibleControl.visible_session_continuity.active
+                                    ? "status-ok"
+                                    : "status-idle"
+                                }`}
+                              >
+                                {visibleControl.visible_session_continuity.active
+                                  ? "aktiv"
+                                  : "inaktiv"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>
+                              Seneste run:{" "}
+                              {visibleControl.visible_session_continuity.latest_run_id ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Status:{" "}
+                              {visibleControl.visible_session_continuity.latest_status ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Afsluttet:{" "}
+                              {visibleControl.visible_session_continuity
+                                .latest_finished_at || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Seneste capability:{" "}
+                              {visibleControl.visible_session_continuity
+                                .latest_capability_id || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Recent capabilities:{" "}
+                              {visibleControl.visible_session_continuity.recent_capability_ids?.join(
+                                ", "
+                              ) || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Rows:{" "}
+                              {visibleControl.visible_session_continuity
+                                .included_run_rows ?? "ingen"}{" "}
+                              /{" "}
+                              {visibleControl.visible_session_continuity
+                                .included_capability_rows ?? "ingen"}
+                            </span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <p>Ingen visible session continuity truth endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
                       <h3>Visible continuity</h3>
                       {visibleControl.visible_continuity ? (
                         <ul className="runtime-event-list compact">

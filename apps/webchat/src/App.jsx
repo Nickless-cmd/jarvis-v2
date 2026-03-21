@@ -567,6 +567,93 @@ export default function App() {
                       )}
                     </section>
                     <section className="truth-section">
+                      <h3>Visible work surface</h3>
+                      {visibleControl.visible_work_surface ? (
+                        <ul className="runtime-event-list compact">
+                          <li>
+                            <span>
+                              Aktiv: {visibleControl.visible_work_surface.active ? "ja" : "nej"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${
+                                  visibleControl.visible_work_surface.active
+                                    ? "status-live"
+                                    : "status-idle"
+                                }`}
+                              >
+                                {visibleControl.visible_work_surface.active ? "aktiv" : "idle"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>
+                              Work id:{" "}
+                              {visibleControl.visible_work_surface.current_work_id || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Run: {visibleControl.visible_work_surface.current_run_id || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Status: {visibleControl.visible_work_surface.status || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Lane: {visibleControl.visible_work_surface.lane || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Provider/model:{" "}
+                              {visibleControl.visible_work_surface.provider || "ingen"} /{" "}
+                              {visibleControl.visible_work_surface.model || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Started/finished:{" "}
+                              {visibleControl.visible_work_surface.started_at || "ingen"} /{" "}
+                              {visibleControl.visible_work_surface.finished_at || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Preview:{" "}
+                              {visibleControl.visible_work_surface
+                                .current_user_message_preview || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Capability:{" "}
+                              {visibleControl.visible_work_surface.capability_id || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Recent works:{" "}
+                              {visibleControl.visible_work_surface.recent_work_ids?.join(", ") ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Latest work preview:{" "}
+                              {visibleControl.visible_work_surface.latest_work_preview ||
+                                "ingen"}
+                            </span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <p>Ingen visible work surface truth endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
                       <h3>Visible session continuity</h3>
                       {visibleControl.visible_session_continuity ? (
                         <ul className="runtime-event-list compact">

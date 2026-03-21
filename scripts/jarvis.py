@@ -362,6 +362,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
             "readiness": response.get("readiness"),
             "visible_identity": response.get("visible_identity"),
             "visible_work": response.get("visible_work"),
+            "visible_work_surface": response.get("visible_work_surface"),
             "visible_session_continuity": response.get("visible_session_continuity"),
             "visible_continuity": response.get("visible_continuity"),
             "visible_capability_continuity": response.get("visible_capability_continuity"),
@@ -375,6 +376,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
         "readiness": visible_execution_readiness(),
         "visible_identity": {},
         "visible_work": {},
+        "visible_work_surface": {},
         "visible_session_continuity": {},
         "visible_continuity": {},
         "visible_capability_continuity": {},
@@ -550,6 +552,9 @@ def _visible_execution_section(
             visible_execution.get("visible_identity")
         ),
         "visible_work": _normalize_visible_work(visible_execution.get("visible_work")),
+        "visible_work_surface": _normalize_visible_work_surface(
+            visible_execution.get("visible_work_surface")
+        ),
         "visible_session_continuity": _normalize_visible_session_continuity(
             visible_execution.get("visible_session_continuity")
         ),
@@ -673,6 +678,27 @@ def _normalize_visible_work_units(items: list[dict] | None) -> list[dict]:
             }
         )
     return normalized
+
+
+def _normalize_visible_work_surface(visible_work_surface: dict | None) -> dict:
+    visible_work_surface = visible_work_surface or {}
+    return {
+        "active": bool(visible_work_surface.get("active")),
+        "current_work_id": visible_work_surface.get("current_work_id"),
+        "current_run_id": visible_work_surface.get("current_run_id"),
+        "status": visible_work_surface.get("status"),
+        "lane": visible_work_surface.get("lane"),
+        "provider": visible_work_surface.get("provider"),
+        "model": visible_work_surface.get("model"),
+        "started_at": visible_work_surface.get("started_at"),
+        "finished_at": visible_work_surface.get("finished_at"),
+        "current_user_message_preview": visible_work_surface.get(
+            "current_user_message_preview"
+        ),
+        "capability_id": visible_work_surface.get("capability_id"),
+        "recent_work_ids": list(visible_work_surface.get("recent_work_ids") or []),
+        "latest_work_preview": visible_work_surface.get("latest_work_preview"),
+    }
 
 
 def _normalize_visible_continuity(visible_continuity: dict | None) -> dict:

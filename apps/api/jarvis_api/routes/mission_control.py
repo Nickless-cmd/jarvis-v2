@@ -50,6 +50,9 @@ from core.runtime.config import (
     STATE_DIR,
     WORKSPACES_DIR,
 )
+from core.runtime.operational_preference_alignment import (
+    build_operational_preference_alignment,
+)
 from core.runtime.provider_router import provider_router_summary
 from core.runtime.db import (
     approve_capability_approval_request,
@@ -183,6 +186,7 @@ def mc_runtime() -> dict:
         "private_inner_interplay": _private_inner_interplay_surface(),
         "private_initiative_tension": _private_initiative_tension_surface(),
         "private_operational_preference": _private_operational_preference_surface(),
+        "operational_preference_alignment": _operational_preference_alignment_surface(),
         "private_relation_state": _private_relation_state_surface(),
         "private_temporal_curiosity_state": _private_temporal_curiosity_state_surface(),
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
@@ -365,6 +369,7 @@ def _visible_execution_surface(settings) -> dict:
         "private_inner_interplay": _private_inner_interplay_surface(),
         "private_initiative_tension": _private_initiative_tension_surface(),
         "private_operational_preference": _private_operational_preference_surface(),
+        "operational_preference_alignment": _operational_preference_alignment_surface(),
         "private_relation_state": _private_relation_state_surface(),
         "private_temporal_curiosity_state": _private_temporal_curiosity_state_surface(),
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
@@ -527,6 +532,16 @@ def _private_operational_preference_surface() -> dict:
             "current"
         ),
         private_relation_state=_private_relation_state_surface().get("current"),
+    )
+
+
+def _operational_preference_alignment_surface() -> dict:
+    provider_router = provider_router_summary()
+    return build_operational_preference_alignment(
+        private_operational_preference=_private_operational_preference_surface().get(
+            "current"
+        ),
+        lane_targets=provider_router.get("lane_targets"),
     )
 
 

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from core.runtime.config import AUTH_PROFILES_DIR
 
-ALLOWED_PROVIDERS = {"github", "openai", "codex"}
+_PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9:-]{0,63}$")
 
 
 def ensure_auth_profile(profile: str) -> Path:
@@ -114,8 +115,9 @@ def _profile_dir(profile: str) -> Path:
 
 
 def _validate_provider(provider: str) -> None:
-    if provider not in ALLOWED_PROVIDERS:
-        raise ValueError(f"Unsupported auth provider: {provider}")
+    normalized = (provider or "").strip().lower()
+    if not _PROVIDER_ID_RE.fullmatch(normalized):
+        raise ValueError("Provider name must be a simple lowercase identifier")
 
 
 def _read_json(path: Path) -> dict[str, Any]:

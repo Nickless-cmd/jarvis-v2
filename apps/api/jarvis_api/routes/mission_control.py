@@ -38,10 +38,12 @@ from core.runtime.config import (
     CACHE_DIR,
     CONFIG_DIR,
     LOG_DIR,
+    PROVIDER_ROUTER_FILE,
     SETTINGS_FILE,
     STATE_DIR,
     WORKSPACES_DIR,
 )
+from core.runtime.provider_router import provider_router_summary
 from core.runtime.db import (
     approve_capability_approval_request,
     connect,
@@ -160,6 +162,7 @@ def mc_runtime() -> dict:
         "visible_selected_work_note": get_visible_selected_work_note(),
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
+        "provider_router": provider_router_summary(),
         "capability_invocation": _capability_invocation_surface(),
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),
@@ -179,6 +182,7 @@ def mc_runtime() -> dict:
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
+            "provider_router_file": _path_state(PROVIDER_ROUTER_FILE),
             "state_dir": _path_state(STATE_DIR),
             "log_dir": _path_state(LOG_DIR),
             "cache_dir": _path_state(CACHE_DIR),
@@ -337,6 +341,7 @@ def _visible_execution_surface(settings) -> dict:
         "visible_selected_work_item": get_visible_selected_work_item(),
         "visible_selected_work_note": get_visible_selected_work_note(),
         "workspace_capabilities": load_workspace_capabilities(),
+        "provider_router": provider_router_summary(),
         "capability_invocation": _capability_invocation_surface(),
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),

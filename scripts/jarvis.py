@@ -31,6 +31,10 @@ from core.runtime.db import (
     get_capability_approval_request,
     init_db,
 )
+from core.runtime.provider_router import (
+    configure_provider_router_entry,
+    provider_router_summary,
+)
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
     get_capability_invocation_truth,
@@ -127,8 +131,34 @@ def cmd_config(_: argparse.Namespace) -> None:
                     capability_invocation_source,
                     capability_invocation_api_unavailable,
                 ),
+                "provider_router": provider_router_summary(),
                 "path": str(SETTINGS_FILE),
                 "settings": settings.to_dict(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def cmd_configure_provider(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    result = configure_provider_router_entry(
+        provider=args.provider,
+        model=args.model,
+        auth_mode=args.auth_mode,
+        auth_profile=args.auth_profile,
+        base_url=args.base_url,
+        api_key=args.api_key,
+        lane=args.lane,
+        set_visible=args.set_visible,
+    )
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "configured": result,
+                "provider_router": provider_router_summary(),
             },
             indent=2,
             ensure_ascii=False,
@@ -306,6 +336,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     config = sub.add_parser("config")
     config.set_defaults(func=cmd_config)
+
+    configure_provider = sub.add_parser("configure-provider")
+    configure_provider.add_argument("--provider", required=True)
+    configure_provider.add_argument("--model", required=True)
+    configure_provider.add_argument("--auth-mode", default="none")
+    configure_provider.add_argument("--auth-profile", default="")
+    configure_provider.add_argument("--base-url", default="")
+    configure_provider.add_argument("--api-key", default="")
+    configure_provider.add_argument("--lane", default="visible")
+    configure_provider.add_argument("--set-visible", action="store_true")
+    configure_provider.set_defaults(func=cmd_configure_provider)
 
     workspace = sub.add_parser("workspace")
     workspace.add_argument("--name", default="default")

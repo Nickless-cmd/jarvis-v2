@@ -28,6 +28,28 @@ def cheap_lane_execution_truth() -> dict[str, object]:
 def execute_cheap_lane(*, message: str) -> dict[str, object]:
     return _execute_lane(message=message, truth=cheap_lane_execution_truth())
 
+
+def local_lane_execution_truth() -> dict[str, object]:
+    lane = "local"
+    target = resolve_provider_router_target(lane=lane)
+    readiness = _local_lane_readiness(target)
+    return {
+        "active": True,
+        "lane": lane,
+        "consumer": "provider-router-local-lane",
+        "status": readiness["status"],
+        "can_execute": readiness["can_execute"],
+        "auth_mode": readiness["auth_mode"],
+        "auth_profile": readiness["auth_profile"],
+        "provider_ready": readiness["provider_ready"],
+        "local_auth_path": readiness["local_auth_path"],
+        "live_verified": readiness["live_verified"],
+        "provider_status": readiness["provider_status"],
+        "checked_at": readiness["checked_at"],
+        "target": target,
+    }
+
+
 def coding_lane_execution_truth() -> dict[str, object]:
     lane = "coding"
     target = resolve_provider_router_target(lane=lane)
@@ -165,6 +187,67 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _local_lane_readiness(target: dict[str, object]) -> dict[str, object]:
+    provider = str(target.get("provider") or "").strip()
+    auth_mode = str(target.get("auth_mode") or "").strip() or "none"
+    auth_profile = str(target.get("auth_profile") or "").strip()
+
+    if not bool(target.get("active")):
+        return {
+            "status": "missing-target",
+            "can_execute": False,
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "provider_ready": False,
+            "local_auth_path": _local_auth_path(provider=provider, auth_mode=auth_mode),
+            "live_verified": False,
+            "provider_status": "missing-target",
+            "checked_at": None,
+        }
+
+    if provider == "ollama":
+        probe = _probe_ollama_local_target(
+            model=str(target.get("model") or "").strip(),
+            base_url=str(target.get("base_url") or "").strip(),
+        )
+        return {
+            "status": str(probe["provider_status"]),
+            "can_execute": bool(probe["provider_ready"]),
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "provider_ready": bool(probe["provider_ready"]),
+            "local_auth_path": _local_auth_path(provider=provider, auth_mode=auth_mode),
+            "live_verified": bool(probe["live_verified"]),
+            "provider_status": str(probe["provider_status"]),
+            "checked_at": probe["checked_at"],
+        }
+
+    if provider == "phase1-runtime":
+        return {
+            "status": "ready",
+            "can_execute": True,
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "provider_ready": True,
+            "local_auth_path": _local_auth_path(provider=provider, auth_mode=auth_mode),
+            "live_verified": False,
+            "provider_status": "local-fallback",
+            "checked_at": None,
+        }
+
+    return {
+        "status": "unsupported-provider",
+        "can_execute": False,
+        "auth_mode": auth_mode,
+        "auth_profile": auth_profile,
+        "provider_ready": False,
+        "local_auth_path": _local_auth_path(provider=provider, auth_mode=auth_mode),
+        "live_verified": False,
+        "provider_status": "unsupported-provider",
+        "checked_at": None,
+    }
+
+
 def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
     if provider == "openai" and auth_mode == "api-key":
         return "openai-codex-api-key"
@@ -172,6 +255,14 @@ def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
         return "github-copilot-oauth"
     if provider == "openrouter" and auth_mode == "api-key":
         return "openrouter-api-key"
+    if provider == "phase1-runtime":
+        return "phase1-runtime"
+    return "unsupported"
+
+
+def _local_auth_path(*, provider: str, auth_mode: str) -> str:
+    if provider == "ollama" and auth_mode in {"none", ""}:
+        return "ollama-local"
     if provider == "phase1-runtime":
         return "phase1-runtime"
     return "unsupported"
@@ -251,6 +342,47 @@ def _coding_lane_probe(
         "provider_status": "unsupported-provider",
         "checked_at": None,
     }
+
+
+def _probe_ollama_local_target(*, model: str, base_url: str) -> dict[str, object]:
+    checked_at = datetime.now(UTC).isoformat()
+    root = (base_url or "http://127.0.0.1:11434").rstrip("/")
+    req = urllib_request.Request(f"{root}/api/tags", method="GET")
+    try:
+        with urllib_request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        names = {
+            str(item.get("name") or "").strip()
+            for item in data.get("models", [])
+            if isinstance(item, dict)
+        }
+        if model and model not in names:
+            return {
+                "provider_ready": False,
+                "live_verified": False,
+                "provider_status": "model-not-found",
+                "checked_at": checked_at,
+            }
+        return {
+            "provider_ready": True,
+            "live_verified": True,
+            "provider_status": "ready",
+            "checked_at": checked_at,
+        }
+    except urllib_error.HTTPError as exc:
+        return {
+            "provider_ready": False,
+            "live_verified": False,
+            "provider_status": f"http-{exc.code}",
+            "checked_at": checked_at,
+        }
+    except Exception:
+        return {
+            "provider_ready": False,
+            "live_verified": False,
+            "provider_status": "unreachable",
+            "checked_at": checked_at,
+        }
 
 
 def _probe_openai_coding_target(

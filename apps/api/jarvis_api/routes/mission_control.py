@@ -13,6 +13,7 @@ from apps.api.jarvis_api.services.visible_model import (
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
+    local_lane_execution_truth,
 )
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
@@ -175,6 +176,7 @@ def mc_runtime() -> dict:
         "provider_router": provider_router_summary(),
         "cheap_lane_execution": cheap_lane_execution_truth(),
         "coding_lane_execution": coding_lane_execution_truth(),
+        "local_lane_execution": local_lane_execution_truth(),
         "capability_invocation": _capability_invocation_surface(),
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),
@@ -358,6 +360,7 @@ def _visible_execution_surface(settings) -> dict:
         "provider_router": provider_router_summary(),
         "cheap_lane_execution": cheap_lane_execution_truth(),
         "coding_lane_execution": coding_lane_execution_truth(),
+        "local_lane_execution": local_lane_execution_truth(),
         "capability_invocation": _capability_invocation_surface(),
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),

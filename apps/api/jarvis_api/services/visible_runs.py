@@ -658,7 +658,9 @@ def _persist_visible_run_outcome(
     controller = get_visible_run_controller(run.run_id)
     started_at = controller.started_at if controller else None
     capability_id = controller.last_capability_id if controller else None
+    user_message_preview = controller.user_message_preview if controller else None
     bounded_error = _bounded_error(error) if error else None
+    work_preview = text_preview or bounded_error
     with connect() as conn:
         conn.execute(
             """
@@ -689,6 +691,39 @@ def _persist_visible_run_outcome(
                 text_preview,
                 bounded_error,
                 capability_id,
+            ),
+        )
+        conn.execute(
+            """
+            INSERT INTO visible_work_units (
+                work_id, run_id, status, lane, provider, model,
+                started_at, finished_at, user_message_preview, capability_id, work_preview
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                work_id=excluded.work_id,
+                status=excluded.status,
+                lane=excluded.lane,
+                provider=excluded.provider,
+                model=excluded.model,
+                started_at=excluded.started_at,
+                finished_at=excluded.finished_at,
+                user_message_preview=excluded.user_message_preview,
+                capability_id=excluded.capability_id,
+                work_preview=excluded.work_preview
+            """,
+            (
+                f"visible-work:{run.run_id}",
+                run.run_id,
+                status,
+                run.lane,
+                run.provider,
+                run.model,
+                started_at,
+                finished_at,
+                user_message_preview,
+                capability_id,
+                work_preview,
             ),
         )
         conn.commit()

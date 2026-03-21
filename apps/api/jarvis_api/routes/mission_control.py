@@ -36,6 +36,7 @@ from core.runtime.db import (
     record_capability_approval_request_execution,
     recent_capability_approval_requests,
     recent_capability_invocations,
+    recent_visible_work_units,
     recent_visible_runs,
 )
 from core.runtime.settings import load_settings, update_visible_execution_settings
@@ -127,7 +128,7 @@ def mc_runtime() -> dict:
         "visible_session_continuity": visible_session_continuity_summary(),
         "visible_continuity": visible_continuity_summary(),
         "visible_capability_continuity": visible_capability_continuity_summary(),
-        "visible_work": get_visible_work(),
+        "visible_work": _visible_work_surface(),
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
@@ -286,7 +287,7 @@ def _visible_execution_surface(settings) -> dict:
         "visible_session_continuity": visible_session_continuity_summary(),
         "visible_continuity": visible_continuity_summary(),
         "visible_capability_continuity": visible_capability_continuity_summary(),
-        "visible_work": get_visible_work(),
+        "visible_work": _visible_work_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
@@ -321,6 +322,13 @@ def _visible_run_surface() -> dict:
         "last_capability_use": get_last_visible_capability_use(),
         "persisted_recent_runs": recent_visible_runs(limit=5),
         "recent_events": _recent_visible_run_events(),
+    }
+
+
+def _visible_work_surface() -> dict:
+    return {
+        **get_visible_work(),
+        "persisted_recent_units": recent_visible_work_units(limit=5),
     }
 
 

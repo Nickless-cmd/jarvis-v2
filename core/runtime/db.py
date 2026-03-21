@@ -60,6 +60,24 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS visible_work_units (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                work_id TEXT NOT NULL UNIQUE,
+                run_id TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL,
+                lane TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                model TEXT NOT NULL,
+                started_at TEXT,
+                finished_at TEXT NOT NULL,
+                user_message_preview TEXT,
+                capability_id TEXT,
+                work_preview TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -138,6 +156,46 @@ def recent_visible_runs(limit: int = 5) -> list[dict[str, object]]:
             "text_preview": row["text_preview"],
             "error": row["error"],
             "capability_id": row["capability_id"],
+        }
+        for row in rows
+    ]
+
+
+def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                work_id,
+                run_id,
+                status,
+                lane,
+                provider,
+                model,
+                started_at,
+                finished_at,
+                user_message_preview,
+                capability_id,
+                work_preview
+            FROM visible_work_units
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "work_id": row["work_id"],
+            "run_id": row["run_id"],
+            "status": row["status"],
+            "lane": row["lane"],
+            "provider": row["provider"],
+            "model": row["model"],
+            "started_at": row["started_at"],
+            "finished_at": row["finished_at"],
+            "user_message_preview": row["user_message_preview"],
+            "capability_id": row["capability_id"],
+            "work_preview": row["work_preview"],
         }
         for row in rows
     ]

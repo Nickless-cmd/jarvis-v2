@@ -200,6 +200,23 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS protected_inner_voices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                voice_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                run_id TEXT NOT NULL UNIQUE,
+                work_id TEXT NOT NULL,
+                mood_tone TEXT NOT NULL,
+                self_position TEXT NOT NULL,
+                current_concern TEXT NOT NULL,
+                current_pull TEXT NOT NULL,
+                voice_line TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -875,6 +892,90 @@ def get_private_state() -> dict[str, object] | None:
         "curiosity": row["curiosity"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
+    }
+
+
+def record_protected_inner_voice(
+    *,
+    voice_id: str,
+    source: str,
+    run_id: str,
+    work_id: str,
+    mood_tone: str,
+    self_position: str,
+    current_concern: str,
+    current_pull: str,
+    voice_line: str,
+    created_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO protected_inner_voices (
+                voice_id, source, run_id, work_id, mood_tone, self_position,
+                current_concern, current_pull, voice_line, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                voice_id=excluded.voice_id,
+                source=excluded.source,
+                work_id=excluded.work_id,
+                mood_tone=excluded.mood_tone,
+                self_position=excluded.self_position,
+                current_concern=excluded.current_concern,
+                current_pull=excluded.current_pull,
+                voice_line=excluded.voice_line,
+                created_at=excluded.created_at
+            """,
+            (
+                voice_id,
+                source,
+                run_id,
+                work_id,
+                mood_tone,
+                self_position,
+                current_concern,
+                current_pull,
+                voice_line,
+                created_at,
+            ),
+        )
+        conn.commit()
+
+
+def get_protected_inner_voice() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                voice_id,
+                source,
+                run_id,
+                work_id,
+                mood_tone,
+                self_position,
+                current_concern,
+                current_pull,
+                voice_line,
+                created_at
+            FROM protected_inner_voices
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "voice_id": row["voice_id"],
+        "source": row["source"],
+        "run_id": row["run_id"],
+        "work_id": row["work_id"],
+        "mood_tone": row["mood_tone"],
+        "self_position": row["self_position"],
+        "current_concern": row["current_concern"],
+        "current_pull": row["current_pull"],
+        "voice_line": row["voice_line"],
+        "created_at": row["created_at"],
     }
 
 

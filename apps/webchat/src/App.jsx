@@ -394,14 +394,43 @@ export default function App() {
               <span className="status-pill muted">Secondary</span>
             </div>
             <div className="work-grid">
-              <article className="work-card">
+              <article className="work-card compact-card">
                 <strong>Live arbejde</strong>
                 <p>{currentActivity}</p>
               </article>
-              <article className="work-card">
+              <article className="work-card support-inspector-card">
                 <strong>Visible lane truth</strong>
                 {visibleControl?.visible_run ? (
-                  <div className="truth-sections">
+                  <>
+                    <ul className="support-summary-list">
+                      <li>
+                        <span>Main provider</span>
+                        <small>{visibleControl.authority?.visible_model_provider || "ingen"}</small>
+                      </li>
+                      <li>
+                        <span>Main model</span>
+                        <small>{visibleControl.authority?.visible_model_name || "ingen"}</small>
+                      </li>
+                      <li>
+                        <span>Readiness</span>
+                        <small>
+                          <span
+                            className={`status-chip ${statusTone(
+                              visibleControl.readiness?.provider_status
+                            )}`}
+                          >
+                            {visibleControl.readiness?.provider_status || "ukendt"}
+                          </span>
+                        </small>
+                      </li>
+                      <li>
+                        <span>Active run</span>
+                        <small>{visibleControl.visible_run.active_run?.run_id || "ingen"}</small>
+                      </li>
+                    </ul>
+                    <details className="support-disclosure">
+                      <summary>Open runtime inspector</summary>
+                      <div className="truth-sections">
                     <section className="truth-section">
                       <h3>Authority og readiness</h3>
                       <ul className="runtime-event-list compact">
@@ -1584,16 +1613,18 @@ export default function App() {
                         <p>Ingen approval requests endnu.</p>
                       )}
                     </section>
-                  </div>
+                      </div>
+                    </details>
+                  </>
                 ) : (
                   <p>Ingen visible run truth endnu.</p>
                 )}
               </article>
-              <article className="work-card">
+              <article className="work-card compact-card">
                 <strong>Seneste runtime-events</strong>
-                <ul className="runtime-event-list">
+                <ul className="runtime-event-list compact">
                   {activityEvents.length ? (
-                    activityEvents.map((item) => (
+                    activityEvents.slice(0, 4).map((item) => (
                       <li key={item.id}>
                         <span>{item.kind}</span>
                         <small>{item.created_at}</small>

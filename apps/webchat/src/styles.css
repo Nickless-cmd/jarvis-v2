@@ -283,6 +283,64 @@ a {
   background: rgba(10, 25, 29, 0.76);
 }
 
+.compact-card {
+  padding: 12px 14px;
+}
+
+.support-inspector-card {
+  padding: 14px 16px;
+}
+
+.support-summary-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.support-summary-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: #edf3ee;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding-bottom: 8px;
+}
+
+.support-summary-list span {
+  color: var(--muted);
+}
+
+.support-summary-list small {
+  color: #edf3ee;
+  text-align: right;
+}
+
+.support-disclosure {
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.support-disclosure summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+  color: var(--muted);
+}
+
+.support-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.support-disclosure[open] summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 .work-card p,
 .activity-list p,
 .rail-panel p {
@@ -433,7 +491,8 @@ a {
 .truth-sections {
   display: grid;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 0;
+  padding: 12px;
 }
 
 .truth-section {

@@ -23,6 +23,11 @@ def build_private_retained_memory_record_payload(
         or private_self_model.get("identity_focus")
         or "private-development"
     )[:64]
+    retention_horizon = _retention_horizon(
+        retention_scope=retention_scope,
+        private_development_state=private_development_state,
+        private_self_model=private_self_model,
+    )
     confidence = str(
         private_promotion_decision.get("confidence")
         or private_development_state.get("confidence")
@@ -37,6 +42,7 @@ def build_private_retained_memory_record_payload(
         "retained_value": retained_value,
         "retained_kind": retained_kind,
         "retention_scope": retention_scope,
+        "retention_horizon": retention_horizon,
         "confidence": confidence,
         "created_at": created_at,
     }
@@ -54,3 +60,24 @@ def _retained_kind(
     if learning_kind == "observe":
         return "observed-pattern"
     return "held-pattern"
+
+
+def _retention_horizon(
+    *,
+    retention_scope: str,
+    private_development_state: dict[str, str],
+    private_self_model: dict[str, str],
+) -> str:
+    preferred_direction = str(
+        private_development_state.get("preferred_direction") or ""
+    ).strip()
+    identity_thread = str(private_development_state.get("identity_thread") or "").strip()
+    growth_direction = str(private_self_model.get("growth_direction") or "").strip()
+    if (
+        retention_scope == "private-development"
+        or identity_thread == "visible-work"
+        or preferred_direction.endswith("retain")
+        or growth_direction.endswith(":retain")
+    ):
+        return "development-stable"
+    return "short-term"

@@ -259,6 +259,7 @@ def init_db() -> None:
                 retained_value TEXT NOT NULL,
                 retained_kind TEXT NOT NULL,
                 retention_scope TEXT NOT NULL,
+                retention_horizon TEXT NOT NULL DEFAULT 'short-term',
                 confidence TEXT NOT NULL,
                 created_at TEXT NOT NULL
             )
@@ -307,9 +308,24 @@ def init_db() -> None:
             """
         )
         _ensure_private_inner_note_columns(conn)
+        _ensure_private_retained_memory_record_columns(conn)
         _ensure_capability_invocation_approval_columns(conn)
         _ensure_capability_approval_request_columns(conn)
         conn.commit()
+
+
+def _ensure_private_retained_memory_record_columns(conn: sqlite3.Connection) -> None:
+    columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(private_retained_memory_records)")
+    }
+    if "retention_horizon" not in columns:
+        conn.execute(
+            """
+            ALTER TABLE private_retained_memory_records
+            ADD COLUMN retention_horizon TEXT NOT NULL DEFAULT 'short-term'
+            """
+        )
 
 
 def recent_visible_runs(limit: int = 5) -> list[dict[str, object]]:
@@ -1200,6 +1216,7 @@ def record_private_retained_memory_record(
     retained_value: str,
     retained_kind: str,
     retention_scope: str,
+    retention_horizon: str,
     confidence: str,
     created_at: str,
 ) -> None:
@@ -1208,9 +1225,9 @@ def record_private_retained_memory_record(
             """
             INSERT INTO private_retained_memory_records (
                 record_id, source, run_id, work_id, retained_value,
-                retained_kind, retention_scope, confidence, created_at
+                retained_kind, retention_scope, retention_horizon, confidence, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET
                 record_id=excluded.record_id,
                 source=excluded.source,
@@ -1218,6 +1235,7 @@ def record_private_retained_memory_record(
                 retained_value=excluded.retained_value,
                 retained_kind=excluded.retained_kind,
                 retention_scope=excluded.retention_scope,
+                retention_horizon=excluded.retention_horizon,
                 confidence=excluded.confidence,
                 created_at=excluded.created_at
             """,
@@ -1229,6 +1247,7 @@ def record_private_retained_memory_record(
                 retained_value,
                 retained_kind,
                 retention_scope,
+                retention_horizon,
                 confidence,
                 created_at,
             ),
@@ -1248,6 +1267,7 @@ def get_private_retained_memory_record() -> dict[str, object] | None:
                 retained_value,
                 retained_kind,
                 retention_scope,
+                retention_horizon,
                 confidence,
                 created_at
             FROM private_retained_memory_records
@@ -1265,6 +1285,7 @@ def get_private_retained_memory_record() -> dict[str, object] | None:
         "retained_value": row["retained_value"],
         "retained_kind": row["retained_kind"],
         "retention_scope": row["retention_scope"],
+        "retention_horizon": row["retention_horizon"],
         "confidence": row["confidence"],
         "created_at": row["created_at"],
     }
@@ -1282,6 +1303,7 @@ def recent_private_retained_memory_records(limit: int = 5) -> list[dict[str, obj
                 retained_value,
                 retained_kind,
                 retention_scope,
+                retention_horizon,
                 confidence,
                 created_at
             FROM private_retained_memory_records
@@ -1299,6 +1321,7 @@ def recent_private_retained_memory_records(limit: int = 5) -> list[dict[str, obj
             "retained_value": row["retained_value"],
             "retained_kind": row["retained_kind"],
             "retention_scope": row["retention_scope"],
+            "retention_horizon": row["retention_horizon"],
             "confidence": row["confidence"],
             "created_at": row["created_at"],
         }

@@ -15,6 +15,7 @@ def build_private_retained_memory_projection(
             "retained_focus": None,
             "retained_kind": None,
             "retention_scope": None,
+            "retention_horizon": None,
             "confidence": None,
             "recent_record_ids": [],
             "created_at": None,
@@ -28,6 +29,7 @@ def build_private_retained_memory_projection(
         "retained_focus": current_record.get("retained_value"),
         "retained_kind": current_record.get("retained_kind"),
         "retention_scope": current_record.get("retention_scope"),
+        "retention_horizon": current_record.get("retention_horizon"),
         "confidence": current_record.get("confidence"),
         "recent_record_ids": [
             str(record.get("record_id"))

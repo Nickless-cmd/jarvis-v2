@@ -20,6 +20,7 @@ from apps.api.jarvis_api.services.non_visible_lane_execution import (
 from core.auth.profiles import (
     get_provider_auth_material_kind,
     get_provider_state,
+    get_provider_state_view,
     revoke_provider,
     save_provider_credentials,
 )
@@ -262,6 +263,10 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
         profile=args.auth_profile,
         provider="github-copilot",
     )
+    provider_state_view = get_provider_state_view(
+        profile=args.auth_profile,
+        provider="github-copilot",
+    )
     print(
         json.dumps(
             {
@@ -270,7 +275,7 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
                 "auth_profile": args.auth_profile,
                 "auth_material_kind": auth_material_kind,
                 "coding_lane": coding_lane,
-                "profile_state": provider_state,
+                "profile_state": provider_state_view if provider_state else None,
             },
             indent=2,
             ensure_ascii=False,
@@ -310,7 +315,14 @@ def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
                 "auth_profile": args.auth_profile,
                 "requested_state": args.state,
                 "coding_lane": coding_lane_execution_truth(),
-                "profile_state": profile_state,
+                "profile_state": (
+                    get_provider_state_view(
+                        profile=args.auth_profile,
+                        provider="github-copilot",
+                    )
+                    if profile_state
+                    else None
+                ),
             },
             indent=2,
             ensure_ascii=False,

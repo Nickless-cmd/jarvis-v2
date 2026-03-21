@@ -91,6 +91,18 @@ def get_provider_state(*, profile: str, provider: str) -> dict[str, Any] | None:
     return _read_json(state_path)
 
 
+def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | None:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return None
+    view = dict(state)
+    view["auth_material_kind"] = get_provider_auth_material_kind(
+        profile=profile,
+        provider=provider,
+    )
+    return view
+
+
 def get_provider_auth_material_kind(*, profile: str, provider: str) -> str:
     state = get_provider_state(profile=profile, provider=provider)
     if state is None:

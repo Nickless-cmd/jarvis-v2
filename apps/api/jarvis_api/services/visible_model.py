@@ -481,6 +481,38 @@ def _capability_continuity_instruction() -> str | None:
     return "\n".join(lines)
 
 
+def visible_capability_continuity_summary() -> dict[str, object]:
+    recent_invocations = recent_capability_invocations(limit=2)
+    capability_ids: list[str] = []
+    statuses: list[str] = []
+    preview_count = 0
+    detail_count = 0
+
+    for item in recent_invocations:
+        capability_id = str(item.get("capability_id") or "").strip()
+        if capability_id:
+            capability_ids.append(capability_id)
+        status = str(item.get("status") or "").strip()
+        if status:
+            statuses.append(status)
+        if str(item.get("result_preview") or "").strip():
+            preview_count += 1
+        if str(item.get("detail") or "").strip():
+            detail_count += 1
+
+    instruction = _capability_continuity_instruction()
+    return {
+        "active": bool(instruction),
+        "source": "persisted-capability-invocations",
+        "included_rows": len(recent_invocations),
+        "included_capability_ids": capability_ids,
+        "statuses": statuses,
+        "preview_count": preview_count,
+        "detail_count": detail_count,
+        "chars": len(instruction or ""),
+    }
+
+
 def visible_continuity_summary() -> dict[str, object]:
     recent_runs = recent_visible_runs(limit=2)
     included_run_ids: list[str] = []

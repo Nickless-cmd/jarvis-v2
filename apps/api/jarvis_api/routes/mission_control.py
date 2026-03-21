@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from apps.api.jarvis_api.services.visible_model import (
+    visible_capability_continuity_summary,
     visible_continuity_summary,
     visible_execution_readiness,
 )
@@ -112,6 +113,7 @@ def mc_runtime() -> dict:
         "visible_execution": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
         "visible_continuity": visible_continuity_summary(),
+        "visible_capability_continuity": visible_capability_continuity_summary(),
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
@@ -212,6 +214,7 @@ def _visible_execution_surface(settings) -> dict:
         "readiness": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
         "visible_continuity": visible_continuity_summary(),
+        "visible_capability_continuity": visible_capability_continuity_summary(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),

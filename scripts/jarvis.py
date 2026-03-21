@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import UTC, datetime
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from pathlib import Path
@@ -24,7 +25,7 @@ from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.bootstrap import ensure_runtime_dirs
 from core.runtime.config import SETTINGS_FILE
-from core.runtime.db import connect, init_db
+from core.runtime.db import approve_capability_approval_request, connect, init_db
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
     get_capability_invocation_truth,
@@ -245,6 +246,24 @@ def cmd_invoke_capability(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_approve_capability_request(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    request_id = args.request_id.strip()
+    result, source, api_unavailable = _approve_capability_request_truth(request_id)
+    print(
+        json.dumps(
+            {
+                "ok": bool(result),
+                "source": source,
+                "api_unavailable": api_unavailable,
+                "request": result,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -277,6 +296,10 @@ def build_parser() -> argparse.ArgumentParser:
     invoke_capability.add_argument("capability_id")
     invoke_capability.add_argument("--approve", action="store_true")
     invoke_capability.set_defaults(func=cmd_invoke_capability)
+
+    approve_capability_request = sub.add_parser("approve-capability-request")
+    approve_capability_request.add_argument("request_id")
+    approve_capability_request.set_defaults(func=cmd_approve_capability_request)
 
     return parser
 
@@ -355,6 +378,24 @@ def _invoke_capability_truth(
         return response, "api", None
     return (
         invoke_workspace_capability(capability_id, approved=approved),
+        "local-fallback",
+        api_error,
+    )
+
+
+def _approve_capability_request_truth(
+    request_id: str,
+) -> tuple[dict | None, str, str | None]:
+    response, api_error = _request_json(
+        "POST", f"/mc/capability-approval-requests/{request_id}/approve"
+    )
+    if response is not None:
+        return response.get("request"), "api", None
+    return (
+        approve_capability_approval_request(
+            request_id,
+            approved_at=datetime.now(UTC).isoformat(),
+        ),
         "local-fallback",
         api_error,
     )

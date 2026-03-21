@@ -28,6 +28,7 @@ export default function App() {
   const [visibleControlError, setVisibleControlError] = useState("");
   const [visibleControlNotice, setVisibleControlNotice] = useState("");
   const [capabilityInvokeBusy, setCapabilityInvokeBusy] = useState("");
+  const [approvalRequestBusy, setApprovalRequestBusy] = useState("");
 
   useEffect(() => {
     const ws = new WebSocket("ws://127.0.0.1:8010/ws");
@@ -266,6 +267,33 @@ export default function App() {
       );
     } finally {
       setCapabilityInvokeBusy("");
+    }
+  }
+
+  async function handleApproveCapabilityRequest(requestId) {
+    setVisibleControlNotice("");
+    setVisibleControlError("");
+    setApprovalRequestBusy(requestId);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/mc/capability-approval-requests/${encodeURIComponent(requestId)}/approve`,
+        {
+          method: "POST"
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Approval request kunne ikke godkendes.");
+      }
+      await loadVisibleControl({ quiet: true });
+      setVisibleControlNotice(`Approval request ${requestId} markeret som approved.`);
+    } catch (approveError) {
+      setVisibleControlError(
+        approveError instanceof Error ? approveError.message : "Ukendt approval-fejl."
+      );
+    } finally {
+      setApprovalRequestBusy("");
     }
   }
 
@@ -1053,7 +1081,22 @@ export default function App() {
                                   {item.requested_at || "ingen"}
                                   {item.run_id ? ` · ${item.run_id}` : ""}
                                   {item.request_id ? ` · ${item.request_id}` : ""}
+                                  {item.approved_at ? ` · ${item.approved_at}` : ""}
                                 </small>
+                                {item.status === "pending" && item.request_id ? (
+                                  <button
+                                    className="ghost-button capability-action"
+                                    type="button"
+                                    disabled={approvalRequestBusy === item.request_id}
+                                    onClick={() =>
+                                      handleApproveCapabilityRequest(item.request_id)
+                                    }
+                                  >
+                                    {approvalRequestBusy === item.request_id
+                                      ? "Godkender..."
+                                      : "Approve"}
+                                  </button>
+                                ) : null}
                               </li>
                             )
                           )}

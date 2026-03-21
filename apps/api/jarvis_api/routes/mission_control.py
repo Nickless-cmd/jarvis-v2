@@ -37,6 +37,7 @@ from core.runtime.db import (
     approve_capability_approval_request,
     connect,
     get_capability_approval_request,
+    get_private_self_model,
     record_capability_approval_request_execution,
     recent_capability_approval_requests,
     recent_capability_invocations,
@@ -145,6 +146,7 @@ def mc_runtime() -> dict:
         "capability_invocation": _capability_invocation_surface(),
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),
+        "private_self_model": _private_self_model_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -309,6 +311,7 @@ def _visible_execution_surface(settings) -> dict:
         "capability_invocation": _capability_invocation_surface(),
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),
+        "private_self_model": _private_self_model_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),
@@ -375,6 +378,14 @@ def _private_growth_note_surface() -> dict:
     return {
         "active": bool(notes),
         "recent_notes": notes,
+    }
+
+
+def _private_self_model_surface() -> dict:
+    model = get_private_self_model()
+    return {
+        "active": bool(model),
+        "current": model,
     }
 
 

@@ -135,6 +135,22 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_self_models (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                identity_focus TEXT NOT NULL,
+                preferred_work_mode TEXT NOT NULL,
+                recurring_tension TEXT NOT NULL,
+                growth_direction TEXT NOT NULL,
+                confidence TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -488,6 +504,85 @@ def recent_private_growth_notes(limit: int = 5) -> list[dict[str, object]]:
         }
         for row in rows
     ]
+
+
+def record_private_self_model(
+    *,
+    model_id: str,
+    source: str,
+    identity_focus: str,
+    preferred_work_mode: str,
+    recurring_tension: str,
+    growth_direction: str,
+    confidence: str,
+    created_at: str,
+    updated_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_self_models (
+                model_id, source, identity_focus, preferred_work_mode,
+                recurring_tension, growth_direction, confidence, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(model_id) DO UPDATE SET
+                source=excluded.source,
+                identity_focus=excluded.identity_focus,
+                preferred_work_mode=excluded.preferred_work_mode,
+                recurring_tension=excluded.recurring_tension,
+                growth_direction=excluded.growth_direction,
+                confidence=excluded.confidence,
+                created_at=excluded.created_at,
+                updated_at=excluded.updated_at
+            """,
+            (
+                model_id,
+                source,
+                identity_focus,
+                preferred_work_mode,
+                recurring_tension,
+                growth_direction,
+                confidence,
+                created_at,
+                updated_at,
+            ),
+        )
+        conn.commit()
+
+
+def get_private_self_model() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                model_id,
+                source,
+                identity_focus,
+                preferred_work_mode,
+                recurring_tension,
+                growth_direction,
+                confidence,
+                created_at,
+                updated_at
+            FROM private_self_models
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "model_id": row["model_id"],
+        "source": row["source"],
+        "identity_focus": row["identity_focus"],
+        "preferred_work_mode": row["preferred_work_mode"],
+        "recurring_tension": row["recurring_tension"],
+        "growth_direction": row["growth_direction"],
+        "confidence": row["confidence"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
 
 
 def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:

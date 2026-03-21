@@ -12,7 +12,7 @@ from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.identity.visible_identity import load_visible_identity_prompt
-from core.runtime.db import recent_visible_runs
+from core.runtime.db import recent_capability_invocations, recent_visible_runs
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import load_workspace_capabilities
 
@@ -420,6 +420,7 @@ def _visible_system_instruction() -> str | None:
     parts = [
         load_visible_identity_prompt(),
         _visible_continuity_instruction(),
+        _capability_continuity_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
@@ -448,6 +449,35 @@ def _visible_continuity_instruction() -> str | None:
         lines.append(" | ".join(parts))
 
     lines.append("Use this only as short recent continuity context, not as transcript memory.")
+    return "\n".join(lines)
+
+
+def _capability_continuity_instruction() -> str | None:
+    recent_invocations = recent_capability_invocations(limit=2)
+    if not recent_invocations:
+        return None
+
+    lines = ["Recent capability continuity:"]
+    for item in recent_invocations:
+        capability_id = str(item.get("capability_id") or "unknown")
+        status = str(item.get("status") or "unknown")
+        execution_mode = str(item.get("execution_mode") or "unknown")
+        finished_at = str(item.get("finished_at") or "unknown")
+        preview = str(item.get("result_preview") or "").strip()
+        detail = str(item.get("detail") or "").strip()
+        parts = [
+            f"- {capability_id}",
+            f"status={status}",
+            f"mode={execution_mode}",
+            f"finished_at={finished_at}",
+        ]
+        if preview:
+            parts.append(f"preview={preview}")
+        elif detail:
+            parts.append(f"detail={detail}")
+        lines.append(" | ".join(parts))
+
+    lines.append("Use this only as short recent capability continuity, not as tool history.")
     return "\n".join(lines)
 
 

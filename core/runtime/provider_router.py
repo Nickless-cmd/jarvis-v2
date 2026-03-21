@@ -367,6 +367,11 @@ def _configured_main_agent_targets(
                     provider=provider,
                     auth_profile=auth_profile,
                 ),
+                "readiness_hint": _readiness_hint(
+                    provider=provider,
+                    auth_mode=str(provider_entry.get("auth_mode") or "").strip(),
+                    auth_profile=auth_profile,
+                ),
             }
         )
 
@@ -384,6 +389,19 @@ def _configured_target_match(
             continue
         return item
     return None
+
+
+def _readiness_hint(*, provider: str, auth_mode: str, auth_profile: str) -> str:
+    normalized_auth_mode = (auth_mode or "").strip()
+    if provider == "phase1-runtime":
+        return "configured"
+    if _credentials_ready(provider=provider, auth_profile=auth_profile):
+        return "auth-ready"
+    if normalized_auth_mode in {"api-key", "oauth"}:
+        return "auth-required"
+    if normalized_auth_mode in {"none", ""}:
+        return "configured"
+    return "unknown"
 
 
 def _provider_entry(*, registry: dict[str, object], provider: str) -> dict[str, object] | None:

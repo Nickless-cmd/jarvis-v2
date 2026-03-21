@@ -125,6 +125,7 @@ def provider_router_summary() -> dict[str, object]:
         "provider_count": len(providers),
         "model_count": len(models),
         "main_agent_target": main_agent_target(),
+        "main_agent_selection": main_agent_selection(),
         "providers": providers[:8],
         "models": models[:12],
         "router": {
@@ -161,6 +162,21 @@ def main_agent_target() -> dict[str, object]:
         "credentials_ready": bool(target.get("credentials_ready")),
         "fallback_provider": target.get("fallback_provider"),
         "fallback_model": target.get("fallback_model"),
+    }
+
+
+def main_agent_selection() -> dict[str, object]:
+    registry = load_provider_router_registry()
+    current = main_agent_target()
+    return {
+        "active": True,
+        "source": "runtime.settings+provider-router-registry",
+        "selection_authority": "runtime.settings",
+        "current_provider": current.get("provider"),
+        "current_model": current.get("model"),
+        "current_auth_profile": current.get("auth_profile"),
+        "available_configured_targets": _configured_main_agent_targets(registry=registry),
+        "confidence": "high",
     }
 
 
@@ -277,6 +293,43 @@ def _latest_model_for_lane(
         return None
     lane_models.sort(key=lambda item: str(item.get("updated_at") or ""), reverse=True)
     return lane_models[0]
+
+
+def _configured_main_agent_targets(
+    *, registry: dict[str, object]
+) -> list[dict[str, object]]:
+    targets: list[dict[str, object]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for item in registry.get("models") or []:
+        if not bool(item.get("enabled", True)):
+            continue
+        provider = str(item.get("provider") or "").strip()
+        model = str(item.get("model") or "").strip()
+        if not provider or not model:
+            continue
+        key = (provider, model)
+        if key in seen:
+            continue
+        seen.add(key)
+        provider_entry = _provider_entry(registry=registry, provider=provider) or {}
+        auth_profile = str(provider_entry.get("auth_profile") or "").strip()
+        targets.append(
+            {
+                "provider": provider,
+                "model": model,
+                "auth_mode": str(provider_entry.get("auth_mode") or "").strip() or None,
+                "auth_profile": auth_profile or None,
+                "base_url": str(provider_entry.get("base_url") or "").strip() or None,
+                "credentials_ready": _credentials_ready(
+                    provider=provider,
+                    auth_profile=auth_profile,
+                ),
+            }
+        )
+
+    targets.sort(key=lambda item: (str(item["provider"]), str(item["model"])))
+    return targets[:12]
 
 
 def _provider_entry(*, registry: dict[str, object], provider: str) -> dict[str, object] | None:

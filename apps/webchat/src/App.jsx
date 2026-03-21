@@ -476,6 +476,67 @@ export default function App() {
                       )}
                     </section>
                     <section className="truth-section">
+                      <h3>Visible work</h3>
+                      {visibleControl.visible_work ? (
+                        <ul className="runtime-event-list compact">
+                          <li>
+                            <span>
+                              Aktiv: {visibleControl.visible_work.active ? "ja" : "nej"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${
+                                  visibleControl.visible_work.active
+                                    ? "status-live"
+                                    : "status-idle"
+                                }`}
+                              >
+                                {visibleControl.visible_work.active ? "aktiv" : "idle"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>Run: {visibleControl.visible_work.run_id || "ingen"}</span>
+                          </li>
+                          <li>
+                            <span>
+                              Status: {visibleControl.visible_work.status || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>Lane: {visibleControl.visible_work.lane || "ingen"}</span>
+                          </li>
+                          <li>
+                            <span>
+                              Provider/model:{" "}
+                              {visibleControl.visible_work.provider || "ingen"} /{" "}
+                              {visibleControl.visible_work.model || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Startet: {visibleControl.visible_work.started_at || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Work preview:{" "}
+                              {visibleControl.visible_work.current_user_message_preview ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Capability:{" "}
+                              {visibleControl.visible_work.capability_id || "ingen"}
+                            </span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <p>Ingen visible work truth endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
                       <h3>Visible session continuity</h3>
                       {visibleControl.visible_session_continuity ? (
                         <ul className="runtime-event-list compact">

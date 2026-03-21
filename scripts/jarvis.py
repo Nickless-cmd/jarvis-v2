@@ -361,6 +361,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
             "authority": response.get("authority"),
             "readiness": response.get("readiness"),
             "visible_identity": response.get("visible_identity"),
+            "visible_work": response.get("visible_work"),
             "visible_session_continuity": response.get("visible_session_continuity"),
             "visible_continuity": response.get("visible_continuity"),
             "visible_capability_continuity": response.get("visible_capability_continuity"),
@@ -373,6 +374,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
         },
         "readiness": visible_execution_readiness(),
         "visible_identity": {},
+        "visible_work": {},
         "visible_session_continuity": {},
         "visible_continuity": {},
         "visible_capability_continuity": {},
@@ -547,6 +549,7 @@ def _visible_execution_section(
         "visible_identity": _normalize_visible_identity(
             visible_execution.get("visible_identity")
         ),
+        "visible_work": _normalize_visible_work(visible_execution.get("visible_work")),
         "visible_session_continuity": _normalize_visible_session_continuity(
             visible_execution.get("visible_session_continuity")
         ),
@@ -634,6 +637,21 @@ def _normalize_visible_identity(visible_identity: dict | None) -> dict:
         "extracted_line_count": visible_identity.get("extracted_line_count"),
         "prompt_chars": visible_identity.get("prompt_chars"),
         "fingerprint": visible_identity.get("fingerprint"),
+    }
+
+
+def _normalize_visible_work(visible_work: dict | None) -> dict:
+    visible_work = visible_work or {}
+    return {
+        "active": bool(visible_work.get("active")),
+        "run_id": visible_work.get("run_id"),
+        "status": visible_work.get("status"),
+        "lane": visible_work.get("lane"),
+        "provider": visible_work.get("provider"),
+        "model": visible_work.get("model"),
+        "started_at": visible_work.get("started_at"),
+        "current_user_message_preview": visible_work.get("current_user_message_preview"),
+        "capability_id": visible_work.get("capability_id"),
     }
 
 

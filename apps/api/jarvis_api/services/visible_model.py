@@ -426,6 +426,7 @@ def _visible_system_instruction() -> str | None:
         _visible_session_continuity_instruction(),
         _visible_continuity_instruction(),
         _capability_continuity_instruction(),
+        _visible_work_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
@@ -514,6 +515,49 @@ def _capability_continuity_instruction() -> str | None:
 
     lines.append("Use this only as short recent capability continuity, not as tool history.")
     return "\n".join(lines)
+
+
+def _visible_work_instruction() -> str | None:
+    from apps.api.jarvis_api.services.visible_runs import get_visible_selected_work_item
+
+    selected_work_item = get_visible_selected_work_item()
+    if not selected_work_item.get("selected_work_id"):
+        return None
+
+    parts = [
+        f"selected_work_id={selected_work_item.get('selected_work_id') or 'unknown'}",
+        f"selected_status={selected_work_item.get('selected_status') or 'unknown'}",
+    ]
+    if selected_work_item.get("selected_run_id"):
+        parts.append(f"selected_run_id={selected_work_item['selected_run_id']}")
+    if selected_work_item.get("selected_lane"):
+        parts.append(f"lane={selected_work_item['selected_lane']}")
+    if selected_work_item.get("selected_provider") or selected_work_item.get(
+        "selected_model"
+    ):
+        parts.append(
+            "provider_model="
+            f"{selected_work_item.get('selected_provider') or 'unknown'}"
+            f"/{selected_work_item.get('selected_model') or 'unknown'}"
+        )
+    if selected_work_item.get("selected_capability_id"):
+        parts.append(f"capability={selected_work_item['selected_capability_id']}")
+    if selected_work_item.get("selection_source"):
+        parts.append(f"source={selected_work_item['selection_source']}")
+    if selected_work_item.get("selected_user_message_preview"):
+        parts.append(
+            f"preview={selected_work_item['selected_user_message_preview']}"
+        )
+    elif selected_work_item.get("selected_work_preview"):
+        parts.append(f"work_preview={selected_work_item['selected_work_preview']}")
+
+    return "\n".join(
+        [
+            "Visible work context:",
+            "- " + " | ".join(parts),
+            "Use this only as tiny current work context, not as planner or workflow state.",
+        ]
+    )
 
 
 def visible_capability_continuity_summary() -> dict[str, object]:

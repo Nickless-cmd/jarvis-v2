@@ -151,6 +151,24 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_reflective_selections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                signal_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                run_id TEXT NOT NULL UNIQUE,
+                work_id TEXT NOT NULL,
+                selection_kind TEXT NOT NULL,
+                reinforce TEXT NOT NULL DEFAULT '',
+                reconsider TEXT NOT NULL DEFAULT '',
+                fade TEXT NOT NULL DEFAULT '',
+                identity_relevance TEXT NOT NULL DEFAULT '',
+                confidence TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -583,6 +601,97 @@ def get_private_self_model() -> dict[str, object] | None:
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
+
+
+def record_private_reflective_selection(
+    *,
+    signal_id: str,
+    source: str,
+    run_id: str,
+    work_id: str,
+    selection_kind: str,
+    reinforce: str,
+    reconsider: str,
+    fade: str,
+    identity_relevance: str,
+    confidence: str,
+    created_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_reflective_selections (
+                signal_id, source, run_id, work_id, selection_kind,
+                reinforce, reconsider, fade, identity_relevance, confidence, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                signal_id=excluded.signal_id,
+                source=excluded.source,
+                work_id=excluded.work_id,
+                selection_kind=excluded.selection_kind,
+                reinforce=excluded.reinforce,
+                reconsider=excluded.reconsider,
+                fade=excluded.fade,
+                identity_relevance=excluded.identity_relevance,
+                confidence=excluded.confidence,
+                created_at=excluded.created_at
+            """,
+            (
+                signal_id,
+                source,
+                run_id,
+                work_id,
+                selection_kind,
+                reinforce,
+                reconsider,
+                fade,
+                identity_relevance,
+                confidence,
+                created_at,
+            ),
+        )
+        conn.commit()
+
+
+def recent_private_reflective_selections(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                signal_id,
+                source,
+                run_id,
+                work_id,
+                selection_kind,
+                reinforce,
+                reconsider,
+                fade,
+                identity_relevance,
+                confidence,
+                created_at
+            FROM private_reflective_selections
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "signal_id": row["signal_id"],
+            "source": row["source"],
+            "run_id": row["run_id"],
+            "work_id": row["work_id"],
+            "selection_kind": row["selection_kind"],
+            "reinforce": row["reinforce"],
+            "reconsider": row["reconsider"],
+            "fade": row["fade"],
+            "identity_relevance": row["identity_relevance"],
+            "confidence": row["confidence"],
+            "created_at": row["created_at"],
+        }
+        for row in rows
+    ]
 
 
 def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:

@@ -43,6 +43,7 @@ from core.runtime.db import (
     recent_capability_invocations,
     recent_private_growth_notes,
     recent_private_inner_notes,
+    recent_private_reflective_selections,
     recent_visible_work_notes,
     recent_visible_work_units,
     recent_visible_runs,
@@ -147,6 +148,7 @@ def mc_runtime() -> dict:
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),
         "private_self_model": _private_self_model_surface(),
+        "private_reflective_selection": _private_reflective_selection_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -312,6 +314,7 @@ def _visible_execution_surface(settings) -> dict:
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),
         "private_self_model": _private_self_model_surface(),
+        "private_reflective_selection": _private_reflective_selection_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),
@@ -386,6 +389,14 @@ def _private_self_model_surface() -> dict:
     return {
         "active": bool(model),
         "current": model,
+    }
+
+
+def _private_reflective_selection_surface() -> dict:
+    signals = recent_private_reflective_selections(limit=5)
+    return {
+        "active": bool(signals),
+        "recent_signals": signals,
     }
 
 

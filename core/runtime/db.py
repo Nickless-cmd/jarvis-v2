@@ -71,10 +71,15 @@ def init_db() -> None:
                 finished_at TEXT NOT NULL,
                 result_preview TEXT,
                 detail TEXT,
+                approval_policy TEXT,
+                approval_required INTEGER NOT NULL DEFAULT 0,
+                approved INTEGER NOT NULL DEFAULT 0,
+                granted INTEGER NOT NULL DEFAULT 0,
                 run_id TEXT
             )
             """
         )
+        _ensure_capability_invocation_approval_columns(conn)
         conn.commit()
 
 
@@ -130,6 +135,10 @@ def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:
                 finished_at,
                 result_preview,
                 detail,
+                approval_policy,
+                approval_required,
+                approved,
+                granted,
                 run_id
             FROM capability_invocations
             ORDER BY id DESC
@@ -148,10 +157,31 @@ def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:
             "finished_at": row["finished_at"],
             "result_preview": row["result_preview"],
             "detail": row["detail"],
+            "approval": {
+                "policy": row["approval_policy"],
+                "required": bool(row["approval_required"]),
+                "approved": bool(row["approved"]),
+                "granted": bool(row["granted"]),
+            },
             "run_id": row["run_id"],
         }
         for row in rows
     ]
+
+
+def _ensure_capability_invocation_approval_columns(conn: sqlite3.Connection) -> None:
+    rows = conn.execute("PRAGMA table_info(capability_invocations)").fetchall()
+    existing = {str(row["name"]) for row in rows}
+    required_columns = {
+        "approval_policy": "TEXT",
+        "approval_required": "INTEGER NOT NULL DEFAULT 0",
+        "approved": "INTEGER NOT NULL DEFAULT 0",
+        "granted": "INTEGER NOT NULL DEFAULT 0",
+    }
+    for name, spec in required_columns.items():
+        if name in existing:
+            continue
+        conn.execute(f"ALTER TABLE capability_invocations ADD COLUMN {name} {spec}")
 
 
 def visible_session_continuity() -> dict[str, object]:

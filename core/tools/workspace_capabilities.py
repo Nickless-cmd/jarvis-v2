@@ -457,6 +457,7 @@ def _set_last_capability_invocation(
         "capability": capability,
         "status": invocation.get("status"),
         "execution_mode": invocation.get("execution_mode"),
+        "approval": invocation.get("approval"),
         "invoked_at": invoked_at,
         "finished_at": finished_at,
         "result_preview": result_preview,
@@ -490,6 +491,7 @@ def _publish_capability_invocation_completed(
             "capability": capability,
             "status": invocation.get("status"),
             "execution_mode": invocation.get("execution_mode"),
+            "approval": invocation.get("approval"),
             "invoked_at": invoked_at,
             "finished_at": _now(),
             "result_preview": result_preview,
@@ -510,6 +512,7 @@ def _persist_capability_invocation(
     result = invocation.get("result") or {}
     detail = invocation.get("detail")
     result_preview = _result_preview(result)
+    approval = invocation.get("approval") or {}
     with connect() as conn:
         conn.execute(
             """
@@ -523,9 +526,13 @@ def _persist_capability_invocation(
                 finished_at,
                 result_preview,
                 detail,
+                approval_policy,
+                approval_required,
+                approved,
+                granted,
                 run_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 capability_id or capability.get("capability_id") or "unknown",
@@ -537,6 +544,10 @@ def _persist_capability_invocation(
                 finished_at,
                 result_preview,
                 detail,
+                approval.get("policy"),
+                1 if approval.get("required") else 0,
+                1 if approval.get("approved") else 0,
+                1 if approval.get("granted") else 0,
                 run_id,
             ),
         )

@@ -169,6 +169,22 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_development_states (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                state_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                retained_pattern TEXT NOT NULL,
+                preferred_direction TEXT NOT NULL,
+                recurring_tension TEXT NOT NULL,
+                identity_thread TEXT NOT NULL,
+                confidence TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -692,6 +708,85 @@ def recent_private_reflective_selections(limit: int = 5) -> list[dict[str, objec
         }
         for row in rows
     ]
+
+
+def record_private_development_state(
+    *,
+    state_id: str,
+    source: str,
+    retained_pattern: str,
+    preferred_direction: str,
+    recurring_tension: str,
+    identity_thread: str,
+    confidence: str,
+    created_at: str,
+    updated_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_development_states (
+                state_id, source, retained_pattern, preferred_direction,
+                recurring_tension, identity_thread, confidence, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(state_id) DO UPDATE SET
+                source=excluded.source,
+                retained_pattern=excluded.retained_pattern,
+                preferred_direction=excluded.preferred_direction,
+                recurring_tension=excluded.recurring_tension,
+                identity_thread=excluded.identity_thread,
+                confidence=excluded.confidence,
+                created_at=excluded.created_at,
+                updated_at=excluded.updated_at
+            """,
+            (
+                state_id,
+                source,
+                retained_pattern,
+                preferred_direction,
+                recurring_tension,
+                identity_thread,
+                confidence,
+                created_at,
+                updated_at,
+            ),
+        )
+        conn.commit()
+
+
+def get_private_development_state() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                state_id,
+                source,
+                retained_pattern,
+                preferred_direction,
+                recurring_tension,
+                identity_thread,
+                confidence,
+                created_at,
+                updated_at
+            FROM private_development_states
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "state_id": row["state_id"],
+        "source": row["source"],
+        "retained_pattern": row["retained_pattern"],
+        "preferred_direction": row["preferred_direction"],
+        "recurring_tension": row["recurring_tension"],
+        "identity_thread": row["identity_thread"],
+        "confidence": row["confidence"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
 
 
 def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:

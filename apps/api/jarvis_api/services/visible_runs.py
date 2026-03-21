@@ -15,7 +15,7 @@ from apps.api.jarvis_api.services.visible_model import (
 )
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
-from core.runtime.db import connect
+from core.runtime.db import connect, recent_visible_work_units
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
     invoke_workspace_capability,
@@ -571,6 +571,35 @@ def get_visible_work() -> dict[str, object]:
         "started_at": None,
         "current_user_message_preview": last_outcome.get("text_preview"),
         "capability_id": last_capability_use.get("capability_id"),
+    }
+
+
+def get_visible_work_surface() -> dict[str, object]:
+    visible_work = get_visible_work()
+    recent_units = recent_visible_work_units(limit=5)
+    current_unit = recent_units[0] if recent_units else {}
+    return {
+        "active": bool(visible_work.get("active")),
+        "current_work_id": current_unit.get("work_id"),
+        "current_run_id": visible_work.get("run_id") or current_unit.get("run_id"),
+        "status": visible_work.get("status") or current_unit.get("status"),
+        "lane": visible_work.get("lane") or current_unit.get("lane"),
+        "provider": visible_work.get("provider") or current_unit.get("provider"),
+        "model": visible_work.get("model") or current_unit.get("model"),
+        "started_at": visible_work.get("started_at") or current_unit.get("started_at"),
+        "finished_at": current_unit.get("finished_at"),
+        "current_user_message_preview": visible_work.get(
+            "current_user_message_preview"
+        )
+        or current_unit.get("user_message_preview"),
+        "capability_id": visible_work.get("capability_id")
+        or current_unit.get("capability_id"),
+        "recent_work_ids": [
+            str(item.get("work_id") or "").strip()
+            for item in recent_units
+            if str(item.get("work_id") or "").strip()
+        ],
+        "latest_work_preview": current_unit.get("work_preview"),
     }
 
 

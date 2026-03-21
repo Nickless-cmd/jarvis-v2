@@ -45,6 +45,7 @@ class VisibleRunController:
     provider: str
     model: str
     started_at: str
+    user_message_preview: str
     cancelled: bool = False
     active_stream: object | None = None
     last_capability_id: str | None = None
@@ -501,6 +502,7 @@ def register_visible_run(run: VisibleRun) -> VisibleRunController:
         provider=run.provider,
         model=run.model,
         started_at=datetime.now(UTC).isoformat(),
+        user_message_preview=_preview_text(run.user_message),
     )
     _VISIBLE_RUN_CONTROLLERS[run.run_id] = controller
     return controller
@@ -534,7 +536,41 @@ def get_active_visible_run() -> dict[str, str] | None:
         "provider": controller.provider,
         "model": controller.model,
         "started_at": controller.started_at,
+        "current_user_message_preview": controller.user_message_preview,
+        "capability_id": controller.last_capability_id,
         "cancelled": controller.is_cancelled(),
+    }
+
+
+def get_visible_work() -> dict[str, object]:
+    active_run = get_active_visible_run()
+    if active_run:
+        return {
+            "active": True,
+            "run_id": active_run.get("run_id"),
+            "status": "running",
+            "lane": active_run.get("lane"),
+            "provider": active_run.get("provider"),
+            "model": active_run.get("model"),
+            "started_at": active_run.get("started_at"),
+            "current_user_message_preview": active_run.get(
+                "current_user_message_preview"
+            ),
+            "capability_id": active_run.get("capability_id"),
+        }
+
+    last_outcome = get_last_visible_run_outcome() or {}
+    last_capability_use = get_last_visible_capability_use() or {}
+    return {
+        "active": False,
+        "run_id": last_outcome.get("run_id"),
+        "status": last_outcome.get("status") or "idle",
+        "lane": last_outcome.get("lane"),
+        "provider": last_outcome.get("provider"),
+        "model": last_outcome.get("model"),
+        "started_at": None,
+        "current_user_message_preview": last_outcome.get("text_preview"),
+        "capability_id": last_capability_use.get("capability_id"),
     }
 
 

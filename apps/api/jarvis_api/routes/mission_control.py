@@ -14,6 +14,7 @@ from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
     get_last_visible_run_outcome,
+    get_visible_work,
 )
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.costing.ledger import recent_costs, telemetry_summary
@@ -126,6 +127,7 @@ def mc_runtime() -> dict:
         "visible_session_continuity": visible_session_continuity_summary(),
         "visible_continuity": visible_continuity_summary(),
         "visible_capability_continuity": visible_capability_continuity_summary(),
+        "visible_work": get_visible_work(),
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
@@ -284,6 +286,7 @@ def _visible_execution_surface(settings) -> dict:
         "visible_session_continuity": visible_session_continuity_summary(),
         "visible_continuity": visible_continuity_summary(),
         "visible_capability_continuity": visible_capability_continuity_summary(),
+        "visible_work": get_visible_work(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),

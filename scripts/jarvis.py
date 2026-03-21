@@ -25,7 +25,12 @@ from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.bootstrap import ensure_runtime_dirs
 from core.runtime.config import SETTINGS_FILE
-from core.runtime.db import approve_capability_approval_request, connect, init_db
+from core.runtime.db import (
+    approve_capability_approval_request,
+    connect,
+    get_capability_approval_request,
+    init_db,
+)
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
     get_capability_invocation_truth,
@@ -264,6 +269,24 @@ def cmd_approve_capability_request(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_execute_capability_request(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    request_id = args.request_id.strip()
+    result, source, api_unavailable = _execute_capability_request_truth(request_id)
+    print(
+        json.dumps(
+            {
+                "ok": bool(result.get("ok")) if result else False,
+                "source": source,
+                "api_unavailable": api_unavailable,
+                **(result or {}),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -300,6 +323,10 @@ def build_parser() -> argparse.ArgumentParser:
     approve_capability_request = sub.add_parser("approve-capability-request")
     approve_capability_request.add_argument("request_id")
     approve_capability_request.set_defaults(func=cmd_approve_capability_request)
+
+    execute_capability_request = sub.add_parser("execute-capability-request")
+    execute_capability_request.add_argument("request_id")
+    execute_capability_request.set_defaults(func=cmd_execute_capability_request)
 
     return parser
 
@@ -396,6 +423,60 @@ def _approve_capability_request_truth(
             request_id,
             approved_at=datetime.now(UTC).isoformat(),
         ),
+        "local-fallback",
+        api_error,
+    )
+
+
+def _execute_capability_request_truth(
+    request_id: str,
+) -> tuple[dict, str, str | None]:
+    response, api_error = _request_json(
+        "POST", f"/mc/capability-approval-requests/{request_id}/execute"
+    )
+    if response is not None:
+        return response, "api", None
+
+    request = get_capability_approval_request(request_id)
+    if request is None:
+        return (
+            {
+                "ok": False,
+                "request_id": request_id,
+                "status": "not-found",
+                "detail": "Capability approval request not found",
+                "request": None,
+                "invocation": None,
+            },
+            "local-fallback",
+            api_error,
+        )
+    if request.get("status") != "approved":
+        return (
+            {
+                "ok": False,
+                "request_id": request_id,
+                "status": "not-approved",
+                "detail": "Capability approval request must be approved before execution",
+                "request": request,
+                "invocation": None,
+            },
+            "local-fallback",
+            api_error,
+        )
+    invocation = invoke_workspace_capability(
+        str(request.get("capability_id") or ""),
+        approved=True,
+        run_id=str(request.get("run_id") or "") or None,
+    )
+    return (
+        {
+            "ok": invocation["status"] == "executed",
+            "request_id": request_id,
+            "status": invocation["status"],
+            "request": request,
+            "invocation": invocation,
+        },
         "local-fallback",
         api_error,
     )

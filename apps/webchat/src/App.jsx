@@ -297,6 +297,33 @@ export default function App() {
     }
   }
 
+  async function handleExecuteCapabilityRequest(requestId) {
+    setVisibleControlNotice("");
+    setVisibleControlError("");
+    setApprovalRequestBusy(`execute:${requestId}`);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/mc/capability-approval-requests/${encodeURIComponent(requestId)}/execute`,
+        {
+          method: "POST"
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Approved request kunne ikke eksekveres.");
+      }
+      await loadVisibleControl({ quiet: true });
+      setVisibleControlNotice(`Approved request ${requestId} eksekveret via runtime-truth.`);
+    } catch (executeError) {
+      setVisibleControlError(
+        executeError instanceof Error ? executeError.message : "Ukendt execute-fejl."
+      );
+    } finally {
+      setApprovalRequestBusy("");
+    }
+  }
+
   return (
     <div className="webchat-shell">
       <header className="topbar">
@@ -1095,6 +1122,22 @@ export default function App() {
                                     {approvalRequestBusy === item.request_id
                                       ? "Godkender..."
                                       : "Approve"}
+                                  </button>
+                                ) : null}
+                                {item.status === "approved" && item.request_id ? (
+                                  <button
+                                    className="ghost-button capability-action"
+                                    type="button"
+                                    disabled={
+                                      approvalRequestBusy === `execute:${item.request_id}`
+                                    }
+                                    onClick={() =>
+                                      handleExecuteCapabilityRequest(item.request_id)
+                                    }
+                                  >
+                                    {approvalRequestBusy === `execute:${item.request_id}`
+                                      ? "Eksekverer..."
+                                      : "Execute"}
                                   </button>
                                 ) : null}
                               </li>

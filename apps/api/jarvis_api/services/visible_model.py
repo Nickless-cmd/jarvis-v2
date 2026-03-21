@@ -16,6 +16,7 @@ from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
 from core.runtime.db import (
+    get_private_temporal_promotion_signal,
     get_private_retained_memory_record,
     get_private_self_model,
     recent_private_growth_notes,
@@ -439,6 +440,7 @@ def _visible_system_instruction() -> str | None:
         _growth_support_signal_instruction(),
         _self_model_support_signal_instruction(),
         _retained_memory_support_signal_instruction(),
+        _temporal_support_signal_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
@@ -692,6 +694,35 @@ def _retained_memory_support_signal_instruction() -> str | None:
     return "\n".join(
         [
             "Retained memory support signal:",
+            "- " + " | ".join(parts),
+            "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
+        ]
+    )
+
+
+def _temporal_support_signal_instruction() -> str | None:
+    signal = get_private_temporal_promotion_signal()
+    if not signal:
+        return None
+
+    rhythm_state = str(signal.get("rhythm_state") or "").strip()
+    rhythm_window = str(signal.get("rhythm_window") or "").strip()
+    promotion_action = str(signal.get("promotion_action") or "").strip()
+    if not rhythm_state or not rhythm_window or not promotion_action:
+        return None
+
+    parts = [
+        f"rhythm_state={rhythm_state}",
+        f"rhythm_window={rhythm_window}",
+        f"promotion_action={promotion_action}",
+    ]
+    promotion_confidence = str(signal.get("promotion_confidence") or "").strip()
+    if promotion_confidence:
+        parts.append(f"promotion_confidence={promotion_confidence}")
+
+    return "\n".join(
+        [
+            "Temporal support signal:",
             "- " + " | ".join(parts),
             "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
         ]

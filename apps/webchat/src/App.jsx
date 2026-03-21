@@ -582,6 +582,31 @@ export default function App() {
                       )}
                     </section>
                     <section className="truth-section">
+                      <h3>Persisted recent visible runs</h3>
+                      {visibleControl.visible_run.persisted_recent_runs?.length ? (
+                        <ul className="runtime-event-list compact">
+                          {visibleControl.visible_run.persisted_recent_runs.map((item) => (
+                            <li key={item.run_id}>
+                              <span>{item.run_id}</span>
+                              <small>
+                                <span
+                                  className={`status-chip ${statusTone(item.status)}`}
+                                >
+                                  {item.status || "ukendt"}
+                                </span>{" "}
+                                · {item.provider || "ingen"} / {item.model || "ingen"} ·{" "}
+                                {item.finished_at || "ingen"}
+                                {item.capability_id ? ` · ${item.capability_id}` : ""}
+                                {item.text_preview ? ` · ${item.text_preview}` : ""}
+                              </small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>Ingen persisted visible runs endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
                       <h3>Workspace capabilities</h3>
                       {visibleControl.workspace_capabilities?.declared_capabilities?.length ? (
                         <div className="capability-list">

@@ -10,6 +10,9 @@ from apps.api.jarvis_api.services.visible_model import (
     visible_execution_readiness,
     visible_session_continuity_summary,
 )
+from apps.api.jarvis_api.services.non_visible_lane_execution import (
+    cheap_lane_execution_truth,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -163,6 +166,7 @@ def mc_runtime() -> dict:
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "provider_router": provider_router_summary(),
+        "cheap_lane_execution": cheap_lane_execution_truth(),
         "capability_invocation": _capability_invocation_surface(),
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),
@@ -342,6 +346,7 @@ def _visible_execution_surface(settings) -> dict:
         "visible_selected_work_note": get_visible_selected_work_note(),
         "workspace_capabilities": load_workspace_capabilities(),
         "provider_router": provider_router_summary(),
+        "cheap_lane_execution": cheap_lane_execution_truth(),
         "capability_invocation": _capability_invocation_surface(),
         "private_inner_note": _private_inner_note_surface(),
         "private_growth_note": _private_growth_note_surface(),

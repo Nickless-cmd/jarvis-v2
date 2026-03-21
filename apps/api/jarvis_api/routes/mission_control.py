@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, HTTPException
 
 from apps.api.jarvis_api.services.visible_model import (
@@ -27,6 +29,7 @@ from core.runtime.config import (
     WORKSPACES_DIR,
 )
 from core.runtime.db import (
+    approve_capability_approval_request,
     connect,
     recent_capability_approval_requests,
     recent_capability_invocations,
@@ -148,6 +151,20 @@ def mc_invoke_workspace_capability(capability_id: str, approved: bool = False) -
     return {
         "ok": result["status"] == "executed",
         **result,
+    }
+
+
+@router.post("/capability-approval-requests/{request_id}/approve")
+def mc_approve_capability_request(request_id: str) -> dict:
+    request = approve_capability_approval_request(
+        request_id,
+        approved_at=datetime.now(UTC).isoformat(),
+    )
+    if request is None:
+        raise HTTPException(status_code=404, detail="Capability approval request not found")
+    return {
+        "ok": True,
+        "request": request,
     }
 
 

@@ -91,11 +91,13 @@ def init_db() -> None:
                 approval_policy TEXT,
                 run_id TEXT,
                 requested_at TEXT NOT NULL,
-                status TEXT NOT NULL
+                status TEXT NOT NULL,
+                approved_at TEXT
             )
             """
         )
         _ensure_capability_invocation_approval_columns(conn)
+        _ensure_capability_approval_request_columns(conn)
         conn.commit()
 
 
@@ -200,6 +202,15 @@ def _ensure_capability_invocation_approval_columns(conn: sqlite3.Connection) -> 
         conn.execute(f"ALTER TABLE capability_invocations ADD COLUMN {name} {spec}")
 
 
+def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> None:
+    rows = conn.execute("PRAGMA table_info(capability_approval_requests)").fetchall()
+    existing = {str(row["name"]) for row in rows}
+    if "approved_at" not in existing:
+        conn.execute(
+            "ALTER TABLE capability_approval_requests ADD COLUMN approved_at TEXT"
+        )
+
+
 def visible_session_continuity() -> dict[str, object]:
     recent_runs = recent_visible_runs(limit=1)
     recent_invocations = recent_capability_invocations(limit=2)
@@ -236,7 +247,8 @@ def recent_capability_approval_requests(limit: int = 5) -> list[dict[str, object
                 approval_policy,
                 run_id,
                 requested_at,
-                status
+                status,
+                approved_at
             FROM capability_approval_requests
             ORDER BY id DESC
             LIMIT ?
@@ -254,6 +266,61 @@ def recent_capability_approval_requests(limit: int = 5) -> list[dict[str, object
             "run_id": row["run_id"],
             "requested_at": row["requested_at"],
             "status": row["status"],
+            "approved_at": row["approved_at"],
         }
         for row in rows
     ]
+
+
+def approve_capability_approval_request(
+    request_id: str, *, approved_at: str
+) -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                request_id,
+                capability_id,
+                capability_name,
+                capability_kind,
+                execution_mode,
+                approval_policy,
+                run_id,
+                requested_at,
+                status,
+                approved_at
+            FROM capability_approval_requests
+            WHERE request_id = ?
+            """,
+            (request_id,),
+        ).fetchone()
+        if row is None:
+            return None
+
+        status = str(row["status"] or "")
+        final_approved_at = row["approved_at"]
+        if status == "pending":
+            conn.execute(
+                """
+                UPDATE capability_approval_requests
+                SET status = ?, approved_at = ?
+                WHERE request_id = ?
+                """,
+                ("approved", approved_at, request_id),
+            )
+            conn.commit()
+            status = "approved"
+            final_approved_at = approved_at
+
+    return {
+        "request_id": row["request_id"],
+        "capability_id": row["capability_id"],
+        "capability_name": row["capability_name"],
+        "capability_kind": row["capability_kind"],
+        "execution_mode": row["execution_mode"],
+        "approval_policy": row["approval_policy"],
+        "run_id": row["run_id"],
+        "requested_at": row["requested_at"],
+        "status": status,
+        "approved_at": final_approved_at,
+    }

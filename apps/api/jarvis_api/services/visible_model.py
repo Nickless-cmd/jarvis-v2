@@ -13,6 +13,7 @@ from urllib import request as urllib_request
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.identity.visible_identity import load_visible_identity_prompt
 from core.runtime.db import (
+    get_private_self_model,
     recent_private_inner_notes,
     recent_private_growth_notes,
     recent_capability_invocations,
@@ -431,6 +432,7 @@ def _visible_system_instruction() -> str | None:
         _visible_work_instruction(),
         _private_support_signal_instruction(),
         _growth_support_signal_instruction(),
+        _self_model_support_signal_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
@@ -619,6 +621,39 @@ def _growth_support_signal_instruction() -> str | None:
     return "\n".join(
         [
             "Growth support signal:",
+            "- " + " | ".join(parts),
+            "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
+        ]
+    )
+
+
+def _self_model_support_signal_instruction() -> str | None:
+    model = get_private_self_model()
+    if not model:
+        return None
+
+    identity_focus = str(model.get("identity_focus") or "").strip()
+    preferred_work_mode = str(model.get("preferred_work_mode") or "").strip()
+    if not identity_focus or not preferred_work_mode:
+        return None
+
+    parts = [
+        f"identity_focus={identity_focus}",
+        f"preferred_work_mode={preferred_work_mode}",
+    ]
+    recurring_tension = str(model.get("recurring_tension") or "").strip()
+    growth_direction = str(model.get("growth_direction") or "").strip()
+    confidence = str(model.get("confidence") or "").strip()
+    if recurring_tension:
+        parts.append(f"recurring_tension={recurring_tension}")
+    if growth_direction:
+        parts.append(f"growth_direction={growth_direction}")
+    if confidence:
+        parts.append(f"confidence={confidence}")
+
+    return "\n".join(
+        [
+            "Self-model support signal:",
             "- " + " | ".join(parts),
             "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
         ]

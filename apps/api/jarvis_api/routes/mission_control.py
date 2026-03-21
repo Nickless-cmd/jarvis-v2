@@ -29,6 +29,9 @@ from core.memory.private_initiative_tension import build_private_initiative_tens
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
+from core.memory.private_temporal_curiosity_state import (
+    build_private_temporal_curiosity_state,
+)
 from core.runtime.config import (
     AUTH_DIR,
     CACHE_DIR,
@@ -166,6 +169,7 @@ def mc_runtime() -> dict:
         "protected_inner_voice": _protected_inner_voice_surface(),
         "private_inner_interplay": _private_inner_interplay_surface(),
         "private_initiative_tension": _private_initiative_tension_surface(),
+        "private_temporal_curiosity_state": _private_temporal_curiosity_state_surface(),
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
         "private_promotion_decision": _private_promotion_decision_surface(),
         "private_retained_memory_record": _private_retained_memory_record_surface(),
@@ -341,6 +345,7 @@ def _visible_execution_surface(settings) -> dict:
         "protected_inner_voice": _protected_inner_voice_surface(),
         "private_inner_interplay": _private_inner_interplay_surface(),
         "private_initiative_tension": _private_initiative_tension_surface(),
+        "private_temporal_curiosity_state": _private_temporal_curiosity_state_surface(),
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
         "private_promotion_decision": _private_promotion_decision_surface(),
         "private_retained_memory_record": _private_retained_memory_record_surface(),
@@ -477,6 +482,14 @@ def _private_initiative_tension_surface() -> dict:
         private_retained_memory_projection=_private_retained_memory_projection_surface().get(
             "current"
         ),
+    )
+
+
+def _private_temporal_curiosity_state_surface() -> dict:
+    return build_private_temporal_curiosity_state(
+        private_state=get_private_state(),
+        private_temporal_promotion_signal=get_private_temporal_promotion_signal(),
+        private_development_state=get_private_development_state(),
     )
 
 

@@ -24,6 +24,9 @@ from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.costing.ledger import recent_costs, telemetry_summary
 from core.eventbus.bus import event_bus
 from core.identity.visible_identity import load_visible_identity_summary
+from core.memory.private_retained_memory_projection import (
+    build_private_retained_memory_projection,
+)
 from core.runtime.config import (
     AUTH_DIR,
     CACHE_DIR,
@@ -162,6 +165,7 @@ def mc_runtime() -> dict:
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
         "private_promotion_decision": _private_promotion_decision_surface(),
         "private_retained_memory_record": _private_retained_memory_record_surface(),
+        "private_retained_memory_projection": _private_retained_memory_projection_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -334,6 +338,7 @@ def _visible_execution_surface(settings) -> dict:
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
         "private_promotion_decision": _private_promotion_decision_surface(),
         "private_retained_memory_record": _private_retained_memory_record_surface(),
+        "private_retained_memory_projection": _private_retained_memory_projection_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),
@@ -466,6 +471,15 @@ def _private_retained_memory_record_surface() -> dict:
         "current": record,
         "recent_records": recent_private_retained_memory_records(limit=5),
     }
+
+
+def _private_retained_memory_projection_surface() -> dict:
+    record = get_private_retained_memory_record()
+    recent_records = recent_private_retained_memory_records(limit=5)
+    return build_private_retained_memory_projection(
+        current_record=record,
+        recent_records=recent_records,
+    )
 
 
 def _recent_visible_run_events(limit: int = 5, scan_limit: int = 40) -> list[dict]:

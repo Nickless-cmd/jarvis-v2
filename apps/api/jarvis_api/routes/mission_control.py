@@ -26,6 +26,7 @@ from core.eventbus.bus import event_bus
 from core.identity.visible_identity import load_visible_identity_summary
 from core.memory.private_inner_interplay import build_private_inner_interplay
 from core.memory.private_initiative_tension import build_private_initiative_tension
+from core.memory.private_relation_state import build_private_relation_state
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
@@ -169,6 +170,7 @@ def mc_runtime() -> dict:
         "protected_inner_voice": _protected_inner_voice_surface(),
         "private_inner_interplay": _private_inner_interplay_surface(),
         "private_initiative_tension": _private_initiative_tension_surface(),
+        "private_relation_state": _private_relation_state_surface(),
         "private_temporal_curiosity_state": _private_temporal_curiosity_state_surface(),
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
         "private_promotion_decision": _private_promotion_decision_surface(),
@@ -345,6 +347,7 @@ def _visible_execution_surface(settings) -> dict:
         "protected_inner_voice": _protected_inner_voice_surface(),
         "private_inner_interplay": _private_inner_interplay_surface(),
         "private_initiative_tension": _private_initiative_tension_surface(),
+        "private_relation_state": _private_relation_state_surface(),
         "private_temporal_curiosity_state": _private_temporal_curiosity_state_surface(),
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
         "private_promotion_decision": _private_promotion_decision_surface(),
@@ -482,6 +485,17 @@ def _private_initiative_tension_surface() -> dict:
         private_temporal_curiosity_state=_private_temporal_curiosity_state_surface().get(
             "current"
         ),
+        private_retained_memory_projection=_private_retained_memory_projection_surface().get(
+            "current"
+        ),
+    )
+
+
+def _private_relation_state_surface() -> dict:
+    return build_private_relation_state(
+        visible_session_continuity=visible_session_continuity_summary(),
+        visible_continuity=visible_continuity_summary(),
+        visible_selected_work_item=get_visible_selected_work_item(),
         private_retained_memory_projection=_private_retained_memory_projection_surface().get(
             "current"
         ),

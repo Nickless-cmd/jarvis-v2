@@ -40,6 +40,7 @@ def coding_lane_execution_truth() -> dict[str, object]:
         "credentials_ready": readiness["credentials_ready"],
         "auth_status": readiness["auth_status"],
         "provider_ready": readiness["provider_ready"],
+        "coding_auth_path": readiness["coding_auth_path"],
         "target": target,
     }
 
@@ -65,6 +66,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
     auth_mode = str(target.get("auth_mode") or "").strip() or "none"
     auth_profile = str(target.get("auth_profile") or "").strip()
     credentials_ready = bool(target.get("credentials_ready"))
+    coding_auth_path = _coding_auth_path(provider=provider, auth_mode=auth_mode)
 
     if not bool(target.get("active")):
         return {
@@ -75,6 +77,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "credentials_ready": credentials_ready,
             "auth_status": "missing-target",
             "provider_ready": False,
+            "coding_auth_path": coding_auth_path,
         }
 
     if provider == "phase1-runtime":
@@ -86,6 +89,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "credentials_ready": True,
             "auth_status": "not-required",
             "provider_ready": True,
+            "coding_auth_path": coding_auth_path,
         }
 
     if provider in {"openai", "openrouter"}:
@@ -98,6 +102,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "credentials_ready": credentials_ready,
             "auth_status": auth_status,
             "provider_ready": credentials_ready,
+            "coding_auth_path": coding_auth_path,
         }
 
     return {
@@ -108,7 +113,18 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         "credentials_ready": credentials_ready,
         "auth_status": "unsupported-provider",
         "provider_ready": False,
+        "coding_auth_path": coding_auth_path,
     }
+
+
+def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
+    if provider == "openai" and auth_mode == "api-key":
+        return "openai-codex-api-key"
+    if provider == "openrouter" and auth_mode == "api-key":
+        return "openrouter-api-key"
+    if provider == "phase1-runtime":
+        return "phase1-runtime"
+    return "unsupported"
 
 
 def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object]:

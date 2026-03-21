@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
+from urllib import error as urllib_error
+from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state
@@ -41,6 +44,9 @@ def coding_lane_execution_truth() -> dict[str, object]:
         "auth_status": readiness["auth_status"],
         "provider_ready": readiness["provider_ready"],
         "coding_auth_path": readiness["coding_auth_path"],
+        "live_verified": readiness["live_verified"],
+        "provider_status": readiness["provider_status"],
+        "checked_at": readiness["checked_at"],
         "target": target,
     }
 
@@ -67,6 +73,13 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
     auth_profile = str(target.get("auth_profile") or "").strip()
     credentials_ready = bool(target.get("credentials_ready"))
     coding_auth_path = _coding_auth_path(provider=provider, auth_mode=auth_mode)
+    probe = _coding_lane_probe(
+        provider=provider,
+        model=str(target.get("model") or "").strip(),
+        auth_profile=auth_profile,
+        credentials_ready=credentials_ready,
+        base_url=str(target.get("base_url") or "").strip(),
+    )
 
     if not bool(target.get("active")):
         return {
@@ -78,6 +91,9 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "auth_status": "missing-target",
             "provider_ready": False,
             "coding_auth_path": coding_auth_path,
+            "live_verified": False,
+            "provider_status": "missing-target",
+            "checked_at": None,
         }
 
     if provider == "phase1-runtime":
@@ -90,19 +106,26 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "auth_status": "not-required",
             "provider_ready": True,
             "coding_auth_path": coding_auth_path,
+            "live_verified": False,
+            "provider_status": "local-fallback",
+            "checked_at": None,
         }
 
     if provider in {"openai", "openrouter"}:
         auth_status = "ready" if credentials_ready else "auth-not-ready"
+        provider_ready = bool(probe["provider_ready"])
         return {
-            "status": "ready" if credentials_ready else "auth-not-ready",
-            "can_execute": credentials_ready,
+            "status": str(probe["provider_status"]) if credentials_ready else "auth-not-ready",
+            "can_execute": provider_ready,
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
             "credentials_ready": credentials_ready,
             "auth_status": auth_status,
-            "provider_ready": credentials_ready,
+            "provider_ready": provider_ready,
             "coding_auth_path": coding_auth_path,
+            "live_verified": bool(probe["live_verified"]),
+            "provider_status": str(probe["provider_status"]),
+            "checked_at": probe["checked_at"],
         }
 
     return {
@@ -114,6 +137,9 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         "auth_status": "unsupported-provider",
         "provider_ready": False,
         "coding_auth_path": coding_auth_path,
+        "live_verified": False,
+        "provider_status": "unsupported-provider",
+        "checked_at": None,
     }
 
 
@@ -125,6 +151,87 @@ def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
     if provider == "phase1-runtime":
         return "phase1-runtime"
     return "unsupported"
+
+
+def _coding_lane_probe(
+    *,
+    provider: str,
+    model: str,
+    auth_profile: str,
+    credentials_ready: bool,
+    base_url: str,
+) -> dict[str, object]:
+    if provider == "openai":
+        if not credentials_ready:
+            return {
+                "provider_ready": False,
+                "live_verified": False,
+                "provider_status": "auth-not-ready",
+                "checked_at": None,
+            }
+        return _probe_openai_coding_target(
+            model=model,
+            auth_profile=auth_profile,
+            base_url=base_url,
+        )
+
+    if provider == "openrouter":
+        return {
+            "provider_ready": credentials_ready,
+            "live_verified": False,
+            "provider_status": "not-probed" if credentials_ready else "auth-not-ready",
+            "checked_at": None,
+        }
+
+    return {
+        "provider_ready": False,
+        "live_verified": False,
+        "provider_status": "unsupported-provider",
+        "checked_at": None,
+    }
+
+
+def _probe_openai_coding_target(
+    *, model: str, auth_profile: str, base_url: str
+) -> dict[str, object]:
+    checked_at = datetime.now(UTC).isoformat()
+    api_key = _load_provider_api_key(provider="openai", profile=auth_profile)
+    root = (base_url or "https://api.openai.com/v1").rstrip("/")
+    model_ref = urllib_parse.quote(model, safe="")
+    req = urllib_request.Request(
+        f"{root}/models/{model_ref}",
+        headers={"Authorization": f"Bearer {api_key}"},
+        method="GET",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=15) as response:
+            response.read()
+        return {
+            "provider_ready": True,
+            "live_verified": True,
+            "provider_status": "ready",
+            "checked_at": checked_at,
+        }
+    except urllib_error.HTTPError as exc:
+        if exc.code == 404:
+            status = "model-not-found"
+        elif exc.code in {401, 403}:
+            status = "auth-rejected"
+        else:
+            status = f"http-{exc.code}"
+        return {
+            "provider_ready": False,
+            "live_verified": False,
+            "provider_status": status,
+            "checked_at": checked_at,
+        }
+    except Exception:
+        return {
+            "provider_ready": False,
+            "live_verified": False,
+            "provider_status": "unreachable",
+            "checked_at": checked_at,
+        }
 
 
 def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object]:

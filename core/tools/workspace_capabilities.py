@@ -13,7 +13,10 @@ CAPABILITY_FILES = {
 }
 RUNTIME_NOTE_PREFIX = "RUNTIME_NOTE:"
 READ_FILE_PREFIX = "READ_FILE:"
+SEARCH_FILE_PREFIX = "SEARCH_FILE:"
 MAX_FILE_OUTPUT_CHARS = 4000
+MAX_SEARCH_MATCHES = 5
+MAX_MATCH_EXCERPT_CHARS = 160
 _LAST_CAPABILITY_INVOCATION: dict[str, object] | None = None
 
 
@@ -171,6 +174,7 @@ def _document_sections(path: Path, *, kind: str) -> list[dict[str, str]]:
 def _section_summary(section: dict[str, str]) -> dict[str, object]:
     heading = section["heading"]
     read_file_path = _declared_read_file_path(section["body"])
+    search_spec = _declared_search_file_spec(section["body"])
     if heading.startswith(RUNTIME_NOTE_PREFIX):
         name = heading[len(RUNTIME_NOTE_PREFIX) :].strip()
         execution_mode = "inline-text"
@@ -179,6 +183,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         name = heading[len(READ_FILE_PREFIX) :].strip()
         execution_mode = "workspace-file-read"
         runnable = read_file_path is not None
+    elif heading.startswith(SEARCH_FILE_PREFIX):
+        name = heading[len(SEARCH_FILE_PREFIX) :].strip()
+        execution_mode = "workspace-search-read"
+        runnable = search_spec is not None
     else:
         name = heading
         execution_mode = "declared-only"
@@ -192,6 +200,7 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         "execution_mode": execution_mode if runnable else "declared-only",
         "status": "runnable" if runnable else "declared-only",
         "target_path": read_file_path,
+        "target_query": search_spec["query"] if search_spec else None,
     }
 
 
@@ -241,6 +250,30 @@ def _invoke_runnable_capability(
             },
         }
 
+    if summary["execution_mode"] == "workspace-search-read":
+        target_path = str(summary.get("target_path") or "").strip()
+        target_query = str(summary.get("target_query") or "").strip()
+        candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
+        if candidate is None or not candidate.exists() or not candidate.is_file():
+            return {
+                "capability": summary,
+                "status": "executed",
+                "execution_mode": summary["execution_mode"],
+                "result": None,
+                "detail": f"Declared workspace file missing: {target_path or 'unknown'}",
+            }
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "result": {
+                "type": "workspace-search-read",
+                "path": target_path,
+                "query": target_query,
+                "matches": _search_file_matches(candidate, target_query),
+            },
+        }
+
     return {
         "capability": summary,
         "status": "not-runnable",
@@ -250,16 +283,37 @@ def _invoke_runnable_capability(
 
 
 def _declared_read_file_path(body: str) -> str | None:
+    return _declared_body_value(body, "path")
+
+
+def _declared_search_file_spec(body: str) -> dict[str, str] | None:
+    path = _declared_body_value(body, "path")
+    query = _declared_body_value(body, "query", validate=False)
+    if path is None or query is None:
+        return None
+    normalized_query = query.strip()
+    if not normalized_query:
+        return None
+    return {
+        "path": path,
+        "query": normalized_query,
+    }
+
+
+def _declared_body_value(body: str, key: str, *, validate: bool = True) -> str | None:
     for raw_line in body.splitlines():
         line = raw_line.strip()
         if not line:
             continue
-        if not line.startswith("path:"):
+        prefix = f"{key}:"
+        if not line.startswith(prefix):
             continue
-        declared = line[5:].strip()
+        declared = line[len(prefix) :].strip()
         if not declared:
             return None
-        return declared if _is_valid_workspace_relative_path(declared) else None
+        if validate:
+            return declared if _is_valid_workspace_relative_path(declared) else None
+        return declared
     return None
 
 
@@ -293,6 +347,33 @@ def _read_bounded_text(path: Path) -> str:
     return text[: MAX_FILE_OUTPUT_CHARS - 1].rstrip() + "…"
 
 
+def _search_file_matches(path: Path, query: str) -> list[dict[str, object]]:
+    results: list[dict[str, object]] = []
+    needle = query.casefold()
+    for line_number, raw_line in enumerate(
+        path.read_text(encoding="utf-8", errors="replace").splitlines(),
+        start=1,
+    ):
+        if needle not in raw_line.casefold():
+            continue
+        results.append(
+            {
+                "line": line_number,
+                "excerpt": _bounded_excerpt(raw_line),
+            }
+        )
+        if len(results) >= MAX_SEARCH_MATCHES:
+            break
+    return results
+
+
+def _bounded_excerpt(text: str, limit: int = MAX_MATCH_EXCERPT_CHARS) -> str:
+    normalized = " ".join((text or "").split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 1].rstrip() + "…"
+
+
 def _set_last_capability_invocation(
     invocation: dict[str, object],
     *,
@@ -303,11 +384,7 @@ def _set_last_capability_invocation(
     capability = invocation.get("capability")
     result = invocation.get("result") or {}
     detail = invocation.get("detail")
-    result_preview = None
-    if isinstance(result, dict):
-        text = str(result.get("text", "")).strip()
-        if text:
-            result_preview = _preview_text(text)
+    result_preview = _result_preview(result)
 
     _LAST_CAPABILITY_INVOCATION = {
         "active": False,
@@ -331,11 +408,7 @@ def _publish_capability_invocation_completed(
     capability = invocation.get("capability")
     result = invocation.get("result") or {}
     detail = invocation.get("detail")
-    result_preview = None
-    if isinstance(result, dict):
-        text = str(result.get("text", "")).strip()
-        if text:
-            result_preview = _preview_text(text)
+    result_preview = _result_preview(result)
 
     event_bus.publish(
         "runtime.capability_invocation_completed",
@@ -357,6 +430,20 @@ def _preview_text(text: str, limit: int = 120) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[: limit - 1].rstrip() + "…"
+
+
+def _result_preview(result: object) -> str | None:
+    if not isinstance(result, dict):
+        return None
+    text = str(result.get("text", "")).strip()
+    if text:
+        return _preview_text(text)
+    matches = result.get("matches")
+    if isinstance(matches, list) and matches:
+        excerpt = str((matches[0] or {}).get("excerpt", "")).strip()
+        if excerpt:
+            return _preview_text(excerpt)
+    return None
 
 
 def _now() -> str:

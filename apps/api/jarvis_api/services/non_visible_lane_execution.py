@@ -54,6 +54,30 @@ def execute_cheap_lane(*, message: str) -> dict[str, object]:
         usage = data.get("usage", {})
         input_tokens = int(usage.get("input_tokens", input_tokens))
         output_tokens = int(usage.get("output_tokens", _estimate_tokens(text)))
+    elif provider == "openrouter":
+        profile = str(target.get("auth_profile") or "").strip()
+        api_key = _load_provider_api_key(provider=provider, profile=profile)
+        data = _post_openrouter_chat_completion(
+            base_url=str(target.get("base_url") or "").strip(),
+            payload={
+                "model": model,
+                "messages": [{"role": "user", "content": message}],
+                "stream": False,
+            },
+            api_key=api_key,
+        )
+        text = _extract_openrouter_text(data)
+        usage = data.get("usage", {})
+        input_tokens = int(
+            usage.get("prompt_tokens")
+            or usage.get("input_tokens")
+            or input_tokens
+        )
+        output_tokens = int(
+            usage.get("completion_tokens")
+            or usage.get("output_tokens")
+            or _estimate_tokens(text)
+        )
     else:
         raise RuntimeError(f"Cheap lane provider not supported: {provider}")
 
@@ -84,7 +108,7 @@ def _cheap_lane_status(target: dict[str, object]) -> str:
     provider = str(target.get("provider") or "").strip()
     if provider == "phase1-runtime":
         return "ready"
-    if provider == "openai":
+    if provider in {"openai", "openrouter"}:
         return "ready" if bool(target.get("credentials_ready")) else "auth-not-ready"
     return "unsupported-provider"
 
@@ -118,6 +142,23 @@ def _post_openai_responses(*, base_url: str, payload: dict, api_key: str) -> dic
         return json.loads(response.read().decode("utf-8"))
 
 
+def _post_openrouter_chat_completion(
+    *, base_url: str, payload: dict, api_key: str
+) -> dict:
+    root = (base_url or "https://openrouter.ai/api/v1").rstrip("/")
+    req = urllib_request.Request(
+        f"{root}/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+    with urllib_request.urlopen(req, timeout=60) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 def _extract_output_text(data: dict) -> str:
     output = data.get("output") or []
     parts: list[str] = []
@@ -136,6 +177,18 @@ def _extract_output_text(data: dict) -> str:
     if text:
         return text
     raise RuntimeError("Cheap lane execution returned no output_text")
+
+
+def _extract_openrouter_text(data: dict) -> str:
+    choices = data.get("choices") or []
+    for item in choices:
+        if not isinstance(item, dict):
+            continue
+        message = item.get("message") or {}
+        text = str(message.get("content") or "").strip()
+        if text:
+            return text
+    raise RuntimeError("Cheap lane execution returned no OpenRouter text")
 
 
 def _estimate_tokens(text: str) -> int:

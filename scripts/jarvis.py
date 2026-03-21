@@ -293,6 +293,7 @@ def _visible_run_truth() -> tuple[dict, str, str | None]:
             "active_run": get_active_visible_run(),
             "last_outcome": get_last_visible_run_outcome(),
             "last_capability_use": get_last_visible_capability_use(),
+            "persisted_recent_runs": [],
             "recent_events": [],
         },
         "local-fallback",
@@ -415,6 +416,9 @@ def _visible_run_section(
         "last_capability_use": _normalize_visible_capability_use(
             visible_run.get("last_capability_use")
         ),
+        "persisted_recent_runs": _normalize_persisted_recent_runs(
+            visible_run.get("persisted_recent_runs")
+        ),
         "recent_events": visible_run.get("recent_events", []),
     }
 
@@ -531,6 +535,26 @@ def _normalize_visible_capability_use(last_capability_use: dict | None) -> dict 
         "result_preview": last_capability_use.get("result_preview"),
         "detail": last_capability_use.get("detail"),
     }
+
+
+def _normalize_persisted_recent_runs(items: list[dict] | None) -> list[dict]:
+    normalized: list[dict] = []
+    for item in items or []:
+        normalized.append(
+            {
+                "run_id": item.get("run_id"),
+                "lane": item.get("lane"),
+                "provider": item.get("provider"),
+                "model": item.get("model"),
+                "status": item.get("status"),
+                "started_at": item.get("started_at"),
+                "finished_at": item.get("finished_at"),
+                "text_preview": item.get("text_preview"),
+                "error": item.get("error"),
+                "capability_id": item.get("capability_id"),
+            }
+        )
+    return normalized
 
 
 def main() -> None:

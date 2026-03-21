@@ -1109,6 +1109,14 @@ export default function App() {
                                   {item.run_id ? ` · ${item.run_id}` : ""}
                                   {item.request_id ? ` · ${item.request_id}` : ""}
                                   {item.approved_at ? ` · ${item.approved_at}` : ""}
+                                  {item.executed ? " · executed" : ""}
+                                  {item.executed_at ? ` · ${item.executed_at}` : ""}
+                                  {item.invocation_status
+                                    ? ` · invoke=${item.invocation_status}`
+                                    : ""}
+                                  {item.invocation_execution_mode
+                                    ? ` · ${item.invocation_execution_mode}`
+                                    : ""}
                                 </small>
                                 {item.status === "pending" && item.request_id ? (
                                   <button

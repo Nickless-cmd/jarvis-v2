@@ -773,6 +773,11 @@ def _normalize_approval_requests(items: list[dict] | None) -> list[dict]:
                 "run_id": item.get("run_id"),
                 "requested_at": item.get("requested_at"),
                 "status": item.get("status"),
+                "approved_at": item.get("approved_at"),
+                "executed": bool(item.get("executed")),
+                "executed_at": item.get("executed_at"),
+                "invocation_status": item.get("invocation_status"),
+                "invocation_execution_mode": item.get("invocation_execution_mode"),
             }
         )
     return normalized

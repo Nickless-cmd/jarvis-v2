@@ -32,6 +32,7 @@ from core.runtime.db import (
     approve_capability_approval_request,
     connect,
     get_capability_approval_request,
+    record_capability_approval_request_execution,
     recent_capability_approval_requests,
     recent_capability_invocations,
     recent_visible_runs,
@@ -196,11 +197,17 @@ def mc_execute_capability_request(request_id: str) -> dict:
         approved=True,
         run_id=str(request.get("run_id") or "") or None,
     )
+    projected_request = record_capability_approval_request_execution(
+        request_id,
+        executed_at=datetime.now(UTC).isoformat(),
+        invocation_status=str(invocation.get("status") or ""),
+        invocation_execution_mode=str(invocation.get("execution_mode") or ""),
+    )
     return {
         "ok": invocation["status"] == "executed",
         "request_id": request_id,
         "status": invocation["status"],
-        "request": request,
+        "request": projected_request or request,
         "invocation": invocation,
     }
 

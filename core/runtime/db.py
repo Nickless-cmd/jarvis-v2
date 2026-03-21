@@ -92,7 +92,11 @@ def init_db() -> None:
                 run_id TEXT,
                 requested_at TEXT NOT NULL,
                 status TEXT NOT NULL,
-                approved_at TEXT
+                approved_at TEXT,
+                executed INTEGER NOT NULL DEFAULT 0,
+                executed_at TEXT,
+                invocation_status TEXT,
+                invocation_execution_mode TEXT
             )
             """
         )
@@ -202,15 +206,6 @@ def _ensure_capability_invocation_approval_columns(conn: sqlite3.Connection) -> 
         conn.execute(f"ALTER TABLE capability_invocations ADD COLUMN {name} {spec}")
 
 
-def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> None:
-    rows = conn.execute("PRAGMA table_info(capability_approval_requests)").fetchall()
-    existing = {str(row["name"]) for row in rows}
-    if "approved_at" not in existing:
-        conn.execute(
-            "ALTER TABLE capability_approval_requests ADD COLUMN approved_at TEXT"
-        )
-
-
 def visible_session_continuity() -> dict[str, object]:
     recent_runs = recent_visible_runs(limit=1)
     recent_invocations = recent_capability_invocations(limit=2)
@@ -248,7 +243,11 @@ def recent_capability_approval_requests(limit: int = 5) -> list[dict[str, object
                 run_id,
                 requested_at,
                 status,
-                approved_at
+                approved_at,
+                executed,
+                executed_at,
+                invocation_status,
+                invocation_execution_mode
             FROM capability_approval_requests
             ORDER BY id DESC
             LIMIT ?
@@ -272,7 +271,11 @@ def get_capability_approval_request(request_id: str) -> dict[str, object] | None
                 run_id,
                 requested_at,
                 status,
-                approved_at
+                approved_at,
+                executed,
+                executed_at,
+                invocation_status,
+                invocation_execution_mode
             FROM capability_approval_requests
             WHERE request_id = ?
             """,
@@ -299,7 +302,11 @@ def approve_capability_approval_request(
                 run_id,
                 requested_at,
                 status,
-                approved_at
+                approved_at,
+                executed,
+                executed_at,
+                invocation_status,
+                invocation_execution_mode
             FROM capability_approval_requests
             WHERE request_id = ?
             """,
@@ -330,11 +337,69 @@ def approve_capability_approval_request(
     )
 
 
+def record_capability_approval_request_execution(
+    request_id: str,
+    *,
+    executed_at: str,
+    invocation_status: str,
+    invocation_execution_mode: str,
+) -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                request_id,
+                capability_id,
+                capability_name,
+                capability_kind,
+                execution_mode,
+                approval_policy,
+                run_id,
+                requested_at,
+                status,
+                approved_at,
+                executed,
+                executed_at,
+                invocation_status,
+                invocation_execution_mode
+            FROM capability_approval_requests
+            WHERE request_id = ?
+            """,
+            (request_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            """
+            UPDATE capability_approval_requests
+            SET
+                executed = ?,
+                executed_at = ?,
+                invocation_status = ?,
+                invocation_execution_mode = ?
+            WHERE request_id = ?
+            """,
+            (1, executed_at, invocation_status, invocation_execution_mode, request_id),
+        )
+        conn.commit()
+    return _capability_approval_request_from_row(
+        row,
+        executed=True,
+        executed_at=executed_at,
+        invocation_status=invocation_status,
+        invocation_execution_mode=invocation_execution_mode,
+    )
+
+
 def _capability_approval_request_from_row(
     row: sqlite3.Row,
     *,
     status: str | None = None,
     approved_at: str | None = None,
+    executed: bool | None = None,
+    executed_at: str | None = None,
+    invocation_status: str | None = None,
+    invocation_execution_mode: str | None = None,
 ) -> dict[str, object]:
     return {
         "request_id": row["request_id"],
@@ -347,4 +412,34 @@ def _capability_approval_request_from_row(
         "requested_at": row["requested_at"],
         "status": status if status is not None else row["status"],
         "approved_at": approved_at if approved_at is not None else row["approved_at"],
+        "executed": executed if executed is not None else bool(row["executed"]),
+        "executed_at": executed_at if executed_at is not None else row["executed_at"],
+        "invocation_status": (
+            invocation_status
+            if invocation_status is not None
+            else row["invocation_status"]
+        ),
+        "invocation_execution_mode": (
+            invocation_execution_mode
+            if invocation_execution_mode is not None
+            else row["invocation_execution_mode"]
+        ),
     }
+
+
+def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> None:
+    rows = conn.execute("PRAGMA table_info(capability_approval_requests)").fetchall()
+    existing = {str(row["name"]) for row in rows}
+    required_columns = {
+        "approved_at": "TEXT",
+        "executed": "INTEGER NOT NULL DEFAULT 0",
+        "executed_at": "TEXT",
+        "invocation_status": "TEXT",
+        "invocation_execution_mode": "TEXT",
+    }
+    for name, spec in required_columns.items():
+        if name in existing:
+            continue
+        conn.execute(
+            f"ALTER TABLE capability_approval_requests ADD COLUMN {name} {spec}"
+        )

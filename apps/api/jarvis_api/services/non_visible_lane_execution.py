@@ -6,13 +6,12 @@ from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state
 from core.runtime.provider_router import resolve_provider_router_target
-from core.runtime.settings import load_settings
 
 
 def cheap_lane_execution_truth() -> dict[str, object]:
-    lane = _cheap_lane_name()
+    lane = "cheap"
     target = resolve_provider_router_target(lane=lane)
-    status = _cheap_lane_status(target)
+    status = _lane_status(target)
     return {
         "active": True,
         "lane": lane,
@@ -24,10 +23,45 @@ def cheap_lane_execution_truth() -> dict[str, object]:
 
 
 def execute_cheap_lane(*, message: str) -> dict[str, object]:
-    truth = cheap_lane_execution_truth()
-    if not truth["can_execute"]:
-        raise RuntimeError(f"Cheap lane not executable: {truth['status']}")
+    return _execute_lane(message=message, truth=cheap_lane_execution_truth())
 
+def coding_lane_execution_truth() -> dict[str, object]:
+    lane = "coding"
+    target = resolve_provider_router_target(lane=lane)
+    status = _lane_status(target)
+    return {
+        "active": True,
+        "lane": lane,
+        "consumer": "provider-router-coding-lane",
+        "status": status,
+        "can_execute": status == "ready",
+        "target": target,
+    }
+
+
+def execute_coding_lane(*, message: str) -> dict[str, object]:
+    return _execute_lane(message=message, truth=coding_lane_execution_truth())
+
+
+def _lane_status(target: dict[str, object]) -> str:
+    if not bool(target.get("active")):
+        return "missing-target"
+
+    provider = str(target.get("provider") or "").strip()
+    if provider == "phase1-runtime":
+        return "ready"
+    if provider in {"openai", "openrouter"}:
+        return "ready" if bool(target.get("credentials_ready")) else "auth-not-ready"
+    return "unsupported-provider"
+
+
+def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object]:
+    if not truth["can_execute"]:
+        raise RuntimeError(
+            f"{str(truth.get('lane') or 'lane')} lane not executable: {truth['status']}"
+        )
+
+    lane = str(truth.get("lane") or "unknown")
     target = dict(truth.get("target") or {})
     provider = str(target.get("provider") or "").strip()
     model = str(target.get("model") or "").strip()
@@ -38,8 +72,8 @@ def execute_cheap_lane(*, message: str) -> dict[str, object]:
 
     if provider == "phase1-runtime":
         text = (
-            "Jarvis cheap lane executed through provider-router truth. "
-            f"Cheap lane received: {message}"
+            f"Jarvis {lane} lane executed through provider-router truth. "
+            f"{lane.capitalize()} lane received: {message}"
         )
         output_tokens = _estimate_tokens(text)
     elif provider == "openai":
@@ -79,38 +113,20 @@ def execute_cheap_lane(*, message: str) -> dict[str, object]:
             or _estimate_tokens(text)
         )
     else:
-        raise RuntimeError(f"Cheap lane provider not supported: {provider}")
+        raise RuntimeError(f"{lane} lane provider not supported: {provider}")
 
     return {
-        "lane": str(truth.get("lane") or lane),
+        "lane": lane,
         "provider": provider,
         "model": model,
         "status": "completed",
-        "execution_mode": "provider-router-cheap-lane",
+        "execution_mode": f"provider-router-{lane}-lane",
         "source": str(target.get("source") or ""),
         "text": text,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cost_usd": cost_usd,
     }
-
-
-def _cheap_lane_name() -> str:
-    settings = load_settings()
-    lane = str(settings.cheap_model_lane or "cheap").strip().lower()
-    return lane if lane == "cheap" else "cheap"
-
-
-def _cheap_lane_status(target: dict[str, object]) -> str:
-    if not bool(target.get("active")):
-        return "missing-target"
-
-    provider = str(target.get("provider") or "").strip()
-    if provider == "phase1-runtime":
-        return "ready"
-    if provider in {"openai", "openrouter"}:
-        return "ready" if bool(target.get("credentials_ready")) else "auth-not-ready"
-    return "unsupported-provider"
 
 
 def _load_provider_api_key(*, provider: str, profile: str) -> str:

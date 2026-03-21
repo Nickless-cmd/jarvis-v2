@@ -7,7 +7,7 @@ from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
-from core.auth.profiles import get_provider_state
+from core.auth.profiles import get_provider_auth_material_kind, get_provider_state
 from core.runtime.provider_router import resolve_provider_router_target
 
 
@@ -63,6 +63,7 @@ def coding_lane_execution_truth() -> dict[str, object]:
         "auth_mode": readiness["auth_mode"],
         "auth_profile": readiness["auth_profile"],
         "auth_state": readiness["auth_state"],
+        "auth_material_kind": readiness["auth_material_kind"],
         "credentials_ready": readiness["credentials_ready"],
         "auth_status": readiness["auth_status"],
         "provider_ready": readiness["provider_ready"],
@@ -111,6 +112,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
             "auth_state": "missing-target",
+            "auth_material_kind": "missing",
             "credentials_ready": credentials_ready,
             "auth_status": "missing-target",
             "provider_ready": False,
@@ -127,6 +129,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
             "auth_state": "not-required",
+            "auth_material_kind": "not-required",
             "credentials_ready": True,
             "auth_status": "not-required",
             "provider_ready": True,
@@ -138,12 +141,17 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
 
     if provider == "github-copilot":
         auth_state = _github_copilot_auth_state(auth_profile=auth_profile)
+        auth_material_kind = get_provider_auth_material_kind(
+            profile=auth_profile,
+            provider="github-copilot",
+        )
         return {
             "status": _github_copilot_status(auth_state=auth_state),
             "can_execute": False,
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
             "auth_state": auth_state,
+            "auth_material_kind": auth_material_kind,
             "credentials_ready": credentials_ready,
             "auth_status": _github_copilot_auth_status(auth_state=auth_state),
             "provider_ready": False,
@@ -162,6 +170,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
             "auth_state": auth_status,
+            "auth_material_kind": "real" if credentials_ready else "missing",
             "credentials_ready": credentials_ready,
             "auth_status": auth_status,
             "provider_ready": provider_ready,
@@ -177,6 +186,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         "auth_mode": auth_mode,
         "auth_profile": auth_profile,
         "auth_state": "unsupported-provider",
+        "auth_material_kind": "missing",
         "credentials_ready": credentials_ready,
         "auth_status": "unsupported-provider",
         "provider_ready": False,

@@ -17,7 +17,12 @@ from apps.api.jarvis_api.services.visible_model import visible_execution_readine
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     coding_lane_execution_truth,
 )
-from core.auth.profiles import get_provider_state, revoke_provider, save_provider_credentials
+from core.auth.profiles import (
+    get_provider_auth_material_kind,
+    get_provider_state,
+    revoke_provider,
+    save_provider_credentials,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     cancel_visible_run,
     get_active_visible_run,
@@ -249,6 +254,10 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     init_db()
     coding_lane = coding_lane_execution_truth()
+    auth_material_kind = get_provider_auth_material_kind(
+        profile=args.auth_profile,
+        provider="github-copilot",
+    )
     provider_state = get_provider_state(
         profile=args.auth_profile,
         provider="github-copilot",
@@ -259,6 +268,7 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
                 "ok": True,
                 "provider": "github-copilot",
                 "auth_profile": args.auth_profile,
+                "auth_material_kind": auth_material_kind,
                 "coding_lane": coding_lane,
                 "profile_state": provider_state,
             },

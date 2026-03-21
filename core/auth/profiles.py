@@ -91,6 +91,29 @@ def get_provider_state(*, profile: str, provider: str) -> dict[str, Any] | None:
     return _read_json(state_path)
 
 
+def get_provider_auth_material_kind(*, profile: str, provider: str) -> str:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return "missing"
+
+    status = str(state.get("status") or "").strip()
+    if status == "revoked":
+        return "revoked"
+    if status != "active":
+        return "missing"
+
+    credentials_path = Path(str(state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        return "missing"
+
+    credentials = _read_json(credentials_path)
+    if bool(credentials.get("placeholder")):
+        return "placeholder"
+    if credentials.get("real_oauth") is False:
+        return "placeholder"
+    return "real"
+
+
 def revoke_provider(*, profile: str, provider: str) -> dict[str, Any] | None:
     state = get_provider_state(profile=profile, provider=provider)
     if state is None:

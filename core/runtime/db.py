@@ -152,3 +152,26 @@ def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:
         }
         for row in rows
     ]
+
+
+def visible_session_continuity() -> dict[str, object]:
+    recent_runs = recent_visible_runs(limit=1)
+    recent_invocations = recent_capability_invocations(limit=2)
+    latest_run = recent_runs[0] if recent_runs else {}
+    recent_capability_ids = [
+        capability_id
+        for item in recent_invocations
+        if (capability_id := str(item.get("capability_id") or "").strip())
+    ]
+    return {
+        "active": bool(latest_run or recent_invocations),
+        "source": "persisted-visible-runs+capability-invocations",
+        "latest_run_id": latest_run.get("run_id"),
+        "latest_status": latest_run.get("status"),
+        "latest_finished_at": latest_run.get("finished_at"),
+        "latest_text_preview": latest_run.get("text_preview"),
+        "latest_capability_id": latest_run.get("capability_id"),
+        "recent_capability_ids": recent_capability_ids,
+        "included_run_rows": len(recent_runs),
+        "included_capability_rows": len(recent_invocations),
+    }

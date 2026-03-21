@@ -12,7 +12,11 @@ from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.identity.visible_identity import load_visible_identity_prompt
-from core.runtime.db import recent_capability_invocations, recent_visible_runs
+from core.runtime.db import (
+    recent_capability_invocations,
+    recent_visible_runs,
+    visible_session_continuity,
+)
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import load_workspace_capabilities
 
@@ -419,12 +423,43 @@ def _build_visible_input(message: str) -> list[dict]:
 def _visible_system_instruction() -> str | None:
     parts = [
         load_visible_identity_prompt(),
+        _visible_session_continuity_instruction(),
         _visible_continuity_instruction(),
         _capability_continuity_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
     return text or None
+
+
+def _visible_session_continuity_instruction() -> str | None:
+    continuity = visible_session_continuity()
+    if not continuity["active"]:
+        return None
+
+    parts = [
+        f"latest_status={continuity.get('latest_status') or 'unknown'}",
+        f"latest_finished_at={continuity.get('latest_finished_at') or 'unknown'}",
+    ]
+    if continuity.get("latest_run_id"):
+        parts.append(f"latest_run_id={continuity['latest_run_id']}")
+    if continuity.get("latest_capability_id"):
+        parts.append(f"latest_capability={continuity['latest_capability_id']}")
+    if continuity.get("latest_text_preview"):
+        parts.append(f"latest_preview={continuity['latest_text_preview']}")
+    if continuity.get("recent_capability_ids"):
+        parts.append(
+            "recent_capabilities="
+            + ",".join(str(item) for item in continuity["recent_capability_ids"])
+        )
+
+    return "\n".join(
+        [
+            "Visible session continuity:",
+            "- " + " | ".join(parts),
+            "Use this only as tiny session continuity, not as transcript memory.",
+        ]
+    )
 
 
 def _visible_continuity_instruction() -> str | None:
@@ -509,6 +544,15 @@ def visible_capability_continuity_summary() -> dict[str, object]:
         "statuses": statuses,
         "preview_count": preview_count,
         "detail_count": detail_count,
+        "chars": len(instruction or ""),
+    }
+
+
+def visible_session_continuity_summary() -> dict[str, object]:
+    continuity = visible_session_continuity()
+    instruction = _visible_session_continuity_instruction()
+    return {
+        **continuity,
         "chars": len(instruction or ""),
     }
 

@@ -6,6 +6,7 @@ from apps.api.jarvis_api.services.visible_model import (
     visible_capability_continuity_summary,
     visible_continuity_summary,
     visible_execution_readiness,
+    visible_session_continuity_summary,
 )
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
@@ -112,6 +113,7 @@ def mc_runtime() -> dict:
         "settings": settings.to_dict(),
         "visible_execution": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
+        "visible_session_continuity": visible_session_continuity_summary(),
         "visible_continuity": visible_continuity_summary(),
         "visible_capability_continuity": visible_capability_continuity_summary(),
         "visible_run": _visible_run_surface(),
@@ -213,6 +215,7 @@ def _visible_execution_surface(settings) -> dict:
         },
         "readiness": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
+        "visible_session_continuity": visible_session_continuity_summary(),
         "visible_continuity": visible_continuity_summary(),
         "visible_capability_continuity": visible_capability_continuity_summary(),
         "workspace_capabilities": load_workspace_capabilities(),

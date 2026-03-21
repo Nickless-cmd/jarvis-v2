@@ -308,6 +308,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
             "authority": response.get("authority"),
             "readiness": response.get("readiness"),
             "visible_identity": response.get("visible_identity"),
+            "visible_continuity": response.get("visible_continuity"),
         }, "api", None
     return {
         "authority": {
@@ -317,6 +318,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
         },
         "readiness": visible_execution_readiness(),
         "visible_identity": {},
+        "visible_continuity": {},
     }, "local-fallback", api_error
 
 
@@ -404,6 +406,9 @@ def _visible_execution_section(
         "visible_identity": _normalize_visible_identity(
             visible_execution.get("visible_identity")
         ),
+        "visible_continuity": _normalize_visible_continuity(
+            visible_execution.get("visible_continuity")
+        ),
     }
 
 
@@ -479,6 +484,21 @@ def _normalize_visible_identity(visible_identity: dict | None) -> dict:
         "extracted_line_count": visible_identity.get("extracted_line_count"),
         "prompt_chars": visible_identity.get("prompt_chars"),
         "fingerprint": visible_identity.get("fingerprint"),
+    }
+
+
+def _normalize_visible_continuity(visible_continuity: dict | None) -> dict:
+    visible_continuity = visible_continuity or {}
+    return {
+        "active": bool(visible_continuity.get("active")),
+        "source": visible_continuity.get("source"),
+        "included_rows": visible_continuity.get("included_rows"),
+        "included_run_ids": list(visible_continuity.get("included_run_ids") or []),
+        "statuses": list(visible_continuity.get("statuses") or []),
+        "preview_count": visible_continuity.get("preview_count"),
+        "error_count": visible_continuity.get("error_count"),
+        "capability_count": visible_continuity.get("capability_count"),
+        "chars": visible_continuity.get("chars"),
     }
 
 

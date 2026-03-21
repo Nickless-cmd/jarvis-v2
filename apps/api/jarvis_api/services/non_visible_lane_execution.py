@@ -28,13 +28,18 @@ def execute_cheap_lane(*, message: str) -> dict[str, object]:
 def coding_lane_execution_truth() -> dict[str, object]:
     lane = "coding"
     target = resolve_provider_router_target(lane=lane)
-    status = _lane_status(target)
+    readiness = _coding_lane_readiness(target)
     return {
         "active": True,
         "lane": lane,
         "consumer": "provider-router-coding-lane",
-        "status": status,
-        "can_execute": status == "ready",
+        "status": readiness["status"],
+        "can_execute": readiness["can_execute"],
+        "auth_mode": readiness["auth_mode"],
+        "auth_profile": readiness["auth_profile"],
+        "credentials_ready": readiness["credentials_ready"],
+        "auth_status": readiness["auth_status"],
+        "provider_ready": readiness["provider_ready"],
         "target": target,
     }
 
@@ -53,6 +58,57 @@ def _lane_status(target: dict[str, object]) -> str:
     if provider in {"openai", "openrouter"}:
         return "ready" if bool(target.get("credentials_ready")) else "auth-not-ready"
     return "unsupported-provider"
+
+
+def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
+    provider = str(target.get("provider") or "").strip()
+    auth_mode = str(target.get("auth_mode") or "").strip() or "none"
+    auth_profile = str(target.get("auth_profile") or "").strip()
+    credentials_ready = bool(target.get("credentials_ready"))
+
+    if not bool(target.get("active")):
+        return {
+            "status": "missing-target",
+            "can_execute": False,
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "credentials_ready": credentials_ready,
+            "auth_status": "missing-target",
+            "provider_ready": False,
+        }
+
+    if provider == "phase1-runtime":
+        return {
+            "status": "ready",
+            "can_execute": True,
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "credentials_ready": True,
+            "auth_status": "not-required",
+            "provider_ready": True,
+        }
+
+    if provider in {"openai", "openrouter"}:
+        auth_status = "ready" if credentials_ready else "auth-not-ready"
+        return {
+            "status": "ready" if credentials_ready else "auth-not-ready",
+            "can_execute": credentials_ready,
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "credentials_ready": credentials_ready,
+            "auth_status": auth_status,
+            "provider_ready": credentials_ready,
+        }
+
+    return {
+        "status": "unsupported-provider",
+        "can_execute": False,
+        "auth_mode": auth_mode,
+        "auth_profile": auth_profile,
+        "credentials_ready": credentials_ready,
+        "auth_status": "unsupported-provider",
+        "provider_ready": False,
+    }
 
 
 def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object]:

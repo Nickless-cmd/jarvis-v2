@@ -326,27 +326,45 @@ export default function App() {
 
   return (
     <div className="webchat-shell">
-      <header className="topbar">
-        <div>
-          <span className="eyebrow">Primary Chat</span>
-          <h1>Jarvis V2</h1>
-        </div>
-        <div className="topbar-meta">
-          <span>Visible lane</span>
-          <span>Mission Control sidecar</span>
-        </div>
-      </header>
-      <main className="layout">
-        <section className="chat-column">
+      <main className="chat-first-layout">
+        <StatusRail
+          visibleControl={visibleControl}
+          visibleControlState={visibleControlState}
+          visibleControlError={visibleControlError}
+          visibleControlNotice={visibleControlNotice}
+          onRefresh={loadVisibleControl}
+          onSave={handleVisibleControlSave}
+        />
+        <section className="main-stage">
+          <section className="panel chat-hero">
+            <div className="chat-panel-header">
+              <div>
+                <span className="eyebrow">Primary Chat</span>
+                <h1>Jarvis V2</h1>
+                <p className="hero-copy">
+                  Chatten er front door. Runtime truth og authority forbliver
+                  underliggende og observerbare, ikke dashboardets centrum.
+                </p>
+              </div>
+              <div className="hero-meta">
+                <span className={`status-pill${isRunning ? "" : " muted"}`}>
+                  {isRunning ? "Working" : "Idle"}
+                </span>
+                <span className={`status-pill${wsState === "live" ? "" : " muted"}`}>
+                  {wsState === "live" ? "Control-plane live" : "Control-plane offline"}
+                </span>
+              </div>
+            </div>
+            <p className="hero-activity">{currentActivity}</p>
+          </section>
+          <section className="chat-column">
           <section className="panel chat-panel">
             <div className="chat-panel-header">
               <div>
                 <span className="eyebrow">Conversation</span>
                 <h2>Primary Chat Shell</h2>
               </div>
-              <span className={`status-pill${isRunning ? "" : " muted"}`}>
-                {isRunning ? "Working" : "Idle"}
-              </span>
+              <span className="status-pill muted">Claude-like hierarchy</span>
             </div>
             <div className="transcript">
               {messages.map((item) => (
@@ -366,17 +384,14 @@ export default function App() {
             onChange={setDraft}
             onSubmit={handleSubmit}
           />
-        </section>
-        <section className="work-column">
-          <section className="panel work-panel">
+          </section>
+          <section className="panel work-panel secondary-panel">
             <div className="chat-panel-header">
               <div>
-                <span className="eyebrow">Work Area</span>
+                <span className="eyebrow">Runtime Support</span>
                 <h2>Activity and Output</h2>
               </div>
-              <span className={`status-pill${wsState === "live" ? "" : " muted"}`}>
-                {wsState === "live" ? "Control-plane live" : "Control-plane offline"}
-              </span>
+              <span className="status-pill muted">Secondary</span>
             </div>
             <div className="work-grid">
               <article className="work-card">
@@ -1593,14 +1608,6 @@ export default function App() {
               </article>
             </div>
           </section>
-          <StatusRail
-            visibleControl={visibleControl}
-            visibleControlState={visibleControlState}
-            visibleControlError={visibleControlError}
-            visibleControlNotice={visibleControlNotice}
-            onRefresh={loadVisibleControl}
-            onSave={handleVisibleControlSave}
-          />
         </section>
       </main>
     </div>

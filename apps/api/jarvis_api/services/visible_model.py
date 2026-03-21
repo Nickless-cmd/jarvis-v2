@@ -11,6 +11,7 @@ from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
+from core.identity.visible_identity import load_visible_identity_prompt
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import load_workspace_capabilities
 
@@ -394,7 +395,7 @@ def _extract_output_text(data: dict) -> str:
 
 
 def _build_visible_input(message: str) -> list[dict]:
-    instruction = _capability_instruction()
+    instruction = _visible_system_instruction()
     if not instruction:
         return [
             {
@@ -412,6 +413,15 @@ def _build_visible_input(message: str) -> list[dict]:
             "content": [{"type": "input_text", "text": message}],
         },
     ]
+
+
+def _visible_system_instruction() -> str | None:
+    parts = [
+        load_visible_identity_prompt(),
+        _capability_instruction(),
+    ]
+    text = "\n\n".join(part for part in parts if part)
+    return text or None
 
 
 def _capability_instruction() -> str | None:

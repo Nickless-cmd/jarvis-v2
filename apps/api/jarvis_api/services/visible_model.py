@@ -13,6 +13,7 @@ from urllib import request as urllib_request
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.identity.visible_identity import load_visible_identity_prompt
 from core.runtime.db import (
+    recent_private_inner_notes,
     recent_capability_invocations,
     recent_visible_runs,
     visible_session_continuity,
@@ -427,6 +428,7 @@ def _visible_system_instruction() -> str | None:
         _visible_continuity_instruction(),
         _capability_continuity_instruction(),
         _visible_work_instruction(),
+        _private_support_signal_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
@@ -556,6 +558,33 @@ def _visible_work_instruction() -> str | None:
             "Visible work context:",
             "- " + " | ".join(parts),
             "Use this only as tiny current work context, not as planner or workflow state.",
+        ]
+    )
+
+
+def _private_support_signal_instruction() -> str | None:
+    recent_notes = recent_private_inner_notes(limit=1)
+    if not recent_notes:
+        return None
+
+    note = recent_notes[0]
+    identity_alignment = str(note.get("identity_alignment") or "").strip()
+    if not identity_alignment:
+        return None
+
+    parts = [f"identity_alignment={identity_alignment}"]
+    uncertainty = str(note.get("uncertainty") or "").strip()
+    focus = str(note.get("focus") or "").strip()
+    if uncertainty:
+        parts.append(f"uncertainty={uncertainty}")
+    if focus:
+        parts.append(f"focus={focus}")
+
+    return "\n".join(
+        [
+            "Private support signal:",
+            "- " + " | ".join(parts),
+            "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
         ]
     )
 

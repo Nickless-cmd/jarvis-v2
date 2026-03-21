@@ -652,7 +652,27 @@ def _normalize_visible_work(visible_work: dict | None) -> dict:
         "started_at": visible_work.get("started_at"),
         "current_user_message_preview": visible_work.get("current_user_message_preview"),
         "capability_id": visible_work.get("capability_id"),
+        "persisted_recent_units": _normalize_visible_work_units(
+            visible_work.get("persisted_recent_units")
+        ),
     }
+
+
+def _normalize_visible_work_units(items: list[dict] | None) -> list[dict]:
+    normalized: list[dict] = []
+    for item in items or []:
+        normalized.append(
+            {
+                "work_id": item.get("work_id"),
+                "run_id": item.get("run_id"),
+                "status": item.get("status"),
+                "finished_at": item.get("finished_at"),
+                "user_message_preview": item.get("user_message_preview"),
+                "capability_id": item.get("capability_id"),
+                "work_preview": item.get("work_preview"),
+            }
+        )
+    return normalized
 
 
 def _normalize_visible_continuity(visible_continuity: dict | None) -> dict:

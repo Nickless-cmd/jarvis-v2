@@ -478,60 +478,90 @@ export default function App() {
                     <section className="truth-section">
                       <h3>Visible work</h3>
                       {visibleControl.visible_work ? (
-                        <ul className="runtime-event-list compact">
-                          <li>
-                            <span>
-                              Aktiv: {visibleControl.visible_work.active ? "ja" : "nej"}
-                            </span>
-                            <small>
-                              <span
-                                className={`status-chip ${
-                                  visibleControl.visible_work.active
-                                    ? "status-live"
-                                    : "status-idle"
-                                }`}
-                              >
-                                {visibleControl.visible_work.active ? "aktiv" : "idle"}
+                        <>
+                          <ul className="runtime-event-list compact">
+                            <li>
+                              <span>
+                                Aktiv: {visibleControl.visible_work.active ? "ja" : "nej"}
                               </span>
-                            </small>
-                          </li>
-                          <li>
-                            <span>Run: {visibleControl.visible_work.run_id || "ingen"}</span>
-                          </li>
-                          <li>
-                            <span>
-                              Status: {visibleControl.visible_work.status || "ingen"}
-                            </span>
-                          </li>
-                          <li>
-                            <span>Lane: {visibleControl.visible_work.lane || "ingen"}</span>
-                          </li>
-                          <li>
-                            <span>
-                              Provider/model:{" "}
-                              {visibleControl.visible_work.provider || "ingen"} /{" "}
-                              {visibleControl.visible_work.model || "ingen"}
-                            </span>
-                          </li>
-                          <li>
-                            <span>
-                              Startet: {visibleControl.visible_work.started_at || "ingen"}
-                            </span>
-                          </li>
-                          <li>
-                            <span>
-                              Work preview:{" "}
-                              {visibleControl.visible_work.current_user_message_preview ||
-                                "ingen"}
-                            </span>
-                          </li>
-                          <li>
-                            <span>
-                              Capability:{" "}
-                              {visibleControl.visible_work.capability_id || "ingen"}
-                            </span>
-                          </li>
-                        </ul>
+                              <small>
+                                <span
+                                  className={`status-chip ${
+                                    visibleControl.visible_work.active
+                                      ? "status-live"
+                                      : "status-idle"
+                                  }`}
+                                >
+                                  {visibleControl.visible_work.active ? "aktiv" : "idle"}
+                                </span>
+                              </small>
+                            </li>
+                            <li>
+                              <span>Run: {visibleControl.visible_work.run_id || "ingen"}</span>
+                            </li>
+                            <li>
+                              <span>
+                                Status: {visibleControl.visible_work.status || "ingen"}
+                              </span>
+                            </li>
+                            <li>
+                              <span>Lane: {visibleControl.visible_work.lane || "ingen"}</span>
+                            </li>
+                            <li>
+                              <span>
+                                Provider/model:{" "}
+                                {visibleControl.visible_work.provider || "ingen"} /{" "}
+                                {visibleControl.visible_work.model || "ingen"}
+                              </span>
+                            </li>
+                            <li>
+                              <span>
+                                Startet: {visibleControl.visible_work.started_at || "ingen"}
+                              </span>
+                            </li>
+                            <li>
+                              <span>
+                                Work preview:{" "}
+                                {visibleControl.visible_work.current_user_message_preview ||
+                                  "ingen"}
+                              </span>
+                            </li>
+                            <li>
+                              <span>
+                                Capability:{" "}
+                                {visibleControl.visible_work.capability_id || "ingen"}
+                              </span>
+                            </li>
+                          </ul>
+                          <h4>Persisted visible work units</h4>
+                          {visibleControl.visible_work.persisted_recent_units?.length ? (
+                            <ul className="runtime-event-list compact">
+                              {visibleControl.visible_work.persisted_recent_units.map(
+                                (item) => (
+                                  <li key={item.work_id || item.run_id}>
+                                    <span>{item.work_id || item.run_id || "ingen"}</span>
+                                    <small>
+                                      <span
+                                        className={`status-chip ${statusTone(item.status)}`}
+                                      >
+                                        {item.status || "ukendt"}
+                                      </span>{" "}
+                                      · {item.finished_at || "ingen"}
+                                      {item.run_id ? ` · ${item.run_id}` : ""}
+                                      {item.capability_id ? ` · ${item.capability_id}` : ""}
+                                      {item.user_message_preview
+                                        ? ` · ${item.user_message_preview}`
+                                        : ""}
+                                      {item.work_preview ? ` · ${item.work_preview}` : ""}
+                                    </small>
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          ) : (
+                            <p>Ingen persisted visible work units endnu.</p>
+                          )}
+                        </>
                       ) : (
                         <p>Ingen visible work truth endnu.</p>
                       )}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -83,6 +84,11 @@ def invoke_workspace_capability(
                 "detail": f"Capability requires explicit approval: {summary['execution_mode']}",
             }
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
+            _persist_capability_approval_request(
+                result,
+                requested_at=invoked_at,
+                run_id=run_id,
+            )
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
         result = _invoke_runnable_capability(
@@ -549,6 +555,45 @@ def _persist_capability_invocation(
                 1 if approval.get("approved") else 0,
                 1 if approval.get("granted") else 0,
                 run_id,
+            ),
+        )
+        conn.commit()
+
+
+def _persist_capability_approval_request(
+    invocation: dict[str, object],
+    *,
+    requested_at: str,
+    run_id: str | None = None,
+) -> None:
+    capability = invocation.get("capability") or {}
+    approval = invocation.get("approval") or {}
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO capability_approval_requests (
+                request_id,
+                capability_id,
+                capability_name,
+                capability_kind,
+                execution_mode,
+                approval_policy,
+                run_id,
+                requested_at,
+                status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                f"cap-approval-{uuid4().hex}",
+                capability.get("capability_id") or "unknown",
+                capability.get("name"),
+                capability.get("kind"),
+                invocation.get("execution_mode") or "unknown",
+                approval.get("policy"),
+                run_id,
+                requested_at,
+                "pending",
             ),
         )
         conn.commit()

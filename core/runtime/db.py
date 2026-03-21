@@ -79,6 +79,22 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS capability_approval_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id TEXT NOT NULL UNIQUE,
+                capability_id TEXT NOT NULL,
+                capability_name TEXT,
+                capability_kind TEXT,
+                execution_mode TEXT NOT NULL,
+                approval_policy TEXT,
+                run_id TEXT,
+                requested_at TEXT NOT NULL,
+                status TEXT NOT NULL
+            )
+            """
+        )
         _ensure_capability_invocation_approval_columns(conn)
         conn.commit()
 
@@ -205,3 +221,39 @@ def visible_session_continuity() -> dict[str, object]:
         "included_run_rows": len(recent_runs),
         "included_capability_rows": len(recent_invocations),
     }
+
+
+def recent_capability_approval_requests(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                request_id,
+                capability_id,
+                capability_name,
+                capability_kind,
+                execution_mode,
+                approval_policy,
+                run_id,
+                requested_at,
+                status
+            FROM capability_approval_requests
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "request_id": row["request_id"],
+            "capability_id": row["capability_id"],
+            "capability_name": row["capability_name"],
+            "capability_kind": row["capability_kind"],
+            "execution_mode": row["execution_mode"],
+            "approval_policy": row["approval_policy"],
+            "run_id": row["run_id"],
+            "requested_at": row["requested_at"],
+            "status": row["status"],
+        }
+        for row in rows
+    ]

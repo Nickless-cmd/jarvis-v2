@@ -834,7 +834,8 @@ export default function App() {
                                 </p>
                                 <p className="capability-meta">
                                   Approval:{" "}
-                                  {capability.approval_required ? "required" : "not-needed"}
+                                  {capability.approval_policy || "not-applicable"}
+                                  {capability.approval_required ? " · required" : ""}
                                 </p>
                                 {capability.runnable ? (
                                   <button
@@ -926,6 +927,25 @@ export default function App() {
                           </li>
                           <li>
                             <span>
+                              Approval:{" "}
+                              {visibleControl.capability_invocation.last_invocation
+                                .approval?.policy || "ingen"}
+                              {visibleControl.capability_invocation.last_invocation
+                                .approval?.required
+                                ? " · required"
+                                : ""}
+                              {visibleControl.capability_invocation.last_invocation
+                                .approval?.approved
+                                ? " · approved"
+                                : ""}
+                              {visibleControl.capability_invocation.last_invocation
+                                .approval?.granted
+                                ? " · granted"
+                                : ""}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
                               Invoked:{" "}
                               {visibleControl.capability_invocation.last_invocation
                                 .invoked_at || "ingen"}
@@ -995,6 +1015,12 @@ export default function App() {
                                   </span>{" "}
                                   · {item.execution_mode || "ingen"} ·{" "}
                                   {item.finished_at || "ingen"}
+                                  {item.approval?.policy
+                                    ? ` · approval=${item.approval.policy}`
+                                    : ""}
+                                  {item.approval?.required ? " · required" : ""}
+                                  {item.approval?.approved ? " · approved" : ""}
+                                  {item.approval?.granted ? " · granted" : ""}
                                   {item.run_id ? ` · ${item.run_id}` : ""}
                                   {item.result_preview ? ` · ${item.result_preview}` : ""}
                                 </small>

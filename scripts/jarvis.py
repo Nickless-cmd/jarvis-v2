@@ -603,6 +603,7 @@ def _normalize_capability_invocation(last_invocation: dict | None) -> dict | Non
         "capability": last_invocation.get("capability"),
         "status": last_invocation.get("status"),
         "execution_mode": last_invocation.get("execution_mode"),
+        "approval": _normalize_approval(last_invocation.get("approval")),
         "invoked_at": last_invocation.get("invoked_at"),
         "finished_at": last_invocation.get("finished_at"),
         "result_preview": last_invocation.get("result_preview"),
@@ -621,6 +622,7 @@ def _normalize_persisted_capability_invocations(items: list[dict] | None) -> lis
                 "capability_kind": item.get("capability_kind"),
                 "status": item.get("status"),
                 "execution_mode": item.get("execution_mode"),
+                "approval": _normalize_approval(item.get("approval")),
                 "invoked_at": item.get("invoked_at"),
                 "finished_at": item.get("finished_at"),
                 "result_preview": item.get("result_preview"),
@@ -629,6 +631,17 @@ def _normalize_persisted_capability_invocations(items: list[dict] | None) -> lis
             }
         )
     return normalized
+
+
+def _normalize_approval(approval: dict | None) -> dict | None:
+    if not approval:
+        return None
+    return {
+        "policy": approval.get("policy"),
+        "required": bool(approval.get("required")),
+        "approved": bool(approval.get("approved")),
+        "granted": bool(approval.get("granted")),
+    }
 
 
 def _normalize_visible_capability_use(last_capability_use: dict | None) -> dict | None:

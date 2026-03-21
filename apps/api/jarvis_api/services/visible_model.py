@@ -12,10 +12,15 @@ from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.identity.visible_identity import load_visible_identity_prompt
+from core.memory.private_retained_memory_projection import (
+    build_private_retained_memory_projection,
+)
 from core.runtime.db import (
+    get_private_retained_memory_record,
     get_private_self_model,
-    recent_private_inner_notes,
     recent_private_growth_notes,
+    recent_private_inner_notes,
+    recent_private_retained_memory_records,
     recent_capability_invocations,
     recent_visible_runs,
     visible_session_continuity,
@@ -433,6 +438,7 @@ def _visible_system_instruction() -> str | None:
         _private_support_signal_instruction(),
         _growth_support_signal_instruction(),
         _self_model_support_signal_instruction(),
+        _retained_memory_support_signal_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
@@ -654,6 +660,38 @@ def _self_model_support_signal_instruction() -> str | None:
     return "\n".join(
         [
             "Self-model support signal:",
+            "- " + " | ".join(parts),
+            "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
+        ]
+    )
+
+
+def _retained_memory_support_signal_instruction() -> str | None:
+    projection = build_private_retained_memory_projection(
+        current_record=get_private_retained_memory_record(),
+        recent_records=recent_private_retained_memory_records(limit=5),
+    )
+    if not projection.get("active"):
+        return None
+
+    retained_focus = str(projection.get("retained_focus") or "").strip()
+    retained_kind = str(projection.get("retained_kind") or "").strip()
+    retention_scope = str(projection.get("retention_scope") or "").strip()
+    if not retained_focus or not retained_kind or not retention_scope:
+        return None
+
+    parts = [
+        f"retained_focus={retained_focus}",
+        f"retained_kind={retained_kind}",
+        f"retention_scope={retention_scope}",
+    ]
+    confidence = str(projection.get("confidence") or "").strip()
+    if confidence:
+        parts.append(f"confidence={confidence}")
+
+    return "\n".join(
+        [
+            "Retained memory support signal:",
             "- " + " | ".join(parts),
             "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
         ]

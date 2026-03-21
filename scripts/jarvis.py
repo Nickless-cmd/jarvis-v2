@@ -37,6 +37,7 @@ from core.runtime.db import (
 from core.runtime.provider_router import (
     configure_provider_router_entry,
     provider_router_summary,
+    select_main_agent_target,
 )
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
@@ -243,6 +244,26 @@ def cmd_coding_lane_status(_: argparse.Namespace) -> None:
     )
 
 
+def cmd_select_main_agent(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    result = select_main_agent_target(
+        provider=args.provider,
+        model=args.model,
+        auth_profile=args.auth_profile,
+    )
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "selected": result,
+                "provider_router": provider_router_summary(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_workspace(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     workspace = ensure_default_workspace(name=args.name)
@@ -436,6 +457,12 @@ def build_parser() -> argparse.ArgumentParser:
     configure_copilot_coding_lane.add_argument("--model", required=True)
     configure_copilot_coding_lane.add_argument("--auth-profile", default="copilot")
     configure_copilot_coding_lane.set_defaults(func=cmd_configure_copilot_coding_lane)
+
+    select_main_agent = sub.add_parser("select-main-agent")
+    select_main_agent.add_argument("--provider", required=True)
+    select_main_agent.add_argument("--model", required=True)
+    select_main_agent.add_argument("--auth-profile", default="")
+    select_main_agent.set_defaults(func=cmd_select_main_agent)
 
     coding_lane_status = sub.add_parser("coding-lane-status")
     coding_lane_status.set_defaults(func=cmd_coding_lane_status)

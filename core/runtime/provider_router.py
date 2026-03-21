@@ -180,6 +180,31 @@ def main_agent_selection() -> dict[str, object]:
     }
 
 
+def select_main_agent_target(
+    *,
+    provider: str,
+    model: str,
+    auth_profile: str | None = None,
+) -> dict[str, object]:
+    provider_id = _normalize_simple_id(provider, label="provider")
+    model_name = (model or "").strip()
+    if not model_name:
+        raise ValueError("model must not be empty")
+    profile_name = _normalize_profile(auth_profile or "")
+
+    settings = update_visible_execution_settings(
+        visible_model_provider=provider_id,
+        visible_model_name=model_name,
+        visible_auth_profile=profile_name,
+    )
+    return {
+        "provider": settings.visible_model_provider,
+        "model": settings.visible_model_name,
+        "auth_profile": settings.visible_auth_profile,
+        "selection_authority": "runtime.settings",
+    }
+
+
 def resolve_provider_router_target(*, lane: str) -> dict[str, object]:
     normalized_lane = _normalize_lane(lane)
     registry = load_provider_router_registry()

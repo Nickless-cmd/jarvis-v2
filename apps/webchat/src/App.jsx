@@ -1032,6 +1032,36 @@ export default function App() {
                         <p>Ingen persisted capability invocations endnu.</p>
                       )}
                     </section>
+                    <section className="truth-section">
+                      <h3>Recent approval requests</h3>
+                      {visibleControl.capability_invocation?.recent_approval_requests?.length ? (
+                        <ul className="runtime-event-list compact">
+                          {visibleControl.capability_invocation.recent_approval_requests.map(
+                            (item) => (
+                              <li key={item.request_id}>
+                                <span>
+                                  {item.capability_name || item.capability_id || "ingen"}
+                                </span>
+                                <small>
+                                  <span
+                                    className={`status-chip ${statusTone(item.status)}`}
+                                  >
+                                    {item.status || "ukendt"}
+                                  </span>{" "}
+                                  · {item.execution_mode || "ingen"} ·{" "}
+                                  {item.approval_policy || "ingen"} ·{" "}
+                                  {item.requested_at || "ingen"}
+                                  {item.run_id ? ` · ${item.run_id}` : ""}
+                                  {item.request_id ? ` · ${item.request_id}` : ""}
+                                </small>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      ) : (
+                        <p>Ingen approval requests endnu.</p>
+                      )}
+                    </section>
                   </div>
                 ) : (
                   <p>Ingen visible run truth endnu.</p>

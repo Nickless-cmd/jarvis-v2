@@ -336,6 +336,7 @@ def _capability_invocation_truth() -> tuple[dict, str, str | None]:
     return {
         **get_capability_invocation_truth(),
         "persisted_recent_invocations": [],
+        "recent_approval_requests": [],
     }, "local-fallback", api_error
 
 
@@ -467,6 +468,9 @@ def _capability_invocation_section(
         ),
         "persisted_recent_invocations": _normalize_persisted_capability_invocations(
             capability_invocation.get("persisted_recent_invocations")
+        ),
+        "recent_approval_requests": _normalize_approval_requests(
+            capability_invocation.get("recent_approval_requests")
         ),
         "recent_events": capability_invocation.get("recent_events", []),
     }
@@ -628,6 +632,25 @@ def _normalize_persisted_capability_invocations(items: list[dict] | None) -> lis
                 "result_preview": item.get("result_preview"),
                 "detail": item.get("detail"),
                 "run_id": item.get("run_id"),
+            }
+        )
+    return normalized
+
+
+def _normalize_approval_requests(items: list[dict] | None) -> list[dict]:
+    normalized: list[dict] = []
+    for item in items or []:
+        normalized.append(
+            {
+                "request_id": item.get("request_id"),
+                "capability_id": item.get("capability_id"),
+                "capability_name": item.get("capability_name"),
+                "capability_kind": item.get("capability_kind"),
+                "execution_mode": item.get("execution_mode"),
+                "approval_policy": item.get("approval_policy"),
+                "run_id": item.get("run_id"),
+                "requested_at": item.get("requested_at"),
+                "status": item.get("status"),
             }
         )
     return normalized

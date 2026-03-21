@@ -200,6 +200,37 @@ def cmd_configure_coding_lane(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_configure_copilot_coding_lane(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    result = configure_provider_router_entry(
+        provider="github-copilot",
+        model=args.model,
+        auth_mode="oauth",
+        auth_profile=args.auth_profile,
+        base_url="",
+        api_key="",
+        lane="coding",
+        set_visible=False,
+    )
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "configured": result,
+                "coding_lane": {
+                    "provider": "github-copilot",
+                    "lane": "coding",
+                    "auth_mode": "oauth",
+                    "auth_profile": args.auth_profile,
+                },
+                "provider_router": provider_router_summary(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_coding_lane_status(_: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     init_db()
@@ -400,6 +431,11 @@ def build_parser() -> argparse.ArgumentParser:
     configure_coding_lane.add_argument("--api-key", default="")
     configure_coding_lane.add_argument("--base-url", default="https://api.openai.com/v1")
     configure_coding_lane.set_defaults(func=cmd_configure_coding_lane)
+
+    configure_copilot_coding_lane = sub.add_parser("configure-copilot-coding-lane")
+    configure_copilot_coding_lane.add_argument("--model", required=True)
+    configure_copilot_coding_lane.add_argument("--auth-profile", default="copilot")
+    configure_copilot_coding_lane.set_defaults(func=cmd_configure_copilot_coding_lane)
 
     coding_lane_status = sub.add_parser("coding-lane-status")
     coding_lane_status.set_defaults(func=cmd_coding_lane_status)

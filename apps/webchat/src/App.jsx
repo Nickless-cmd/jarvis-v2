@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import ComposerShell from "./components/ComposerShell.jsx";
 import StatusRail from "./components/StatusRail.jsx";
 
-const API_BASE = "http://127.0.0.1:8010";
+const API_BASE = "";
 
 const initialMessages = [
   {
@@ -31,7 +31,7 @@ export default function App() {
   const [approvalRequestBusy, setApprovalRequestBusy] = useState("");
 
   useEffect(() => {
-    const ws = new WebSocket("ws://127.0.0.1:8010/ws");
+    const ws = new WebSocket(buildWebSocketUrl("/ws"));
 
     ws.onopen = () => {
       setWsState("live");
@@ -215,7 +215,7 @@ export default function App() {
     setVisibleControlNotice("");
 
     try {
-      const response = await fetch(`${API_BASE}/mc/visible-execution`, {
+      const response = await fetch(`${API_BASE}/mc/main-agent-selection`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"
@@ -224,11 +224,11 @@ export default function App() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.detail || "Visible lane authority kunne ikke gemmes.");
+        throw new Error(data.detail || "Main-agent target kunne ikke gemmes.");
       }
-      setVisibleControl(data);
+      await loadVisibleControl({ quiet: true });
       setVisibleControlState("ready");
-      setVisibleControlNotice("Visible lane authority opdateret.");
+      setVisibleControlNotice("Main-agent authority opdateret.");
     } catch (saveError) {
       setVisibleControlState("error");
       setVisibleControlError(
@@ -1605,6 +1605,11 @@ export default function App() {
       </main>
     </div>
   );
+}
+
+function buildWebSocketUrl(path) {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}${path}`;
 }
 
 function statusTone(status) {

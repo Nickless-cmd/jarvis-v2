@@ -16,9 +16,9 @@ const activityItems = [
 ];
 
 const initialAuthority = {
-  visible_model_provider: "",
-  visible_model_name: "",
-  visible_auth_profile: ""
+  provider: "",
+  model: "",
+  auth_profile: ""
 };
 
 export default function StatusRail({
@@ -31,26 +31,42 @@ export default function StatusRail({
 }) {
   const [authority, setAuthority] = useState(initialAuthority);
 
+  const mainAgentSelection = visibleControl?.provider_router?.main_agent_selection;
+  const configuredTargets = mainAgentSelection?.available_configured_targets || [];
+  const readiness = visibleControl?.readiness;
+
   useEffect(() => {
-    if (!visibleControl?.authority) {
+    if (!mainAgentSelection) {
       return;
     }
-    setAuthority(visibleControl.authority);
-  }, [visibleControl]);
+    setAuthority({
+      provider: mainAgentSelection.current_provider || "",
+      model: mainAgentSelection.current_model || "",
+      auth_profile: mainAgentSelection.current_auth_profile || ""
+    });
+  }, [mainAgentSelection]);
 
   function handleSubmit(event) {
     event.preventDefault();
     onSave({
-      visible_model_provider: authority.visible_model_provider.trim(),
-      visible_model_name: authority.visible_model_name.trim(),
-      visible_auth_profile: authority.visible_auth_profile.trim()
+      provider: authority.provider.trim(),
+      model: authority.model.trim(),
+      auth_profile: authority.auth_profile.trim()
     });
   }
 
-  const readiness = visibleControl?.readiness;
-  const supportedProviders = visibleControl?.supported_providers || [];
-  const availableProfiles = visibleControl?.available_auth_profiles || [];
-  const authProfileOptions = buildProfileOptions(availableProfiles, authority.visible_auth_profile);
+  const providerOptions = buildProviderOptions(configuredTargets, authority.provider);
+  const modelOptions = buildModelOptions(configuredTargets, authority.provider, authority.model);
+  const authProfileOptions = buildAuthProfileOptions(
+    configuredTargets,
+    authority.provider,
+    authority.model,
+    authority.auth_profile
+  );
+  const formDisabled =
+    visibleControlState === "loading" ||
+    visibleControlState === "saving" ||
+    configuredTargets.length === 0;
 
   return (
     <aside className="status-rail">
@@ -61,14 +77,14 @@ export default function StatusRail({
           Den synlige chatflade er her. Mission Control forbliver et separat
           kontrolplan.
         </p>
-        <a className="mc-link" href="http://127.0.0.1:5173" target="_blank" rel="noreferrer">
+        <a className="mc-link" href="/mc/runtime" target="_blank" rel="noreferrer">
           Aabn Mission Control
         </a>
       </section>
       <section className="panel rail-panel">
         <div className="rail-header">
           <div>
-            <span className="eyebrow">Visible Lane</span>
+            <span className="eyebrow">Main Agent</span>
             <h2>Execution Authority</h2>
           </div>
           <button
@@ -84,16 +100,25 @@ export default function StatusRail({
           <label>
             <span>Provider</span>
             <select
-              value={authority.visible_model_provider}
-              onChange={(event) =>
-                setAuthority((prev) => ({
-                  ...prev,
-                  visible_model_provider: event.target.value
-                }))
-              }
-              disabled={visibleControlState === "loading" || visibleControlState === "saving"}
+              value={authority.provider}
+              onChange={(event) => {
+                const provider = event.target.value;
+                const model = firstMatchingModel(configuredTargets, provider, authority.model);
+                const authProfile = firstMatchingAuthProfile(
+                  configuredTargets,
+                  provider,
+                  model,
+                  authority.auth_profile
+                );
+                setAuthority({
+                  provider,
+                  model,
+                  auth_profile: authProfile
+                });
+              }}
+              disabled={formDisabled}
             >
-              {supportedProviders.map((provider) => (
+              {providerOptions.map((provider) => (
                 <option key={provider} value={provider}>
                   {provider}
                 </option>
@@ -102,48 +127,66 @@ export default function StatusRail({
           </label>
           <label>
             <span>Model</span>
-            <input
-              value={authority.visible_model_name}
-              onChange={(event) =>
+            <select
+              value={authority.model}
+              onChange={(event) => {
+                const model = event.target.value;
                 setAuthority((prev) => ({
                   ...prev,
-                  visible_model_name: event.target.value
-                }))
-              }
-              disabled={visibleControlState === "loading" || visibleControlState === "saving"}
-            />
+                  model,
+                  auth_profile: firstMatchingAuthProfile(
+                    configuredTargets,
+                    prev.provider,
+                    model,
+                    prev.auth_profile
+                  )
+                }));
+              }}
+              disabled={formDisabled}
+            >
+              {modelOptions.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             <span>Auth profile</span>
             <select
-              value={authority.visible_auth_profile}
+              value={authority.auth_profile}
               onChange={(event) =>
                 setAuthority((prev) => ({
                   ...prev,
-                  visible_auth_profile: event.target.value
+                  auth_profile: event.target.value
                 }))
               }
-              disabled={visibleControlState === "loading" || visibleControlState === "saving"}
+              disabled={formDisabled}
             >
               <option value="">ingen</option>
-              {authProfileOptions.map((item) => (
-                <option key={item.profile} value={item.profile}>
-                  {item.profile}
-                  {item.auth_status === "active" ? "" : ` (${item.auth_status})`}
+              {authProfileOptions.map((profile) => (
+                <option key={profile} value={profile}>
+                  {profile}
                 </option>
               ))}
             </select>
           </label>
           <div className="visible-control-actions">
-            <button
-              className="primary"
-              type="submit"
-              disabled={visibleControlState === "loading" || visibleControlState === "saving"}
-            >
-              {visibleControlState === "saving" ? "Gemmer..." : "Gem authority"}
+            <button className="primary" type="submit" disabled={formDisabled}>
+              {visibleControlState === "saving" ? "Gemmer..." : "Gem main-agent target"}
             </button>
           </div>
         </form>
+        {mainAgentSelection ? (
+          <p>
+            Current: {mainAgentSelection.current_provider || "ingen"} /{" "}
+            {mainAgentSelection.current_model || "ingen"} /{" "}
+            {mainAgentSelection.current_auth_profile || "ingen"}
+          </p>
+        ) : null}
+        {!configuredTargets.length ? (
+          <p>Ingen konfigurerede provider-router targets endnu.</p>
+        ) : null}
         <div className="visible-readiness">
           <strong>Readiness</strong>
           {readiness ? (
@@ -211,24 +254,78 @@ export default function StatusRail({
   );
 }
 
-function buildProfileOptions(items, currentValue) {
+function buildProviderOptions(targets, currentValue) {
   const seen = new Set();
   const next = [];
 
-  for (const item of items) {
-    if (!item.profile || seen.has(item.profile)) {
+  for (const item of targets) {
+    const provider = item.provider || "";
+    if (!provider || seen.has(provider)) {
       continue;
     }
-    seen.add(item.profile);
-    next.push(item);
+    seen.add(provider);
+    next.push(provider);
   }
 
   if (currentValue && !seen.has(currentValue)) {
-    next.unshift({
-      profile: currentValue,
-      auth_status: "configured"
-    });
+    next.unshift(currentValue);
   }
 
   return next;
+}
+
+function buildModelOptions(targets, provider, currentValue) {
+  const seen = new Set();
+  const next = [];
+
+  for (const item of targets) {
+    if ((item.provider || "") !== provider) {
+      continue;
+    }
+    const model = item.model || "";
+    if (!model || seen.has(model)) {
+      continue;
+    }
+    seen.add(model);
+    next.push(model);
+  }
+
+  if (currentValue && !seen.has(currentValue)) {
+    next.unshift(currentValue);
+  }
+
+  return next;
+}
+
+function buildAuthProfileOptions(targets, provider, model, currentValue) {
+  const seen = new Set();
+  const next = [];
+
+  for (const item of targets) {
+    if ((item.provider || "") !== provider || (item.model || "") !== model) {
+      continue;
+    }
+    const authProfile = item.auth_profile || "";
+    if (!authProfile || seen.has(authProfile)) {
+      continue;
+    }
+    seen.add(authProfile);
+    next.push(authProfile);
+  }
+
+  if (currentValue && !seen.has(currentValue)) {
+    next.unshift(currentValue);
+  }
+
+  return next;
+}
+
+function firstMatchingModel(targets, provider, currentValue) {
+  const next = buildModelOptions(targets, provider, currentValue);
+  return next[0] || "";
+}
+
+function firstMatchingAuthProfile(targets, provider, model, currentValue) {
+  const next = buildAuthProfileOptions(targets, provider, model, currentValue);
+  return next[0] || "";
 }

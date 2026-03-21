@@ -54,7 +54,7 @@ from core.runtime.config import (
 from core.runtime.operational_preference_alignment import (
     build_operational_preference_alignment,
 )
-from core.runtime.provider_router import provider_router_summary
+from core.runtime.provider_router import provider_router_summary, select_main_agent_target
 from core.runtime.db import (
     approve_capability_approval_request,
     connect,
@@ -214,6 +214,11 @@ def mc_visible_execution() -> dict:
     return _visible_execution_surface(settings)
 
 
+@router.get("/main-agent-selection")
+def mc_main_agent_selection() -> dict:
+    return _main_agent_selection_surface()
+
+
 @router.post("/workspace-capabilities/{capability_id}/invoke")
 def mc_invoke_workspace_capability(capability_id: str, approved: bool = False) -> dict:
     result = invoke_workspace_capability(capability_id, approved=approved)
@@ -328,6 +333,39 @@ def mc_update_visible_execution(payload: dict) -> dict:
     return _visible_execution_surface(settings)
 
 
+@router.put("/main-agent-selection")
+def mc_update_main_agent_selection(payload: dict) -> dict:
+    allowed_fields = {"provider", "model", "auth_profile"}
+    unknown_fields = sorted(set(payload) - allowed_fields)
+    if unknown_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported main agent selection fields: {', '.join(unknown_fields)}",
+        )
+
+    provider = payload.get("provider")
+    model = payload.get("model")
+    auth_profile = payload.get("auth_profile", "")
+
+    if not isinstance(provider, str) or not provider.strip():
+        raise HTTPException(status_code=400, detail="provider must be a non-empty string")
+    if not isinstance(model, str) or not model.strip():
+        raise HTTPException(status_code=400, detail="model must be a non-empty string")
+    if not isinstance(auth_profile, str):
+        raise HTTPException(status_code=400, detail="auth_profile must be a string")
+
+    try:
+        select_main_agent_target(
+            provider=provider,
+            model=model,
+            auth_profile=auth_profile,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return _main_agent_selection_surface()
+
+
 def _latest_item(items: list[dict]) -> dict | None:
     return items[0] if items else None
 
@@ -382,6 +420,16 @@ def _visible_execution_surface(settings) -> dict:
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),
+    }
+
+
+def _main_agent_selection_surface() -> dict:
+    provider_router = provider_router_summary()
+    return {
+        "selection": provider_router.get("main_agent_selection"),
+        "target": provider_router.get("main_agent_target"),
+        "provider_router": provider_router,
+        "readiness": visible_execution_readiness(),
     }
 
 

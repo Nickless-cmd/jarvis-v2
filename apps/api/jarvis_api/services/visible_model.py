@@ -451,6 +451,42 @@ def _visible_continuity_instruction() -> str | None:
     return "\n".join(lines)
 
 
+def visible_continuity_summary() -> dict[str, object]:
+    recent_runs = recent_visible_runs(limit=2)
+    included_run_ids: list[str] = []
+    statuses: list[str] = []
+    preview_count = 0
+    error_count = 0
+    capability_count = 0
+
+    for item in recent_runs:
+        run_id = str(item.get("run_id") or "").strip()
+        if run_id:
+            included_run_ids.append(run_id)
+        status = str(item.get("status") or "").strip()
+        if status:
+            statuses.append(status)
+        if str(item.get("text_preview") or "").strip():
+            preview_count += 1
+        if str(item.get("error") or "").strip():
+            error_count += 1
+        if str(item.get("capability_id") or "").strip():
+            capability_count += 1
+
+    instruction = _visible_continuity_instruction()
+    return {
+        "active": bool(instruction),
+        "source": "persisted-visible-runs",
+        "included_rows": len(recent_runs),
+        "included_run_ids": included_run_ids,
+        "statuses": statuses,
+        "preview_count": preview_count,
+        "error_count": error_count,
+        "capability_count": capability_count,
+        "chars": len(instruction or ""),
+    }
+
+
 def _capability_instruction() -> str | None:
     capabilities = load_workspace_capabilities().get("declared_capabilities", [])
     runnable = [

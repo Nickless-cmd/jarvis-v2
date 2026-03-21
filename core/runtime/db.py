@@ -105,6 +105,11 @@ def init_db() -> None:
                 run_id TEXT NOT NULL UNIQUE,
                 work_id TEXT NOT NULL,
                 status TEXT NOT NULL,
+                note_kind TEXT NOT NULL DEFAULT '',
+                focus TEXT NOT NULL DEFAULT '',
+                uncertainty TEXT NOT NULL DEFAULT '',
+                identity_alignment TEXT NOT NULL DEFAULT '',
+                work_signal TEXT NOT NULL DEFAULT '',
                 private_summary TEXT NOT NULL,
                 created_at TEXT NOT NULL
             )
@@ -152,6 +157,7 @@ def init_db() -> None:
             )
             """
         )
+        _ensure_private_inner_note_columns(conn)
         _ensure_capability_invocation_approval_columns(conn)
         _ensure_capability_approval_request_columns(conn)
         conn.commit()
@@ -286,6 +292,11 @@ def record_private_inner_note(
     run_id: str,
     work_id: str,
     status: str,
+    note_kind: str,
+    focus: str,
+    uncertainty: str,
+    identity_alignment: str,
+    work_signal: str,
     private_summary: str,
     created_at: str,
 ) -> None:
@@ -293,14 +304,20 @@ def record_private_inner_note(
         conn.execute(
             """
             INSERT INTO private_inner_notes (
-                note_id, source, run_id, work_id, status, private_summary, created_at
+                note_id, source, run_id, work_id, status, note_kind, focus,
+                uncertainty, identity_alignment, work_signal, private_summary, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_id) DO UPDATE SET
                 note_id=excluded.note_id,
                 source=excluded.source,
                 work_id=excluded.work_id,
                 status=excluded.status,
+                note_kind=excluded.note_kind,
+                focus=excluded.focus,
+                uncertainty=excluded.uncertainty,
+                identity_alignment=excluded.identity_alignment,
+                work_signal=excluded.work_signal,
                 private_summary=excluded.private_summary,
                 created_at=excluded.created_at
             """,
@@ -310,6 +327,11 @@ def record_private_inner_note(
                 run_id,
                 work_id,
                 status,
+                note_kind,
+                focus,
+                uncertainty,
+                identity_alignment,
+                work_signal,
                 private_summary,
                 created_at,
             ),
@@ -327,6 +349,11 @@ def recent_private_inner_notes(limit: int = 5) -> list[dict[str, object]]:
                 run_id,
                 work_id,
                 status,
+                note_kind,
+                focus,
+                uncertainty,
+                identity_alignment,
+                work_signal,
                 private_summary,
                 created_at
             FROM private_inner_notes
@@ -342,6 +369,11 @@ def recent_private_inner_notes(limit: int = 5) -> list[dict[str, object]]:
             "run_id": row["run_id"],
             "work_id": row["work_id"],
             "status": row["status"],
+            "note_kind": row["note_kind"],
+            "focus": row["focus"],
+            "uncertainty": row["uncertainty"],
+            "identity_alignment": row["identity_alignment"],
+            "work_signal": row["work_signal"],
             "private_summary": row["private_summary"],
             "created_at": row["created_at"],
         }
@@ -410,6 +442,22 @@ def _ensure_capability_invocation_approval_columns(conn: sqlite3.Connection) -> 
         if name in existing:
             continue
         conn.execute(f"ALTER TABLE capability_invocations ADD COLUMN {name} {spec}")
+
+
+def _ensure_private_inner_note_columns(conn: sqlite3.Connection) -> None:
+    rows = conn.execute("PRAGMA table_info(private_inner_notes)").fetchall()
+    existing = {str(row["name"]) for row in rows}
+    required_columns = {
+        "note_kind": "TEXT NOT NULL DEFAULT ''",
+        "focus": "TEXT NOT NULL DEFAULT ''",
+        "uncertainty": "TEXT NOT NULL DEFAULT ''",
+        "identity_alignment": "TEXT NOT NULL DEFAULT ''",
+        "work_signal": "TEXT NOT NULL DEFAULT ''",
+    }
+    for name, spec in required_columns.items():
+        if name in existing:
+            continue
+        conn.execute(f"ALTER TABLE private_inner_notes ADD COLUMN {name} {spec}")
 
 
 def visible_session_continuity() -> dict[str, object]:

@@ -38,6 +38,7 @@ from core.runtime.db import (
     connect,
     get_capability_approval_request,
     get_private_development_state,
+    get_private_retained_memory_record,
     get_private_promotion_decision,
     get_private_temporal_promotion_signal,
     get_protected_inner_voice,
@@ -159,6 +160,7 @@ def mc_runtime() -> dict:
         "protected_inner_voice": _protected_inner_voice_surface(),
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
         "private_promotion_decision": _private_promotion_decision_surface(),
+        "private_retained_memory_record": _private_retained_memory_record_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -330,6 +332,7 @@ def _visible_execution_surface(settings) -> dict:
         "protected_inner_voice": _protected_inner_voice_surface(),
         "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
         "private_promotion_decision": _private_promotion_decision_surface(),
+        "private_retained_memory_record": _private_retained_memory_record_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),
@@ -452,6 +455,14 @@ def _private_promotion_decision_surface() -> dict:
     return {
         "active": bool(decision),
         "current": decision,
+    }
+
+
+def _private_retained_memory_record_surface() -> dict:
+    record = get_private_retained_memory_record()
+    return {
+        "active": bool(record),
+        "current": record,
     }
 
 

@@ -250,6 +250,22 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_retained_memory_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                record_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                run_id TEXT NOT NULL UNIQUE,
+                work_id TEXT NOT NULL,
+                retained_value TEXT NOT NULL,
+                retained_kind TEXT NOT NULL,
+                retention_scope TEXT NOT NULL,
+                confidence TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -1170,6 +1186,85 @@ def get_private_promotion_decision() -> dict[str, object] | None:
         "promotion_target": row["promotion_target"],
         "promotion_action": row["promotion_action"],
         "promotion_scope": row["promotion_scope"],
+        "confidence": row["confidence"],
+        "created_at": row["created_at"],
+    }
+
+
+def record_private_retained_memory_record(
+    *,
+    record_id: str,
+    source: str,
+    run_id: str,
+    work_id: str,
+    retained_value: str,
+    retained_kind: str,
+    retention_scope: str,
+    confidence: str,
+    created_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_retained_memory_records (
+                record_id, source, run_id, work_id, retained_value,
+                retained_kind, retention_scope, confidence, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                record_id=excluded.record_id,
+                source=excluded.source,
+                work_id=excluded.work_id,
+                retained_value=excluded.retained_value,
+                retained_kind=excluded.retained_kind,
+                retention_scope=excluded.retention_scope,
+                confidence=excluded.confidence,
+                created_at=excluded.created_at
+            """,
+            (
+                record_id,
+                source,
+                run_id,
+                work_id,
+                retained_value,
+                retained_kind,
+                retention_scope,
+                confidence,
+                created_at,
+            ),
+        )
+        conn.commit()
+
+
+def get_private_retained_memory_record() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                record_id,
+                source,
+                run_id,
+                work_id,
+                retained_value,
+                retained_kind,
+                retention_scope,
+                confidence,
+                created_at
+            FROM private_retained_memory_records
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "record_id": row["record_id"],
+        "source": row["source"],
+        "run_id": row["run_id"],
+        "work_id": row["work_id"],
+        "retained_value": row["retained_value"],
+        "retained_kind": row["retained_kind"],
+        "retention_scope": row["retention_scope"],
         "confidence": row["confidence"],
         "created_at": row["created_at"],
     }

@@ -479,6 +479,9 @@ def _private_initiative_tension_surface() -> dict:
             recent_private_reflective_selections(limit=1)
         ),
         private_temporal_promotion_signal=get_private_temporal_promotion_signal(),
+        private_temporal_curiosity_state=_private_temporal_curiosity_state_surface().get(
+            "current"
+        ),
         private_retained_memory_projection=_private_retained_memory_projection_surface().get(
             "current"
         ),

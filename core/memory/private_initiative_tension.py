@@ -8,6 +8,7 @@ def build_private_initiative_tension(
     private_development_state: dict[str, object] | None,
     private_reflective_selection: dict[str, object] | None,
     private_temporal_promotion_signal: dict[str, object] | None,
+    private_temporal_curiosity_state: dict[str, object] | None,
     private_retained_memory_projection: dict[str, object] | None,
 ) -> dict[str, object]:
     if (
@@ -26,6 +27,7 @@ def build_private_initiative_tension(
         private_state=private_state,
         private_reflective_selection=private_reflective_selection,
         private_temporal_promotion_signal=private_temporal_promotion_signal,
+        private_temporal_curiosity_state=private_temporal_curiosity_state,
     )
     tension_target = _tension_target(
         protected_inner_voice=protected_inner_voice,
@@ -36,12 +38,14 @@ def build_private_initiative_tension(
         private_state=private_state,
         private_reflective_selection=private_reflective_selection,
         private_temporal_promotion_signal=private_temporal_promotion_signal,
+        private_temporal_curiosity_state=private_temporal_curiosity_state,
     )
     reason = _reason(
         protected_inner_voice=protected_inner_voice,
         private_development_state=private_development_state,
         private_reflective_selection=private_reflective_selection,
         private_temporal_promotion_signal=private_temporal_promotion_signal,
+        private_temporal_curiosity_state=private_temporal_curiosity_state,
     )
     confidence = str(
         private_temporal_promotion_signal.get("promotion_confidence")
@@ -84,14 +88,20 @@ def _tension_kind(
     private_state: dict[str, object],
     private_reflective_selection: dict[str, object],
     private_temporal_promotion_signal: dict[str, object],
+    private_temporal_curiosity_state: dict[str, object] | None,
 ) -> str:
     promotion_action = str(
         private_temporal_promotion_signal.get("promotion_action") or ""
     ).strip()
     selection_kind = str(private_reflective_selection.get("selection_kind") or "").strip()
     curiosity = str(private_state.get("curiosity") or "low").strip()
+    curiosity_carry = str(
+        (private_temporal_curiosity_state or {}).get("curiosity_carry") or ""
+    ).strip()
     if promotion_action == "review" or selection_kind == "reconsider":
         return "unresolved"
+    if curiosity_carry in {"carried", "held"}:
+        return "curiosity-pull"
     if curiosity == "medium":
         return "curiosity-pull"
     return "retention-pull"
@@ -119,6 +129,7 @@ def _tension_level(
     private_state: dict[str, object],
     private_reflective_selection: dict[str, object],
     private_temporal_promotion_signal: dict[str, object],
+    private_temporal_curiosity_state: dict[str, object] | None,
 ) -> str:
     frustration = str(private_state.get("frustration") or "low").strip()
     curiosity = str(private_state.get("curiosity") or "low").strip()
@@ -126,7 +137,12 @@ def _tension_level(
         private_temporal_promotion_signal.get("promotion_action") or ""
     ).strip()
     selection_kind = str(private_reflective_selection.get("selection_kind") or "").strip()
+    curiosity_carry = str(
+        (private_temporal_curiosity_state or {}).get("curiosity_carry") or ""
+    ).strip()
     if frustration == "medium" or promotion_action == "review":
+        return "medium"
+    if curiosity_carry in {"carried", "held"}:
         return "medium"
     if curiosity == "medium" or selection_kind == "retain":
         return "medium"
@@ -139,12 +155,15 @@ def _reason(
     private_development_state: dict[str, object],
     private_reflective_selection: dict[str, object],
     private_temporal_promotion_signal: dict[str, object],
+    private_temporal_curiosity_state: dict[str, object] | None,
 ) -> str:
     for item in (
         private_reflective_selection.get("reconsider"),
         protected_inner_voice.get("current_concern"),
         private_development_state.get("preferred_direction"),
         private_temporal_promotion_signal.get("rhythm_window"),
+        (private_temporal_curiosity_state or {}).get("maturation_window"),
+        (private_temporal_curiosity_state or {}).get("rhythm_carry"),
     ):
         value = str(item or "").strip()
         if value:

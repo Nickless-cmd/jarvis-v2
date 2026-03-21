@@ -357,6 +357,12 @@ def _capability_visible_text(*, capability_id: str, invocation: dict) -> str:
     text = ""
     if isinstance(result, dict):
         text = str(result.get("text") or "").strip()
+        if result.get("type") == "workspace-search-read":
+            return _workspace_search_visible_text(
+                capability_id=capability_id,
+                execution_mode=execution_mode,
+                result=result,
+            )
 
     if text:
         return (
@@ -369,6 +375,31 @@ def _capability_visible_text(*, capability_id: str, invocation: dict) -> str:
             f"{detail}"
         )
     return f"[Capability {capability_id} via {execution_mode}] {status}"
+
+
+def _workspace_search_visible_text(
+    *, capability_id: str, execution_mode: str, result: dict
+) -> str:
+    path = str(result.get("path") or "ukendt")
+    query = str(result.get("query") or "ukendt")
+    matches = result.get("matches") or []
+    lines = [
+        f"[Capability {capability_id} via {execution_mode}]",
+        f"File: {path}",
+        f"Query: {query}",
+    ]
+    if isinstance(matches, list) and matches:
+        for match in matches:
+            if not isinstance(match, dict):
+                continue
+            line_number = match.get("line")
+            excerpt = str(match.get("excerpt") or "").strip()
+            if not excerpt:
+                continue
+            lines.append(f"L{line_number}: {excerpt}")
+    else:
+        lines.append("No matches found.")
+    return "\n".join(lines)
 
 
 def _bounded_error(error_message: str, limit: int = 160) -> str:

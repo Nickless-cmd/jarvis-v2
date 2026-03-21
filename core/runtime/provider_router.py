@@ -138,7 +138,79 @@ def provider_router_summary() -> dict[str, object]:
                 "auth_profile": "",
             },
         },
+        "lane_targets": provider_router_lane_targets(),
     }
+
+
+def resolve_provider_router_target(*, lane: str) -> dict[str, object]:
+    normalized_lane = _normalize_lane(lane)
+    registry = load_provider_router_registry()
+    settings = load_settings()
+
+    if normalized_lane == "visible":
+        return {
+            "active": True,
+            "lane": normalized_lane,
+            "source": "runtime.settings",
+            "provider": settings.visible_model_provider,
+            "model": settings.visible_model_name,
+            "auth_profile": settings.visible_auth_profile,
+            "auth_mode": _provider_auth_mode(
+                provider=settings.visible_model_provider,
+                registry=registry,
+            ),
+            "base_url": _provider_base_url(
+                provider=settings.visible_model_provider,
+                registry=registry,
+            ),
+            "credentials_ready": _credentials_ready(
+                provider=settings.visible_model_provider,
+                auth_profile=settings.visible_auth_profile,
+            ),
+            "fallback_provider": "phase1-runtime",
+            "fallback_model": "visible-placeholder",
+        }
+
+    model_entry = _latest_model_for_lane(registry=registry, lane=normalized_lane)
+    if not model_entry:
+        return {
+            "active": False,
+            "lane": normalized_lane,
+            "source": "provider-router-registry",
+            "provider": None,
+            "model": None,
+            "auth_profile": None,
+            "auth_mode": None,
+            "base_url": None,
+            "credentials_ready": False,
+            "fallback_provider": None,
+            "fallback_model": None,
+        }
+
+    provider = str(model_entry.get("provider") or "").strip()
+    provider_entry = _provider_entry(registry=registry, provider=provider) or {}
+    auth_profile = str(provider_entry.get("auth_profile") or "").strip()
+    return {
+        "active": True,
+        "lane": normalized_lane,
+        "source": "provider-router-registry",
+        "provider": provider,
+        "model": str(model_entry.get("model") or "").strip(),
+        "auth_profile": auth_profile,
+        "auth_mode": str(provider_entry.get("auth_mode") or "").strip(),
+        "base_url": str(provider_entry.get("base_url") or "").strip(),
+        "credentials_ready": _credentials_ready(
+            provider=provider,
+            auth_profile=auth_profile,
+        ),
+        "fallback_provider": None,
+        "fallback_model": None,
+    }
+
+
+def provider_router_lane_targets() -> dict[str, dict[str, object]]:
+    lanes = ["visible", "cheap", "coding", "premium", "local"]
+    return {lane: resolve_provider_router_target(lane=lane) for lane in lanes}
 
 
 def _provider_surface(item: dict[str, Any]) -> dict[str, object]:
@@ -166,6 +238,57 @@ def _model_surface(item: dict[str, Any]) -> dict[str, object]:
         "enabled": bool(item.get("enabled", True)),
         "updated_at": item.get("updated_at"),
     }
+
+
+def _latest_model_for_lane(
+    *, registry: dict[str, object], lane: str
+) -> dict[str, object] | None:
+    lane_models = [
+        item
+        for item in registry.get("models") or []
+        if bool(item.get("enabled", True))
+        and str(item.get("lane") or "").strip() == lane
+        and str(item.get("provider") or "").strip()
+        and str(item.get("model") or "").strip()
+    ]
+    if not lane_models:
+        return None
+    lane_models.sort(key=lambda item: str(item.get("updated_at") or ""), reverse=True)
+    return lane_models[0]
+
+
+def _provider_entry(*, registry: dict[str, object], provider: str) -> dict[str, object] | None:
+    for item in registry.get("providers") or []:
+        if not bool(item.get("enabled", True)):
+            continue
+        if str(item.get("provider") or "").strip() == provider:
+            return item
+    return None
+
+
+def _provider_auth_mode(*, provider: str, registry: dict[str, object]) -> str | None:
+    entry = _provider_entry(registry=registry, provider=provider)
+    if not entry:
+        return None
+    return str(entry.get("auth_mode") or "").strip() or None
+
+
+def _provider_base_url(*, provider: str, registry: dict[str, object]) -> str | None:
+    entry = _provider_entry(registry=registry, provider=provider)
+    if not entry:
+        return None
+    return str(entry.get("base_url") or "").strip() or None
+
+
+def _credentials_ready(*, provider: str, auth_profile: str) -> bool:
+    if not provider:
+        return False
+    if provider == "phase1-runtime":
+        return True
+    if not auth_profile:
+        return False
+    auth_state = get_provider_state(profile=auth_profile, provider=provider)
+    return bool(auth_state and auth_state.get("status") == "active")
 
 
 def _upsert_provider(items: list[dict[str, object]], entry: dict[str, object]) -> None:

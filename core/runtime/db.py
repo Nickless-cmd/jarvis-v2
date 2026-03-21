@@ -217,6 +217,23 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_temporal_promotion_signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                signal_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                run_id TEXT NOT NULL UNIQUE,
+                work_id TEXT NOT NULL,
+                rhythm_state TEXT NOT NULL,
+                rhythm_window TEXT NOT NULL,
+                promotion_target TEXT NOT NULL,
+                promotion_action TEXT NOT NULL,
+                promotion_confidence TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -975,6 +992,90 @@ def get_protected_inner_voice() -> dict[str, object] | None:
         "current_concern": row["current_concern"],
         "current_pull": row["current_pull"],
         "voice_line": row["voice_line"],
+        "created_at": row["created_at"],
+    }
+
+
+def record_private_temporal_promotion_signal(
+    *,
+    signal_id: str,
+    source: str,
+    run_id: str,
+    work_id: str,
+    rhythm_state: str,
+    rhythm_window: str,
+    promotion_target: str,
+    promotion_action: str,
+    promotion_confidence: str,
+    created_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_temporal_promotion_signals (
+                signal_id, source, run_id, work_id, rhythm_state, rhythm_window,
+                promotion_target, promotion_action, promotion_confidence, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                signal_id=excluded.signal_id,
+                source=excluded.source,
+                work_id=excluded.work_id,
+                rhythm_state=excluded.rhythm_state,
+                rhythm_window=excluded.rhythm_window,
+                promotion_target=excluded.promotion_target,
+                promotion_action=excluded.promotion_action,
+                promotion_confidence=excluded.promotion_confidence,
+                created_at=excluded.created_at
+            """,
+            (
+                signal_id,
+                source,
+                run_id,
+                work_id,
+                rhythm_state,
+                rhythm_window,
+                promotion_target,
+                promotion_action,
+                promotion_confidence,
+                created_at,
+            ),
+        )
+        conn.commit()
+
+
+def get_private_temporal_promotion_signal() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                signal_id,
+                source,
+                run_id,
+                work_id,
+                rhythm_state,
+                rhythm_window,
+                promotion_target,
+                promotion_action,
+                promotion_confidence,
+                created_at
+            FROM private_temporal_promotion_signals
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "signal_id": row["signal_id"],
+        "source": row["source"],
+        "run_id": row["run_id"],
+        "work_id": row["work_id"],
+        "rhythm_state": row["rhythm_state"],
+        "rhythm_window": row["rhythm_window"],
+        "promotion_target": row["promotion_target"],
+        "promotion_action": row["promotion_action"],
+        "promotion_confidence": row["promotion_confidence"],
         "created_at": row["created_at"],
     }
 

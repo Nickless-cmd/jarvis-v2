@@ -20,6 +20,9 @@ from core.memory.private_reflective_selection import (
     build_private_reflective_selection_payload,
 )
 from core.memory.private_state import build_private_state_payload
+from core.memory.private_temporal_promotion_signal import (
+    build_private_temporal_promotion_signal_payload,
+)
 from core.memory.protected_inner_voice import build_protected_inner_voice_payload
 from core.memory.private_self_model import build_private_self_model_payload
 from core.costing.ledger import record_cost
@@ -32,6 +35,7 @@ from core.runtime.db import (
     record_private_inner_note,
     record_private_reflective_selection,
     record_private_self_model,
+    record_private_temporal_promotion_signal,
     record_protected_inner_voice,
     recent_visible_work_notes,
     recent_visible_work_units,
@@ -883,6 +887,15 @@ def _persist_visible_run_outcome(
         private_reflective_selection=private_reflective_selection,
         created_at=finished_at,
     )
+    private_temporal_promotion_signal = build_private_temporal_promotion_signal_payload(
+        run_id=run.run_id,
+        work_id=work_id,
+        private_state=private_state,
+        private_reflective_selection=private_reflective_selection,
+        private_development_state=private_development_state,
+        protected_inner_voice=protected_inner_voice,
+        created_at=finished_at,
+    )
     with connect() as conn:
         conn.execute(
             """
@@ -994,3 +1007,4 @@ def _persist_visible_run_outcome(
     record_private_development_state(**private_development_state)
     record_private_state(**private_state)
     record_protected_inner_voice(**protected_inner_voice)
+    record_private_temporal_promotion_signal(**private_temporal_promotion_signal)

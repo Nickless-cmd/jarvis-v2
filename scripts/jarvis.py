@@ -17,7 +17,7 @@ from apps.api.jarvis_api.services.visible_model import visible_execution_readine
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     coding_lane_execution_truth,
 )
-from core.auth.profiles import get_provider_state
+from core.auth.profiles import get_provider_state, revoke_provider, save_provider_credentials
 from apps.api.jarvis_api.services.visible_runs import (
     cancel_visible_run,
     get_active_visible_run,
@@ -268,6 +268,46 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+
+    profile_state = None
+    if args.state == "stored":
+        profile_state = save_provider_credentials(
+            profile=args.auth_profile,
+            provider="github-copilot",
+            credentials={
+                "placeholder": True,
+                "kind": "github-copilot-oauth-placeholder",
+                "real_oauth": False,
+                "created_by": "jarvis-cli",
+            },
+        )
+    elif args.state == "revoked":
+        profile_state = revoke_provider(
+            profile=args.auth_profile,
+            provider="github-copilot",
+        )
+    else:
+        raise ValueError("state must be one of: stored, revoked")
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": "github-copilot",
+                "auth_profile": args.auth_profile,
+                "requested_state": args.state,
+                "coding_lane": coding_lane_execution_truth(),
+                "profile_state": profile_state,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_select_main_agent(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     result = select_main_agent_target(
@@ -491,6 +531,15 @@ def build_parser() -> argparse.ArgumentParser:
     copilot_auth_status = sub.add_parser("copilot-auth-status")
     copilot_auth_status.add_argument("--auth-profile", default="copilot")
     copilot_auth_status.set_defaults(func=cmd_copilot_auth_status)
+
+    set_copilot_auth_state = sub.add_parser("set-copilot-auth-state")
+    set_copilot_auth_state.add_argument("--auth-profile", default="copilot")
+    set_copilot_auth_state.add_argument(
+        "--state",
+        required=True,
+        choices=("stored", "revoked"),
+    )
+    set_copilot_auth_state.set_defaults(func=cmd_set_copilot_auth_state)
 
     coding_lane_status = sub.add_parser("coding-lane-status")
     coding_lane_status.set_defaults(func=cmd_coding_lane_status)

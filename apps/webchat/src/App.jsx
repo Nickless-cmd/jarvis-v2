@@ -442,6 +442,69 @@ export default function App() {
                       </ul>
                     </section>
                     <section className="truth-section">
+                      <h3>Sidste capability-brug i visible run</h3>
+                      {visibleControl.visible_run.last_capability_use ? (
+                        <ul className="runtime-event-list compact">
+                          <li>
+                            <span>
+                              Capability:{" "}
+                              {visibleControl.visible_run.last_capability_use
+                                .capability_id || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Navn:{" "}
+                              {visibleControl.visible_run.last_capability_use
+                                .capability?.name || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Status:{" "}
+                              {visibleControl.visible_run.last_capability_use.status ||
+                                "ingen"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${statusTone(
+                                  visibleControl.visible_run.last_capability_use.status
+                                )}`}
+                              >
+                                {visibleControl.visible_run.last_capability_use.status ||
+                                  "ingen"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>
+                              Mode:{" "}
+                              {visibleControl.visible_run.last_capability_use
+                                .execution_mode || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Brugt:{" "}
+                              {visibleControl.visible_run.last_capability_use.used_at ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Preview/detail:{" "}
+                              {visibleControl.visible_run.last_capability_use
+                                .result_preview ||
+                                visibleControl.visible_run.last_capability_use.detail ||
+                                "ingen"}
+                            </span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <p>Ingen capability-brug i visible run endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
                       <h3>Recent events</h3>
                       {visibleControl.visible_run.recent_events?.length ? (
                         <ul className="runtime-event-list compact">

@@ -66,6 +66,7 @@ class VisibleRunController:
 
 _VISIBLE_RUN_CONTROLLERS: dict[str, VisibleRunController] = {}
 _LAST_VISIBLE_RUN_OUTCOME: dict[str, str] | None = None
+_LAST_VISIBLE_CAPABILITY_USE: dict[str, object] | None = None
 
 
 def start_visible_run(message: str) -> AsyncIterator[str]:
@@ -210,6 +211,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
         if capability_call and _is_runnable_workspace_capability(capability_call):
             capability_result = invoke_workspace_capability(capability_call)
+            set_last_visible_capability_use(
+                run,
+                capability_id=capability_call,
+                invocation=capability_result,
+            )
             visible_output_text = _capability_visible_text(
                 capability_id=capability_call,
                 invocation=capability_result,
@@ -531,6 +537,10 @@ def get_last_visible_run_outcome() -> dict[str, str] | None:
     return dict(_LAST_VISIBLE_RUN_OUTCOME) if _LAST_VISIBLE_RUN_OUTCOME else None
 
 
+def get_last_visible_capability_use() -> dict[str, object] | None:
+    return dict(_LAST_VISIBLE_CAPABILITY_USE) if _LAST_VISIBLE_CAPABILITY_USE else None
+
+
 def set_last_visible_run_outcome(
     run: VisibleRun,
     *,
@@ -552,3 +562,34 @@ def set_last_visible_run_outcome(
     if text_preview:
         outcome["text_preview"] = text_preview
     _LAST_VISIBLE_RUN_OUTCOME = outcome
+
+
+def set_last_visible_capability_use(
+    run: VisibleRun, *, capability_id: str, invocation: dict[str, object]
+) -> None:
+    global _LAST_VISIBLE_CAPABILITY_USE
+    capability = invocation.get("capability")
+    result = invocation.get("result") or {}
+    result_preview = None
+    if isinstance(result, dict):
+        text = str(result.get("text", "")).strip()
+        if text:
+            result_preview = _preview_text(text)
+        elif isinstance(result.get("matches"), list) and result["matches"]:
+            excerpt = str((result["matches"][0] or {}).get("excerpt", "")).strip()
+            if excerpt:
+                result_preview = _preview_text(excerpt)
+
+    _LAST_VISIBLE_CAPABILITY_USE = {
+        "run_id": run.run_id,
+        "lane": run.lane,
+        "provider": run.provider,
+        "model": run.model,
+        "capability_id": capability_id,
+        "capability": capability,
+        "status": invocation.get("status"),
+        "execution_mode": invocation.get("execution_mode"),
+        "used_at": datetime.now(UTC).isoformat(),
+        "result_preview": result_preview,
+        "detail": invocation.get("detail"),
+    }

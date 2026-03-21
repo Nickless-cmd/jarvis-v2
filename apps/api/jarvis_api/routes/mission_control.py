@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
+    get_last_visible_capability_use,
     get_last_visible_run_outcome,
 )
 from core.auth.profiles import get_provider_state, list_auth_profiles
@@ -234,6 +235,7 @@ def _visible_run_surface() -> dict:
         "active": bool(active),
         "active_run": active,
         "last_outcome": last_outcome,
+        "last_capability_use": get_last_visible_capability_use(),
         "recent_events": _recent_visible_run_events(),
     }
 

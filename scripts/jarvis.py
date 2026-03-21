@@ -16,6 +16,7 @@ from apps.api.jarvis_api.services.visible_model import visible_execution_readine
 from apps.api.jarvis_api.services.visible_runs import (
     cancel_visible_run,
     get_active_visible_run,
+    get_last_visible_capability_use,
     get_last_visible_run_outcome,
 )
 from core.costing.ledger import telemetry_summary
@@ -291,6 +292,7 @@ def _visible_run_truth() -> tuple[dict, str, str | None]:
             "active": bool(get_active_visible_run()),
             "active_run": get_active_visible_run(),
             "last_outcome": get_last_visible_run_outcome(),
+            "last_capability_use": get_last_visible_capability_use(),
             "recent_events": [],
         },
         "local-fallback",
@@ -405,6 +407,9 @@ def _visible_run_section(
         "active": bool(visible_run.get("active")),
         "active_run": _normalize_active_run(visible_run.get("active_run")),
         "last_outcome": _normalize_last_outcome(visible_run.get("last_outcome")),
+        "last_capability_use": _normalize_visible_capability_use(
+            visible_run.get("last_capability_use")
+        ),
         "recent_events": visible_run.get("recent_events", []),
     }
 
@@ -489,6 +494,24 @@ def _normalize_capability_invocation(last_invocation: dict | None) -> dict | Non
         "finished_at": last_invocation.get("finished_at"),
         "result_preview": last_invocation.get("result_preview"),
         "detail": last_invocation.get("detail"),
+    }
+
+
+def _normalize_visible_capability_use(last_capability_use: dict | None) -> dict | None:
+    if not last_capability_use:
+        return None
+    return {
+        "run_id": last_capability_use.get("run_id"),
+        "lane": last_capability_use.get("lane"),
+        "provider": last_capability_use.get("provider"),
+        "model": last_capability_use.get("model"),
+        "capability_id": last_capability_use.get("capability_id"),
+        "capability": last_capability_use.get("capability"),
+        "status": last_capability_use.get("status"),
+        "execution_mode": last_capability_use.get("execution_mode"),
+        "used_at": last_capability_use.get("used_at"),
+        "result_preview": last_capability_use.get("result_preview"),
+        "detail": last_capability_use.get("detail"),
     }
 
 

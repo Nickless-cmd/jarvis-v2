@@ -770,6 +770,8 @@ def _persist_visible_run_outcome(
     user_message_preview = controller.user_message_preview if controller else None
     bounded_error = _bounded_error(error) if error else None
     work_preview = text_preview or bounded_error
+    work_id = f"visible-work:{run.run_id}"
+    note_id = f"visible-work-note:{run.run_id}"
     with connect() as conn:
         conn.execute(
             """
@@ -822,7 +824,7 @@ def _persist_visible_run_outcome(
                 work_preview=excluded.work_preview
             """,
             (
-                f"visible-work:{run.run_id}",
+                work_id,
                 run.run_id,
                 status,
                 run.lane,
@@ -833,6 +835,44 @@ def _persist_visible_run_outcome(
                 user_message_preview,
                 capability_id,
                 work_preview,
+            ),
+        )
+        conn.execute(
+            """
+            INSERT INTO visible_work_notes (
+                note_id, work_id, run_id, status, lane, provider, model,
+                user_message_preview, capability_id, work_preview,
+                projection_source, created_at, finished_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                note_id=excluded.note_id,
+                work_id=excluded.work_id,
+                status=excluded.status,
+                lane=excluded.lane,
+                provider=excluded.provider,
+                model=excluded.model,
+                user_message_preview=excluded.user_message_preview,
+                capability_id=excluded.capability_id,
+                work_preview=excluded.work_preview,
+                projection_source=excluded.projection_source,
+                created_at=excluded.created_at,
+                finished_at=excluded.finished_at
+            """,
+            (
+                note_id,
+                work_id,
+                run.run_id,
+                status,
+                run.lane,
+                run.provider,
+                run.model,
+                user_message_preview,
+                capability_id,
+                work_preview,
+                "visible-selected-work-item",
+                started_at or finished_at,
+                finished_at,
             ),
         )
         conn.commit()

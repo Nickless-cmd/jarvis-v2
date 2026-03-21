@@ -78,6 +78,26 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS visible_work_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                note_id TEXT NOT NULL UNIQUE,
+                work_id TEXT NOT NULL,
+                run_id TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL,
+                lane TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                model TEXT NOT NULL,
+                user_message_preview TEXT,
+                capability_id TEXT,
+                work_preview TEXT,
+                projection_source TEXT,
+                created_at TEXT NOT NULL,
+                finished_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -196,6 +216,50 @@ def recent_visible_work_units(limit: int = 5) -> list[dict[str, object]]:
             "user_message_preview": row["user_message_preview"],
             "capability_id": row["capability_id"],
             "work_preview": row["work_preview"],
+        }
+        for row in rows
+    ]
+
+
+def recent_visible_work_notes(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                note_id,
+                work_id,
+                run_id,
+                status,
+                lane,
+                provider,
+                model,
+                user_message_preview,
+                capability_id,
+                work_preview,
+                projection_source,
+                created_at,
+                finished_at
+            FROM visible_work_notes
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "note_id": row["note_id"],
+            "work_id": row["work_id"],
+            "run_id": row["run_id"],
+            "status": row["status"],
+            "lane": row["lane"],
+            "provider": row["provider"],
+            "model": row["model"],
+            "user_message_preview": row["user_message_preview"],
+            "capability_id": row["capability_id"],
+            "work_preview": row["work_preview"],
+            "projection_source": row["projection_source"],
+            "created_at": row["created_at"],
+            "finished_at": row["finished_at"],
         }
         for row in rows
     ]

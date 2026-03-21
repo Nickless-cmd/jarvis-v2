@@ -39,6 +39,7 @@ from core.runtime.db import (
     record_capability_approval_request_execution,
     recent_capability_approval_requests,
     recent_capability_invocations,
+    recent_visible_work_notes,
     recent_visible_work_units,
     recent_visible_runs,
 )
@@ -338,6 +339,7 @@ def _visible_work_surface() -> dict:
     return {
         **get_visible_work(),
         "persisted_recent_units": recent_visible_work_units(limit=5),
+        "persisted_recent_notes": recent_visible_work_notes(limit=5),
     }
 
 

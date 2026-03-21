@@ -117,6 +117,24 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_growth_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                record_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                run_id TEXT NOT NULL UNIQUE,
+                work_id TEXT NOT NULL,
+                learning_kind TEXT NOT NULL,
+                lesson TEXT NOT NULL,
+                mistake_signal TEXT NOT NULL DEFAULT '',
+                helpful_signal TEXT NOT NULL DEFAULT '',
+                identity_signal TEXT NOT NULL DEFAULT '',
+                confidence TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -375,6 +393,97 @@ def recent_private_inner_notes(limit: int = 5) -> list[dict[str, object]]:
             "identity_alignment": row["identity_alignment"],
             "work_signal": row["work_signal"],
             "private_summary": row["private_summary"],
+            "created_at": row["created_at"],
+        }
+        for row in rows
+    ]
+
+
+def record_private_growth_note(
+    *,
+    record_id: str,
+    source: str,
+    run_id: str,
+    work_id: str,
+    learning_kind: str,
+    lesson: str,
+    mistake_signal: str,
+    helpful_signal: str,
+    identity_signal: str,
+    confidence: str,
+    created_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_growth_notes (
+                record_id, source, run_id, work_id, learning_kind, lesson,
+                mistake_signal, helpful_signal, identity_signal, confidence, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                record_id=excluded.record_id,
+                source=excluded.source,
+                work_id=excluded.work_id,
+                learning_kind=excluded.learning_kind,
+                lesson=excluded.lesson,
+                mistake_signal=excluded.mistake_signal,
+                helpful_signal=excluded.helpful_signal,
+                identity_signal=excluded.identity_signal,
+                confidence=excluded.confidence,
+                created_at=excluded.created_at
+            """,
+            (
+                record_id,
+                source,
+                run_id,
+                work_id,
+                learning_kind,
+                lesson,
+                mistake_signal,
+                helpful_signal,
+                identity_signal,
+                confidence,
+                created_at,
+            ),
+        )
+        conn.commit()
+
+
+def recent_private_growth_notes(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                record_id,
+                source,
+                run_id,
+                work_id,
+                learning_kind,
+                lesson,
+                mistake_signal,
+                helpful_signal,
+                identity_signal,
+                confidence,
+                created_at
+            FROM private_growth_notes
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "record_id": row["record_id"],
+            "source": row["source"],
+            "run_id": row["run_id"],
+            "work_id": row["work_id"],
+            "learning_kind": row["learning_kind"],
+            "lesson": row["lesson"],
+            "mistake_signal": row["mistake_signal"],
+            "helpful_signal": row["helpful_signal"],
+            "identity_signal": row["identity_signal"],
+            "confidence": row["confidence"],
             "created_at": row["created_at"],
         }
         for row in rows

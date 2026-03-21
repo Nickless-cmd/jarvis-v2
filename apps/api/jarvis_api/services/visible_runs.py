@@ -13,11 +13,13 @@ from apps.api.jarvis_api.services.visible_model import (
     VisibleModelStreamDone,
     stream_visible_model,
 )
+from core.memory.private_growth_note import build_private_growth_note_payload
 from core.memory.private_inner_note import build_private_inner_note_payload
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     connect,
+    record_private_growth_note,
     record_private_inner_note,
     recent_visible_work_notes,
     recent_visible_work_units,
@@ -822,6 +824,14 @@ def _persist_visible_run_outcome(
         capability_id=capability_id,
         created_at=started_at or finished_at,
     )
+    private_growth_note = build_private_growth_note_payload(
+        run_id=run.run_id,
+        work_id=work_id,
+        status=status,
+        work_preview=work_preview,
+        private_inner_note=private_inner_note,
+        created_at=started_at or finished_at,
+    )
     with connect() as conn:
         conn.execute(
             """
@@ -927,3 +937,4 @@ def _persist_visible_run_outcome(
         )
         conn.commit()
     record_private_inner_note(**private_inner_note)
+    record_private_growth_note(**private_growth_note)

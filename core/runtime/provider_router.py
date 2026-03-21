@@ -191,11 +191,28 @@ def select_main_agent_target(
     if not model_name:
         raise ValueError("model must not be empty")
     profile_name = _normalize_profile(auth_profile or "")
+    registry = load_provider_router_registry()
+
+    configured_target = _configured_target_match(
+        registry=registry,
+        provider=provider_id,
+        model=model_name,
+    )
+    if configured_target is None:
+        raise ValueError(
+            "main agent target must exist in configured provider-router targets"
+        )
+
+    configured_profile = str(configured_target.get("auth_profile") or "").strip()
+    if profile_name and configured_profile and profile_name != configured_profile:
+        raise ValueError(
+            "auth_profile must match the configured provider-router target profile"
+        )
 
     settings = update_visible_execution_settings(
         visible_model_provider=provider_id,
         visible_model_name=model_name,
-        visible_auth_profile=profile_name,
+        visible_auth_profile=profile_name or configured_profile,
     )
     return {
         "provider": settings.visible_model_provider,
@@ -355,6 +372,18 @@ def _configured_main_agent_targets(
 
     targets.sort(key=lambda item: (str(item["provider"]), str(item["model"])))
     return targets[:12]
+
+
+def _configured_target_match(
+    *, registry: dict[str, object], provider: str, model: str
+) -> dict[str, object] | None:
+    for item in _configured_main_agent_targets(registry=registry):
+        if str(item.get("provider") or "").strip() != provider:
+            continue
+        if str(item.get("model") or "").strip() != model:
+            continue
+        return item
+    return None
 
 
 def _provider_entry(*, registry: dict[str, object], provider: str) -> dict[str, object] | None:

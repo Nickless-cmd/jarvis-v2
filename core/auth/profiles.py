@@ -100,6 +100,10 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
         profile=profile,
         provider=provider,
     )
+    view["oauth_state"] = get_provider_oauth_state(
+        profile=profile,
+        provider=provider,
+    )
     return view
 
 
@@ -124,6 +128,31 @@ def get_provider_auth_material_kind(*, profile: str, provider: str) -> str:
     if credentials.get("real_oauth") is False:
         return "placeholder"
     return "real"
+
+
+def get_provider_oauth_state(*, profile: str, provider: str) -> str:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return "missing"
+
+    status = str(state.get("status") or "").strip()
+    if status == "revoked":
+        return "revoked"
+    if status != "active":
+        return "missing"
+
+    credentials_path = Path(str(state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        return "missing"
+
+    credentials = _read_json(credentials_path)
+    oauth_state = str(credentials.get("oauth_state") or "").strip()
+    if oauth_state in {"prepared", "placeholder-stored", "real-stored"}:
+        return oauth_state
+
+    if bool(credentials.get("placeholder")) or credentials.get("real_oauth") is False:
+        return "placeholder-stored"
+    return "real-stored"
 
 
 def revoke_provider(*, profile: str, provider: str) -> dict[str, Any] | None:

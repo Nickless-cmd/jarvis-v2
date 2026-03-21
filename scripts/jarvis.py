@@ -19,6 +19,7 @@ from apps.api.jarvis_api.services.non_visible_lane_execution import (
 )
 from core.auth.profiles import (
     get_provider_auth_material_kind,
+    get_provider_oauth_state,
     get_provider_state,
     get_provider_state_view,
     revoke_provider,
@@ -259,6 +260,10 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
         profile=args.auth_profile,
         provider="github-copilot",
     )
+    oauth_state = get_provider_oauth_state(
+        profile=args.auth_profile,
+        provider="github-copilot",
+    )
     provider_state = get_provider_state(
         profile=args.auth_profile,
         provider="github-copilot",
@@ -274,6 +279,7 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
                 "provider": "github-copilot",
                 "auth_profile": args.auth_profile,
                 "auth_material_kind": auth_material_kind,
+                "oauth_state": oauth_state,
                 "coding_lane": coding_lane,
                 "profile_state": provider_state_view if provider_state else None,
             },
@@ -288,13 +294,26 @@ def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
     init_db()
 
     profile_state = None
-    if args.state == "stored":
+    if args.state == "prepared":
+        profile_state = save_provider_credentials(
+            profile=args.auth_profile,
+            provider="github-copilot",
+            credentials={
+                "placeholder": True,
+                "kind": "github-copilot-oauth-prepared",
+                "oauth_state": "prepared",
+                "real_oauth": False,
+                "created_by": "jarvis-cli",
+            },
+        )
+    elif args.state == "stored":
         profile_state = save_provider_credentials(
             profile=args.auth_profile,
             provider="github-copilot",
             credentials={
                 "placeholder": True,
                 "kind": "github-copilot-oauth-placeholder",
+                "oauth_state": "placeholder-stored",
                 "real_oauth": False,
                 "created_by": "jarvis-cli",
             },
@@ -305,7 +324,7 @@ def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
             provider="github-copilot",
         )
     else:
-        raise ValueError("state must be one of: stored, revoked")
+        raise ValueError("state must be one of: prepared, stored, revoked")
 
     print(
         json.dumps(
@@ -559,7 +578,7 @@ def build_parser() -> argparse.ArgumentParser:
     set_copilot_auth_state.add_argument(
         "--state",
         required=True,
-        choices=("stored", "revoked"),
+        choices=("prepared", "stored", "revoked"),
     )
     set_copilot_auth_state.set_defaults(func=cmd_set_copilot_auth_state)
 

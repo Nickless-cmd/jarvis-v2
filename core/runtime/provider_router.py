@@ -124,6 +124,7 @@ def provider_router_summary() -> dict[str, object]:
         "config_path": str(PROVIDER_ROUTER_FILE),
         "provider_count": len(providers),
         "model_count": len(models),
+        "main_agent_target": main_agent_target(),
         "providers": providers[:8],
         "models": models[:12],
         "router": {
@@ -139,6 +140,27 @@ def provider_router_summary() -> dict[str, object]:
             },
         },
         "lane_targets": provider_router_lane_targets(),
+    }
+
+
+def main_agent_target() -> dict[str, object]:
+    target = resolve_provider_router_target(lane="visible")
+    return {
+        "active": bool(target.get("active")),
+        "target_id": (
+            "main-agent-target:"
+            f"{str(target.get('provider') or 'none').strip()}:{str(target.get('model') or 'none').strip()}"
+        ),
+        "source": "runtime.settings+provider-router-registry",
+        "selection_authority": "runtime.settings",
+        "provider": target.get("provider"),
+        "model": target.get("model"),
+        "auth_profile": target.get("auth_profile"),
+        "auth_mode": target.get("auth_mode"),
+        "base_url": target.get("base_url"),
+        "credentials_ready": bool(target.get("credentials_ready")),
+        "fallback_provider": target.get("fallback_provider"),
+        "fallback_model": target.get("fallback_model"),
     }
 
 

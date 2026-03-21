@@ -633,6 +633,56 @@ def get_visible_selected_work_surface() -> dict[str, object]:
     }
 
 
+def get_visible_selected_work_item() -> dict[str, object]:
+    visible_work = get_visible_work()
+    visible_work_surface = get_visible_work_surface()
+    visible_selected_work_surface = get_visible_selected_work_surface()
+    recent_units = recent_visible_work_units(limit=5)
+    selected_unit = recent_units[0] if recent_units else {}
+    return {
+        "active": bool(visible_selected_work_surface.get("active")),
+        "selected_work_id": visible_selected_work_surface.get("selected_work_id")
+        or visible_work_surface.get("current_work_id")
+        or selected_unit.get("work_id"),
+        "selected_run_id": visible_selected_work_surface.get("selected_run_id")
+        or visible_work_surface.get("current_run_id")
+        or visible_work.get("run_id")
+        or selected_unit.get("run_id"),
+        "selected_status": visible_selected_work_surface.get("status")
+        or visible_work_surface.get("status")
+        or selected_unit.get("status"),
+        "selected_lane": visible_selected_work_surface.get("lane")
+        or visible_work_surface.get("lane")
+        or selected_unit.get("lane"),
+        "selected_provider": visible_selected_work_surface.get("provider")
+        or visible_work_surface.get("provider")
+        or selected_unit.get("provider"),
+        "selected_model": visible_selected_work_surface.get("model")
+        or visible_work_surface.get("model")
+        or selected_unit.get("model"),
+        "selected_user_message_preview": visible_selected_work_surface.get(
+            "selected_user_message_preview"
+        )
+        or visible_work_surface.get("current_user_message_preview")
+        or selected_unit.get("user_message_preview"),
+        "selected_capability_id": visible_selected_work_surface.get(
+            "selected_capability_id"
+        )
+        or visible_work_surface.get("capability_id")
+        or selected_unit.get("capability_id"),
+        "selected_work_preview": visible_selected_work_surface.get(
+            "selected_work_preview"
+        )
+        or visible_work_surface.get("latest_work_preview")
+        or selected_unit.get("work_preview"),
+        "recent_work_ids": list(visible_selected_work_surface.get("recent_work_ids") or []),
+        "selection_source": "active-visible-work"
+        if visible_selected_work_surface.get("active")
+        else "persisted-visible-work-unit",
+        "recent_count": len(recent_units),
+    }
+
+
 def get_last_visible_run_outcome() -> dict[str, str] | None:
     return dict(_LAST_VISIBLE_RUN_OUTCOME) if _LAST_VISIBLE_RUN_OUTCOME else None
 

@@ -11,6 +11,7 @@ from apps.api.jarvis_api.services.visible_runs import (
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.costing.ledger import recent_costs, telemetry_summary
 from core.eventbus.bus import event_bus
+from core.identity.visible_identity import load_visible_identity_summary
 from core.runtime.config import (
     AUTH_DIR,
     CACHE_DIR,
@@ -106,6 +107,7 @@ def mc_runtime() -> dict:
     return {
         "settings": settings.to_dict(),
         "visible_execution": visible_execution_readiness(),
+        "visible_identity": load_visible_identity_summary(),
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
@@ -204,6 +206,7 @@ def _visible_execution_surface(settings) -> dict:
             "visible_auth_profile": settings.visible_auth_profile,
         },
         "readiness": visible_execution_readiness(),
+        "visible_identity": load_visible_identity_summary(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),

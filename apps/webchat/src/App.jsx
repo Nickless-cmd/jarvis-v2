@@ -750,6 +750,111 @@ export default function App() {
                       )}
                     </section>
                     <section className="truth-section">
+                      <h3>Visible selected work item</h3>
+                      {visibleControl.visible_selected_work_item ? (
+                        <ul className="runtime-event-list compact">
+                          <li>
+                            <span>
+                              Aktiv:{" "}
+                              {visibleControl.visible_selected_work_item.active
+                                ? "ja"
+                                : "nej"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${
+                                  visibleControl.visible_selected_work_item.active
+                                    ? "status-live"
+                                    : "status-idle"
+                                }`}
+                              >
+                                {visibleControl.visible_selected_work_item.active
+                                  ? "aktiv"
+                                  : "idle"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>
+                              Selected work id:{" "}
+                              {visibleControl.visible_selected_work_item.selected_work_id ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Selected run:{" "}
+                              {visibleControl.visible_selected_work_item.selected_run_id ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Status:{" "}
+                              {visibleControl.visible_selected_work_item.selected_status ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Lane:{" "}
+                              {visibleControl.visible_selected_work_item.selected_lane ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Provider/model:{" "}
+                              {visibleControl.visible_selected_work_item.selected_provider ||
+                                "ingen"}{" "}
+                              /{" "}
+                              {visibleControl.visible_selected_work_item.selected_model ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Selected preview:{" "}
+                              {visibleControl.visible_selected_work_item
+                                .selected_user_message_preview || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Selected capability:{" "}
+                              {visibleControl.visible_selected_work_item
+                                .selected_capability_id || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Recent works:{" "}
+                              {visibleControl.visible_selected_work_item.recent_work_ids?.join(
+                                ", "
+                              ) || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Selected work preview:{" "}
+                              {visibleControl.visible_selected_work_item
+                                .selected_work_preview || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Source/count:{" "}
+                              {visibleControl.visible_selected_work_item.selection_source ||
+                                "ingen"}{" "}
+                              / {visibleControl.visible_selected_work_item.recent_count ?? "0"}
+                            </span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <p>Ingen visible selected work item truth endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
                       <h3>Visible session continuity</h3>
                       {visibleControl.visible_session_continuity ? (
                         <ul className="runtime-event-list compact">

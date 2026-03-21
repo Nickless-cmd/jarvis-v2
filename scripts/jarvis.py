@@ -364,6 +364,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
             "visible_work": response.get("visible_work"),
             "visible_work_surface": response.get("visible_work_surface"),
             "visible_selected_work_surface": response.get("visible_selected_work_surface"),
+            "visible_selected_work_item": response.get("visible_selected_work_item"),
             "visible_session_continuity": response.get("visible_session_continuity"),
             "visible_continuity": response.get("visible_continuity"),
             "visible_capability_continuity": response.get("visible_capability_continuity"),
@@ -379,6 +380,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
         "visible_work": {},
         "visible_work_surface": {},
         "visible_selected_work_surface": {},
+        "visible_selected_work_item": {},
         "visible_session_continuity": {},
         "visible_continuity": {},
         "visible_capability_continuity": {},
@@ -560,6 +562,9 @@ def _visible_execution_section(
         "visible_selected_work_surface": _normalize_visible_selected_work_surface(
             visible_execution.get("visible_selected_work_surface")
         ),
+        "visible_selected_work_item": _normalize_visible_selected_work_item(
+            visible_execution.get("visible_selected_work_item")
+        ),
         "visible_session_continuity": _normalize_visible_session_continuity(
             visible_execution.get("visible_session_continuity")
         ),
@@ -730,6 +735,33 @@ def _normalize_visible_selected_work_surface(
         "recent_work_ids": list(
             visible_selected_work_surface.get("recent_work_ids") or []
         ),
+    }
+
+
+def _normalize_visible_selected_work_item(
+    visible_selected_work_item: dict | None,
+) -> dict:
+    visible_selected_work_item = visible_selected_work_item or {}
+    return {
+        "active": bool(visible_selected_work_item.get("active")),
+        "selected_work_id": visible_selected_work_item.get("selected_work_id"),
+        "selected_run_id": visible_selected_work_item.get("selected_run_id"),
+        "selected_status": visible_selected_work_item.get("selected_status"),
+        "selected_lane": visible_selected_work_item.get("selected_lane"),
+        "selected_provider": visible_selected_work_item.get("selected_provider"),
+        "selected_model": visible_selected_work_item.get("selected_model"),
+        "selected_user_message_preview": visible_selected_work_item.get(
+            "selected_user_message_preview"
+        ),
+        "selected_capability_id": visible_selected_work_item.get(
+            "selected_capability_id"
+        ),
+        "selected_work_preview": visible_selected_work_item.get(
+            "selected_work_preview"
+        ),
+        "recent_work_ids": list(visible_selected_work_item.get("recent_work_ids") or []),
+        "selection_source": visible_selected_work_item.get("selection_source"),
+        "recent_count": visible_selected_work_item.get("recent_count"),
     }
 
 

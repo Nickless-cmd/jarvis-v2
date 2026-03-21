@@ -299,6 +299,8 @@ def _github_copilot_auth_state(*, oauth_state: str) -> str:
         return "oauth-handshake-started"
     if oauth_state == "handshake-stubbed":
         return "oauth-handshake-stubbed"
+    if oauth_state == "launch-stubbed":
+        return "oauth-launch-stubbed"
     if oauth_state == "placeholder-stored":
         return "oauth-placeholder-stored"
     if oauth_state == "real-stored":
@@ -311,6 +313,8 @@ def _github_copilot_auth_state(*, oauth_state: str) -> str:
 def _github_copilot_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "not-implemented"
+    if auth_state == "oauth-launch-stubbed":
+        return "oauth-launch-stubbed"
     if auth_state == "oauth-handshake-stubbed":
         return "oauth-handshake-stubbed"
     if auth_state == "oauth-handshake-started":
@@ -327,6 +331,8 @@ def _github_copilot_status(*, auth_state: str) -> str:
 def _github_copilot_auth_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "ready"
+    if auth_state == "oauth-launch-stubbed":
+        return "oauth-launch-stubbed"
     if auth_state == "oauth-handshake-stubbed":
         return "oauth-handshake-stubbed"
     if auth_state == "oauth-handshake-started":
@@ -343,6 +349,8 @@ def _github_copilot_auth_status(*, auth_state: str) -> str:
 def _github_copilot_provider_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "not-implemented"
+    if auth_state == "oauth-launch-stubbed":
+        return "oauth-launch-stubbed"
     if auth_state == "oauth-handshake-stubbed":
         return "oauth-handshake-stubbed"
     if auth_state == "oauth-handshake-started":

@@ -335,6 +335,26 @@ def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
                 "created_by": "jarvis-cli",
             },
         )
+    elif args.state == "launch-stubbed":
+        stub_id = f"copilot-oauth-launch:{uuid4()}"
+        profile_state = save_provider_credentials(
+            profile=args.auth_profile,
+            provider="github-copilot",
+            credentials={
+                "oauth_launch_stub": True,
+                "kind": "github-copilot-oauth-launch-stub",
+                "oauth_state": "launch-stubbed",
+                "oauth_stub_id": stub_id,
+                "oauth_started_at": datetime.now(UTC).isoformat(),
+                "oauth_launch_mode": "browser-device-future",
+                "oauth_launch_url": f"https://github.com/login/device?jarvis_oauth_stub={stub_id}",
+                "oauth_launch_started_at": datetime.now(UTC).isoformat(),
+                "browser_launched": False,
+                "token_exchange_completed": False,
+                "real_oauth": False,
+                "created_by": "jarvis-cli",
+            },
+        )
     elif args.state == "stored":
         profile_state = save_provider_credentials(
             profile=args.auth_profile,
@@ -354,7 +374,7 @@ def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
         )
     else:
         raise ValueError(
-            "state must be one of: prepared, handshake-started, handshake-stubbed, stored, revoked"
+            "state must be one of: prepared, handshake-started, handshake-stubbed, launch-stubbed, stored, revoked"
         )
 
     print(
@@ -609,7 +629,14 @@ def build_parser() -> argparse.ArgumentParser:
     set_copilot_auth_state.add_argument(
         "--state",
         required=True,
-        choices=("prepared", "handshake-started", "handshake-stubbed", "stored", "revoked"),
+        choices=(
+            "prepared",
+            "handshake-started",
+            "handshake-stubbed",
+            "launch-stubbed",
+            "stored",
+            "revoked",
+        ),
     )
     set_copilot_auth_state.set_defaults(func=cmd_set_copilot_auth_state)
 

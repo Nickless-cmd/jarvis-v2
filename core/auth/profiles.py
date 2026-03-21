@@ -111,6 +111,12 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
             view["oauth_stub_id"] = str(credentials.get("oauth_stub_id"))
         if credentials.get("oauth_started_at"):
             view["oauth_started_at"] = str(credentials.get("oauth_started_at"))
+        if credentials.get("oauth_launch_url"):
+            view["oauth_launch_url"] = str(credentials.get("oauth_launch_url"))
+        if credentials.get("oauth_launch_mode"):
+            view["oauth_launch_mode"] = str(credentials.get("oauth_launch_mode"))
+        if credentials.get("oauth_launch_started_at"):
+            view["oauth_launch_started_at"] = str(credentials.get("oauth_launch_started_at"))
     return view
 
 
@@ -130,6 +136,8 @@ def get_provider_auth_material_kind(*, profile: str, provider: str) -> str:
         return "missing"
 
     credentials = _read_json(credentials_path)
+    if bool(credentials.get("oauth_launch_stub")):
+        return "oauth-launch-stub"
     if bool(credentials.get("oauth_stub")):
         return "oauth-stub"
     if bool(credentials.get("placeholder")):
@@ -160,6 +168,7 @@ def get_provider_oauth_state(*, profile: str, provider: str) -> str:
         "prepared",
         "handshake-started",
         "handshake-stubbed",
+        "launch-stubbed",
         "placeholder-stored",
         "real-stored",
     }:

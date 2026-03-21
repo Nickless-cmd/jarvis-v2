@@ -14,6 +14,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
+from apps.api.jarvis_api.services.non_visible_lane_execution import (
+    coding_lane_execution_truth,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     cancel_visible_run,
     get_active_visible_run,
@@ -191,6 +194,18 @@ def cmd_configure_coding_lane(args: argparse.Namespace) -> None:
                 },
                 "provider_router": provider_router_summary(),
             },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def cmd_coding_lane_status(_: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+    print(
+        json.dumps(
+            coding_lane_execution_truth(),
             indent=2,
             ensure_ascii=False,
         )
@@ -385,6 +400,9 @@ def build_parser() -> argparse.ArgumentParser:
     configure_coding_lane.add_argument("--api-key", default="")
     configure_coding_lane.add_argument("--base-url", default="https://api.openai.com/v1")
     configure_coding_lane.set_defaults(func=cmd_configure_coding_lane)
+
+    coding_lane_status = sub.add_parser("coding-lane-status")
+    coding_lane_status.set_defaults(func=cmd_coding_lane_status)
 
     workspace = sub.add_parser("workspace")
     workspace.add_argument("--name", default="default")

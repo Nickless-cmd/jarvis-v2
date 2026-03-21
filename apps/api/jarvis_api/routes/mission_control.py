@@ -31,6 +31,7 @@ from core.runtime.config import (
 from core.runtime.db import (
     approve_capability_approval_request,
     connect,
+    get_capability_approval_request,
     recent_capability_approval_requests,
     recent_capability_invocations,
     recent_visible_runs,
@@ -165,6 +166,42 @@ def mc_approve_capability_request(request_id: str) -> dict:
     return {
         "ok": True,
         "request": request,
+    }
+
+
+@router.post("/capability-approval-requests/{request_id}/execute")
+def mc_execute_capability_request(request_id: str) -> dict:
+    request = get_capability_approval_request(request_id)
+    if request is None:
+        return {
+            "ok": False,
+            "request_id": request_id,
+            "status": "not-found",
+            "detail": "Capability approval request not found",
+            "request": None,
+            "invocation": None,
+        }
+    if request.get("status") != "approved":
+        return {
+            "ok": False,
+            "request_id": request_id,
+            "status": "not-approved",
+            "detail": "Capability approval request must be approved before execution",
+            "request": request,
+            "invocation": None,
+        }
+
+    invocation = invoke_workspace_capability(
+        str(request.get("capability_id") or ""),
+        approved=True,
+        run_id=str(request.get("run_id") or "") or None,
+    )
+    return {
+        "ok": invocation["status"] == "executed",
+        "request_id": request_id,
+        "status": invocation["status"],
+        "request": request,
+        "invocation": invocation,
     }
 
 

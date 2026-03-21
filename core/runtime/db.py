@@ -255,21 +255,32 @@ def recent_capability_approval_requests(limit: int = 5) -> list[dict[str, object
             """,
             (max(limit, 1),),
         ).fetchall()
-    return [
-        {
-            "request_id": row["request_id"],
-            "capability_id": row["capability_id"],
-            "capability_name": row["capability_name"],
-            "capability_kind": row["capability_kind"],
-            "execution_mode": row["execution_mode"],
-            "approval_policy": row["approval_policy"],
-            "run_id": row["run_id"],
-            "requested_at": row["requested_at"],
-            "status": row["status"],
-            "approved_at": row["approved_at"],
-        }
-        for row in rows
-    ]
+    return [_capability_approval_request_from_row(row) for row in rows]
+
+
+def get_capability_approval_request(request_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                request_id,
+                capability_id,
+                capability_name,
+                capability_kind,
+                execution_mode,
+                approval_policy,
+                run_id,
+                requested_at,
+                status,
+                approved_at
+            FROM capability_approval_requests
+            WHERE request_id = ?
+            """,
+            (request_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _capability_approval_request_from_row(row)
 
 
 def approve_capability_approval_request(
@@ -312,6 +323,19 @@ def approve_capability_approval_request(
             status = "approved"
             final_approved_at = approved_at
 
+    return _capability_approval_request_from_row(
+        row,
+        status=status,
+        approved_at=final_approved_at,
+    )
+
+
+def _capability_approval_request_from_row(
+    row: sqlite3.Row,
+    *,
+    status: str | None = None,
+    approved_at: str | None = None,
+) -> dict[str, object]:
     return {
         "request_id": row["request_id"],
         "capability_id": row["capability_id"],
@@ -321,6 +345,6 @@ def approve_capability_approval_request(
         "approval_policy": row["approval_policy"],
         "run_id": row["run_id"],
         "requested_at": row["requested_at"],
-        "status": status,
-        "approved_at": final_approved_at,
+        "status": status if status is not None else row["status"],
+        "approved_at": approved_at if approved_at is not None else row["approved_at"],
     }

@@ -14,6 +14,7 @@ from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
     get_last_visible_run_outcome,
+    get_visible_selected_work_surface,
     get_visible_work,
     get_visible_work_surface,
 )
@@ -131,6 +132,7 @@ def mc_runtime() -> dict:
         "visible_capability_continuity": visible_capability_continuity_summary(),
         "visible_work": _visible_work_surface(),
         "visible_work_surface": get_visible_work_surface(),
+        "visible_selected_work_surface": get_visible_selected_work_surface(),
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
@@ -291,6 +293,7 @@ def _visible_execution_surface(settings) -> dict:
         "visible_capability_continuity": visible_capability_continuity_summary(),
         "visible_work": _visible_work_surface(),
         "visible_work_surface": get_visible_work_surface(),
+        "visible_selected_work_surface": get_visible_selected_work_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),

@@ -59,3 +59,41 @@ def init_db() -> None:
             """
         )
         conn.commit()
+
+
+def recent_visible_runs(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                run_id,
+                lane,
+                provider,
+                model,
+                status,
+                started_at,
+                finished_at,
+                text_preview,
+                error,
+                capability_id
+            FROM visible_runs
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "run_id": row["run_id"],
+            "lane": row["lane"],
+            "provider": row["provider"],
+            "model": row["model"],
+            "status": row["status"],
+            "started_at": row["started_at"],
+            "finished_at": row["finished_at"],
+            "text_preview": row["text_preview"],
+            "error": row["error"],
+            "capability_id": row["capability_id"],
+        }
+        for row in rows
+    ]

@@ -21,7 +21,7 @@ from core.runtime.config import (
     STATE_DIR,
     WORKSPACES_DIR,
 )
-from core.runtime.db import connect
+from core.runtime.db import connect, recent_visible_runs
 from core.runtime.settings import load_settings, update_visible_execution_settings
 from core.tools.workspace_capabilities import (
     get_capability_invocation_truth,
@@ -239,6 +239,7 @@ def _visible_run_surface() -> dict:
         "active_run": active,
         "last_outcome": last_outcome,
         "last_capability_use": get_last_visible_capability_use(),
+        "persisted_recent_runs": recent_visible_runs(limit=5),
         "recent_events": _recent_visible_run_events(),
     }
 

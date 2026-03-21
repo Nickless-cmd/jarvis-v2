@@ -234,6 +234,22 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_promotion_decisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                decision_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                run_id TEXT NOT NULL UNIQUE,
+                work_id TEXT NOT NULL,
+                promotion_target TEXT NOT NULL,
+                promotion_action TEXT NOT NULL,
+                promotion_scope TEXT NOT NULL,
+                confidence TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -1076,6 +1092,85 @@ def get_private_temporal_promotion_signal() -> dict[str, object] | None:
         "promotion_target": row["promotion_target"],
         "promotion_action": row["promotion_action"],
         "promotion_confidence": row["promotion_confidence"],
+        "created_at": row["created_at"],
+    }
+
+
+def record_private_promotion_decision(
+    *,
+    decision_id: str,
+    source: str,
+    run_id: str,
+    work_id: str,
+    promotion_target: str,
+    promotion_action: str,
+    promotion_scope: str,
+    confidence: str,
+    created_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_promotion_decisions (
+                decision_id, source, run_id, work_id, promotion_target,
+                promotion_action, promotion_scope, confidence, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                decision_id=excluded.decision_id,
+                source=excluded.source,
+                work_id=excluded.work_id,
+                promotion_target=excluded.promotion_target,
+                promotion_action=excluded.promotion_action,
+                promotion_scope=excluded.promotion_scope,
+                confidence=excluded.confidence,
+                created_at=excluded.created_at
+            """,
+            (
+                decision_id,
+                source,
+                run_id,
+                work_id,
+                promotion_target,
+                promotion_action,
+                promotion_scope,
+                confidence,
+                created_at,
+            ),
+        )
+        conn.commit()
+
+
+def get_private_promotion_decision() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                decision_id,
+                source,
+                run_id,
+                work_id,
+                promotion_target,
+                promotion_action,
+                promotion_scope,
+                confidence,
+                created_at
+            FROM private_promotion_decisions
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "decision_id": row["decision_id"],
+        "source": row["source"],
+        "run_id": row["run_id"],
+        "work_id": row["work_id"],
+        "promotion_target": row["promotion_target"],
+        "promotion_action": row["promotion_action"],
+        "promotion_scope": row["promotion_scope"],
+        "confidence": row["confidence"],
         "created_at": row["created_at"],
     }
 

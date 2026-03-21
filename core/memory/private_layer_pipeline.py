@@ -10,6 +10,7 @@ from core.memory.private_state import build_private_state_payload
 from core.memory.private_temporal_promotion_signal import (
     build_private_temporal_promotion_signal_payload,
 )
+from core.memory.private_promotion_decision import build_private_promotion_decision_payload
 from core.memory.protected_inner_voice import build_protected_inner_voice_payload
 from core.memory.private_self_model import build_private_self_model_payload
 from core.runtime.db import (
@@ -20,6 +21,7 @@ from core.runtime.db import (
     record_private_reflective_selection,
     record_private_self_model,
     record_private_temporal_promotion_signal,
+    record_private_promotion_decision,
     record_protected_inner_voice,
 )
 
@@ -100,6 +102,14 @@ def write_private_terminal_layers(
         protected_inner_voice=protected_inner_voice,
         created_at=finished_at,
     )
+    private_promotion_decision = build_private_promotion_decision_payload(
+        run_id=run_id,
+        work_id=work_id,
+        private_temporal_promotion_signal=private_temporal_promotion_signal,
+        private_development_state=private_development_state,
+        private_growth_note=private_growth_note,
+        created_at=finished_at,
+    )
 
     record_private_inner_note(**private_inner_note)
     record_private_growth_note(**private_growth_note)
@@ -109,3 +119,4 @@ def write_private_terminal_layers(
     record_private_state(**private_state)
     record_protected_inner_voice(**protected_inner_voice)
     record_private_temporal_promotion_signal(**private_temporal_promotion_signal)
+    record_private_promotion_decision(**private_promotion_decision)

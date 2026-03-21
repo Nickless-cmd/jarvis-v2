@@ -309,6 +309,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
             "readiness": response.get("readiness"),
             "visible_identity": response.get("visible_identity"),
             "visible_continuity": response.get("visible_continuity"),
+            "visible_capability_continuity": response.get("visible_capability_continuity"),
         }, "api", None
     return {
         "authority": {
@@ -319,6 +320,7 @@ def _visible_execution_truth() -> tuple[dict, str, str | None]:
         "readiness": visible_execution_readiness(),
         "visible_identity": {},
         "visible_continuity": {},
+        "visible_capability_continuity": {},
     }, "local-fallback", api_error
 
 
@@ -408,6 +410,9 @@ def _visible_execution_section(
         ),
         "visible_continuity": _normalize_visible_continuity(
             visible_execution.get("visible_continuity")
+        ),
+        "visible_capability_continuity": _normalize_visible_capability_continuity(
+            visible_execution.get("visible_capability_continuity")
         ),
     }
 
@@ -499,6 +504,24 @@ def _normalize_visible_continuity(visible_continuity: dict | None) -> dict:
         "error_count": visible_continuity.get("error_count"),
         "capability_count": visible_continuity.get("capability_count"),
         "chars": visible_continuity.get("chars"),
+    }
+
+
+def _normalize_visible_capability_continuity(
+    visible_capability_continuity: dict | None,
+) -> dict:
+    visible_capability_continuity = visible_capability_continuity or {}
+    return {
+        "active": bool(visible_capability_continuity.get("active")),
+        "source": visible_capability_continuity.get("source"),
+        "included_rows": visible_capability_continuity.get("included_rows"),
+        "included_capability_ids": list(
+            visible_capability_continuity.get("included_capability_ids") or []
+        ),
+        "statuses": list(visible_capability_continuity.get("statuses") or []),
+        "preview_count": visible_capability_continuity.get("preview_count"),
+        "detail_count": visible_capability_continuity.get("detail_count"),
+        "chars": visible_capability_continuity.get("chars"),
     }
 
 

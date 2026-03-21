@@ -469,6 +469,69 @@ export default function App() {
                       )}
                     </section>
                     <section className="truth-section">
+                      <h3>Visible capability continuity</h3>
+                      {visibleControl.visible_capability_continuity ? (
+                        <ul className="runtime-event-list compact">
+                          <li>
+                            <span>
+                              Aktiv:{" "}
+                              {visibleControl.visible_capability_continuity.active
+                                ? "ja"
+                                : "nej"}
+                            </span>
+                            <small>
+                              <span
+                                className={`status-chip ${
+                                  visibleControl.visible_capability_continuity.active
+                                    ? "status-ok"
+                                    : "status-idle"
+                                }`}
+                              >
+                                {visibleControl.visible_capability_continuity.active
+                                  ? "aktiv"
+                                  : "inaktiv"}
+                              </span>
+                            </small>
+                          </li>
+                          <li>
+                            <span>
+                              Kilde:{" "}
+                              {visibleControl.visible_capability_continuity.source ||
+                                "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Capabilities:{" "}
+                              {visibleControl.visible_capability_continuity.included_capability_ids?.join(
+                                ", "
+                              ) || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Statusser:{" "}
+                              {visibleControl.visible_capability_continuity.statuses?.join(
+                                ", "
+                              ) || "ingen"}
+                            </span>
+                          </li>
+                          <li>
+                            <span>
+                              Rows/chars:{" "}
+                              {visibleControl.visible_capability_continuity.included_rows ??
+                                "ingen"}{" "}
+                              /{" "}
+                              {visibleControl.visible_capability_continuity.chars ??
+                                "ingen"}
+                            </span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <p>Ingen visible capability continuity truth endnu.</p>
+                      )}
+                    </section>
+                    <section className="truth-section">
                       <h3>Aktivt run</h3>
                       <ul className="runtime-event-list compact">
                         <li>

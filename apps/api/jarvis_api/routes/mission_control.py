@@ -138,8 +138,8 @@ def mc_visible_execution() -> dict:
 
 
 @router.post("/workspace-capabilities/{capability_id}/invoke")
-def mc_invoke_workspace_capability(capability_id: str) -> dict:
-    result = invoke_workspace_capability(capability_id)
+def mc_invoke_workspace_capability(capability_id: str, approved: bool = False) -> dict:
+    result = invoke_workspace_capability(capability_id, approved=approved)
     return {
         "ok": result["status"] == "executed",
         **result,

@@ -38,7 +38,11 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
 
 
 def invoke_workspace_capability(
-    capability_id: str, *, name: str = "default", run_id: str | None = None
+    capability_id: str,
+    *,
+    name: str = "default",
+    run_id: str | None = None,
+    approved: bool = False,
 ) -> dict[str, object]:
     invoked_at = _now()
     event_bus.publish(
@@ -63,7 +67,20 @@ def invoke_workspace_capability(
                 "capability": summary,
                 "status": "not-runnable",
                 "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=approved, granted=False),
                 "result": None,
+            }
+            _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
+            _publish_capability_invocation_completed(result, invoked_at=invoked_at)
+            return result
+        if _requires_capability_approval(summary) and not approved:
+            result = {
+                "capability": summary,
+                "status": "approval-required",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": f"Capability requires explicit approval: {summary['execution_mode']}",
             }
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
@@ -81,6 +98,12 @@ def invoke_workspace_capability(
         "capability": None,
         "status": "not-found",
         "execution_mode": "unsupported",
+        "approval": {
+            "policy": "not-applicable",
+            "required": False,
+            "approved": approved,
+            "granted": False,
+        },
         "result": None,
     }
     _set_last_capability_invocation(
@@ -201,6 +224,13 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         "runnable": runnable,
         "execution_mode": execution_mode if runnable else "declared-only",
         "status": "runnable" if runnable else "declared-only",
+        "approval_policy": _approval_policy_for_execution_mode(
+            execution_mode if runnable else "declared-only"
+        ),
+        "approval_required": _approval_policy_for_execution_mode(
+            execution_mode if runnable else "declared-only"
+        )
+        == "required",
         "target_path": read_file_path,
         "target_query": search_spec["query"] if search_spec else None,
     }
@@ -224,6 +254,7 @@ def _invoke_runnable_capability(
             "capability": summary,
             "status": "executed",
             "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=True),
             "result": {
                 "type": "inline-text",
                 "text": section["body"],
@@ -238,6 +269,7 @@ def _invoke_runnable_capability(
                 "capability": summary,
                 "status": "executed",
                 "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=True),
                 "result": None,
                 "detail": f"Declared workspace file missing: {target_path or 'unknown'}",
             }
@@ -245,6 +277,7 @@ def _invoke_runnable_capability(
             "capability": summary,
             "status": "executed",
             "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=True),
             "result": {
                 "type": "workspace-file-read",
                 "path": target_path,
@@ -261,6 +294,7 @@ def _invoke_runnable_capability(
                 "capability": summary,
                 "status": "executed",
                 "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=True),
                 "result": None,
                 "detail": f"Declared workspace file missing: {target_path or 'unknown'}",
             }
@@ -268,6 +302,7 @@ def _invoke_runnable_capability(
             "capability": summary,
             "status": "executed",
             "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=True),
             "result": {
                 "type": "workspace-search-read",
                 "path": target_path,
@@ -280,7 +315,33 @@ def _invoke_runnable_capability(
         "capability": summary,
         "status": "not-runnable",
         "execution_mode": str(summary.get("execution_mode", "declared-only")),
+        "approval": _approval_result(summary, approved=False, granted=False),
         "result": None,
+    }
+
+
+def _approval_policy_for_execution_mode(execution_mode: str) -> str:
+    if execution_mode == "workspace-file-read":
+        return "required"
+    if execution_mode in {"inline-text", "workspace-search-read"}:
+        return "not-needed"
+    return "not-applicable"
+
+
+def _requires_capability_approval(summary: dict[str, object]) -> bool:
+    return bool(summary.get("approval_required"))
+
+
+def _approval_result(
+    summary: dict[str, object], *, approved: bool, granted: bool
+) -> dict[str, object]:
+    policy = str(summary.get("approval_policy") or "not-applicable")
+    required = bool(summary.get("approval_required"))
+    return {
+        "policy": policy,
+        "required": required,
+        "approved": approved,
+        "granted": granted,
     }
 
 

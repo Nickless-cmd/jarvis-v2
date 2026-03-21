@@ -236,14 +236,16 @@ export default function App() {
     }
   }
 
-  async function handleInvokeCapability(capabilityId) {
+  async function handleInvokeCapability(capabilityId, approvalRequired) {
     setVisibleControlNotice("");
     setVisibleControlError("");
     setCapabilityInvokeBusy(capabilityId);
 
     try {
       const response = await fetch(
-        `${API_BASE}/mc/workspace-capabilities/${encodeURIComponent(capabilityId)}/invoke`,
+        `${API_BASE}/mc/workspace-capabilities/${encodeURIComponent(capabilityId)}/invoke${
+          approvalRequired ? "?approved=true" : ""
+        }`,
         {
           method: "POST"
         }
@@ -253,7 +255,11 @@ export default function App() {
         throw new Error(data.detail || "Capability kunne ikke invokes.");
       }
       await loadVisibleControl({ quiet: true });
-      setVisibleControlNotice(`Capability ${capabilityId} kørt via runtime-truth.`);
+      setVisibleControlNotice(
+        approvalRequired
+          ? `Capability ${capabilityId} godkendt og kørt via runtime-truth.`
+          : `Capability ${capabilityId} kørt via runtime-truth.`
+      );
     } catch (invokeError) {
       setVisibleControlError(
         invokeError instanceof Error ? invokeError.message : "Ukendt capability-fejl."
@@ -826,18 +832,27 @@ export default function App() {
                                 <p className="capability-meta">
                                   Runnable: {capability.runnable ? "ja" : "nej"}
                                 </p>
+                                <p className="capability-meta">
+                                  Approval:{" "}
+                                  {capability.approval_required ? "required" : "not-needed"}
+                                </p>
                                 {capability.runnable ? (
                                   <button
                                     className="ghost-button capability-action"
                                     type="button"
                                     disabled={capabilityInvokeBusy === capability.capability_id}
                                     onClick={() =>
-                                      handleInvokeCapability(capability.capability_id)
+                                      handleInvokeCapability(
+                                        capability.capability_id,
+                                        capability.approval_required
+                                      )
                                     }
                                   >
                                     {capabilityInvokeBusy === capability.capability_id
                                       ? "Kører..."
-                                      : "Invoke"}
+                                      : capability.approval_required
+                                        ? "Approve + invoke"
+                                        : "Invoke"}
                                   </button>
                                 ) : null}
                               </article>
@@ -1043,6 +1058,7 @@ function statusTone(status) {
   }
   if (
     status === "failed" ||
+    status === "approval-required" ||
     status === "not-found" ||
     status === "auth-rejected" ||
     status === "missing-credentials" ||

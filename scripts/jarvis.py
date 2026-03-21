@@ -228,7 +228,9 @@ def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
 def cmd_invoke_capability(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     capability_id = args.capability_id.strip()
-    result, source, api_unavailable = _invoke_capability_truth(capability_id)
+    result, source, api_unavailable = _invoke_capability_truth(
+        capability_id, approved=bool(args.approve)
+    )
     print(
         json.dumps(
             {
@@ -273,6 +275,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     invoke_capability = sub.add_parser("invoke-capability")
     invoke_capability.add_argument("capability_id")
+    invoke_capability.add_argument("--approve", action="store_true")
     invoke_capability.set_defaults(func=cmd_invoke_capability)
 
     return parser
@@ -336,13 +339,24 @@ def _capability_invocation_truth() -> tuple[dict, str, str | None]:
     }, "local-fallback", api_error
 
 
-def _invoke_capability_truth(capability_id: str) -> tuple[dict, str, str | None]:
+def _invoke_capability_truth(
+    capability_id: str, *, approved: bool = False
+) -> tuple[dict, str, str | None]:
     response, api_error = _request_json(
-        "POST", f"/mc/workspace-capabilities/{capability_id}/invoke"
+        "POST",
+        (
+            f"/mc/workspace-capabilities/{capability_id}/invoke?approved=true"
+            if approved
+            else f"/mc/workspace-capabilities/{capability_id}/invoke"
+        ),
     )
     if response is not None:
         return response, "api", None
-    return invoke_workspace_capability(capability_id), "local-fallback", api_error
+    return (
+        invoke_workspace_capability(capability_id, approved=approved),
+        "local-fallback",
+        api_error,
+    )
 
 
 def _fetch_visible_run_via_api() -> tuple[dict | None, str | None]:

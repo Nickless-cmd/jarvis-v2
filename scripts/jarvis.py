@@ -324,7 +324,10 @@ def _capability_invocation_truth() -> tuple[dict, str, str | None]:
     response, api_error = _request_json("GET", "/mc/visible-execution")
     if response is not None:
         return response.get("capability_invocation") or {}, "api", None
-    return get_capability_invocation_truth(), "local-fallback", api_error
+    return {
+        **get_capability_invocation_truth(),
+        "persisted_recent_invocations": [],
+    }, "local-fallback", api_error
 
 
 def _invoke_capability_truth(capability_id: str) -> tuple[dict, str, str | None]:
@@ -433,6 +436,9 @@ def _capability_invocation_section(
         "last_invocation": _normalize_capability_invocation(
             capability_invocation.get("last_invocation")
         ),
+        "persisted_recent_invocations": _normalize_persisted_capability_invocations(
+            capability_invocation.get("persisted_recent_invocations")
+        ),
         "recent_events": capability_invocation.get("recent_events", []),
     }
 
@@ -516,7 +522,28 @@ def _normalize_capability_invocation(last_invocation: dict | None) -> dict | Non
         "finished_at": last_invocation.get("finished_at"),
         "result_preview": last_invocation.get("result_preview"),
         "detail": last_invocation.get("detail"),
+        "run_id": last_invocation.get("run_id"),
     }
+
+
+def _normalize_persisted_capability_invocations(items: list[dict] | None) -> list[dict]:
+    normalized: list[dict] = []
+    for item in items or []:
+        normalized.append(
+            {
+                "capability_id": item.get("capability_id"),
+                "capability_name": item.get("capability_name"),
+                "capability_kind": item.get("capability_kind"),
+                "status": item.get("status"),
+                "execution_mode": item.get("execution_mode"),
+                "invoked_at": item.get("invoked_at"),
+                "finished_at": item.get("finished_at"),
+                "result_preview": item.get("result_preview"),
+                "detail": item.get("detail"),
+                "run_id": item.get("run_id"),
+            }
+        )
+    return normalized
 
 
 def _normalize_visible_capability_use(last_capability_use: dict | None) -> dict | None:

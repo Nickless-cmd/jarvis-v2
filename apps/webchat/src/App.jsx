@@ -561,6 +561,40 @@ export default function App() {
                           ) : (
                             <p>Ingen persisted visible work units endnu.</p>
                           )}
+                          <h4>Persisted visible work notes</h4>
+                          {visibleControl.visible_work.persisted_recent_notes?.length ? (
+                            <ul className="runtime-event-list compact">
+                              {visibleControl.visible_work.persisted_recent_notes.map(
+                                (item) => (
+                                  <li key={item.note_id || item.run_id || item.work_id}>
+                                    <span>
+                                      {item.note_id || item.work_id || item.run_id || "ingen"}
+                                    </span>
+                                    <small>
+                                      <span
+                                        className={`status-chip ${statusTone(item.status)}`}
+                                      >
+                                        {item.status || "ukendt"}
+                                      </span>{" "}
+                                      · {item.finished_at || "ingen"}
+                                      {item.work_id ? ` · ${item.work_id}` : ""}
+                                      {item.run_id ? ` · ${item.run_id}` : ""}
+                                      {item.capability_id ? ` · ${item.capability_id}` : ""}
+                                      {item.user_message_preview
+                                        ? ` · ${item.user_message_preview}`
+                                        : ""}
+                                      {item.work_preview ? ` · ${item.work_preview}` : ""}
+                                      {item.projection_source
+                                        ? ` · ${item.projection_source}`
+                                        : ""}
+                                    </small>
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          ) : (
+                            <p>Ingen persisted visible work notes endnu.</p>
+                          )}
                         </>
                       ) : (
                         <p>Ingen visible work truth endnu.</p>

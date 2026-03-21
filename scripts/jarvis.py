@@ -670,6 +670,9 @@ def _normalize_visible_work(visible_work: dict | None) -> dict:
         "persisted_recent_units": _normalize_visible_work_units(
             visible_work.get("persisted_recent_units")
         ),
+        "persisted_recent_notes": _normalize_visible_work_notes(
+            visible_work.get("persisted_recent_notes")
+        ),
     }
 
 
@@ -685,6 +688,25 @@ def _normalize_visible_work_units(items: list[dict] | None) -> list[dict]:
                 "user_message_preview": item.get("user_message_preview"),
                 "capability_id": item.get("capability_id"),
                 "work_preview": item.get("work_preview"),
+            }
+        )
+    return normalized
+
+
+def _normalize_visible_work_notes(items: list[dict] | None) -> list[dict]:
+    normalized: list[dict] = []
+    for item in items or []:
+        normalized.append(
+            {
+                "note_id": item.get("note_id"),
+                "work_id": item.get("work_id"),
+                "run_id": item.get("run_id"),
+                "status": item.get("status"),
+                "user_message_preview": item.get("user_message_preview"),
+                "capability_id": item.get("capability_id"),
+                "work_preview": item.get("work_preview"),
+                "projection_source": item.get("projection_source"),
+                "finished_at": item.get("finished_at"),
             }
         )
     return normalized

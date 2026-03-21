@@ -15,6 +15,7 @@ from apps.api.jarvis_api.services.visible_model import (
 )
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
+from core.runtime.db import connect
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
     invoke_workspace_capability,
@@ -46,6 +47,7 @@ class VisibleRunController:
     started_at: str
     cancelled: bool = False
     active_stream: object | None = None
+    last_capability_id: str | None = None
 
     def attach_stream(self, stream: object) -> None:
         self.active_stream = stream
@@ -549,25 +551,36 @@ def set_last_visible_run_outcome(
     text_preview: str | None = None,
 ) -> None:
     global _LAST_VISIBLE_RUN_OUTCOME
+    finished_at = datetime.now(UTC).isoformat()
     outcome = {
         "run_id": run.run_id,
         "lane": run.lane,
         "provider": run.provider,
         "model": run.model,
         "status": status,
-        "finished_at": datetime.now(UTC).isoformat(),
+        "finished_at": finished_at,
     }
     if error:
         outcome["error"] = error
     if text_preview:
         outcome["text_preview"] = text_preview
     _LAST_VISIBLE_RUN_OUTCOME = outcome
+    _persist_visible_run_outcome(
+        run,
+        status=status,
+        finished_at=finished_at,
+        text_preview=text_preview,
+        error=error,
+    )
 
 
 def set_last_visible_capability_use(
     run: VisibleRun, *, capability_id: str, invocation: dict[str, object]
 ) -> None:
     global _LAST_VISIBLE_CAPABILITY_USE
+    controller = get_visible_run_controller(run.run_id)
+    if controller is not None:
+        controller.last_capability_id = capability_id
     capability = invocation.get("capability")
     result = invocation.get("result") or {}
     result_preview = None
@@ -593,3 +606,50 @@ def set_last_visible_capability_use(
         "result_preview": result_preview,
         "detail": invocation.get("detail"),
     }
+
+
+def _persist_visible_run_outcome(
+    run: VisibleRun,
+    *,
+    status: str,
+    finished_at: str,
+    text_preview: str | None = None,
+    error: str | None = None,
+) -> None:
+    controller = get_visible_run_controller(run.run_id)
+    started_at = controller.started_at if controller else None
+    capability_id = controller.last_capability_id if controller else None
+    bounded_error = _bounded_error(error) if error else None
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO visible_runs (
+                run_id, lane, provider, model, status,
+                started_at, finished_at, text_preview, error, capability_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                lane=excluded.lane,
+                provider=excluded.provider,
+                model=excluded.model,
+                status=excluded.status,
+                started_at=excluded.started_at,
+                finished_at=excluded.finished_at,
+                text_preview=excluded.text_preview,
+                error=excluded.error,
+                capability_id=excluded.capability_id
+            """,
+            (
+                run.run_id,
+                run.lane,
+                run.provider,
+                run.model,
+                status,
+                started_at,
+                finished_at,
+                text_preview,
+                bounded_error,
+                capability_id,
+            ),
+        )
+        conn.commit()

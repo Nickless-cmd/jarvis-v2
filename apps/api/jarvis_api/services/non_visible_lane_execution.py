@@ -295,6 +295,8 @@ def _local_auth_path(*, provider: str, auth_mode: str) -> str:
 def _github_copilot_auth_state(*, oauth_state: str) -> str:
     if oauth_state == "prepared":
         return "oauth-prepared"
+    if oauth_state == "handshake-started":
+        return "oauth-handshake-started"
     if oauth_state == "placeholder-stored":
         return "oauth-placeholder-stored"
     if oauth_state == "real-stored":
@@ -307,6 +309,8 @@ def _github_copilot_auth_state(*, oauth_state: str) -> str:
 def _github_copilot_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "not-implemented"
+    if auth_state == "oauth-handshake-started":
+        return "oauth-handshake-started"
     if auth_state == "oauth-placeholder-stored":
         return "placeholder-only"
     if auth_state == "oauth-prepared":
@@ -319,6 +323,8 @@ def _github_copilot_status(*, auth_state: str) -> str:
 def _github_copilot_auth_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "ready"
+    if auth_state == "oauth-handshake-started":
+        return "oauth-handshake-started"
     if auth_state == "oauth-placeholder-stored":
         return "placeholder-only"
     if auth_state == "oauth-prepared":
@@ -331,6 +337,8 @@ def _github_copilot_auth_status(*, auth_state: str) -> str:
 def _github_copilot_provider_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "not-implemented"
+    if auth_state == "oauth-handshake-started":
+        return "oauth-handshake-started"
     if auth_state == "oauth-placeholder-stored":
         return "placeholder-only"
     if auth_state == "oauth-prepared":

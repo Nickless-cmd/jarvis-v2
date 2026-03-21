@@ -306,6 +306,18 @@ def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
                 "created_by": "jarvis-cli",
             },
         )
+    elif args.state == "handshake-started":
+        profile_state = save_provider_credentials(
+            profile=args.auth_profile,
+            provider="github-copilot",
+            credentials={
+                "placeholder": True,
+                "kind": "github-copilot-oauth-handshake-placeholder",
+                "oauth_state": "handshake-started",
+                "real_oauth": False,
+                "created_by": "jarvis-cli",
+            },
+        )
     elif args.state == "stored":
         profile_state = save_provider_credentials(
             profile=args.auth_profile,
@@ -324,7 +336,9 @@ def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
             provider="github-copilot",
         )
     else:
-        raise ValueError("state must be one of: prepared, stored, revoked")
+        raise ValueError(
+            "state must be one of: prepared, handshake-started, stored, revoked"
+        )
 
     print(
         json.dumps(
@@ -578,7 +592,7 @@ def build_parser() -> argparse.ArgumentParser:
     set_copilot_auth_state.add_argument(
         "--state",
         required=True,
-        choices=("prepared", "stored", "revoked"),
+        choices=("prepared", "handshake-started", "stored", "revoked"),
     )
     set_copilot_auth_state.set_defaults(func=cmd_set_copilot_auth_state)
 

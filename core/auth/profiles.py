@@ -147,7 +147,12 @@ def get_provider_oauth_state(*, profile: str, provider: str) -> str:
 
     credentials = _read_json(credentials_path)
     oauth_state = str(credentials.get("oauth_state") or "").strip()
-    if oauth_state in {"prepared", "placeholder-stored", "real-stored"}:
+    if oauth_state in {
+        "prepared",
+        "handshake-started",
+        "placeholder-stored",
+        "real-stored",
+    }:
         return oauth_state
 
     if bool(credentials.get("placeholder")) or credentials.get("real_oauth") is False:

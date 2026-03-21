@@ -1270,6 +1270,42 @@ def get_private_retained_memory_record() -> dict[str, object] | None:
     }
 
 
+def recent_private_retained_memory_records(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                record_id,
+                source,
+                run_id,
+                work_id,
+                retained_value,
+                retained_kind,
+                retention_scope,
+                confidence,
+                created_at
+            FROM private_retained_memory_records
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "record_id": row["record_id"],
+            "source": row["source"],
+            "run_id": row["run_id"],
+            "work_id": row["work_id"],
+            "retained_value": row["retained_value"],
+            "retained_kind": row["retained_kind"],
+            "retention_scope": row["retention_scope"],
+            "confidence": row["confidence"],
+            "created_at": row["created_at"],
+        }
+        for row in rows
+    ]
+
+
 def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:
     with connect() as conn:
         rows = conn.execute(

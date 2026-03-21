@@ -50,6 +50,7 @@ from core.runtime.db import (
     recent_private_growth_notes,
     recent_private_inner_notes,
     recent_private_reflective_selections,
+    recent_private_retained_memory_records,
     recent_visible_work_notes,
     recent_visible_work_units,
     recent_visible_runs,
@@ -463,6 +464,7 @@ def _private_retained_memory_record_surface() -> dict:
     return {
         "active": bool(record),
         "current": record,
+        "recent_records": recent_private_retained_memory_records(limit=5),
     }
 
 

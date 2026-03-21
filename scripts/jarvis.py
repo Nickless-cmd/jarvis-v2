@@ -166,6 +166,37 @@ def cmd_configure_provider(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_configure_coding_lane(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    result = configure_provider_router_entry(
+        provider="openai",
+        model=args.model,
+        auth_mode="api-key",
+        auth_profile=args.auth_profile,
+        base_url=args.base_url,
+        api_key=args.api_key,
+        lane="coding",
+        set_visible=False,
+    )
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "configured": result,
+                "coding_lane": {
+                    "provider": "openai",
+                    "lane": "coding",
+                    "auth_mode": "api-key",
+                    "auth_profile": args.auth_profile,
+                },
+                "provider_router": provider_router_summary(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_workspace(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     workspace = ensure_default_workspace(name=args.name)
@@ -347,6 +378,13 @@ def build_parser() -> argparse.ArgumentParser:
     configure_provider.add_argument("--lane", default="visible")
     configure_provider.add_argument("--set-visible", action="store_true")
     configure_provider.set_defaults(func=cmd_configure_provider)
+
+    configure_coding_lane = sub.add_parser("configure-coding-lane")
+    configure_coding_lane.add_argument("--model", required=True)
+    configure_coding_lane.add_argument("--auth-profile", default="codex")
+    configure_coding_lane.add_argument("--api-key", default="")
+    configure_coding_lane.add_argument("--base-url", default="https://api.openai.com/v1")
+    configure_coding_lane.set_defaults(func=cmd_configure_coding_lane)
 
     workspace = sub.add_parser("workspace")
     workspace.add_argument("--name", default="default")

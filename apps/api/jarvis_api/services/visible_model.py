@@ -14,6 +14,7 @@ from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.identity.visible_identity import load_visible_identity_prompt
 from core.runtime.db import (
     recent_private_inner_notes,
+    recent_private_growth_notes,
     recent_capability_invocations,
     recent_visible_runs,
     visible_session_continuity,
@@ -429,6 +430,7 @@ def _visible_system_instruction() -> str | None:
         _capability_continuity_instruction(),
         _visible_work_instruction(),
         _private_support_signal_instruction(),
+        _growth_support_signal_instruction(),
         _capability_instruction(),
     ]
     text = "\n\n".join(part for part in parts if part)
@@ -583,6 +585,40 @@ def _private_support_signal_instruction() -> str | None:
     return "\n".join(
         [
             "Private support signal:",
+            "- " + " | ".join(parts),
+            "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
+        ]
+    )
+
+
+def _growth_support_signal_instruction() -> str | None:
+    recent_notes = recent_private_growth_notes(limit=1)
+    if not recent_notes:
+        return None
+
+    note = recent_notes[0]
+    identity_signal = str(note.get("identity_signal") or "").strip()
+    learning_kind = str(note.get("learning_kind") or "").strip()
+    confidence = str(note.get("confidence") or "").strip()
+    if not identity_signal or not learning_kind:
+        return None
+
+    parts = [
+        f"learning_kind={learning_kind}",
+        f"identity_signal={identity_signal}",
+    ]
+    if confidence:
+        parts.append(f"confidence={confidence}")
+    helpful_signal = str(note.get("helpful_signal") or "").strip()
+    mistake_signal = str(note.get("mistake_signal") or "").strip()
+    if helpful_signal:
+        parts.append(f"helpful_signal={helpful_signal}")
+    elif mistake_signal:
+        parts.append(f"mistake_signal={mistake_signal}")
+
+    return "\n".join(
+        [
+            "Growth support signal:",
             "- " + " | ".join(parts),
             "Use this only as a subordinate helper signal. Visible and runtime truth outrank it.",
         ]

@@ -40,6 +40,7 @@ def coding_lane_execution_truth() -> dict[str, object]:
         "can_execute": readiness["can_execute"],
         "auth_mode": readiness["auth_mode"],
         "auth_profile": readiness["auth_profile"],
+        "auth_state": readiness["auth_state"],
         "credentials_ready": readiness["credentials_ready"],
         "auth_status": readiness["auth_status"],
         "provider_ready": readiness["provider_ready"],
@@ -87,6 +88,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "can_execute": False,
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
+            "auth_state": "missing-target",
             "credentials_ready": credentials_ready,
             "auth_status": "missing-target",
             "provider_ready": False,
@@ -102,6 +104,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "can_execute": True,
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
+            "auth_state": "not-required",
             "credentials_ready": True,
             "auth_status": "not-required",
             "provider_ready": True,
@@ -112,18 +115,19 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         }
 
     if provider == "github-copilot":
-        oauth_ready = credentials_ready
+        auth_state = _github_copilot_auth_state(auth_profile=auth_profile)
         return {
-            "status": "not-implemented" if oauth_ready else "oauth-required",
+            "status": _github_copilot_status(auth_state=auth_state),
             "can_execute": False,
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
+            "auth_state": auth_state,
             "credentials_ready": credentials_ready,
-            "auth_status": "ready" if oauth_ready else "oauth-required",
+            "auth_status": _github_copilot_auth_status(auth_state=auth_state),
             "provider_ready": False,
             "coding_auth_path": coding_auth_path,
             "live_verified": False,
-            "provider_status": "not-implemented" if oauth_ready else "oauth-required",
+            "provider_status": _github_copilot_provider_status(auth_state=auth_state),
             "checked_at": None,
         }
 
@@ -135,6 +139,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "can_execute": provider_ready,
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
+            "auth_state": auth_status,
             "credentials_ready": credentials_ready,
             "auth_status": auth_status,
             "provider_ready": provider_ready,
@@ -149,6 +154,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         "can_execute": False,
         "auth_mode": auth_mode,
         "auth_profile": auth_profile,
+        "auth_state": "unsupported-provider",
         "credentials_ready": credentials_ready,
         "auth_status": "unsupported-provider",
         "provider_ready": False,
@@ -169,6 +175,44 @@ def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
     if provider == "phase1-runtime":
         return "phase1-runtime"
     return "unsupported"
+
+
+def _github_copilot_auth_state(*, auth_profile: str) -> str:
+    if not auth_profile:
+        return "oauth-required"
+    state = get_provider_state(profile=auth_profile, provider="github-copilot")
+    if state is None:
+        return "oauth-required"
+    status = str(state.get("status") or "").strip()
+    if status == "active":
+        return "oauth-stored"
+    if status == "revoked":
+        return "oauth-revoked"
+    return "oauth-required"
+
+
+def _github_copilot_status(*, auth_state: str) -> str:
+    if auth_state == "oauth-stored":
+        return "not-implemented"
+    if auth_state == "oauth-revoked":
+        return "oauth-revoked"
+    return "oauth-required"
+
+
+def _github_copilot_auth_status(*, auth_state: str) -> str:
+    if auth_state == "oauth-stored":
+        return "ready"
+    if auth_state == "oauth-revoked":
+        return "oauth-revoked"
+    return "oauth-required"
+
+
+def _github_copilot_provider_status(*, auth_state: str) -> str:
+    if auth_state == "oauth-stored":
+        return "not-implemented"
+    if auth_state == "oauth-revoked":
+        return "oauth-revoked"
+    return "oauth-required"
 
 
 def _coding_lane_probe(

@@ -185,6 +185,21 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_states (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                state_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                frustration TEXT NOT NULL,
+                fatigue TEXT NOT NULL,
+                confidence TEXT NOT NULL,
+                curiosity TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -784,6 +799,80 @@ def get_private_development_state() -> dict[str, object] | None:
         "recurring_tension": row["recurring_tension"],
         "identity_thread": row["identity_thread"],
         "confidence": row["confidence"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def record_private_state(
+    *,
+    state_id: str,
+    source: str,
+    frustration: str,
+    fatigue: str,
+    confidence: str,
+    curiosity: str,
+    created_at: str,
+    updated_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_states (
+                state_id, source, frustration, fatigue, confidence, curiosity,
+                created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(state_id) DO UPDATE SET
+                source=excluded.source,
+                frustration=excluded.frustration,
+                fatigue=excluded.fatigue,
+                confidence=excluded.confidence,
+                curiosity=excluded.curiosity,
+                created_at=excluded.created_at,
+                updated_at=excluded.updated_at
+            """,
+            (
+                state_id,
+                source,
+                frustration,
+                fatigue,
+                confidence,
+                curiosity,
+                created_at,
+                updated_at,
+            ),
+        )
+        conn.commit()
+
+
+def get_private_state() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                state_id,
+                source,
+                frustration,
+                fatigue,
+                confidence,
+                curiosity,
+                created_at,
+                updated_at
+            FROM private_states
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "state_id": row["state_id"],
+        "source": row["source"],
+        "frustration": row["frustration"],
+        "fatigue": row["fatigue"],
+        "confidence": row["confidence"],
+        "curiosity": row["curiosity"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }

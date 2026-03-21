@@ -19,11 +19,13 @@ from core.memory.private_development_state import build_private_development_stat
 from core.memory.private_reflective_selection import (
     build_private_reflective_selection_payload,
 )
+from core.memory.private_state import build_private_state_payload
 from core.memory.private_self_model import build_private_self_model_payload
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     connect,
+    record_private_state,
     record_private_development_state,
     record_private_growth_note,
     record_private_inner_note,
@@ -861,6 +863,15 @@ def _persist_visible_run_outcome(
         created_at=started_at or finished_at,
         updated_at=finished_at,
     )
+    private_state = build_private_state_payload(
+        private_inner_note=private_inner_note,
+        private_growth_note=private_growth_note,
+        private_self_model=private_self_model,
+        private_reflective_selection=private_reflective_selection,
+        private_development_state=private_development_state,
+        created_at=started_at or finished_at,
+        updated_at=finished_at,
+    )
     with connect() as conn:
         conn.execute(
             """
@@ -970,3 +981,4 @@ def _persist_visible_run_outcome(
     record_private_self_model(**private_self_model)
     record_private_reflective_selection(**private_reflective_selection)
     record_private_development_state(**private_development_state)
+    record_private_state(**private_state)

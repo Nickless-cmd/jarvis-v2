@@ -38,6 +38,7 @@ from core.runtime.db import (
     connect,
     get_capability_approval_request,
     get_private_development_state,
+    get_private_state,
     get_private_self_model,
     record_capability_approval_request_execution,
     recent_capability_approval_requests,
@@ -151,6 +152,7 @@ def mc_runtime() -> dict:
         "private_self_model": _private_self_model_surface(),
         "private_reflective_selection": _private_reflective_selection_surface(),
         "private_development_state": _private_development_state_surface(),
+        "private_state": _private_state_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -318,6 +320,7 @@ def _visible_execution_surface(settings) -> dict:
         "private_self_model": _private_self_model_surface(),
         "private_reflective_selection": _private_reflective_selection_surface(),
         "private_development_state": _private_development_state_surface(),
+        "private_state": _private_state_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),
@@ -405,6 +408,14 @@ def _private_reflective_selection_surface() -> dict:
 
 def _private_development_state_surface() -> dict:
     state = get_private_development_state()
+    return {
+        "active": bool(state),
+        "current": state,
+    }
+
+
+def _private_state_surface() -> dict:
+    state = get_private_state()
     return {
         "active": bool(state),
         "current": state,

@@ -40,6 +40,7 @@ from core.runtime.db import (
     record_capability_approval_request_execution,
     recent_capability_approval_requests,
     recent_capability_invocations,
+    recent_private_inner_notes,
     recent_visible_work_notes,
     recent_visible_work_units,
     recent_visible_runs,
@@ -141,6 +142,7 @@ def mc_runtime() -> dict:
         "visible_run": _visible_run_surface(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
+        "private_inner_note": _private_inner_note_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -303,6 +305,7 @@ def _visible_execution_surface(settings) -> dict:
         "visible_selected_work_note": get_visible_selected_work_note(),
         "workspace_capabilities": load_workspace_capabilities(),
         "capability_invocation": _capability_invocation_surface(),
+        "private_inner_note": _private_inner_note_surface(),
         "supported_providers": list(SUPPORTED_VISIBLE_PROVIDERS),
         "available_auth_profiles": _available_openai_profiles(),
         "visible_run": _visible_run_surface(),
@@ -353,6 +356,14 @@ def _capability_invocation_surface() -> dict:
         "persisted_recent_invocations": recent_capability_invocations(limit=5),
         "recent_approval_requests": recent_capability_approval_requests(limit=5),
         "recent_events": _recent_capability_invocation_events(),
+    }
+
+
+def _private_inner_note_surface() -> dict:
+    notes = recent_private_inner_notes(limit=5)
+    return {
+        "active": bool(notes),
+        "recent_notes": notes,
     }
 
 

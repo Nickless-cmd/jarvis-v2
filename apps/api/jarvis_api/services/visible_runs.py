@@ -13,9 +13,15 @@ from apps.api.jarvis_api.services.visible_model import (
     VisibleModelStreamDone,
     stream_visible_model,
 )
+from core.memory.private_inner_note import build_private_inner_note_payload
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
-from core.runtime.db import connect, recent_visible_work_notes, recent_visible_work_units
+from core.runtime.db import (
+    connect,
+    record_private_inner_note,
+    recent_visible_work_notes,
+    recent_visible_work_units,
+)
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
     invoke_workspace_capability,
@@ -807,6 +813,15 @@ def _persist_visible_run_outcome(
     work_preview = text_preview or bounded_error
     work_id = f"visible-work:{run.run_id}"
     note_id = f"visible-work-note:{run.run_id}"
+    private_inner_note = build_private_inner_note_payload(
+        run_id=run.run_id,
+        work_id=work_id,
+        status=status,
+        user_message_preview=user_message_preview,
+        work_preview=work_preview,
+        capability_id=capability_id,
+        created_at=started_at or finished_at,
+    )
     with connect() as conn:
         conn.execute(
             """
@@ -911,3 +926,4 @@ def _persist_visible_run_outcome(
             ),
         )
         conn.commit()
+    record_private_inner_note(**private_inner_note)

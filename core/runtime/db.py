@@ -98,6 +98,20 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS private_inner_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                note_id TEXT NOT NULL UNIQUE,
+                source TEXT NOT NULL,
+                run_id TEXT NOT NULL UNIQUE,
+                work_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                private_summary TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS capability_invocations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 capability_id TEXT NOT NULL,
@@ -260,6 +274,76 @@ def recent_visible_work_notes(limit: int = 5) -> list[dict[str, object]]:
             "projection_source": row["projection_source"],
             "created_at": row["created_at"],
             "finished_at": row["finished_at"],
+        }
+        for row in rows
+    ]
+
+
+def record_private_inner_note(
+    *,
+    note_id: str,
+    source: str,
+    run_id: str,
+    work_id: str,
+    status: str,
+    private_summary: str,
+    created_at: str,
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO private_inner_notes (
+                note_id, source, run_id, work_id, status, private_summary, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                note_id=excluded.note_id,
+                source=excluded.source,
+                work_id=excluded.work_id,
+                status=excluded.status,
+                private_summary=excluded.private_summary,
+                created_at=excluded.created_at
+            """,
+            (
+                note_id,
+                source,
+                run_id,
+                work_id,
+                status,
+                private_summary,
+                created_at,
+            ),
+        )
+        conn.commit()
+
+
+def recent_private_inner_notes(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                note_id,
+                source,
+                run_id,
+                work_id,
+                status,
+                private_summary,
+                created_at
+            FROM private_inner_notes
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "note_id": row["note_id"],
+            "source": row["source"],
+            "run_id": row["run_id"],
+            "work_id": row["work_id"],
+            "status": row["status"],
+            "private_summary": row["private_summary"],
+            "created_at": row["created_at"],
         }
         for row in rows
     ]

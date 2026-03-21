@@ -36,6 +36,10 @@ def build_operational_preference_alignment(
                 preferred_lane=preferred_lane,
                 preferred_target=preferred_target,
             ),
+            "recommended_action": _recommended_action(
+                preferred_lane=preferred_lane,
+                preferred_target=preferred_target,
+            ),
             "confidence": str(preference.get("confidence") or "low")[:32],
             "created_at": preference.get("created_at"),
         },
@@ -64,3 +68,15 @@ def _mismatch_reason(
     if not bool(preferred_target.get("credentials_ready", True)):
         return "preferred-lane-auth-not-ready"
     return None
+
+
+def _recommended_action(
+    *, preferred_lane: str, preferred_target: dict[str, object]
+) -> str:
+    if not preferred_lane:
+        return "no-preference"
+    if not bool(preferred_target.get("active")):
+        return "configure-preferred-lane"
+    if not bool(preferred_target.get("credentials_ready", True)):
+        return "preferred-lane-not-ready"
+    return "keep-current"

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.runtime.db import connect
 
 CAPABILITY_FILES = {
     "tools": "TOOLS.md",
@@ -37,7 +38,7 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
 
 
 def invoke_workspace_capability(
-    capability_id: str, *, name: str = "default"
+    capability_id: str, *, name: str = "default", run_id: str | None = None
 ) -> dict[str, object]:
     invoked_at = _now()
     event_bus.publish(
@@ -64,7 +65,7 @@ def invoke_workspace_capability(
                 "execution_mode": summary["execution_mode"],
                 "result": None,
             }
-            _set_last_capability_invocation(result, invoked_at=invoked_at)
+            _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
         result = _invoke_runnable_capability(
@@ -72,7 +73,7 @@ def invoke_workspace_capability(
             section=section,
             summary=summary,
         )
-        _set_last_capability_invocation(result, invoked_at=invoked_at)
+        _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
         _publish_capability_invocation_completed(result, invoked_at=invoked_at)
         return result
 
@@ -86,6 +87,7 @@ def invoke_workspace_capability(
         result,
         invoked_at=invoked_at,
         capability_id=capability_id,
+        run_id=run_id,
     )
     _publish_capability_invocation_completed(
         result,
@@ -379,12 +381,14 @@ def _set_last_capability_invocation(
     *,
     invoked_at: str,
     capability_id: str | None = None,
+    run_id: str | None = None,
 ) -> None:
     global _LAST_CAPABILITY_INVOCATION
     capability = invocation.get("capability")
     result = invocation.get("result") or {}
     detail = invocation.get("detail")
     result_preview = _result_preview(result)
+    finished_at = _now()
 
     _LAST_CAPABILITY_INVOCATION = {
         "active": False,
@@ -393,10 +397,18 @@ def _set_last_capability_invocation(
         "status": invocation.get("status"),
         "execution_mode": invocation.get("execution_mode"),
         "invoked_at": invoked_at,
-        "finished_at": _now(),
+        "finished_at": finished_at,
         "result_preview": result_preview,
         "detail": detail,
+        "run_id": run_id,
     }
+    _persist_capability_invocation(
+        invocation,
+        invoked_at=invoked_at,
+        finished_at=finished_at,
+        capability_id=capability_id,
+        run_id=run_id,
+    )
 
 
 def _publish_capability_invocation_completed(
@@ -423,6 +435,51 @@ def _publish_capability_invocation_completed(
             "detail": detail,
         },
     )
+
+
+def _persist_capability_invocation(
+    invocation: dict[str, object],
+    *,
+    invoked_at: str,
+    finished_at: str,
+    capability_id: str | None = None,
+    run_id: str | None = None,
+) -> None:
+    capability = invocation.get("capability") or {}
+    result = invocation.get("result") or {}
+    detail = invocation.get("detail")
+    result_preview = _result_preview(result)
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO capability_invocations (
+                capability_id,
+                capability_name,
+                capability_kind,
+                status,
+                execution_mode,
+                invoked_at,
+                finished_at,
+                result_preview,
+                detail,
+                run_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                capability_id or capability.get("capability_id") or "unknown",
+                capability.get("name"),
+                capability.get("kind"),
+                invocation.get("status"),
+                invocation.get("execution_mode"),
+                invoked_at,
+                finished_at,
+                result_preview,
+                detail,
+                run_id,
+            ),
+        )
+        conn.commit()
 
 
 def _preview_text(text: str, limit: int = 120) -> str:

@@ -212,7 +212,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             return
 
         if capability_call and _is_runnable_workspace_capability(capability_call):
-            capability_result = invoke_workspace_capability(capability_call)
+            capability_result = invoke_workspace_capability(
+                capability_call,
+                run_id=run.run_id,
+            )
             set_last_visible_capability_use(
                 run,
                 capability_id=capability_call,

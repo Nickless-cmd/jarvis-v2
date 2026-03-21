@@ -58,6 +58,23 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS capability_invocations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                capability_id TEXT NOT NULL,
+                capability_name TEXT,
+                capability_kind TEXT,
+                status TEXT NOT NULL,
+                execution_mode TEXT NOT NULL,
+                invoked_at TEXT NOT NULL,
+                finished_at TEXT NOT NULL,
+                result_preview TEXT,
+                detail TEXT,
+                run_id TEXT
+            )
+            """
+        )
         conn.commit()
 
 

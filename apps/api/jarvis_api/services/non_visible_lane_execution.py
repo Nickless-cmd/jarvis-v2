@@ -111,6 +111,22 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "checked_at": None,
         }
 
+    if provider == "github-copilot":
+        oauth_ready = credentials_ready
+        return {
+            "status": "not-implemented" if oauth_ready else "oauth-required",
+            "can_execute": False,
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "credentials_ready": credentials_ready,
+            "auth_status": "ready" if oauth_ready else "oauth-required",
+            "provider_ready": False,
+            "coding_auth_path": coding_auth_path,
+            "live_verified": False,
+            "provider_status": "not-implemented" if oauth_ready else "oauth-required",
+            "checked_at": None,
+        }
+
     if provider in {"openai", "openrouter"}:
         auth_status = "ready" if credentials_ready else "auth-not-ready"
         provider_ready = bool(probe["provider_ready"])
@@ -146,6 +162,8 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
 def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
     if provider == "openai" and auth_mode == "api-key":
         return "openai-codex-api-key"
+    if provider == "github-copilot" and auth_mode == "oauth":
+        return "github-copilot-oauth"
     if provider == "openrouter" and auth_mode == "api-key":
         return "openrouter-api-key"
     if provider == "phase1-runtime":

@@ -768,6 +768,36 @@ export default function App() {
                         <p>Ingen capability invocation-events endnu.</p>
                       )}
                     </section>
+                    <section className="truth-section">
+                      <h3>Persisted recent capability invocations</h3>
+                      {visibleControl.capability_invocation
+                        ?.persisted_recent_invocations?.length ? (
+                        <ul className="runtime-event-list compact">
+                          {visibleControl.capability_invocation.persisted_recent_invocations.map(
+                            (item, index) => (
+                              <li key={`${item.capability_id || "capability"}-${index}`}>
+                                <span>
+                                  {item.capability_name || item.capability_id || "ingen"}
+                                </span>
+                                <small>
+                                  <span
+                                    className={`status-chip ${statusTone(item.status)}`}
+                                  >
+                                    {item.status || "ukendt"}
+                                  </span>{" "}
+                                  · {item.execution_mode || "ingen"} ·{" "}
+                                  {item.finished_at || "ingen"}
+                                  {item.run_id ? ` · ${item.run_id}` : ""}
+                                  {item.result_preview ? ` · ${item.result_preview}` : ""}
+                                </small>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      ) : (
+                        <p>Ingen persisted capability invocations endnu.</p>
+                      )}
+                    </section>
                   </div>
                 ) : (
                   <p>Ingen visible run truth endnu.</p>

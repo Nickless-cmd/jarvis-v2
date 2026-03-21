@@ -21,7 +21,7 @@ from core.runtime.config import (
     STATE_DIR,
     WORKSPACES_DIR,
 )
-from core.runtime.db import connect, recent_visible_runs
+from core.runtime.db import connect, recent_capability_invocations, recent_visible_runs
 from core.runtime.settings import load_settings, update_visible_execution_settings
 from core.tools.workspace_capabilities import (
     get_capability_invocation_truth,
@@ -248,6 +248,7 @@ def _capability_invocation_surface() -> dict:
     truth = get_capability_invocation_truth()
     return {
         **truth,
+        "persisted_recent_invocations": recent_capability_invocations(limit=5),
         "recent_events": _recent_capability_invocation_events(),
     }
 

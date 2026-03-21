@@ -114,3 +114,41 @@ def recent_visible_runs(limit: int = 5) -> list[dict[str, object]]:
         }
         for row in rows
     ]
+
+
+def recent_capability_invocations(limit: int = 5) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                capability_id,
+                capability_name,
+                capability_kind,
+                status,
+                execution_mode,
+                invoked_at,
+                finished_at,
+                result_preview,
+                detail,
+                run_id
+            FROM capability_invocations
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [
+        {
+            "capability_id": row["capability_id"],
+            "capability_name": row["capability_name"],
+            "capability_kind": row["capability_kind"],
+            "status": row["status"],
+            "execution_mode": row["execution_mode"],
+            "invoked_at": row["invoked_at"],
+            "finished_at": row["finished_at"],
+            "result_preview": row["result_preview"],
+            "detail": row["detail"],
+            "run_id": row["run_id"],
+        }
+        for row in rows
+    ]

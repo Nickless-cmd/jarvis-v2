@@ -335,6 +335,7 @@ def _stream_ollama_model(
     )
 
     parts: list[str] = []
+    terminal_response = ""
     prompt_eval_count = _estimate_tokens(payload["prompt"])
     eval_count = 0
 
@@ -349,9 +350,12 @@ def _stream_ollama_model(
                 event = json.loads(line)
                 delta = str(event.get("response") or "")
                 if delta:
+                    terminal_response = delta
                     parts.append(delta)
                     yield VisibleModelDelta(delta=delta)
                 if event.get("done"):
+                    if not parts and delta:
+                        terminal_response = delta
                     prompt_eval_count = int(
                         event.get("prompt_eval_count") or prompt_eval_count
                     )
@@ -366,6 +370,8 @@ def _stream_ollama_model(
             controller.clear_stream()
 
     text = "".join(parts).strip()
+    if not text:
+        text = terminal_response.strip()
     if not text:
         if controller is not None and controller.is_cancelled():
             raise VisibleModelStreamCancelled("visible-run-cancelled")

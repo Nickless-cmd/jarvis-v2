@@ -104,6 +104,14 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
         profile=profile,
         provider=provider,
     )
+    view["launch_result_state"] = get_provider_launch_result_state(
+        profile=profile,
+        provider=provider,
+    )
+    view["launch_freshness"] = get_provider_launch_freshness(
+        profile=profile,
+        provider=provider,
+    )
     credentials_path = Path(str(state.get("credentials_path") or ""))
     if credentials_path.exists():
         credentials = _read_json(credentials_path)
@@ -193,6 +201,58 @@ def get_provider_oauth_state(*, profile: str, provider: str) -> str:
     if bool(credentials.get("placeholder")) or credentials.get("real_oauth") is False:
         return "placeholder-stored"
     return "real-stored"
+
+
+def get_provider_launch_result_state(*, profile: str, provider: str) -> str:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return "not-started"
+
+    credentials_path = Path(str(state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        return "not-started"
+
+    credentials = _read_json(credentials_path)
+    oauth_state = str(credentials.get("oauth_state") or "").strip()
+    if oauth_state == "browser-launch-attempted":
+        launch_result = str(credentials.get("browser_launch_result") or "").strip()
+        if launch_result == "opened":
+            return "launch-opened"
+        if launch_result == "not-opened":
+            return "launch-not-opened"
+        return "launch-failed"
+    if oauth_state == "launch-intent-created":
+        return "launch-pending"
+    return "not-started"
+
+
+def get_provider_launch_freshness(*, profile: str, provider: str) -> str:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return "not-applicable"
+
+    credentials_path = Path(str(state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        return "not-applicable"
+
+    credentials = _read_json(credentials_path)
+    raw = str(
+        credentials.get("browser_launch_attempted_at")
+        or credentials.get("oauth_launch_started_at")
+        or ""
+    ).strip()
+    if not raw:
+        return "not-applicable"
+
+    try:
+        started_at = datetime.fromisoformat(raw)
+    except ValueError:
+        return "unknown"
+
+    age_seconds = (datetime.now(UTC) - started_at).total_seconds()
+    if age_seconds <= 300:
+        return "fresh"
+    return "stale"
 
 
 def revoke_provider(*, profile: str, provider: str) -> dict[str, Any] | None:

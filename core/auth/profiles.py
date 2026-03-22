@@ -112,6 +112,10 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
         profile=profile,
         provider=provider,
     )
+    view["callback_validation_state"] = get_provider_callback_validation_state(
+        profile=profile,
+        provider=provider,
+    )
     credentials_path = Path(str(state.get("credentials_path") or ""))
     if credentials_path.exists():
         credentials = _read_json(credentials_path)
@@ -268,6 +272,31 @@ def get_provider_launch_freshness(*, profile: str, provider: str) -> str:
     if age_seconds <= 300:
         return "fresh"
     return "stale"
+
+
+def get_provider_callback_validation_state(*, profile: str, provider: str) -> str:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return "not-applicable"
+
+    credentials_path = Path(str(state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        return "not-applicable"
+
+    credentials = _read_json(credentials_path)
+    oauth_state = str(credentials.get("oauth_state") or "").strip()
+    if oauth_state != "callback-received":
+        return "not-applicable"
+
+    has_code = bool(credentials.get("oauth_callback_has_code"))
+    has_state = bool(credentials.get("oauth_callback_has_state"))
+    if has_code and has_state:
+        return "structurally-ready"
+    if has_code:
+        return "missing-state"
+    if has_state:
+        return "missing-code"
+    return "incomplete"
 
 
 def revoke_provider(*, profile: str, provider: str) -> dict[str, Any] | None:

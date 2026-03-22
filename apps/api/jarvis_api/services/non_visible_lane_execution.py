@@ -10,6 +10,7 @@ from urllib import request as urllib_request
 from core.auth.profiles import (
     get_provider_auth_material_kind,
     get_provider_callback_validation_state,
+    get_provider_callback_intent_consistency,
     get_provider_exchange_readiness,
     get_provider_launch_freshness,
     get_provider_launch_result_state,
@@ -81,6 +82,7 @@ def coding_lane_execution_truth() -> dict[str, object]:
         "launch_freshness": readiness["launch_freshness"],
         "callback_validation_state": readiness["callback_validation_state"],
         "exchange_readiness": readiness["exchange_readiness"],
+        "callback_intent_consistency": readiness["callback_intent_consistency"],
         "live_verified": readiness["live_verified"],
         "provider_status": readiness["provider_status"],
         "checked_at": readiness["checked_at"],
@@ -135,6 +137,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "launch_freshness": "not-applicable",
             "callback_validation_state": "not-applicable",
             "exchange_readiness": "not-applicable",
+            "callback_intent_consistency": "not-applicable",
             "live_verified": False,
             "provider_status": "missing-target",
             "checked_at": None,
@@ -157,6 +160,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "launch_freshness": "not-applicable",
             "callback_validation_state": "not-applicable",
             "exchange_readiness": "not-applicable",
+            "callback_intent_consistency": "not-applicable",
             "live_verified": False,
             "provider_status": "local-fallback",
             "checked_at": None,
@@ -188,6 +192,10 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             profile=auth_profile,
             provider="github-copilot",
         )
+        callback_intent_consistency = get_provider_callback_intent_consistency(
+            profile=auth_profile,
+            provider="github-copilot",
+        )
         return {
             "status": _github_copilot_status(auth_state=auth_state),
             "can_execute": False,
@@ -204,6 +212,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "launch_freshness": launch_freshness,
             "callback_validation_state": callback_validation_state,
             "exchange_readiness": exchange_readiness,
+            "callback_intent_consistency": callback_intent_consistency,
             "live_verified": False,
             "provider_status": _github_copilot_provider_status(auth_state=auth_state),
             "checked_at": None,
@@ -228,6 +237,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "launch_freshness": "not-applicable",
             "callback_validation_state": "not-applicable",
             "exchange_readiness": "not-applicable",
+            "callback_intent_consistency": "not-applicable",
             "live_verified": bool(probe["live_verified"]),
             "provider_status": str(probe["provider_status"]),
             "checked_at": probe["checked_at"],
@@ -249,6 +259,7 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         "launch_freshness": "not-applicable",
         "callback_validation_state": "not-applicable",
         "exchange_readiness": "not-applicable",
+        "callback_intent_consistency": "not-applicable",
         "live_verified": False,
         "provider_status": "unsupported-provider",
         "checked_at": None,

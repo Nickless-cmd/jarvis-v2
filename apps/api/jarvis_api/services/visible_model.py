@@ -15,6 +15,7 @@ from core.identity.visible_identity import load_visible_identity_prompt
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
+from core.runtime.provider_router import resolve_provider_router_target
 from core.runtime.db import (
     get_private_temporal_promotion_signal,
     get_private_retained_memory_record,
@@ -63,6 +64,8 @@ class VisibleModelStreamCancelled(RuntimeError):
 def execute_visible_model(*, message: str, provider: str, model: str) -> VisibleModelResult:
     if provider == "openai":
         return _execute_openai_model(message=message, model=model)
+    if provider == "ollama":
+        return _execute_ollama_model(message=message, model=model)
     if provider == "phase1-runtime":
         return _execute_phase1_model(message=message, provider=provider, model=model)
     raise ValueError(f"Unsupported visible model provider: {provider}")
@@ -73,6 +76,9 @@ def stream_visible_model(
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
     if provider == "openai":
         yield from _stream_openai_model(message=message, model=model, controller=controller)
+        return
+    if provider == "ollama":
+        yield from _stream_ollama_model(message=message, model=model, controller=controller)
         return
 
     result = execute_visible_model(message=message, provider=provider, model=model)
@@ -134,6 +140,26 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "checked_at": checked_at,
         }
 
+    if provider == "ollama":
+        target = resolve_provider_router_target(lane="visible")
+        probe = _probe_ollama_visible_target(
+            model=model,
+            base_url=str(target.get("base_url") or "").strip(),
+        )
+        return {
+            "provider": provider,
+            "model": model,
+            "mode": "provider-backed",
+            "auth_ready": True,
+            "auth_status": "not-required",
+            "auth_profile": configured_profile,
+            "provider_reachable": bool(probe["provider_reachable"]),
+            "live_verified": bool(probe["live_verified"]),
+            "provider_status": str(probe["provider_status"]),
+            "probe_cache": "fresh",
+            "checked_at": str(probe["checked_at"]),
+        }
+
     return {
         "provider": provider,
         "model": model,
@@ -186,6 +212,38 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
         ),
+    )
+
+
+def _execute_ollama_model(*, message: str, model: str) -> VisibleModelResult:
+    target = resolve_provider_router_target(lane="visible")
+    base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
+    prompt = _build_ollama_prompt(message)
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+    }
+    req = urllib_request.Request(
+        f"{base_url.rstrip('/')}/api/generate",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib_request.urlopen(req, timeout=120) as response:
+        data = json.loads(response.read().decode("utf-8"))
+
+    text = str(data.get("response") or "").strip()
+    if not text:
+        raise RuntimeError("Ollama visible execution returned no response")
+
+    prompt_eval_count = int(data.get("prompt_eval_count") or _estimate_tokens(prompt))
+    eval_count = int(data.get("eval_count") or _estimate_tokens(text))
+    return VisibleModelResult(
+        text=text,
+        input_tokens=prompt_eval_count,
+        output_tokens=eval_count,
+        cost_usd=0.0,
     )
 
 
@@ -259,6 +317,70 @@ def _stream_openai_model(
     )
 
 
+def _stream_ollama_model(
+    *, message: str, model: str, controller=None
+) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+    target = resolve_provider_router_target(lane="visible")
+    base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
+    payload = {
+        "model": model,
+        "prompt": _build_ollama_prompt(message),
+        "stream": True,
+    }
+    req = urllib_request.Request(
+        f"{base_url.rstrip('/')}/api/generate",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    parts: list[str] = []
+    prompt_eval_count = _estimate_tokens(payload["prompt"])
+    eval_count = 0
+
+    try:
+        with urllib_request.urlopen(req, timeout=180) as response:
+            if controller is not None:
+                controller.attach_stream(response)
+            for raw_line in response:
+                line = raw_line.decode("utf-8").strip()
+                if not line:
+                    continue
+                event = json.loads(line)
+                delta = str(event.get("response") or "")
+                if delta:
+                    parts.append(delta)
+                    yield VisibleModelDelta(delta=delta)
+                if event.get("done"):
+                    prompt_eval_count = int(
+                        event.get("prompt_eval_count") or prompt_eval_count
+                    )
+                    eval_count = int(event.get("eval_count") or eval_count)
+                    break
+    except Exception:
+        if controller is not None and controller.is_cancelled():
+            raise VisibleModelStreamCancelled("visible-run-cancelled")
+        raise
+    finally:
+        if controller is not None:
+            controller.clear_stream()
+
+    text = "".join(parts).strip()
+    if not text:
+        if controller is not None and controller.is_cancelled():
+            raise VisibleModelStreamCancelled("visible-run-cancelled")
+        raise RuntimeError("Ollama visible execution returned no streamed response")
+
+    yield VisibleModelStreamDone(
+        result=VisibleModelResult(
+            text=text,
+            input_tokens=prompt_eval_count,
+            output_tokens=eval_count or _estimate_tokens(text),
+            cost_usd=0.0,
+        )
+    )
+
+
 def _load_openai_api_key() -> str:
     profile, status = _resolve_openai_profile()
     if profile is None:
@@ -325,6 +447,54 @@ def _post_openai_responses(*, payload: dict, api_key: str) -> dict:
     )
     with urllib_request.urlopen(req, timeout=60) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _probe_ollama_visible_target(*, model: str, base_url: str) -> dict[str, str | bool]:
+    checked_at = datetime.now(UTC).isoformat()
+    root = (base_url or "http://127.0.0.1:11434").rstrip("/")
+    req = urllib_request.Request(f"{root}/api/tags", method="GET")
+    try:
+        with urllib_request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        names = {
+            str(item.get("name") or "").strip()
+            for item in data.get("models", [])
+            if isinstance(item, dict)
+        }
+        if model and model not in names:
+            return {
+                "provider_reachable": True,
+                "live_verified": False,
+                "provider_status": "model-not-found",
+                "checked_at": checked_at,
+            }
+        return {
+            "provider_reachable": True,
+            "live_verified": True,
+            "provider_status": "ready",
+            "checked_at": checked_at,
+        }
+    except urllib_error.HTTPError as exc:
+        return {
+            "provider_reachable": False,
+            "live_verified": False,
+            "provider_status": f"http-{exc.code}",
+            "checked_at": checked_at,
+        }
+    except urllib_error.URLError:
+        return {
+            "provider_reachable": False,
+            "live_verified": False,
+            "provider_status": "unreachable",
+            "checked_at": checked_at,
+        }
+
+
+def _build_ollama_prompt(message: str) -> str:
+    instruction = _visible_system_instruction()
+    if not instruction:
+        return message
+    return f"{instruction}\n\nUser:\n{message}\n\nAssistant:\n"
 
 
 def _probe_openai_model(*, profile: str, model: str) -> dict[str, str | bool]:

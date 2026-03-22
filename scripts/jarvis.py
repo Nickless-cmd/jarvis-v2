@@ -400,6 +400,54 @@ def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_start_copilot_oauth_launch_intent(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+
+    intent_id = f"copilot-oauth-intent:{uuid4()}"
+    launch_started_at = datetime.now(UTC).isoformat()
+    profile_state = save_provider_credentials(
+        profile=args.auth_profile,
+        provider="github-copilot",
+        credentials={
+            "oauth_launch_intent": True,
+            "kind": "github-copilot-oauth-launch-intent",
+            "oauth_state": "launch-intent-created",
+            "oauth_intent_id": intent_id,
+            "oauth_launch_mode": "browser-device-future",
+            "oauth_launch_url": f"https://github.com/login/device?jarvis_oauth_intent={intent_id}",
+            "oauth_launch_started_at": launch_started_at,
+            "browser_launch_requested": True,
+            "browser_launched": False,
+            "token_exchange_completed": False,
+            "real_oauth": False,
+            "created_by": "jarvis-cli",
+        },
+    )
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": "github-copilot",
+                "auth_profile": args.auth_profile,
+                "requested_action": "start-oauth-launch-intent",
+                "coding_lane": coding_lane_execution_truth(),
+                "profile_state": (
+                    get_provider_state_view(
+                        profile=args.auth_profile,
+                        provider="github-copilot",
+                    )
+                    if profile_state
+                    else None
+                ),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_select_main_agent(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     result = select_main_agent_target(
@@ -639,6 +687,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     set_copilot_auth_state.set_defaults(func=cmd_set_copilot_auth_state)
+
+    start_copilot_oauth_launch_intent = sub.add_parser("start-copilot-oauth-launch-intent")
+    start_copilot_oauth_launch_intent.add_argument("--auth-profile", default="copilot")
+    start_copilot_oauth_launch_intent.set_defaults(func=cmd_start_copilot_oauth_launch_intent)
 
     coding_lane_status = sub.add_parser("coding-lane-status")
     coding_lane_status.set_defaults(func=cmd_coding_lane_status)

@@ -1,4 +1,7 @@
-export function MissionControlPage({ selection, missionControl }) {
+import { MainAgentPanel } from '../components/shared/MainAgentPanel'
+import { SecondaryPanels } from '../components/shared/SecondaryPanels'
+
+export function MissionControlPage({ selection, missionControl, onSelectionChange }) {
   return (
     <div className="mission-control-page">
       <section className="hero-card compact">
@@ -17,6 +20,9 @@ export function MissionControlPage({ selection, missionControl }) {
       </section>
 
       <section className="mc-panels-grid">
+        <MainAgentPanel selection={selection} onSave={onSelectionChange} />
+        <SecondaryPanels missionControl={missionControl} selection={selection} />
+
         {missionControl.panels.map((panel) => (
           <article className="support-card" key={panel.title}>
             <h3>{panel.title}</h3>

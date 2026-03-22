@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException
 
 from apps.api.jarvis_api.services.visible_model import (
+    available_ollama_models_for_visible_target,
     visible_capability_continuity_summary,
     visible_continuity_summary,
     visible_execution_readiness,
@@ -54,7 +55,12 @@ from core.runtime.config import (
 from core.runtime.operational_preference_alignment import (
     build_operational_preference_alignment,
 )
-from core.runtime.provider_router import provider_router_summary, select_main_agent_target
+from core.runtime.provider_router import (
+    configure_provider_router_entry,
+    provider_router_summary,
+    resolve_provider_router_target,
+    select_main_agent_target,
+)
 from core.runtime.db import (
     approve_capability_approval_request,
     connect,
@@ -219,6 +225,11 @@ def mc_main_agent_selection() -> dict:
     return _main_agent_selection_surface()
 
 
+@router.get("/ollama-models")
+def mc_ollama_models() -> dict:
+    return available_ollama_models_for_visible_target()
+
+
 @router.post("/workspace-capabilities/{capability_id}/invoke")
 def mc_invoke_workspace_capability(capability_id: str, approved: bool = False) -> dict:
     result = invoke_workspace_capability(capability_id, approved=approved)
@@ -361,6 +372,34 @@ def mc_update_main_agent_selection(payload: dict) -> dict:
             auth_profile=auth_profile,
         )
     except ValueError as exc:
+        if str(provider).strip() == "ollama":
+            ollama_models = available_ollama_models_for_visible_target()
+            available = {
+                str(item.get("name") or "").strip()
+                for item in ollama_models.get("models", [])
+                if isinstance(item, dict)
+            }
+            if model.strip() in available:
+                local_target = resolve_provider_router_target(lane="local")
+                configure_provider_router_entry(
+                    provider="ollama",
+                    model=model.strip(),
+                    auth_mode="none",
+                    auth_profile="",
+                    base_url=str(local_target.get("base_url") or "http://127.0.0.1:11434"),
+                    api_key="",
+                    lane="local",
+                    set_visible=False,
+                )
+                try:
+                    select_main_agent_target(
+                        provider=provider,
+                        model=model,
+                        auth_profile=auth_profile,
+                    )
+                except ValueError as nested_exc:
+                    raise HTTPException(status_code=400, detail=str(nested_exc)) from nested_exc
+                return _main_agent_selection_surface()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return _main_agent_selection_surface()
@@ -430,6 +469,7 @@ def _main_agent_selection_surface() -> dict:
         "target": provider_router.get("main_agent_target"),
         "provider_router": provider_router,
         "readiness": visible_execution_readiness(),
+        "ollama_models": available_ollama_models_for_visible_target(),
     }
 
 

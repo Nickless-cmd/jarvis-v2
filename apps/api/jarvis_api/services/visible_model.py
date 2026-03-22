@@ -175,6 +175,54 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
     }
 
 
+def available_ollama_models_for_visible_target() -> dict[str, object]:
+    visible_target = resolve_provider_router_target(lane="visible")
+    local_target = resolve_provider_router_target(lane="local")
+    target = visible_target if str(visible_target.get("provider") or "").strip() == "ollama" else local_target
+    base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
+    checked_at = datetime.now(UTC).isoformat()
+    req = urllib_request.Request(f"{base_url.rstrip('/')}/api/tags", method="GET")
+    try:
+        with urllib_request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        models = [
+            {
+                "name": str(item.get("name") or "").strip(),
+                "family": str(item.get("details", {}).get("family") or "").strip(),
+                "parameter_size": str(item.get("details", {}).get("parameter_size") or "").strip(),
+                "quantization_level": str(item.get("details", {}).get("quantization_level") or "").strip(),
+            }
+            for item in data.get("models", [])
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        ]
+        return {
+            "active": True,
+            "provider": "ollama",
+            "base_url": base_url,
+            "status": "ready",
+            "checked_at": checked_at,
+            "models": models,
+        }
+    except urllib_error.HTTPError as exc:
+        return {
+            "active": True,
+            "provider": "ollama",
+            "base_url": base_url,
+            "status": f"http-{exc.code}",
+            "checked_at": checked_at,
+            "models": [],
+        }
+    except urllib_error.URLError:
+        return {
+            "active": True,
+            "provider": "ollama",
+            "base_url": base_url,
+            "status": "unreachable",
+            "checked_at": checked_at,
+            "models": [],
+        }
+
+
 def _execute_phase1_model(
     *, message: str, provider: str, model: str
 ) -> VisibleModelResult:

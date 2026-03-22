@@ -1,4 +1,5 @@
 import { AppShell } from '../components/layout/AppShell'
+import { SidebarSessions } from '../components/layout/SidebarSessions'
 import { ChatPage } from './ChatPage'
 import { MissionControlPage } from './MissionControlPage'
 import { useUnifiedShell } from './useUnifiedShell'
@@ -15,28 +16,46 @@ export function App() {
     handleSelectionChange,
     handleSend,
     handleCreateSession,
+    refreshShell,
     error,
+    isRefreshing,
+    isStreaming,
   } = useUnifiedShell()
 
   if (!shell) return <div className="boot-screen">Loading unified shell…</div>
 
   return (
-    <AppShell activeView={activeView} onChangeView={setActiveView}>
+    <AppShell
+      activeView={activeView}
+      onChangeView={setActiveView}
+      sidebarContent={
+        activeView === 'chat' ? (
+          <SidebarSessions
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelect={setActiveSessionId}
+            onCreate={handleCreateSession}
+          />
+        ) : null
+      }
+    >
       {activeView === 'chat' ? (
         <ChatPage
-          sessions={sessions}
           activeSession={activeSession}
-          activeSessionId={activeSessionId}
           selection={shell.selection}
-          missionControl={shell.missionControl}
           error={error}
-          onSessionSelect={setActiveSessionId}
-          onCreateSession={handleCreateSession}
           onSelectionChange={handleSelectionChange}
+          onRefresh={refreshShell}
           onSend={handleSend}
+          isRefreshing={isRefreshing}
+          isStreaming={isStreaming}
         />
       ) : (
-        <MissionControlPage selection={shell.selection} missionControl={shell.missionControl} />
+        <MissionControlPage
+          selection={shell.selection}
+          missionControl={shell.missionControl}
+          onSelectionChange={handleSelectionChange}
+        />
       )}
     </AppShell>
   )

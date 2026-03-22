@@ -31,3 +31,15 @@ export function appendMessagesToSession(session, ...messages) {
     messages: nextMessages,
   }
 }
+
+export function updateSessionMessage(session, messageId, updater) {
+  const nextMessages = session.messages.map((message) =>
+    message.id === messageId ? { ...message, ...updater(message) } : message
+  )
+
+  return {
+    ...session,
+    lastMessage: previewText(nextMessages.at(-1)?.content),
+    messages: nextMessages,
+  }
+}

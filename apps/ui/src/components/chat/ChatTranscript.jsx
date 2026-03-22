@@ -16,12 +16,20 @@ export function ChatTranscript({ messages }) {
           <div className="message-avatar">
             {message.role === 'assistant' ? <Bot size={15} /> : <User size={15} />}
           </div>
-          <div className="message-bubble">
+          <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
             <div className="message-meta">
               <strong>{message.role === 'assistant' ? 'Jarvis' : 'You'}</strong>
               <span>{message.ts}</span>
             </div>
-            <p>{message.content}</p>
+            {message.content ? <p>{message.content}</p> : null}
+            {message.pending ? (
+              <div className="thinking-indicator">
+                <span className="thinking-dot" />
+                <span className="thinking-dot" />
+                <span className="thinking-dot" />
+                <small>Jarvis is working…</small>
+              </div>
+            ) : null}
           </div>
         </article>
       ))}

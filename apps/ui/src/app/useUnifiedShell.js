@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { backend } from '../lib/adapters'
-import { appendMessagesToSession, createChatSession } from '../lib/sessionState'
+import { appendMessagesToSession, createChatSession, updateSessionMessage } from '../lib/sessionState'
+
+function nowLabel() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
 
 export function useUnifiedShell() {
   const [activeView, setActiveView] = useState('chat')
@@ -8,9 +12,12 @@ export function useUnifiedShell() {
   const [sessions, setSessions] = useState([])
   const [activeSessionId, setActiveSessionId] = useState(null)
   const [error, setError] = useState('')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
 
   async function refreshShell() {
     try {
+      setIsRefreshing(true)
       const next = await backend.getShell()
       setShell(next)
       setSessions((current) => {
@@ -26,6 +33,8 @@ export function useUnifiedShell() {
       setError('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load unified shell')
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
@@ -39,52 +48,91 @@ export function useUnifiedShell() {
   )
 
   async function handleSelectionChange(payload) {
-    const selection = await backend.updateMainAgentSelection(payload)
-    setShell((current) => (current ? { ...current, selection } : current))
-    await refreshShell()
+    try {
+      const selection = await backend.updateMainAgentSelection(payload)
+      setShell((current) => (current ? { ...current, selection } : current))
+      setError('')
+      await refreshShell()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update main agent selection')
+    }
   }
 
   async function handleSend(content) {
-    if (!activeSession) return
+    if (!activeSession || isStreaming) return
 
+    const sessionId = activeSession.id
     const userMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content,
-      ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      ts: nowLabel(),
+    }
+    const assistantMessageId = `assistant-stream-${Date.now()}`
+    const pendingAssistantMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      ts: nowLabel(),
+      pending: true,
     }
 
+    setIsStreaming(true)
+    setError('')
     setSessions((current) =>
       current.map((session) =>
-        session.id === activeSession.id ? appendMessagesToSession(session, userMessage) : session
+        session.id === sessionId
+          ? appendMessagesToSession(session, userMessage, pendingAssistantMessage)
+          : session
       )
     )
 
     try {
-      const assistantMessage = await backend.sendMessage({ content })
+      const assistantMessage = await backend.streamMessage({
+        content,
+        onDelta: (_delta, fullText) => {
+          setSessions((current) =>
+            current.map((session) =>
+              session.id === sessionId
+                ? updateSessionMessage(session, assistantMessageId, () => ({
+                    content: fullText,
+                    pending: true,
+                  }))
+                : session
+            )
+          )
+        },
+      })
+
       setSessions((current) =>
         current.map((session) =>
-          session.id === activeSession.id
-            ? appendMessagesToSession(session, assistantMessage)
+          session.id === sessionId
+            ? updateSessionMessage(session, assistantMessageId, () => ({
+                id: assistantMessage.id,
+                content: assistantMessage.content,
+                ts: assistantMessage.ts,
+                pending: false,
+              }))
             : session
         )
       )
       await refreshShell()
     } catch (err) {
-      const failureMessage = {
-        id: `assistant-failure-${Date.now()}`,
-        role: 'assistant',
-        content: err instanceof Error ? err.message : 'Chat failed',
-        ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }
+      const failure = err instanceof Error ? err.message : 'Chat failed'
       setSessions((current) =>
         current.map((session) =>
-          session.id === activeSession.id
-            ? appendMessagesToSession(session, failureMessage)
+          session.id === sessionId
+            ? updateSessionMessage(session, assistantMessageId, () => ({
+                content: failure,
+                ts: nowLabel(),
+                pending: false,
+              }))
             : session
         )
       )
-      setError(err instanceof Error ? err.message : 'Chat failed')
+      setError(failure)
+    } finally {
+      setIsStreaming(false)
     }
   }
 
@@ -110,6 +158,9 @@ export function useUnifiedShell() {
     handleSelectionChange,
     handleSend,
     handleCreateSession,
+    refreshShell,
     error,
+    isRefreshing,
+    isStreaming,
   }
 }

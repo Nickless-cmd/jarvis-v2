@@ -1,6 +1,6 @@
 import { Bot, LayoutDashboard, MessageSquare } from 'lucide-react'
 
-export function AppShell({ activeView, onChangeView, children }) {
+export function AppShell({ activeView, onChangeView, sidebarContent, children }) {
   return (
     <div className="app-shell">
       <aside className="global-sidebar">
@@ -22,6 +22,8 @@ export function AppShell({ activeView, onChangeView, children }) {
             <span>Mission Control</span>
           </button>
         </nav>
+
+        {sidebarContent ? <div className="sidebar-section">{sidebarContent}</div> : null}
 
         <div className="sidebar-footer">
           <p>Same shell. Same palette. Different room.</p>

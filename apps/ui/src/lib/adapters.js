@@ -35,6 +35,7 @@ function toTitle(value) {
 
 function normalizeSelection(payload) {
   const selection = payload?.selection || payload || {}
+  const ollama = payload?.ollama_models || {}
   return {
     source: selection.source || 'provider_router.main_agent_selection',
     selectionAuthority: selection.selection_authority || 'runtime.settings',
@@ -49,6 +50,14 @@ function normalizeSelection(payload) {
       readinessHint: target.readiness_hint || 'unknown',
       baseUrl: target.base_url || '',
     })),
+    ollamaModels: (ollama.models || []).map((item) => ({
+      name: item.name || '',
+      family: item.family || '',
+      parameterSize: item.parameter_size || '',
+      quantizationLevel: item.quantization_level || '',
+    })),
+    ollamaStatus: ollama.status || 'unknown',
+    ollamaBaseUrl: ollama.base_url || 'http://127.0.0.1:11434',
   }
 }
 
@@ -142,7 +151,7 @@ function buildChat(selection, runtime) {
   }
 }
 
-async function readSseStream(response) {
+async function readSseStream(response, handlers = {}) {
   if (!response.body) {
     throw new Error('/chat/stream: response body missing')
   }
@@ -172,15 +181,20 @@ async function readSseStream(response) {
       if (!dataLine) continue
 
       const payload = JSON.parse(dataLine)
+      if (eventName === 'run') handlers.onRun?.(payload)
       if (eventName === 'delta' && payload.delta) {
         assistantText += payload.delta
+        handlers.onDelta?.(payload.delta, assistantText)
       }
       if (eventName === 'failed') {
         failure = payload.error || 'Chat failed'
+        handlers.onFailed?.(failure)
       }
       if (eventName === 'cancelled') {
         failure = 'Chat cancelled'
+        handlers.onFailed?.(failure)
       }
+      if (eventName === 'done') handlers.onDone?.(payload, assistantText)
     }
   }
 
@@ -220,7 +234,7 @@ export const backend = {
     return normalizeSelection(updated)
   },
 
-  async sendMessage({ content }) {
+  async streamMessage({ content, onRun, onDelta, onDone, onFailed }) {
     const response = await fetch('/chat/stream', {
       method: 'POST',
       headers: JSON_HEADERS,
@@ -229,6 +243,6 @@ export const backend = {
     if (!response.ok) {
       throw new Error(`/chat/stream: ${response.status} ${response.statusText}`)
     }
-    return readSseStream(response)
+    return readSseStream(response, { onRun, onDelta, onDone, onFailed })
   },
 }

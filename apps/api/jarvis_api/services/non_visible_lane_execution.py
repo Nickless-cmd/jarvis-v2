@@ -327,6 +327,8 @@ def _github_copilot_auth_state(*, oauth_state: str) -> str:
         return "oauth-launch-intent-created"
     if oauth_state == "browser-launch-attempted":
         return "oauth-browser-launch-attempted"
+    if oauth_state == "callback-received":
+        return "oauth-callback-received"
     if oauth_state == "placeholder-stored":
         return "oauth-placeholder-stored"
     if oauth_state == "real-stored":
@@ -339,6 +341,8 @@ def _github_copilot_auth_state(*, oauth_state: str) -> str:
 def _github_copilot_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "not-implemented"
+    if auth_state == "oauth-callback-received":
+        return "oauth-callback-received"
     if auth_state == "oauth-browser-launch-attempted":
         return "oauth-browser-launch-attempted"
     if auth_state == "oauth-launch-intent-created":
@@ -361,6 +365,8 @@ def _github_copilot_status(*, auth_state: str) -> str:
 def _github_copilot_auth_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "ready"
+    if auth_state == "oauth-callback-received":
+        return "oauth-callback-received"
     if auth_state == "oauth-browser-launch-attempted":
         return "oauth-browser-launch-attempted"
     if auth_state == "oauth-launch-intent-created":
@@ -383,6 +389,8 @@ def _github_copilot_auth_status(*, auth_state: str) -> str:
 def _github_copilot_provider_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
         return "not-implemented"
+    if auth_state == "oauth-callback-received":
+        return "oauth-callback-received"
     if auth_state == "oauth-browser-launch-attempted":
         return "oauth-browser-launch-attempted"
     if auth_state == "oauth-launch-intent-created":

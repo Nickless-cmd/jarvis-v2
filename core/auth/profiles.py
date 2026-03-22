@@ -137,6 +137,18 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
             view["browser_launch_result"] = str(credentials.get("browser_launch_result"))
         if "browser_launched" in credentials:
             view["browser_launched"] = bool(credentials.get("browser_launched"))
+        if credentials.get("oauth_callback_received_at"):
+            view["oauth_callback_received_at"] = str(
+                credentials.get("oauth_callback_received_at")
+            )
+        if credentials.get("oauth_callback_url"):
+            view["oauth_callback_url"] = str(credentials.get("oauth_callback_url"))
+        if "oauth_callback_has_code" in credentials:
+            view["oauth_callback_has_code"] = bool(credentials.get("oauth_callback_has_code"))
+        if "oauth_callback_has_state" in credentials:
+            view["oauth_callback_has_state"] = bool(credentials.get("oauth_callback_has_state"))
+        if credentials.get("oauth_callback_param_keys"):
+            view["oauth_callback_param_keys"] = list(credentials.get("oauth_callback_param_keys"))
     return view
 
 
@@ -156,6 +168,8 @@ def get_provider_auth_material_kind(*, profile: str, provider: str) -> str:
         return "missing"
 
     credentials = _read_json(credentials_path)
+    if bool(credentials.get("oauth_callback_stub")):
+        return "oauth-callback-stub"
     if bool(credentials.get("oauth_launch_intent")):
         return "oauth-launch-intent"
     if bool(credentials.get("oauth_launch_stub")):
@@ -193,6 +207,7 @@ def get_provider_oauth_state(*, profile: str, provider: str) -> str:
         "launch-stubbed",
         "launch-intent-created",
         "browser-launch-attempted",
+        "callback-received",
         "placeholder-stored",
         "real-stored",
     }:

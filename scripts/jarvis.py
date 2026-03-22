@@ -8,6 +8,7 @@ import webbrowser
 from datetime import UTC, datetime
 from uuid import uuid4
 from urllib import error as urllib_error
+from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 from pathlib import Path
 
@@ -592,6 +593,76 @@ def cmd_reset_copilot_oauth_launch(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_intake_copilot_oauth_callback(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+
+    provider_state = get_provider_state(
+        profile=args.auth_profile,
+        provider="github-copilot",
+    )
+    if provider_state is None:
+        raise ValueError("No github-copilot auth profile state found for callback intake")
+
+    credentials_path = Path(str(provider_state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        raise ValueError("No github-copilot credentials found for callback intake")
+
+    callback_input = str(args.callback or "").strip()
+    if not callback_input:
+        raise ValueError("Callback URL/string is required")
+
+    credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
+    parsed = urllib_parse.urlsplit(callback_input)
+    params = urllib_parse.parse_qs(parsed.query, keep_blank_values=True)
+    callback_keys = sorted(params.keys())
+    received_at = datetime.now(UTC).isoformat()
+
+    credentials.update(
+        {
+            "oauth_callback_stub": True,
+            "kind": "github-copilot-oauth-callback-stub",
+            "oauth_state": "callback-received",
+            "oauth_callback_received_at": received_at,
+            "oauth_callback_url": callback_input,
+            "oauth_callback_has_code": "code" in params,
+            "oauth_callback_has_state": "state" in params,
+            "oauth_callback_param_keys": callback_keys,
+            "token_exchange_completed": False,
+            "real_oauth": False,
+            "created_by": str(credentials.get("created_by") or "jarvis-cli"),
+        }
+    )
+
+    profile_state = save_provider_credentials(
+        profile=args.auth_profile,
+        provider="github-copilot",
+        credentials=credentials,
+    )
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": "github-copilot",
+                "auth_profile": args.auth_profile,
+                "requested_action": "intake-oauth-callback",
+                "coding_lane": coding_lane_execution_truth(),
+                "profile_state": (
+                    get_provider_state_view(
+                        profile=args.auth_profile,
+                        provider="github-copilot",
+                    )
+                    if profile_state
+                    else None
+                ),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_select_main_agent(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     result = select_main_agent_target(
@@ -843,6 +914,11 @@ def build_parser() -> argparse.ArgumentParser:
     reset_copilot_oauth_launch = sub.add_parser("reset-copilot-oauth-launch")
     reset_copilot_oauth_launch.add_argument("--auth-profile", default="copilot")
     reset_copilot_oauth_launch.set_defaults(func=cmd_reset_copilot_oauth_launch)
+
+    intake_copilot_oauth_callback = sub.add_parser("intake-copilot-oauth-callback")
+    intake_copilot_oauth_callback.add_argument("--auth-profile", default="copilot")
+    intake_copilot_oauth_callback.add_argument("--callback", required=True)
+    intake_copilot_oauth_callback.set_defaults(func=cmd_intake_copilot_oauth_callback)
 
     coding_lane_status = sub.add_parser("coding-lane-status")
     coding_lane_status.set_defaults(func=cmd_coding_lane_status)

@@ -266,7 +266,7 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
 def _execute_ollama_model(*, message: str, model: str) -> VisibleModelResult:
     target = resolve_provider_router_target(lane="visible")
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
-    prompt = _build_ollama_prompt(message)
+    prompt = _build_ollama_prompt(message, model=model)
     payload = {
         "model": model,
         "prompt": prompt,
@@ -372,7 +372,7 @@ def _stream_ollama_model(
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
     payload = {
         "model": model,
-        "prompt": _build_ollama_prompt(message),
+        "prompt": _build_ollama_prompt(message, model=model),
         "stream": True,
     }
     req = urllib_request.Request(
@@ -544,8 +544,11 @@ def _probe_ollama_visible_target(*, model: str, base_url: str) -> dict[str, str 
         }
 
 
-def _build_ollama_prompt(message: str) -> str:
-    instruction = _visible_system_instruction()
+def _build_ollama_prompt(message: str, *, model: str) -> str:
+    instruction = _visible_system_instruction_for_provider(
+        provider="ollama",
+        model=model,
+    )
     if not instruction:
         return message
     return f"{instruction}\n\nUser:\n{message}\n\nAssistant:\n"
@@ -633,7 +636,7 @@ def _extract_output_text(data: dict) -> str:
 
 
 def _build_visible_input(message: str) -> list[dict]:
-    instruction = _visible_system_instruction()
+    instruction = _visible_system_instruction_for_provider(provider="openai", model="")
     if not instruction:
         return [
             {
@@ -653,6 +656,22 @@ def _build_visible_input(message: str) -> list[dict]:
     ]
 
 
+def _visible_system_instruction_for_provider(*, provider: str, model: str) -> str | None:
+    if provider == "ollama":
+        return _visible_system_instruction_for_local_ollama(model=model)
+    return _visible_system_instruction()
+
+
+def _visible_system_instruction_for_local_ollama(*, model: str) -> str | None:
+    parts = [
+        load_visible_identity_prompt(),
+        _local_model_behavior_instruction(),
+        _capability_instruction(),
+    ]
+    text = "\n\n".join(part for part in parts if part)
+    return text or None
+
+
 def _visible_system_instruction() -> str | None:
     parts = [
         load_visible_identity_prompt(),
@@ -669,6 +688,21 @@ def _visible_system_instruction() -> str | None:
     ]
     text = "\n\n".join(part for part in parts if part)
     return text or None
+
+
+def _local_model_behavior_instruction() -> str:
+    return "\n".join(
+        [
+            "Visible local-model behavior rules:",
+            "- Answer the latest user request first.",
+            "- Keep replies short and direct unless the user asks for detail.",
+            "- Reply in the same language as the user's latest message. If the user writes Danish, reply in Danish.",
+            "- Follow user corrections immediately. If the user says stop repeating or stop saying a phrase, do not repeat it.",
+            "- Do not repeat self-descriptions, identity boilerplate, or greeting formulas unless directly relevant.",
+            "- Do not mention being a persistent digital entity unless the user asks about identity or architecture.",
+            "- For short direct requests, give a short direct answer.",
+        ]
+    )
 
 
 def _visible_session_continuity_instruction() -> str | None:

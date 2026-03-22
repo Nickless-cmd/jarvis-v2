@@ -119,6 +119,16 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
             view["oauth_launch_mode"] = str(credentials.get("oauth_launch_mode"))
         if credentials.get("oauth_launch_started_at"):
             view["oauth_launch_started_at"] = str(credentials.get("oauth_launch_started_at"))
+        if credentials.get("browser_launch_attempted_at"):
+            view["browser_launch_attempted_at"] = str(
+                credentials.get("browser_launch_attempted_at")
+            )
+        if credentials.get("browser_launch_method"):
+            view["browser_launch_method"] = str(credentials.get("browser_launch_method"))
+        if credentials.get("browser_launch_result"):
+            view["browser_launch_result"] = str(credentials.get("browser_launch_result"))
+        if "browser_launched" in credentials:
+            view["browser_launched"] = bool(credentials.get("browser_launched"))
     return view
 
 
@@ -174,6 +184,7 @@ def get_provider_oauth_state(*, profile: str, provider: str) -> str:
         "handshake-stubbed",
         "launch-stubbed",
         "launch-intent-created",
+        "browser-launch-attempted",
         "placeholder-stored",
         "real-stored",
     }:

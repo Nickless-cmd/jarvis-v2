@@ -116,6 +116,10 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
         profile=profile,
         provider=provider,
     )
+    view["exchange_readiness"] = get_provider_exchange_readiness(
+        profile=profile,
+        provider=provider,
+    )
     credentials_path = Path(str(state.get("credentials_path") or ""))
     if credentials_path.exists():
         credentials = _read_json(credentials_path)
@@ -297,6 +301,33 @@ def get_provider_callback_validation_state(*, profile: str, provider: str) -> st
     if has_state:
         return "missing-code"
     return "incomplete"
+
+
+def get_provider_exchange_readiness(*, profile: str, provider: str) -> str:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return "not-applicable"
+
+    credentials_path = Path(str(state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        return "not-applicable"
+
+    credentials = _read_json(credentials_path)
+    oauth_state = str(credentials.get("oauth_state") or "").strip()
+    if oauth_state != "callback-received":
+        return "not-applicable"
+
+    callback_validation_state = get_provider_callback_validation_state(
+        profile=profile,
+        provider=provider,
+    )
+    if callback_validation_state == "structurally-ready":
+        return "exchange-ready"
+    if callback_validation_state == "missing-code":
+        return "missing-code"
+    if callback_validation_state == "missing-state":
+        return "missing-state"
+    return "not-ready"
 
 
 def revoke_provider(*, profile: str, provider: str) -> dict[str, Any] | None:

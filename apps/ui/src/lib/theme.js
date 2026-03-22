@@ -1,0 +1,27 @@
+export const theme = {
+  bgBase: '#0d1117',
+  bgSurface: '#121923',
+  bgSurface2: '#17212d',
+  bgRaised: '#1d2836',
+  bgHover: '#223144',
+  borderSoft: 'rgba(255,255,255,0.06)',
+  borderMid: 'rgba(255,255,255,0.1)',
+  textStrong: '#e7edf5',
+  textMuted: '#9aa7b8',
+  textFaint: '#677487',
+  accent: '#28b1a3',
+  accentStrong: '#49d2c3',
+  accentSoft: 'rgba(40,177,163,0.14)',
+  accentGlow: 'rgba(40,177,163,0.24)',
+  amber: '#f3b35c',
+  red: '#ef6b73',
+  green: '#4fcf92',
+  blue: '#68a3ff',
+  purple: '#9c83ff',
+  shadowLg: '0 24px 60px rgba(0,0,0,0.35)',
+  radiusLg: '24px',
+  radiusMd: '18px',
+  radiusSm: '12px',
+}
+
+export const mono = { fontFamily: 'IBM Plex Mono, monospace' }

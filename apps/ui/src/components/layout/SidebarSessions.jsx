@@ -17,7 +17,7 @@ export function SidebarSessions({ sessions, activeSessionId, onSelect, onCreate 
           >
             <div>
               <strong>{session.title}</strong>
-              <span><Clock3 size={12} /> {session.lastMessage}</span>
+              <span><Clock3 size={12} /> {session.lastMessage || session.last_message}</span>
             </div>
           </button>
         ))}

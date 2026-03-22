@@ -135,19 +135,10 @@ function buildMissionControl(runtime, visibleExecution, selection) {
 }
 
 function buildChat(selection, runtime) {
-  const localLane = runtime?.local_lane_execution || {}
-  const localTarget = localLane?.target || {}
   return {
     title: 'Jarvis',
     subtitle: `Main agent: ${selection.currentProvider || 'unknown'} / ${selection.currentModel || 'unknown'}`,
-    bootstrapMessages: [
-      {
-        id: `bootstrap-${Date.now()}`,
-        role: 'assistant',
-        content: `Jarvis online. Main agent is ${selection.currentProvider || 'unknown'} / ${selection.currentModel || 'unknown'}. Local lane is ${localTarget.model || 'unconfigured'} with status ${localLane.status || 'unknown'}.`,
-        ts: nowLabel(),
-      },
-    ],
+    bootstrapMessages: [],
   }
 }
 
@@ -234,11 +225,29 @@ export const backend = {
     return normalizeSelection(updated)
   },
 
-  async streamMessage({ content, onRun, onDelta, onDone, onFailed }) {
+  async listSessions() {
+    const data = await requestJson('/chat/sessions')
+    return data.items || []
+  },
+
+  async createSession(title = 'New chat') {
+    const data = await requestJson('/chat/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    })
+    return data.session
+  },
+
+  async getSession(sessionId) {
+    const data = await requestJson(`/chat/sessions/${sessionId}`)
+    return data.session
+  },
+
+  async streamMessage({ sessionId, content, onRun, onDelta, onDone, onFailed }) {
     const response = await fetch('/chat/stream', {
       method: 'POST',
       headers: JSON_HEADERS,
-      body: JSON.stringify({ message: content }),
+      body: JSON.stringify({ message: content, session_id: sessionId }),
     })
     if (!response.ok) {
       throw new Error(`/chat/stream: ${response.status} ${response.statusText}`)

@@ -1,16 +1,25 @@
+import { useEffect, useRef } from 'react'
 import { Bot, User } from 'lucide-react'
 
 export function ChatTranscript({ messages }) {
+  const transcriptRef = useRef(null)
+
+  useEffect(() => {
+    const node = transcriptRef.current
+    if (!node) return
+    node.scrollTop = node.scrollHeight
+  }, [messages])
+
   if (!messages.length) {
     return (
-      <section className="transcript panel empty-transcript">
+      <section ref={transcriptRef} className="transcript panel empty-transcript">
         <p className="muted">Start a conversation to open a new Jarvis thread.</p>
       </section>
     )
   }
 
   return (
-    <section className="transcript panel">
+    <section ref={transcriptRef} className="transcript panel">
       {messages.map((message) => (
         <article key={message.id} className={`message-row ${message.role}`}>
           <div className="message-avatar">

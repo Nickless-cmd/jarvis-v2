@@ -12,7 +12,7 @@ export function App() {
     sessions,
     activeSession,
     activeSessionId,
-    setActiveSessionId,
+    handleSessionSelect,
     handleSelectionChange,
     handleSend,
     handleCreateSession,
@@ -33,7 +33,7 @@ export function App() {
           <SidebarSessions
             sessions={sessions}
             activeSessionId={activeSessionId}
-            onSelect={setActiveSessionId}
+            onSelect={handleSessionSelect}
             onCreate={handleCreateSession}
           />
         ) : null

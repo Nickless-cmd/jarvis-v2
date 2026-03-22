@@ -29,6 +29,12 @@ export function MissionControlPage({ selection, missionControl }) {
           <p>{selection.currentProvider} / {selection.currentModel}</p>
           <p className="muted">Authority: {selection.selectionAuthority}</p>
         </article>
+
+        <article className="support-card">
+          <h3>Local lane</h3>
+          <p>{missionControl.lanes.local.model || 'unconfigured'} / {missionControl.lanes.local.status}</p>
+          <p className="muted">{missionControl.lanes.local.baseUrl || 'http://127.0.0.1:11434'}</p>
+        </article>
       </section>
 
       <section className="support-card">

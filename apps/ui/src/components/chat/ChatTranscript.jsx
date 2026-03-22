@@ -1,6 +1,14 @@
 import { Bot, User } from 'lucide-react'
 
 export function ChatTranscript({ messages }) {
+  if (!messages.length) {
+    return (
+      <section className="transcript panel empty-transcript">
+        <p className="muted">Start a conversation to open a new Jarvis thread.</p>
+      </section>
+    )
+  }
+
   return (
     <section className="transcript panel">
       {messages.map((message) => (

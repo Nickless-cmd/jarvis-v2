@@ -19,6 +19,7 @@ if str(ROOT) not in sys.path:
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     coding_lane_execution_truth,
+    local_lane_execution_truth,
 )
 from core.auth.profiles import (
     get_provider_auth_material_kind,
@@ -243,12 +244,57 @@ def cmd_configure_copilot_coding_lane(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_configure_local_lane(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    result = configure_provider_router_entry(
+        provider="ollama",
+        model=args.model,
+        auth_mode="none",
+        auth_profile="",
+        base_url=args.base_url,
+        api_key="",
+        lane="local",
+        set_visible=False,
+    )
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "configured": result,
+                "local_lane": {
+                    "provider": "ollama",
+                    "lane": "local",
+                    "auth_mode": "none",
+                    "base_url": args.base_url,
+                    "model": args.model,
+                },
+                "local_lane_execution": local_lane_execution_truth(),
+                "provider_router": provider_router_summary(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_coding_lane_status(_: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     init_db()
     print(
         json.dumps(
             coding_lane_execution_truth(),
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def cmd_local_lane_status(_: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+    print(
+        json.dumps(
+            local_lane_execution_truth(),
             indent=2,
             ensure_ascii=False,
         )
@@ -877,6 +923,11 @@ def build_parser() -> argparse.ArgumentParser:
     configure_copilot_coding_lane.add_argument("--auth-profile", default="copilot")
     configure_copilot_coding_lane.set_defaults(func=cmd_configure_copilot_coding_lane)
 
+    configure_local_lane = sub.add_parser("configure-local-lane")
+    configure_local_lane.add_argument("--model", default="qwen3.5:9b")
+    configure_local_lane.add_argument("--base-url", default="http://127.0.0.1:11434")
+    configure_local_lane.set_defaults(func=cmd_configure_local_lane)
+
     select_main_agent = sub.add_parser("select-main-agent")
     select_main_agent.add_argument("--provider", required=True)
     select_main_agent.add_argument("--model", required=True)
@@ -922,6 +973,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     coding_lane_status = sub.add_parser("coding-lane-status")
     coding_lane_status.set_defaults(func=cmd_coding_lane_status)
+
+    local_lane_status = sub.add_parser("local-lane-status")
+    local_lane_status.set_defaults(func=cmd_local_lane_status)
 
     workspace = sub.add_parser("workspace")
     workspace.add_argument("--name", default="default")

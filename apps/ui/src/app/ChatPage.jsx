@@ -1,30 +1,48 @@
 import { useMemo, useState } from 'react'
 import { ChatTranscript } from '../components/chat/ChatTranscript'
 import { Composer } from '../components/chat/Composer'
+import { ChatHeader } from '../components/chat/ChatHeader'
 import { SidebarSessions } from '../components/layout/SidebarSessions'
 import { MainAgentPanel } from '../components/shared/MainAgentPanel'
 import { SecondaryPanels } from '../components/shared/SecondaryPanels'
 
-export function ChatPage({ sessions, selection, chat, missionControl, onSelectionChange, onSend }) {
+export function ChatPage({
+  sessions,
+  activeSession,
+  activeSessionId,
+  selection,
+  missionControl,
+  error,
+  onSessionSelect,
+  onCreateSession,
+  onSelectionChange,
+  onSend,
+}) {
   const [draft, setDraft] = useState('')
   const hero = useMemo(() => ({
-    eyebrow: 'Jarvis · Unified UI',
-    title: chat.title,
-    subtitle: chat.subtitle,
-  }), [chat])
+    title: activeSession?.title || 'New chat',
+    subtitle: activeSession?.subtitle || 'Conversation-first front door',
+  }), [activeSession])
 
   return (
     <div className="chat-shell-grid">
-      <SidebarSessions sessions={sessions} />
+      <SidebarSessions
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelect={onSessionSelect}
+        onCreate={onCreateSession}
+      />
 
       <main className="chat-stage">
-        <section className="hero-card">
-          <p className="eyebrow">{hero.eyebrow}</p>
-          <h1>{hero.title}</h1>
-          <p>{hero.subtitle}</p>
-        </section>
+        <ChatHeader
+          session={{ title: hero.title, subtitle: hero.subtitle }}
+          selection={selection}
+          localLane={missionControl.lanes.local}
+        />
 
-        <ChatTranscript messages={chat.messages} />
+        {error ? <div className="inline-error">{error}</div> : null}
+
+        <ChatTranscript messages={activeSession?.messages || []} />
 
         <Composer
           value={draft}
@@ -39,7 +57,7 @@ export function ChatPage({ sessions, selection, chat, missionControl, onSelectio
 
       <aside className="support-rail">
         <MainAgentPanel selection={selection} onSave={onSelectionChange} />
-        <SecondaryPanels missionControl={missionControl} />
+        <SecondaryPanels missionControl={missionControl} selection={selection} />
       </aside>
     </div>
   )

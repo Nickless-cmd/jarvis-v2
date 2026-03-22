@@ -525,6 +525,73 @@ def cmd_launch_copilot_oauth_browser(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_reset_copilot_oauth_launch(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+
+    provider_state = get_provider_state(
+        profile=args.auth_profile,
+        provider="github-copilot",
+    )
+    if provider_state is None:
+        raise ValueError("No github-copilot auth profile state found for reset")
+
+    credentials_path = Path(str(provider_state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        raise ValueError("No github-copilot credentials found for reset")
+
+    credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
+    launch_url = str(credentials.get("oauth_launch_url") or "").strip()
+    if not launch_url:
+        raise ValueError("No oauth launch URL found; create a launch intent first")
+
+    reset_at = datetime.now(UTC).isoformat()
+    credentials.update(
+        {
+            "oauth_launch_intent": True,
+            "kind": "github-copilot-oauth-launch-intent",
+            "oauth_state": "launch-intent-created",
+            "oauth_launch_started_at": reset_at,
+            "browser_launch_requested": True,
+            "browser_launched": False,
+            "real_oauth": False,
+            "created_by": str(credentials.get("created_by") or "jarvis-cli"),
+        }
+    )
+    credentials.pop("browser_launch_attempted_at", None)
+    credentials.pop("browser_launch_method", None)
+    credentials.pop("browser_launch_result", None)
+
+    profile_state = save_provider_credentials(
+        profile=args.auth_profile,
+        provider="github-copilot",
+        credentials=credentials,
+    )
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": "github-copilot",
+                "auth_profile": args.auth_profile,
+                "requested_action": "reset-oauth-launch",
+                "launch_url": launch_url,
+                "coding_lane": coding_lane_execution_truth(),
+                "profile_state": (
+                    get_provider_state_view(
+                        profile=args.auth_profile,
+                        provider="github-copilot",
+                    )
+                    if profile_state
+                    else None
+                ),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_select_main_agent(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     result = select_main_agent_target(
@@ -772,6 +839,10 @@ def build_parser() -> argparse.ArgumentParser:
     launch_copilot_oauth_browser = sub.add_parser("launch-copilot-oauth-browser")
     launch_copilot_oauth_browser.add_argument("--auth-profile", default="copilot")
     launch_copilot_oauth_browser.set_defaults(func=cmd_launch_copilot_oauth_browser)
+
+    reset_copilot_oauth_launch = sub.add_parser("reset-copilot-oauth-launch")
+    reset_copilot_oauth_launch.add_argument("--auth-profile", default="copilot")
+    reset_copilot_oauth_launch.set_defaults(func=cmd_reset_copilot_oauth_launch)
 
     coding_lane_status = sub.add_parser("coding-lane-status")
     coding_lane_status.set_defaults(func=cmd_coding_lane_status)

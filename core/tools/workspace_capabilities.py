@@ -26,15 +26,45 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
     workspace_dir = ensure_default_workspace(name=name)
     tools = _document_summary(workspace_dir / CAPABILITY_FILES["tools"], kind="tool")
     skills = _document_summary(workspace_dir / CAPABILITY_FILES["skills"], kind="skill")
+    described_capabilities = [
+        *tools["described_capabilities"],
+        *skills["described_capabilities"],
+    ]
+    runtime_capabilities = [
+        _runtime_capability_record(item)
+        for item in described_capabilities
+    ]
+    available_now = [item for item in runtime_capabilities if item["available_now"]]
+    approval_required = [
+        item for item in runtime_capabilities if item["runtime_status"] == "approval-required"
+    ]
+    guidance_only = [
+        item for item in runtime_capabilities if item["runtime_status"] == "guidance-only"
+    ]
+    unavailable = [
+        item for item in runtime_capabilities if item["runtime_status"] == "unavailable"
+    ]
     return {
         "workspace": str(workspace_dir),
         "name": name,
         "tools": tools,
         "skills": skills,
-        "declared_capabilities": [
-            *tools["declared_capabilities"],
-            *skills["declared_capabilities"],
-        ],
+        "described_capabilities": described_capabilities,
+        "declared_capabilities": described_capabilities,
+        "runtime_capabilities": runtime_capabilities,
+        "authority": {
+            "authority_source": "runtime.workspace_capabilities",
+            "guidance_sources": ["TOOLS.md", "SKILLS.md"],
+            "runtime_authoritative": True,
+            "guidance_only_docs": True,
+            "summary": "Runtime capability truth is authoritative. TOOLS.md and SKILLS.md are workspace guidance only.",
+            "described_count": len(described_capabilities),
+            "runtime_count": len(runtime_capabilities),
+            "available_now_count": len(available_now),
+            "approval_required_count": len(approval_required),
+            "guidance_only_count": len(guidance_only),
+            "unavailable_count": len(unavailable),
+        },
     }
 
 
@@ -54,27 +84,44 @@ def invoke_workspace_capability(
         },
     )
     workspace_dir = ensure_default_workspace(name=name)
-    sections = [
-        *_document_sections(workspace_dir / CAPABILITY_FILES["tools"], kind="tool"),
-        *_document_sections(workspace_dir / CAPABILITY_FILES["skills"], kind="skill"),
-    ]
+    capabilities = load_workspace_capabilities(name=name)
+    runtime_capabilities = capabilities.get("runtime_capabilities", [])
+    capability = next(
+        (
+            item
+            for item in runtime_capabilities
+            if item.get("capability_id") == capability_id
+        ),
+        None,
+    )
 
-    for section in sections:
-        summary = _section_summary(section)
-        if summary["capability_id"] != capability_id:
-            continue
-        if not summary["runnable"]:
+    if capability is not None:
+        summary = dict(capability)
+        if summary["runtime_status"] == "guidance-only":
             result = {
                 "capability": summary,
                 "status": "not-runnable",
-                "execution_mode": summary["execution_mode"],
+                "execution_mode": "guidance-only",
                 "approval": _approval_result(summary, approved=approved, granted=False),
                 "result": None,
+                "detail": "Capability is described in workspace guidance only and is not runtime-executable.",
             }
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
-        if _requires_capability_approval(summary) and not approved:
+        if summary["runtime_status"] == "unavailable":
+            result = {
+                "capability": summary,
+                "status": "unavailable",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=approved, granted=False),
+                "result": None,
+                "detail": "Capability is known to runtime but is not currently available.",
+            }
+            _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
+            _publish_capability_invocation_completed(result, invoked_at=invoked_at)
+            return result
+        if summary["runtime_status"] == "approval-required" and not approved:
             result = {
                 "capability": summary,
                 "status": "approval-required",
@@ -89,6 +136,35 @@ def invoke_workspace_capability(
                 requested_at=invoked_at,
                 run_id=run_id,
             )
+            _publish_capability_invocation_completed(result, invoked_at=invoked_at)
+            return result
+        if not summary["available_now"]:
+            result = {
+                "capability": summary,
+                "status": "unavailable",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=approved, granted=False),
+                "result": None,
+                "detail": "Capability is not currently available for execution.",
+            }
+            _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
+            _publish_capability_invocation_completed(result, invoked_at=invoked_at)
+            return result
+        section = _document_section_by_id(
+            workspace_dir / CAPABILITY_FILES[f"{summary['kind']}s"],
+            kind=str(summary["kind"]),
+            capability_id=capability_id,
+        )
+        if section is None:
+            result = {
+                "capability": summary,
+                "status": "unavailable",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=approved, granted=False),
+                "result": None,
+                "detail": "Runtime capability is missing its source guidance section.",
+            }
+            _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
         result = _invoke_runnable_capability(
@@ -143,13 +219,16 @@ def _document_summary(path: Path, *, kind: str) -> dict[str, object]:
             "title": None,
             "has_text": False,
             "headings": [],
+            "guidance_only": True,
+            "authority": "workspace-guidance-only",
+            "described_capabilities": [],
             "declared_capabilities": [],
         }
 
     lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
     headings = [line.lstrip("#").strip() for line in lines if line.startswith("#")]
     content_lines = [line for line in lines if line and not line.startswith("#")]
-    declared_capabilities = [
+    described_capabilities = [
         _section_summary(section)
         for section in _document_sections(path, kind=kind)[:8]
     ]
@@ -160,7 +239,10 @@ def _document_summary(path: Path, *, kind: str) -> dict[str, object]:
         "title": headings[0] if headings else None,
         "has_text": bool(content_lines),
         "headings": headings[1:8],
-        "declared_capabilities": declared_capabilities,
+        "guidance_only": True,
+        "authority": "workspace-guidance-only",
+        "described_capabilities": described_capabilities,
+        "declared_capabilities": described_capabilities,
     }
 
 
@@ -202,6 +284,13 @@ def _document_sections(path: Path, *, kind: str) -> list[dict[str, str]]:
     return sections
 
 
+def _document_section_by_id(path: Path, *, kind: str, capability_id: str) -> dict[str, str] | None:
+    for section in _document_sections(path, kind=kind):
+        if _section_summary(section)["capability_id"] == capability_id:
+            return section
+    return None
+
+
 def _section_summary(section: dict[str, str]) -> dict[str, object]:
     heading = section["heading"]
     read_file_path = _declared_read_file_path(section["body"])
@@ -227,6 +316,9 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         "kind": section["kind"],
         "name": name,
         "source_doc": section["source_doc"],
+        "guidance_only": True,
+        "authority_source": "workspace-guidance",
+        "runtime_authoritative": False,
         "runnable": runnable,
         "execution_mode": execution_mode if runnable else "declared-only",
         "status": "runnable" if runnable else "declared-only",
@@ -239,6 +331,28 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         == "required",
         "target_path": read_file_path,
         "target_query": search_spec["query"] if search_spec else None,
+    }
+
+
+def _runtime_capability_record(item: dict[str, object]) -> dict[str, object]:
+    runnable = bool(item.get("runnable"))
+    approval_required = bool(item.get("approval_required"))
+    if runnable and not approval_required:
+        runtime_status = "available"
+    elif runnable and approval_required:
+        runtime_status = "approval-required"
+    elif str(item.get("execution_mode") or "") == "declared-only":
+        runtime_status = "guidance-only"
+    else:
+        runtime_status = "unavailable"
+    return {
+        **item,
+        "guidance_only": runtime_status == "guidance-only",
+        "described_in_guidance": True,
+        "authority_source": "runtime.workspace_capabilities",
+        "runtime_authoritative": True,
+        "runtime_status": runtime_status,
+        "available_now": runtime_status == "available",
     }
 
 

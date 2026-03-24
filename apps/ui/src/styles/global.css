@@ -284,6 +284,7 @@ button { cursor: pointer; }
 }
 .compact-grid { display:grid; grid-template-columns: 1fr; gap:10px; }
 .compact-grid.compact-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.compact-grid.compact-grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .compact-metric {
   padding:10px 12px; border-radius:14px; background:#131c27; border:1px solid rgba(255,255,255,.05);
 }
@@ -483,6 +484,6 @@ button { cursor: pointer; }
   .mc-header-card { flex-direction: column; }
   .mc-header-actions, .mc-meta-strip { width:100%; justify-content:space-between; }
   .mc-toolbar { flex-direction: column; align-items:stretch; }
-  .mc-summary-grid, .mc-section-grid, .mc-keyval-grid, .compact-grid.compact-grid-4, .mc-contract-grid { grid-template-columns: 1fr; }
+  .mc-summary-grid, .mc-section-grid, .mc-keyval-grid, .compact-grid.compact-grid-4, .compact-grid.compact-grid-5, .mc-contract-grid { grid-template-columns: 1fr; }
   .mc-overview-grid, .mc-panels-grid { grid-template-columns: 1fr; }
 }

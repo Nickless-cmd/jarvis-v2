@@ -176,6 +176,26 @@ function normalizePromptMode(item = {}) {
   }
 }
 
+function normalizeCapabilityContract(item = {}) {
+  return {
+    authoritySource: item.authority_source || 'runtime.workspace_capabilities',
+    runtimeAuthoritative: item.runtime_authoritative !== false,
+    guidanceOnlyDocs: item.guidance_only_docs !== false,
+    guidanceSources: item.guidance_sources || [],
+    describedCount: Number(item.described_count || 0),
+    runtimeCount: Number(item.runtime_count || 0),
+    availableNowCount: Number(item.available_now_count || 0),
+    approvalRequiredCount: Number(item.approval_required_count || 0),
+    guidanceOnlyCount: Number(item.guidance_only_count || 0),
+    unavailableCount: Number(item.unavailable_count || 0),
+    currentlyAvailable: item.currently_available || [],
+    approvalGated: item.approval_gated || [],
+    guidanceDescriptions: item.guidance_descriptions || [],
+    source: item.source || '/mc/runtime-contract',
+    summary: item.summary || 'Runtime capability truth is authoritative.',
+  }
+}
+
 function normalizePendingWrite(item = {}) {
   return {
     id: item.id || '',
@@ -715,6 +735,7 @@ export const backend = {
           source: contract.bootstrap?.source || '/mc/runtime-contract',
           summary: contract.bootstrap?.summary || 'Bootstrap contract state',
         }),
+        capabilityContract: normalizeCapabilityContract(contract.capability_contract || {}),
         files: {
           canonical: (contract.files?.canonical || []).map(normalizeContractFile),
           derived: (contract.files?.derived || []).map(normalizeContractFile),

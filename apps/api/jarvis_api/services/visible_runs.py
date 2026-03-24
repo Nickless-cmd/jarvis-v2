@@ -405,11 +405,11 @@ def _capability_call_state(text: str) -> str:
 
 
 def _is_runnable_workspace_capability(capability_id: str) -> bool:
-    declared = load_workspace_capabilities().get("declared_capabilities", [])
-    for capability in declared:
+    runtime_capabilities = load_workspace_capabilities().get("runtime_capabilities", [])
+    for capability in runtime_capabilities:
         if capability.get("capability_id") != capability_id:
             continue
-        return bool(capability.get("runnable"))
+        return bool(capability.get("available_now"))
     return False
 
 

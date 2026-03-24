@@ -107,6 +107,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const heartbeatEvents = heartbeat?.recentEvents || []
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
+  const capabilityContract = contract?.capabilityContract || {}
   const promptModes = contract?.promptModes || []
   const pendingWrites = contract?.pendingWrites || []
   const canonicalFiles = contract?.files?.canonical || []
@@ -181,7 +182,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             </div>
             <span className="mc-section-hint">{contract?.contractVersion || 'contract'}</span>
           </div>
-          <div className="compact-grid compact-grid-4">
+          <div className="compact-grid compact-grid-5">
             <div className="compact-metric">
               <span>Bootstrap</span>
               <strong>{contractSummary?.bootstrap_status || 'unknown'}</strong>
@@ -196,6 +197,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <span>Prompt Modes</span>
               <strong>{contractSummary?.prompt_modes_active || 0}/{contractSummary?.prompt_modes_declared || promptModes.length || 0}</strong>
               <p>Active vs declared runtime prompt contracts.</p>
+            </div>
+            <div className="compact-metric">
+              <span>Capability Authority</span>
+              <strong>{capabilityContract?.availableNowCount || 0}</strong>
+              <p>{capabilityContract?.summary || 'Runtime capability truth is authoritative.'}</p>
             </div>
             <div className="compact-metric">
               <span>Pending Writes</span>
@@ -248,10 +254,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
 
             <div className="mc-contract-column">
               <div className="support-card-header">
-                <span className="support-card-kicker">Workflow</span>
-                <strong>Pending Writes</strong>
+                <span className="support-card-kicker">Authority</span>
+                <strong>Capabilities And Workflow</strong>
               </div>
               <div className="mc-list compact-list">
+                <button className="mc-list-row" onClick={() => onOpenItem('Capability Authority', capabilityContract)}>
+                  <div>
+                    <strong>Capability Authority</strong>
+                    <span>{capabilityContract?.summary || 'Runtime capability truth is authoritative.'}</span>
+                  </div>
+                  <div className="mc-row-meta">
+                    <small>{capabilityContract?.authoritySource || 'runtime.workspace_capabilities'}</small>
+                    <ChevronRight size={14} />
+                  </div>
+                </button>
                 {detailRow(contract?.bootstrap, 'Bootstrap State', onOpenItem)}
                 {pendingWrites.map((item) => (
                   <div key={item.id} className="mc-inline-group">

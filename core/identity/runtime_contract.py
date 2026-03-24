@@ -8,6 +8,7 @@ from core.identity.runtime_candidates import (
     total_pending_runtime_candidates,
 )
 from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.tools.workspace_capabilities import load_workspace_capabilities
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -113,6 +114,8 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
     bootstrap = _bootstrap_status(workspace_dir)
     pending_writes = build_runtime_candidate_workflows()
     write_history = build_runtime_candidate_write_history()
+    capability_truth = load_workspace_capabilities(name=name)
+    capability_contract = _capability_contract_state(capability_truth)
     prompt_modes = {
         "visible_chat": {
             "id": "visible_chat",
@@ -201,8 +204,11 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
             "prompt_modes_declared": len(prompt_modes),
             "prompt_modes_active": active_modes,
             "pending_write_count": pending_write_count,
+            "runtime_capabilities_available": capability_contract["available_now_count"],
+            "runtime_capabilities_gated": capability_contract["approval_required_count"],
         },
         "bootstrap": bootstrap,
+        "capability_contract": capability_contract,
         "files": {
             "canonical": canonical_files,
             "derived": derived_files,
@@ -293,4 +299,38 @@ def _file_summary(name: str, role: str, present: bool, loaded_by_default: bool) 
     parts.append("present" if present else "missing")
     if loaded_by_default:
         parts.append("default-load")
+    if name in {"TOOLS.md", "SKILLS.md"}:
+        parts.append("guidance-only")
     return " · ".join(parts)
+
+
+def _capability_contract_state(capability_truth: dict[str, object]) -> dict[str, object]:
+    authority = capability_truth.get("authority") or {}
+    runtime_capabilities = list(capability_truth.get("runtime_capabilities") or [])
+    available = [item for item in runtime_capabilities if item.get("available_now")]
+    approval_required = [
+        item for item in runtime_capabilities if item.get("runtime_status") == "approval-required"
+    ]
+    guidance_only = [
+        item for item in runtime_capabilities if item.get("runtime_status") == "guidance-only"
+    ]
+    return {
+        "authority_source": authority.get("authority_source") or "runtime.workspace_capabilities",
+        "runtime_authoritative": bool(authority.get("runtime_authoritative", True)),
+        "guidance_only_docs": bool(authority.get("guidance_only_docs", True)),
+        "guidance_sources": list(authority.get("guidance_sources") or ["TOOLS.md", "SKILLS.md"]),
+        "summary": authority.get("summary")
+        or "Runtime capability truth is authoritative. TOOLS.md and SKILLS.md are workspace guidance only.",
+        "described_count": int(authority.get("described_count") or len(runtime_capabilities)),
+        "runtime_count": int(authority.get("runtime_count") or len(runtime_capabilities)),
+        "available_now_count": int(authority.get("available_now_count") or len(available)),
+        "approval_required_count": int(
+            authority.get("approval_required_count") or len(approval_required)
+        ),
+        "guidance_only_count": int(authority.get("guidance_only_count") or len(guidance_only)),
+        "unavailable_count": int(authority.get("unavailable_count") or 0),
+        "currently_available": available[:8],
+        "approval_gated": approval_required[:8],
+        "guidance_descriptions": guidance_only[:8],
+        "source": "/mc/runtime-contract",
+    }

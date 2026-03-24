@@ -139,8 +139,8 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
         "heartbeat": {
             "id": "heartbeat",
             "label": "Heartbeat",
-            "status": "declared",
-            "implementation_state": "loader-implemented",
+            "status": "active",
+            "implementation_state": "runtime-implemented",
             "load_order": list(HEARTBEAT_ORDER),
             "always_loaded": ["HEARTBEAT.md", "SOUL.md", "IDENTITY.md", "USER.md"],
             "conditional_files": ["MEMORY.md"],
@@ -156,7 +156,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
                 "full transcript",
                 "boredom_templates.json",
             ],
-            "summary": "Bounded proactive contract declared, not yet implemented as runtime behavior.",
+            "summary": "Bounded proactive contract with manual tick runtime, policy gating, and Mission Control visibility.",
             "source": "/mc/runtime-contract",
         },
         "future_agent_task": {

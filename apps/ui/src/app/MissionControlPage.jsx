@@ -28,6 +28,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     openJarvisDetail,
     actOnApproval,
     actOnContractCandidate,
+    actOnHeartbeatTick,
   } = useMissionControlPhaseA({ active: true, selection })
   const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
 
@@ -109,6 +110,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
                 <option value="cost">cost</option>
                 <option value="tool">tool</option>
                 <option value="channel">channel</option>
+                <option value="heartbeat">heartbeat</option>
                 <option value="incident">incident</option>
               </select>
             </label>
@@ -125,6 +127,8 @@ export function MissionControlPage({ selection, onSelectionChange }) {
         <JarvisTab
           data={sections.jarvis}
           onOpenItem={openJarvisDetail}
+          onHeartbeatTick={actOnHeartbeatTick}
+          heartbeatBusy={isRefreshing}
         />
       ) : null}
 

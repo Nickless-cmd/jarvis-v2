@@ -16,6 +16,10 @@ from apps.api.jarvis_api.services.non_visible_lane_execution import (
     coding_lane_execution_truth,
     local_lane_execution_truth,
 )
+from apps.api.jarvis_api.services.heartbeat_runtime import (
+    heartbeat_runtime_surface,
+    run_heartbeat_tick,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -232,6 +236,7 @@ def mc_jarvis() -> dict:
     reflective = _private_reflective_selection_surface()
     operational_preference = _private_operational_preference_surface()
     operational_alignment = _operational_preference_alignment_surface()
+    heartbeat = heartbeat_runtime_surface()
 
     return {
         "summary": {
@@ -244,6 +249,7 @@ def mc_jarvis() -> dict:
                 visible_session,
                 promotion_signal,
             ),
+            "heartbeat": _jarvis_heartbeat_summary(heartbeat),
         },
         "state": {
             "visible_identity": visible_identity,
@@ -273,12 +279,29 @@ def mc_jarvis() -> dict:
             "promotion_signal": promotion_signal,
             "promotion_decision": promotion_decision,
         },
+        "heartbeat": heartbeat,
     }
 
 
 @router.get("/runtime-contract")
 def mc_runtime_contract() -> dict:
     return build_runtime_contract_state()
+
+
+@router.get("/heartbeat")
+def mc_heartbeat() -> dict:
+    return heartbeat_runtime_surface()
+
+
+@router.post("/heartbeat/tick")
+def mc_heartbeat_tick() -> dict:
+    result = run_heartbeat_tick(trigger="manual")
+    return {
+        "ok": True,
+        "state": result.state,
+        "tick": result.tick,
+        "policy": result.policy,
+    }
 
 
 @router.post("/runtime-contract/candidates/{candidate_id}/approve")
@@ -322,6 +345,7 @@ def mc_runtime() -> dict:
     settings = load_settings()
     return {
         "settings": settings.to_dict(),
+        "heartbeat_runtime": heartbeat_runtime_surface(),
         "visible_execution": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
         "visible_session_continuity": visible_session_continuity_summary(),
@@ -962,6 +986,17 @@ def _jarvis_continuity_summary(
             limit=96,
         ),
         "session_status": str(visible_session.get("latest_status") or "unknown"),
+    }
+
+
+def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
+    state = heartbeat.get("state") or {}
+    return {
+        "enabled": "enabled" if state.get("enabled") else "disabled",
+        "status": str(state.get("schedule_status") or "unknown"),
+        "decision": str(state.get("last_decision_type") or "none"),
+        "result": _preview_text(str(state.get("last_result") or state.get("summary") or "No heartbeat result yet."), limit=120),
+        "next_tick_at": str(state.get("next_tick_at") or ""),
     }
 
 

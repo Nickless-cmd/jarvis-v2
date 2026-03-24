@@ -14,6 +14,7 @@ REQUIRED_WORKSPACE_FILES = (
     "TOOLS.md",
     "SKILLS.md",
     "MEMORY.md",
+    "HEARTBEAT.md",
 )
 
 

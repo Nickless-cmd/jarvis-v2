@@ -9,7 +9,8 @@ const TAB_REFRESH_MS = {
 
 const RUN_RELATED_FAMILIES = new Set(['runtime'])
 const APPROVAL_RELATED_FAMILIES = new Set(['approvals', 'tool', 'runtime'])
-const OBS_RELATED_FAMILIES = new Set(['runtime', 'cost', 'approvals', 'incident', 'channel', 'tool'])
+const OBS_RELATED_FAMILIES = new Set(['runtime', 'cost', 'approvals', 'incident', 'channel', 'tool', 'heartbeat'])
+const JARVIS_RELATED_FAMILIES = new Set(['heartbeat', 'memory', 'inner-voice', 'self-model'])
 
 export function useMissionControlPhaseA({ active, selection }) {
   const [activeTab, setActiveTab] = useState('overview')
@@ -143,6 +144,7 @@ export function useMissionControlPhaseA({ active, selection }) {
       if (RUN_RELATED_FAMILIES.has(family)) tabs.push('overview', 'operations')
       if (APPROVAL_RELATED_FAMILIES.has(family)) tabs.push('overview', 'operations')
       if (OBS_RELATED_FAMILIES.has(family)) tabs.push('observability')
+      if (JARVIS_RELATED_FAMILIES.has(family)) tabs.push('jarvis')
       if (tabs.length > 0) scheduleRefresh(tabs)
     })
     return () => {
@@ -309,6 +311,30 @@ export function useMissionControlPhaseA({ active, selection }) {
     }
   }, [refreshJarvis])
 
+  const actOnHeartbeatTick = useCallback(async () => {
+    setIsRefreshing(true)
+    try {
+      const response = await backend.runHeartbeatTick()
+      const jarvis = await backend.getMissionControlJarvis()
+      setData((current) => ({ ...current, jarvis }))
+      if (response?.tick) {
+        setDrawer({
+          kind: 'jarvis',
+          title: 'Heartbeat Tick',
+          item: {
+            ...response.tick,
+            source: '/mc/heartbeat/tick',
+            summary: response.tick.decision_summary || response.tick.action_summary || 'Heartbeat tick detail',
+            createdAt: response.tick.finished_at || response.tick.started_at || '',
+          },
+          busy: false,
+        })
+      }
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [])
+
   const sections = useMemo(() => data, [data])
 
   return {
@@ -330,5 +356,6 @@ export function useMissionControlPhaseA({ active, selection }) {
     openJarvisDetail,
     actOnApproval,
     actOnContractCandidate,
+    actOnHeartbeatTick,
   }
 }

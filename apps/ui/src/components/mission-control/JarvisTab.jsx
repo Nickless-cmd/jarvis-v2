@@ -57,9 +57,14 @@ function candidateRow(item, onOpen) {
   )
 }
 
-export function JarvisTab({ data, onOpenItem }) {
+export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
+  const heartbeat = data?.heartbeat || {}
+  const heartbeatState = heartbeat?.state || {}
+  const heartbeatPolicy = heartbeat?.policy || {}
+  const heartbeatTicks = heartbeat?.recentTicks || []
+  const heartbeatEvents = heartbeat?.recentEvents || []
   const contractSummary = contract?.summary || {}
   const promptModes = contract?.promptModes || []
   const pendingWrites = contract?.pendingWrites || []
@@ -106,6 +111,15 @@ export function JarvisTab({ data, onOpenItem }) {
           <span>Continuity</span>
           <strong>{summary?.continuity?.continuity_mode || 'unknown'}</strong>
           <small className="muted">{summary?.continuity?.relation_pull || 'No continuity pull'}</small>
+        </article>
+        <article className="mc-stat tone-accent" title={sectionTitleWithMeta({
+          source: '/mc/jarvis::heartbeat',
+          fetchedAt: data?.fetchedAt,
+          mode: 'bounded heartbeat runtime',
+        })}>
+          <span>Heartbeat</span>
+          <strong>{summary?.heartbeat?.status || heartbeatState.scheduleStatus || 'unknown'}</strong>
+          <small className="muted">{summary?.heartbeat?.result || heartbeatState.summary || 'No heartbeat result yet'}</small>
         </article>
       </section>
 
@@ -246,6 +260,126 @@ export function JarvisTab({ data, onOpenItem }) {
                     <ChevronRight size={14} />
                   </div>
                 </button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="mc-section-grid">
+        <article className="support-card" id="jarvis-heartbeat" title={sectionTitleWithMeta({
+          source: '/mc/jarvis::heartbeat',
+          fetchedAt: data?.fetchedAt,
+          mode: 'manual bounded tick + runtime snapshot',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Heartbeat</h3>
+              <p className="muted">Bounded proactive runtime with explicit policy gating, cadence, and recorded outcomes.</p>
+            </div>
+            <div className="mc-inline-actions">
+              <span className="mc-section-hint">{heartbeatState.enabled ? 'Bounded' : 'Disabled'}</span>
+              <button
+                className="secondary-btn"
+                onClick={() => onHeartbeatTick?.()}
+                disabled={heartbeatBusy}
+                title="Run one bounded heartbeat tick now"
+              >
+                {heartbeatBusy ? 'Ticking…' : 'Tick now'}
+              </button>
+            </div>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Status</span>
+              <strong>{heartbeatState.scheduleStatus || 'unknown'}</strong>
+              <p>{heartbeatState.summary || 'No heartbeat state recorded yet.'}</p>
+            </div>
+            <div className="compact-metric">
+              <span>Cadence</span>
+              <strong>{heartbeatState.intervalMinutes || heartbeatPolicy.intervalMinutes || 0}m</strong>
+              <p>Next tick {heartbeatState.nextTickAt || 'not scheduled'}.</p>
+            </div>
+            <div className="compact-metric">
+              <span>Decision</span>
+              <strong>{heartbeatState.lastDecisionType || 'none'}</strong>
+              <p>{heartbeatState.lastResult || heartbeatState.blockedReason || 'No heartbeat result yet.'}</p>
+            </div>
+            <div className="compact-metric">
+              <span>Lane</span>
+              <strong>{heartbeatState.lane || 'unassigned'}</strong>
+              <p>{heartbeatState.provider || 'runtime'} / {heartbeatState.model || 'bounded-policy'}</p>
+            </div>
+          </div>
+          <div className="mc-contract-grid">
+            <div className="mc-contract-column">
+              <div className="support-card-header">
+                <span className="support-card-kicker">Policy</span>
+                <strong>Runtime State</strong>
+              </div>
+              <div className="mc-list compact-list">
+                {detailRow({
+                  ...heartbeatState,
+                  createdAt: heartbeatState.updatedAt || heartbeatState.lastTickAt,
+                  summary: heartbeatState.summary || 'Inspect merged heartbeat runtime state.',
+                }, 'Heartbeat State', onOpenItem)}
+                {detailRow({
+                  ...heartbeatPolicy,
+                  createdAt: heartbeatState.updatedAt || data?.fetchedAt,
+                  summary: heartbeatPolicy.summary || 'Inspect HEARTBEAT.md-derived policy.',
+                }, 'Heartbeat Policy', onOpenItem)}
+              </div>
+            </div>
+
+            <div className="mc-contract-column">
+              <div className="support-card-header">
+                <span className="support-card-kicker">Ticks</span>
+                <strong>Recent Decisions</strong>
+              </div>
+              <div className="mc-list compact-list">
+                {heartbeatTicks.length === 0 ? (
+                  <div className="mc-empty-state">
+                    <strong>No heartbeat ticks yet</strong>
+                    <p className="muted">Run a manual tick to record the first bounded heartbeat decision.</p>
+                  </div>
+                ) : heartbeatTicks.map((item) => (
+                  <button className="mc-list-row" key={item.tickId || item.startedAt} onClick={() => onOpenItem('Heartbeat Tick', item)}>
+                    <div>
+                      <strong>{item.decisionType || item.tickStatus || 'tick'}</strong>
+                      <span>{item.decisionSummary || item.actionSummary || item.blockedReason || 'Inspect heartbeat tick detail'}</span>
+                    </div>
+                    <div className="mc-row-meta">
+                      <small>{item.tickStatus || 'unknown'}</small>
+                      <ChevronRight size={14} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mc-contract-column">
+              <div className="support-card-header">
+                <span className="support-card-kicker">Events</span>
+                <strong>Recent Heartbeat Events</strong>
+              </div>
+              <div className="mc-list compact-list">
+                {heartbeatEvents.length === 0 ? (
+                  <div className="mc-empty-state">
+                    <strong>No heartbeat events</strong>
+                    <p className="muted">Events will appear here when ticks start, block, or record outcomes.</p>
+                  </div>
+                ) : heartbeatEvents.slice(0, 5).map((item) => (
+                  <button className="mc-list-row" key={item.id || item.createdAt} onClick={() => onOpenItem(item.kind || 'Heartbeat Event', item)}>
+                    <div>
+                      <strong>{item.kind || 'heartbeat.event'}</strong>
+                      <span>{item.relativeTime || 'recent'} · inspect event payload and runtime context</span>
+                    </div>
+                    <div className="mc-row-meta">
+                      <small>{item.family || 'heartbeat'}</small>
+                      <ChevronRight size={14} />
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </div>

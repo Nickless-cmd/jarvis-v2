@@ -234,6 +234,80 @@ function normalizeContractWrite(item = {}) {
   }
 }
 
+function normalizeHeartbeatState(item = {}) {
+  return {
+    enabled: Boolean(item.enabled),
+    killSwitch: item.kill_switch || 'enabled',
+    intervalMinutes: Number(item.interval_minutes || 0),
+    scheduleStatus: item.schedule_status || 'unknown',
+    due: Boolean(item.due),
+    lastTickId: item.last_tick_id || '',
+    lastTickAt: item.last_tick_at || '',
+    nextTickAt: item.next_tick_at || '',
+    lastDecisionType: item.last_decision_type || '',
+    lastResult: item.last_result || '',
+    blockedReason: item.blocked_reason || '',
+    provider: item.provider || '',
+    model: item.model || '',
+    lane: item.lane || '',
+    budgetStatus: item.budget_status || '',
+    policySummary: item.policy_summary || '',
+    lastPingEligible: Boolean(item.last_ping_eligible),
+    lastPingResult: item.last_ping_result || '',
+    summary: item.summary || 'No heartbeat activity yet.',
+    stateFile: item.state_file || '',
+    source: item.source || '/mc/jarvis::heartbeat',
+    updatedAt: item.updated_at || '',
+  }
+}
+
+function normalizeHeartbeatPolicy(item = {}) {
+  return {
+    workspace: item.workspace || '',
+    heartbeatFile: item.heartbeat_file || '',
+    present: Boolean(item.present),
+    enabled: Boolean(item.enabled),
+    intervalMinutes: Number(item.interval_minutes || 0),
+    allowPropose: Boolean(item.allow_propose),
+    allowExecute: Boolean(item.allow_execute),
+    allowPing: Boolean(item.allow_ping),
+    pingChannel: item.ping_channel || 'none',
+    budgetStatus: item.budget_status || '',
+    killSwitch: item.kill_switch || 'enabled',
+    summary: item.summary || 'Heartbeat policy summary unavailable.',
+    source: item.source || '/mc/jarvis::heartbeat',
+  }
+}
+
+function normalizeHeartbeatTick(item = {}) {
+  return {
+    tickId: item.tick_id || '',
+    trigger: item.trigger || '',
+    tickStatus: item.tick_status || 'unknown',
+    decisionType: item.decision_type || '',
+    decisionSummary: item.decision_summary || '',
+    decisionReason: item.decision_reason || '',
+    blockedReason: item.blocked_reason || '',
+    provider: item.provider || '',
+    model: item.model || '',
+    lane: item.lane || '',
+    budgetStatus: item.budget_status || '',
+    pingEligible: Boolean(item.ping_eligible),
+    pingResult: item.ping_result || '',
+    actionStatus: item.action_status || '',
+    actionSummary: item.action_summary || '',
+    rawResponse: item.raw_response || '',
+    inputTokens: Number(item.input_tokens || 0),
+    outputTokens: Number(item.output_tokens || 0),
+    costUsd: Number(item.cost_usd || 0),
+    startedAt: item.started_at || '',
+    finishedAt: item.finished_at || '',
+    source: '/mc/jarvis::heartbeat',
+    createdAt: item.finished_at || item.started_at || '',
+    summary: item.decision_summary || item.action_summary || 'Heartbeat tick detail',
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -585,6 +659,7 @@ export const backend = {
     const memory = payload?.memory || {}
     const development = payload?.development || {}
     const continuity = payload?.continuity || {}
+    const heartbeat = payload?.heartbeat || {}
     const contract = contractPayload || {}
 
     return {
@@ -703,6 +778,12 @@ export const backend = {
           summary: continuity.promotion_decision?.current?.promotion_target || 'No promotion decision',
         }),
       },
+      heartbeat: {
+        state: normalizeHeartbeatState(heartbeat.state || {}),
+        policy: normalizeHeartbeatPolicy(heartbeat.policy || {}),
+        recentTicks: (heartbeat.recent_ticks || []).map(normalizeHeartbeatTick),
+        recentEvents: (heartbeat.recent_events || []).map(normalizeEventItem),
+      },
     }
   },
 
@@ -751,6 +832,12 @@ export const backend = {
 
   async applyRuntimeContractCandidate(candidateId) {
     return requestJson(`/mc/runtime-contract/candidates/${candidateId}/apply`, {
+      method: 'POST',
+    })
+  },
+
+  async runHeartbeatTick() {
+    return requestJson('/mc/heartbeat/tick', {
       method: 'POST',
     })
   },

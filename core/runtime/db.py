@@ -188,6 +188,61 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS heartbeat_runtime_state (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                state_id TEXT NOT NULL UNIQUE,
+                last_tick_id TEXT NOT NULL DEFAULT '',
+                last_tick_at TEXT NOT NULL DEFAULT '',
+                next_tick_at TEXT NOT NULL DEFAULT '',
+                last_decision_type TEXT NOT NULL DEFAULT '',
+                last_result TEXT NOT NULL DEFAULT '',
+                blocked_reason TEXT NOT NULL DEFAULT '',
+                provider TEXT NOT NULL DEFAULT '',
+                model TEXT NOT NULL DEFAULT '',
+                lane TEXT NOT NULL DEFAULT '',
+                budget_status TEXT NOT NULL DEFAULT '',
+                last_ping_eligible INTEGER NOT NULL DEFAULT 0,
+                last_ping_result TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS heartbeat_runtime_ticks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tick_id TEXT NOT NULL UNIQUE,
+                trigger TEXT NOT NULL,
+                tick_status TEXT NOT NULL,
+                decision_type TEXT NOT NULL DEFAULT '',
+                decision_summary TEXT NOT NULL DEFAULT '',
+                decision_reason TEXT NOT NULL DEFAULT '',
+                blocked_reason TEXT NOT NULL DEFAULT '',
+                provider TEXT NOT NULL DEFAULT '',
+                model TEXT NOT NULL DEFAULT '',
+                lane TEXT NOT NULL DEFAULT '',
+                budget_status TEXT NOT NULL DEFAULT '',
+                ping_eligible INTEGER NOT NULL DEFAULT 0,
+                ping_result TEXT NOT NULL DEFAULT '',
+                action_status TEXT NOT NULL DEFAULT '',
+                action_summary TEXT NOT NULL DEFAULT '',
+                raw_response TEXT NOT NULL DEFAULT '',
+                input_tokens INTEGER NOT NULL DEFAULT 0,
+                output_tokens INTEGER NOT NULL DEFAULT 0,
+                cost_usd REAL NOT NULL DEFAULT 0,
+                started_at TEXT NOT NULL,
+                finished_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_heartbeat_runtime_ticks_finished
+            ON heartbeat_runtime_ticks(id DESC)
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS private_inner_notes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 note_id TEXT NOT NULL UNIQUE,
@@ -2173,6 +2228,268 @@ def runtime_contract_file_write_counts() -> dict[str, int]:
     return counts
 
 
+def get_heartbeat_runtime_state() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                state_id,
+                last_tick_id,
+                last_tick_at,
+                next_tick_at,
+                last_decision_type,
+                last_result,
+                blocked_reason,
+                provider,
+                model,
+                lane,
+                budget_status,
+                last_ping_eligible,
+                last_ping_result,
+                updated_at
+            FROM heartbeat_runtime_state
+            WHERE id = 1
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return _heartbeat_runtime_state_from_row(row)
+
+
+def upsert_heartbeat_runtime_state(
+    *,
+    state_id: str,
+    last_tick_id: str,
+    last_tick_at: str,
+    next_tick_at: str,
+    last_decision_type: str,
+    last_result: str,
+    blocked_reason: str,
+    provider: str,
+    model: str,
+    lane: str,
+    budget_status: str,
+    last_ping_eligible: bool,
+    last_ping_result: str,
+    updated_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO heartbeat_runtime_state (
+                id,
+                state_id,
+                last_tick_id,
+                last_tick_at,
+                next_tick_at,
+                last_decision_type,
+                last_result,
+                blocked_reason,
+                provider,
+                model,
+                lane,
+                budget_status,
+                last_ping_eligible,
+                last_ping_result,
+                updated_at
+            )
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                state_id = excluded.state_id,
+                last_tick_id = excluded.last_tick_id,
+                last_tick_at = excluded.last_tick_at,
+                next_tick_at = excluded.next_tick_at,
+                last_decision_type = excluded.last_decision_type,
+                last_result = excluded.last_result,
+                blocked_reason = excluded.blocked_reason,
+                provider = excluded.provider,
+                model = excluded.model,
+                lane = excluded.lane,
+                budget_status = excluded.budget_status,
+                last_ping_eligible = excluded.last_ping_eligible,
+                last_ping_result = excluded.last_ping_result,
+                updated_at = excluded.updated_at
+            """,
+            (
+                state_id,
+                last_tick_id,
+                last_tick_at,
+                next_tick_at,
+                last_decision_type,
+                last_result,
+                blocked_reason,
+                provider,
+                model,
+                lane,
+                budget_status,
+                1 if last_ping_eligible else 0,
+                last_ping_result,
+                updated_at,
+            ),
+        )
+        conn.commit()
+    state = get_heartbeat_runtime_state()
+    if state is None:
+        raise RuntimeError("heartbeat runtime state was not persisted")
+    return state
+
+
+def record_heartbeat_runtime_tick(
+    *,
+    tick_id: str,
+    trigger: str,
+    tick_status: str,
+    decision_type: str,
+    decision_summary: str,
+    decision_reason: str,
+    blocked_reason: str,
+    provider: str,
+    model: str,
+    lane: str,
+    budget_status: str,
+    ping_eligible: bool,
+    ping_result: str,
+    action_status: str,
+    action_summary: str,
+    raw_response: str,
+    input_tokens: int,
+    output_tokens: int,
+    cost_usd: float,
+    started_at: str,
+    finished_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO heartbeat_runtime_ticks (
+                tick_id,
+                trigger,
+                tick_status,
+                decision_type,
+                decision_summary,
+                decision_reason,
+                blocked_reason,
+                provider,
+                model,
+                lane,
+                budget_status,
+                ping_eligible,
+                ping_result,
+                action_status,
+                action_summary,
+                raw_response,
+                input_tokens,
+                output_tokens,
+                cost_usd,
+                started_at,
+                finished_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                tick_id,
+                trigger,
+                tick_status,
+                decision_type,
+                decision_summary,
+                decision_reason,
+                blocked_reason,
+                provider,
+                model,
+                lane,
+                budget_status,
+                1 if ping_eligible else 0,
+                ping_result,
+                action_status,
+                action_summary,
+                raw_response,
+                int(input_tokens or 0),
+                int(output_tokens or 0),
+                float(cost_usd or 0.0),
+                started_at,
+                finished_at,
+            ),
+        )
+        conn.commit()
+    tick = get_heartbeat_runtime_tick(tick_id)
+    if tick is None:
+        raise RuntimeError("heartbeat runtime tick was not persisted")
+    return tick
+
+
+def get_heartbeat_runtime_tick(tick_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                tick_id,
+                trigger,
+                tick_status,
+                decision_type,
+                decision_summary,
+                decision_reason,
+                blocked_reason,
+                provider,
+                model,
+                lane,
+                budget_status,
+                ping_eligible,
+                ping_result,
+                action_status,
+                action_summary,
+                raw_response,
+                input_tokens,
+                output_tokens,
+                cost_usd,
+                started_at,
+                finished_at
+            FROM heartbeat_runtime_ticks
+            WHERE tick_id = ?
+            LIMIT 1
+            """,
+            (tick_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _heartbeat_runtime_tick_from_row(row)
+
+
+def recent_heartbeat_runtime_ticks(limit: int = 10) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                tick_id,
+                trigger,
+                tick_status,
+                decision_type,
+                decision_summary,
+                decision_reason,
+                blocked_reason,
+                provider,
+                model,
+                lane,
+                budget_status,
+                ping_eligible,
+                ping_result,
+                action_status,
+                action_summary,
+                raw_response,
+                input_tokens,
+                output_tokens,
+                cost_usd,
+                started_at,
+                finished_at
+            FROM heartbeat_runtime_ticks
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [_heartbeat_runtime_tick_from_row(row) for row in rows]
+
+
 def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
     return {
         "candidate_id": row["candidate_id"],
@@ -2195,6 +2512,51 @@ def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
         "confidence": row["confidence"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
+    }
+
+
+def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "state_id": row["state_id"],
+        "last_tick_id": row["last_tick_id"],
+        "last_tick_at": row["last_tick_at"],
+        "next_tick_at": row["next_tick_at"],
+        "last_decision_type": row["last_decision_type"],
+        "last_result": row["last_result"],
+        "blocked_reason": row["blocked_reason"],
+        "provider": row["provider"],
+        "model": row["model"],
+        "lane": row["lane"],
+        "budget_status": row["budget_status"],
+        "last_ping_eligible": bool(row["last_ping_eligible"]),
+        "last_ping_result": row["last_ping_result"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def _heartbeat_runtime_tick_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "tick_id": row["tick_id"],
+        "trigger": row["trigger"],
+        "tick_status": row["tick_status"],
+        "decision_type": row["decision_type"],
+        "decision_summary": row["decision_summary"],
+        "decision_reason": row["decision_reason"],
+        "blocked_reason": row["blocked_reason"],
+        "provider": row["provider"],
+        "model": row["model"],
+        "lane": row["lane"],
+        "budget_status": row["budget_status"],
+        "ping_eligible": bool(row["ping_eligible"]),
+        "ping_result": row["ping_result"],
+        "action_status": row["action_status"],
+        "action_summary": row["action_summary"],
+        "raw_response": row["raw_response"],
+        "input_tokens": int(row["input_tokens"] or 0),
+        "output_tokens": int(row["output_tokens"] or 0),
+        "cost_usd": float(row["cost_usd"] or 0.0),
+        "started_at": row["started_at"],
+        "finished_at": row["finished_at"],
     }
 
 

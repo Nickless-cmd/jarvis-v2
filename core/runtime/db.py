@@ -6,6 +6,20 @@ from pathlib import Path
 from core.runtime.config import STATE_DIR
 
 DB_PATH = Path(STATE_DIR) / "jarvis.db"
+_CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
+_EVIDENCE_CLASS_RANKS = {
+    "weak_signal": 1,
+    "runtime_support_only": 2,
+    "single_session_pattern": 3,
+    "explicit_user_statement": 4,
+    "repeated_cross_session": 5,
+}
+_SOURCE_KIND_RANKS = {
+    "runtime-derived-support": 1,
+    "single-session-pattern": 2,
+    "session-evidence": 3,
+    "user-explicit": 4,
+}
 
 
 def connect() -> sqlite3.Connection:
@@ -13,6 +27,31 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _rank_for(ranks: dict[str, int], value: str) -> int:
+    return int(ranks.get(str(value or "").strip().lower(), 0))
+
+
+def _stronger_ranked_value(current: str, proposed: str, ranks: dict[str, int]) -> str:
+    if _rank_for(ranks, proposed) >= _rank_for(ranks, current):
+        return str(proposed or "")
+    return str(current or "")
+
+
+def _merge_text_fragments(current: str, proposed: str, *, limit: int = 3) -> str:
+    parts: list[str] = []
+    seen: set[str] = set()
+    for raw in (current, proposed):
+        for piece in str(raw or "").split(" | "):
+            normalized = " ".join(piece.split()).strip()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            parts.append(normalized)
+            if len(parts) >= limit:
+                return " | ".join(parts)
+    return " | ".join(parts)
 
 
 def init_db() -> None:
@@ -1819,6 +1858,9 @@ def upsert_runtime_contract_candidate(
     evidence_summary: str,
     support_summary: str,
     confidence: str,
+    evidence_class: str,
+    support_count: int,
+    session_count: int,
     created_at: str,
     updated_at: str,
     status_reason: str = "",
@@ -1831,7 +1873,28 @@ def upsert_runtime_contract_candidate(
         if canonical_key:
             existing = conn.execute(
                 """
-                SELECT candidate_id
+                SELECT
+                    candidate_id,
+                    status,
+                    source_kind,
+                    source_mode,
+                    actor,
+                    session_id,
+                    run_id,
+                    summary,
+                    reason,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    proposed_value,
+                    write_section,
+                    confidence,
+                    evidence_class,
+                    support_count,
+                    session_count,
+                    merge_count,
+                    created_at,
+                    updated_at
                 FROM runtime_contract_candidates
                 WHERE candidate_type = ?
                   AND target_file = ?
@@ -1865,10 +1928,14 @@ def upsert_runtime_contract_candidate(
                     proposed_value,
                     write_section,
                     confidence,
+                    evidence_class,
+                    support_count,
+                    session_count,
+                    merge_count,
                     created_at,
                     updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     candidate_id,
@@ -1889,59 +1956,153 @@ def upsert_runtime_contract_candidate(
                     proposed_value,
                     write_section,
                     confidence,
+                    evidence_class,
+                    max(int(support_count or 0), 1),
+                    max(int(session_count or 0), 1),
+                    0,
                     created_at,
                     updated_at,
                 ),
             )
             conn.commit()
             resolved_id = candidate_id
+            upsert_meta = {
+                "was_created": True,
+                "was_updated": True,
+                "merge_state": "created",
+            }
         else:
             resolved_id = str(existing["candidate_id"])
-            conn.execute(
-                """
-                UPDATE runtime_contract_candidates
-                SET
-                    status = ?,
-                    source_kind = ?,
-                    source_mode = ?,
-                    actor = ?,
-                    session_id = ?,
-                    run_id = ?,
-                    summary = ?,
-                    reason = ?,
-                    evidence_summary = ?,
-                    support_summary = ?,
-                    status_reason = ?,
-                    proposed_value = ?,
-                    write_section = ?,
-                    confidence = ?,
-                    updated_at = ?
-                WHERE candidate_id = ?
-                """,
-                (
-                    status,
-                    source_kind,
-                    source_mode,
-                    actor,
-                    session_id,
-                    run_id,
-                    summary,
-                    reason,
-                    evidence_summary,
-                    support_summary,
-                    status_reason,
-                    proposed_value,
-                    write_section,
-                    confidence,
-                    updated_at,
-                    resolved_id,
-                ),
+            merged_source_kind = _stronger_ranked_value(
+                str(existing["source_kind"] or ""),
+                source_kind,
+                _SOURCE_KIND_RANKS,
             )
-            conn.commit()
+            merged_confidence = _stronger_ranked_value(
+                str(existing["confidence"] or ""),
+                confidence,
+                _CONFIDENCE_RANKS,
+            )
+            merged_evidence_class = _stronger_ranked_value(
+                str(existing["evidence_class"] or ""),
+                evidence_class,
+                _EVIDENCE_CLASS_RANKS,
+            )
+            merged_evidence_summary = _merge_text_fragments(
+                str(existing["evidence_summary"] or ""),
+                evidence_summary,
+            )
+            merged_support_summary = _merge_text_fragments(
+                str(existing["support_summary"] or ""),
+                support_summary,
+            )
+            merged_status_reason = _merge_text_fragments(
+                str(existing["status_reason"] or ""),
+                status_reason,
+            )
+            merged_support_count = max(
+                int(existing["support_count"] or 0),
+                max(int(support_count or 0), 1),
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0),
+                max(int(session_count or 0), 1),
+            )
+            merged_summary = summary
+            merged_reason = reason
+            if _rank_for(_EVIDENCE_CLASS_RANKS, evidence_class) < _rank_for(
+                _EVIDENCE_CLASS_RANKS,
+                str(existing["evidence_class"] or ""),
+            ):
+                merged_summary = str(existing["summary"] or "")
+                merged_reason = str(existing["reason"] or "")
+            merged_status = (
+                str(existing["status"] or "")
+                if str(existing["status"] or "") == "approved"
+                else status
+            )
+            same_payload = (
+                merged_status == str(existing["status"] or "")
+                and merged_source_kind == str(existing["source_kind"] or "")
+                and source_mode == str(existing["source_mode"] or "")
+                and session_id == str(existing["session_id"] or "")
+                and merged_summary == str(existing["summary"] or "")
+                and merged_reason == str(existing["reason"] or "")
+                and merged_evidence_summary == str(existing["evidence_summary"] or "")
+                and merged_support_summary == str(existing["support_summary"] or "")
+                and merged_status_reason == str(existing["status_reason"] or "")
+                and proposed_value == str(existing["proposed_value"] or "")
+                and write_section == str(existing["write_section"] or "")
+                and merged_confidence == str(existing["confidence"] or "")
+                and merged_evidence_class == str(existing["evidence_class"] or "")
+                and merged_support_count == int(existing["support_count"] or 0)
+                and merged_session_count == int(existing["session_count"] or 0)
+            )
+            if same_payload:
+                upsert_meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
+            else:
+                conn.execute(
+                    """
+                    UPDATE runtime_contract_candidates
+                    SET
+                        status = ?,
+                        source_kind = ?,
+                        source_mode = ?,
+                        actor = ?,
+                        session_id = ?,
+                        run_id = ?,
+                        summary = ?,
+                        reason = ?,
+                        evidence_summary = ?,
+                        support_summary = ?,
+                        status_reason = ?,
+                        proposed_value = ?,
+                        write_section = ?,
+                        confidence = ?,
+                        evidence_class = ?,
+                        support_count = ?,
+                        session_count = ?,
+                        merge_count = COALESCE(merge_count, 0) + 1,
+                        updated_at = ?
+                    WHERE candidate_id = ?
+                    """,
+                    (
+                        merged_status,
+                        merged_source_kind,
+                        source_mode,
+                        actor,
+                        session_id,
+                        run_id,
+                        merged_summary,
+                        merged_reason,
+                        merged_evidence_summary,
+                        merged_support_summary,
+                        merged_status_reason,
+                        proposed_value,
+                        write_section,
+                        merged_confidence,
+                        merged_evidence_class,
+                        merged_support_count,
+                        merged_session_count,
+                        updated_at,
+                        resolved_id,
+                    ),
+                )
+                conn.commit()
+                upsert_meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     candidate = get_runtime_contract_candidate(resolved_id)
     if candidate is None:
         raise RuntimeError("runtime contract candidate was not persisted")
+    candidate.update(upsert_meta)
     return candidate
 
 
@@ -1987,6 +2148,10 @@ def list_runtime_contract_candidates(
                 proposed_value,
                 write_section,
                 confidence,
+                evidence_class,
+                support_count,
+                session_count,
+                merge_count,
                 created_at,
                 updated_at
             FROM runtime_contract_candidates
@@ -2023,6 +2188,10 @@ def get_runtime_contract_candidate(candidate_id: str) -> dict[str, object] | Non
                 proposed_value,
                 write_section,
                 confidence,
+                evidence_class,
+                support_count,
+                session_count,
+                merge_count,
                 created_at,
                 updated_at
             FROM runtime_contract_candidates
@@ -2560,6 +2729,10 @@ def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
         "proposed_value": row["proposed_value"],
         "write_section": row["write_section"],
         "confidence": row["confidence"],
+        "evidence_class": row["evidence_class"],
+        "support_count": int(row["support_count"] or 0),
+        "session_count": int(row["session_count"] or 0),
+        "merge_count": int(row["merge_count"] or 0),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -2707,6 +2880,10 @@ def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:
             proposed_value TEXT NOT NULL DEFAULT '',
             write_section TEXT NOT NULL DEFAULT '',
             confidence TEXT NOT NULL DEFAULT '',
+            evidence_class TEXT NOT NULL DEFAULT '',
+            support_count INTEGER NOT NULL DEFAULT 1,
+            session_count INTEGER NOT NULL DEFAULT 1,
+            merge_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
@@ -2730,6 +2907,10 @@ def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:
         "status_reason": "TEXT NOT NULL DEFAULT ''",
         "proposed_value": "TEXT NOT NULL DEFAULT ''",
         "write_section": "TEXT NOT NULL DEFAULT ''",
+        "evidence_class": "TEXT NOT NULL DEFAULT ''",
+        "support_count": "INTEGER NOT NULL DEFAULT 1",
+        "session_count": "INTEGER NOT NULL DEFAULT 1",
+        "merge_count": "INTEGER NOT NULL DEFAULT 0",
     }
     for name, spec in required_columns.items():
         if name in existing:

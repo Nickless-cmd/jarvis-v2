@@ -9,6 +9,15 @@ from core.eventbus.bus import event_bus
 from core.runtime.db import list_runtime_contract_candidates
 from core.runtime.db import upsert_runtime_contract_candidate
 
+_CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
+_EVIDENCE_CLASS_RANKS = {
+    "weak_signal": 1,
+    "runtime_support_only": 2,
+    "single_session_pattern": 3,
+    "explicit_user_statement": 4,
+    "repeated_cross_session": 5,
+}
+
 
 def track_runtime_contract_candidates_for_visible_turn(
     *,
@@ -27,7 +36,10 @@ def track_runtime_contract_candidates_for_visible_turn(
             "items": [],
         }
 
-    candidates = _extract_candidates_from_messages([normalized_message])
+    candidates = _extract_candidates_from_messages(
+        [normalized_message],
+        session_id=str(session_id or ""),
+    )
     return _persist_candidates(
         candidates=candidates,
         session_id=str(session_id or ""),
@@ -74,7 +86,10 @@ def track_runtime_contract_candidates_for_session_review(
         if str(item.get("role") or "") == "user"
     ]
     messages = [message for message in recent_user_messages[:4] if message]
-    candidates = _extract_candidates_from_messages(messages)
+    candidates = _extract_candidates_from_messages(
+        messages,
+        session_id=normalized_session_id,
+    )
     result = _persist_candidates(
         candidates=candidates,
         session_id=normalized_session_id,
@@ -125,7 +140,7 @@ def _preference_candidates(message: str) -> list[dict[str, str]]:
             )
         )
 
-    concise_markers = ("kort", "concise", "short", "kortfattet")
+    concise_markers = ("kort", "korte", "concise", "short", "kortfattet")
     technical_markers = ("technical summaries", "tekniske opsummeringer", "technical summary")
     if explicit and any(marker in text for marker in concise_markers):
         if any(marker in text for marker in technical_markers):
@@ -219,7 +234,11 @@ def _memory_candidates(message: str) -> list[dict[str, str]]:
     return _dedupe_candidates(candidates)
 
 
-def _extract_candidates_from_messages(messages: list[str]) -> list[dict[str, str]]:
+def _extract_candidates_from_messages(
+    messages: list[str],
+    *,
+    session_id: str,
+) -> list[dict[str, str]]:
     extracted: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
     for message in messages:
@@ -229,10 +248,11 @@ def _extract_candidates_from_messages(messages: list[str]) -> list[dict[str, str
             key = (candidate["candidate_type"], candidate["canonical_key"])
             if key in seen:
                 continue
-            if _candidate_already_terminal(candidate):
+            enriched = _enrich_candidate_evidence(candidate, session_id=session_id)
+            if _candidate_already_applied(enriched):
                 continue
             seen.add(key)
-            extracted.append(candidate)
+            extracted.append(enriched)
     return extracted
 
 
@@ -274,12 +294,17 @@ def _persist_candidates(
             evidence_summary=str(candidate["evidence_summary"]),
             support_summary=str(candidate["support_summary"]),
             confidence=str(candidate["confidence"]),
+            evidence_class=str(candidate["evidence_class"]),
+            support_count=int(candidate["support_count"]),
+            session_count=int(candidate["session_count"]),
             created_at=now,
             updated_at=now,
             status_reason=status_reason,
             proposed_value=str(candidate.get("proposed_value") or ""),
             write_section=str(candidate.get("write_section") or ""),
         )
+        if not bool(persisted_candidate.get("was_created")) and not bool(persisted_candidate.get("was_updated")):
+            continue
         persisted.append(persisted_candidate)
         if persisted_candidate["candidate_type"] == "preference_update":
             preference_count += 1
@@ -296,18 +321,21 @@ def _persist_candidates(
                 "run_id": persisted_candidate["run_id"],
                 "summary": persisted_candidate["summary"],
                 "source_mode": source_mode,
+                "evidence_class": persisted_candidate.get("evidence_class") or "",
+                "merge_state": persisted_candidate.get("merge_state") or "",
             },
         )
 
     return {
-        "created": len(persisted),
+        "created": sum(1 for item in persisted if item.get("was_created")),
+        "updated": sum(1 for item in persisted if item.get("was_updated") and not item.get("was_created")),
         "preference_updates": preference_count,
         "memory_promotions": memory_count,
         "items": persisted,
     }
 
 
-def _candidate_already_terminal(candidate: dict[str, str]) -> bool:
+def _candidate_already_applied(candidate: dict[str, str]) -> bool:
     matches = list_runtime_contract_candidates(
         candidate_type=str(candidate["candidate_type"]),
         target_file=str(candidate["target_file"]),
@@ -317,9 +345,157 @@ def _candidate_already_terminal(candidate: dict[str, str]) -> bool:
     for item in matches:
         if str(item.get("canonical_key") or "") != canonical_key:
             continue
-        if str(item.get("status") or "") in {"applied", "rejected", "superseded"}:
+        if str(item.get("status") or "") == "applied":
             return True
     return False
+
+
+def _enrich_candidate_evidence(
+    candidate: dict[str, str],
+    *,
+    session_id: str,
+) -> dict[str, str | int]:
+    history = _candidate_history(candidate, session_id=session_id)
+    total_occurrences = history["total_occurrences"]
+    distinct_sessions = history["distinct_sessions"]
+    current_session_occurrences = history["current_session_occurrences"]
+    evidence_class = "explicit_user_statement"
+    confidence = str(candidate["confidence"])
+    source_kind = str(candidate["source_kind"])
+    if distinct_sessions >= 2 and total_occurrences >= 2:
+        evidence_class = "repeated_cross_session"
+        confidence = _stronger_confidence(confidence, "high")
+    elif current_session_occurrences >= 2 or total_occurrences >= 2:
+        evidence_class = "single_session_pattern"
+        confidence = _stronger_confidence(confidence, "high" if source_kind == "user-explicit" else "medium")
+        if source_kind != "user-explicit":
+            source_kind = "single-session-pattern"
+
+    evidence_bits = [str(candidate["evidence_summary"]).strip()]
+    evidence_bits.extend(history["samples"][:2])
+    support_parts = [_evidence_class_label(evidence_class)]
+    if distinct_sessions >= 2:
+        support_parts.append(f"seen in {distinct_sessions} sessions")
+    elif current_session_occurrences >= 2:
+        support_parts.append(f"seen {current_session_occurrences} times in this session")
+    else:
+        support_parts.append("single durable signal so far")
+
+    reason = str(candidate["reason"]).strip()
+    if evidence_class == "repeated_cross_session":
+        reason = f"{reason} Repeated across sessions."
+    elif evidence_class == "single_session_pattern" and total_occurrences >= 2:
+        reason = f"{reason} Repeated in recent evidence."
+
+    return {
+        **candidate,
+        "source_kind": source_kind,
+        "reason": reason,
+        "evidence_summary": " | ".join(_unique_nonempty(evidence_bits)[:3]),
+        "support_summary": " | ".join(support_parts),
+        "confidence": confidence,
+        "evidence_class": evidence_class,
+        "support_count": max(total_occurrences, 1),
+        "session_count": max(distinct_sessions, 1),
+    }
+
+
+def _candidate_history(candidate: dict[str, str], *, session_id: str) -> dict[str, object]:
+    samples: list[str] = []
+    distinct_sessions: set[str] = set()
+    total_occurrences = 0
+    current_session_occurrences = 0
+    for message in _recent_user_message_history(limit_sessions=6, per_session_limit=10):
+        if not _message_matches_candidate(
+            canonical_key=str(candidate["canonical_key"]),
+            message=message["content"],
+        ):
+            continue
+        total_occurrences += 1
+        distinct_sessions.add(message["session_id"])
+        if message["session_id"] == session_id:
+            current_session_occurrences += 1
+        samples.append(_quote(message["content"]))
+    return {
+        "samples": _unique_nonempty(samples),
+        "total_occurrences": total_occurrences,
+        "distinct_sessions": len(distinct_sessions),
+        "current_session_occurrences": current_session_occurrences,
+    }
+
+
+def _recent_user_message_history(*, limit_sessions: int, per_session_limit: int) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    for summary in list_chat_sessions()[: max(limit_sessions, 1)]:
+        session_id = str(summary.get("id") or "").strip()
+        if not session_id:
+            continue
+        session = get_chat_session(session_id)
+        if session is None:
+            continue
+        user_messages = [
+            " ".join(str(message.get("content") or "").split()).strip()
+            for message in reversed(session.get("messages") or [])
+            if str(message.get("role") or "") == "user"
+        ][: max(per_session_limit, 1)]
+        for content in user_messages:
+            if not content:
+                continue
+            items.append({"session_id": session_id, "content": content})
+    return items
+
+
+def _message_matches_candidate(*, canonical_key: str, message: str) -> bool:
+    text = str(message or "").lower()
+    if canonical_key == "user-preference:language:danish":
+        return any(marker in text for marker in ("jeg foretrækker", "i prefer", "jeg vil gerne have")) and (
+            "dansk" in text or "danish" in text
+        )
+    if canonical_key == "user-preference:reply-style:concise":
+        return any(marker in text for marker in ("jeg foretrækker", "i prefer", "jeg vil gerne have")) and any(
+            marker in text for marker in ("kort", "concise", "short", "kortfattet")
+        )
+    if canonical_key == "user-preference:summaries:concise-technical":
+        return any(marker in text for marker in ("jeg foretrækker", "i prefer", "please remember i prefer")) and any(
+            marker in text for marker in ("technical summaries", "tekniske opsummeringer", "technical summary")
+        )
+    if canonical_key == "user-profile:working-hours:late-evening":
+        return "jeg arbejder mest sent om aftenen" in text or "i work mostly late in the evening" in text
+    if canonical_key == "workspace-memory:project-anchor:build-jarvis-together":
+        return (
+            ("husk at" in text and "vi bygger jarvis sammen" in text)
+            or ("remember that" in text and "we are building jarvis together" in text)
+        )
+    return False
+
+
+def _evidence_class_label(value: str) -> str:
+    mapping = {
+        "weak_signal": "weak signal",
+        "runtime_support_only": "runtime support only",
+        "single_session_pattern": "repeated in one session",
+        "explicit_user_statement": "explicit user statement",
+        "repeated_cross_session": "repeated across sessions",
+    }
+    return mapping.get(str(value or ""), "bounded evidence")
+
+
+def _stronger_confidence(current: str, proposed: str) -> str:
+    if _CONFIDENCE_RANKS.get(str(proposed or ""), 0) >= _CONFIDENCE_RANKS.get(str(current or ""), 0):
+        return str(proposed or "")
+    return str(current or "")
+
+
+def _unique_nonempty(values: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        normalized = " ".join(str(value or "").split()).strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+    return result
 
 
 def _candidate(
@@ -348,6 +524,9 @@ def _candidate(
         "proposed_value": proposed_value,
         "write_section": write_section,
         "confidence": confidence,
+        "evidence_class": "",
+        "support_count": 1,
+        "session_count": 1,
     }
 
 

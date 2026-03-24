@@ -141,7 +141,11 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
             </div>
             <div className="mc-inline-meta">
               {drawer.item.sourceKind ? <span className="mc-meta-pill">Source {drawer.item.sourceKind}</span> : null}
+              {drawer.item.evidenceClass ? <span className="mc-meta-pill">Evidence {drawer.item.evidenceClass.replace(/_/g, ' ')}</span> : null}
               {drawer.item.confidence ? <span className="mc-meta-pill">Confidence {drawer.item.confidence}</span> : null}
+              {drawer.item.supportCount ? <span className="mc-meta-pill">{drawer.item.supportCount} supporting signals</span> : null}
+              {drawer.item.sessionCount ? <span className="mc-meta-pill">{drawer.item.sessionCount} sessions</span> : null}
+              {drawer.item.mergeCount ? <span className="mc-meta-pill">{drawer.item.mergeCount} merges</span> : null}
               {drawer.item.updatedAt ? <span className="mc-meta-pill">Updated {formatFreshness(drawer.item.updatedAt)}</span> : null}
             </div>
             {drawer.error ? <div className="inline-error">{drawer.error}</div> : null}
@@ -172,6 +176,12 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
               <strong>Evidence</strong>
               <p>{drawer.item.evidenceSummary || 'No evidence summary recorded.'}</p>
             </article>
+            {drawer.item.supportSummary ? (
+              <article className="mc-code-card">
+                <strong>Why this is pending</strong>
+                <p>{drawer.item.supportSummary}</p>
+              </article>
+            ) : null}
             {drawer.item.proposedValue ? (
               <article className="mc-code-card">
                 <strong>Proposed write</strong>

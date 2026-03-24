@@ -34,6 +34,9 @@ function detailRow(item, label, onOpen) {
 }
 
 function candidateRow(item, onOpen) {
+  const evidenceLabel = item.evidenceClass
+    ? item.evidenceClass.replace(/_/g, ' ')
+    : (item.sourceKind || 'bounded evidence')
   return (
     <button
       className="mc-list-row mc-list-row-subtle"
@@ -47,10 +50,14 @@ function candidateRow(item, onOpen) {
     >
       <div>
         <strong>{item.summary || 'Candidate'}</strong>
-        <span>{item.evidenceSummary || item.reason || 'Inspect candidate evidence'}</span>
+        <span>{item.reason || item.evidenceSummary || 'Inspect candidate evidence'}</span>
       </div>
       <div className="mc-row-meta">
-        <small>{item.status || 'proposed'}</small>
+        <small>
+          {item.status || 'proposed'}
+          {item.confidence ? ` · ${item.confidence}` : ''}
+          {evidenceLabel ? ` · ${evidenceLabel}` : ''}
+        </small>
         <ChevronRight size={14} />
       </div>
     </button>

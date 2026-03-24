@@ -9,7 +9,6 @@ from uuid import uuid4
 
 from apps.api.jarvis_api.services.chat_sessions import (
     append_chat_message,
-    recent_chat_session_messages,
 )
 from apps.api.jarvis_api.services.visible_model import (
     VisibleModelDelta,
@@ -127,9 +126,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     try:
         try:
             for item in stream_visible_model(
-                message=_session_scoped_visible_message(run),
+                message=run.user_message,
                 provider=run.provider,
                 model=run.model,
+                session_id=run.session_id,
                 controller=controller,
             ):
                 if controller.is_cancelled():
@@ -340,24 +340,6 @@ def _persist_session_assistant_message(run: VisibleRun, text: str) -> None:
     if not normalized:
         return
     append_chat_message(session_id=run.session_id, role="assistant", content=normalized)
-
-
-def _session_scoped_visible_message(run: VisibleRun) -> str:
-    if not run.session_id:
-        return run.user_message
-    history = recent_chat_session_messages(run.session_id, limit=12)
-    if history and history[-1]["role"] == "user" and history[-1]["content"].strip() == run.user_message:
-        history = history[:-1]
-    if not history:
-        return run.user_message
-
-    lines = ["Current chat session transcript:"]
-    for item in history[-10:]:
-        role = "User" if item["role"] == "user" else "Jarvis"
-        lines.append(f"{role}: {item['content']}")
-    lines.append("")
-    lines.append(f"Current user message: {run.user_message}")
-    return "\n".join(lines)
 
 
 def _extract_capability_call(text: str) -> str | None:

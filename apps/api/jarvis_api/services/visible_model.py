@@ -4,14 +4,13 @@ import json
 from datetime import UTC, datetime, timedelta
 from dataclasses import dataclass
 from decimal import Decimal
-from pathlib import Path
 from typing import Iterator
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from core.auth.profiles import get_provider_state, list_auth_profiles
-from core.identity.visible_identity import load_visible_identity_prompt
+from apps.api.jarvis_api.services.prompt_contract import build_visible_chat_prompt_assembly
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
@@ -61,27 +60,44 @@ class VisibleModelStreamCancelled(RuntimeError):
     pass
 
 
-def execute_visible_model(*, message: str, provider: str, model: str) -> VisibleModelResult:
+def execute_visible_model(
+    *, message: str, provider: str, model: str, session_id: str | None = None
+) -> VisibleModelResult:
     if provider == "openai":
-        return _execute_openai_model(message=message, model=model)
+        return _execute_openai_model(message=message, model=model, session_id=session_id)
     if provider == "ollama":
-        return _execute_ollama_model(message=message, model=model)
+        return _execute_ollama_model(message=message, model=model, session_id=session_id)
     if provider == "phase1-runtime":
         return _execute_phase1_model(message=message, provider=provider, model=model)
     raise ValueError(f"Unsupported visible model provider: {provider}")
 
 
 def stream_visible_model(
-    *, message: str, provider: str, model: str, controller=None
+    *, message: str, provider: str, model: str, session_id: str | None = None, controller=None
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
     if provider == "openai":
-        yield from _stream_openai_model(message=message, model=model, controller=controller)
+        yield from _stream_openai_model(
+            message=message,
+            model=model,
+            session_id=session_id,
+            controller=controller,
+        )
         return
     if provider == "ollama":
-        yield from _stream_ollama_model(message=message, model=model, controller=controller)
+        yield from _stream_ollama_model(
+            message=message,
+            model=model,
+            session_id=session_id,
+            controller=controller,
+        )
         return
 
-    result = execute_visible_model(message=message, provider=provider, model=model)
+    result = execute_visible_model(
+        message=message,
+        provider=provider,
+        model=model,
+        session_id=session_id,
+    )
     for chunk in _chunk_text(result.text):
         yield VisibleModelDelta(delta=chunk)
     yield VisibleModelStreamDone(result=result)
@@ -240,11 +256,13 @@ def _execute_phase1_model(
     )
 
 
-def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
+def _execute_openai_model(
+    *, message: str, model: str, session_id: str | None = None
+) -> VisibleModelResult:
     api_key = _load_openai_api_key()
     payload = {
         "model": model,
-        "input": _build_visible_input(message),
+        "input": _build_visible_input(message, session_id=session_id),
     }
     data = _post_openai_responses(payload=payload, api_key=api_key)
     text = _extract_output_text(data)
@@ -263,10 +281,10 @@ def _execute_openai_model(*, message: str, model: str) -> VisibleModelResult:
     )
 
 
-def _execute_ollama_model(*, message: str, model: str) -> VisibleModelResult:
+def _execute_ollama_model(*, message: str, model: str, session_id: str | None = None) -> VisibleModelResult:
     target = resolve_provider_router_target(lane="visible")
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
-    prompt = _build_ollama_prompt(message, model=model)
+    prompt = _build_ollama_prompt(message, model=model, session_id=session_id)
     payload = {
         "model": model,
         "prompt": prompt,
@@ -296,13 +314,13 @@ def _execute_ollama_model(*, message: str, model: str) -> VisibleModelResult:
 
 
 def _stream_openai_model(
-    *, message: str, model: str, controller=None
+    *, message: str, model: str, session_id: str | None = None, controller=None
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
     api_key = _load_openai_api_key()
     payload = {
         "model": model,
         "stream": True,
-        "input": _build_visible_input(message),
+        "input": _build_visible_input(message, session_id=session_id),
     }
     req = urllib_request.Request(
         "https://api.openai.com/v1/responses",
@@ -366,13 +384,13 @@ def _stream_openai_model(
 
 
 def _stream_ollama_model(
-    *, message: str, model: str, controller=None
+    *, message: str, model: str, session_id: str | None = None, controller=None
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
     target = resolve_provider_router_target(lane="visible")
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
     payload = {
         "model": model,
-        "prompt": _build_ollama_prompt(message, model=model),
+        "prompt": _build_ollama_prompt(message, model=model, session_id=session_id),
         "stream": True,
     }
     req = urllib_request.Request(
@@ -544,10 +562,12 @@ def _probe_ollama_visible_target(*, model: str, base_url: str) -> dict[str, str 
         }
 
 
-def _build_ollama_prompt(message: str, *, model: str) -> str:
+def _build_ollama_prompt(message: str, *, model: str, session_id: str | None) -> str:
     instruction = _visible_system_instruction_for_provider(
         provider="ollama",
         model=model,
+        user_message=message,
+        session_id=session_id,
     )
     if not instruction:
         return message
@@ -635,8 +655,13 @@ def _extract_output_text(data: dict) -> str:
     return text
 
 
-def _build_visible_input(message: str) -> list[dict]:
-    instruction = _visible_system_instruction_for_provider(provider="openai", model="")
+def _build_visible_input(message: str, *, session_id: str | None) -> list[dict]:
+    instruction = _visible_system_instruction_for_provider(
+        provider="openai",
+        model="",
+        user_message=message,
+        session_id=session_id,
+    )
     if not instruction:
         return [
             {
@@ -656,53 +681,16 @@ def _build_visible_input(message: str) -> list[dict]:
     ]
 
 
-def _visible_system_instruction_for_provider(*, provider: str, model: str) -> str | None:
-    if provider == "ollama":
-        return _visible_system_instruction_for_local_ollama(model=model)
-    return _visible_system_instruction()
-
-
-def _visible_system_instruction_for_local_ollama(*, model: str) -> str | None:
-    parts = [
-        load_visible_identity_prompt(),
-        _local_model_behavior_instruction(),
-        _capability_instruction(),
-    ]
-    text = "\n\n".join(part for part in parts if part)
-    return text or None
-
-
-def _visible_system_instruction() -> str | None:
-    parts = [
-        load_visible_identity_prompt(),
-        _visible_session_continuity_instruction(),
-        _visible_continuity_instruction(),
-        _capability_continuity_instruction(),
-        _visible_work_instruction(),
-        _private_support_signal_instruction(),
-        _growth_support_signal_instruction(),
-        _self_model_support_signal_instruction(),
-        _retained_memory_support_signal_instruction(),
-        _temporal_support_signal_instruction(),
-        _capability_instruction(),
-    ]
-    text = "\n\n".join(part for part in parts if part)
-    return text or None
-
-
-def _local_model_behavior_instruction() -> str:
-    return "\n".join(
-        [
-            "Visible local-model behavior rules:",
-            "- Answer the latest user request first.",
-            "- Keep replies short and direct unless the user asks for detail.",
-            "- Reply in the same language as the user's latest message. If the user writes Danish, reply in Danish.",
-            "- Follow user corrections immediately. If the user says stop repeating or stop saying a phrase, do not repeat it.",
-            "- Do not repeat self-descriptions, identity boilerplate, or greeting formulas unless directly relevant.",
-            "- Do not mention being a persistent digital entity unless the user asks about identity or architecture.",
-            "- For short direct requests, give a short direct answer.",
-        ]
+def _visible_system_instruction_for_provider(
+    *, provider: str, model: str, user_message: str, session_id: str | None
+) -> str | None:
+    assembly = build_visible_chat_prompt_assembly(
+        provider=provider,
+        model=model,
+        user_message=user_message,
+        session_id=session_id,
     )
+    return assembly.text or None
 
 
 def _visible_session_continuity_instruction() -> str | None:

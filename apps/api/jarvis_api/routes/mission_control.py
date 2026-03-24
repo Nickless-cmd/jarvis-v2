@@ -23,6 +23,9 @@ from apps.api.jarvis_api.services.heartbeat_runtime import (
 from apps.api.jarvis_api.services.development_focus_tracking import (
     build_runtime_development_focus_surface,
 )
+from apps.api.jarvis_api.services.reflective_critic_tracking import (
+    build_runtime_reflective_critic_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -241,6 +244,7 @@ def mc_jarvis() -> dict:
     operational_preference = _private_operational_preference_surface()
     operational_alignment = _operational_preference_alignment_surface()
     development_focuses = build_runtime_development_focus_surface()
+    reflective_critics = build_runtime_reflective_critic_surface()
     heartbeat = heartbeat_runtime_surface()
 
     return {
@@ -252,6 +256,7 @@ def mc_jarvis() -> dict:
                 self_model,
                 development_state,
                 development_focuses,
+                reflective_critics,
             ),
             "continuity": _jarvis_continuity_summary(
                 relation_state,
@@ -281,6 +286,7 @@ def mc_jarvis() -> dict:
             "operational_alignment": operational_alignment,
             "temporal_curiosity": temporal_curiosity,
             "development_focuses": development_focuses,
+            "reflective_critics": reflective_critics,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -391,6 +397,7 @@ def mc_runtime() -> dict:
         "private_retained_memory_record": _private_retained_memory_record_surface(),
         "private_retained_memory_projection": _private_retained_memory_projection_surface(),
         "runtime_development_focuses": build_runtime_development_focus_surface(),
+        "runtime_reflective_critics": build_runtime_reflective_critic_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -986,11 +993,15 @@ def _jarvis_retained_summary(
 
 
 def _jarvis_development_summary(
-    self_model: dict, development_state: dict, development_focuses: dict | None = None
+    self_model: dict,
+    development_state: dict,
+    development_focuses: dict | None = None,
+    reflective_critics: dict | None = None,
 ) -> dict[str, str]:
     model = self_model.get("current") or {}
     state = development_state.get("current") or {}
     focus_summary = (development_focuses or {}).get("summary") or {}
+    critic_summary = (reflective_critics or {}).get("summary") or {}
     return {
         "direction": str(
             model.get("growth_direction")
@@ -1008,6 +1019,8 @@ def _jarvis_development_summary(
         ),
         "focus_count": str(focus_summary.get("active_count") or 0),
         "current_focus": str(focus_summary.get("current_focus") or "No active development focus"),
+        "critic_count": str(critic_summary.get("active_count") or 0),
+        "current_critic": str(critic_summary.get("current_critic") or "No active critic signal"),
     }
 
 

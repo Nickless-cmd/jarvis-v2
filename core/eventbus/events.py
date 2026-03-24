@@ -13,6 +13,7 @@ ALLOWED_EVENT_FAMILIES = {
     "council",
     "swarm",
     "self-review",
+    "reflective_critic",
     "self-model",
     "inner-voice",
     "incident",

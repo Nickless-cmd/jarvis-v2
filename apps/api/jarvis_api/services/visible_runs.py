@@ -16,6 +16,9 @@ from apps.api.jarvis_api.services.candidate_tracking import (
 from apps.api.jarvis_api.services.development_focus_tracking import (
     track_runtime_development_focuses_for_visible_turn,
 )
+from apps.api.jarvis_api.services.reflective_critic_tracking import (
+    track_runtime_reflective_critics_for_visible_turn,
+)
 from apps.api.jarvis_api.services.visible_model import (
     VisibleModelDelta,
     VisibleModelStreamCancelled,
@@ -363,6 +366,14 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         return
     try:
         track_runtime_development_focuses_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+            user_message=run.user_message,
+        )
+    except Exception:
+        return
+    try:
+        track_runtime_reflective_critics_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
             user_message=run.user_message,

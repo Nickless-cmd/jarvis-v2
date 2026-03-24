@@ -97,6 +97,34 @@ function developmentFocusRow(item, onOpen) {
   )
 }
 
+function reflectiveCriticRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.criticId || item.title}
+      onClick={() => onOpen(item.title || 'Reflective Critic', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'reflective critic detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Reflective Critic'}</strong>
+        <span>{item.statusReason || item.rationale || item.supportSummary || 'Inspect reflective critic evidence'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -106,6 +134,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const heartbeatTicks = heartbeat?.recentTicks || []
   const heartbeatEvents = heartbeat?.recentEvents || []
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
+  const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
   const capabilityContract = contract?.capabilityContract || {}
   const promptModes = contract?.promptModes || []
@@ -582,6 +611,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </strong>
               <p>{developmentFocuses?.summary?.superseded_count || 0} superseded focus records retained for continuity.</p>
             </div>
+            <div className="compact-metric">
+              <span>Reflective Critic</span>
+              <strong>{reflectiveCritics?.summary?.active_count || summary?.development?.critic_count || 0}</strong>
+              <p>{reflectiveCritics?.summary?.current_critic || summary?.development?.current_critic || 'No active critic signal'}</p>
+              <p>
+                {reflectiveCritics?.summary?.stale_count || 0} stale · {reflectiveCritics?.summary?.resolved_count || 0} resolved · {reflectiveCritics?.summary?.superseded_count || 0} superseded
+              </p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}
@@ -596,6 +633,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 <p className="muted">Jarvis has not accumulated a bounded development focus yet.</p>
               </div>
             ) : developmentFocuses.items.slice(0, 3).map((item) => developmentFocusRow(item, onOpenItem))}
+            {reflectiveCritics.items.length === 0 ? (
+              <div className="mc-empty-state">
+                <strong>No active critic signal</strong>
+                <p className="muted">Jarvis has not accumulated a bounded reflective mismatch signal yet.</p>
+              </div>
+            ) : reflectiveCritics.items.slice(0, 3).map((item) => reflectiveCriticRow(item, onOpenItem))}
           </div>
         </article>
 

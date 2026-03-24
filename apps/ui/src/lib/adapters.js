@@ -372,6 +372,31 @@ function normalizeDevelopmentFocus(item = {}) {
   }
 }
 
+function normalizeReflectiveCritic(item = {}) {
+  return {
+    criticId: item.critic_id || '',
+    criticType: item.critic_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Reflective critic',
+    summary: item.summary || item.title || 'Reflective critic detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    source: item.source || '/mc/jarvis::reflective-critic',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -824,6 +849,11 @@ export const backend = {
           active: Boolean(development.development_focuses?.active),
           summary: development.development_focuses?.summary || {},
           items: (development.development_focuses?.items || []).map(normalizeDevelopmentFocus),
+        },
+        reflectiveCritics: {
+          active: Boolean(development.reflective_critics?.active),
+          summary: development.reflective_critics?.summary || {},
+          items: (development.reflective_critics?.items || []).map(normalizeReflectiveCritic),
         },
       },
       continuity: {

@@ -3,6 +3,7 @@ import { ArrowUp, LoaderCircle, Paperclip } from 'lucide-react'
 
 export function Composer({ value, onChange, onSend, isStreaming }) {
   const textareaRef = useRef(null)
+  const canSend = Boolean(value.trim()) && !isStreaming
 
   useLayoutEffect(() => {
     const node = textareaRef.current
@@ -13,7 +14,7 @@ export function Composer({ value, onChange, onSend, isStreaming }) {
 
   return (
     <section className="composer-shell">
-      <div className="composer-wrap">
+      <div className={isStreaming ? 'composer-wrap working' : 'composer-wrap'}>
         <button className="icon-btn subtle composer-attach-btn" type="button" title="Attach">
           <Paperclip size={16} />
         </button>
@@ -27,14 +28,14 @@ export function Composer({ value, onChange, onSend, isStreaming }) {
               onSend()
             }
           }}
-          placeholder="Message Jarvis…"
+          placeholder={isStreaming ? 'Jarvis is responding…' : 'Message Jarvis…'}
           rows={1}
         />
         <button
           className={isStreaming ? 'send-btn working' : 'send-btn'}
           onClick={onSend}
-          disabled={isStreaming}
-          title={isStreaming ? 'Jarvis is working' : 'Send message'}
+          disabled={!canSend}
+          title={isStreaming ? 'Jarvis is working' : canSend ? 'Send message' : 'Write a message first'}
         >
           {isStreaming ? <LoaderCircle size={16} className="spin" /> : <ArrowUp size={16} />}
         </button>

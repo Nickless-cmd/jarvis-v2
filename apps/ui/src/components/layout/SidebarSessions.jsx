@@ -19,12 +19,13 @@ export function SidebarSessions({ sessions, activeSessionId, onSelect, onCreate 
             className={session.id === activeSessionId ? 'session-item active' : 'session-item'}
             key={session.id}
             onClick={() => onSelect(session.id)}
+            title={session.title}
           >
             <div className="session-item-copy">
               <strong>{session.title}</strong>
               <span>{session.lastMessage || session.last_message || 'No messages yet'}</span>
             </div>
-            <small>
+            <small className="session-item-meta">
               <Clock3 size={11} />
               {session.updated_at ? 'saved' : 'recent'}
             </small>

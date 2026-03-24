@@ -14,11 +14,19 @@ export function AppShell({ activeView, onChangeView, sidebarContent, children })
         </div>
 
         <nav className="global-nav">
-          <button className={activeView === 'chat' ? 'nav-item active' : 'nav-item'} onClick={() => onChangeView('chat')}>
+          <button
+            className={activeView === 'chat' ? 'nav-item active' : 'nav-item'}
+            onClick={() => onChangeView('chat')}
+            title="Open Chat"
+          >
             <MessageSquare size={14} />
             <span>Chat</span>
           </button>
-          <button className={activeView === 'mission-control' ? 'nav-item active' : 'nav-item'} onClick={() => onChangeView('mission-control')}>
+          <button
+            className={activeView === 'mission-control' ? 'nav-item active' : 'nav-item'}
+            onClick={() => onChangeView('mission-control')}
+            title="Open Mission Control"
+          >
             <LayoutDashboard size={14} />
             <span>Mission Control</span>
           </button>

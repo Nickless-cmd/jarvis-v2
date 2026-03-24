@@ -44,6 +44,13 @@ export function ChatSupportRail({ session, selection, isStreaming }) {
           <span className="support-card-kicker">Operator</span>
           <strong>Runtime</strong>
         </div>
+        <div className="support-status-banner">
+          <span className={isStreaming ? 'status-dot live' : 'status-dot'} />
+          <div>
+            <strong>{isStreaming ? 'Generation active' : 'Ready for input'}</strong>
+            <span>{selection.currentProvider || 'unknown'} · {selection.currentModel || 'unknown'}</span>
+          </div>
+        </div>
         <div className="support-stat-list">
           {items.map(({ icon: Icon, label, value }) => (
             <div className="support-stat-row" key={label}>

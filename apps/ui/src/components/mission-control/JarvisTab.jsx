@@ -35,6 +35,13 @@ function detailRow(item, label, onOpen) {
 
 export function JarvisTab({ data, onOpenItem }) {
   const summary = data?.summary || {}
+  const contract = data?.contract || {}
+  const contractSummary = contract?.summary || {}
+  const promptModes = contract?.promptModes || []
+  const pendingWrites = contract?.pendingWrites || []
+  const canonicalFiles = contract?.files?.canonical || []
+  const derivedFiles = contract?.files?.derived || []
+  const referenceFiles = contract?.files?.referenceOnly || []
 
   return (
     <div className="mc-tab-page">
@@ -74,6 +81,127 @@ export function JarvisTab({ data, onOpenItem }) {
           <span>Continuity</span>
           <strong>{summary?.continuity?.continuity_mode || 'unknown'}</strong>
           <small className="muted">{summary?.continuity?.relation_pull || 'No continuity pull'}</small>
+        </article>
+      </section>
+
+      <section className="mc-section-grid">
+        <article className="support-card" id="jarvis-contract" title={sectionTitleWithMeta({
+          source: '/mc/runtime-contract',
+          fetchedAt: data?.fetchedAt,
+          mode: 'snapshot + drilldown',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Runtime Contract</h3>
+              <p className="muted">Canonical files, bootstrap state, prompt modes, and write workflow placeholders.</p>
+            </div>
+            <span className="mc-section-hint">{contract?.contractVersion || 'contract'}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Bootstrap</span>
+              <strong>{contractSummary?.bootstrap_status || 'unknown'}</strong>
+              <p>{contract?.bootstrap?.summary || 'No bootstrap state recorded.'}</p>
+            </div>
+            <div className="compact-metric">
+              <span>Canonical Files</span>
+              <strong>{contractSummary?.canonical_present || 0}/{contractSummary?.canonical_expected || canonicalFiles.length || 0}</strong>
+              <p>Workspace truth files present and inspectable.</p>
+            </div>
+            <div className="compact-metric">
+              <span>Prompt Modes</span>
+              <strong>{contractSummary?.prompt_modes_active || 0}/{contractSummary?.prompt_modes_declared || promptModes.length || 0}</strong>
+              <p>Active vs declared runtime prompt contracts.</p>
+            </div>
+            <div className="compact-metric">
+              <span>Pending Writes</span>
+              <strong>{contractSummary?.pending_write_count || 0}</strong>
+              <p>Preference and memory workflows are visible but not yet implemented.</p>
+            </div>
+          </div>
+          <div className="mc-contract-grid">
+            <div className="mc-contract-column">
+              <div className="support-card-header">
+                <span className="support-card-kicker">Canonical</span>
+                <strong>Workspace Files</strong>
+              </div>
+              <div className="mc-list compact-list">
+                {canonicalFiles.map((item) => (
+                  <button className="mc-list-row" key={item.name} onClick={() => onOpenItem(item.name, item)}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>{item.summary}</span>
+                    </div>
+                    <div className="mc-row-meta">
+                      <small>{item.present ? 'present' : 'missing'}</small>
+                      <ChevronRight size={14} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mc-contract-column">
+              <div className="support-card-header">
+                <span className="support-card-kicker">Modes</span>
+                <strong>Prompt Contracts</strong>
+              </div>
+              <div className="mc-list compact-list">
+                {promptModes.map((item) => (
+                  <button className="mc-list-row" key={item.id} onClick={() => onOpenItem(item.label, item)}>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.summary}</span>
+                    </div>
+                    <div className="mc-row-meta">
+                      <small>{item.status}</small>
+                      <ChevronRight size={14} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mc-contract-column">
+              <div className="support-card-header">
+                <span className="support-card-kicker">Workflow</span>
+                <strong>Pending Writes</strong>
+              </div>
+              <div className="mc-list compact-list">
+                {detailRow(contract?.bootstrap, 'Bootstrap State', onOpenItem)}
+                {pendingWrites.map((item) => (
+                  <button className="mc-list-row" key={item.id} onClick={() => onOpenItem(item.label, item)}>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>{item.summary}</span>
+                    </div>
+                    <div className="mc-row-meta">
+                      <small>{item.status}</small>
+                      <ChevronRight size={14} />
+                    </div>
+                  </button>
+                ))}
+                <button
+                  className="mc-list-row"
+                  onClick={() => onOpenItem('Derived and Reference Files', {
+                    source: '/mc/runtime-contract',
+                    summary: `${derivedFiles.length} derived and ${referenceFiles.length} reference-only files tracked.`,
+                    derivedFiles,
+                    referenceFiles,
+                  })}
+                >
+                  <div>
+                    <strong>Derived and Reference Files</strong>
+                    <span>Inspect non-canonical runtime artifacts and reference-only inputs.</span>
+                  </div>
+                  <div className="mc-row-meta">
+                    <small>{derivedFiles.length + referenceFiles.length} tracked</small>
+                    <ChevronRight size={14} />
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
         </article>
       </section>
 

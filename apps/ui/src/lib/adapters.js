@@ -144,6 +144,51 @@ function normalizeJarvisItem(item = {}, defaults = {}) {
   }
 }
 
+function normalizeContractFile(item = {}) {
+  return {
+    name: item.name || '',
+    path: item.path || '',
+    role: item.role || 'unknown',
+    present: Boolean(item.present),
+    loadedByDefault: Boolean(item.loaded_by_default),
+    activation: item.activation || '',
+    writer: item.writer || '',
+    source: item.source || '/mc/runtime-contract',
+    summary:
+      item.summary ||
+      `${item.role || 'unknown'} · ${item.present ? 'present' : 'missing'}${item.loaded_by_default ? ' · default-load' : ''}`,
+  }
+}
+
+function normalizePromptMode(item = {}) {
+  return {
+    id: item.id || '',
+    label: item.label || item.id || 'unknown',
+    status: item.status || 'unknown',
+    implementationState: item.implementation_state || '',
+    loadOrder: item.load_order || [],
+    alwaysLoaded: item.always_loaded || [],
+    conditionalFiles: item.conditional_files || [],
+    derivedInputs: item.derived_inputs || [],
+    excludedByDefault: item.excluded_by_default || [],
+    source: item.source || '/mc/runtime-contract',
+    summary: item.summary || 'Prompt contract metadata',
+  }
+}
+
+function normalizePendingWrite(item = {}) {
+  return {
+    id: item.id || '',
+    label: item.label || item.id || 'unknown',
+    targetFile: item.target_file || '',
+    status: item.status || 'unknown',
+    pendingCount: Number(item.pending_count || 0),
+    items: item.items || [],
+    source: item.source || '/mc/runtime-contract',
+    summary: item.summary || 'No pending workflow items.',
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -487,15 +532,35 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const payload = await requestJson('/mc/jarvis')
+    const [payload, contractPayload] = await Promise.all([
+      requestJson('/mc/jarvis'),
+      requestJson('/mc/runtime-contract'),
+    ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
     const development = payload?.development || {}
     const continuity = payload?.continuity || {}
+    const contract = contractPayload || {}
 
     return {
       fetchedAt: new Date().toISOString(),
       summary: payload?.summary || {},
+      contract: {
+        summary: contract.summary || {},
+        bootstrap: normalizeJarvisItem(contract.bootstrap || {}, {
+          source: contract.bootstrap?.source || '/mc/runtime-contract',
+          summary: contract.bootstrap?.summary || 'Bootstrap contract state',
+        }),
+        files: {
+          canonical: (contract.files?.canonical || []).map(normalizeContractFile),
+          derived: (contract.files?.derived || []).map(normalizeContractFile),
+          referenceOnly: (contract.files?.reference_only || []).map(normalizeContractFile),
+        },
+        promptModes: Object.values(contract.prompt_modes || {}).map(normalizePromptMode),
+        pendingWrites: Object.values(contract.pending_writes || {}).map(normalizePendingWrite),
+        roles: contract.roles || {},
+        contractVersion: contract.contract_version || 'unknown',
+      },
       state: {
         visibleIdentity: normalizeJarvisItem(state.visible_identity || {}, {
           summary: `workspace ${state?.visible_identity?.workspace || 'unknown'}`,

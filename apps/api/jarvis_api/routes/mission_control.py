@@ -29,6 +29,7 @@ from apps.api.jarvis_api.services.visible_runs import (
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.costing.ledger import recent_costs, telemetry_summary
 from core.eventbus.bus import event_bus
+from core.identity.runtime_contract import build_runtime_contract_state
 from core.identity.visible_identity import load_visible_identity_summary
 from core.memory.private_inner_interplay import build_private_inner_interplay
 from core.memory.private_initiative_tension import build_private_initiative_tension
@@ -268,6 +269,11 @@ def mc_jarvis() -> dict:
             "promotion_decision": promotion_decision,
         },
     }
+
+
+@router.get("/runtime-contract")
+def mc_runtime_contract() -> dict:
+    return build_runtime_contract_state()
 
 
 @router.get("/runtime")

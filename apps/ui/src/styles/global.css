@@ -404,6 +404,23 @@ button { cursor: pointer; }
   margin:8px 0 0; white-space:pre-wrap; word-break:break-word; color:#dce3ee; max-height:360px; overflow:auto;
 }
 .mc-code-card.tone-danger { border-color: rgba(243,92,92,.24); }
+.mc-status-pill {
+  display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px;
+  font-size:11px; font-weight:500; text-transform:capitalize;
+}
+.mc-status-pill.status-active { background:rgba(40,177,163,.15); color:#49d2c3; }
+.mc-status-pill.status-completed { background:rgba(40,177,163,.15); color:#49d2c3; }
+.mc-status-pill.status-approved { background:rgba(40,177,163,.12); color:#49d2c3; }
+.mc-status-pill.status-applied { background:rgba(40,177,163,.12); color:#49d2c3; }
+.mc-status-pill.status-proposed { background:rgba(243,179,92,.15); color:#f3b45c; }
+.mc-status-pill.status-stale { background:rgba(243,179,92,.12); color:#c49a4a; }
+.mc-status-pill.status-rejected { background:rgba(243,92,92,.15); color:#f35c5c; }
+.mc-status-pill.status-superseded { background:rgba(104,163,255,.12); color:#68a3ff; }
+.mc-status-pill.status-scheduled { background:rgba(104,163,255,.12); color:#68a3ff; }
+.mc-status-pill.status-due { background:rgba(243,179,92,.15); color:#f3b45c; }
+.mc-status-pill.status-ticking { background:rgba(40,177,163,.2); color:#49d2c3; }
+.mc-status-pill.status-disabled { background:rgba(140,160,182,.12); color:#8ca0b6; }
+.mc-status-pill.status-default { background:rgba(140,160,182,.1); color:#8ca0b6; }
 .mc-inline-actions { display:flex; gap:10px; }
 .mc-inline-actions .primary-btn { flex:1; width:auto; margin:0; }
 .secondary-btn {

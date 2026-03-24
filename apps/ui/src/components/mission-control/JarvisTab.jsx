@@ -1,5 +1,11 @@
 import { ChevronRight } from 'lucide-react'
-import { sectionTitleWithMeta } from './meta'
+import { formatFreshness, sectionTitleWithMeta } from './meta'
+
+function StatusPill({ status }) {
+  if (!status) return null
+  const normalizedStatus = String(status).toLowerCase().replace(/[-_\s]+/g, '-')
+  return <span className={`mc-status-pill status-${normalizedStatus}`}>{status}</span>
+}
 
 function detailRow(item, label, onOpen) {
   if (!item || !Object.keys(item).length) {
@@ -36,7 +42,7 @@ function detailRow(item, label, onOpen) {
 function candidateRow(item, onOpen) {
   const evidenceLabel = item.evidenceClass
     ? item.evidenceClass.replace(/_/g, ' ')
-    : (item.sourceKind || 'bounded evidence')
+    : (item.sourceKind || '')
   return (
     <button
       className="mc-list-row mc-list-row-subtle"
@@ -53,11 +59,10 @@ function candidateRow(item, onOpen) {
         <span>{item.reason || item.evidenceSummary || 'Inspect candidate evidence'}</span>
       </div>
       <div className="mc-row-meta">
-        <small>
-          {item.status || 'proposed'}
-          {item.confidence ? ` · ${item.confidence}` : ''}
-          {evidenceLabel ? ` · ${evidenceLabel}` : ''}
-        </small>
+        <StatusPill status={item.status || 'proposed'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {evidenceLabel ? <small>{evidenceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -65,6 +70,7 @@ function candidateRow(item, onOpen) {
 }
 
 function developmentFocusRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
   return (
     <button
       className="mc-list-row mc-list-row-subtle"
@@ -81,12 +87,10 @@ function developmentFocusRow(item, onOpen) {
         <span>{item.statusReason || item.rationale || item.supportSummary || 'Inspect development focus evidence'}</span>
       </div>
       <div className="mc-row-meta">
-        <small>
-          {item.status || 'active'}
-          {item.confidence ? ` · ${item.confidence}` : ''}
-          {item.sourceKind ? ` · ${item.sourceKind.replace(/-/g, ' ')}` : ''}
-          {item.updatedAt ? ` · ${item.updatedAt}` : ''}
-        </small>
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -257,7 +261,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                         <span>{item.summary}</span>
                       </div>
                       <div className="mc-row-meta">
-                        <small>{item.pendingCount || 0} proposed / {item.approvedCount || 0} approved</small>
+                        {item.pendingCount ? <span className="mc-status-pill status-proposed">{item.pendingCount} proposed</span> : null}
+                        {item.approvedCount ? <span className="mc-status-pill status-approved">{item.approvedCount} approved</span> : null}
                         <ChevronRight size={14} />
                       </div>
                     </button>
@@ -417,7 +422,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                       <span>{item.actionSummary || item.decisionSummary || item.blockedReason || 'Inspect heartbeat tick detail'}</span>
                     </div>
                     <div className="mc-row-meta">
-                      <small>{item.actionStatus || item.tickStatus || 'unknown'}</small>
+                      <StatusPill status={item.actionStatus || item.tickStatus || 'unknown'} />
+                      {item.startedAt ? <small>{formatFreshness(item.startedAt)}</small> : null}
                       <ChevronRight size={14} />
                     </div>
                   </button>

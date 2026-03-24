@@ -210,16 +210,30 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
 
         {drawer.kind === 'jarvis' ? (
           <div className="mc-drawer-body">
-            <div className="mc-inline-meta">
-              {drawer.item.source ? <span className="mc-meta-pill">Source {drawer.item.source}</span> : null}
-              {drawer.item.createdAt ? <span className="mc-meta-pill">Updated {formatFreshness(drawer.item.createdAt)}</span> : null}
+            <div className="mc-keyval-grid">
+              {drawer.item.source ? <div><span>Source</span><strong>{drawer.item.source}</strong></div> : null}
+              {drawer.item.createdAt ? <div><span>Updated</span><strong>{formatFreshness(drawer.item.createdAt)}</strong></div> : null}
+              {drawer.item.status ? <div><span>Status</span><strong>{drawer.item.status}</strong></div> : null}
+              {drawer.item.confidence ? <div><span>Confidence</span><strong>{drawer.item.confidence}</strong></div> : null}
+              {drawer.item.summary ? (
+                <article className="mc-code-card">
+                  <strong>Summary</strong>
+                  <p>{drawer.item.summary}</p>
+                </article>
+              ) : null}
+              {drawer.item.rationale ? (
+                <article className="mc-code-card">
+                  <strong>Rationale</strong>
+                  <p>{drawer.item.rationale}</p>
+                </article>
+              ) : null}
+              {drawer.item.supportSummary ? (
+                <article className="mc-code-card">
+                  <strong>Why this exists</strong>
+                  <p>{drawer.item.supportSummary}</p>
+                </article>
+              ) : null}
             </div>
-            {drawer.item.summary ? (
-              <article className="mc-code-card">
-                <strong>Summary</strong>
-                <p>{drawer.item.summary}</p>
-              </article>
-            ) : null}
             <article className="mc-code-card">
               <strong>Detail</strong>
               <pre>{renderJson(drawer.item)}</pre>

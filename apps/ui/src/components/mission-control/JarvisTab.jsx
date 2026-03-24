@@ -78,13 +78,14 @@ function developmentFocusRow(item, onOpen) {
     >
       <div>
         <strong>{item.title || 'Development Focus'}</strong>
-        <span>{item.rationale || item.supportSummary || 'Inspect development focus evidence'}</span>
+        <span>{item.statusReason || item.rationale || item.supportSummary || 'Inspect development focus evidence'}</span>
       </div>
       <div className="mc-row-meta">
         <small>
           {item.status || 'active'}
           {item.confidence ? ` · ${item.confidence}` : ''}
           {item.sourceKind ? ` · ${item.sourceKind.replace(/-/g, ' ')}` : ''}
+          {item.updatedAt ? ` · ${item.updatedAt}` : ''}
         </small>
         <ChevronRight size={14} />
       </div>
@@ -551,6 +552,13 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <span>Guided focus</span>
               <strong>{developmentFocuses?.summary?.active_count || summary?.development?.focus_count || 0}</strong>
               <p>{developmentFocuses?.summary?.current_focus || summary?.development?.current_focus || 'No active development focus'}</p>
+            </div>
+            <div className="compact-metric">
+              <span>Lifecycle</span>
+              <strong>
+                {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
+              </strong>
+              <p>{developmentFocuses?.summary?.superseded_count || 0} superseded focus records retained for continuity.</p>
             </div>
           </div>
           <div className="mc-list">

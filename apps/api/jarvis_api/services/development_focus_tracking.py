@@ -12,6 +12,8 @@ from core.runtime.db import (
     get_private_self_model,
     get_runtime_development_focus,
     list_runtime_development_focuses,
+    supersede_runtime_development_focuses,
+    update_runtime_development_focus_status,
     upsert_runtime_development_focus,
 )
 
@@ -37,9 +39,15 @@ def track_runtime_development_focuses_for_visible_turn(
         return {
             "created": 0,
             "updated": 0,
+            "completed": 0,
             "items": [],
             "summary": "No development focus evidence was available.",
         }
+
+    completed = _apply_completion_signals(
+        user_message=normalized_message,
+        session_id=normalized_session_id,
+    )
 
     candidates = _extract_focus_candidates(
         user_message=normalized_message,
@@ -53,10 +61,11 @@ def track_runtime_development_focuses_for_visible_turn(
     return {
         "created": len([item for item in items if item.get("was_created")]),
         "updated": len([item for item in items if item.get("was_updated")]),
+        "completed": completed,
         "items": items,
         "summary": (
-            f"Tracked {len(items)} bounded development focus signals."
-            if items
+            f"Tracked {len(items)} bounded development focus signals and completed {completed}."
+            if items or completed
             else "No development focus warranted tracking."
         ),
     }
@@ -91,7 +100,18 @@ def refresh_runtime_development_focus_statuses() -> dict[str, int]:
             run_id=str(item.get("run_id") or ""),
             session_id=str(item.get("session_id") or ""),
         )
-        refreshed += 1 if refreshed_item.get("was_updated") else 0
+        if refreshed_item.get("was_updated"):
+            refreshed += 1
+            event_bus.publish(
+                "runtime.development_focus_stale",
+                {
+                    "focus_id": refreshed_item.get("focus_id"),
+                    "focus_type": refreshed_item.get("focus_type"),
+                    "status": refreshed_item.get("status"),
+                    "summary": refreshed_item.get("summary"),
+                    "status_reason": refreshed_item.get("status_reason"),
+                },
+            )
     return {"stale_marked": refreshed}
 
 
@@ -102,10 +122,11 @@ def build_runtime_development_focus_surface(*, limit: int = 8) -> dict[str, obje
     stale = [item for item in items if str(item.get("status") or "") == "stale"]
     completed = [item for item in items if str(item.get("status") or "") == "completed"]
     superseded = [item for item in items if str(item.get("status") or "") == "superseded"]
+    ordered_items = [*active, *stale, *completed, *superseded]
     latest = next(iter(active or stale or completed or superseded), None)
     return {
         "active": bool(active),
-        "items": items,
+        "items": ordered_items,
         "summary": {
             "active_count": len(active),
             "stale_count": len(stale),
@@ -309,9 +330,38 @@ def _persist_focuses(
             run_id=run_id,
             session_id=session_id,
         )
-        if persisted.get("was_created") or persisted.get("was_updated"):
+        if str(persisted.get("focus_type") or "") == "runtime-development-thread":
+            superseded = supersede_runtime_development_focuses(
+                focus_type="runtime-development-thread",
+                exclude_focus_id=str(persisted.get("focus_id") or ""),
+                updated_at=now,
+                status_reason=f"Superseded by newer runtime development thread {persisted.get('focus_id')}.",
+            )
+            if superseded:
+                event_bus.publish(
+                    "runtime.development_focus_superseded",
+                    {
+                        "focus_id": persisted.get("focus_id"),
+                        "focus_type": persisted.get("focus_type"),
+                        "superseded_count": superseded,
+                        "summary": persisted.get("summary"),
+                    },
+                )
+        if persisted.get("was_created"):
             event_bus.publish(
-                "runtime.development_focus_tracked",
+                "runtime.development_focus_created",
+                {
+                    "focus_id": persisted.get("focus_id"),
+                    "focus_type": persisted.get("focus_type"),
+                    "status": persisted.get("status"),
+                    "canonical_key": persisted.get("canonical_key"),
+                    "confidence": persisted.get("confidence"),
+                    "summary": persisted.get("summary"),
+                },
+            )
+        elif persisted.get("was_updated"):
+            event_bus.publish(
+                "runtime.development_focus_updated",
                 {
                     "focus_id": persisted.get("focus_id"),
                     "focus_type": persisted.get("focus_type"),
@@ -324,6 +374,53 @@ def _persist_focuses(
             )
         items.append(persisted)
     return items
+
+
+def _apply_completion_signals(*, user_message: str, session_id: str) -> int:
+    lower = (user_message or "").lower()
+    completion_markers = (
+        "det er bedre nu",
+        "nu er det fint",
+        "nu fungerer det",
+        "that is better now",
+        "this is better now",
+        "good now",
+    )
+    if not any(marker in lower for marker in completion_markers):
+        return 0
+
+    completed = 0
+    for item in list_runtime_development_focuses(status="active", limit=12):
+        canonical_key = str(item.get("canonical_key") or "")
+        should_complete = False
+        if canonical_key.endswith("danish-concise-calibration"):
+            should_complete = any(marker in lower for marker in ("dansk", "danish", "kort", "concise", "short"))
+        elif canonical_key.endswith("avoid-repetitive-openers"):
+            should_complete = any(marker in lower for marker in ("hej", "greeting", "åbning", "opening"))
+        elif str(item.get("focus_type") or "") == "user-directed-improvement":
+            should_complete = str(item.get("session_id") or "") == session_id
+        if not should_complete:
+            continue
+        updated = update_runtime_development_focus_status(
+            str(item.get("focus_id") or ""),
+            status="completed",
+            updated_at=_now_iso(),
+            status_reason="Marked completed from explicit user confirmation that the improvement landed.",
+        )
+        if updated is None:
+            continue
+        completed += 1
+        event_bus.publish(
+            "runtime.development_focus_completed",
+            {
+                "focus_id": updated.get("focus_id"),
+                "focus_type": updated.get("focus_type"),
+                "status": updated.get("status"),
+                "summary": updated.get("summary"),
+                "status_reason": updated.get("status_reason"),
+            },
+        )
+    return completed
 
 
 def _enrich_focus_support(candidate: dict[str, object], *, session_id: str) -> dict[str, object]:

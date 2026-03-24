@@ -2600,7 +2600,11 @@ def upsert_runtime_development_focus(
             meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
         else:
             resolved_id = str(existing["focus_id"])
-            merged_status = "active" if status == "active" else str(existing["status"] or status)
+            merged_status = (
+                "active"
+                if status == "active"
+                else str(status or existing["status"] or "active")
+            )
             merged_source_kind = _stronger_ranked_value(
                 str(existing["source_kind"] or ""),
                 source_kind,
@@ -2777,6 +2781,68 @@ def get_runtime_development_focus(focus_id: str) -> dict[str, object] | None:
     if row is None:
         return None
     return _runtime_development_focus_from_row(row)
+
+
+def update_runtime_development_focus_status(
+    focus_id: str,
+    *,
+    status: str,
+    updated_at: str,
+    status_reason: str = "",
+) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_development_focus_table(conn)
+        row = conn.execute(
+            """
+            SELECT focus_id
+            FROM runtime_development_focuses
+            WHERE focus_id = ?
+            LIMIT 1
+            """,
+            (focus_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            """
+            UPDATE runtime_development_focuses
+            SET status = ?, status_reason = ?, updated_at = ?
+            WHERE focus_id = ?
+            """,
+            (status, status_reason, updated_at, focus_id),
+        )
+        conn.commit()
+    return get_runtime_development_focus(focus_id)
+
+
+def supersede_runtime_development_focuses(
+    *,
+    focus_type: str,
+    exclude_focus_id: str,
+    updated_at: str,
+    status_reason: str,
+) -> int:
+    with connect() as conn:
+        _ensure_runtime_development_focus_table(conn)
+        cursor = conn.execute(
+            """
+            UPDATE runtime_development_focuses
+            SET status = 'superseded',
+                status_reason = ?,
+                updated_at = ?
+            WHERE focus_type = ?
+              AND focus_id != ?
+              AND status IN ('active', 'stale')
+            """,
+            (
+                status_reason,
+                updated_at,
+                focus_type,
+                exclude_focus_id,
+            ),
+        )
+        conn.commit()
+        return int(cursor.rowcount or 0)
 
 
 def get_heartbeat_runtime_state() -> dict[str, object] | None:

@@ -233,11 +233,19 @@ def init_db() -> None:
                 last_tick_id TEXT NOT NULL DEFAULT '',
                 last_tick_at TEXT NOT NULL DEFAULT '',
                 next_tick_at TEXT NOT NULL DEFAULT '',
+                schedule_state TEXT NOT NULL DEFAULT '',
+                due INTEGER NOT NULL DEFAULT 0,
                 last_decision_type TEXT NOT NULL DEFAULT '',
                 last_result TEXT NOT NULL DEFAULT '',
                 blocked_reason TEXT NOT NULL DEFAULT '',
                 currently_ticking INTEGER NOT NULL DEFAULT 0,
                 last_trigger_source TEXT NOT NULL DEFAULT '',
+                scheduler_active INTEGER NOT NULL DEFAULT 0,
+                scheduler_started_at TEXT NOT NULL DEFAULT '',
+                scheduler_stopped_at TEXT NOT NULL DEFAULT '',
+                scheduler_health TEXT NOT NULL DEFAULT '',
+                recovery_status TEXT NOT NULL DEFAULT '',
+                last_recovery_at TEXT NOT NULL DEFAULT '',
                 provider TEXT NOT NULL DEFAULT '',
                 model TEXT NOT NULL DEFAULT '',
                 lane TEXT NOT NULL DEFAULT '',
@@ -2416,11 +2424,19 @@ def get_heartbeat_runtime_state() -> dict[str, object] | None:
                 last_tick_id,
                 last_tick_at,
                 next_tick_at,
+                schedule_state,
+                due,
                 last_decision_type,
                 last_result,
                 blocked_reason,
                 currently_ticking,
                 last_trigger_source,
+                scheduler_active,
+                scheduler_started_at,
+                scheduler_stopped_at,
+                scheduler_health,
+                recovery_status,
+                last_recovery_at,
                 provider,
                 model,
                 lane,
@@ -2448,11 +2464,19 @@ def upsert_heartbeat_runtime_state(
     last_tick_id: str,
     last_tick_at: str,
     next_tick_at: str,
+    schedule_state: str,
+    due: bool,
     last_decision_type: str,
     last_result: str,
     blocked_reason: str,
     currently_ticking: bool,
     last_trigger_source: str,
+    scheduler_active: bool,
+    scheduler_started_at: str,
+    scheduler_stopped_at: str,
+    scheduler_health: str,
+    recovery_status: str,
+    last_recovery_at: str,
     provider: str,
     model: str,
     lane: str,
@@ -2474,11 +2498,19 @@ def upsert_heartbeat_runtime_state(
                 last_tick_id,
                 last_tick_at,
                 next_tick_at,
+                schedule_state,
+                due,
                 last_decision_type,
                 last_result,
                 blocked_reason,
                 currently_ticking,
                 last_trigger_source,
+                scheduler_active,
+                scheduler_started_at,
+                scheduler_stopped_at,
+                scheduler_health,
+                recovery_status,
+                last_recovery_at,
                 provider,
                 model,
                 lane,
@@ -2491,17 +2523,25 @@ def upsert_heartbeat_runtime_state(
                 last_action_artifact,
                 updated_at
             )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 state_id = excluded.state_id,
                 last_tick_id = excluded.last_tick_id,
                 last_tick_at = excluded.last_tick_at,
                 next_tick_at = excluded.next_tick_at,
+                schedule_state = excluded.schedule_state,
+                due = excluded.due,
                 last_decision_type = excluded.last_decision_type,
                 last_result = excluded.last_result,
                 blocked_reason = excluded.blocked_reason,
                 currently_ticking = excluded.currently_ticking,
                 last_trigger_source = excluded.last_trigger_source,
+                scheduler_active = excluded.scheduler_active,
+                scheduler_started_at = excluded.scheduler_started_at,
+                scheduler_stopped_at = excluded.scheduler_stopped_at,
+                scheduler_health = excluded.scheduler_health,
+                recovery_status = excluded.recovery_status,
+                last_recovery_at = excluded.last_recovery_at,
                 provider = excluded.provider,
                 model = excluded.model,
                 lane = excluded.lane,
@@ -2519,11 +2559,19 @@ def upsert_heartbeat_runtime_state(
                 last_tick_id,
                 last_tick_at,
                 next_tick_at,
+                schedule_state,
+                1 if due else 0,
                 last_decision_type,
                 last_result,
                 blocked_reason,
                 1 if currently_ticking else 0,
                 last_trigger_source,
+                1 if scheduler_active else 0,
+                scheduler_started_at,
+                scheduler_stopped_at,
+                scheduler_health,
+                recovery_status,
+                last_recovery_at,
                 provider,
                 model,
                 lane,
@@ -2744,11 +2792,19 @@ def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
         "last_tick_id": row["last_tick_id"],
         "last_tick_at": row["last_tick_at"],
         "next_tick_at": row["next_tick_at"],
+        "schedule_state": row["schedule_state"],
+        "due": bool(row["due"]),
         "last_decision_type": row["last_decision_type"],
         "last_result": row["last_result"],
         "blocked_reason": row["blocked_reason"],
         "currently_ticking": bool(row["currently_ticking"]),
         "last_trigger_source": row["last_trigger_source"],
+        "scheduler_active": bool(row["scheduler_active"]),
+        "scheduler_started_at": row["scheduler_started_at"],
+        "scheduler_stopped_at": row["scheduler_stopped_at"],
+        "scheduler_health": row["scheduler_health"],
+        "recovery_status": row["recovery_status"],
+        "last_recovery_at": row["last_recovery_at"],
         "provider": row["provider"],
         "model": row["model"],
         "lane": row["lane"],
@@ -2806,6 +2862,62 @@ def _ensure_heartbeat_runtime_state_columns(conn: sqlite3.Connection) -> None:
             """
             ALTER TABLE heartbeat_runtime_state
             ADD COLUMN last_trigger_source TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "schedule_state" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN schedule_state TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "due" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN due INTEGER NOT NULL DEFAULT 0
+            """
+        )
+    if "scheduler_active" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN scheduler_active INTEGER NOT NULL DEFAULT 0
+            """
+        )
+    if "scheduler_started_at" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN scheduler_started_at TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "scheduler_stopped_at" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN scheduler_stopped_at TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "scheduler_health" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN scheduler_health TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "recovery_status" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN recovery_status TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "last_recovery_at" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN last_recovery_at TEXT NOT NULL DEFAULT ''
             """
         )
     if "last_action_type" not in existing:

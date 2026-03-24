@@ -307,6 +307,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>{heartbeatState.summary || 'No heartbeat state recorded yet.'}</p>
             </div>
             <div className="compact-metric">
+              <span>Scheduler</span>
+              <strong>{heartbeatState.schedulerHealth || (heartbeatState.schedulerActive ? 'active' : 'stopped') || 'unknown'}</strong>
+              <p>
+                {heartbeatState.schedulerActive
+                  ? `Started ${heartbeatState.schedulerStartedAt || 'recently'}.`
+                  : `Stopped ${heartbeatState.schedulerStoppedAt || 'not recorded'}.`}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Cadence</span>
               <strong>{heartbeatState.intervalMinutes || heartbeatPolicy.intervalMinutes || 0}m</strong>
               <p>
@@ -329,6 +338,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <span>Last Execute Action</span>
               <strong>{heartbeatState.lastActionType || 'none'}</strong>
               <p>{heartbeatState.lastActionSummary || heartbeatState.lastActionStatus || 'No execute action recorded yet.'}</p>
+            </div>
+            <div className="compact-metric">
+              <span>Recovery</span>
+              <strong>{heartbeatState.recoveryStatus || 'idle'}</strong>
+              <p>{heartbeatState.lastRecoveryAt || 'No recovery activity recorded.'}</p>
             </div>
           </div>
           <div className="mc-contract-grid">

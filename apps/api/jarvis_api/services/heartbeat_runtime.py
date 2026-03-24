@@ -43,6 +43,7 @@ _HEARTBEAT_SCHEDULER_STOP = threading.Event()
 _HEARTBEAT_SCHEDULER_THREAD: threading.Thread | None = None
 _HEARTBEAT_SCHEDULER_INTERVAL_SECONDS = 30
 _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT: dict[str, object] = {}
+_STALE_TICK_RECOVERY_WINDOW_MINUTES = 10
 
 
 @dataclass(slots=True)
@@ -53,27 +54,47 @@ class HeartbeatExecutionResult:
 
 
 def start_heartbeat_scheduler(*, name: str = "default") -> None:
-    global _HEARTBEAT_SCHEDULER_THREAD
+    global _HEARTBEAT_SCHEDULER_THREAD, _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT
     if _HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive():
         return
+    recovery = _prepare_scheduler_startup(name=name)
     _HEARTBEAT_SCHEDULER_STOP.clear()
     thread = threading.Thread(
         target=_heartbeat_scheduler_loop,
-        kwargs={"name": name},
+        kwargs={
+            "name": name,
+            "startup_recovery_requested": bool(recovery.get("startup_recovery_requested")),
+        },
         name="jarvis-heartbeat-scheduler",
         daemon=True,
     )
     thread.start()
     _HEARTBEAT_SCHEDULER_THREAD = thread
+    _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT = {
+        "schedule_state": str(recovery.get("schedule_state") or ""),
+        "due": bool(recovery.get("due")),
+    }
+    event_bus.publish(
+        "heartbeat.scheduler_started",
+        {
+            "scheduler_active": True,
+            "schedule_state": recovery.get("schedule_state"),
+            "due": recovery.get("due"),
+            "recovery_status": recovery.get("recovery_status"),
+            "next_tick_at": recovery.get("next_tick_at"),
+        },
+    )
 
 
-def stop_heartbeat_scheduler() -> None:
-    global _HEARTBEAT_SCHEDULER_THREAD
+def stop_heartbeat_scheduler(*, name: str = "default") -> None:
+    global _HEARTBEAT_SCHEDULER_THREAD, _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT
     _HEARTBEAT_SCHEDULER_STOP.set()
     thread = _HEARTBEAT_SCHEDULER_THREAD
     if thread and thread.is_alive():
         thread.join(timeout=1.0)
     _HEARTBEAT_SCHEDULER_THREAD = None
+    _mark_scheduler_stopped(name=name)
+    _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT = {}
 
 
 def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
@@ -82,6 +103,29 @@ def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
     _emit_schedule_transitions(state)
     if state.get("schedule_state") == "due":
         run_heartbeat_tick(name=name, trigger="scheduled")
+        return heartbeat_runtime_surface(name=name)
+    return surface
+
+
+def _poll_heartbeat_schedule_with_trigger(
+    *,
+    name: str,
+    due_trigger: str,
+) -> dict[str, object]:
+    surface = heartbeat_runtime_surface(name=name)
+    state = dict(surface["state"])
+    _emit_schedule_transitions(state)
+    if state.get("schedule_state") == "due":
+        if due_trigger == "startup-recovery":
+            event_bus.publish(
+                "heartbeat.startup_recovery_triggered",
+                {
+                    "schedule_state": state.get("schedule_state"),
+                    "next_tick_at": state.get("next_tick_at"),
+                    "last_tick_at": state.get("last_tick_at"),
+                },
+            )
+        run_heartbeat_tick(name=name, trigger=due_trigger)
         return heartbeat_runtime_surface(name=name)
     return surface
 
@@ -129,27 +173,18 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
     policy = load_heartbeat_policy(name=name)
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     merged_before = _merge_runtime_state(policy=policy, persisted=persisted, now=now)
-    upsert_heartbeat_runtime_state(
-        state_id=str(persisted.get("state_id") or "default"),
-        last_tick_id=str(persisted.get("last_tick_id") or ""),
-        last_tick_at=str(persisted.get("last_tick_at") or ""),
-        next_tick_at=str(persisted.get("next_tick_at") or ""),
-        last_decision_type=str(persisted.get("last_decision_type") or ""),
-        last_result=str(persisted.get("last_result") or ""),
-        blocked_reason="",
-        currently_ticking=True,
-        last_trigger_source=trigger,
-        provider=str(persisted.get("provider") or ""),
-        model=str(persisted.get("model") or ""),
-        lane=str(persisted.get("lane") or ""),
-        budget_status=str(persisted.get("budget_status") or policy["budget_status"]),
-        last_ping_eligible=bool(persisted.get("last_ping_eligible")),
-        last_ping_result=str(persisted.get("last_ping_result") or ""),
-        last_action_type=str(persisted.get("last_action_type") or ""),
-        last_action_status=str(persisted.get("last_action_status") or ""),
-        last_action_summary=str(persisted.get("last_action_summary") or ""),
-        last_action_artifact=str(persisted.get("last_action_artifact") or ""),
-        updated_at=now.isoformat(),
+    _persist_runtime_state(
+        policy=policy,
+        persisted=persisted,
+        now=now,
+        overrides={
+            "blocked_reason": "",
+            "currently_ticking": True,
+            "last_trigger_source": trigger,
+            "scheduler_active": bool(_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()),
+            "scheduler_health": "active" if (_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()) else str(persisted.get("scheduler_health") or "manual-only"),
+            "updated_at": now.isoformat(),
+        },
     )
 
     event_bus.publish(
@@ -959,11 +994,55 @@ def _record_heartbeat_outcome(
         last_tick_id=tick_id,
         last_tick_at=finished_at,
         next_tick_at=next_tick_at,
+        schedule_state=_merge_runtime_state(
+            policy=policy,
+            persisted={
+                **_default_persisted_state(),
+                **persisted,
+                "last_tick_id": tick_id,
+                "last_tick_at": finished_at,
+                "next_tick_at": next_tick_at,
+                "last_decision_type": decision_type,
+                "last_result": decision_summary or action_summary,
+                "blocked_reason": blocked_reason,
+                "currently_ticking": currently_ticking,
+                "last_trigger_source": last_trigger_source,
+                "provider": provider,
+                "model": model,
+                "lane": lane,
+                "budget_status": budget_status,
+                "last_ping_eligible": ping_eligible,
+                "last_ping_result": ping_result,
+                "last_action_type": action_type,
+                "last_action_status": action_status,
+                "last_action_summary": action_summary,
+                "last_action_artifact": action_artifact[:4000],
+                "updated_at": finished_at,
+            },
+            now=datetime.now(UTC),
+        )["schedule_state"],
+        due=False,
         last_decision_type=decision_type,
         last_result=decision_summary or action_summary,
         blocked_reason=blocked_reason,
         currently_ticking=currently_ticking,
         last_trigger_source=last_trigger_source,
+        scheduler_active=bool(_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()),
+        scheduler_started_at=str(persisted.get("scheduler_started_at") or ""),
+        scheduler_stopped_at=str(persisted.get("scheduler_stopped_at") or ""),
+        scheduler_health=(
+            "active"
+            if (_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive())
+            else str(persisted.get("scheduler_health") or "manual-only")
+        ),
+        recovery_status=(
+            "startup-recovery-completed"
+            if last_trigger_source == "startup-recovery"
+            else str(persisted.get("recovery_status") or "idle")
+        ),
+        last_recovery_at=(
+            finished_at if last_trigger_source == "startup-recovery" else str(persisted.get("last_recovery_at") or "")
+        ),
         provider=provider,
         model=model,
         lane=lane,
@@ -1033,6 +1112,12 @@ def _merge_runtime_state(
         "blocked_reason": str(persisted.get("blocked_reason") or ""),
         "currently_ticking": bool(persisted.get("currently_ticking")),
         "last_trigger_source": str(persisted.get("last_trigger_source") or ""),
+        "scheduler_active": bool(persisted.get("scheduler_active")),
+        "scheduler_started_at": str(persisted.get("scheduler_started_at") or ""),
+        "scheduler_stopped_at": str(persisted.get("scheduler_stopped_at") or ""),
+        "scheduler_health": str(persisted.get("scheduler_health") or ("active" if bool(persisted.get("scheduler_active")) else "stopped")),
+        "recovery_status": str(persisted.get("recovery_status") or ""),
+        "last_recovery_at": str(persisted.get("last_recovery_at") or ""),
         "provider": str(persisted.get("provider") or ""),
         "model": str(persisted.get("model") or ""),
         "lane": str(persisted.get("lane") or ""),
@@ -1087,11 +1172,19 @@ def _default_persisted_state() -> dict[str, object]:
         "last_tick_id": "",
         "last_tick_at": "",
         "next_tick_at": "",
+        "schedule_state": "",
+        "due": False,
         "last_decision_type": "",
         "last_result": "",
         "blocked_reason": "",
         "currently_ticking": False,
         "last_trigger_source": "",
+        "scheduler_active": False,
+        "scheduler_started_at": "",
+        "scheduler_stopped_at": "",
+        "scheduler_health": "stopped",
+        "recovery_status": "",
+        "last_recovery_at": "",
         "provider": "",
         "model": "",
         "lane": "",
@@ -1118,6 +1211,51 @@ def _heartbeat_state_summary(
     if last_decision_type and last_result:
         return f"{last_decision_type}: {last_result}"
     return "Heartbeat is configured and awaiting a bounded tick."
+
+
+def _persist_runtime_state(
+    *,
+    policy: dict[str, object],
+    persisted: dict[str, object],
+    now: datetime,
+    overrides: dict[str, object],
+) -> dict[str, object]:
+    merged_input = {
+        **_default_persisted_state(),
+        **persisted,
+        **overrides,
+    }
+    merged = _merge_runtime_state(policy=policy, persisted=merged_input, now=now)
+    return upsert_heartbeat_runtime_state(
+        state_id=str(merged_input.get("state_id") or "default"),
+        last_tick_id=str(merged_input.get("last_tick_id") or ""),
+        last_tick_at=str(merged_input.get("last_tick_at") or ""),
+        next_tick_at=str(merged.get("next_tick_at") or merged_input.get("next_tick_at") or ""),
+        schedule_state=str(merged.get("schedule_state") or merged_input.get("schedule_state") or ""),
+        due=bool(merged.get("due")),
+        last_decision_type=str(merged_input.get("last_decision_type") or ""),
+        last_result=str(merged_input.get("last_result") or ""),
+        blocked_reason=str(merged_input.get("blocked_reason") or ""),
+        currently_ticking=bool(merged_input.get("currently_ticking")),
+        last_trigger_source=str(merged_input.get("last_trigger_source") or ""),
+        scheduler_active=bool(merged_input.get("scheduler_active")),
+        scheduler_started_at=str(merged_input.get("scheduler_started_at") or ""),
+        scheduler_stopped_at=str(merged_input.get("scheduler_stopped_at") or ""),
+        scheduler_health=str(merged_input.get("scheduler_health") or ""),
+        recovery_status=str(merged_input.get("recovery_status") or ""),
+        last_recovery_at=str(merged_input.get("last_recovery_at") or ""),
+        provider=str(merged_input.get("provider") or ""),
+        model=str(merged_input.get("model") or ""),
+        lane=str(merged_input.get("lane") or ""),
+        budget_status=str(merged_input.get("budget_status") or policy["budget_status"]),
+        last_ping_eligible=bool(merged_input.get("last_ping_eligible")),
+        last_ping_result=str(merged_input.get("last_ping_result") or ""),
+        last_action_type=str(merged_input.get("last_action_type") or ""),
+        last_action_status=str(merged_input.get("last_action_status") or ""),
+        last_action_summary=str(merged_input.get("last_action_summary") or ""),
+        last_action_artifact=str(merged_input.get("last_action_artifact") or ""),
+        updated_at=str(merged_input.get("updated_at") or now.isoformat()),
+    )
 
 
 def _parse_heartbeat_key_values(text: str) -> dict[str, str]:
@@ -1279,7 +1417,21 @@ def _heartbeat_busy_result(*, name: str, trigger: str) -> HeartbeatExecutionResu
     )
 
 
-def _heartbeat_scheduler_loop(*, name: str) -> None:
+def _heartbeat_scheduler_loop(*, name: str, startup_recovery_requested: bool) -> None:
+    try:
+        _poll_heartbeat_schedule_with_trigger(
+            name=name,
+            due_trigger="startup-recovery" if startup_recovery_requested else "scheduled",
+        )
+    except Exception as exc:
+        event_bus.publish(
+            "heartbeat.tick_blocked",
+            {
+                "blocked_reason": "scheduler-error",
+                "detail": str(exc),
+                "trigger": "startup-recovery" if startup_recovery_requested else "scheduled",
+            },
+        )
     while not _HEARTBEAT_SCHEDULER_STOP.wait(_HEARTBEAT_SCHEDULER_INTERVAL_SECONDS):
         try:
             poll_heartbeat_schedule(name=name)
@@ -1292,6 +1444,101 @@ def _heartbeat_scheduler_loop(*, name: str) -> None:
                     "trigger": "scheduled",
                 },
             )
+
+
+def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
+    policy = load_heartbeat_policy(name=name)
+    persisted = get_heartbeat_runtime_state() or _default_persisted_state()
+    now = datetime.now(UTC)
+    recovery_status = "idle"
+    blocked_reason = str(persisted.get("blocked_reason") or "")
+    last_recovery_at = str(persisted.get("last_recovery_at") or "")
+    currently_ticking = bool(persisted.get("currently_ticking"))
+    if currently_ticking:
+        stale_started = _parse_dt(str(persisted.get("updated_at") or persisted.get("last_tick_at") or ""))
+        if stale_started is None or stale_started <= now - timedelta(minutes=_STALE_TICK_RECOVERY_WINDOW_MINUTES):
+            currently_ticking = False
+            blocked_reason = "stale-ticking-state-cleared"
+            recovery_status = "stale-ticking-state-cleared"
+            last_recovery_at = now.isoformat()
+
+    startup_state = _persist_runtime_state(
+        policy=policy,
+        persisted=persisted,
+        now=now,
+        overrides={
+            "blocked_reason": blocked_reason,
+            "currently_ticking": currently_ticking,
+            "scheduler_active": True,
+            "scheduler_started_at": now.isoformat(),
+            "scheduler_stopped_at": "",
+            "scheduler_health": "active",
+            "recovery_status": recovery_status,
+            "last_recovery_at": last_recovery_at,
+            "updated_at": now.isoformat(),
+        },
+    )
+    next_tick_at = _parse_dt(str(startup_state.get("next_tick_at") or ""))
+    should_trigger_recovery = bool(
+        policy.get("enabled")
+        and not startup_state.get("currently_ticking")
+        and str(policy.get("kill_switch") or "enabled") == "enabled"
+        and next_tick_at is not None
+        and next_tick_at <= now
+    )
+    if should_trigger_recovery:
+        event_bus.publish(
+            "heartbeat.overdue_detected",
+            {
+                "schedule_state": startup_state.get("schedule_state"),
+                "last_tick_at": startup_state.get("last_tick_at"),
+                "next_tick_at": startup_state.get("next_tick_at"),
+                "trigger": "startup",
+            },
+        )
+        startup_state = _persist_runtime_state(
+            policy=policy,
+            persisted=get_heartbeat_runtime_state() or startup_state,
+            now=now,
+            overrides={
+                "scheduler_active": True,
+                "scheduler_started_at": now.isoformat(),
+                "scheduler_stopped_at": "",
+                "scheduler_health": "active",
+                "recovery_status": "startup-recovery-pending",
+                "last_recovery_at": now.isoformat(),
+                "updated_at": now.isoformat(),
+            },
+        )
+    return {
+        **startup_state,
+        "startup_recovery_requested": should_trigger_recovery,
+    }
+
+
+def _mark_scheduler_stopped(*, name: str) -> None:
+    policy = load_heartbeat_policy(name=name)
+    persisted = get_heartbeat_runtime_state() or _default_persisted_state()
+    now = datetime.now(UTC)
+    stopped = _persist_runtime_state(
+        policy=policy,
+        persisted=persisted,
+        now=now,
+        overrides={
+            "scheduler_active": False,
+            "scheduler_stopped_at": now.isoformat(),
+            "scheduler_health": "stopped",
+            "updated_at": now.isoformat(),
+        },
+    )
+    event_bus.publish(
+        "heartbeat.scheduler_stopped",
+        {
+            "schedule_state": stopped.get("schedule_state"),
+            "last_tick_at": stopped.get("last_tick_at"),
+            "next_tick_at": stopped.get("next_tick_at"),
+        },
+    )
 
 
 def _emit_schedule_transitions(state: dict[str, object]) -> None:
@@ -1318,6 +1565,15 @@ def _emit_schedule_transitions(state: dict[str, object]) -> None:
                 "schedule_state": current_state,
                 "next_tick_at": state.get("next_tick_at"),
                 "last_tick_at": state.get("last_tick_at"),
+            },
+        )
+        event_bus.publish(
+            "heartbeat.overdue_detected",
+            {
+                "schedule_state": current_state,
+                "next_tick_at": state.get("next_tick_at"),
+                "last_tick_at": state.get("last_tick_at"),
+                "trigger": "scheduler",
             },
         )
     _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT = {

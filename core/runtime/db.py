@@ -205,6 +205,10 @@ def init_db() -> None:
                 budget_status TEXT NOT NULL DEFAULT '',
                 last_ping_eligible INTEGER NOT NULL DEFAULT 0,
                 last_ping_result TEXT NOT NULL DEFAULT '',
+                last_action_type TEXT NOT NULL DEFAULT '',
+                last_action_status TEXT NOT NULL DEFAULT '',
+                last_action_summary TEXT NOT NULL DEFAULT '',
+                last_action_artifact TEXT NOT NULL DEFAULT '',
                 updated_at TEXT NOT NULL
             )
             """
@@ -228,6 +232,8 @@ def init_db() -> None:
                 ping_result TEXT NOT NULL DEFAULT '',
                 action_status TEXT NOT NULL DEFAULT '',
                 action_summary TEXT NOT NULL DEFAULT '',
+                action_type TEXT NOT NULL DEFAULT '',
+                action_artifact TEXT NOT NULL DEFAULT '',
                 raw_response TEXT NOT NULL DEFAULT '',
                 input_tokens INTEGER NOT NULL DEFAULT 0,
                 output_tokens INTEGER NOT NULL DEFAULT 0,
@@ -244,6 +250,7 @@ def init_db() -> None:
             """
         )
         _ensure_heartbeat_runtime_state_columns(conn)
+        _ensure_heartbeat_runtime_tick_columns(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS private_inner_notes (
@@ -2251,6 +2258,10 @@ def get_heartbeat_runtime_state() -> dict[str, object] | None:
                 budget_status,
                 last_ping_eligible,
                 last_ping_result,
+                last_action_type,
+                last_action_status,
+                last_action_summary,
+                last_action_artifact,
                 updated_at
             FROM heartbeat_runtime_state
             WHERE id = 1
@@ -2279,6 +2290,10 @@ def upsert_heartbeat_runtime_state(
     budget_status: str,
     last_ping_eligible: bool,
     last_ping_result: str,
+    last_action_type: str,
+    last_action_status: str,
+    last_action_summary: str,
+    last_action_artifact: str,
     updated_at: str,
 ) -> dict[str, object]:
     with connect() as conn:
@@ -2301,9 +2316,13 @@ def upsert_heartbeat_runtime_state(
                 budget_status,
                 last_ping_eligible,
                 last_ping_result,
+                last_action_type,
+                last_action_status,
+                last_action_summary,
+                last_action_artifact,
                 updated_at
             )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 state_id = excluded.state_id,
                 last_tick_id = excluded.last_tick_id,
@@ -2320,6 +2339,10 @@ def upsert_heartbeat_runtime_state(
                 budget_status = excluded.budget_status,
                 last_ping_eligible = excluded.last_ping_eligible,
                 last_ping_result = excluded.last_ping_result,
+                last_action_type = excluded.last_action_type,
+                last_action_status = excluded.last_action_status,
+                last_action_summary = excluded.last_action_summary,
+                last_action_artifact = excluded.last_action_artifact,
                 updated_at = excluded.updated_at
             """,
             (
@@ -2338,6 +2361,10 @@ def upsert_heartbeat_runtime_state(
                 budget_status,
                 1 if last_ping_eligible else 0,
                 last_ping_result,
+                last_action_type,
+                last_action_status,
+                last_action_summary,
+                last_action_artifact,
                 updated_at,
             ),
         )
@@ -2365,6 +2392,8 @@ def record_heartbeat_runtime_tick(
     ping_result: str,
     action_status: str,
     action_summary: str,
+    action_type: str,
+    action_artifact: str,
     raw_response: str,
     input_tokens: int,
     output_tokens: int,
@@ -2391,6 +2420,8 @@ def record_heartbeat_runtime_tick(
                 ping_result,
                 action_status,
                 action_summary,
+                action_type,
+                action_artifact,
                 raw_response,
                 input_tokens,
                 output_tokens,
@@ -2398,7 +2429,7 @@ def record_heartbeat_runtime_tick(
                 started_at,
                 finished_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 tick_id,
@@ -2416,6 +2447,8 @@ def record_heartbeat_runtime_tick(
                 ping_result,
                 action_status,
                 action_summary,
+                action_type,
+                action_artifact,
                 raw_response,
                 int(input_tokens or 0),
                 int(output_tokens or 0),
@@ -2451,6 +2484,8 @@ def get_heartbeat_runtime_tick(tick_id: str) -> dict[str, object] | None:
                 ping_result,
                 action_status,
                 action_summary,
+                action_type,
+                action_artifact,
                 raw_response,
                 input_tokens,
                 output_tokens,
@@ -2488,6 +2523,8 @@ def recent_heartbeat_runtime_ticks(limit: int = 10) -> list[dict[str, object]]:
                 ping_result,
                 action_status,
                 action_summary,
+                action_type,
+                action_artifact,
                 raw_response,
                 input_tokens,
                 output_tokens,
@@ -2545,6 +2582,10 @@ def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
         "budget_status": row["budget_status"],
         "last_ping_eligible": bool(row["last_ping_eligible"]),
         "last_ping_result": row["last_ping_result"],
+        "last_action_type": row["last_action_type"],
+        "last_action_status": row["last_action_status"],
+        "last_action_summary": row["last_action_summary"],
+        "last_action_artifact": row["last_action_artifact"],
         "updated_at": row["updated_at"],
     }
 
@@ -2566,6 +2607,8 @@ def _heartbeat_runtime_tick_from_row(row: sqlite3.Row) -> dict[str, object]:
         "ping_result": row["ping_result"],
         "action_status": row["action_status"],
         "action_summary": row["action_summary"],
+        "action_type": row["action_type"],
+        "action_artifact": row["action_artifact"],
         "raw_response": row["raw_response"],
         "input_tokens": int(row["input_tokens"] or 0),
         "output_tokens": int(row["output_tokens"] or 0),
@@ -2590,6 +2633,53 @@ def _ensure_heartbeat_runtime_state_columns(conn: sqlite3.Connection) -> None:
             """
             ALTER TABLE heartbeat_runtime_state
             ADD COLUMN last_trigger_source TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "last_action_type" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN last_action_type TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "last_action_status" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN last_action_status TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "last_action_summary" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN last_action_summary TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "last_action_artifact" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN last_action_artifact TEXT NOT NULL DEFAULT ''
+            """
+        )
+
+
+def _ensure_heartbeat_runtime_tick_columns(conn: sqlite3.Connection) -> None:
+    rows = conn.execute("PRAGMA table_info(heartbeat_runtime_ticks)").fetchall()
+    existing = {str(row["name"]) for row in rows}
+    if "action_type" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_ticks
+            ADD COLUMN action_type TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "action_artifact" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_ticks
+            ADD COLUMN action_artifact TEXT NOT NULL DEFAULT ''
             """
         )
 

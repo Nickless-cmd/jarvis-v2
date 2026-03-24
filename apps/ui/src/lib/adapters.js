@@ -257,6 +257,10 @@ function normalizeHeartbeatState(item = {}) {
     policySummary: item.policy_summary || '',
     lastPingEligible: Boolean(item.last_ping_eligible),
     lastPingResult: item.last_ping_result || '',
+    lastActionType: item.last_action_type || '',
+    lastActionStatus: item.last_action_status || '',
+    lastActionSummary: item.last_action_summary || '',
+    lastActionArtifact: item.last_action_artifact || '',
     summary: item.summary || 'No heartbeat activity yet.',
     stateFile: item.state_file || '',
     source: item.source || '/mc/jarvis::heartbeat',
@@ -299,6 +303,8 @@ function normalizeHeartbeatTick(item = {}) {
     pingResult: item.ping_result || '',
     actionStatus: item.action_status || '',
     actionSummary: item.action_summary || '',
+    actionType: item.action_type || '',
+    actionArtifact: item.action_artifact || '',
     rawResponse: item.raw_response || '',
     inputTokens: Number(item.input_tokens || 0),
     outputTokens: Number(item.output_tokens || 0),
@@ -307,7 +313,7 @@ function normalizeHeartbeatTick(item = {}) {
     finishedAt: item.finished_at || '',
     source: '/mc/jarvis::heartbeat',
     createdAt: item.finished_at || item.started_at || '',
-    summary: item.decision_summary || item.action_summary || 'Heartbeat tick detail',
+    summary: item.action_summary || item.decision_summary || 'Heartbeat tick detail',
   }
 }
 

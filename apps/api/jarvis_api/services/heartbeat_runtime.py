@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Any
 from urllib import request as urllib_request
 
+from apps.api.jarvis_api.services.candidate_tracking import (
+    track_runtime_contract_candidates_for_session_review,
+)
 from apps.api.jarvis_api.services.prompt_contract import build_heartbeat_prompt_assembly
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
 from core.auth.profiles import get_provider_state
@@ -33,6 +36,7 @@ from core.tools.workspace_capabilities import load_workspace_capabilities
 
 HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping"}
+HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {"run_candidate_scan"}
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
 _HEARTBEAT_SCHEDULER_STOP = threading.Event()
@@ -141,6 +145,10 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
         budget_status=str(persisted.get("budget_status") or policy["budget_status"]),
         last_ping_eligible=bool(persisted.get("last_ping_eligible")),
         last_ping_result=str(persisted.get("last_ping_result") or ""),
+        last_action_type=str(persisted.get("last_action_type") or ""),
+        last_action_status=str(persisted.get("last_action_status") or ""),
+        last_action_summary=str(persisted.get("last_action_summary") or ""),
+        last_action_artifact=str(persisted.get("last_action_artifact") or ""),
         updated_at=now.isoformat(),
     )
 
@@ -176,6 +184,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             ping_result="not-checked",
             action_status="blocked",
             action_summary=blocked_reason,
+            action_type="",
+            action_artifact="",
             raw_response="",
             input_tokens=0,
             output_tokens=0,
@@ -234,6 +244,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             ping_result="runtime-error",
             action_status="blocked",
             action_summary=str(exc),
+            action_type="",
+            action_artifact="",
             raw_response="",
             input_tokens=0,
             output_tokens=0,
@@ -268,13 +280,18 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
         },
     )
 
-    outcome = _validate_heartbeat_decision(decision=decision, policy=policy)
+    outcome = _validate_heartbeat_decision(
+        decision=decision,
+        policy=policy,
+        workspace_dir=workspace_dir,
+        tick_id=f"heartbeat-tick:{uuid.uuid4()}",
+    )
     tick_status = "completed" if not outcome["blocked_reason"] else "blocked"
     finished_at = datetime.now(UTC).isoformat()
     tick = _record_heartbeat_outcome(
         policy=policy,
         persisted=persisted,
-        tick_id=f"heartbeat-tick:{uuid.uuid4()}",
+        tick_id=str(outcome["tick_id"]),
         trigger=trigger,
         tick_status=tick_status,
         decision_type=decision["decision_type"],
@@ -291,6 +308,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
         ping_result=outcome["ping_result"],
         action_status=outcome["action_status"],
         action_summary=outcome["action_summary"],
+        action_type=outcome["action_type"],
+        action_artifact=outcome["action_artifact"],
         raw_response=result["text"],
         input_tokens=result["input_tokens"],
         output_tokens=result["output_tokens"],
@@ -307,6 +326,7 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "tick_id": tick["tick_id"],
                 "decision_type": decision["decision_type"],
                 "blocked_reason": outcome["blocked_reason"],
+                "action_type": outcome["action_type"],
                 "trigger": trigger,
             },
         )
@@ -319,6 +339,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "decision_type": decision["decision_type"],
                 "tick_status": tick["tick_status"],
                 "summary": tick["decision_summary"],
+                "action_type": outcome["action_type"],
+                "action_status": outcome["action_status"],
             },
         )
         event_bus.publish(
@@ -328,6 +350,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "decision_type": decision["decision_type"],
                 "summary": decision["summary"],
                 "action_status": outcome["action_status"],
+                "action_type": outcome["action_type"],
+                "action_artifact": outcome["action_artifact"],
                 "ping_result": outcome["ping_result"],
             },
         )
@@ -437,10 +461,7 @@ def _build_heartbeat_context(
 
     allowed_capabilities = []
     if policy["allow_execute"]:
-        for item in list(capabilities.get("capabilities") or [])[:4]:
-            capability_id = str(item.get("capability_id") or "").strip()
-            if capability_id:
-                allowed_capabilities.append(capability_id)
+        allowed_capabilities.extend(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))
 
     continuity_summary = None
     if continuity.get("active"):
@@ -503,7 +524,8 @@ def _execute_heartbeat_model(
     model = target["model"]
     if provider == "phase1-runtime":
         summary = open_loops[0] if open_loops else "No current due work was detected."
-        decision_type = "propose" if open_loops else "noop"
+        decision_type = "execute" if bool(policy.get("allow_execute")) else ("propose" if open_loops else "noop")
+        execute_action = "run_candidate_scan" if decision_type == "execute" else ""
         text = json.dumps(
             {
                 "decision_type": decision_type,
@@ -511,6 +533,7 @@ def _execute_heartbeat_model(
                 "reason": "Phase1 fallback heartbeat used bounded runtime context without provider-backed execution.",
                 "proposed_action": summary if decision_type == "propose" else "",
                 "ping_text": "",
+                "execute_action": execute_action,
             },
             ensure_ascii=False,
         )
@@ -629,6 +652,7 @@ def _heartbeat_prompt_text(base_text: str) -> str:
             "- proposed_action should be a short bounded action description or empty.",
             "- ping_text should only be set if decision_type=ping.",
             "- execute_action should only be set if decision_type=execute.",
+            f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
             'JSON schema: {"decision_type":"noop|propose|execute|ping","summary":"","reason":"","proposed_action":"","ping_text":"","execute_action":""}',
         ]
     )
@@ -657,72 +681,214 @@ def _parse_heartbeat_decision(raw_text: str) -> dict[str, str]:
 
 
 def _validate_heartbeat_decision(
-    *, decision: dict[str, str], policy: dict[str, object]
+    *,
+    decision: dict[str, str],
+    policy: dict[str, object],
+    workspace_dir: Path,
+    tick_id: str,
 ) -> dict[str, object]:
     decision_type = decision["decision_type"]
+    execute_action = str(decision.get("execute_action") or "").strip()
     if decision_type == "propose" and not bool(policy["allow_propose"]):
         return {
+            "tick_id": tick_id,
             "blocked_reason": "propose-not-allowed",
             "ping_eligible": False,
             "ping_result": "not-allowed",
             "action_status": "blocked",
             "action_summary": "Heartbeat policy currently blocks propose outputs.",
+            "action_type": "",
+            "action_artifact": "",
         }
     if decision_type == "execute":
         if not bool(policy["allow_execute"]):
             return {
+                "tick_id": tick_id,
                 "blocked_reason": "execute-not-allowed",
                 "ping_eligible": False,
                 "ping_result": "not-allowed",
                 "action_status": "blocked",
                 "action_summary": "Heartbeat execute actions are disabled in the current policy.",
+                "action_type": execute_action,
+                "action_artifact": "",
             }
+        event_bus.publish(
+            "heartbeat.execute_requested",
+            {
+                "tick_id": tick_id,
+                "action_type": execute_action,
+                "summary": decision["summary"],
+            },
+        )
+        if execute_action not in HEARTBEAT_ALLOWED_EXECUTE_ACTIONS:
+            event_bus.publish(
+                "heartbeat.execute_blocked",
+                {
+                    "tick_id": tick_id,
+                    "action_type": execute_action,
+                    "blocked_reason": "unsupported-execute-action",
+                },
+            )
+            return {
+                "tick_id": tick_id,
+                "blocked_reason": "unsupported-execute-action",
+                "ping_eligible": False,
+                "ping_result": "not-applicable",
+                "action_status": "blocked",
+                "action_summary": f"Heartbeat execute action {execute_action or 'unknown'} is not in the bounded allowlist.",
+                "action_type": execute_action,
+                "action_artifact": "",
+            }
+        action_result = _execute_heartbeat_internal_action(
+            action_type=execute_action,
+            tick_id=tick_id,
+            workspace_dir=workspace_dir,
+        )
+        if action_result["blocked_reason"]:
+            event_bus.publish(
+                "heartbeat.execute_blocked",
+                {
+                    "tick_id": tick_id,
+                    "action_type": execute_action,
+                    "blocked_reason": action_result["blocked_reason"],
+                    "summary": action_result["summary"],
+                },
+            )
+            return {
+                "tick_id": tick_id,
+                "blocked_reason": str(action_result["blocked_reason"]),
+                "ping_eligible": False,
+                "ping_result": "not-applicable",
+                "action_status": str(action_result["status"]),
+                "action_summary": str(action_result["summary"]),
+                "action_type": execute_action,
+                "action_artifact": str(action_result["artifact"]),
+            }
+        event_bus.publish(
+            "heartbeat.execute_completed",
+            {
+                "tick_id": tick_id,
+                "action_type": execute_action,
+                "summary": action_result["summary"],
+                "artifact": action_result["artifact"],
+            },
+        )
         return {
-            "blocked_reason": "no-allowed-execute-action",
+            "tick_id": tick_id,
+            "blocked_reason": "",
             "ping_eligible": False,
             "ping_result": "not-applicable",
-            "action_status": "blocked",
-            "action_summary": "No bounded internal execute actions are enabled yet.",
+            "action_status": str(action_result["status"]),
+            "action_summary": str(action_result["summary"]),
+            "action_type": execute_action,
+            "action_artifact": str(action_result["artifact"]),
         }
     if decision_type == "ping":
         if not bool(policy["allow_ping"]):
             return {
+                "tick_id": tick_id,
                 "blocked_reason": "ping-not-allowed",
                 "ping_eligible": False,
                 "ping_result": "not-allowed",
                 "action_status": "blocked",
                 "action_summary": "Heartbeat pings are disabled in the current policy.",
+                "action_type": "",
+                "action_artifact": "",
             }
         ping_channel = str(policy["ping_channel"])
         if ping_channel not in {"internal-only", "none"}:
             return {
+                "tick_id": tick_id,
                 "blocked_reason": "unsupported-ping-channel",
                 "ping_eligible": False,
                 "ping_result": "unsupported-channel",
                 "action_status": "blocked",
                 "action_summary": f"Ping channel {ping_channel} is not supported in bounded heartbeat runtime.",
+                "action_type": "",
+                "action_artifact": "",
             }
         if ping_channel == "none":
             return {
+                "tick_id": tick_id,
                 "blocked_reason": "no-ping-channel",
                 "ping_eligible": False,
                 "ping_result": "missing-channel",
                 "action_status": "blocked",
                 "action_summary": "Ping is allowed in policy, but no usable bounded ping channel is configured.",
+                "action_type": "",
+                "action_artifact": "",
             }
         return {
+            "tick_id": tick_id,
             "blocked_reason": "",
             "ping_eligible": True,
             "ping_result": "recorded-preview",
             "action_status": "recorded",
             "action_summary": decision["ping_text"] or decision["summary"] or "Heartbeat ping preview recorded.",
+            "action_type": "",
+            "action_artifact": "",
         }
     return {
+        "tick_id": tick_id,
         "blocked_reason": "",
         "ping_eligible": False,
         "ping_result": "not-applicable",
         "action_status": "recorded",
         "action_summary": decision["proposed_action"] or decision["summary"] or "Heartbeat outcome recorded.",
+        "action_type": "",
+        "action_artifact": "",
+    }
+
+
+def _execute_heartbeat_internal_action(
+    *,
+    action_type: str,
+    tick_id: str,
+    workspace_dir: Path,
+) -> dict[str, str]:
+    del workspace_dir
+    if action_type == "run_candidate_scan":
+        review = track_runtime_contract_candidates_for_session_review(
+            session_id=None,
+            run_id=tick_id,
+        )
+        created = int(review.get("created") or 0)
+        pref_count = int(review.get("preference_updates") or 0)
+        memory_count = int(review.get("memory_promotions") or 0)
+        messages_scanned = int(review.get("messages_scanned") or 0)
+        session_id = str(review.get("session_id") or "")
+        summary = (
+            f"Heartbeat scanned {messages_scanned} recent user messages and proposed {created} candidates."
+            if messages_scanned
+            else "Heartbeat found no recent user messages to review."
+        )
+        artifact = json.dumps(
+            {
+                "session_id": session_id,
+                "messages_scanned": messages_scanned,
+                "created": created,
+                "preference_updates": pref_count,
+                "memory_promotions": memory_count,
+                "candidate_ids": [
+                    str(item.get("candidate_id") or "")
+                    for item in list(review.get("items") or [])[:6]
+                    if str(item.get("candidate_id") or "")
+                ],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        return {
+            "status": "executed",
+            "summary": summary,
+            "artifact": artifact,
+            "blocked_reason": "",
+        }
+    return {
+        "status": "blocked",
+        "summary": f"Heartbeat execute action {action_type or 'unknown'} is not supported.",
+        "artifact": "",
+        "blocked_reason": "unsupported-execute-action",
     }
 
 
@@ -747,6 +913,8 @@ def _record_heartbeat_outcome(
     ping_result: str,
     action_status: str,
     action_summary: str,
+    action_type: str,
+    action_artifact: str,
     raw_response: str,
     input_tokens: int,
     output_tokens: int,
@@ -771,6 +939,8 @@ def _record_heartbeat_outcome(
         ping_result=ping_result,
         action_status=action_status,
         action_summary=action_summary,
+        action_type=action_type,
+        action_artifact=action_artifact[:4000],
         raw_response=raw_response[:4000],
         input_tokens=input_tokens,
         output_tokens=output_tokens,
@@ -800,6 +970,10 @@ def _record_heartbeat_outcome(
         budget_status=budget_status,
         last_ping_eligible=ping_eligible,
         last_ping_result=ping_result,
+        last_action_type=action_type,
+        last_action_status=action_status,
+        last_action_summary=action_summary,
+        last_action_artifact=action_artifact[:4000],
         updated_at=finished_at,
     )
     latest_state = get_heartbeat_runtime_state() or _default_persisted_state()
@@ -866,6 +1040,10 @@ def _merge_runtime_state(
         "policy_summary": str(policy["summary"]),
         "last_ping_eligible": bool(persisted.get("last_ping_eligible")),
         "last_ping_result": str(persisted.get("last_ping_result") or ""),
+        "last_action_type": str(persisted.get("last_action_type") or ""),
+        "last_action_status": str(persisted.get("last_action_status") or ""),
+        "last_action_summary": str(persisted.get("last_action_summary") or ""),
+        "last_action_artifact": str(persisted.get("last_action_artifact") or ""),
         "summary": _heartbeat_state_summary(
             enabled=bool(policy["enabled"]),
             schedule_status=schedule_status,
@@ -920,6 +1098,10 @@ def _default_persisted_state() -> dict[str, object]:
         "budget_status": "",
         "last_ping_eligible": False,
         "last_ping_result": "",
+        "last_action_type": "",
+        "last_action_status": "",
+        "last_action_summary": "",
+        "last_action_artifact": "",
         "updated_at": "",
     }
 
@@ -1072,6 +1254,8 @@ def _heartbeat_busy_result(*, name: str, trigger: str) -> HeartbeatExecutionResu
         ping_result="not-checked",
         action_status="blocked",
         action_summary="Another heartbeat tick is already running.",
+        action_type="",
+        action_artifact="",
         raw_response="",
         input_tokens=0,
         output_tokens=0,

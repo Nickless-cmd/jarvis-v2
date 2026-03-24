@@ -318,6 +318,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{heartbeatState.lastDecisionType || 'none'}</strong>
               <p>{heartbeatState.lastResult || heartbeatState.blockedReason || 'No heartbeat result yet.'}</p>
             </div>
+            <div className="compact-metric">
+              <span>Last Execute Action</span>
+              <strong>{heartbeatState.lastActionType || 'none'}</strong>
+              <p>{heartbeatState.lastActionSummary || heartbeatState.lastActionStatus || 'No execute action recorded yet.'}</p>
+            </div>
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -353,11 +358,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 ) : heartbeatTicks.map((item) => (
                   <button className="mc-list-row" key={item.tickId || item.startedAt} onClick={() => onOpenItem('Heartbeat Tick', item)}>
                     <div>
-                      <strong>{item.decisionType || item.tickStatus || 'tick'}</strong>
-                      <span>{item.decisionSummary || item.actionSummary || item.blockedReason || 'Inspect heartbeat tick detail'}</span>
+                      <strong>
+                        {item.actionType
+                          ? `${item.decisionType || item.tickStatus || 'tick'} / ${item.actionType}`
+                          : (item.decisionType || item.tickStatus || 'tick')}
+                      </strong>
+                      <span>{item.actionSummary || item.decisionSummary || item.blockedReason || 'Inspect heartbeat tick detail'}</span>
                     </div>
                     <div className="mc-row-meta">
-                      <small>{item.tickStatus || 'unknown'}</small>
+                      <small>{item.actionStatus || item.tickStatus || 'unknown'}</small>
                       <ChevronRight size={14} />
                     </div>
                   </button>

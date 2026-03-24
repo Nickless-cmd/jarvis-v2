@@ -31,10 +31,13 @@ export function ChatHeader({
     : models[0]?.model || selection.currentModel || ''
 
   return (
-    <section className="chat-header-bar panel">
+    <section className="chat-header-bar">
       <div className="chat-header-copy">
-        <p className="eyebrow">Jarvis · Chat</p>
-        <strong>{session?.title || 'New chat'}</strong>
+        <div className="chat-header-title-stack">
+          <p className="eyebrow">Jarvis · Chat</p>
+          <strong>{session?.title || 'New chat'}</strong>
+        </div>
+        <span className="chat-header-subtitle">{session?.subtitle || 'Persistent session'}</span>
       </div>
 
       <div className="chat-header-controls">

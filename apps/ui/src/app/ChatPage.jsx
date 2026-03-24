@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChatTranscript } from '../components/chat/ChatTranscript'
 import { Composer } from '../components/chat/Composer'
 import { ChatHeader } from '../components/chat/ChatHeader'
+import { ChatSupportRail } from '../components/chat/ChatSupportRail'
 
 export function ChatPage({
   activeSession,
@@ -45,6 +46,12 @@ export function ChatPage({
           }}
         />
       </main>
+
+      <ChatSupportRail
+        session={activeSession}
+        selection={selection}
+        isStreaming={isStreaming}
+      />
     </div>
   )
 }

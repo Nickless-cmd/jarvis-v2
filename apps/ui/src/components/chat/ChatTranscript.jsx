@@ -12,14 +12,18 @@ export function ChatTranscript({ messages }) {
 
   if (!messages.length) {
     return (
-      <section ref={transcriptRef} className="transcript panel empty-transcript">
-        <p className="muted">Start a conversation to open a new Jarvis thread.</p>
+      <section ref={transcriptRef} className="transcript empty-transcript">
+        <div className="empty-transcript-copy">
+          <p className="eyebrow">Front Door</p>
+          <strong>Start a conversation</strong>
+          <p className="muted">This session is persisted and will still be here after refresh.</p>
+        </div>
       </section>
     )
   }
 
   return (
-    <section ref={transcriptRef} className="transcript panel">
+    <section ref={transcriptRef} className="transcript">
       {messages.map((message) => (
         <article key={message.id} className={`message-row ${message.role}`}>
           <div className="message-avatar">

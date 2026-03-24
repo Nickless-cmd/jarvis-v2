@@ -14,7 +14,7 @@ export function Composer({ value, onChange, onSend, isStreaming }) {
   return (
     <section className="composer-shell">
       <div className="composer-wrap">
-        <button className="icon-btn subtle" type="button">
+        <button className="icon-btn subtle composer-attach-btn" type="button" title="Attach">
           <Paperclip size={16} />
         </button>
         <textarea
@@ -30,7 +30,12 @@ export function Composer({ value, onChange, onSend, isStreaming }) {
           placeholder="Message Jarvis…"
           rows={1}
         />
-        <button className={isStreaming ? 'send-btn working' : 'send-btn'} onClick={onSend} disabled={isStreaming}>
+        <button
+          className={isStreaming ? 'send-btn working' : 'send-btn'}
+          onClick={onSend}
+          disabled={isStreaming}
+          title={isStreaming ? 'Jarvis is working' : 'Send message'}
+        >
           {isStreaming ? <LoaderCircle size={16} className="spin" /> : <ArrowUp size={16} />}
         </button>
       </div>

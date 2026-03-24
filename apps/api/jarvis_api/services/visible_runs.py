@@ -10,6 +10,9 @@ from uuid import uuid4
 from apps.api.jarvis_api.services.chat_sessions import (
     append_chat_message,
 )
+from apps.api.jarvis_api.services.candidate_tracking import (
+    track_runtime_contract_candidates_for_visible_turn,
+)
 from apps.api.jarvis_api.services.visible_model import (
     VisibleModelDelta,
     VisibleModelStreamCancelled,
@@ -314,6 +317,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             text_preview=_preview_text(visible_output_text),
         )
         _persist_session_assistant_message(run, visible_output_text)
+        _track_runtime_candidates(run, visible_output_text)
         yield _sse(
             "done",
             {
@@ -340,6 +344,20 @@ def _persist_session_assistant_message(run: VisibleRun, text: str) -> None:
     if not normalized:
         return
     append_chat_message(session_id=run.session_id, role="assistant", content=normalized)
+
+
+def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
+    if not run.session_id:
+        return
+    try:
+        track_runtime_contract_candidates_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+            user_message=run.user_message,
+            assistant_message=assistant_text,
+        )
+    except Exception:
+        return
 
 
 def _extract_capability_call(text: str) -> str | None:

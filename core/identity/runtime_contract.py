@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from core.identity.runtime_candidates import (
+    build_runtime_candidate_workflows,
+    total_pending_runtime_candidates,
+)
 from core.identity.workspace_bootstrap import ensure_default_workspace
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -106,28 +110,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
     ]
 
     bootstrap = _bootstrap_status(workspace_dir)
-    pending_writes = {
-        "preference_updates": {
-            "id": "preference_updates",
-            "label": "Preference Updates",
-            "target_file": "USER.md",
-            "status": "not-implemented",
-            "pending_count": 0,
-            "items": [],
-            "summary": "No pending USER.md candidates.",
-            "source": "/mc/runtime-contract",
-        },
-        "memory_promotions": {
-            "id": "memory_promotions",
-            "label": "Memory Promotions",
-            "target_file": "MEMORY.md",
-            "status": "not-implemented",
-            "pending_count": 0,
-            "items": [],
-            "summary": "No pending MEMORY.md promotions.",
-            "source": "/mc/runtime-contract",
-        },
-    }
+    pending_writes = build_runtime_candidate_workflows()
     prompt_modes = {
         "visible_chat": {
             "id": "visible_chat",
@@ -202,6 +185,8 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
     derived_present = sum(1 for item in derived_files if item["present"])
     active_modes = sum(1 for item in prompt_modes.values() if item["status"] == "active")
 
+    pending_write_count = total_pending_runtime_candidates(pending_writes)
+
     return {
         "workspace": str(workspace_dir),
         "contract_version": "jarvis-v2-runtime-contract-v1",
@@ -213,7 +198,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
             "derived_expected": len(derived_files),
             "prompt_modes_declared": len(prompt_modes),
             "prompt_modes_active": active_modes,
-            "pending_write_count": 0,
+            "pending_write_count": pending_write_count,
         },
         "bootstrap": bootstrap,
         "files": {

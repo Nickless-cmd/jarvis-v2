@@ -183,9 +183,34 @@ function normalizePendingWrite(item = {}) {
     targetFile: item.target_file || '',
     status: item.status || 'unknown',
     pendingCount: Number(item.pending_count || 0),
-    items: item.items || [],
+    approvedCount: Number(item.approved_count || 0),
+    rejectedCount: Number(item.rejected_count || 0),
+    items: (item.items || []).map(normalizeCandidateItem),
     source: item.source || '/mc/runtime-contract',
     summary: item.summary || 'No pending workflow items.',
+  }
+}
+
+function normalizeCandidateItem(item = {}) {
+  return {
+    candidateId: item.candidate_id || '',
+    candidateType: item.candidate_type || '',
+    targetFile: item.target_file || '',
+    status: item.status || 'unknown',
+    sourceKind: item.source_kind || '',
+    sourceMode: item.source_mode || '',
+    actor: item.actor || '',
+    sessionId: item.session_id || '',
+    runId: item.run_id || '',
+    canonicalKey: item.canonical_key || '',
+    summary: item.summary || 'Candidate detail',
+    reason: item.reason || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    confidence: item.confidence || '',
+    source: item.source || '/mc/runtime-contract',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
   }
 }
 

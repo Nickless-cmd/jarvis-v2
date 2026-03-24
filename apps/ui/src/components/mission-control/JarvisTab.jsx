@@ -33,6 +33,30 @@ function detailRow(item, label, onOpen) {
   )
 }
 
+function candidateRow(item, onOpen) {
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.candidateId || item.summary}
+      onClick={() => onOpen(item.summary || 'Candidate', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'candidate detail',
+      })}
+    >
+      <div>
+        <strong>{item.summary || 'Candidate'}</strong>
+        <span>{item.evidenceSummary || item.reason || 'Inspect candidate evidence'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <small>{item.status || 'proposed'}</small>
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -116,7 +140,7 @@ export function JarvisTab({ data, onOpenItem }) {
             <div className="compact-metric">
               <span>Pending Writes</span>
               <strong>{contractSummary?.pending_write_count || 0}</strong>
-              <p>Preference and memory workflows are visible but not yet implemented.</p>
+              <p>Governed USER.md and MEMORY.md candidates are tracked without file writes.</p>
             </div>
           </div>
           <div className="mc-contract-grid">
@@ -170,16 +194,19 @@ export function JarvisTab({ data, onOpenItem }) {
               <div className="mc-list compact-list">
                 {detailRow(contract?.bootstrap, 'Bootstrap State', onOpenItem)}
                 {pendingWrites.map((item) => (
-                  <button className="mc-list-row" key={item.id} onClick={() => onOpenItem(item.label, item)}>
-                    <div>
-                      <strong>{item.label}</strong>
-                      <span>{item.summary}</span>
-                    </div>
-                    <div className="mc-row-meta">
-                      <small>{item.status}</small>
-                      <ChevronRight size={14} />
-                    </div>
-                  </button>
+                  <div key={item.id} className="mc-inline-group">
+                    <button className="mc-list-row" onClick={() => onOpenItem(item.label, item)}>
+                      <div>
+                        <strong>{item.label}</strong>
+                        <span>{item.summary}</span>
+                      </div>
+                      <div className="mc-row-meta">
+                        <small>{item.pendingCount || 0} proposed</small>
+                        <ChevronRight size={14} />
+                      </div>
+                    </button>
+                    {(item.items || []).slice(0, 2).map((candidate) => candidateRow(candidate, onOpenItem))}
+                  </div>
                 ))}
                 <button
                   className="mc-list-row"

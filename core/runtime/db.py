@@ -127,6 +127,42 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS runtime_contract_candidates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                candidate_id TEXT NOT NULL UNIQUE,
+                candidate_type TEXT NOT NULL,
+                target_file TEXT NOT NULL,
+                status TEXT NOT NULL,
+                source_kind TEXT NOT NULL,
+                source_mode TEXT NOT NULL,
+                actor TEXT NOT NULL DEFAULT '',
+                session_id TEXT NOT NULL DEFAULT '',
+                run_id TEXT NOT NULL DEFAULT '',
+                canonical_key TEXT NOT NULL DEFAULT '',
+                summary TEXT NOT NULL,
+                reason TEXT NOT NULL DEFAULT '',
+                evidence_summary TEXT NOT NULL DEFAULT '',
+                support_summary TEXT NOT NULL DEFAULT '',
+                confidence TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_runtime_contract_candidates_status_target
+            ON runtime_contract_candidates(status, target_file, id DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_runtime_contract_candidates_canonical_key
+            ON runtime_contract_candidates(candidate_type, target_file, canonical_key, id DESC)
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS private_inner_notes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 note_id TEXT NOT NULL UNIQUE,
@@ -1674,3 +1710,294 @@ def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> Non
         conn.execute(
             f"ALTER TABLE capability_approval_requests ADD COLUMN {name} {spec}"
         )
+
+
+def upsert_runtime_contract_candidate(
+    *,
+    candidate_id: str,
+    candidate_type: str,
+    target_file: str,
+    status: str,
+    source_kind: str,
+    source_mode: str,
+    actor: str,
+    session_id: str,
+    run_id: str,
+    canonical_key: str,
+    summary: str,
+    reason: str,
+    evidence_summary: str,
+    support_summary: str,
+    confidence: str,
+    created_at: str,
+    updated_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_runtime_contract_candidate_table(conn)
+        existing = None
+        if canonical_key:
+            existing = conn.execute(
+                """
+                SELECT candidate_id
+                FROM runtime_contract_candidates
+                WHERE candidate_type = ?
+                  AND target_file = ?
+                  AND canonical_key = ?
+                  AND status IN ('proposed', 'approved')
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (candidate_type, target_file, canonical_key),
+            ).fetchone()
+
+        if existing is None:
+            conn.execute(
+                """
+                INSERT INTO runtime_contract_candidates (
+                    candidate_id,
+                    candidate_type,
+                    target_file,
+                    status,
+                    source_kind,
+                    source_mode,
+                    actor,
+                    session_id,
+                    run_id,
+                    canonical_key,
+                    summary,
+                    reason,
+                    evidence_summary,
+                    support_summary,
+                    confidence,
+                    created_at,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate_id,
+                    candidate_type,
+                    target_file,
+                    status,
+                    source_kind,
+                    source_mode,
+                    actor,
+                    session_id,
+                    run_id,
+                    canonical_key,
+                    summary,
+                    reason,
+                    evidence_summary,
+                    support_summary,
+                    confidence,
+                    created_at,
+                    updated_at,
+                ),
+            )
+            conn.commit()
+            resolved_id = candidate_id
+        else:
+            resolved_id = str(existing["candidate_id"])
+            conn.execute(
+                """
+                UPDATE runtime_contract_candidates
+                SET
+                    status = ?,
+                    source_kind = ?,
+                    source_mode = ?,
+                    actor = ?,
+                    session_id = ?,
+                    run_id = ?,
+                    summary = ?,
+                    reason = ?,
+                    evidence_summary = ?,
+                    support_summary = ?,
+                    confidence = ?,
+                    updated_at = ?
+                WHERE candidate_id = ?
+                """,
+                (
+                    status,
+                    source_kind,
+                    source_mode,
+                    actor,
+                    session_id,
+                    run_id,
+                    summary,
+                    reason,
+                    evidence_summary,
+                    support_summary,
+                    confidence,
+                    updated_at,
+                    resolved_id,
+                ),
+            )
+            conn.commit()
+
+    candidate = get_runtime_contract_candidate(resolved_id)
+    if candidate is None:
+        raise RuntimeError("runtime contract candidate was not persisted")
+    return candidate
+
+
+def list_runtime_contract_candidates(
+    *,
+    candidate_type: str | None = None,
+    target_file: str | None = None,
+    status: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_runtime_contract_candidate_table(conn)
+        clauses: list[str] = []
+        params: list[object] = []
+        if candidate_type:
+            clauses.append("candidate_type = ?")
+            params.append(candidate_type)
+        if target_file:
+            clauses.append("target_file = ?")
+            params.append(target_file)
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = conn.execute(
+            f"""
+            SELECT
+                candidate_id,
+                candidate_type,
+                target_file,
+                status,
+                source_kind,
+                source_mode,
+                actor,
+                session_id,
+                run_id,
+                canonical_key,
+                summary,
+                reason,
+                evidence_summary,
+                support_summary,
+                confidence,
+                created_at,
+                updated_at
+            FROM runtime_contract_candidates
+            {where}
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (*params, max(limit, 1)),
+        ).fetchall()
+    return [_runtime_contract_candidate_from_row(row) for row in rows]
+
+
+def get_runtime_contract_candidate(candidate_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_contract_candidate_table(conn)
+        row = conn.execute(
+            """
+            SELECT
+                candidate_id,
+                candidate_type,
+                target_file,
+                status,
+                source_kind,
+                source_mode,
+                actor,
+                session_id,
+                run_id,
+                canonical_key,
+                summary,
+                reason,
+                evidence_summary,
+                support_summary,
+                confidence,
+                created_at,
+                updated_at
+            FROM runtime_contract_candidates
+            WHERE candidate_id = ?
+            LIMIT 1
+            """,
+            (candidate_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _runtime_contract_candidate_from_row(row)
+
+
+def runtime_contract_candidate_counts() -> dict[str, int]:
+    with connect() as conn:
+        _ensure_runtime_contract_candidate_table(conn)
+        rows = conn.execute(
+            """
+            SELECT candidate_type, status, COUNT(*) AS n
+            FROM runtime_contract_candidates
+            GROUP BY candidate_type, status
+            """
+        ).fetchall()
+    counts: dict[str, int] = {}
+    for row in rows:
+        key = f"{row['candidate_type']}:{row['status']}"
+        counts[key] = int(row["n"] or 0)
+    return counts
+
+
+def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "candidate_id": row["candidate_id"],
+        "candidate_type": row["candidate_type"],
+        "target_file": row["target_file"],
+        "status": row["status"],
+        "source_kind": row["source_kind"],
+        "source_mode": row["source_mode"],
+        "actor": row["actor"],
+        "session_id": row["session_id"],
+        "run_id": row["run_id"],
+        "canonical_key": row["canonical_key"],
+        "summary": row["summary"],
+        "reason": row["reason"],
+        "evidence_summary": row["evidence_summary"],
+        "support_summary": row["support_summary"],
+        "confidence": row["confidence"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runtime_contract_candidates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            candidate_id TEXT NOT NULL UNIQUE,
+            candidate_type TEXT NOT NULL,
+            target_file TEXT NOT NULL,
+            status TEXT NOT NULL,
+            source_kind TEXT NOT NULL,
+            source_mode TEXT NOT NULL,
+            actor TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            canonical_key TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL,
+            reason TEXT NOT NULL DEFAULT '',
+            evidence_summary TEXT NOT NULL DEFAULT '',
+            support_summary TEXT NOT NULL DEFAULT '',
+            confidence TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_contract_candidates_status_target
+        ON runtime_contract_candidates(status, target_file, id DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_contract_candidates_canonical_key
+        ON runtime_contract_candidates(candidate_type, target_file, canonical_key, id DESC)
+        """
+    )

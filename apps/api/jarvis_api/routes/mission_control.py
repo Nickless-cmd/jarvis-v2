@@ -26,6 +26,9 @@ from apps.api.jarvis_api.services.development_focus_tracking import (
 from apps.api.jarvis_api.services.reflective_critic_tracking import (
     build_runtime_reflective_critic_surface,
 )
+from apps.api.jarvis_api.services.world_model_signal_tracking import (
+    build_runtime_world_model_signal_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -245,6 +248,7 @@ def mc_jarvis() -> dict:
     operational_alignment = _operational_preference_alignment_surface()
     development_focuses = build_runtime_development_focus_surface()
     reflective_critics = build_runtime_reflective_critic_surface()
+    world_model_signals = build_runtime_world_model_signal_surface()
     heartbeat = heartbeat_runtime_surface()
 
     return {
@@ -262,6 +266,7 @@ def mc_jarvis() -> dict:
                 relation_state,
                 visible_session,
                 promotion_signal,
+                world_model_signals,
             ),
             "heartbeat": _jarvis_heartbeat_summary(heartbeat),
         },
@@ -294,6 +299,7 @@ def mc_jarvis() -> dict:
             "relation_state": relation_state,
             "promotion_signal": promotion_signal,
             "promotion_decision": promotion_decision,
+            "world_model_signals": world_model_signals,
         },
         "heartbeat": heartbeat,
     }
@@ -398,6 +404,7 @@ def mc_runtime() -> dict:
         "private_retained_memory_projection": _private_retained_memory_projection_surface(),
         "runtime_development_focuses": build_runtime_development_focus_surface(),
         "runtime_reflective_critics": build_runtime_reflective_critic_surface(),
+        "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -1025,10 +1032,14 @@ def _jarvis_development_summary(
 
 
 def _jarvis_continuity_summary(
-    relation_state: dict, visible_session: dict, promotion_signal: dict
+    relation_state: dict,
+    visible_session: dict,
+    promotion_signal: dict,
+    world_model_signals: dict | None = None,
 ) -> dict[str, str]:
     relation = relation_state.get("current") or {}
     signal = promotion_signal.get("current") or {}
+    world_summary = (world_model_signals or {}).get("summary") or {}
     return {
         "continuity_mode": str(
             relation.get("continuity_mode")
@@ -1045,6 +1056,8 @@ def _jarvis_continuity_summary(
             limit=96,
         ),
         "session_status": str(visible_session.get("latest_status") or "unknown"),
+        "world_model_count": str(world_summary.get("active_count") or 0),
+        "current_world_model": str(world_summary.get("current_signal") or "No active world-model signal"),
     }
 
 

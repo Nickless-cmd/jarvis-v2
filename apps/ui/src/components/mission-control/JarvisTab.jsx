@@ -125,6 +125,34 @@ function reflectiveCriticRow(item, onOpen) {
   )
 }
 
+function worldModelSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'World-Model Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'world-model signal detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'World-Model Signal'}</strong>
+        <span>{item.statusReason || item.rationale || item.supportSummary || 'Inspect world-model evidence'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -135,6 +163,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const heartbeatEvents = heartbeat?.recentEvents || []
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
+  const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
   const capabilityContract = contract?.capabilityContract || {}
   const promptModes = contract?.promptModes || []
@@ -663,6 +692,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <span>Interaction mode</span>
               <strong>{summary?.continuity?.interaction_mode || 'unknown'}</strong>
             </div>
+            <div className="compact-metric">
+              <span>World Model</span>
+              <strong>{worldModelSignals?.summary?.active_count || summary?.continuity?.world_model_count || 0}</strong>
+              <p>{worldModelSignals?.summary?.current_signal || summary?.continuity?.current_world_model || 'No active world-model signal'}</p>
+              <p>
+                {worldModelSignals?.summary?.uncertain_count || 0} uncertain · {worldModelSignals?.summary?.corrected_count || 0} corrected · {worldModelSignals?.summary?.stale_count || 0} stale
+              </p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.continuity?.visibleSession, 'Visible Session Continuity', onOpenItem)}
@@ -670,6 +707,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             {detailRow(data?.continuity?.relationState, 'Relation State', onOpenItem)}
             {detailRow(data?.continuity?.promotionSignal, 'Promotion Signal', onOpenItem)}
             {detailRow(data?.continuity?.promotionDecision, 'Promotion Decision', onOpenItem)}
+            {worldModelSignals.items.length === 0 ? (
+              <div className="mc-empty-state">
+                <strong>No active world-model signal</strong>
+                <p className="muted">Jarvis has not accumulated a bounded situational assumption yet.</p>
+              </div>
+            ) : worldModelSignals.items.slice(0, 3).map((item) => worldModelSignalRow(item, onOpenItem))}
           </div>
         </article>
       </section>

@@ -14,6 +14,7 @@ ALLOWED_EVENT_FAMILIES = {
     "swarm",
     "self-review",
     "reflective_critic",
+    "world_model_signal",
     "self-model",
     "inner-voice",
     "incident",

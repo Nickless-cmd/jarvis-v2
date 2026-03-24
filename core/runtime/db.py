@@ -18,6 +18,7 @@ _SOURCE_KIND_RANKS = {
     "runtime-derived-support": 1,
     "single-session-pattern": 2,
     "session-evidence": 3,
+    "repeated-user-correction": 3,
     "user-explicit": 4,
 }
 
@@ -227,6 +228,44 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS runtime_development_focuses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                focus_id TEXT NOT NULL UNIQUE,
+                focus_type TEXT NOT NULL,
+                canonical_key TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'active',
+                title TEXT NOT NULL DEFAULT '',
+                summary TEXT NOT NULL DEFAULT '',
+                rationale TEXT NOT NULL DEFAULT '',
+                source_kind TEXT NOT NULL DEFAULT '',
+                confidence TEXT NOT NULL DEFAULT '',
+                evidence_summary TEXT NOT NULL DEFAULT '',
+                support_summary TEXT NOT NULL DEFAULT '',
+                status_reason TEXT NOT NULL DEFAULT '',
+                run_id TEXT NOT NULL DEFAULT '',
+                session_id TEXT NOT NULL DEFAULT '',
+                support_count INTEGER NOT NULL DEFAULT 1,
+                session_count INTEGER NOT NULL DEFAULT 1,
+                merge_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_runtime_development_focuses_status
+            ON runtime_development_focuses(status, id DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_runtime_development_focuses_canonical_key
+            ON runtime_development_focuses(canonical_key, id DESC)
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS heartbeat_runtime_state (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 state_id TEXT NOT NULL UNIQUE,
@@ -298,6 +337,7 @@ def init_db() -> None:
         )
         _ensure_heartbeat_runtime_state_columns(conn)
         _ensure_heartbeat_runtime_tick_columns(conn)
+        _ensure_runtime_development_focus_table(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS private_inner_notes (
@@ -1085,6 +1125,44 @@ def get_private_development_state() -> dict[str, object] | None:
         "confidence": row["confidence"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
+    }
+
+
+def get_private_reflective_selection() -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                signal_id,
+                source,
+                run_id,
+                work_id,
+                selection_kind,
+                reinforce,
+                reconsider,
+                fade,
+                identity_relevance,
+                confidence,
+                created_at
+            FROM private_reflective_selections
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "signal_id": row["signal_id"],
+        "source": row["source"],
+        "run_id": row["run_id"],
+        "work_id": row["work_id"],
+        "selection_kind": row["selection_kind"],
+        "reinforce": row["reinforce"],
+        "reconsider": row["reconsider"],
+        "fade": row["fade"],
+        "identity_relevance": row["identity_relevance"],
+        "confidence": row["confidence"],
+        "created_at": row["created_at"],
     }
 
 
@@ -2415,6 +2493,292 @@ def runtime_contract_file_write_counts() -> dict[str, int]:
     return counts
 
 
+def upsert_runtime_development_focus(
+    *,
+    focus_id: str,
+    focus_type: str,
+    canonical_key: str,
+    status: str,
+    title: str,
+    summary: str,
+    rationale: str,
+    source_kind: str,
+    confidence: str,
+    evidence_summary: str,
+    support_summary: str,
+    support_count: int,
+    session_count: int,
+    created_at: str,
+    updated_at: str,
+    status_reason: str = "",
+    run_id: str = "",
+    session_id: str = "",
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_runtime_development_focus_table(conn)
+        existing = None
+        if canonical_key:
+            existing = conn.execute(
+                """
+                SELECT
+                    focus_id,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    support_count,
+                    session_count,
+                    merge_count,
+                    created_at,
+                    updated_at
+                FROM runtime_development_focuses
+                WHERE canonical_key = ?
+                  AND status IN ('active', 'stale')
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (canonical_key,),
+            ).fetchone()
+
+        if existing is None:
+            conn.execute(
+                """
+                INSERT INTO runtime_development_focuses (
+                    focus_id,
+                    focus_type,
+                    canonical_key,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    support_count,
+                    session_count,
+                    merge_count,
+                    created_at,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    focus_id,
+                    focus_type,
+                    canonical_key,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    max(int(support_count or 0), 1),
+                    max(int(session_count or 0), 1),
+                    0,
+                    created_at,
+                    updated_at,
+                ),
+            )
+            conn.commit()
+            resolved_id = focus_id
+            meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
+        else:
+            resolved_id = str(existing["focus_id"])
+            merged_status = "active" if status == "active" else str(existing["status"] or status)
+            merged_source_kind = _stronger_ranked_value(
+                str(existing["source_kind"] or ""),
+                source_kind,
+                _SOURCE_KIND_RANKS,
+            )
+            merged_confidence = _stronger_ranked_value(
+                str(existing["confidence"] or ""),
+                confidence,
+                _CONFIDENCE_RANKS,
+            )
+            merged_evidence_summary = _merge_text_fragments(
+                str(existing["evidence_summary"] or ""),
+                evidence_summary,
+            )
+            merged_support_summary = _merge_text_fragments(
+                str(existing["support_summary"] or ""),
+                support_summary,
+            )
+            merged_status_reason = _merge_text_fragments(
+                str(existing["status_reason"] or ""),
+                status_reason,
+            )
+            merged_support_count = max(
+                int(existing["support_count"] or 0),
+                max(int(support_count or 0), 1),
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0),
+                max(int(session_count or 0), 1),
+            )
+            same_payload = (
+                merged_status == str(existing["status"] or "")
+                and title == str(existing["title"] or "")
+                and summary == str(existing["summary"] or "")
+                and rationale == str(existing["rationale"] or "")
+                and merged_source_kind == str(existing["source_kind"] or "")
+                and merged_confidence == str(existing["confidence"] or "")
+                and merged_evidence_summary == str(existing["evidence_summary"] or "")
+                and merged_support_summary == str(existing["support_summary"] or "")
+                and merged_status_reason == str(existing["status_reason"] or "")
+                and run_id == str(existing["run_id"] or "")
+                and session_id == str(existing["session_id"] or "")
+                and merged_support_count == int(existing["support_count"] or 0)
+                and merged_session_count == int(existing["session_count"] or 0)
+            )
+            if same_payload:
+                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+            else:
+                conn.execute(
+                    """
+                    UPDATE runtime_development_focuses
+                    SET
+                        status = ?,
+                        title = ?,
+                        summary = ?,
+                        rationale = ?,
+                        source_kind = ?,
+                        confidence = ?,
+                        evidence_summary = ?,
+                        support_summary = ?,
+                        status_reason = ?,
+                        run_id = ?,
+                        session_id = ?,
+                        support_count = ?,
+                        session_count = ?,
+                        merge_count = COALESCE(merge_count, 0) + 1,
+                        updated_at = ?
+                    WHERE focus_id = ?
+                    """,
+                    (
+                        merged_status,
+                        title,
+                        summary,
+                        rationale,
+                        merged_source_kind,
+                        merged_confidence,
+                        merged_evidence_summary,
+                        merged_support_summary,
+                        merged_status_reason,
+                        run_id,
+                        session_id,
+                        merged_support_count,
+                        merged_session_count,
+                        updated_at,
+                        resolved_id,
+                    ),
+                )
+                conn.commit()
+                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+
+    focus = get_runtime_development_focus(resolved_id)
+    if focus is None:
+        raise RuntimeError("runtime development focus was not persisted")
+    focus.update(meta)
+    return focus
+
+
+def list_runtime_development_focuses(
+    *,
+    status: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_runtime_development_focus_table(conn)
+        clauses: list[str] = []
+        params: list[object] = []
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = conn.execute(
+            f"""
+            SELECT
+                focus_id,
+                focus_type,
+                canonical_key,
+                status,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                merge_count,
+                created_at,
+                updated_at
+            FROM runtime_development_focuses
+            {where}
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (*params, max(limit, 1)),
+        ).fetchall()
+    return [_runtime_development_focus_from_row(row) for row in rows]
+
+
+def get_runtime_development_focus(focus_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_development_focus_table(conn)
+        row = conn.execute(
+            """
+            SELECT
+                focus_id,
+                focus_type,
+                canonical_key,
+                status,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                merge_count,
+                created_at,
+                updated_at
+            FROM runtime_development_focuses
+            WHERE focus_id = ?
+            LIMIT 1
+            """,
+            (focus_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _runtime_development_focus_from_row(row)
+
+
 def get_heartbeat_runtime_state() -> dict[str, object] | None:
     with connect() as conn:
         row = conn.execute(
@@ -3068,4 +3432,69 @@ def _runtime_contract_file_write_from_row(row: sqlite3.Row) -> dict[str, object]
         "summary": row["summary"],
         "content_line": row["content_line"],
         "created_at": row["created_at"],
+    }
+
+
+def _ensure_runtime_development_focus_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runtime_development_focuses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            focus_id TEXT NOT NULL UNIQUE,
+            focus_type TEXT NOT NULL,
+            canonical_key TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'active',
+            title TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL DEFAULT '',
+            rationale TEXT NOT NULL DEFAULT '',
+            source_kind TEXT NOT NULL DEFAULT '',
+            confidence TEXT NOT NULL DEFAULT '',
+            evidence_summary TEXT NOT NULL DEFAULT '',
+            support_summary TEXT NOT NULL DEFAULT '',
+            status_reason TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
+            support_count INTEGER NOT NULL DEFAULT 1,
+            session_count INTEGER NOT NULL DEFAULT 1,
+            merge_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_development_focuses_status
+        ON runtime_development_focuses(status, id DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_development_focuses_canonical_key
+        ON runtime_development_focuses(canonical_key, id DESC)
+        """
+    )
+
+
+def _runtime_development_focus_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "focus_id": row["focus_id"],
+        "focus_type": row["focus_type"],
+        "canonical_key": row["canonical_key"],
+        "status": row["status"],
+        "title": row["title"],
+        "summary": row["summary"],
+        "rationale": row["rationale"],
+        "source_kind": row["source_kind"],
+        "confidence": row["confidence"],
+        "evidence_summary": row["evidence_summary"],
+        "support_summary": row["support_summary"],
+        "status_reason": row["status_reason"],
+        "run_id": row["run_id"],
+        "session_id": row["session_id"],
+        "support_count": int(row["support_count"] or 0),
+        "session_count": int(row["session_count"] or 0),
+        "merge_count": int(row["merge_count"] or 0),
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
     }

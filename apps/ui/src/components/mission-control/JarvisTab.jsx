@@ -64,6 +64,34 @@ function candidateRow(item, onOpen) {
   )
 }
 
+function developmentFocusRow(item, onOpen) {
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.focusId || item.title}
+      onClick={() => onOpen(item.title || 'Development Focus', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'development focus detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Development Focus'}</strong>
+        <span>{item.rationale || item.supportSummary || 'Inspect development focus evidence'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <small>
+          {item.status || 'active'}
+          {item.confidence ? ` · ${item.confidence}` : ''}
+          {item.sourceKind ? ` · ${item.sourceKind.replace(/-/g, ' ')}` : ''}
+        </small>
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -72,6 +100,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const heartbeatPolicy = heartbeat?.policy || {}
   const heartbeatTicks = heartbeat?.recentTicks || []
   const heartbeatEvents = heartbeat?.recentEvents || []
+  const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
   const promptModes = contract?.promptModes || []
   const pendingWrites = contract?.pendingWrites || []
@@ -518,6 +547,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <span>Recurring tension</span>
               <strong>{summary?.development?.tension || 'unknown'}</strong>
             </div>
+            <div className="compact-metric">
+              <span>Guided focus</span>
+              <strong>{developmentFocuses?.summary?.active_count || summary?.development?.focus_count || 0}</strong>
+              <p>{developmentFocuses?.summary?.current_focus || summary?.development?.current_focus || 'No active development focus'}</p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}
@@ -526,6 +560,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             {detailRow(data?.development?.reflectiveSelection, 'Latest Reflective Selection', onOpenItem)}
             {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}
             {detailRow(data?.development?.operationalAlignment, 'Preference Alignment', onOpenItem)}
+            {developmentFocuses.items.length === 0 ? (
+              <div className="mc-empty-state">
+                <strong>No active development focus</strong>
+                <p className="muted">Jarvis has not accumulated a bounded development focus yet.</p>
+              </div>
+            ) : developmentFocuses.items.slice(0, 3).map((item) => developmentFocusRow(item, onOpenItem))}
           </div>
         </article>
 

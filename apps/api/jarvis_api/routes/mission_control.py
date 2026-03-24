@@ -20,6 +20,9 @@ from apps.api.jarvis_api.services.heartbeat_runtime import (
     heartbeat_runtime_surface,
     run_heartbeat_tick,
 )
+from apps.api.jarvis_api.services.development_focus_tracking import (
+    build_runtime_development_focus_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -236,6 +239,7 @@ def mc_jarvis() -> dict:
     reflective = _private_reflective_selection_surface()
     operational_preference = _private_operational_preference_surface()
     operational_alignment = _operational_preference_alignment_surface()
+    development_focuses = build_runtime_development_focus_surface()
     heartbeat = heartbeat_runtime_surface()
 
     return {
@@ -243,7 +247,11 @@ def mc_jarvis() -> dict:
             "visible_identity": _jarvis_identity_summary(visible_identity),
             "state_signal": _jarvis_state_signal(protected_voice, initiative_tension, private_state),
             "retained_memory": _jarvis_retained_summary(retained_projection, retained_record),
-            "development": _jarvis_development_summary(self_model, development_state),
+            "development": _jarvis_development_summary(
+                self_model,
+                development_state,
+                development_focuses,
+            ),
             "continuity": _jarvis_continuity_summary(
                 relation_state,
                 visible_session,
@@ -271,6 +279,7 @@ def mc_jarvis() -> dict:
             "operational_preference": operational_preference,
             "operational_alignment": operational_alignment,
             "temporal_curiosity": temporal_curiosity,
+            "development_focuses": development_focuses,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -380,6 +389,7 @@ def mc_runtime() -> dict:
         "private_promotion_decision": _private_promotion_decision_surface(),
         "private_retained_memory_record": _private_retained_memory_record_surface(),
         "private_retained_memory_projection": _private_retained_memory_projection_surface(),
+        "runtime_development_focuses": build_runtime_development_focus_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -943,10 +953,11 @@ def _jarvis_retained_summary(
 
 
 def _jarvis_development_summary(
-    self_model: dict, development_state: dict
+    self_model: dict, development_state: dict, development_focuses: dict | None = None
 ) -> dict[str, str]:
     model = self_model.get("current") or {}
     state = development_state.get("current") or {}
+    focus_summary = (development_focuses or {}).get("summary") or {}
     return {
         "direction": str(
             model.get("growth_direction")
@@ -962,6 +973,8 @@ def _jarvis_development_summary(
             or model.get("recurring_tension")
             or "unknown"
         ),
+        "focus_count": str(focus_summary.get("active_count") or 0),
+        "current_focus": str(focus_summary.get("current_focus") or "No active development focus"),
     }
 
 

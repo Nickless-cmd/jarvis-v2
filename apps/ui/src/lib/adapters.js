@@ -327,6 +327,31 @@ function normalizeHeartbeatTick(item = {}) {
   }
 }
 
+function normalizeDevelopmentFocus(item = {}) {
+  return {
+    focusId: item.focus_id || '',
+    focusType: item.focus_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Development focus',
+    summary: item.summary || item.title || 'Development focus detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    source: item.source || '/mc/jarvis::development-focus',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -774,6 +799,11 @@ export const backend = {
           source: development.temporal_curiosity?.current?.source || '/mc/runtime.private_temporal_curiosity_state',
           summary: `${development.temporal_curiosity?.current?.rhythm_state || 'unknown'} · ${development.temporal_curiosity?.current?.curiosity_level || 'unknown'}`,
         }),
+        developmentFocuses: {
+          active: Boolean(development.development_focuses?.active),
+          summary: development.development_focuses?.summary || {},
+          items: (development.development_focuses?.items || []).map(normalizeDevelopmentFocus),
+        },
       },
       continuity: {
         visibleSession: normalizeJarvisItem(continuity.visible_session || {}, {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-export function MainAgentPanel({ selection, onSave }) {
+export function MainAgentPanel({ selection, onSave, embedded = false }) {
   const [provider, setProvider] = useState(selection.currentProvider)
   const [model, setModel] = useState(selection.currentModel)
   const [authProfile, setAuthProfile] = useState(selection.currentAuthProfile)
@@ -15,7 +15,7 @@ export function MainAgentPanel({ selection, onSave }) {
   const models = useMemo(() => selection.availableConfiguredTargets.filter((x) => x.provider === provider), [selection, provider])
 
   return (
-    <section className="support-card authority-card">
+    <section className={embedded ? 'authority-card embedded' : 'support-card authority-card'}>
       <div className="panel-header stacked">
         <div>
           <h3>Main agent</h3>

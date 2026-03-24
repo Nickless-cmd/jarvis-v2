@@ -162,6 +162,48 @@ def mc_costs(limit: int = 50) -> dict:
     }
 
 
+@router.get("/runs")
+def mc_runs(limit: int = 20) -> dict:
+    surface = _visible_run_surface()
+    work = _visible_work_surface()
+    recent_runs = list(surface.get("persisted_recent_runs") or [])[: max(limit, 1)]
+    failed_runs = [
+        item for item in recent_runs if str(item.get("status") or "") in {"failed", "cancelled"}
+    ]
+    return {
+        "active_run": surface.get("active_run"),
+        "last_outcome": surface.get("last_outcome"),
+        "last_capability_use": surface.get("last_capability_use"),
+        "recent_runs": recent_runs,
+        "recent_events": list(surface.get("recent_events") or []),
+        "recent_work_units": list(work.get("persisted_recent_units") or [])[:8],
+        "recent_work_notes": list(work.get("persisted_recent_notes") or [])[:8],
+        "summary": {
+            "active": bool(surface.get("active")),
+            "recent_count": len(recent_runs),
+            "failed_count": len(failed_runs),
+        },
+    }
+
+
+@router.get("/approvals")
+def mc_approvals(limit: int = 20) -> dict:
+    surface = _capability_invocation_surface()
+    requests = list(surface.get("recent_approval_requests") or [])[: max(limit, 1)]
+    pending = [item for item in requests if str(item.get("status") or "") == "pending"]
+    approved = [item for item in requests if str(item.get("status") or "") == "approved"]
+    return {
+        "requests": requests,
+        "recent_invocations": list(surface.get("persisted_recent_invocations") or [])[: max(limit, 1)],
+        "recent_events": list(surface.get("recent_events") or []),
+        "summary": {
+            "pending_count": len(pending),
+            "approved_count": len(approved),
+            "request_count": len(requests),
+        },
+    }
+
+
 @router.get("/runtime")
 def mc_runtime() -> dict:
     settings = load_settings()

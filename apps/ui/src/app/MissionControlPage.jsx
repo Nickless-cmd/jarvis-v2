@@ -1,54 +1,106 @@
-import { MainAgentPanel } from '../components/shared/MainAgentPanel'
-import { SecondaryPanels } from '../components/shared/SecondaryPanels'
+import { RefreshCcw } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { DetailDrawer } from '../components/mission-control/DetailDrawer'
+import { MCTabBar } from '../components/mission-control/MCTabBar'
+import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
+import { OperationsTab } from '../components/mission-control/OperationsTab'
+import { OverviewTab } from '../components/mission-control/OverviewTab'
+import { useMissionControlPhaseA } from './useMissionControlPhaseA'
 
-export function MissionControlPage({ selection, missionControl, onSelectionChange }) {
+export function MissionControlPage({ selection, onSelectionChange }) {
+  const {
+    activeTab,
+    setActiveTab,
+    sections,
+    drawer,
+    isLoading,
+    isRefreshing,
+    navigateTo,
+    refreshAll,
+    closeDrawer,
+    openRunDetail,
+    openEventDetail,
+    openApprovalDetail,
+    openSessionDetail,
+    actOnApproval,
+  } = useMissionControlPhaseA({ active: true, selection })
+  const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
+
+  const filteredObservability = useMemo(() => {
+    if (!sections.observability) return sections.observability
+    if (eventFamilyFilter === 'all') return sections.observability
+    return {
+      ...sections.observability,
+      events: (sections.observability.events || []).filter((event) => event.family === eventFamilyFilter),
+    }
+  }, [sections.observability, eventFamilyFilter])
+
+  if (isLoading && !sections.overview) {
+    return <div className="boot-screen">Loading Mission Control…</div>
+  }
+
   return (
-    <div className="mission-control-page">
-      <section className="hero-card compact">
-        <p className="eyebrow">Mission Control</p>
-        <h1>Control room</h1>
-        <p>Shared shell, same palette, heavier operator surface.</p>
+    <div className="mission-control-phasea">
+      <section className="hero-card compact mc-header-card">
+        <div>
+          <p className="eyebrow">Mission Control</p>
+          <h1>Control room</h1>
+          <p>Observability, execution, and evidence for Jarvis as an experiment.</p>
+        </div>
+        <button className="icon-btn" onClick={() => refreshAll({ background: true })} title="Refresh Mission Control">
+          <RefreshCcw size={15} className={isRefreshing ? 'spin' : ''} />
+        </button>
       </section>
 
-      <section className="mc-overview-grid">
-        {missionControl.overview.map((item) => (
-          <article className={`mc-stat tone-${item.tone}`} key={item.label}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-          </article>
-        ))}
-      </section>
+      <MCTabBar activeTab={activeTab} onChange={setActiveTab} />
 
-      <section className="mc-panels-grid">
-        <MainAgentPanel selection={selection} onSave={onSelectionChange} />
-        <SecondaryPanels missionControl={missionControl} selection={selection} />
+      {activeTab === 'overview' ? (
+        <OverviewTab
+          data={sections.overview}
+          onJump={navigateTo}
+          onOpenEvent={(event) => {
+            navigateTo('observability', 'event-timeline')
+            openEventDetail(event)
+          }}
+        />
+      ) : null}
 
-        {missionControl.panels.map((panel) => (
-          <article className="support-card" key={panel.title}>
-            <h3>{panel.title}</h3>
-            <p>{panel.body}</p>
-          </article>
-        ))}
+      {activeTab === 'operations' ? (
+        <OperationsTab
+          data={sections.operations}
+          selection={selection}
+          onSelectionChange={onSelectionChange}
+          onOpenRun={openRunDetail}
+          onOpenSession={openSessionDetail}
+          onOpenApproval={openApprovalDetail}
+        />
+      ) : null}
 
-        <article className="support-card">
-          <h3>Main agent target</h3>
-          <p>{selection.currentProvider} / {selection.currentModel}</p>
-          <p className="muted">Authority: {selection.selectionAuthority}</p>
-        </article>
+      {activeTab === 'observability' ? (
+        <div className="mc-observability-shell">
+          <div className="mc-toolbar">
+            <label className="mc-filter">
+              <span>Event family</span>
+              <select value={eventFamilyFilter} onChange={(event) => setEventFamilyFilter(event.target.value)}>
+                <option value="all">All</option>
+                <option value="runtime">runtime</option>
+                <option value="approvals">approvals</option>
+                <option value="cost">cost</option>
+                <option value="tool">tool</option>
+                <option value="channel">channel</option>
+                <option value="incident">incident</option>
+              </select>
+            </label>
+          </div>
+          <ObservabilityTab
+            data={filteredObservability}
+            onOpenEvent={openEventDetail}
+            onOpenRun={openRunDetail}
+          />
+        </div>
+      ) : null}
 
-        <article className="support-card">
-          <h3>Local lane</h3>
-          <p>{missionControl.lanes.local.model || 'unconfigured'} / {missionControl.lanes.local.status}</p>
-          <p className="muted">{missionControl.lanes.local.baseUrl || 'http://127.0.0.1:11434'}</p>
-        </article>
-      </section>
-
-      <section className="support-card">
-        <h3>Recent events</h3>
-        <ul className="event-list">
-          {missionControl.events.map((event) => <li key={event}>{event}</li>)}
-        </ul>
-      </section>
+      <DetailDrawer drawer={drawer} onClose={closeDrawer} onApprovalAction={actOnApproval} />
     </div>
   )
 }

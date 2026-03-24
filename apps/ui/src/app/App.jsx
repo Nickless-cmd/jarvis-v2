@@ -53,7 +53,6 @@ export function App() {
       ) : (
         <MissionControlPage
           selection={shell.selection}
-          missionControl={shell.missionControl}
           onSelectionChange={handleSelectionChange}
         />
       )}

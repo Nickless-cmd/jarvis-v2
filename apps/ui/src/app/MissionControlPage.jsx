@@ -5,6 +5,7 @@ import { MCTabBar } from '../components/mission-control/MCTabBar'
 import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
 import { OperationsTab } from '../components/mission-control/OperationsTab'
 import { OverviewTab } from '../components/mission-control/OverviewTab'
+import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
 
 export function MissionControlPage({ selection, onSelectionChange }) {
@@ -15,6 +16,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     drawer,
     isLoading,
     isRefreshing,
+    lastRealtimeEventAt,
     navigateTo,
     refreshAll,
     closeDrawer,
@@ -35,6 +37,10 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     }
   }, [sections.observability, eventFamilyFilter])
 
+  const activeSectionData = sections[activeTab] || null
+  const freshnessLabel = formatFreshness(activeSectionData?.fetchedAt)
+  const updateModeLabel = mcUpdateModeLabel(activeTab)
+
   if (isLoading && !sections.overview) {
     return <div className="boot-screen">Loading Mission Control…</div>
   }
@@ -47,9 +53,21 @@ export function MissionControlPage({ selection, onSelectionChange }) {
           <h1>Control room</h1>
           <p>Observability, execution, and evidence for Jarvis as an experiment.</p>
         </div>
-        <button className="icon-btn" onClick={() => refreshAll({ background: true })} title="Refresh Mission Control">
-          <RefreshCcw size={15} className={isRefreshing ? 'spin' : ''} />
-        </button>
+        <div className="mc-header-actions">
+          <div className="mc-meta-strip">
+            <span className="mc-meta-pill" title={`Current tab freshness: ${freshnessLabel}`}>{freshnessLabel}</span>
+            <span className="mc-meta-pill" title={`Update strategy for ${activeTab}`}>{updateModeLabel}</span>
+            <span
+              className={`mc-meta-pill ${lastRealtimeEventAt ? 'live' : ''}`}
+              title="Shared realtime manager active only while Mission Control is open"
+            >
+              {lastRealtimeEventAt ? `Last event ${formatFreshness(lastRealtimeEventAt)}` : 'MC live'}
+            </span>
+          </div>
+          <button className="icon-btn" onClick={() => refreshAll({ background: true })} title="Refresh Mission Control">
+            <RefreshCcw size={15} className={isRefreshing ? 'spin' : ''} />
+          </button>
+        </div>
       </section>
 
       <MCTabBar activeTab={activeTab} onChange={setActiveTab} />

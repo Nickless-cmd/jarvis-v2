@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { formatFreshness } from './meta'
 
 function renderJson(value) {
   return JSON.stringify(value, null, 2)
@@ -14,6 +15,12 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
           <div>
             <p className="eyebrow">Detail</p>
             <h3>{drawer.title}</h3>
+            <p className="mc-drawer-subtitle">
+              {drawer.kind === 'run' ? 'Run drilldown' : null}
+              {drawer.kind === 'event' ? 'Event payload and context' : null}
+              {drawer.kind === 'approval' ? 'Approval queue item and actions' : null}
+              {drawer.kind === 'session' ? 'Session transcript preview' : null}
+            </p>
           </div>
           <button className="icon-btn" onClick={onClose}><X size={16} /></button>
         </div>
@@ -25,6 +32,11 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
               <div><span>Status</span><strong>{drawer.item.status}</strong></div>
               <div><span>Provider</span><strong>{drawer.item.provider} / {drawer.item.model}</strong></div>
               <div><span>Lane</span><strong>{drawer.item.lane}</strong></div>
+            </div>
+            <div className="mc-inline-meta">
+              <span className="mc-meta-pill">Started {formatFreshness(drawer.item.startedAt)}</span>
+              {drawer.item.finishedAt ? <span className="mc-meta-pill">Finished {formatFreshness(drawer.item.finishedAt)}</span> : null}
+              {drawer.item.capabilityId ? <span className="mc-meta-pill">Capability {drawer.item.capabilityId}</span> : null}
             </div>
             <article className="mc-code-card">
               <strong>Preview</strong>
@@ -47,6 +59,10 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
               <div><span>When</span><strong>{drawer.item.relativeTime}</strong></div>
               <div><span>ID</span><strong>{drawer.item.id}</strong></div>
             </div>
+            <div className="mc-inline-meta">
+              <span className="mc-meta-pill">Event feed detail</span>
+              <span className="mc-meta-pill">Source /ws + /mc/events</span>
+            </div>
             <article className="mc-code-card">
               <strong>Payload</strong>
               <pre>{renderJson(drawer.item.payload)}</pre>
@@ -61,6 +77,10 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
               <div><span>Status</span><strong>{drawer.item.status}</strong></div>
               <div><span>Mode</span><strong>{drawer.item.executionMode || 'unknown'}</strong></div>
               <div><span>Requested</span><strong>{drawer.item.requestedAt || 'unknown'}</strong></div>
+            </div>
+            <div className="mc-inline-meta">
+              <span className="mc-meta-pill">Queue source /mc/approvals</span>
+              {drawer.item.approvalPolicy ? <span className="mc-meta-pill">Policy {drawer.item.approvalPolicy}</span> : null}
             </div>
             {drawer.error ? <div className="inline-error">{drawer.error}</div> : null}
             <div className="mc-inline-actions">
@@ -80,7 +100,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
               </button>
             </div>
             <article className="mc-code-card">
-              <strong>Approval</strong>
+              <strong>Approval record</strong>
               <pre>{renderJson(drawer.item)}</pre>
             </article>
           </div>
@@ -93,6 +113,10 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
               <div><span>Title</span><strong>{drawer.item.title}</strong></div>
               <div><span>Messages</span><strong>{drawer.item.message_count || drawer.item.messages?.length || 0}</strong></div>
               <div><span>Updated</span><strong>{drawer.item.updated_at || 'unknown'}</strong></div>
+            </div>
+            <div className="mc-inline-meta">
+              <span className="mc-meta-pill">Read-only transcript preview</span>
+              <span className="mc-meta-pill">Source /chat/sessions/{'{id}'}</span>
             </div>
             <div className="mc-transcript-preview">
               {(drawer.item.messages || []).map((message) => (

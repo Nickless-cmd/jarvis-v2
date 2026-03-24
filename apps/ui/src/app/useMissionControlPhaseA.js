@@ -21,6 +21,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastRealtimeEventAt, setLastRealtimeEventAt] = useState('')
   const [drawer, setDrawer] = useState(null)
   const refreshQueue = useRef(new Set())
   const refreshTimer = useRef(null)
@@ -117,6 +118,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   useEffect(() => {
     if (!active) return
     const stop = backend.subscribeMissionControlEvents((event) => {
+      setLastRealtimeEventAt(event.createdAt || new Date().toISOString())
       setData((current) => ({
         ...current,
         overview: current.overview
@@ -240,6 +242,7 @@ export function useMissionControlPhaseA({ active, selection }) {
     drawer,
     isLoading,
     isRefreshing,
+    lastRealtimeEventAt,
     navigateTo,
     refreshAll,
     closeDrawer,

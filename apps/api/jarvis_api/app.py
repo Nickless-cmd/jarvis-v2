@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from apps.api.jarvis_api.services.heartbeat_runtime import (
+    start_heartbeat_scheduler,
+    stop_heartbeat_scheduler,
+)
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.live import router as live_router
@@ -26,7 +30,12 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     async def on_startup() -> None:
+        start_heartbeat_scheduler()
         event_bus.publish("runtime.started", {"component": "api"})
+
+    @app.on_event("shutdown")
+    async def on_shutdown() -> None:
+        stop_heartbeat_scheduler()
 
     return app
 

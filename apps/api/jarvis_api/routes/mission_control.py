@@ -993,10 +993,11 @@ def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
     state = heartbeat.get("state") or {}
     return {
         "enabled": "enabled" if state.get("enabled") else "disabled",
-        "status": str(state.get("schedule_status") or "unknown"),
+        "status": str(state.get("schedule_state") or state.get("schedule_status") or "unknown"),
         "decision": str(state.get("last_decision_type") or "none"),
         "result": _preview_text(str(state.get("last_result") or state.get("summary") or "No heartbeat result yet."), limit=120),
         "next_tick_at": str(state.get("next_tick_at") or ""),
+        "trigger": str(state.get("last_trigger_source") or "none"),
     }
 
 

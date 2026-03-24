@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import threading
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -32,6 +34,11 @@ from core.tools.workspace_capabilities import load_workspace_capabilities
 HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping"}
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
+_HEARTBEAT_TICK_LOCK = threading.Lock()
+_HEARTBEAT_SCHEDULER_STOP = threading.Event()
+_HEARTBEAT_SCHEDULER_THREAD: threading.Thread | None = None
+_HEARTBEAT_SCHEDULER_INTERVAL_SECONDS = 30
+_HEARTBEAT_LAST_SCHEDULE_SNAPSHOT: dict[str, object] = {}
 
 
 @dataclass(slots=True)
@@ -39,6 +46,40 @@ class HeartbeatExecutionResult:
     state: dict[str, object]
     tick: dict[str, object]
     policy: dict[str, object]
+
+
+def start_heartbeat_scheduler(*, name: str = "default") -> None:
+    global _HEARTBEAT_SCHEDULER_THREAD
+    if _HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive():
+        return
+    _HEARTBEAT_SCHEDULER_STOP.clear()
+    thread = threading.Thread(
+        target=_heartbeat_scheduler_loop,
+        kwargs={"name": name},
+        name="jarvis-heartbeat-scheduler",
+        daemon=True,
+    )
+    thread.start()
+    _HEARTBEAT_SCHEDULER_THREAD = thread
+
+
+def stop_heartbeat_scheduler() -> None:
+    global _HEARTBEAT_SCHEDULER_THREAD
+    _HEARTBEAT_SCHEDULER_STOP.set()
+    thread = _HEARTBEAT_SCHEDULER_THREAD
+    if thread and thread.is_alive():
+        thread.join(timeout=1.0)
+    _HEARTBEAT_SCHEDULER_THREAD = None
+
+
+def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
+    surface = heartbeat_runtime_surface(name=name)
+    state = dict(surface["state"])
+    _emit_schedule_transitions(state)
+    if state.get("schedule_state") == "due":
+        run_heartbeat_tick(name=name, trigger="scheduled")
+        return heartbeat_runtime_surface(name=name)
+    return surface
 
 
 def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
@@ -70,18 +111,45 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
 
 
 def run_heartbeat_tick(*, name: str = "default", trigger: str = "manual") -> HeartbeatExecutionResult:
+    if not _HEARTBEAT_TICK_LOCK.acquire(blocking=False):
+        return _heartbeat_busy_result(name=name, trigger=trigger)
+    try:
+        return _run_heartbeat_tick_locked(name=name, trigger=trigger)
+    finally:
+        _HEARTBEAT_TICK_LOCK.release()
+
+
+def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual") -> HeartbeatExecutionResult:
     now = datetime.now(UTC)
     workspace_dir = ensure_default_workspace(name=name)
     policy = load_heartbeat_policy(name=name)
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     merged_before = _merge_runtime_state(policy=policy, persisted=persisted, now=now)
+    upsert_heartbeat_runtime_state(
+        state_id=str(persisted.get("state_id") or "default"),
+        last_tick_id=str(persisted.get("last_tick_id") or ""),
+        last_tick_at=str(persisted.get("last_tick_at") or ""),
+        next_tick_at=str(persisted.get("next_tick_at") or ""),
+        last_decision_type=str(persisted.get("last_decision_type") or ""),
+        last_result=str(persisted.get("last_result") or ""),
+        blocked_reason="",
+        currently_ticking=True,
+        last_trigger_source=trigger,
+        provider=str(persisted.get("provider") or ""),
+        model=str(persisted.get("model") or ""),
+        lane=str(persisted.get("lane") or ""),
+        budget_status=str(persisted.get("budget_status") or policy["budget_status"]),
+        last_ping_eligible=bool(persisted.get("last_ping_eligible")),
+        last_ping_result=str(persisted.get("last_ping_result") or ""),
+        updated_at=now.isoformat(),
+    )
 
     event_bus.publish(
         "heartbeat.tick_started",
         {
             "trigger": trigger,
             "enabled": bool(merged_before["enabled"]),
-            "schedule_status": merged_before["schedule_status"],
+            "schedule_state": merged_before["schedule_state"],
             "next_tick_at": merged_before["next_tick_at"],
         },
     )
@@ -98,6 +166,8 @@ def run_heartbeat_tick(*, name: str = "default", trigger: str = "manual") -> Hea
             decision_summary="Heartbeat tick did not run.",
             decision_reason=blocked_reason,
             blocked_reason=blocked_reason,
+            currently_ticking=False,
+            last_trigger_source=trigger,
             provider="",
             model="",
             lane="",
@@ -154,6 +224,8 @@ def run_heartbeat_tick(*, name: str = "default", trigger: str = "manual") -> Hea
             decision_summary="Heartbeat runtime could not produce a bounded decision.",
             decision_reason=str(exc),
             blocked_reason="runtime-error",
+            currently_ticking=False,
+            last_trigger_source=trigger,
             provider=target["provider"],
             model=target["model"],
             lane=target["lane"],
@@ -209,6 +281,8 @@ def run_heartbeat_tick(*, name: str = "default", trigger: str = "manual") -> Hea
         decision_summary=decision["summary"],
         decision_reason=decision["reason"],
         blocked_reason=outcome["blocked_reason"],
+        currently_ticking=False,
+        last_trigger_source=trigger,
         provider=target["provider"],
         model=target["model"],
         lane=target["lane"],
@@ -237,6 +311,16 @@ def run_heartbeat_tick(*, name: str = "default", trigger: str = "manual") -> Hea
             },
         )
     else:
+        event_bus.publish(
+            "heartbeat.tick_completed",
+            {
+                "tick_id": tick["tick_id"],
+                "trigger": trigger,
+                "decision_type": decision["decision_type"],
+                "tick_status": tick["tick_status"],
+                "summary": tick["decision_summary"],
+            },
+        )
         event_bus.publish(
             f"heartbeat.{decision['decision_type']}",
             {
@@ -653,6 +737,8 @@ def _record_heartbeat_outcome(
     decision_summary: str,
     decision_reason: str,
     blocked_reason: str,
+    currently_ticking: bool,
+    last_trigger_source: str,
     provider: str,
     model: str,
     lane: str,
@@ -706,6 +792,8 @@ def _record_heartbeat_outcome(
         last_decision_type=decision_type,
         last_result=decision_summary or action_summary,
         blocked_reason=blocked_reason,
+        currently_ticking=currently_ticking,
+        last_trigger_source=last_trigger_source,
         provider=provider,
         model=model,
         lane=lane,
@@ -750,7 +838,9 @@ def _merge_runtime_state(
             due_ts = _parse_dt(next_tick_at)
             due = due_ts is not None and due_ts <= now
     schedule_status = "disabled"
-    if policy["enabled"]:
+    if bool(persisted.get("currently_ticking")):
+        schedule_status = "ticking"
+    elif policy["enabled"]:
         schedule_status = "due" if due else "scheduled"
     if policy["kill_switch"] != "enabled":
         schedule_status = "blocked"
@@ -759,6 +849,7 @@ def _merge_runtime_state(
         "kill_switch": str(policy["kill_switch"]),
         "interval_minutes": int(policy["interval_minutes"]),
         "schedule_status": schedule_status,
+        "schedule_state": schedule_status,
         "due": due,
         "last_tick_id": str(persisted.get("last_tick_id") or ""),
         "last_tick_at": last_tick_at,
@@ -766,6 +857,8 @@ def _merge_runtime_state(
         "last_decision_type": str(persisted.get("last_decision_type") or ""),
         "last_result": str(persisted.get("last_result") or ""),
         "blocked_reason": str(persisted.get("blocked_reason") or ""),
+        "currently_ticking": bool(persisted.get("currently_ticking")),
+        "last_trigger_source": str(persisted.get("last_trigger_source") or ""),
         "provider": str(persisted.get("provider") or ""),
         "model": str(persisted.get("model") or ""),
         "lane": str(persisted.get("lane") or ""),
@@ -819,6 +912,8 @@ def _default_persisted_state() -> dict[str, object]:
         "last_decision_type": "",
         "last_result": "",
         "blocked_reason": "",
+        "currently_ticking": False,
+        "last_trigger_source": "",
         "provider": "",
         "model": "",
         "lane": "",
@@ -834,6 +929,8 @@ def _heartbeat_state_summary(
 ) -> str:
     if not enabled:
         return "Heartbeat is disabled by policy."
+    if schedule_status == "ticking":
+        return "Heartbeat tick is currently in progress."
     if schedule_status == "blocked":
         return "Heartbeat is blocked by kill switch."
     if last_decision_type and last_result:
@@ -948,3 +1045,98 @@ def _parse_dt(value: str | None) -> datetime | None:
 
 def _estimate_tokens(text: str) -> int:
     return max(1, len((text or "").split()))
+
+
+def _heartbeat_busy_result(*, name: str, trigger: str) -> HeartbeatExecutionResult:
+    policy = load_heartbeat_policy(name=name)
+    workspace_dir = ensure_default_workspace(name=name)
+    persisted = get_heartbeat_runtime_state() or _default_persisted_state()
+    now = datetime.now(UTC).isoformat()
+    tick = _record_heartbeat_outcome(
+        policy=policy,
+        persisted=persisted,
+        tick_id=f"heartbeat-tick:{uuid.uuid4()}",
+        trigger=trigger,
+        tick_status="blocked",
+        decision_type="noop",
+        decision_summary="Heartbeat tick skipped because another tick is already running.",
+        decision_reason="already-ticking",
+        blocked_reason="already-ticking",
+        currently_ticking=True,
+        last_trigger_source=trigger,
+        provider=str(persisted.get("provider") or ""),
+        model=str(persisted.get("model") or ""),
+        lane=str(persisted.get("lane") or ""),
+        budget_status=str(persisted.get("budget_status") or policy["budget_status"]),
+        ping_eligible=False,
+        ping_result="not-checked",
+        action_status="blocked",
+        action_summary="Another heartbeat tick is already running.",
+        raw_response="",
+        input_tokens=0,
+        output_tokens=0,
+        cost_usd=0.0,
+        started_at=now,
+        finished_at=now,
+        workspace_dir=workspace_dir,
+    )
+    event_bus.publish(
+        "heartbeat.tick_blocked",
+        {
+            "tick_id": tick["tick_id"],
+            "blocked_reason": "already-ticking",
+            "trigger": trigger,
+        },
+    )
+    return HeartbeatExecutionResult(
+        state=heartbeat_runtime_surface(name=name)["state"],
+        tick=tick,
+        policy=policy,
+    )
+
+
+def _heartbeat_scheduler_loop(*, name: str) -> None:
+    while not _HEARTBEAT_SCHEDULER_STOP.wait(_HEARTBEAT_SCHEDULER_INTERVAL_SECONDS):
+        try:
+            poll_heartbeat_schedule(name=name)
+        except Exception as exc:
+            event_bus.publish(
+                "heartbeat.tick_blocked",
+                {
+                    "blocked_reason": "scheduler-error",
+                    "detail": str(exc),
+                    "trigger": "scheduled",
+                },
+            )
+
+
+def _emit_schedule_transitions(state: dict[str, object]) -> None:
+    global _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT
+    previous_state = str(_HEARTBEAT_LAST_SCHEDULE_SNAPSHOT.get("schedule_state") or "")
+    current_state = str(state.get("schedule_state") or "")
+    previous_due = bool(_HEARTBEAT_LAST_SCHEDULE_SNAPSHOT.get("due"))
+    current_due = bool(state.get("due"))
+
+    if previous_state != current_state:
+        event_bus.publish(
+            "heartbeat.schedule_state_changed",
+            {
+                "previous_state": previous_state or "unknown",
+                "schedule_state": current_state,
+                "next_tick_at": state.get("next_tick_at"),
+                "blocked_reason": state.get("blocked_reason") or "",
+            },
+        )
+    if current_due and not previous_due:
+        event_bus.publish(
+            "heartbeat.became_due",
+            {
+                "schedule_state": current_state,
+                "next_tick_at": state.get("next_tick_at"),
+                "last_tick_at": state.get("last_tick_at"),
+            },
+        )
+    _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT = {
+        "schedule_state": current_state,
+        "due": current_due,
+    }

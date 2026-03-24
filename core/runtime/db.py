@@ -197,6 +197,8 @@ def init_db() -> None:
                 last_decision_type TEXT NOT NULL DEFAULT '',
                 last_result TEXT NOT NULL DEFAULT '',
                 blocked_reason TEXT NOT NULL DEFAULT '',
+                currently_ticking INTEGER NOT NULL DEFAULT 0,
+                last_trigger_source TEXT NOT NULL DEFAULT '',
                 provider TEXT NOT NULL DEFAULT '',
                 model TEXT NOT NULL DEFAULT '',
                 lane TEXT NOT NULL DEFAULT '',
@@ -241,6 +243,7 @@ def init_db() -> None:
             ON heartbeat_runtime_ticks(id DESC)
             """
         )
+        _ensure_heartbeat_runtime_state_columns(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS private_inner_notes (
@@ -2240,6 +2243,8 @@ def get_heartbeat_runtime_state() -> dict[str, object] | None:
                 last_decision_type,
                 last_result,
                 blocked_reason,
+                currently_ticking,
+                last_trigger_source,
                 provider,
                 model,
                 lane,
@@ -2266,6 +2271,8 @@ def upsert_heartbeat_runtime_state(
     last_decision_type: str,
     last_result: str,
     blocked_reason: str,
+    currently_ticking: bool,
+    last_trigger_source: str,
     provider: str,
     model: str,
     lane: str,
@@ -2286,6 +2293,8 @@ def upsert_heartbeat_runtime_state(
                 last_decision_type,
                 last_result,
                 blocked_reason,
+                currently_ticking,
+                last_trigger_source,
                 provider,
                 model,
                 lane,
@@ -2294,7 +2303,7 @@ def upsert_heartbeat_runtime_state(
                 last_ping_result,
                 updated_at
             )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 state_id = excluded.state_id,
                 last_tick_id = excluded.last_tick_id,
@@ -2303,6 +2312,8 @@ def upsert_heartbeat_runtime_state(
                 last_decision_type = excluded.last_decision_type,
                 last_result = excluded.last_result,
                 blocked_reason = excluded.blocked_reason,
+                currently_ticking = excluded.currently_ticking,
+                last_trigger_source = excluded.last_trigger_source,
                 provider = excluded.provider,
                 model = excluded.model,
                 lane = excluded.lane,
@@ -2319,6 +2330,8 @@ def upsert_heartbeat_runtime_state(
                 last_decision_type,
                 last_result,
                 blocked_reason,
+                1 if currently_ticking else 0,
+                last_trigger_source,
                 provider,
                 model,
                 lane,
@@ -2524,6 +2537,8 @@ def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
         "last_decision_type": row["last_decision_type"],
         "last_result": row["last_result"],
         "blocked_reason": row["blocked_reason"],
+        "currently_ticking": bool(row["currently_ticking"]),
+        "last_trigger_source": row["last_trigger_source"],
         "provider": row["provider"],
         "model": row["model"],
         "lane": row["lane"],
@@ -2558,6 +2573,25 @@ def _heartbeat_runtime_tick_from_row(row: sqlite3.Row) -> dict[str, object]:
         "started_at": row["started_at"],
         "finished_at": row["finished_at"],
     }
+
+
+def _ensure_heartbeat_runtime_state_columns(conn: sqlite3.Connection) -> None:
+    rows = conn.execute("PRAGMA table_info(heartbeat_runtime_state)").fetchall()
+    existing = {str(row["name"]) for row in rows}
+    if "currently_ticking" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN currently_ticking INTEGER NOT NULL DEFAULT 0
+            """
+        )
+    if "last_trigger_source" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN last_trigger_source TEXT NOT NULL DEFAULT ''
+            """
+        )
 
 
 def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:

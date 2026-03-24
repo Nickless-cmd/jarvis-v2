@@ -5,6 +5,7 @@ const TAB_REFRESH_MS = {
   overview: 30000,
   operations: 20000,
   observability: 60000,
+  jarvis: 30000,
 }
 
 const RUN_RELATED_FAMILIES = new Set(['runtime'])

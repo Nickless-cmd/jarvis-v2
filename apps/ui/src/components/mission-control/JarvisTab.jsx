@@ -118,8 +118,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           mode: 'bounded heartbeat runtime',
         })}>
           <span>Heartbeat</span>
-          <strong>{summary?.heartbeat?.status || heartbeatState.scheduleStatus || 'unknown'}</strong>
-          <small className="muted">{summary?.heartbeat?.result || heartbeatState.summary || 'No heartbeat result yet'}</small>
+          <strong>{summary?.heartbeat?.status || heartbeatState.scheduleState || heartbeatState.scheduleStatus || 'unknown'}</strong>
+          <small className="muted">
+            {heartbeatState.currentlyTicking
+              ? 'Tick in progress'
+              : (summary?.heartbeat?.result || heartbeatState.summary || 'No heartbeat result yet')}
+          </small>
         </article>
       </section>
 
@@ -291,24 +295,28 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           </div>
           <div className="compact-grid compact-grid-4">
             <div className="compact-metric">
-              <span>Status</span>
-              <strong>{heartbeatState.scheduleStatus || 'unknown'}</strong>
+              <span>Schedule</span>
+              <strong>{heartbeatState.scheduleState || heartbeatState.scheduleStatus || 'unknown'}</strong>
               <p>{heartbeatState.summary || 'No heartbeat state recorded yet.'}</p>
             </div>
             <div className="compact-metric">
               <span>Cadence</span>
               <strong>{heartbeatState.intervalMinutes || heartbeatPolicy.intervalMinutes || 0}m</strong>
-              <p>Next tick {heartbeatState.nextTickAt || 'not scheduled'}.</p>
+              <p>
+                {heartbeatState.currentlyTicking
+                  ? 'Tick currently in progress.'
+                  : `Next tick ${heartbeatState.nextTickAt || 'not scheduled'}.`}
+              </p>
             </div>
             <div className="compact-metric">
-              <span>Decision</span>
+              <span>Last Trigger</span>
+              <strong>{heartbeatState.lastTriggerSource || summary?.heartbeat?.trigger || 'none'}</strong>
+              <p>{heartbeatState.lastTickAt || 'No completed tick yet.'}</p>
+            </div>
+            <div className="compact-metric">
+              <span>Last Decision</span>
               <strong>{heartbeatState.lastDecisionType || 'none'}</strong>
               <p>{heartbeatState.lastResult || heartbeatState.blockedReason || 'No heartbeat result yet.'}</p>
-            </div>
-            <div className="compact-metric">
-              <span>Lane</span>
-              <strong>{heartbeatState.lane || 'unassigned'}</strong>
-              <p>{heartbeatState.provider || 'runtime'} / {heartbeatState.model || 'bounded-policy'}</p>
             </div>
           </div>
           <div className="mc-contract-grid">

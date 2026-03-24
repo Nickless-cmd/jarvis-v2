@@ -867,6 +867,12 @@ export const backend = {
     })
   },
 
+  async completeDevelopmentFocus(focusId) {
+    return requestJson(`/mc/development-focus/${focusId}/complete`, {
+      method: 'POST',
+    })
+  },
+
   async approveRuntimeContractCandidate(candidateId) {
     return requestJson(`/mc/runtime-contract/candidates/${candidateId}/approve`, {
       method: 'POST',

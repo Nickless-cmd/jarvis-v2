@@ -29,6 +29,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     actOnApproval,
     actOnContractCandidate,
     actOnHeartbeatTick,
+    actOnDevelopmentFocus,
   } = useMissionControlPhaseA({ active: true, selection })
   const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
 
@@ -137,6 +138,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
         onClose={closeDrawer}
         onApprovalAction={actOnApproval}
         onContractCandidateAction={actOnContractCandidate}
+        onDevelopmentFocusAction={actOnDevelopmentFocus}
       />
     </div>
   )

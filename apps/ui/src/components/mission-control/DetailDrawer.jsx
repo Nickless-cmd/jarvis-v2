@@ -5,7 +5,7 @@ function renderJson(value) {
   return JSON.stringify(value, null, 2)
 }
 
-export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCandidateAction }) {
+export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCandidateAction, onDevelopmentFocusAction }) {
   if (!drawer) return null
 
   return (
@@ -22,6 +22,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
               {drawer.kind === 'session' ? 'Session transcript preview' : null}
               {drawer.kind === 'jarvis' ? 'Jarvis state and continuity detail' : null}
               {drawer.kind === 'contract-candidate' ? 'Governed USER/MEMORY workflow item' : null}
+              {drawer.kind === 'development-focus' ? 'Development focus detail and actions' : null}
             </p>
           </div>
           <button className="icon-btn" onClick={onClose}><X size={16} /></button>
@@ -221,6 +222,67 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
             ) : null}
             <article className="mc-code-card">
               <strong>Detail</strong>
+              <pre>{renderJson(drawer.item)}</pre>
+            </article>
+          </div>
+        ) : null}
+
+        {drawer.kind === 'development-focus' ? (
+          <div className="mc-drawer-body">
+            <div className="mc-keyval-grid">
+              <div><span>Focus</span><strong>{drawer.item.title || 'Development Focus'}</strong></div>
+              <div><span>Status</span><strong>{drawer.item.status || 'unknown'}</strong></div>
+              <div><span>Type</span><strong>{drawer.item.focusType || drawer.item.focus_type || 'unknown'}</strong></div>
+              <div><span>Confidence</span><strong>{drawer.item.confidence || 'unknown'}</strong></div>
+            </div>
+            <div className="mc-inline-meta">
+              {drawer.item.sourceKind ? <span className="mc-meta-pill">Source {drawer.item.sourceKind.replace(/-/g, ' ')}</span> : null}
+              {drawer.item.supportCount ? <span className="mc-meta-pill">{drawer.item.supportCount} supporting signals</span> : null}
+              {drawer.item.sessionCount ? <span className="mc-meta-pill">{drawer.item.sessionCount} sessions</span> : null}
+              {drawer.item.updatedAt ? <span className="mc-meta-pill">Updated {formatFreshness(drawer.item.updatedAt)}</span> : null}
+            </div>
+            {drawer.error ? <div className="inline-error">{drawer.error}</div> : null}
+            {drawer.item.status !== 'completed' ? (
+              <div className="mc-inline-actions">
+                <button
+                  className="primary-btn"
+                  disabled={drawer.busy}
+                  onClick={() => onDevelopmentFocusAction?.(drawer.item.focusId, 'complete')}
+                >
+                  {drawer.busy ? 'Working…' : 'Mark Completed'}
+                </button>
+              </div>
+            ) : (
+              <div className="mc-inline-meta">
+                <span className="mc-meta-pill tone-success">Already completed</span>
+              </div>
+            )}
+            {drawer.item.summary ? (
+              <article className="mc-code-card">
+                <strong>Summary</strong>
+                <p>{drawer.item.summary}</p>
+              </article>
+            ) : null}
+            {drawer.item.rationale ? (
+              <article className="mc-code-card">
+                <strong>Rationale</strong>
+                <p>{drawer.item.rationale}</p>
+              </article>
+            ) : null}
+            {drawer.item.statusReason ? (
+              <article className="mc-code-card">
+                <strong>Status Note</strong>
+                <p>{drawer.item.statusReason}</p>
+              </article>
+            ) : null}
+            {drawer.item.supportSummary ? (
+              <article className="mc-code-card">
+                <strong>Support Summary</strong>
+                <p>{drawer.item.supportSummary}</p>
+              </article>
+            ) : null}
+            <article className="mc-code-card">
+              <strong>Focus Detail</strong>
               <pre>{renderJson(drawer.item)}</pre>
             </article>
           </div>

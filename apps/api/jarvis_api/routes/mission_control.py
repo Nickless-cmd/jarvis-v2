@@ -95,6 +95,7 @@ from core.runtime.db import (
     recent_visible_work_notes,
     recent_visible_work_units,
     recent_visible_runs,
+    update_runtime_development_focus_status,
 )
 from core.runtime.settings import load_settings, update_visible_execution_settings
 from core.tools.workspace_capabilities import (
@@ -481,6 +482,38 @@ def mc_execute_capability_request(request_id: str) -> dict:
         "status": invocation["status"],
         "request": projected_request or request,
         "invocation": invocation,
+    }
+
+
+@router.post("/development-focus/{focus_id}/complete")
+def mc_complete_development_focus(focus_id: str) -> dict:
+    """Manually mark a development focus as completed."""
+    from core.eventbus.bus import event_bus
+
+    updated = update_runtime_development_focus_status(
+        focus_id=focus_id,
+        status="completed",
+        updated_at=datetime.now(UTC).isoformat(),
+        status_reason="Manually marked completed by operator via Mission Control.",
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Development focus not found")
+
+    event_bus.publish(
+        "runtime.development_focus_completed",
+        {
+            "focus_id": updated.get("focus_id"),
+            "focus_type": updated.get("focus_type"),
+            "status": updated.get("status"),
+            "summary": updated.get("summary"),
+            "status_reason": updated.get("status_reason"),
+            "actor": "operator",
+        },
+    )
+
+    return {
+        "ok": True,
+        "focus": updated,
     }
 
 

@@ -226,8 +226,11 @@ export function useMissionControlPhaseA({ active, selection }) {
   }, [])
 
   const openJarvisDetail = useCallback((title, item) => {
+    let kind = 'jarvis'
+    if (item?.candidateId) kind = 'contract-candidate'
+    else if (item?.focusId) kind = 'development-focus'
     setDrawer({
-      kind: item?.candidateId ? 'contract-candidate' : 'jarvis',
+      kind,
       title,
       item,
       busy: false,
@@ -316,6 +319,32 @@ export function useMissionControlPhaseA({ active, selection }) {
     }
   }, [refreshJarvis])
 
+  const actOnDevelopmentFocus = useCallback(async (focusId, action) => {
+    if (action !== 'complete') return
+    setDrawer((current) => (current ? { ...current, busy: true, error: '' } : current))
+    try {
+      const response = await backend.completeDevelopmentFocus(focusId)
+      const jarvis = await backend.getMissionControlJarvis()
+      setData((current) => ({ ...current, jarvis }))
+      if (response?.focus) {
+        setDrawer({
+          kind: 'development-focus',
+          title: response.focus.title || 'Development Focus',
+          item: { ...response.focus, source: '/mc/jarvis/development-focus' },
+          busy: false,
+        })
+      } else {
+        setDrawer(null)
+      }
+    } catch (error) {
+      setDrawer((current) => (
+        current
+          ? { ...current, busy: false, error: error instanceof Error ? error.message : 'Action failed' }
+          : current
+      ))
+    }
+  }, [refreshJarvis])
+
   const actOnHeartbeatTick = useCallback(async () => {
     setIsRefreshing(true)
     try {
@@ -362,5 +391,6 @@ export function useMissionControlPhaseA({ active, selection }) {
     actOnApproval,
     actOnContractCandidate,
     actOnHeartbeatTick,
+    actOnDevelopmentFocus,
   }
 }

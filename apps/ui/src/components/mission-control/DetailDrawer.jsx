@@ -20,6 +20,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
               {drawer.kind === 'event' ? 'Event payload and context' : null}
               {drawer.kind === 'approval' ? 'Approval queue item and actions' : null}
               {drawer.kind === 'session' ? 'Session transcript preview' : null}
+              {drawer.kind === 'jarvis' ? 'Jarvis state and continuity detail' : null}
             </p>
           </div>
           <button className="icon-btn" onClick={onClose}><X size={16} /></button>
@@ -126,6 +127,25 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
                 </article>
               ))}
             </div>
+          </div>
+        ) : null}
+
+        {drawer.kind === 'jarvis' ? (
+          <div className="mc-drawer-body">
+            <div className="mc-inline-meta">
+              {drawer.item.source ? <span className="mc-meta-pill">Source {drawer.item.source}</span> : null}
+              {drawer.item.createdAt ? <span className="mc-meta-pill">Updated {formatFreshness(drawer.item.createdAt)}</span> : null}
+            </div>
+            {drawer.item.summary ? (
+              <article className="mc-code-card">
+                <strong>Summary</strong>
+                <p>{drawer.item.summary}</p>
+              </article>
+            ) : null}
+            <article className="mc-code-card">
+              <strong>Detail</strong>
+              <pre>{renderJson(drawer.item)}</pre>
+            </article>
           </div>
         ) : null}
       </div>

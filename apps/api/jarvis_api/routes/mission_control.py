@@ -204,6 +204,72 @@ def mc_approvals(limit: int = 20) -> dict:
     }
 
 
+@router.get("/jarvis")
+def mc_jarvis() -> dict:
+    visible_identity = load_visible_identity_summary()
+    visible_session = visible_session_continuity_summary()
+    visible_continuity = visible_continuity_summary()
+    visible_capability = visible_capability_continuity_summary()
+    private_state = _private_state_surface()
+    protected_voice = _protected_inner_voice_surface()
+    inner_interplay = _private_inner_interplay_surface()
+    initiative_tension = _private_initiative_tension_surface()
+    relation_state = _private_relation_state_surface()
+    temporal_curiosity = _private_temporal_curiosity_state_surface()
+    promotion_signal = _private_temporal_promotion_signal_surface()
+    promotion_decision = _private_promotion_decision_surface()
+    retained_record = _private_retained_memory_record_surface()
+    retained_projection = _private_retained_memory_projection_surface()
+    self_model = _private_self_model_surface()
+    development_state = _private_development_state_surface()
+    growth_note = _private_growth_note_surface()
+    reflective = _private_reflective_selection_surface()
+    operational_preference = _private_operational_preference_surface()
+    operational_alignment = _operational_preference_alignment_surface()
+
+    return {
+        "summary": {
+            "visible_identity": _jarvis_identity_summary(visible_identity),
+            "state_signal": _jarvis_state_signal(protected_voice, initiative_tension, private_state),
+            "retained_memory": _jarvis_retained_summary(retained_projection, retained_record),
+            "development": _jarvis_development_summary(self_model, development_state),
+            "continuity": _jarvis_continuity_summary(
+                relation_state,
+                visible_session,
+                promotion_signal,
+            ),
+        },
+        "state": {
+            "visible_identity": visible_identity,
+            "private_state": private_state,
+            "protected_inner_voice": protected_voice,
+            "inner_interplay": inner_interplay,
+            "initiative_tension": initiative_tension,
+        },
+        "memory": {
+            "retained_projection": retained_projection,
+            "retained_record": retained_record,
+            "visible_capability_continuity": visible_capability,
+        },
+        "development": {
+            "self_model": self_model,
+            "development_state": development_state,
+            "growth_note": growth_note,
+            "reflective_selection": reflective,
+            "operational_preference": operational_preference,
+            "operational_alignment": operational_alignment,
+            "temporal_curiosity": temporal_curiosity,
+        },
+        "continuity": {
+            "visible_session": visible_session,
+            "visible_continuity": visible_continuity,
+            "relation_state": relation_state,
+            "promotion_signal": promotion_signal,
+            "promotion_decision": promotion_decision,
+        },
+    }
+
+
 @router.get("/runtime")
 def mc_runtime() -> dict:
     settings = load_settings()
@@ -734,3 +800,126 @@ def _recent_capability_invocation_events(
         item for item in items if item["kind"] in CAPABILITY_INVOCATION_EVENT_KINDS
     ]
     return capability_items[:limit]
+
+
+def _jarvis_identity_summary(visible_identity: dict) -> dict[str, object]:
+    files = list(visible_identity.get("source_files") or [])
+    return {
+        "active": bool(visible_identity.get("active")),
+        "workspace": str(visible_identity.get("workspace") or ""),
+        "source_files": files,
+        "fingerprint": str(visible_identity.get("fingerprint") or ""),
+        "line_count": int(visible_identity.get("extracted_line_count") or 0),
+    }
+
+
+def _jarvis_state_signal(
+    protected_voice: dict, initiative_tension: dict, private_state: dict
+) -> dict[str, str]:
+    voice = protected_voice.get("current") or {}
+    tension = initiative_tension.get("current") or {}
+    state = private_state.get("current") or {}
+    return {
+        "mood_tone": str(voice.get("mood_tone") or "unknown"),
+        "current_concern": _preview_text(
+            str(voice.get("current_concern") or tension.get("reason") or "unknown"),
+            limit=96,
+        ),
+        "current_pull": _preview_text(
+            str(voice.get("current_pull") or tension.get("tension_target") or "unknown"),
+            limit=120,
+        ),
+        "confidence": str(
+            state.get("confidence") or tension.get("confidence") or "unknown"
+        ),
+    }
+
+
+def _jarvis_retained_summary(
+    retained_projection: dict, retained_record: dict
+) -> dict[str, str]:
+    projection = retained_projection.get("current") or retained_projection or {}
+    record = retained_record.get("current") or {}
+    return {
+        "focus": _preview_text(
+            str(
+                retained_projection.get("retained_focus")
+                or projection.get("retained_value")
+                or record.get("retained_value")
+                or "none"
+            ),
+            limit=120,
+        ),
+        "kind": str(
+            retained_projection.get("retained_kind")
+            or projection.get("retained_kind")
+            or record.get("retained_kind")
+            or "unknown"
+        ),
+        "scope": str(
+            retained_projection.get("retention_scope")
+            or projection.get("retention_scope")
+            or record.get("retention_scope")
+            or "unknown"
+        ),
+        "confidence": str(
+            retained_projection.get("confidence")
+            or projection.get("confidence")
+            or record.get("confidence")
+            or "unknown"
+        ),
+    }
+
+
+def _jarvis_development_summary(
+    self_model: dict, development_state: dict
+) -> dict[str, str]:
+    model = self_model.get("current") or {}
+    state = development_state.get("current") or {}
+    return {
+        "direction": str(
+            model.get("growth_direction")
+            or state.get("preferred_direction")
+            or "unknown"
+        ),
+        "identity_focus": str(
+            model.get("identity_focus") or state.get("identity_thread") or "unknown"
+        ),
+        "work_mode": str(model.get("preferred_work_mode") or "unknown"),
+        "tension": str(
+            state.get("recurring_tension")
+            or model.get("recurring_tension")
+            or "unknown"
+        ),
+    }
+
+
+def _jarvis_continuity_summary(
+    relation_state: dict, visible_session: dict, promotion_signal: dict
+) -> dict[str, str]:
+    relation = relation_state.get("current") or {}
+    signal = promotion_signal.get("current") or {}
+    return {
+        "continuity_mode": str(
+            relation.get("continuity_mode")
+            or visible_session.get("latest_status")
+            or "unknown"
+        ),
+        "interaction_mode": str(relation.get("interaction_mode") or "unknown"),
+        "relation_pull": _preview_text(
+            str(
+                relation.get("relation_pull")
+                or signal.get("promotion_target")
+                or "unknown"
+            ),
+            limit=96,
+        ),
+        "session_status": str(visible_session.get("latest_status") or "unknown"),
+    }
+
+
+def _preview_text(value: str, *, limit: int = 96) -> str:
+    text = " ".join(str(value or "").split()).strip()
+    if not text:
+        return ""
+    return text[:limit] + ("…" if len(text) > limit else "")

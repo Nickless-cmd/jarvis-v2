@@ -18,6 +18,7 @@ export function useMissionControlPhaseA({ active, selection }) {
     overview: null,
     operations: null,
     observability: null,
+    jarvis: null,
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -56,6 +57,11 @@ export function useMissionControlPhaseA({ active, selection }) {
     setData((current) => ({ ...current, observability }))
   }, [])
 
+  const refreshJarvis = useCallback(async () => {
+    const jarvis = await backend.getMissionControlJarvis()
+    setData((current) => ({ ...current, jarvis }))
+  }, [])
+
   const refreshAll = useCallback(async ({ background = false } = {}) => {
     if (background) {
       setIsRefreshing(true)
@@ -63,11 +69,12 @@ export function useMissionControlPhaseA({ active, selection }) {
       setIsLoading(true)
     }
     try {
-      const next = await backend.getMissionControlPhaseA({ selection })
+      const next = await backend.getMissionControlPhaseB({ selection })
       setData({
         overview: applySelectionToOverview(next.overview),
         operations: next.operations,
         observability: next.observability,
+        jarvis: next.jarvis,
       })
     } finally {
       setIsLoading(false)
@@ -81,10 +88,11 @@ export function useMissionControlPhaseA({ active, selection }) {
       if (tabId === 'overview') await refreshOverview()
       if (tabId === 'operations') await refreshOperations()
       if (tabId === 'observability') await refreshObservability()
+      if (tabId === 'jarvis') await refreshJarvis()
     } finally {
       setIsRefreshing(false)
     }
-  }, [refreshObservability, refreshOperations, refreshOverview])
+  }, [refreshJarvis, refreshObservability, refreshOperations, refreshOverview])
 
   const scheduleRefresh = useCallback((tabs) => {
     tabs.forEach((tab) => refreshQueue.current.add(tab))
@@ -101,6 +109,7 @@ export function useMissionControlPhaseA({ active, selection }) {
             if (tab === 'overview') return refreshOverview()
             if (tab === 'operations') return refreshOperations()
             if (tab === 'observability') return refreshObservability()
+            if (tab === 'jarvis') return refreshJarvis()
             return Promise.resolve()
           })
         )
@@ -108,7 +117,7 @@ export function useMissionControlPhaseA({ active, selection }) {
         setIsRefreshing(false)
       }
     }, 600)
-  }, [refreshObservability, refreshOperations, refreshOverview])
+  }, [refreshJarvis, refreshObservability, refreshOperations, refreshOverview])
 
   useEffect(() => {
     if (!active) return
@@ -213,6 +222,10 @@ export function useMissionControlPhaseA({ active, selection }) {
     }
   }, [])
 
+  const openJarvisDetail = useCallback((title, item) => {
+    setDrawer({ kind: 'jarvis', title, item })
+  }, [])
+
   const closeDrawer = useCallback(() => setDrawer(null), [])
 
   const actOnApproval = useCallback(async (requestId, action) => {
@@ -250,6 +263,7 @@ export function useMissionControlPhaseA({ active, selection }) {
     openEventDetail,
     openApprovalDetail,
     openSessionDetail,
+    openJarvisDetail,
     actOnApproval,
   }
 }

@@ -1,6 +1,7 @@
 import { RefreshCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
+import { JarvisTab } from '../components/mission-control/JarvisTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
 import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
 import { OperationsTab } from '../components/mission-control/OperationsTab'
@@ -24,6 +25,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     openEventDetail,
     openApprovalDetail,
     openSessionDetail,
+    openJarvisDetail,
     actOnApproval,
   } = useMissionControlPhaseA({ active: true, selection })
   const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
@@ -116,6 +118,13 @@ export function MissionControlPage({ selection, onSelectionChange }) {
             onOpenRun={openRunDetail}
           />
         </div>
+      ) : null}
+
+      {activeTab === 'jarvis' ? (
+        <JarvisTab
+          data={sections.jarvis}
+          onOpenItem={openJarvisDetail}
+        />
       ) : null}
 
       <DetailDrawer drawer={drawer} onClose={closeDrawer} onApprovalAction={actOnApproval} />

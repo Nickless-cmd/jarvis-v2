@@ -287,6 +287,7 @@ button { cursor: pointer; }
   padding:10px 12px; border-radius:14px; background:#131c27; border:1px solid rgba(255,255,255,.05);
 }
 .compact-metric span { display:block; color:#8ca0b6; font-size:12px; margin-bottom:4px; text-transform:uppercase; letter-spacing:.08em; }
+.compact-metric p { margin:6px 0 0; font-size:12px; line-height:1.45; }
 .inline-error {
   padding:12px 14px; border-radius:16px; background: rgba(243, 92, 92, .12); color:#ffb3b3;
   border:1px solid rgba(243,92,92,.24);
@@ -412,6 +413,7 @@ button { cursor: pointer; }
 .mc-stat { padding:14px; display:flex; flex-direction:column; gap:6px; min-height:108px; }
 .mc-stat span { color:#8ca0b6; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
 .mc-stat strong { font-size:18px; line-height:1.2; }
+.mc-stat small { color:#8ca0b6; line-height:1.45; }
 .tone-green { box-shadow: inset 0 0 0 1px rgba(79,207,146,.15); }
 .tone-accent { box-shadow: inset 0 0 0 1px rgba(40,177,163,.15); }
 .tone-amber { box-shadow: inset 0 0 0 1px rgba(243,179,92,.15); }

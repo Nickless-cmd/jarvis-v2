@@ -133,6 +133,17 @@ function normalizeEventItem(item = {}) {
   }
 }
 
+function normalizeJarvisItem(item = {}, defaults = {}) {
+  const source = item?.source || defaults.source || ''
+  const createdAt = item?.created_at || item?.updated_at || defaults.createdAt || ''
+  return {
+    ...item,
+    summary: defaults.summary || '',
+    source,
+    createdAt,
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -475,6 +486,110 @@ export const backend = {
     }
   },
 
+  async getMissionControlJarvis() {
+    const payload = await requestJson('/mc/jarvis')
+    const state = payload?.state || {}
+    const memory = payload?.memory || {}
+    const development = payload?.development || {}
+    const continuity = payload?.continuity || {}
+
+    return {
+      fetchedAt: new Date().toISOString(),
+      summary: payload?.summary || {},
+      state: {
+        visibleIdentity: normalizeJarvisItem(state.visible_identity || {}, {
+          summary: `workspace ${state?.visible_identity?.workspace || 'unknown'}`,
+        }),
+        privateState: normalizeJarvisItem(state.private_state?.current || {}, {
+          source: state.private_state?.current?.source || '/mc/runtime.private_state',
+          summary: `${state.private_state?.current?.confidence || 'unknown'} confidence · frustration ${state.private_state?.current?.frustration || 'unknown'}`,
+        }),
+        protectedInnerVoice: normalizeJarvisItem(state.protected_inner_voice?.current || {}, {
+          source: state.protected_inner_voice?.current?.source || '/mc/runtime.protected_inner_voice',
+          summary: state.protected_inner_voice?.current?.current_pull || 'No current pull',
+        }),
+        innerInterplay: normalizeJarvisItem(state.inner_interplay?.current || {}, {
+          source: state.inner_interplay?.current?.source || '/mc/runtime.private_inner_interplay',
+          summary: state.inner_interplay?.current?.retained_pattern || 'No retained pattern',
+        }),
+        initiativeTension: normalizeJarvisItem(state.initiative_tension?.current || {}, {
+          source: state.initiative_tension?.current?.source || '/mc/runtime.private_initiative_tension',
+          summary: `${state.initiative_tension?.current?.tension_kind || 'unknown'} · ${state.initiative_tension?.current?.tension_level || 'unknown'}`,
+        }),
+      },
+      memory: {
+        retainedProjection: normalizeJarvisItem(memory.retained_projection?.current || memory.retained_projection || {}, {
+          source: memory.retained_projection?.source || '/mc/runtime.private_retained_memory_projection',
+          summary: memory.retained_projection?.retained_focus || memory.retained_projection?.current?.retained_value || 'No retained focus',
+        }),
+        retainedRecord: normalizeJarvisItem(memory.retained_record?.current || {}, {
+          source: memory.retained_record?.current?.source || '/mc/runtime.private_retained_memory_record',
+          summary: memory.retained_record?.current?.retained_value || 'No retained record',
+        }),
+        recentRecords: (memory.retained_record?.recent_records || []).map((record) => normalizeJarvisItem(record, {
+          source: record.source || '/mc/runtime.private_retained_memory_record',
+          summary: record.retained_value || 'No retained value',
+        })),
+        capabilityContinuity: normalizeJarvisItem(memory.visible_capability_continuity || {}, {
+          source: memory.visible_capability_continuity?.source || '/mc/runtime.visible_capability_continuity',
+          summary: `${memory.visible_capability_continuity?.included_rows || 0} capability rows`,
+        }),
+      },
+      development: {
+        selfModel: normalizeJarvisItem(development.self_model?.current || {}, {
+          source: development.self_model?.current?.source || '/mc/runtime.private_self_model',
+          summary: development.self_model?.current?.growth_direction || 'No growth direction',
+        }),
+        developmentState: normalizeJarvisItem(development.development_state?.current || {}, {
+          source: development.development_state?.current?.source || '/mc/runtime.private_development_state',
+          summary: development.development_state?.current?.preferred_direction || 'No preferred direction',
+        }),
+        growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
+          source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
+          summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
+        }),
+        reflectiveSelection: normalizeJarvisItem((development.reflective_selection?.recent_signals || [])[0] || {}, {
+          source: ((development.reflective_selection?.recent_signals || [])[0] || {}).source || '/mc/runtime.private_reflective_selection',
+          summary: ((development.reflective_selection?.recent_signals || [])[0] || {}).reinforce || 'No reinforce signal',
+        }),
+        operationalPreference: normalizeJarvisItem(development.operational_preference?.current || {}, {
+          source: development.operational_preference?.current?.source || '/mc/runtime.private_operational_preference',
+          summary: development.operational_preference?.current?.preference_reason || 'No preference reason',
+        }),
+        operationalAlignment: normalizeJarvisItem(development.operational_alignment?.current || {}, {
+          source: '/mc/runtime.operational_preference_alignment',
+          summary: development.operational_alignment?.current?.mismatch_reason || development.operational_alignment?.current?.alignment_status || 'No alignment signal',
+        }),
+        temporalCuriosity: normalizeJarvisItem(development.temporal_curiosity?.current || {}, {
+          source: development.temporal_curiosity?.current?.source || '/mc/runtime.private_temporal_curiosity_state',
+          summary: `${development.temporal_curiosity?.current?.rhythm_state || 'unknown'} · ${development.temporal_curiosity?.current?.curiosity_level || 'unknown'}`,
+        }),
+      },
+      continuity: {
+        visibleSession: normalizeJarvisItem(continuity.visible_session || {}, {
+          source: continuity.visible_session?.source || '/mc/runtime.visible_session_continuity',
+          summary: continuity.visible_session?.latest_text_preview || 'No recent session continuity',
+        }),
+        visibleContinuity: normalizeJarvisItem(continuity.visible_continuity || {}, {
+          source: continuity.visible_continuity?.source || '/mc/runtime.visible_continuity',
+          summary: `${continuity.visible_continuity?.included_rows || 0} recent visible continuity rows`,
+        }),
+        relationState: normalizeJarvisItem(continuity.relation_state?.current || {}, {
+          source: continuity.relation_state?.current?.source || '/mc/runtime.private_relation_state',
+          summary: continuity.relation_state?.current?.relation_pull || 'No relation pull',
+        }),
+        promotionSignal: normalizeJarvisItem(continuity.promotion_signal?.current || {}, {
+          source: continuity.promotion_signal?.current?.source || '/mc/runtime.private_temporal_promotion_signal',
+          summary: continuity.promotion_signal?.current?.promotion_target || 'No promotion target',
+        }),
+        promotionDecision: normalizeJarvisItem(continuity.promotion_decision?.current || {}, {
+          source: continuity.promotion_decision?.current?.source || '/mc/runtime.private_promotion_decision',
+          summary: continuity.promotion_decision?.current?.promotion_target || 'No promotion decision',
+        }),
+      },
+    }
+  },
+
   async getMissionControlPhaseA({ selection } = {}) {
     const [overview, operations, observability] = await Promise.all([
       this.getMissionControlOverview({ selection }),
@@ -482,6 +597,16 @@ export const backend = {
       this.getMissionControlObservability(),
     ])
     return { overview, operations, observability }
+  },
+
+  async getMissionControlPhaseB({ selection } = {}) {
+    const [overview, operations, observability, jarvis] = await Promise.all([
+      this.getMissionControlOverview({ selection }),
+      this.getMissionControlOperations(),
+      this.getMissionControlObservability(),
+      this.getMissionControlJarvis(),
+    ])
+    return { overview, operations, observability, jarvis }
   },
 
   async approveCapabilityRequest(requestId) {

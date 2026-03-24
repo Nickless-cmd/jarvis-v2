@@ -2,6 +2,7 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'operations', label: 'Operations' },
   { id: 'observability', label: 'Observability' },
+  { id: 'jarvis', label: 'Jarvis' },
 ]
 
 export function MCTabBar({ activeTab, onChange }) {

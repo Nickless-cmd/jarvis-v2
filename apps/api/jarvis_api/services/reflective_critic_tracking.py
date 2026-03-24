@@ -8,6 +8,7 @@ from core.eventbus.bus import event_bus
 from core.runtime.db import (
     list_runtime_development_focuses,
     list_runtime_reflective_critics,
+    supersede_runtime_reflective_critics,
     update_runtime_reflective_critic_status,
     upsert_runtime_reflective_critic,
 )
@@ -219,6 +220,29 @@ def _persist_critics(
             run_id=run_id,
             session_id=session_id,
         )
+
+        # Suppress near-duplicate critics of same type with similar canonical_key
+        critic_type = str(critic.get("critic_type") or "")
+        canonical_key = str(critic.get("canonical_key") or "")
+        if critic_type == "development-focus-mismatch" and persisted_item.get("was_created"):
+            superseded_count = supersede_runtime_reflective_critics(
+                critic_type=critic_type,
+                exclude_critic_id=str(persisted_item.get("critic_id") or ""),
+                updated_at=now,
+                status_reason=f"Superseded by newer development-focus-mismatch critic {persisted_item.get('critic_id')}.",
+            )
+            if superseded_count > 0:
+                event_bus.publish(
+                    "reflective_critic.superseded",
+                    {
+                        "new_critic_id": persisted_item.get("critic_id"),
+                        "new_critic_type": critic_type,
+                        "superseded_count": superseded_count,
+                        "canonical_key": canonical_key,
+                        "summary": persisted_item.get("summary"),
+                    },
+                )
+
         if persisted_item.get("was_created"):
             event_bus.publish(
                 "reflective_critic.created",
@@ -245,18 +269,50 @@ def _persist_critics(
 
 def _apply_resolution_signals(*, user_message: str) -> int:
     lower = str(user_message or "").lower()
-    markers = (
+    resolution_markers = (
         "det er bedre nu",
         "nu er det bedre",
         "that's better now",
         "that is better now",
         "works better now",
+        "det fungerer bedre",
+        "it works better",
+        "good now",
+        "fine now",
     )
-    if not any(marker in lower for marker in markers):
+    if not any(marker in lower for marker in resolution_markers):
         return 0
+
+    # Find which active critics might be relevant to resolve
+    active_critics = list_runtime_reflective_critics(status="active", limit=20)
+    if not active_critics:
+        return 0
+
+    # Check if the resolution message contains context that matches a specific critic
+    # by looking at what development focus the user might be referring to
+    matching_critic_keys = _detect_resolution_context(lower, active_critics)
+
     now = datetime.now(UTC).isoformat()
     resolved = 0
-    for item in list_runtime_reflective_critics(status="active", limit=20):
+    for item in active_critics:
+        canonical_key = str(item.get("canonical_key") or "")
+
+        # Only resolve if:
+        # 1. We detected specific resolution context that matches this critic's key
+        # 2. OR there are very few active critics (resolve all if just 1-2)
+        should_resolve = False
+        if len(active_critics) <= 2:
+            should_resolve = True
+        elif matching_critic_keys:
+            # Check if this critic's key matches any detected context
+            should_resolve = any(
+                ctx_key in canonical_key or canonical_key in ctx_key
+                for ctx_key in matching_critic_keys
+            )
+
+        if not should_resolve:
+            continue
+
         updated = update_runtime_reflective_critic_status(
             str(item.get("critic_id") or ""),
             status="resolved",
@@ -273,9 +329,34 @@ def _apply_resolution_signals(*, user_message: str) -> int:
                 "critic_type": updated.get("critic_type"),
                 "status": updated.get("status"),
                 "summary": updated.get("summary"),
+                "canonical_key": canonical_key,
             },
         )
     return resolved
+
+
+def _detect_resolution_context(lower: str, active_critics: list[dict]) -> list[str]:
+    """Detect which critic context the resolution message refers to."""
+    context_keys = []
+
+    # Map resolution language to possible critic keys
+    resolution_context_map = {
+        "dansk": ["danish", "concise", "calibration"],
+        "danish": ["danish", "concise", "calibration"],
+        "kort": ["danish", "concise", "calibration"],
+        "concise": ["danish", "concise", "calibration"],
+        "short": ["danish", "concise", "calibration"],
+        "hej": ["repetitive", "opener", "greeting"],
+        "greeting": ["repetitive", "opener", "greeting"],
+        "opening": ["repetitive", "opener", "greeting"],
+    }
+
+    for keyword, key_parts in resolution_context_map.items():
+        if keyword in lower:
+            for part in key_parts:
+                context_keys.append(part)
+
+    return context_keys
 
 
 def _recent_user_message_history(*, limit_sessions: int, per_session_limit: int) -> list[dict[str, object]]:

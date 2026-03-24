@@ -27,6 +27,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     openSessionDetail,
     openJarvisDetail,
     actOnApproval,
+    actOnContractCandidate,
   } = useMissionControlPhaseA({ active: true, selection })
   const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
 
@@ -127,7 +128,12 @@ export function MissionControlPage({ selection, onSelectionChange }) {
         />
       ) : null}
 
-      <DetailDrawer drawer={drawer} onClose={closeDrawer} onApprovalAction={actOnApproval} />
+      <DetailDrawer
+        drawer={drawer}
+        onClose={closeDrawer}
+        onApprovalAction={actOnApproval}
+        onContractCandidateAction={actOnContractCandidate}
+      />
     </div>
   )
 }

@@ -185,6 +185,8 @@ function normalizePendingWrite(item = {}) {
     pendingCount: Number(item.pending_count || 0),
     approvedCount: Number(item.approved_count || 0),
     rejectedCount: Number(item.rejected_count || 0),
+    appliedCount: Number(item.applied_count || 0),
+    supersededCount: Number(item.superseded_count || 0),
     items: (item.items || []).map(normalizeCandidateItem),
     source: item.source || '/mc/runtime-contract',
     summary: item.summary || 'No pending workflow items.',
@@ -207,10 +209,28 @@ function normalizeCandidateItem(item = {}) {
     reason: item.reason || '',
     evidenceSummary: item.evidence_summary || '',
     supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    proposedValue: item.proposed_value || '',
+    writeSection: item.write_section || '',
     confidence: item.confidence || '',
     source: item.source || '/mc/runtime-contract',
     createdAt: item.created_at || '',
     updatedAt: item.updated_at || '',
+  }
+}
+
+function normalizeContractWrite(item = {}) {
+  return {
+    writeId: item.write_id || '',
+    candidateId: item.candidate_id || '',
+    targetFile: item.target_file || '',
+    canonicalKey: item.canonical_key || '',
+    writeStatus: item.write_status || 'unknown',
+    actor: item.actor || '',
+    summary: item.summary || 'Contract file write',
+    contentLine: item.content_line || '',
+    source: item.source || '/mc/runtime-contract',
+    createdAt: item.created_at || '',
   }
 }
 
@@ -583,6 +603,12 @@ export const backend = {
         },
         promptModes: Object.values(contract.prompt_modes || {}).map(normalizePromptMode),
         pendingWrites: Object.values(contract.pending_writes || {}).map(normalizePendingWrite),
+        writeHistory: {
+          total: Number(contract.write_history?.total || 0),
+          counts: contract.write_history?.counts || {},
+          summary: contract.write_history?.summary || 'No applied file writes recorded yet.',
+          items: (contract.write_history?.items || []).map(normalizeContractWrite),
+        },
         roles: contract.roles || {},
         contractVersion: contract.contract_version || 'unknown',
       },
@@ -707,6 +733,24 @@ export const backend = {
 
   async executeCapabilityRequest(requestId) {
     return requestJson(`/mc/capability-approval-requests/${requestId}/execute`, {
+      method: 'POST',
+    })
+  },
+
+  async approveRuntimeContractCandidate(candidateId) {
+    return requestJson(`/mc/runtime-contract/candidates/${candidateId}/approve`, {
+      method: 'POST',
+    })
+  },
+
+  async rejectRuntimeContractCandidate(candidateId) {
+    return requestJson(`/mc/runtime-contract/candidates/${candidateId}/reject`, {
+      method: 'POST',
+    })
+  },
+
+  async applyRuntimeContractCandidate(candidateId) {
+    return requestJson(`/mc/runtime-contract/candidates/${candidateId}/apply`, {
       method: 'POST',
     })
   },

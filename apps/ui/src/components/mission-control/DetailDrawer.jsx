@@ -5,7 +5,7 @@ function renderJson(value) {
   return JSON.stringify(value, null, 2)
 }
 
-export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
+export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCandidateAction }) {
   if (!drawer) return null
 
   return (
@@ -21,6 +21,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
               {drawer.kind === 'approval' ? 'Approval queue item and actions' : null}
               {drawer.kind === 'session' ? 'Session transcript preview' : null}
               {drawer.kind === 'jarvis' ? 'Jarvis state and continuity detail' : null}
+              {drawer.kind === 'contract-candidate' ? 'Governed USER/MEMORY workflow item' : null}
             </p>
           </div>
           <button className="icon-btn" onClick={onClose}><X size={16} /></button>
@@ -127,6 +128,72 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction }) {
                 </article>
               ))}
             </div>
+          </div>
+        ) : null}
+
+        {drawer.kind === 'contract-candidate' ? (
+          <div className="mc-drawer-body">
+            <div className="mc-keyval-grid">
+              <div><span>Candidate</span><strong>{drawer.item.candidateId || 'unknown'}</strong></div>
+              <div><span>Status</span><strong>{drawer.item.status || 'unknown'}</strong></div>
+              <div><span>Target</span><strong>{drawer.item.targetFile || 'unknown'}</strong></div>
+              <div><span>Type</span><strong>{drawer.item.candidateType || 'unknown'}</strong></div>
+            </div>
+            <div className="mc-inline-meta">
+              {drawer.item.sourceKind ? <span className="mc-meta-pill">Source {drawer.item.sourceKind}</span> : null}
+              {drawer.item.confidence ? <span className="mc-meta-pill">Confidence {drawer.item.confidence}</span> : null}
+              {drawer.item.updatedAt ? <span className="mc-meta-pill">Updated {formatFreshness(drawer.item.updatedAt)}</span> : null}
+            </div>
+            {drawer.error ? <div className="inline-error">{drawer.error}</div> : null}
+            <div className="mc-inline-actions">
+              <button
+                className="primary-btn"
+                disabled={drawer.busy || drawer.item.status !== 'proposed'}
+                onClick={() => onContractCandidateAction?.(drawer.item.candidateId, 'approve')}
+              >
+                {drawer.busy ? 'Working…' : 'Approve'}
+              </button>
+              <button
+                className="secondary-btn"
+                disabled={drawer.busy || !['proposed', 'approved'].includes(drawer.item.status)}
+                onClick={() => onContractCandidateAction?.(drawer.item.candidateId, 'reject')}
+              >
+                Reject
+              </button>
+              <button
+                className="secondary-btn"
+                disabled={drawer.busy || drawer.item.status !== 'approved'}
+                onClick={() => onContractCandidateAction?.(drawer.item.candidateId, 'apply')}
+              >
+                Apply
+              </button>
+            </div>
+            <article className="mc-code-card">
+              <strong>Evidence</strong>
+              <p>{drawer.item.evidenceSummary || 'No evidence summary recorded.'}</p>
+            </article>
+            {drawer.item.proposedValue ? (
+              <article className="mc-code-card">
+                <strong>Proposed write</strong>
+                <p>{drawer.item.proposedValue}</p>
+              </article>
+            ) : null}
+            {drawer.item.statusReason ? (
+              <article className="mc-code-card">
+                <strong>Status note</strong>
+                <p>{drawer.item.statusReason}</p>
+              </article>
+            ) : null}
+            {drawer.item.write ? (
+              <article className="mc-code-card">
+                <strong>Applied write</strong>
+                <p>{drawer.item.write.write_status || 'unknown'} · {drawer.item.write.target_file || drawer.item.targetFile}</p>
+              </article>
+            ) : null}
+            <article className="mc-code-card">
+              <strong>Candidate detail</strong>
+              <pre>{renderJson(drawer.item)}</pre>
+            </article>
           </div>
         ) : null}
 

@@ -223,7 +223,12 @@ export function useMissionControlPhaseA({ active, selection }) {
   }, [])
 
   const openJarvisDetail = useCallback((title, item) => {
-    setDrawer({ kind: 'jarvis', title, item })
+    setDrawer({
+      kind: item?.candidateId ? 'contract-candidate' : 'jarvis',
+      title,
+      item,
+      busy: false,
+    })
   }, [])
 
   const closeDrawer = useCallback(() => setDrawer(null), [])
@@ -245,6 +250,65 @@ export function useMissionControlPhaseA({ active, selection }) {
     }
   }, [refreshObservability, refreshOperations, refreshOverview])
 
+  const actOnContractCandidate = useCallback(async (candidateId, action) => {
+    setDrawer((current) => (current ? { ...current, busy: true, error: '' } : current))
+    try {
+      let response = null
+      if (action === 'approve') response = await backend.approveRuntimeContractCandidate(candidateId)
+      if (action === 'reject') response = await backend.rejectRuntimeContractCandidate(candidateId)
+      if (action === 'apply') response = await backend.applyRuntimeContractCandidate(candidateId)
+      const jarvis = await backend.getMissionControlJarvis()
+      setData((current) => ({ ...current, jarvis }))
+
+      const pendingWrites = jarvis?.contract?.pendingWrites || []
+      const responseCandidate = response?.candidate
+        ? {
+            candidateId: response.candidate.candidate_id || '',
+            candidateType: response.candidate.candidate_type || '',
+            targetFile: response.candidate.target_file || '',
+            status: response.candidate.status || 'unknown',
+            sourceKind: response.candidate.source_kind || '',
+            sourceMode: response.candidate.source_mode || '',
+            actor: response.candidate.actor || '',
+            sessionId: response.candidate.session_id || '',
+            runId: response.candidate.run_id || '',
+            canonicalKey: response.candidate.canonical_key || '',
+            summary: response.candidate.summary || 'Candidate detail',
+            reason: response.candidate.reason || '',
+            evidenceSummary: response.candidate.evidence_summary || '',
+            supportSummary: response.candidate.support_summary || '',
+            statusReason: response.candidate.status_reason || '',
+            proposedValue: response.candidate.proposed_value || '',
+            writeSection: response.candidate.write_section || '',
+            confidence: response.candidate.confidence || '',
+            source: '/mc/runtime-contract',
+            createdAt: response.candidate.created_at || '',
+            updatedAt: response.candidate.updated_at || '',
+            write: response?.write || null,
+          }
+        : null
+      const updatedCandidate = responseCandidate
+        || pendingWrites.flatMap((workflow) => workflow.items || []).find((item) => item.candidateId === candidateId)
+
+      if (updatedCandidate) {
+        setDrawer({
+          kind: updatedCandidate.candidateId ? 'contract-candidate' : 'jarvis',
+          title: updatedCandidate.summary || 'Candidate detail',
+          item: updatedCandidate,
+          busy: false,
+        })
+      } else {
+        setDrawer(null)
+      }
+    } catch (error) {
+      setDrawer((current) => (
+        current
+          ? { ...current, busy: false, error: error instanceof Error ? error.message : 'Action failed' }
+          : current
+      ))
+    }
+  }, [refreshJarvis])
+
   const sections = useMemo(() => data, [data])
 
   return {
@@ -265,5 +329,6 @@ export function useMissionControlPhaseA({ active, selection }) {
     openSessionDetail,
     openJarvisDetail,
     actOnApproval,
+    actOnContractCandidate,
   }
 }

@@ -143,6 +143,9 @@ def init_db() -> None:
                 reason TEXT NOT NULL DEFAULT '',
                 evidence_summary TEXT NOT NULL DEFAULT '',
                 support_summary TEXT NOT NULL DEFAULT '',
+                status_reason TEXT NOT NULL DEFAULT '',
+                proposed_value TEXT NOT NULL DEFAULT '',
+                write_section TEXT NOT NULL DEFAULT '',
                 confidence TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -159,6 +162,28 @@ def init_db() -> None:
             """
             CREATE INDEX IF NOT EXISTS idx_runtime_contract_candidates_canonical_key
             ON runtime_contract_candidates(candidate_type, target_file, canonical_key, id DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS runtime_contract_file_writes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                write_id TEXT NOT NULL UNIQUE,
+                candidate_id TEXT NOT NULL,
+                target_file TEXT NOT NULL,
+                canonical_key TEXT NOT NULL DEFAULT '',
+                write_status TEXT NOT NULL,
+                actor TEXT NOT NULL DEFAULT '',
+                summary TEXT NOT NULL,
+                content_line TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_runtime_contract_file_writes_target
+            ON runtime_contract_file_writes(target_file, id DESC)
             """
         )
         conn.execute(
@@ -1731,6 +1756,9 @@ def upsert_runtime_contract_candidate(
     confidence: str,
     created_at: str,
     updated_at: str,
+    status_reason: str = "",
+    proposed_value: str = "",
+    write_section: str = "",
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_runtime_contract_candidate_table(conn)
@@ -1768,11 +1796,14 @@ def upsert_runtime_contract_candidate(
                     reason,
                     evidence_summary,
                     support_summary,
+                    status_reason,
+                    proposed_value,
+                    write_section,
                     confidence,
                     created_at,
                     updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     candidate_id,
@@ -1789,6 +1820,9 @@ def upsert_runtime_contract_candidate(
                     reason,
                     evidence_summary,
                     support_summary,
+                    status_reason,
+                    proposed_value,
+                    write_section,
                     confidence,
                     created_at,
                     updated_at,
@@ -1812,6 +1846,9 @@ def upsert_runtime_contract_candidate(
                     reason = ?,
                     evidence_summary = ?,
                     support_summary = ?,
+                    status_reason = ?,
+                    proposed_value = ?,
+                    write_section = ?,
                     confidence = ?,
                     updated_at = ?
                 WHERE candidate_id = ?
@@ -1827,6 +1864,9 @@ def upsert_runtime_contract_candidate(
                     reason,
                     evidence_summary,
                     support_summary,
+                    status_reason,
+                    proposed_value,
+                    write_section,
                     confidence,
                     updated_at,
                     resolved_id,
@@ -1878,6 +1918,9 @@ def list_runtime_contract_candidates(
                 reason,
                 evidence_summary,
                 support_summary,
+                status_reason,
+                proposed_value,
+                write_section,
                 confidence,
                 created_at,
                 updated_at
@@ -1911,6 +1954,9 @@ def get_runtime_contract_candidate(candidate_id: str) -> dict[str, object] | Non
                 reason,
                 evidence_summary,
                 support_summary,
+                status_reason,
+                proposed_value,
+                write_section,
                 confidence,
                 created_at,
                 updated_at
@@ -1942,6 +1988,191 @@ def runtime_contract_candidate_counts() -> dict[str, int]:
     return counts
 
 
+def update_runtime_contract_candidate_status(
+    candidate_id: str,
+    *,
+    status: str,
+    updated_at: str,
+    status_reason: str = "",
+) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_contract_candidate_table(conn)
+        row = conn.execute(
+            """
+            SELECT candidate_id
+            FROM runtime_contract_candidates
+            WHERE candidate_id = ?
+            LIMIT 1
+            """,
+            (candidate_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            """
+            UPDATE runtime_contract_candidates
+            SET status = ?, status_reason = ?, updated_at = ?
+            WHERE candidate_id = ?
+            """,
+            (status, status_reason, updated_at, candidate_id),
+        )
+        conn.commit()
+    return get_runtime_contract_candidate(candidate_id)
+
+
+def supersede_runtime_contract_candidates(
+    *,
+    candidate_type: str,
+    target_file: str,
+    canonical_key: str,
+    exclude_candidate_id: str,
+    updated_at: str,
+    status_reason: str,
+) -> int:
+    if not canonical_key:
+        return 0
+    with connect() as conn:
+        _ensure_runtime_contract_candidate_table(conn)
+        cursor = conn.execute(
+            """
+            UPDATE runtime_contract_candidates
+            SET status = 'superseded',
+                status_reason = ?,
+                updated_at = ?
+            WHERE candidate_type = ?
+              AND target_file = ?
+              AND canonical_key = ?
+              AND candidate_id != ?
+              AND status IN ('proposed', 'approved')
+            """,
+            (
+                status_reason,
+                updated_at,
+                candidate_type,
+                target_file,
+                canonical_key,
+                exclude_candidate_id,
+            ),
+        )
+        conn.commit()
+        return int(cursor.rowcount or 0)
+
+
+def record_runtime_contract_file_write(
+    *,
+    write_id: str,
+    candidate_id: str,
+    target_file: str,
+    canonical_key: str,
+    write_status: str,
+    actor: str,
+    summary: str,
+    content_line: str,
+    created_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_runtime_contract_file_write_table(conn)
+        conn.execute(
+            """
+            INSERT INTO runtime_contract_file_writes (
+                write_id,
+                candidate_id,
+                target_file,
+                canonical_key,
+                write_status,
+                actor,
+                summary,
+                content_line,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                write_id,
+                candidate_id,
+                target_file,
+                canonical_key,
+                write_status,
+                actor,
+                summary,
+                content_line,
+                created_at,
+            ),
+        )
+        conn.commit()
+    write = get_runtime_contract_file_write(write_id)
+    if write is None:
+        raise RuntimeError("runtime contract file write was not persisted")
+    return write
+
+
+def get_runtime_contract_file_write(write_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_contract_file_write_table(conn)
+        row = conn.execute(
+            """
+            SELECT
+                write_id,
+                candidate_id,
+                target_file,
+                canonical_key,
+                write_status,
+                actor,
+                summary,
+                content_line,
+                created_at
+            FROM runtime_contract_file_writes
+            WHERE write_id = ?
+            LIMIT 1
+            """,
+            (write_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _runtime_contract_file_write_from_row(row)
+
+
+def recent_runtime_contract_file_writes(limit: int = 10) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_runtime_contract_file_write_table(conn)
+        rows = conn.execute(
+            """
+            SELECT
+                write_id,
+                candidate_id,
+                target_file,
+                canonical_key,
+                write_status,
+                actor,
+                summary,
+                content_line,
+                created_at
+            FROM runtime_contract_file_writes
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [_runtime_contract_file_write_from_row(row) for row in rows]
+
+
+def runtime_contract_file_write_counts() -> dict[str, int]:
+    with connect() as conn:
+        _ensure_runtime_contract_file_write_table(conn)
+        rows = conn.execute(
+            """
+            SELECT target_file, write_status, COUNT(*) AS n
+            FROM runtime_contract_file_writes
+            GROUP BY target_file, write_status
+            """
+        ).fetchall()
+    counts: dict[str, int] = {}
+    for row in rows:
+        key = f"{row['target_file']}:{row['write_status']}"
+        counts[key] = int(row["n"] or 0)
+    return counts
+
+
 def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
     return {
         "candidate_id": row["candidate_id"],
@@ -1958,6 +2189,9 @@ def _runtime_contract_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
         "reason": row["reason"],
         "evidence_summary": row["evidence_summary"],
         "support_summary": row["support_summary"],
+        "status_reason": row["status_reason"],
+        "proposed_value": row["proposed_value"],
+        "write_section": row["write_section"],
         "confidence": row["confidence"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
@@ -1983,6 +2217,9 @@ def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:
             reason TEXT NOT NULL DEFAULT '',
             evidence_summary TEXT NOT NULL DEFAULT '',
             support_summary TEXT NOT NULL DEFAULT '',
+            status_reason TEXT NOT NULL DEFAULT '',
+            proposed_value TEXT NOT NULL DEFAULT '',
+            write_section TEXT NOT NULL DEFAULT '',
             confidence TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
@@ -2001,3 +2238,55 @@ def _ensure_runtime_contract_candidate_table(conn: sqlite3.Connection) -> None:
         ON runtime_contract_candidates(candidate_type, target_file, canonical_key, id DESC)
         """
     )
+    rows = conn.execute("PRAGMA table_info(runtime_contract_candidates)").fetchall()
+    existing = {str(row["name"]) for row in rows}
+    required_columns = {
+        "status_reason": "TEXT NOT NULL DEFAULT ''",
+        "proposed_value": "TEXT NOT NULL DEFAULT ''",
+        "write_section": "TEXT NOT NULL DEFAULT ''",
+    }
+    for name, spec in required_columns.items():
+        if name in existing:
+            continue
+        conn.execute(
+            f"ALTER TABLE runtime_contract_candidates ADD COLUMN {name} {spec}"
+        )
+
+
+def _ensure_runtime_contract_file_write_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runtime_contract_file_writes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            write_id TEXT NOT NULL UNIQUE,
+            candidate_id TEXT NOT NULL,
+            target_file TEXT NOT NULL,
+            canonical_key TEXT NOT NULL DEFAULT '',
+            write_status TEXT NOT NULL,
+            actor TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL,
+            content_line TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_contract_file_writes_target
+        ON runtime_contract_file_writes(target_file, id DESC)
+        """
+    )
+
+
+def _runtime_contract_file_write_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "write_id": row["write_id"],
+        "candidate_id": row["candidate_id"],
+        "target_file": row["target_file"],
+        "canonical_key": row["canonical_key"],
+        "write_status": row["write_status"],
+        "actor": row["actor"],
+        "summary": row["summary"],
+        "content_line": row["content_line"],
+        "created_at": row["created_at"],
+    }

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from core.identity.runtime_candidates import (
     build_runtime_candidate_workflows,
+    build_runtime_candidate_write_history,
     total_pending_runtime_candidates,
 )
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -111,6 +112,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
 
     bootstrap = _bootstrap_status(workspace_dir)
     pending_writes = build_runtime_candidate_workflows()
+    write_history = build_runtime_candidate_write_history()
     prompt_modes = {
         "visible_chat": {
             "id": "visible_chat",
@@ -208,6 +210,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
         },
         "prompt_modes": prompt_modes,
         "pending_writes": pending_writes,
+        "write_history": write_history,
         "roles": {
             "canonical": "Workspace truth intended to shape behavior directly.",
             "derived": "Runtime-generated artifacts that are inspectable but not canonical identity truth.",

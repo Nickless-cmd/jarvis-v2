@@ -66,6 +66,7 @@ export function JarvisTab({ data, onOpenItem }) {
   const canonicalFiles = contract?.files?.canonical || []
   const derivedFiles = contract?.files?.derived || []
   const referenceFiles = contract?.files?.referenceOnly || []
+  const writeHistory = contract?.writeHistory || { items: [], total: 0, summary: '' }
 
   return (
     <div className="mc-tab-page">
@@ -117,7 +118,7 @@ export function JarvisTab({ data, onOpenItem }) {
           <div className="panel-header">
             <div>
               <h3>Runtime Contract</h3>
-              <p className="muted">Canonical files, bootstrap state, prompt modes, and write workflow placeholders.</p>
+              <p className="muted">Canonical files, bootstrap state, prompt modes, and governed USER/MEMORY workflow state.</p>
             </div>
             <span className="mc-section-hint">{contract?.contractVersion || 'contract'}</span>
           </div>
@@ -140,7 +141,7 @@ export function JarvisTab({ data, onOpenItem }) {
             <div className="compact-metric">
               <span>Pending Writes</span>
               <strong>{contractSummary?.pending_write_count || 0}</strong>
-              <p>Governed USER.md and MEMORY.md candidates are tracked without file writes.</p>
+              <p>Governed USER.md and MEMORY.md candidates await explicit approval and apply.</p>
             </div>
           </div>
           <div className="mc-contract-grid">
@@ -201,13 +202,32 @@ export function JarvisTab({ data, onOpenItem }) {
                         <span>{item.summary}</span>
                       </div>
                       <div className="mc-row-meta">
-                        <small>{item.pendingCount || 0} proposed</small>
+                        <small>{item.pendingCount || 0} proposed / {item.approvedCount || 0} approved</small>
                         <ChevronRight size={14} />
                       </div>
                     </button>
                     {(item.items || []).slice(0, 2).map((candidate) => candidateRow(candidate, onOpenItem))}
                   </div>
                 ))}
+                <button
+                  className="mc-list-row"
+                  onClick={() => onOpenItem('Runtime Contract File Writes', {
+                    source: '/mc/runtime-contract',
+                    summary: writeHistory.summary,
+                    items: writeHistory.items,
+                    total: writeHistory.total,
+                    counts: writeHistory.counts,
+                  })}
+                >
+                  <div>
+                    <strong>Latest File Writes</strong>
+                    <span>{writeHistory.summary}</span>
+                  </div>
+                  <div className="mc-row-meta">
+                    <small>{writeHistory.total || 0} applied</small>
+                    <ChevronRight size={14} />
+                  </div>
+                </button>
                 <button
                   className="mc-list-row"
                   onClick={() => onOpenItem('Derived and Reference Files', {

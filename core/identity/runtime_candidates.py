@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from core.runtime.db import (
     list_runtime_contract_candidates,
+    recent_runtime_contract_file_writes,
     runtime_contract_candidate_counts,
+    runtime_contract_file_write_counts,
 )
 
 
@@ -11,13 +13,11 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
     preference_items = list_runtime_contract_candidates(
         candidate_type="preference_update",
         target_file="USER.md",
-        status="proposed",
         limit=8,
     )
     memory_items = list_runtime_contract_candidates(
         candidate_type="memory_promotion",
         target_file="MEMORY.md",
-        status="proposed",
         limit=8,
     )
     return {
@@ -28,6 +28,8 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             proposed_count=int(counts.get("preference_update:proposed", 0)),
             approved_count=int(counts.get("preference_update:approved", 0)),
             rejected_count=int(counts.get("preference_update:rejected", 0)),
+            applied_count=int(counts.get("preference_update:applied", 0)),
+            superseded_count=int(counts.get("preference_update:superseded", 0)),
             items=preference_items,
         ),
         "memory_promotions": _workflow_state(
@@ -37,13 +39,45 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             proposed_count=int(counts.get("memory_promotion:proposed", 0)),
             approved_count=int(counts.get("memory_promotion:approved", 0)),
             rejected_count=int(counts.get("memory_promotion:rejected", 0)),
+            applied_count=int(counts.get("memory_promotion:applied", 0)),
+            superseded_count=int(counts.get("memory_promotion:superseded", 0)),
             items=memory_items,
         ),
     }
 
 
 def total_pending_runtime_candidates(workflows: dict[str, dict[str, object]]) -> int:
-    return sum(int(item.get("pending_count") or 0) for item in workflows.values())
+    return sum(
+        int(item.get("pending_count") or 0) + int(item.get("approved_count") or 0)
+        for item in workflows.values()
+    )
+
+
+def build_runtime_candidate_write_history() -> dict[str, object]:
+    counts = runtime_contract_file_write_counts()
+    items = recent_runtime_contract_file_writes(limit=8)
+    written_total = sum(
+        value
+        for key, value in counts.items()
+        if key.endswith(":written") or key.endswith(":already-present")
+    )
+    return {
+        "total": written_total,
+        "items": [
+            {
+                **item,
+                "source": "/mc/runtime-contract",
+            }
+            for item in items
+        ],
+        "counts": counts,
+        "summary": (
+            f"{written_total} applied file writes recorded."
+            if written_total
+            else "No applied file writes recorded yet."
+        ),
+        "source": "/mc/runtime-contract",
+    }
 
 
 def _workflow_state(
@@ -54,15 +88,25 @@ def _workflow_state(
     proposed_count: int,
     approved_count: int,
     rejected_count: int,
+    applied_count: int,
+    superseded_count: int,
     items: list[dict[str, object]],
 ) -> dict[str, object]:
+    actionable_items = [
+        item
+        for item in items
+        if str(item.get("status") or "") in {"proposed", "approved"}
+    ][:8]
     summary = (
-        f"{proposed_count} proposed"
-        if proposed_count > 0
+        f"{proposed_count} proposed, {approved_count} approved"
+        if proposed_count > 0 or approved_count > 0
         else f"No proposed {target_file} candidates."
     )
-    if approved_count > 0 or rejected_count > 0:
-        summary = f"{summary} {approved_count} approved, {rejected_count} rejected."
+    if rejected_count > 0 or applied_count > 0 or superseded_count > 0:
+        summary = (
+            f"{summary} {rejected_count} rejected, "
+            f"{applied_count} applied, {superseded_count} superseded."
+        )
     return {
         "id": workflow_id,
         "label": label,
@@ -71,12 +115,14 @@ def _workflow_state(
         "pending_count": proposed_count,
         "approved_count": approved_count,
         "rejected_count": rejected_count,
+        "applied_count": applied_count,
+        "superseded_count": superseded_count,
         "items": [
             {
                 **item,
                 "source": "/mc/runtime-contract",
             }
-            for item in items
+            for item in actionable_items
         ],
         "summary": summary,
         "source": "/mc/runtime-contract",

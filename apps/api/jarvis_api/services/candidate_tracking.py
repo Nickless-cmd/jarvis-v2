@@ -59,6 +59,9 @@ def track_runtime_contract_candidates_for_visible_turn(
             confidence=str(candidate["confidence"]),
             created_at=now,
             updated_at=now,
+            status_reason="Candidate proposed from visible chat evidence.",
+            proposed_value=str(candidate.get("proposed_value") or ""),
+            write_section=str(candidate.get("write_section") or ""),
         )
         persisted.append(persisted_candidate)
         if persisted_candidate["candidate_type"] == "preference_update":
@@ -110,6 +113,8 @@ def _preference_candidates(message: str) -> list[dict[str, str]]:
                 reason="Explicit durable language preference stated in chat.",
                 evidence_summary=_quote(message),
                 support_summary="Candidate only. No USER.md write has been applied.",
+                proposed_value="- Language preference: replies in Danish by default.",
+                write_section="## Durable Preferences",
                 confidence="high",
             )
         )
@@ -128,6 +133,8 @@ def _preference_candidates(message: str) -> list[dict[str, str]]:
                     reason="Explicit durable summary-style preference stated in chat.",
                     evidence_summary=_quote(message),
                     support_summary="Candidate only. No USER.md write has been applied.",
+                    proposed_value="- Summary preference: concise technical summaries.",
+                    write_section="## Durable Preferences",
                     confidence="high",
                 )
             )
@@ -142,6 +149,8 @@ def _preference_candidates(message: str) -> list[dict[str, str]]:
                     reason="Explicit durable response-style preference stated in chat.",
                     evidence_summary=_quote(message),
                     support_summary="Candidate only. No USER.md write has been applied.",
+                    proposed_value="- Reply preference: concise answers by default.",
+                    write_section="## Durable Preferences",
                     confidence="high",
                 )
             )
@@ -157,6 +166,8 @@ def _preference_candidates(message: str) -> list[dict[str, str]]:
                 reason="Explicit collaborator work-pattern statement may matter across sessions.",
                 evidence_summary=_quote(message),
                 support_summary="Candidate only. No USER.md write has been applied.",
+                proposed_value="- Work pattern: mostly works late in the evening.",
+                write_section="## Durable Preferences",
                 confidence="medium",
             )
         )
@@ -178,6 +189,8 @@ def _memory_candidates(message: str) -> list[dict[str, str]]:
                 reason="Explicit stable project anchor phrased as something to remember.",
                 evidence_summary=_quote(message),
                 support_summary="Candidate only. No MEMORY.md write has been applied.",
+                proposed_value="- Project anchor: Jarvis and the user are building Jarvis together.",
+                write_section="## Curated Memory",
                 confidence="high",
             )
         )
@@ -192,6 +205,8 @@ def _memory_candidates(message: str) -> list[dict[str, str]]:
                 reason="Explicit stable project anchor phrased as something to remember.",
                 evidence_summary=_quote(message),
                 support_summary="Candidate only. No MEMORY.md write has been applied.",
+                proposed_value="- Project anchor: Jarvis and the user are building Jarvis together.",
+                write_section="## Curated Memory",
                 confidence="high",
             )
         )
@@ -208,6 +223,8 @@ def _candidate(
     reason: str,
     evidence_summary: str,
     support_summary: str,
+    proposed_value: str,
+    write_section: str,
     confidence: str,
 ) -> dict[str, str]:
     return {
@@ -219,6 +236,8 @@ def _candidate(
         "reason": reason,
         "evidence_summary": evidence_summary,
         "support_summary": support_summary,
+        "proposed_value": proposed_value,
+        "write_section": write_section,
         "confidence": confidence,
     }
 

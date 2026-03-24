@@ -30,6 +30,11 @@ from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.costing.ledger import recent_costs, telemetry_summary
 from core.eventbus.bus import event_bus
 from core.identity.runtime_contract import build_runtime_contract_state
+from core.identity.candidate_workflow import (
+    apply_runtime_contract_candidate,
+    approve_runtime_contract_candidate,
+    reject_runtime_contract_candidate,
+)
 from core.identity.visible_identity import load_visible_identity_summary
 from core.memory.private_inner_interplay import build_private_inner_interplay
 from core.memory.private_initiative_tension import build_private_initiative_tension
@@ -274,6 +279,42 @@ def mc_jarvis() -> dict:
 @router.get("/runtime-contract")
 def mc_runtime_contract() -> dict:
     return build_runtime_contract_state()
+
+
+@router.post("/runtime-contract/candidates/{candidate_id}/approve")
+def mc_approve_runtime_contract_candidate(candidate_id: str) -> dict:
+    try:
+        candidate = approve_runtime_contract_candidate(candidate_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        "candidate": candidate,
+    }
+
+
+@router.post("/runtime-contract/candidates/{candidate_id}/reject")
+def mc_reject_runtime_contract_candidate(candidate_id: str) -> dict:
+    try:
+        candidate = reject_runtime_contract_candidate(candidate_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        "candidate": candidate,
+    }
+
+
+@router.post("/runtime-contract/candidates/{candidate_id}/apply")
+def mc_apply_runtime_contract_candidate(candidate_id: str) -> dict:
+    try:
+        result = apply_runtime_contract_candidate(candidate_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        **result,
+    }
 
 
 @router.get("/runtime")

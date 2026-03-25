@@ -389,6 +389,39 @@ function reflectionHistoryRow(item, onOpen) {
   )
 }
 
+function temporalRecurrenceSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const detailText = [
+    item.statusReason,
+    item.rationale,
+    item.supportSummary,
+  ].filter(Boolean)[0] || 'Inspect recurring thread evidence'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Temporal Recurrence Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'temporal recurrence detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Temporal Recurrence Signal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function subsectionHeader(kicker, title) {
   return (
     <div className="support-card-header">
@@ -688,6 +721,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
   const goalSignals = data?.development?.goalSignals || { items: [], summary: {} }
   const reflectionSignals = data?.development?.reflectionSignals || { items: [], summary: {} }
+  const temporalRecurrenceSignals = data?.development?.temporalRecurrenceSignals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1203,6 +1237,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Recurring Patterns</span>
+              <strong>{(temporalRecurrenceSignals?.summary?.active_count || 0) + (temporalRecurrenceSignals?.summary?.softening_count || 0)}</strong>
+              <p>{temporalRecurrenceSignals?.summary?.current_signal || 'No active temporal recurrence signal'}</p>
+              <p>
+                {temporalRecurrenceSignals?.summary?.softening_count || 0} softening · {temporalRecurrenceSignals?.summary?.stale_count || 0} stale · {temporalRecurrenceSignals?.summary?.superseded_count || 0} superseded
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Lifecycle</span>
               <strong>
                 {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
@@ -1284,6 +1326,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               ) : reflectionSignals.items.slice(0, 3).map((item) => reflectionSignalRow(item, onOpenItem))}
               {reflectionHistory.length > 0 ? subsectionHeader('Recent Reflection', 'History') : null}
               {reflectionHistory.slice(0, 4).map((item) => reflectionHistoryRow(item, onOpenItem))}
+              {temporalRecurrenceSignals.items.length > 0 ? subsectionHeader('Recurring Patterns', 'What Keeps Returning') : null}
+              {temporalRecurrenceSignals.items.slice(0, 3).map((item) => temporalRecurrenceSignalRow(item, onOpenItem))}
             </div>
           </div>
         </article>

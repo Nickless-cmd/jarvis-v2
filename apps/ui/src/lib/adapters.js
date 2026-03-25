@@ -472,6 +472,31 @@ function normalizeGoalSignal(item = {}) {
   }
 }
 
+function normalizeTemporalRecurrenceSignal(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Temporal recurrence signal',
+    summary: item.summary || item.title || 'Temporal recurrence signal detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    source: item.source || '/mc/jarvis::temporal-recurrence-signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeRuntimeAwarenessSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1026,6 +1051,11 @@ export const backend = {
           summary: development.reflection_signals?.summary || {},
           items: (development.reflection_signals?.items || []).map(normalizeReflectionSignal),
           recentHistory: (development.reflection_signals?.recent_history || []).map(normalizeReflectionHistoryItem),
+        },
+        temporalRecurrenceSignals: {
+          active: Boolean(development.temporal_recurrence_signals?.active),
+          summary: development.temporal_recurrence_signals?.summary || {},
+          items: (development.temporal_recurrence_signals?.items || []).map(normalizeTemporalRecurrenceSignal),
         },
       },
       continuity: {

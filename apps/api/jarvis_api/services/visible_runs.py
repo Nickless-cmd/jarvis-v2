@@ -34,6 +34,9 @@ from apps.api.jarvis_api.services.runtime_awareness_signal_tracking import (
 from apps.api.jarvis_api.services.reflection_signal_tracking import (
     track_runtime_reflection_signals_for_visible_turn,
 )
+from apps.api.jarvis_api.services.temporal_recurrence_signal_tracking import (
+    track_runtime_temporal_recurrence_signals_for_visible_turn,
+)
 from apps.api.jarvis_api.services.visible_model import (
     VisibleModelDelta,
     VisibleModelStreamCancelled,
@@ -431,6 +434,13 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             session_id=run.session_id,
             run_id=run.run_id,
             user_message=run.user_message,
+        )
+    except Exception:
+        return
+    try:
+        track_runtime_temporal_recurrence_signals_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
         )
     except Exception:
         return

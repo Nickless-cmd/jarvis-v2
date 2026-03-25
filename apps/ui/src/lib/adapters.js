@@ -522,6 +522,22 @@ function normalizeReflectionSignal(item = {}) {
   }
 }
 
+function normalizeReflectionHistoryItem(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    title: item.title || item.summary || 'Reflection update',
+    status: item.status || 'unknown',
+    transition: item.transition || '',
+    confidence: item.confidence || '',
+    summary: item.summary || '',
+    statusReason: item.status_reason || '',
+    source: item.source || '/mc/jarvis::reflection-signal-history',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -994,6 +1010,7 @@ export const backend = {
           active: Boolean(development.reflection_signals?.active),
           summary: development.reflection_signals?.summary || {},
           items: (development.reflection_signals?.items || []).map(normalizeReflectionSignal),
+          recentHistory: (development.reflection_signals?.recent_history || []).map(normalizeReflectionHistoryItem),
         },
       },
       continuity: {

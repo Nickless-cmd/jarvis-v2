@@ -328,6 +328,37 @@ function reflectionSignalRow(item, onOpen) {
   )
 }
 
+function reflectionHistoryRow(item, onOpen) {
+  const detailText = [
+    item.transition,
+    item.statusReason,
+    item.summary,
+  ].filter(Boolean)[0] || 'Inspect reflection history detail'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={`${item.signalId || item.title}-${item.updatedAt || item.createdAt || 'history'}`}
+      onClick={() => onOpen(item.title || 'Reflection History', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'reflection history detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Reflection History'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'unknown'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -341,6 +372,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
   const goalSignals = data?.development?.goalSignals || { items: [], summary: {} }
   const reflectionSignals = data?.development?.reflectionSignals || { items: [], summary: {} }
+  const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
@@ -892,6 +924,13 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 <p className="muted">Jarvis has not accumulated a bounded slow-integration reflection thread yet.</p>
               </div>
             ) : reflectionSignals.items.slice(0, 3).map((item) => reflectionSignalRow(item, onOpenItem))}
+            {reflectionHistory.length > 0 ? (
+              <div className="support-card-header">
+                <span className="support-card-kicker">Recent Reflection</span>
+                <strong>History</strong>
+              </div>
+            ) : null}
+            {reflectionHistory.slice(0, 4).map((item) => reflectionHistoryRow(item, onOpenItem))}
           </div>
         </article>
 

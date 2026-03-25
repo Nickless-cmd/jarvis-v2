@@ -91,6 +91,7 @@ def build_runtime_reflection_signal_surface(*, limit: int = 8) -> dict[str, obje
     return {
         "active": bool(active or integrating or settled),
         "items": ordered,
+        "recent_history": [_history_item_from_signal(item) for item in items[: min(max(limit, 1), 6)]],
         "summary": {
             "active_count": len(active),
             "integrating_count": len(integrating),
@@ -202,6 +203,25 @@ def _extract_reflection_candidates() -> list[dict[str, object]]:
             )
 
     return candidates[:4]
+
+
+def _history_item_from_signal(item: dict[str, object]) -> dict[str, object]:
+    status = str(item.get("status") or "unknown")
+    return {
+        "signal_id": item.get("signal_id"),
+        "signal_type": item.get("signal_type"),
+        "title": item.get("title"),
+        "status": status,
+        "transition": _history_transition_label(
+            signal_type=str(item.get("signal_type") or ""),
+            status=status,
+        ),
+        "confidence": item.get("confidence"),
+        "summary": item.get("summary"),
+        "status_reason": item.get("status_reason"),
+        "updated_at": item.get("updated_at"),
+        "created_at": item.get("created_at"),
+    }
 
 
 def _build_candidate(
@@ -384,3 +404,25 @@ def _parse_dt(value: str) -> datetime | None:
         return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _history_transition_label(*, signal_type: str, status: str) -> str:
+    normalized_status = str(status or "").strip()
+    if normalized_status == "active":
+        return "active tension"
+    if normalized_status == "integrating":
+        return "slow integration"
+    if normalized_status == "settled":
+        return "recent settling"
+    if normalized_status == "stale":
+        return "went stale"
+    if normalized_status == "superseded":
+        return "superseded"
+    normalized_type = str(signal_type or "").strip()
+    if normalized_type == "persistent-tension":
+        return "persistent tension"
+    if normalized_type == "slow-integration":
+        return "slow integration"
+    if normalized_type == "settled-thread":
+        return "recent settling"
+    return "reflection update"

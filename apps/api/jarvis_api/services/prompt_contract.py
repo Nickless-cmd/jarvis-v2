@@ -14,6 +14,7 @@ from core.runtime.db import (
     get_private_temporal_promotion_signal,
     get_private_retained_memory_record,
     get_private_self_model,
+    list_runtime_awareness_signals,
     list_runtime_goal_signals,
     list_runtime_reflection_signals,
     list_runtime_world_model_signals,
@@ -548,6 +549,7 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _self_model_support_signal_instruction,
         _world_model_support_signal_instruction,
         _goal_support_signal_instruction,
+        _runtime_awareness_support_signal_instruction,
         _reflection_support_signal_instruction,
         _retained_memory_support_signal_instruction,
         _temporal_support_signal_instruction,
@@ -765,6 +767,50 @@ def _goal_support_signal_instruction() -> str | None:
     )
 
 
+def _runtime_awareness_support_signal_instruction() -> str | None:
+    relevant = [
+        item
+        for item in list_runtime_awareness_signals(limit=8)
+        if str(item.get("status") or "") in {"constrained", "active", "recovered"}
+    ]
+    if not relevant:
+        return None
+
+    preferred_status_order = {"constrained": 0, "active": 1, "recovered": 2}
+    confidence_order = {"high": 0, "medium": 1, "low": 2}
+    dominant = sorted(
+        relevant,
+        key=lambda item: (
+            preferred_status_order.get(str(item.get("status") or ""), 9),
+            confidence_order.get(str(item.get("confidence") or ""), 9),
+        ),
+    )[0]
+
+    runtime_detail = str(dominant.get("title") or "").strip()
+    runtime_state = str(dominant.get("status") or "").strip()
+    runtime_confidence = str(dominant.get("confidence") or "").strip()
+    if not runtime_detail or not runtime_state:
+        return None
+
+    runtime_direction = _runtime_awareness_direction_label(str(dominant.get("signal_type") or ""))
+    parts = [
+        f"runtime_state={runtime_state}",
+        f"runtime_detail={runtime_detail}",
+    ]
+    if runtime_direction:
+        parts.append(f"runtime_direction={runtime_direction}")
+    if runtime_confidence:
+        parts.append(f"runtime_confidence={runtime_confidence}")
+
+    return "\n".join(
+        [
+            "Runtime-awareness support signal:",
+            f"- {' | '.join(parts)}",
+            "Use only as subordinate support. Runtime and visible truth outrank it.",
+        ]
+    )
+
+
 def _temporal_support_signal_instruction() -> str | None:
     signal = get_private_temporal_promotion_signal()
     if not signal:
@@ -808,6 +854,19 @@ def _goal_direction_label(goal_type: str, canonical_key: str) -> str:
         domain_key = str(canonical_key or "").removeprefix("goal-signal:").strip()
         return domain_key or "development-direction"
     return normalized_goal_type
+
+
+def _runtime_awareness_direction_label(signal_type: str) -> str:
+    normalized = str(signal_type or "").strip()
+    if normalized == "visible-runtime-situation":
+        return "visible-runtime"
+    if normalized == "visible-local-runtime":
+        return "local-visible-lane"
+    if normalized == "local-execution-lane":
+        return "local-execution-lane"
+    if normalized == "heartbeat-runtime-friction":
+        return "heartbeat-runtime"
+    return ""
 
 
 def _delegated_continuity_summary(context: dict[str, object]) -> str | None:

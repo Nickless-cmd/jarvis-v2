@@ -542,6 +542,67 @@ function criticPressureRow({ summary, currentCritic, resolvedCount, staleCount }
   )
 }
 
+function developmentSnapshotRow({ focusSummary, goalSummary, criticSummary, reflectionSummary }, onOpen) {
+  const activeFocusCount = focusSummary?.active_count || 0
+  const activeGoalCount = goalSummary?.active_count || 0
+  const blockedGoalCount = goalSummary?.blocked_count || 0
+  const activeCriticCount = criticSummary?.active_count || 0
+  const integratingReflectionCount = reflectionSummary?.integrating_count || 0
+  const settledReflectionCount = reflectionSummary?.settled_count || 0
+
+  let mode = 'stable'
+  let summaryLine = focusSummary?.current_focus || goalSummary?.current_goal || 'No active development focus'
+  if (activeCriticCount > 0 || blockedGoalCount > 0) {
+    mode = 'pressured'
+    summaryLine = criticSummary?.current_critic || goalSummary?.current_goal || summaryLine
+  } else if (integratingReflectionCount > 0) {
+    mode = 'integrating'
+    summaryLine = reflectionSummary?.current_signal || summaryLine
+  } else if (settledReflectionCount > 0) {
+    mode = 'in-shift'
+    summaryLine = reflectionSummary?.current_signal || summaryLine
+  }
+
+  const detailText = [
+    activeFocusCount ? `${activeFocusCount} focus` : '',
+    activeGoalCount || blockedGoalCount ? `${activeGoalCount + blockedGoalCount} goal threads` : '',
+    activeCriticCount ? `${activeCriticCount} active critic` : '',
+    integratingReflectionCount ? `${integratingReflectionCount} integrating reflection` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row"
+      onClick={() => onOpen('Development Snapshot', {
+        source: '/mc/jarvis::development',
+        summary: summaryLine,
+        mode,
+        activeFocusCount,
+        activeGoalCount,
+        blockedGoalCount,
+        activeCriticCount,
+        integratingReflectionCount,
+        settledReflectionCount,
+      })}
+      title={sectionTitleWithMeta({
+        source: '/mc/jarvis::development',
+        fetchedAt: '',
+        mode: 'development snapshot summary',
+      })}
+    >
+      <div>
+        <strong>Development Snapshot</strong>
+        <span>{summaryLine}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={mode} />
+        {detailText ? <small>{detailText}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function carriedForwardSummary({ relationState, promotionSignal, promotionDecision }) {
   return [
     relationState?.summary,
@@ -1099,6 +1160,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             </div>
           </div>
           <div className="mc-list">
+            {developmentSnapshotRow({
+              focusSummary: developmentFocuses?.summary || {},
+              goalSummary: goalSignals?.summary || {},
+              criticSummary: reflectiveCritics?.summary || {},
+              reflectionSummary: reflectionSignals?.summary || {},
+            }, onOpenItem)}
             <div className="mc-inline-group">
               {subsectionHeader('Core State', 'Direction And Calibration')}
               {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}

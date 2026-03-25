@@ -280,6 +280,54 @@ function runtimeAwarenessSignalRow(item, onOpen) {
   )
 }
 
+function reflectionSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'integrating'
+    ? 'Integrating reflection thread'
+    : item.status === 'settled'
+      ? 'Settled reflection thread'
+      : item.status === 'superseded'
+        ? 'Superseded reflection thread'
+        : item.status === 'stale'
+          ? 'Stale reflection thread'
+          : 'Active reflection thread'
+  const supportMeta = []
+  if (item.supportCount) supportMeta.push(`${item.supportCount} support`)
+  if (item.sessionCount) supportMeta.push(`${item.sessionCount} session${item.sessionCount === 1 ? '' : 's'}`)
+  const detailText = [
+    lifecycleLabel,
+    item.statusReason,
+    item.rationale,
+    item.evidenceSummary,
+    supportMeta.length ? supportMeta.join(' · ') : '',
+    item.supportSummary,
+  ].filter(Boolean)[0] || 'Inspect bounded reflection evidence'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Reflection Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'reflection signal detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Reflection Signal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -292,6 +340,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
   const goalSignals = data?.development?.goalSignals || { items: [], summary: {} }
+  const reflectionSignals = data?.development?.reflectionSignals || { items: [], summary: {} }
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
@@ -796,6 +845,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>{goalSignals?.summary?.stale_count || 0} stale bounded goal records retained for continuity.</p>
             </div>
+            <div className="compact-metric">
+              <span>Reflection Signals</span>
+              <strong>{(reflectionSignals?.summary?.active_count || 0) + (reflectionSignals?.summary?.integrating_count || 0) + (reflectionSignals?.summary?.settled_count || 0) || summary?.development?.reflection_signal_count || 0}</strong>
+              <p>{reflectionSignals?.summary?.current_signal || summary?.development?.current_reflection_signal || 'No active reflection signal'}</p>
+              <p>
+                {reflectionSignals?.summary?.integrating_count || 0} integrating · {reflectionSignals?.summary?.settled_count || 0} settled · {reflectionSignals?.summary?.superseded_count || 0} superseded
+              </p>
+              <p>{reflectionSignals?.summary?.stale_count || 0} stale bounded reflection threads retained for continuity.</p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}
@@ -828,6 +886,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 <p className="muted">Jarvis has not accumulated a bounded current aim yet.</p>
               </div>
             ) : goalSignals.items.slice(0, 3).map((item) => goalSignalRow(item, onOpenItem))}
+            {reflectionSignals.items.length === 0 ? (
+              <div className="mc-empty-state">
+                <strong>No active reflection signal</strong>
+                <p className="muted">Jarvis has not accumulated a bounded slow-integration reflection thread yet.</p>
+              </div>
+            ) : reflectionSignals.items.slice(0, 3).map((item) => reflectionSignalRow(item, onOpenItem))}
           </div>
         </article>
 

@@ -38,6 +38,9 @@ from apps.api.jarvis_api.services.world_model_signal_tracking import (
 from apps.api.jarvis_api.services.runtime_awareness_signal_tracking import (
     build_runtime_awareness_signal_surface,
 )
+from apps.api.jarvis_api.services.reflection_signal_tracking import (
+    build_runtime_reflection_signal_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -259,6 +262,7 @@ def mc_jarvis() -> dict:
     reflective_critics = build_runtime_reflective_critic_surface()
     self_model_signals = build_runtime_self_model_signal_surface()
     goal_signals = build_runtime_goal_signal_surface()
+    reflection_signals = build_runtime_reflection_signal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
     heartbeat = heartbeat_runtime_surface()
@@ -275,6 +279,7 @@ def mc_jarvis() -> dict:
                 reflective_critics,
                 self_model_signals,
                 goal_signals,
+                reflection_signals,
             ),
             "continuity": _jarvis_continuity_summary(
                 relation_state,
@@ -309,6 +314,7 @@ def mc_jarvis() -> dict:
             "reflective_critics": reflective_critics,
             "self_model_signals": self_model_signals,
             "goal_signals": goal_signals,
+            "reflection_signals": reflection_signals,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -424,6 +430,7 @@ def mc_runtime() -> dict:
         "runtime_reflective_critics": build_runtime_reflective_critic_surface(),
         "runtime_self_model_signals": build_runtime_self_model_signal_surface(),
         "runtime_goal_signals": build_runtime_goal_signal_surface(),
+        "runtime_reflection_signals": build_runtime_reflection_signal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
         "paths": {
@@ -1027,6 +1034,7 @@ def _jarvis_development_summary(
     reflective_critics: dict | None = None,
     self_model_signals: dict | None = None,
     goal_signals: dict | None = None,
+    reflection_signals: dict | None = None,
 ) -> dict[str, str]:
     model = self_model.get("current") or {}
     state = development_state.get("current") or {}
@@ -1034,6 +1042,7 @@ def _jarvis_development_summary(
     critic_summary = (reflective_critics or {}).get("summary") or {}
     self_signal_summary = (self_model_signals or {}).get("summary") or {}
     goal_summary = (goal_signals or {}).get("summary") or {}
+    reflection_summary = (reflection_signals or {}).get("summary") or {}
     return {
         "direction": str(
             model.get("growth_direction")
@@ -1057,6 +1066,14 @@ def _jarvis_development_summary(
         "current_self_model_signal": str(self_signal_summary.get("current_signal") or "No active self-model signal"),
         "goal_count": str((goal_summary.get("active_count") or 0) + (goal_summary.get("blocked_count") or 0)),
         "current_goal": str(goal_summary.get("current_goal") or "No active goal signal"),
+        "reflection_signal_count": str(
+            (reflection_summary.get("active_count") or 0)
+            + (reflection_summary.get("integrating_count") or 0)
+            + (reflection_summary.get("settled_count") or 0)
+        ),
+        "current_reflection_signal": str(
+            reflection_summary.get("current_signal") or "No active reflection signal"
+        ),
     }
 
 

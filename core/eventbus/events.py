@@ -18,6 +18,7 @@ ALLOWED_EVENT_FAMILIES = {
     "self_model_signal",
     "goal_signal",
     "runtime_awareness_signal",
+    "reflection_signal",
     "self-model",
     "inner-voice",
     "incident",

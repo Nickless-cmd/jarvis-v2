@@ -398,6 +398,42 @@ function subsectionHeader(kicker, title) {
   )
 }
 
+function goalDirectionRow({ summary, currentGoal, blockedCount, completedCount }, onOpen) {
+  const detailText = [
+    blockedCount ? `${blockedCount} blocked` : '',
+    completedCount ? `${completedCount} completed` : '',
+    'Goal signals remain bounded runtime direction, not hidden planning.',
+  ].filter(Boolean).join(' · ')
+  return (
+    <button
+      className="mc-list-row"
+      onClick={() => onOpen('Current Direction', {
+        source: '/mc/jarvis::development',
+        summary: currentGoal || 'No active goal signal',
+        currentGoal,
+        blockedCount,
+        completedCount,
+        currentStatus: summary?.current_status || 'none',
+      })}
+      title={sectionTitleWithMeta({
+        source: '/mc/jarvis::development',
+        fetchedAt: '',
+        mode: 'goal direction summary',
+      })}
+    >
+      <div>
+        <strong>Current Direction</strong>
+        <span>{currentGoal || 'No active goal signal'}</span>
+      </div>
+      <div className="mc-row-meta">
+        {summary?.current_status ? <StatusPill status={summary.current_status} /> : null}
+        {detailText ? <small>{detailText}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function carriedForwardSummary({ relationState, promotionSignal, promotionDecision }) {
   return [
     relationState?.summary,
@@ -973,6 +1009,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   <p className="muted">Jarvis has not accumulated a bounded development focus yet.</p>
                 </div>
               ) : developmentFocuses.items.slice(0, 3).map((item) => developmentFocusRow(item, onOpenItem))}
+              {goalDirectionRow({
+                summary: goalSignals?.summary || {},
+                currentGoal: goalSignals?.summary?.current_goal || summary?.development?.current_goal || 'No active goal signal',
+                blockedCount: goalSignals?.summary?.blocked_count || 0,
+                completedCount: goalSignals?.summary?.completed_count || 0,
+              }, onOpenItem)}
               {goalSignals.items.length === 0 ? (
                 <div className="mc-empty-state">
                   <strong>No active goal signal</strong>

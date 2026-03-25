@@ -28,6 +28,8 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         "apps.api.jarvis_api.services.prompt_contract",
         "apps.api.jarvis_api.services.visible_model",
         "apps.api.jarvis_api.services.reflection_signal_tracking",
+        "apps.api.jarvis_api.services.temporal_recurrence_signal_tracking",
+        "apps.api.jarvis_api.routes.mission_control",
     ]
     modules: dict[str, object] = {}
     for name in module_names:
@@ -52,4 +54,6 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         prompt_contract=modules["apps.api.jarvis_api.services.prompt_contract"],
         visible_model=modules["apps.api.jarvis_api.services.visible_model"],
         reflection_tracking=modules["apps.api.jarvis_api.services.reflection_signal_tracking"],
+        temporal_recurrence_tracking=modules["apps.api.jarvis_api.services.temporal_recurrence_signal_tracking"],
+        mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )

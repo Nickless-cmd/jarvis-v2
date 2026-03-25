@@ -422,6 +422,47 @@ function temporalRecurrenceSignalRow(item, onOpen) {
   )
 }
 
+function witnessSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'carried'
+    ? 'Carried witness thread'
+    : item.status === 'fading'
+      ? 'Fading witness thread'
+      : item.status === 'superseded'
+        ? 'Superseded witness thread'
+        : 'Fresh witness thread'
+  const detailText = [
+    lifecycleLabel,
+    item.statusReason,
+    item.rationale,
+    item.supportSummary,
+  ].filter(Boolean)[0] || 'Inspect witnessed development turn'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Witness Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'witness signal detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Witness Signal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'fresh'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function subsectionHeader(kicker, title) {
   return (
     <div className="support-card-header">
@@ -722,6 +763,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const goalSignals = data?.development?.goalSignals || { items: [], summary: {} }
   const reflectionSignals = data?.development?.reflectionSignals || { items: [], summary: {} }
   const temporalRecurrenceSignals = data?.development?.temporalRecurrenceSignals || { items: [], summary: {} }
+  const witnessSignals = data?.development?.witnessSignals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1384,6 +1426,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{summary?.continuity?.session_status || 'unknown'}</strong>
               <p>{recentShift}</p>
             </div>
+            <div className="compact-metric">
+              <span>Witnessed Turns</span>
+              <strong>{(witnessSignals?.summary?.fresh_count || 0) + (witnessSignals?.summary?.carried_count || 0)}</strong>
+              <p>{witnessSignals?.summary?.current_signal || 'No witnessed development turn'}</p>
+              <p>
+                {witnessSignals?.summary?.fresh_count || 0} fresh · {witnessSignals?.summary?.carried_count || 0} carried · {witnessSignals?.summary?.fading_count || 0} fading
+              </p>
+            </div>
           </div>
           <div className="mc-list">
             {integrationCarryOverRow({
@@ -1409,6 +1459,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   <p className="muted">Jarvis has not accumulated a bounded situational assumption yet.</p>
                 </div>
               ) : worldModelSignals.items.slice(0, 3).map((item) => worldModelSignalRow(item, onOpenItem))}
+              {witnessSignals.items.length > 0 ? subsectionHeader('Witnessed Turns', 'Small Bounded Development Milestones') : null}
+              {witnessSignals.items.slice(0, 3).map((item) => witnessSignalRow(item, onOpenItem))}
             </div>
 
             <div className="mc-inline-group">

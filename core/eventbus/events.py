@@ -20,6 +20,7 @@ ALLOWED_EVENT_FAMILIES = {
     "runtime_awareness_signal",
     "reflection_signal",
     "temporal_recurrence_signal",
+    "witness_signal",
     "self-model",
     "inner-voice",
     "incident",

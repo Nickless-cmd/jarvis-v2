@@ -153,6 +153,34 @@ function worldModelSignalRow(item, onOpen) {
   )
 }
 
+function selfModelSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Self-Model Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'self-model signal detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Self-Model Signal'}</strong>
+        <span>{item.statusReason || item.rationale || item.supportSummary || 'Inspect self-model evidence'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -163,6 +191,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const heartbeatEvents = heartbeat?.recentEvents || []
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
+  const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
   const capabilityContract = contract?.capabilityContract || {}
@@ -648,6 +677,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {reflectiveCritics?.summary?.stale_count || 0} stale · {reflectiveCritics?.summary?.resolved_count || 0} resolved · {reflectiveCritics?.summary?.superseded_count || 0} superseded
               </p>
             </div>
+            <div className="compact-metric">
+              <span>Self-Model Signals</span>
+              <strong>{selfModelSignals?.summary?.active_count || summary?.development?.self_model_signal_count || 0}</strong>
+              <p>{selfModelSignals?.summary?.current_signal || summary?.development?.current_self_model_signal || 'No active self-model signal'}</p>
+              <p>
+                {selfModelSignals?.summary?.uncertain_count || 0} uncertain · {selfModelSignals?.summary?.corrected_count || 0} corrected · {selfModelSignals?.summary?.stale_count || 0} stale
+              </p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}
@@ -668,6 +705,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 <p className="muted">Jarvis has not accumulated a bounded reflective mismatch signal yet.</p>
               </div>
             ) : reflectiveCritics.items.slice(0, 3).map((item) => reflectiveCriticRow(item, onOpenItem))}
+            {selfModelSignals.items.length === 0 ? (
+              <div className="mc-empty-state">
+                <strong>No active self-model signal</strong>
+                <p className="muted">Jarvis has not accumulated a bounded self-assessment yet.</p>
+              </div>
+            ) : selfModelSignals.items.slice(0, 3).map((item) => selfModelSignalRow(item, onOpenItem))}
           </div>
         </article>
 

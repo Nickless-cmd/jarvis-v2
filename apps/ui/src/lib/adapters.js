@@ -422,6 +422,31 @@ function normalizeWorldModelSignal(item = {}) {
   }
 }
 
+function normalizeSelfModelSignal(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Self-model signal',
+    summary: item.summary || item.title || 'Self-model signal detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    source: item.source || '/mc/jarvis::self-model-signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -879,6 +904,11 @@ export const backend = {
           active: Boolean(development.reflective_critics?.active),
           summary: development.reflective_critics?.summary || {},
           items: (development.reflective_critics?.items || []).map(normalizeReflectiveCritic),
+        },
+        selfModelSignals: {
+          active: Boolean(development.self_model_signals?.active),
+          summary: development.self_model_signals?.summary || {},
+          items: (development.self_model_signals?.items || []).map(normalizeSelfModelSignal),
         },
       },
       continuity: {

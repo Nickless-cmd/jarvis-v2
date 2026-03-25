@@ -26,6 +26,9 @@ from apps.api.jarvis_api.services.development_focus_tracking import (
 from apps.api.jarvis_api.services.reflective_critic_tracking import (
     build_runtime_reflective_critic_surface,
 )
+from apps.api.jarvis_api.services.self_model_signal_tracking import (
+    build_runtime_self_model_signal_surface,
+)
 from apps.api.jarvis_api.services.world_model_signal_tracking import (
     build_runtime_world_model_signal_surface,
 )
@@ -248,6 +251,7 @@ def mc_jarvis() -> dict:
     operational_alignment = _operational_preference_alignment_surface()
     development_focuses = build_runtime_development_focus_surface()
     reflective_critics = build_runtime_reflective_critic_surface()
+    self_model_signals = build_runtime_self_model_signal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     heartbeat = heartbeat_runtime_surface()
 
@@ -261,6 +265,7 @@ def mc_jarvis() -> dict:
                 development_state,
                 development_focuses,
                 reflective_critics,
+                self_model_signals,
             ),
             "continuity": _jarvis_continuity_summary(
                 relation_state,
@@ -292,6 +297,7 @@ def mc_jarvis() -> dict:
             "temporal_curiosity": temporal_curiosity,
             "development_focuses": development_focuses,
             "reflective_critics": reflective_critics,
+            "self_model_signals": self_model_signals,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -404,6 +410,7 @@ def mc_runtime() -> dict:
         "private_retained_memory_projection": _private_retained_memory_projection_surface(),
         "runtime_development_focuses": build_runtime_development_focus_surface(),
         "runtime_reflective_critics": build_runtime_reflective_critic_surface(),
+        "runtime_self_model_signals": build_runtime_self_model_signal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
@@ -1004,11 +1011,13 @@ def _jarvis_development_summary(
     development_state: dict,
     development_focuses: dict | None = None,
     reflective_critics: dict | None = None,
+    self_model_signals: dict | None = None,
 ) -> dict[str, str]:
     model = self_model.get("current") or {}
     state = development_state.get("current") or {}
     focus_summary = (development_focuses or {}).get("summary") or {}
     critic_summary = (reflective_critics or {}).get("summary") or {}
+    self_signal_summary = (self_model_signals or {}).get("summary") or {}
     return {
         "direction": str(
             model.get("growth_direction")
@@ -1028,6 +1037,8 @@ def _jarvis_development_summary(
         "current_focus": str(focus_summary.get("current_focus") or "No active development focus"),
         "critic_count": str(critic_summary.get("active_count") or 0),
         "current_critic": str(critic_summary.get("current_critic") or "No active critic signal"),
+        "self_model_signal_count": str(self_signal_summary.get("active_count") or 0),
+        "current_self_model_signal": str(self_signal_summary.get("current_signal") or "No active self-model signal"),
     }
 
 

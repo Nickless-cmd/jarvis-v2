@@ -237,6 +237,49 @@ function goalSignalRow(item, onOpen) {
   )
 }
 
+function runtimeAwarenessSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'constrained'
+    ? 'Constrained runtime thread'
+    : item.status === 'recovered'
+      ? 'Recovered runtime thread'
+      : item.status === 'superseded'
+        ? 'Superseded runtime thread'
+        : item.status === 'stale'
+          ? 'Stale runtime thread'
+          : 'Active runtime thread'
+  const detailText = [
+    lifecycleLabel,
+    item.statusReason,
+    item.rationale,
+    item.supportSummary,
+  ].filter(Boolean)[0] || 'Inspect runtime-awareness evidence'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Runtime Awareness Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'runtime awareness signal detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Runtime Awareness Signal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -250,6 +293,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
   const goalSignals = data?.development?.goalSignals || { items: [], summary: {} }
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
+  const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
   const capabilityContract = contract?.capabilityContract || {}
   const promptModes = contract?.promptModes || []
@@ -816,6 +860,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {worldModelSignals?.summary?.uncertain_count || 0} uncertain · {worldModelSignals?.summary?.corrected_count || 0} corrected · {worldModelSignals?.summary?.stale_count || 0} stale
               </p>
             </div>
+            <div className="compact-metric">
+              <span>Runtime Awareness</span>
+              <strong>{(runtimeAwarenessSignals?.summary?.active_count || 0) + (runtimeAwarenessSignals?.summary?.constrained_count || 0) + (runtimeAwarenessSignals?.summary?.recovered_count || 0) || summary?.continuity?.runtime_awareness_count || 0}</strong>
+              <p>{runtimeAwarenessSignals?.summary?.current_signal || summary?.continuity?.current_runtime_awareness || 'No active runtime-awareness signal'}</p>
+              <p>
+                {runtimeAwarenessSignals?.summary?.constrained_count || 0} constrained · {runtimeAwarenessSignals?.summary?.recovered_count || 0} recovered · {runtimeAwarenessSignals?.summary?.stale_count || 0} stale
+              </p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.continuity?.visibleSession, 'Visible Session Continuity', onOpenItem)}
@@ -829,6 +881,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 <p className="muted">Jarvis has not accumulated a bounded situational assumption yet.</p>
               </div>
             ) : worldModelSignals.items.slice(0, 3).map((item) => worldModelSignalRow(item, onOpenItem))}
+            {runtimeAwarenessSignals.items.length === 0 ? (
+              <div className="mc-empty-state">
+                <strong>No active runtime-awareness signal</strong>
+                <p className="muted">Jarvis has not accumulated a bounded machine/runtime situation signal yet.</p>
+              </div>
+            ) : runtimeAwarenessSignals.items.slice(0, 3).map((item) => runtimeAwarenessSignalRow(item, onOpenItem))}
           </div>
         </article>
       </section>

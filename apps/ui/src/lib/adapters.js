@@ -472,6 +472,31 @@ function normalizeGoalSignal(item = {}) {
   }
 }
 
+function normalizeRuntimeAwarenessSignal(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Runtime Awareness Signal',
+    summary: item.summary || item.title || 'Runtime awareness detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    source: item.source || '/mc/jarvis::runtime-awareness-signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -966,6 +991,11 @@ export const backend = {
           active: Boolean(continuity.world_model_signals?.active),
           summary: continuity.world_model_signals?.summary || {},
           items: (continuity.world_model_signals?.items || []).map(normalizeWorldModelSignal),
+        },
+        runtimeAwarenessSignals: {
+          active: Boolean(continuity.runtime_awareness_signals?.active),
+          summary: continuity.runtime_awareness_signals?.summary || {},
+          items: (continuity.runtime_awareness_signals?.items || []).map(normalizeRuntimeAwarenessSignal),
         },
       },
       heartbeat: {

@@ -7,6 +7,7 @@ from apps.api.jarvis_api.services.chat_sessions import get_chat_session, list_ch
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     list_runtime_world_model_signals,
+    supersede_runtime_world_model_signals,
     update_runtime_world_model_signal_status,
     upsert_runtime_world_model_signal,
 )
@@ -229,6 +230,26 @@ def _persist_world_model_signals(
             session_id=session_id,
         )
         if persisted_item.get("was_created"):
+            # New signal created - supersede older signals of same type if this is higher confidence
+            signal_type = str(persisted_item.get("signal_type") or "")
+            confidence = str(persisted_item.get("confidence") or "low")
+            if signal_type and confidence in ("high", "medium"):
+                superseded_count = supersede_runtime_world_model_signals(
+                    signal_type=signal_type,
+                    exclude_signal_id=str(persisted_item.get("signal_id") or ""),
+                    updated_at=now,
+                    status_reason="Superseded by newer bounded assumption with higher confidence.",
+                )
+                if superseded_count > 0:
+                    event_bus.publish(
+                        "world_model_signal.superseded",
+                        {
+                            "signal_id": persisted_item.get("signal_id"),
+                            "signal_type": signal_type,
+                            "superseded_count": superseded_count,
+                            "summary": f"Superseded {superseded_count} older signal(s) of same type.",
+                        },
+                    )
             event_bus.publish(
                 "world_model_signal.created",
                 {

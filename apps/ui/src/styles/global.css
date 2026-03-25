@@ -411,6 +411,7 @@ button { cursor: pointer; }
 }
 .mc-status-pill.status-active { background:rgba(40,177,163,.15); color:#49d2c3; }
 .mc-status-pill.status-completed { background:rgba(40,177,163,.15); color:#49d2c3; }
+.mc-status-pill.status-corrected { background:rgba(243,92,92,.12); color:#f35c5c; }
 .mc-status-pill.status-approved { background:rgba(40,177,163,.12); color:#49d2c3; }
 .mc-status-pill.status-applied { background:rgba(40,177,163,.12); color:#49d2c3; }
 .mc-status-pill.status-proposed { background:rgba(243,179,92,.15); color:#f3b45c; }

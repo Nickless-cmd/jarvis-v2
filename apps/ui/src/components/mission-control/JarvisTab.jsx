@@ -280,6 +280,36 @@ function runtimeAwarenessSignalRow(item, onOpen) {
   )
 }
 
+function runtimeAwarenessHistoryRow(item, onOpen) {
+  const detailText = [
+    item.statusReason,
+    item.summary,
+  ].filter(Boolean)[0] || 'Inspect machine-state history'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={`${item.signalId || item.title}-${item.updatedAt || item.createdAt || 'runtime-history'}`}
+      onClick={() => onOpen(item.title || 'Runtime Awareness History', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'runtime awareness history detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Runtime Awareness History'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'unknown'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function reflectionSignalRow(item, onOpen) {
   const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
   const lifecycleLabel = item.status === 'integrating'
@@ -384,6 +414,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
+  const runtimeAwarenessHistory = runtimeAwarenessSignals?.recentHistory || []
   const contractSummary = contract?.summary || {}
   const capabilityContract = contract?.capabilityContract || {}
   const promptModes = contract?.promptModes || []
@@ -984,6 +1015,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {runtimeAwarenessSignals?.summary?.constrained_count || 0} constrained · {runtimeAwarenessSignals?.summary?.recovered_count || 0} recovered · {runtimeAwarenessSignals?.summary?.stale_count || 0} stale
               </p>
             </div>
+            <div className="compact-metric">
+              <span>Machine State</span>
+              <strong>{runtimeAwarenessSignals?.summary?.machine_state || 'No machine signal'}</strong>
+              <p>{runtimeAwarenessSignals?.summary?.machine_detail || 'No bounded local machine-state signal is active right now.'}</p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.continuity?.visibleSession, 'Visible Session Continuity', onOpenItem)}
@@ -1003,6 +1039,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 <p className="muted">Jarvis has not accumulated a bounded machine/runtime situation signal yet.</p>
               </div>
             ) : runtimeAwarenessSignals.items.slice(0, 3).map((item) => runtimeAwarenessSignalRow(item, onOpenItem))}
+            {runtimeAwarenessHistory.length > 0 ? subsectionHeader('Recent Machine State', 'Runtime History') : null}
+            {runtimeAwarenessHistory.slice(0, 3).map((item) => runtimeAwarenessHistoryRow(item, onOpenItem))}
           </div>
         </article>
       </section>

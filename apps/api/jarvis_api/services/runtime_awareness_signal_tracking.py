@@ -82,9 +82,15 @@ def build_runtime_awareness_signal_surface(*, limit: int = 8) -> dict[str, objec
     superseded = [item for item in items if str(item.get("status") or "") == "superseded"]
     ordered = [*constrained, *active, *recovered, *stale, *superseded]
     latest = next(iter(constrained or active or recovered or stale or superseded), None)
+    machine_state = _machine_state_summary(
+        constrained=constrained,
+        active=active,
+        recovered=recovered,
+    )
     return {
         "active": bool(active or constrained or recovered),
         "items": ordered,
+        "recent_history": [_history_item_from_signal(item) for item in items[: min(max(limit, 1), 5)]],
         "summary": {
             "active_count": len(active),
             "constrained_count": len(constrained),
@@ -93,6 +99,8 @@ def build_runtime_awareness_signal_surface(*, limit: int = 8) -> dict[str, objec
             "superseded_count": len(superseded),
             "current_signal": str((latest or {}).get("title") or "No active runtime-awareness signal"),
             "current_status": str((latest or {}).get("status") or "none"),
+            "machine_state": machine_state["label"],
+            "machine_detail": machine_state["detail"],
         },
     }
 
@@ -335,6 +343,51 @@ def _latest_runtime_awareness_signal(canonical_key: str) -> dict[str, object] | 
         if str(item.get("canonical_key") or "") == canonical_key:
             return item
     return None
+
+
+def _history_item_from_signal(item: dict[str, object]) -> dict[str, object]:
+    return {
+        "signal_id": item.get("signal_id"),
+        "signal_type": item.get("signal_type"),
+        "title": item.get("title"),
+        "status": item.get("status"),
+        "confidence": item.get("confidence"),
+        "summary": item.get("summary"),
+        "status_reason": item.get("status_reason"),
+        "updated_at": item.get("updated_at"),
+        "created_at": item.get("created_at"),
+    }
+
+
+def _machine_state_summary(
+    *,
+    constrained: list[dict[str, object]],
+    active: list[dict[str, object]],
+    recovered: list[dict[str, object]],
+) -> dict[str, str]:
+    if constrained:
+        item = constrained[0]
+        return {
+            "label": "Constrained",
+            "detail": str(item.get("title") or item.get("status_reason") or "A local runtime thread is constrained."),
+        }
+    if recovered:
+        item = recovered[0]
+        return {
+            "label": "Recovering",
+            "detail": str(item.get("title") or item.get("status_reason") or "A local runtime thread has recently recovered."),
+        }
+    if active:
+        titles = [str(item.get("title") or "").strip() for item in active[:2] if str(item.get("title") or "").strip()]
+        if titles:
+            return {
+                "label": "Local Runtime Stable",
+                "detail": " · ".join(titles),
+            }
+    return {
+        "label": "No machine signal",
+        "detail": "No active bounded machine/runtime situation is being carried right now.",
+    }
 
 
 def _parse_dt(value: str) -> datetime | None:

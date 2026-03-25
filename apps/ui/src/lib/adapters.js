@@ -497,6 +497,21 @@ function normalizeRuntimeAwarenessSignal(item = {}) {
   }
 }
 
+function normalizeRuntimeAwarenessHistoryItem(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    title: item.title || item.summary || 'Runtime awareness update',
+    status: item.status || 'unknown',
+    confidence: item.confidence || '',
+    summary: item.summary || '',
+    statusReason: item.status_reason || '',
+    source: item.source || '/mc/jarvis::runtime-awareness-history',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeReflectionSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1043,6 +1058,7 @@ export const backend = {
           active: Boolean(continuity.runtime_awareness_signals?.active),
           summary: continuity.runtime_awareness_signals?.summary || {},
           items: (continuity.runtime_awareness_signals?.items || []).map(normalizeRuntimeAwarenessSignal),
+          recentHistory: (continuity.runtime_awareness_signals?.recent_history || []).map(normalizeRuntimeAwarenessHistoryItem),
         },
       },
       heartbeat: {

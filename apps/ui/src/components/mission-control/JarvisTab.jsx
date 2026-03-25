@@ -359,6 +359,15 @@ function reflectionHistoryRow(item, onOpen) {
   )
 }
 
+function subsectionHeader(kicker, title) {
+  return (
+    <div className="support-card-header">
+      <span className="support-card-kicker">{kicker}</span>
+      <strong>{title}</strong>
+    </div>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -845,11 +854,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>{developmentFocuses?.summary?.current_focus || summary?.development?.current_focus || 'No active development focus'}</p>
             </div>
             <div className="compact-metric">
-              <span>Lifecycle</span>
-              <strong>
-                {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
-              </strong>
-              <p>{developmentFocuses?.summary?.superseded_count || 0} superseded focus records retained for continuity.</p>
+              <span>Goal Signals</span>
+              <strong>{(goalSignals?.summary?.active_count || 0) + (goalSignals?.summary?.blocked_count || 0) || summary?.development?.goal_count || 0}</strong>
+              <p>{goalSignals?.summary?.current_goal || summary?.development?.current_goal || 'No active goal signal'}</p>
+              <p>
+                {goalSignals?.summary?.blocked_count || 0} blocked · {goalSignals?.summary?.completed_count || 0} completed · {goalSignals?.summary?.superseded_count || 0} superseded
+              </p>
             </div>
             <div className="compact-metric">
               <span>Reflective Critic</span>
@@ -866,16 +876,6 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>
                 {selfModelSignals?.summary?.uncertain_count || 0} uncertain · {selfModelSignals?.summary?.corrected_count || 0} corrected · {selfModelSignals?.summary?.superseded_count || 0} superseded
               </p>
-              <p>{selfModelSignals?.summary?.stale_count || 0} stale self-assessments retained for bounded continuity.</p>
-            </div>
-            <div className="compact-metric">
-              <span>Goal Signals</span>
-              <strong>{(goalSignals?.summary?.active_count || 0) + (goalSignals?.summary?.blocked_count || 0) || summary?.development?.goal_count || 0}</strong>
-              <p>{goalSignals?.summary?.current_goal || summary?.development?.current_goal || 'No active goal signal'}</p>
-              <p>
-                {goalSignals?.summary?.blocked_count || 0} blocked · {goalSignals?.summary?.completed_count || 0} completed · {goalSignals?.summary?.superseded_count || 0} superseded
-              </p>
-              <p>{goalSignals?.summary?.stale_count || 0} stale bounded goal records retained for continuity.</p>
             </div>
             <div className="compact-metric">
               <span>Reflection Signals</span>
@@ -884,53 +884,66 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>
                 {reflectionSignals?.summary?.integrating_count || 0} integrating · {reflectionSignals?.summary?.settled_count || 0} settled · {reflectionSignals?.summary?.superseded_count || 0} superseded
               </p>
-              <p>{reflectionSignals?.summary?.stale_count || 0} stale bounded reflection threads retained for continuity.</p>
+            </div>
+            <div className="compact-metric">
+              <span>Lifecycle</span>
+              <strong>
+                {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
+              </strong>
+              <p>{developmentFocuses?.summary?.superseded_count || 0} superseded focus records retained for continuity.</p>
+              <p>{selfModelSignals?.summary?.stale_count || 0} stale self-assessments retained for bounded continuity.</p>
             </div>
           </div>
           <div className="mc-list">
-            {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}
-            {detailRow(data?.development?.developmentState, 'Development State', onOpenItem)}
-            {detailRow(data?.development?.growthNote, 'Latest Growth Note', onOpenItem)}
-            {detailRow(data?.development?.reflectiveSelection, 'Latest Reflective Selection', onOpenItem)}
-            {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}
-            {detailRow(data?.development?.operationalAlignment, 'Preference Alignment', onOpenItem)}
-            {developmentFocuses.items.length === 0 ? (
-              <div className="mc-empty-state">
-                <strong>No active development focus</strong>
-                <p className="muted">Jarvis has not accumulated a bounded development focus yet.</p>
-              </div>
-            ) : developmentFocuses.items.slice(0, 3).map((item) => developmentFocusRow(item, onOpenItem))}
-            {reflectiveCritics.items.length === 0 ? (
-              <div className="mc-empty-state">
-                <strong>No active critic signal</strong>
-                <p className="muted">Jarvis has not accumulated a bounded reflective mismatch signal yet.</p>
-              </div>
-            ) : reflectiveCritics.items.slice(0, 3).map((item) => reflectiveCriticRow(item, onOpenItem))}
-            {selfModelSignals.items.length === 0 ? (
-              <div className="mc-empty-state">
-                <strong>No active self-model signal</strong>
-                <p className="muted">Jarvis has not accumulated a bounded self-assessment yet.</p>
-              </div>
-            ) : selfModelSignals.items.slice(0, 3).map((item) => selfModelSignalRow(item, onOpenItem))}
-            {goalSignals.items.length === 0 ? (
-              <div className="mc-empty-state">
-                <strong>No active goal signal</strong>
-                <p className="muted">Jarvis has not accumulated a bounded current aim yet.</p>
-              </div>
-            ) : goalSignals.items.slice(0, 3).map((item) => goalSignalRow(item, onOpenItem))}
-            {reflectionSignals.items.length === 0 ? (
-              <div className="mc-empty-state">
-                <strong>No active reflection signal</strong>
-                <p className="muted">Jarvis has not accumulated a bounded slow-integration reflection thread yet.</p>
-              </div>
-            ) : reflectionSignals.items.slice(0, 3).map((item) => reflectionSignalRow(item, onOpenItem))}
-            {reflectionHistory.length > 0 ? (
-              <div className="support-card-header">
-                <span className="support-card-kicker">Recent Reflection</span>
-                <strong>History</strong>
-              </div>
-            ) : null}
-            {reflectionHistory.slice(0, 4).map((item) => reflectionHistoryRow(item, onOpenItem))}
+            <div className="mc-inline-group">
+              {subsectionHeader('Core State', 'Direction And Calibration')}
+              {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}
+              {detailRow(data?.development?.developmentState, 'Development State', onOpenItem)}
+              {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}
+              {detailRow(data?.development?.operationalAlignment, 'Preference Alignment', onOpenItem)}
+              {detailRow(data?.development?.growthNote, 'Latest Growth Note', onOpenItem)}
+              {detailRow(data?.development?.reflectiveSelection, 'Latest Reflective Selection', onOpenItem)}
+            </div>
+
+            <div className="mc-inline-group">
+              {subsectionHeader('Live Threads', 'What Jarvis Is Working And Carrying')}
+              {developmentFocuses.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active development focus</strong>
+                  <p className="muted">Jarvis has not accumulated a bounded development focus yet.</p>
+                </div>
+              ) : developmentFocuses.items.slice(0, 3).map((item) => developmentFocusRow(item, onOpenItem))}
+              {goalSignals.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active goal signal</strong>
+                  <p className="muted">Jarvis has not accumulated a bounded current aim yet.</p>
+                </div>
+              ) : goalSignals.items.slice(0, 3).map((item) => goalSignalRow(item, onOpenItem))}
+            </div>
+
+            <div className="mc-inline-group">
+              {subsectionHeader('Pressure And Integration', 'Friction, Limits, And Slow Settling')}
+              {reflectiveCritics.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active critic signal</strong>
+                  <p className="muted">Jarvis has not accumulated a bounded reflective mismatch signal yet.</p>
+                </div>
+              ) : reflectiveCritics.items.slice(0, 3).map((item) => reflectiveCriticRow(item, onOpenItem))}
+              {selfModelSignals.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active self-model signal</strong>
+                  <p className="muted">Jarvis has not accumulated a bounded self-assessment yet.</p>
+                </div>
+              ) : selfModelSignals.items.slice(0, 3).map((item) => selfModelSignalRow(item, onOpenItem))}
+              {reflectionSignals.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active reflection signal</strong>
+                  <p className="muted">Jarvis has not accumulated a bounded slow-integration reflection thread yet.</p>
+                </div>
+              ) : reflectionSignals.items.slice(0, 3).map((item) => reflectionSignalRow(item, onOpenItem))}
+              {reflectionHistory.length > 0 ? subsectionHeader('Recent Reflection', 'History') : null}
+              {reflectionHistory.slice(0, 4).map((item) => reflectionHistoryRow(item, onOpenItem))}
+            </div>
           </div>
         </article>
 

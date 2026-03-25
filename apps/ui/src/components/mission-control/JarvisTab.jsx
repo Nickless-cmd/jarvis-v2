@@ -623,6 +623,58 @@ function recentShiftSummary({ visibleSession, visibleContinuity }) {
   return 'No recent continuity shift is currently recorded.'
 }
 
+function integrationCarryOverRow({ reflectionSummary, reflectionHistory, carriedForward, recentShift }, onOpen) {
+  const integratingCount = reflectionSummary?.integrating_count || 0
+  const settledCount = reflectionSummary?.settled_count || 0
+  const latestHistory = Array.isArray(reflectionHistory) ? reflectionHistory[0] : null
+
+  let status = 'steady'
+  let summaryLine = carriedForward || 'No bounded carry-over is active right now.'
+  if (integratingCount > 0) {
+    status = 'integrating'
+    summaryLine = reflectionSummary?.current_signal || latestHistory?.title || summaryLine
+  } else if (settledCount > 0 || latestHistory?.status === 'settled') {
+    status = 'settling'
+    summaryLine = latestHistory?.title || reflectionSummary?.current_signal || recentShift || summaryLine
+  }
+
+  const detailText = [
+    integratingCount ? `${integratingCount} integrating` : '',
+    settledCount ? `${settledCount} settled` : '',
+    recentShift || '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row"
+      onClick={() => onOpen('Integration Carry-Over', {
+        source: '/mc/jarvis::continuity',
+        summary: summaryLine,
+        status,
+        integratingCount,
+        settledCount,
+        carriedForward,
+        recentShift,
+      })}
+      title={sectionTitleWithMeta({
+        source: '/mc/jarvis::continuity',
+        fetchedAt: '',
+        mode: 'reflection continuity summary',
+      })}
+    >
+      <div>
+        <strong>Integration Carry-Over</strong>
+        <span>{summaryLine}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={status} />
+        {detailText ? <small>{detailText}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -1290,6 +1342,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             </div>
           </div>
           <div className="mc-list">
+            {integrationCarryOverRow({
+              reflectionSummary: reflectionSignals?.summary || {},
+              reflectionHistory,
+              carriedForward,
+              recentShift,
+            }, onOpenItem)}
             <div className="mc-inline-group">
               {subsectionHeader('Current Carry-Over', 'What Jarvis Is Still Holding')}
               {detailRow(data?.continuity?.relationState, 'Relation State', onOpenItem)}

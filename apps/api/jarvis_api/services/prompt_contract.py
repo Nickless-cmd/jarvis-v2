@@ -15,6 +15,7 @@ from core.runtime.db import (
     get_private_retained_memory_record,
     get_private_self_model,
     list_runtime_awareness_signals,
+    list_runtime_development_focuses,
     list_runtime_goal_signals,
     list_runtime_reflection_signals,
     list_runtime_world_model_signals,
@@ -550,6 +551,7 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _world_model_support_signal_instruction,
         _goal_support_signal_instruction,
         _runtime_awareness_support_signal_instruction,
+        _development_focus_support_signal_instruction,
         _reflection_support_signal_instruction,
         _retained_memory_support_signal_instruction,
         _temporal_support_signal_instruction,
@@ -811,6 +813,53 @@ def _runtime_awareness_support_signal_instruction() -> str | None:
     )
 
 
+def _development_focus_support_signal_instruction() -> str | None:
+    relevant = [
+        item
+        for item in list_runtime_development_focuses(limit=8)
+        if str(item.get("status") or "") in {"active", "completed", "stale"}
+    ]
+    if not relevant:
+        return None
+
+    preferred_status_order = {"active": 0, "completed": 1, "stale": 2}
+    confidence_order = {"high": 0, "medium": 1, "low": 2}
+    dominant = sorted(
+        relevant,
+        key=lambda item: (
+            preferred_status_order.get(str(item.get("status") or ""), 9),
+            confidence_order.get(str(item.get("confidence") or ""), 9),
+        ),
+    )[0]
+
+    current_development_focus = str(dominant.get("title") or "").strip()
+    focus_state = str(dominant.get("status") or "").strip()
+    focus_confidence = str(dominant.get("confidence") or "").strip()
+    if not current_development_focus or not focus_state:
+        return None
+
+    focus_direction = _development_focus_direction_label(
+        str(dominant.get("focus_type") or ""),
+        str(dominant.get("canonical_key") or ""),
+    )
+    parts = [
+        f"current_development_focus={current_development_focus}",
+        f"focus_state={focus_state}",
+    ]
+    if focus_direction:
+        parts.append(f"focus_direction={focus_direction}")
+    if focus_confidence:
+        parts.append(f"focus_confidence={focus_confidence}")
+
+    return "\n".join(
+        [
+            "Development-focus support signal:",
+            f"- {' | '.join(parts)}",
+            "Use only as subordinate support. Runtime and visible truth outrank it.",
+        ]
+    )
+
+
 def _temporal_support_signal_instruction() -> str | None:
     signal = get_private_temporal_promotion_signal()
     if not signal:
@@ -867,6 +916,17 @@ def _runtime_awareness_direction_label(signal_type: str) -> str:
     if normalized == "heartbeat-runtime-friction":
         return "heartbeat-runtime"
     return ""
+
+
+def _development_focus_direction_label(focus_type: str, canonical_key: str) -> str:
+    normalized_focus_type = str(focus_type or "").strip()
+    if normalized_focus_type == "user-directed-improvement":
+        return str(canonical_key or "").removeprefix("development-focus:user-directed:").strip() or normalized_focus_type
+    if normalized_focus_type == "runtime-development-thread":
+        return "runtime-development"
+    if normalized_focus_type == "communication-calibration":
+        return "communication-calibration"
+    return normalized_focus_type
 
 
 def _delegated_continuity_summary(context: dict[str, object]) -> str | None:

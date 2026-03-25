@@ -15,6 +15,8 @@ ALLOWED_EVENT_FAMILIES = {
     "self-review",
     "reflective_critic",
     "world_model_signal",
+    "self_model_signal",
+    "goal_signal",
     "self-model",
     "inner-voice",
     "incident",

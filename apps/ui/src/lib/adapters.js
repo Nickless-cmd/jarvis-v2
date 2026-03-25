@@ -447,6 +447,31 @@ function normalizeSelfModelSignal(item = {}) {
   }
 }
 
+function normalizeGoalSignal(item = {}) {
+  return {
+    goalId: item.goal_id || '',
+    goalType: item.goal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Goal signal',
+    summary: item.summary || item.title || 'Goal signal detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    source: item.source || '/mc/jarvis::goal-signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeLane(label, lane = {}, target = {}) {
   return {
     label,
@@ -909,6 +934,11 @@ export const backend = {
           active: Boolean(development.self_model_signals?.active),
           summary: development.self_model_signals?.summary || {},
           items: (development.self_model_signals?.items || []).map(normalizeSelfModelSignal),
+        },
+        goalSignals: {
+          active: Boolean(development.goal_signals?.active),
+          summary: development.goal_signals?.summary || {},
+          items: (development.goal_signals?.items || []).map(normalizeGoalSignal),
         },
       },
       continuity: {

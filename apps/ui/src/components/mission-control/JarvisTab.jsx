@@ -190,6 +190,43 @@ function selfModelSignalRow(item, onOpen) {
   )
 }
 
+function goalSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const supportMeta = []
+  if (item.supportCount) supportMeta.push(`${item.supportCount} support`)
+  if (item.sessionCount) supportMeta.push(`${item.sessionCount} session${item.sessionCount === 1 ? '' : 's'}`)
+  const detailText = [
+    item.statusReason,
+    item.rationale,
+    supportMeta.length ? supportMeta.join(' · ') : '',
+    item.supportSummary,
+  ].filter(Boolean)[0] || 'Inspect goal-signal evidence'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.goalId || item.title}
+      onClick={() => onOpen(item.title || 'Goal Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'goal signal detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Goal Signal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -201,6 +238,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
+  const goalSignals = data?.development?.goalSignals || { items: [], summary: {} }
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const contractSummary = contract?.summary || {}
   const capabilityContract = contract?.capabilityContract || {}
@@ -695,6 +733,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>{selfModelSignals?.summary?.stale_count || 0} stale self-assessments retained for bounded continuity.</p>
             </div>
+            <div className="compact-metric">
+              <span>Goal Signals</span>
+              <strong>{(goalSignals?.summary?.active_count || 0) + (goalSignals?.summary?.blocked_count || 0) || summary?.development?.goal_count || 0}</strong>
+              <p>{goalSignals?.summary?.current_goal || summary?.development?.current_goal || 'No active goal signal'}</p>
+              <p>
+                {goalSignals?.summary?.blocked_count || 0} blocked · {goalSignals?.summary?.completed_count || 0} completed · {goalSignals?.summary?.superseded_count || 0} superseded
+              </p>
+              <p>{goalSignals?.summary?.stale_count || 0} stale bounded goal records retained for continuity.</p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}
@@ -721,6 +768,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 <p className="muted">Jarvis has not accumulated a bounded self-assessment yet.</p>
               </div>
             ) : selfModelSignals.items.slice(0, 3).map((item) => selfModelSignalRow(item, onOpenItem))}
+            {goalSignals.items.length === 0 ? (
+              <div className="mc-empty-state">
+                <strong>No active goal signal</strong>
+                <p className="muted">Jarvis has not accumulated a bounded current aim yet.</p>
+              </div>
+            ) : goalSignals.items.slice(0, 3).map((item) => goalSignalRow(item, onOpenItem))}
           </div>
         </article>
 

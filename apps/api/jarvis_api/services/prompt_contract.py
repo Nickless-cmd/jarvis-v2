@@ -14,6 +14,7 @@ from core.runtime.db import (
     get_private_temporal_promotion_signal,
     get_private_retained_memory_record,
     get_private_self_model,
+    list_runtime_reflection_signals,
     recent_private_growth_notes,
     recent_private_inner_notes,
     recent_private_retained_memory_records,
@@ -543,6 +544,7 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _private_support_signal_instruction,
         _growth_support_signal_instruction,
         _self_model_support_signal_instruction,
+        _reflection_support_signal_instruction,
         _retained_memory_support_signal_instruction,
         _temporal_support_signal_instruction,
     ):
@@ -624,6 +626,50 @@ def _retained_memory_support_signal_instruction() -> str | None:
     )
 
 
+def _reflection_support_signal_instruction() -> str | None:
+    relevant = [
+        item
+        for item in list_runtime_reflection_signals(limit=8)
+        if str(item.get("status") or "") in {"active", "integrating", "settled"}
+    ]
+    if not relevant:
+        return None
+
+    preferred_status_order = {"active": 0, "integrating": 1, "settled": 2}
+    confidence_order = {"high": 0, "medium": 1, "low": 2}
+    dominant = sorted(
+        relevant,
+        key=lambda item: (
+            preferred_status_order.get(str(item.get("status") or ""), 9),
+            confidence_order.get(str(item.get("confidence") or ""), 9),
+        ),
+    )[0]
+
+    dominant_reflection = str(dominant.get("title") or "").strip()
+    reflection_state = str(dominant.get("status") or "").strip()
+    reflection_confidence = str(dominant.get("confidence") or "").strip()
+    if not dominant_reflection or not reflection_state:
+        return None
+
+    reflection_direction = _reflection_direction_label(str(dominant.get("signal_type") or ""))
+    parts = [
+        f"dominant_reflection={dominant_reflection}",
+        f"reflection_state={reflection_state}",
+    ]
+    if reflection_direction:
+        parts.append(f"reflection_direction={reflection_direction}")
+    if reflection_confidence:
+        parts.append(f"reflection_confidence={reflection_confidence}")
+
+    return "\n".join(
+        [
+            "Reflection support signal:",
+            f"- {' | '.join(parts)}",
+            "Use only as subordinate support. Runtime and visible truth outrank it.",
+        ]
+    )
+
+
 def _temporal_support_signal_instruction() -> str | None:
     signal = get_private_temporal_promotion_signal()
     if not signal:
@@ -639,6 +685,17 @@ def _temporal_support_signal_instruction() -> str | None:
             "Use only as subordinate support. Runtime and visible truth outrank it.",
         ]
     )
+
+
+def _reflection_direction_label(signal_type: str) -> str:
+    normalized = str(signal_type or "").strip()
+    if normalized == "persistent-tension":
+        return "unresolved-tension"
+    if normalized == "slow-integration":
+        return "slow-integration"
+    if normalized == "settled-thread":
+        return "recent-settling"
+    return ""
 
 
 def _delegated_continuity_summary(context: dict[str, object]) -> str | None:

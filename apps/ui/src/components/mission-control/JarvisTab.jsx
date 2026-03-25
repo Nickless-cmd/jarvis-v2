@@ -506,6 +506,42 @@ function worldModelContextRow({ summary, currentSignal, uncertainCount, correcte
   )
 }
 
+function criticPressureRow({ summary, currentCritic, resolvedCount, staleCount }, onOpen) {
+  const detailText = [
+    resolvedCount ? `${resolvedCount} resolved` : '',
+    staleCount ? `${staleCount} stale` : '',
+    'Reflective critic signals remain bounded corrective pressure, not hidden control.',
+  ].filter(Boolean).join(' · ')
+  return (
+    <button
+      className="mc-list-row"
+      onClick={() => onOpen('Current Friction', {
+        source: '/mc/jarvis::development',
+        summary: currentCritic || 'No active critic signal',
+        currentCritic,
+        resolvedCount,
+        staleCount,
+        currentStatus: summary?.current_status || 'none',
+      })}
+      title={sectionTitleWithMeta({
+        source: '/mc/jarvis::development',
+        fetchedAt: '',
+        mode: 'critic pressure summary',
+      })}
+    >
+      <div>
+        <strong>Current Friction</strong>
+        <span>{currentCritic || 'No active critic signal'}</span>
+      </div>
+      <div className="mc-row-meta">
+        {summary?.current_status ? <StatusPill status={summary.current_status} /> : null}
+        {detailText ? <small>{detailText}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function carriedForwardSummary({ relationState, promotionSignal, promotionDecision }) {
   return [
     relationState?.summary,
@@ -1097,6 +1133,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
 
             <div className="mc-inline-group">
               {subsectionHeader('Pressure And Integration', 'Friction, Limits, And Slow Settling')}
+              {criticPressureRow({
+                summary: reflectiveCritics?.summary || {},
+                currentCritic: reflectiveCritics?.summary?.current_critic || summary?.development?.current_critic || 'No active critic signal',
+                resolvedCount: reflectiveCritics?.summary?.resolved_count || 0,
+                staleCount: reflectiveCritics?.summary?.stale_count || 0,
+              }, onOpenItem)}
               {reflectiveCritics.items.length === 0 ? (
                 <div className="mc-empty-state">
                   <strong>No active critic signal</strong>

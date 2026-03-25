@@ -8,7 +8,6 @@ from core.eventbus.bus import event_bus
 from core.runtime.db import (
     list_runtime_reflective_critics,
     list_runtime_self_model_signals,
-    supersede_runtime_self_model_signals,
     update_runtime_self_model_signal_status,
     upsert_runtime_self_model_signal,
 )
@@ -182,6 +181,8 @@ def _improving_edge_signal(message: str) -> dict[str, object] | None:
     limitation_key = _message_limitation_key(text)
     if not limitation_key:
         return None
+    if not _has_matching_self_model_history(limitation_key):
+        return None
     limitation_label = _limitation_label(limitation_key)
     return {
         "signal_type": "improvement-edge",
@@ -196,7 +197,7 @@ def _improving_edge_signal(message: str) -> dict[str, object] | None:
         "support_summary": "Explicit visible user feedback that this area is better now.",
         "support_count": 1,
         "session_count": 1,
-        "status_reason": "Explicit user feedback marked this as an improving edge rather than a stable strength.",
+        "status_reason": "Explicit user feedback created a bounded replacement signal for a previously carried limitation.",
     }
 
 
@@ -229,25 +230,21 @@ def _persist_self_model_signals(
             run_id=run_id,
             session_id=session_id,
         )
+        superseded_count = _supersede_replaced_self_model_signals(
+            persisted_item,
+            updated_at=now,
+        )
+        if superseded_count > 0:
+            event_bus.publish(
+                "self_model_signal.superseded",
+                {
+                    "signal_id": persisted_item.get("signal_id"),
+                    "signal_type": persisted_item.get("signal_type"),
+                    "superseded_count": superseded_count,
+                    "summary": persisted_item.get("summary"),
+                },
+            )
         if persisted_item.get("was_created"):
-            signal_type = str(persisted_item.get("signal_type") or "")
-            if signal_type:
-                superseded_count = supersede_runtime_self_model_signals(
-                    signal_type=signal_type,
-                    exclude_signal_id=str(persisted_item.get("signal_id") or ""),
-                    updated_at=now,
-                    status_reason="Superseded by newer bounded self-model assessment of the same kind.",
-                )
-                if superseded_count > 0:
-                    event_bus.publish(
-                        "self_model_signal.superseded",
-                        {
-                            "signal_id": persisted_item.get("signal_id"),
-                            "signal_type": signal_type,
-                            "superseded_count": superseded_count,
-                            "summary": persisted_item.get("summary"),
-                        },
-                    )
             event_bus.publish(
                 "self_model_signal.created",
                 {
@@ -307,6 +304,64 @@ def _apply_correction_signals(*, user_message: str) -> int:
             },
         )
     return corrected
+
+
+def _supersede_replaced_self_model_signals(
+    persisted_item: dict[str, object],
+    *,
+    updated_at: str,
+) -> int:
+    signal_id = str(persisted_item.get("signal_id") or "")
+    canonical_key = str(persisted_item.get("canonical_key") or "")
+    signal_type = str(persisted_item.get("signal_type") or "")
+    domain_key = _self_model_domain_key(canonical_key)
+    if not signal_id or not canonical_key or not domain_key:
+        return 0
+
+    superseded = 0
+    for item in list_runtime_self_model_signals(limit=40):
+        existing_id = str(item.get("signal_id") or "")
+        if not existing_id or existing_id == signal_id:
+            continue
+        existing_status = str(item.get("status") or "")
+        if existing_status not in {"active", "uncertain", "stale"}:
+            continue
+        existing_key = str(item.get("canonical_key") or "")
+        if _self_model_domain_key(existing_key) != domain_key:
+            continue
+
+        should_supersede = False
+        status_reason = ""
+        if signal_type == "improvement-edge" and existing_key.startswith("self-model:improving:"):
+            should_supersede = True
+            status_reason = "Superseded by newer improvement signal for the same self-model thread."
+        elif signal_type == "current-limitation" and existing_key.startswith("self-model:improving:"):
+            should_supersede = True
+            status_reason = "Superseded because the same self-model thread now looks like a current limitation again."
+
+        if not should_supersede:
+            continue
+        updated = update_runtime_self_model_signal_status(
+            existing_id,
+            status="superseded",
+            updated_at=updated_at,
+            status_reason=status_reason,
+        )
+        if updated is not None:
+            superseded += 1
+    return superseded
+
+
+def _has_matching_self_model_history(limitation_key: str) -> bool:
+    if not limitation_key:
+        return False
+    for item in list_runtime_self_model_signals(limit=20):
+        domain_key = _self_model_domain_key(str(item.get("canonical_key") or ""))
+        if domain_key != limitation_key:
+            continue
+        if str(item.get("status") or "") in {"active", "uncertain", "corrected", "stale"}:
+            return True
+    return False
 
 
 def _matching_active_critic(message: str) -> dict[str, object] | None:
@@ -372,6 +427,15 @@ def _message_limitation_key(message: str) -> str:
         return "danish-concise-calibration"
     if "hej" in text and any(token in text for token in ("hver gang", "every time", "always")):
         return "avoid-repetitive-openers"
+    return ""
+
+
+def _self_model_domain_key(canonical_key: str) -> str:
+    text = str(canonical_key or "")
+    if text.startswith("self-model:limitation:"):
+        return text.removeprefix("self-model:limitation:")
+    if text.startswith("self-model:improving:"):
+        return text.removeprefix("self-model:improving:")
     return ""
 
 

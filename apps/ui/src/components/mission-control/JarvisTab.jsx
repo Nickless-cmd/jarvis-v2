@@ -155,6 +155,15 @@ function worldModelSignalRow(item, onOpen) {
 
 function selfModelSignalRow(item, onOpen) {
   const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const supportMeta = []
+  if (item.supportCount) supportMeta.push(`${item.supportCount} support`)
+  if (item.sessionCount) supportMeta.push(`${item.sessionCount} session${item.sessionCount === 1 ? '' : 's'}`)
+  const detailText = [
+    item.statusReason,
+    item.rationale,
+    supportMeta.length ? supportMeta.join(' · ') : '',
+    item.supportSummary,
+  ].filter(Boolean)[0] || 'Inspect self-model evidence'
   return (
     <button
       className="mc-list-row mc-list-row-subtle"
@@ -168,7 +177,7 @@ function selfModelSignalRow(item, onOpen) {
     >
       <div>
         <strong>{item.title || 'Self-Model Signal'}</strong>
-        <span>{item.statusReason || item.rationale || item.supportSummary || 'Inspect self-model evidence'}</span>
+        <span>{detailText}</span>
       </div>
       <div className="mc-row-meta">
         <StatusPill status={item.status || 'active'} />
@@ -682,8 +691,9 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{selfModelSignals?.summary?.active_count || summary?.development?.self_model_signal_count || 0}</strong>
               <p>{selfModelSignals?.summary?.current_signal || summary?.development?.current_self_model_signal || 'No active self-model signal'}</p>
               <p>
-                {selfModelSignals?.summary?.uncertain_count || 0} uncertain · {selfModelSignals?.summary?.corrected_count || 0} corrected · {selfModelSignals?.summary?.stale_count || 0} stale
+                {selfModelSignals?.summary?.uncertain_count || 0} uncertain · {selfModelSignals?.summary?.corrected_count || 0} corrected · {selfModelSignals?.summary?.superseded_count || 0} superseded
               </p>
+              <p>{selfModelSignals?.summary?.stale_count || 0} stale self-assessments retained for bounded continuity.</p>
             </div>
           </div>
           <div className="mc-list">

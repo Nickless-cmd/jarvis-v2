@@ -398,6 +398,26 @@ function subsectionHeader(kicker, title) {
   )
 }
 
+function carriedForwardSummary({ relationState, promotionSignal, promotionDecision }) {
+  return [
+    relationState?.summary,
+    promotionSignal?.summary,
+    promotionDecision?.summary,
+  ].find((value) => value && value !== 'No relation pull' && value !== 'No promotion target' && value !== 'No promotion decision') || 'No bounded carry-over is active right now.'
+}
+
+function recentShiftSummary({ visibleSession, visibleContinuity }) {
+  const latestStatus = visibleSession?.latest_status || visibleSession?.latestStatus || ''
+  if (latestStatus) {
+    return `Latest visible turn is ${String(latestStatus).toLowerCase()}.`
+  }
+  const statuses = visibleContinuity?.statuses || []
+  if (Array.isArray(statuses) && statuses.length > 0) {
+    return `Recent visible run states: ${statuses.slice(0, 2).join(' · ')}.`
+  }
+  return 'No recent continuity shift is currently recorded.'
+}
+
 export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
@@ -415,6 +435,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
   const runtimeAwarenessHistory = runtimeAwarenessSignals?.recentHistory || []
+  const carriedForward = carriedForwardSummary({
+    relationState: data?.continuity?.relationState,
+    promotionSignal: data?.continuity?.promotionSignal,
+    promotionDecision: data?.continuity?.promotionDecision,
+  })
+  const recentShift = recentShiftSummary({
+    visibleSession: data?.continuity?.visibleSession,
+    visibleContinuity: data?.continuity?.visibleContinuity,
+  })
   const contractSummary = contract?.summary || {}
   const capabilityContract = contract?.capabilityContract || {}
   const promptModes = contract?.promptModes || []
@@ -1000,6 +1029,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{summary?.continuity?.interaction_mode || 'unknown'}</strong>
             </div>
             <div className="compact-metric">
+              <span>Carried Forward</span>
+              <strong>{summary?.continuity?.relation_pull || 'unknown'}</strong>
+              <p>{carriedForward}</p>
+            </div>
+            <div className="compact-metric">
               <span>World Model</span>
               <strong>{worldModelSignals?.summary?.active_count || summary?.continuity?.world_model_count || 0}</strong>
               <p>{worldModelSignals?.summary?.current_signal || summary?.continuity?.current_world_model || 'No active world-model signal'}</p>
@@ -1020,27 +1054,39 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{runtimeAwarenessSignals?.summary?.machine_state || 'No machine signal'}</strong>
               <p>{runtimeAwarenessSignals?.summary?.machine_detail || 'No bounded local machine-state signal is active right now.'}</p>
             </div>
+            <div className="compact-metric">
+              <span>Recent Shift</span>
+              <strong>{summary?.continuity?.session_status || 'unknown'}</strong>
+              <p>{recentShift}</p>
+            </div>
           </div>
           <div className="mc-list">
-            {detailRow(data?.continuity?.visibleSession, 'Visible Session Continuity', onOpenItem)}
-            {detailRow(data?.continuity?.visibleContinuity, 'Visible Continuity', onOpenItem)}
-            {detailRow(data?.continuity?.relationState, 'Relation State', onOpenItem)}
-            {detailRow(data?.continuity?.promotionSignal, 'Promotion Signal', onOpenItem)}
-            {detailRow(data?.continuity?.promotionDecision, 'Promotion Decision', onOpenItem)}
-            {worldModelSignals.items.length === 0 ? (
-              <div className="mc-empty-state">
-                <strong>No active world-model signal</strong>
-                <p className="muted">Jarvis has not accumulated a bounded situational assumption yet.</p>
-              </div>
-            ) : worldModelSignals.items.slice(0, 3).map((item) => worldModelSignalRow(item, onOpenItem))}
-            {runtimeAwarenessSignals.items.length === 0 ? (
-              <div className="mc-empty-state">
-                <strong>No active runtime-awareness signal</strong>
-                <p className="muted">Jarvis has not accumulated a bounded machine/runtime situation signal yet.</p>
-              </div>
-            ) : runtimeAwarenessSignals.items.slice(0, 3).map((item) => runtimeAwarenessSignalRow(item, onOpenItem))}
-            {runtimeAwarenessHistory.length > 0 ? subsectionHeader('Recent Machine State', 'Runtime History') : null}
-            {runtimeAwarenessHistory.slice(0, 3).map((item) => runtimeAwarenessHistoryRow(item, onOpenItem))}
+            <div className="mc-inline-group">
+              {subsectionHeader('Current Carry-Over', 'What Jarvis Is Still Holding')}
+              {detailRow(data?.continuity?.relationState, 'Relation State', onOpenItem)}
+              {detailRow(data?.continuity?.promotionSignal, 'Promotion Signal', onOpenItem)}
+              {detailRow(data?.continuity?.promotionDecision, 'Promotion Decision', onOpenItem)}
+              {worldModelSignals.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active world-model signal</strong>
+                  <p className="muted">Jarvis has not accumulated a bounded situational assumption yet.</p>
+                </div>
+              ) : worldModelSignals.items.slice(0, 3).map((item) => worldModelSignalRow(item, onOpenItem))}
+            </div>
+
+            <div className="mc-inline-group">
+              {subsectionHeader('Recent Continuity', 'What Most Recently Shifted')}
+              {detailRow(data?.continuity?.visibleSession, 'Visible Session Continuity', onOpenItem)}
+              {detailRow(data?.continuity?.visibleContinuity, 'Visible Continuity', onOpenItem)}
+              {runtimeAwarenessSignals.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active runtime-awareness signal</strong>
+                  <p className="muted">Jarvis has not accumulated a bounded machine/runtime situation signal yet.</p>
+                </div>
+              ) : runtimeAwarenessSignals.items.slice(0, 3).map((item) => runtimeAwarenessSignalRow(item, onOpenItem))}
+              {runtimeAwarenessHistory.length > 0 ? subsectionHeader('Recent Machine State', 'Runtime History') : null}
+              {runtimeAwarenessHistory.slice(0, 3).map((item) => runtimeAwarenessHistoryRow(item, onOpenItem))}
+            </div>
           </div>
         </article>
       </section>

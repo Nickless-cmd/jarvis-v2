@@ -434,6 +434,42 @@ function goalDirectionRow({ summary, currentGoal, blockedCount, completedCount }
   )
 }
 
+function selfModelCalibrationRow({ summary, currentSignal, uncertainCount, correctedCount }, onOpen) {
+  const detailText = [
+    uncertainCount ? `${uncertainCount} uncertain` : '',
+    correctedCount ? `${correctedCount} corrected` : '',
+    'Self-model signals remain bounded runtime calibration, not identity authority.',
+  ].filter(Boolean).join(' · ')
+  return (
+    <button
+      className="mc-list-row"
+      onClick={() => onOpen('Current Calibration', {
+        source: '/mc/jarvis::development',
+        summary: currentSignal || 'No active self-model signal',
+        currentSignal,
+        uncertainCount,
+        correctedCount,
+        currentStatus: summary?.current_status || 'none',
+      })}
+      title={sectionTitleWithMeta({
+        source: '/mc/jarvis::development',
+        fetchedAt: '',
+        mode: 'self-model calibration summary',
+      })}
+    >
+      <div>
+        <strong>Current Calibration</strong>
+        <span>{currentSignal || 'No active self-model signal'}</span>
+      </div>
+      <div className="mc-row-meta">
+        {summary?.current_status ? <StatusPill status={summary.current_status} /> : null}
+        {detailText ? <small>{detailText}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function carriedForwardSummary({ relationState, promotionSignal, promotionDecision }) {
   return [
     relationState?.summary,
@@ -1031,6 +1067,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   <p className="muted">Jarvis has not accumulated a bounded reflective mismatch signal yet.</p>
                 </div>
               ) : reflectiveCritics.items.slice(0, 3).map((item) => reflectiveCriticRow(item, onOpenItem))}
+              {selfModelCalibrationRow({
+                summary: selfModelSignals?.summary || {},
+                currentSignal: selfModelSignals?.summary?.current_signal || summary?.development?.current_self_model_signal || 'No active self-model signal',
+                uncertainCount: selfModelSignals?.summary?.uncertain_count || 0,
+                correctedCount: selfModelSignals?.summary?.corrected_count || 0,
+              }, onOpenItem)}
               {selfModelSignals.items.length === 0 ? (
                 <div className="mc-empty-state">
                   <strong>No active self-model signal</strong>

@@ -195,7 +195,17 @@ function goalSignalRow(item, onOpen) {
   const supportMeta = []
   if (item.supportCount) supportMeta.push(`${item.supportCount} support`)
   if (item.sessionCount) supportMeta.push(`${item.sessionCount} session${item.sessionCount === 1 ? '' : 's'}`)
+  const lifecycleLabel = item.status === 'blocked'
+    ? 'Blocked goal thread'
+    : item.status === 'completed'
+      ? 'Completed goal thread'
+      : item.status === 'superseded'
+        ? 'Superseded goal thread'
+        : item.status === 'stale'
+          ? 'Stale goal thread'
+          : 'Active goal thread'
   const detailText = [
+    lifecycleLabel,
     item.statusReason,
     item.rationale,
     supportMeta.length ? supportMeta.join(' · ') : '',

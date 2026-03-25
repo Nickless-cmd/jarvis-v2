@@ -228,6 +228,20 @@ def _persist_goal_signals(
             run_id=run_id,
             session_id=session_id,
         )
+        superseded_count = _supersede_replaced_goal_signals(
+            persisted_item,
+            updated_at=now,
+        )
+        if superseded_count > 0:
+            event_bus.publish(
+                "goal_signal.superseded",
+                {
+                    "goal_id": persisted_item.get("goal_id"),
+                    "goal_type": persisted_item.get("goal_type"),
+                    "superseded_count": superseded_count,
+                    "summary": persisted_item.get("summary"),
+                },
+            )
         if persisted_item.get("was_created"):
             event_bus.publish(
                 "goal_signal.created",
@@ -257,14 +271,17 @@ def _apply_completion_signals(domains: set[str]) -> int:
         return 0
     completed = 0
     now = datetime.now(UTC).isoformat()
-    for item in list_runtime_goal_signals(limit=30):
-        domain = _goal_domain_key(str(item.get("canonical_key") or ""))
-        if domain not in domains:
+    for domain in domains:
+        live_items = [
+            item for item in list_runtime_goal_signals(limit=30)
+            if _goal_domain_key(str(item.get("canonical_key") or "")) == domain
+            and str(item.get("status") or "") in {"active", "blocked"}
+        ]
+        if not live_items:
             continue
-        if str(item.get("status") or "") not in {"active", "blocked", "stale"}:
-            continue
+        target = live_items[0]
         updated = update_runtime_goal_signal_status(
-            str(item.get("goal_id") or ""),
+            str(target.get("goal_id") or ""),
             status="completed",
             updated_at=now,
             status_reason="Explicit visible feedback suggests this bounded goal has landed for now.",
@@ -281,7 +298,57 @@ def _apply_completion_signals(domains: set[str]) -> int:
                 "summary": updated.get("summary"),
             },
         )
+        superseded_count = 0
+        for item in live_items[1:]:
+            superseded = update_runtime_goal_signal_status(
+                str(item.get("goal_id") or ""),
+                status="superseded",
+                updated_at=now,
+                status_reason="Superseded by newer completed goal thread for the same bounded domain.",
+            )
+            if superseded is not None:
+                superseded_count += 1
+        if superseded_count > 0:
+            event_bus.publish(
+                "goal_signal.superseded",
+                {
+                    "goal_id": updated.get("goal_id"),
+                    "goal_type": updated.get("goal_type"),
+                    "superseded_count": superseded_count,
+                    "summary": updated.get("summary"),
+                },
+            )
     return completed
+
+
+def _supersede_replaced_goal_signals(
+    persisted_item: dict[str, object],
+    *,
+    updated_at: str,
+) -> int:
+    goal_id = str(persisted_item.get("goal_id") or "")
+    domain_key = _goal_domain_key(str(persisted_item.get("canonical_key") or ""))
+    if not goal_id or not domain_key:
+        return 0
+
+    superseded = 0
+    for item in list_runtime_goal_signals(limit=40):
+        existing_id = str(item.get("goal_id") or "")
+        if not existing_id or existing_id == goal_id:
+            continue
+        if _goal_domain_key(str(item.get("canonical_key") or "")) != domain_key:
+            continue
+        if str(item.get("status") or "") not in {"active", "blocked", "stale"}:
+            continue
+        updated = update_runtime_goal_signal_status(
+            existing_id,
+            status="superseded",
+            updated_at=updated_at,
+            status_reason="Superseded by newer bounded goal thread for the same domain.",
+        )
+        if updated is not None:
+            superseded += 1
+    return superseded
 
 
 def _completed_goal_domains(message: str) -> set[str]:

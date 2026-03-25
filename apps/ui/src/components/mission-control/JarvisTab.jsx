@@ -470,6 +470,42 @@ function selfModelCalibrationRow({ summary, currentSignal, uncertainCount, corre
   )
 }
 
+function worldModelContextRow({ summary, currentSignal, uncertainCount, correctedCount }, onOpen) {
+  const detailText = [
+    uncertainCount ? `${uncertainCount} uncertain` : '',
+    correctedCount ? `${correctedCount} corrected` : '',
+    'World-model signals remain bounded situational understanding, not hidden authority.',
+  ].filter(Boolean).join(' · ')
+  return (
+    <button
+      className="mc-list-row"
+      onClick={() => onOpen('Current World View', {
+        source: '/mc/jarvis::continuity',
+        summary: currentSignal || 'No active world-model signal',
+        currentSignal,
+        uncertainCount,
+        correctedCount,
+        currentStatus: summary?.current_status || 'none',
+      })}
+      title={sectionTitleWithMeta({
+        source: '/mc/jarvis::continuity',
+        fetchedAt: '',
+        mode: 'world-model context summary',
+      })}
+    >
+      <div>
+        <strong>Current World View</strong>
+        <span>{currentSignal || 'No active world-model signal'}</span>
+      </div>
+      <div className="mc-row-meta">
+        {summary?.current_status ? <StatusPill status={summary.current_status} /> : null}
+        {detailText ? <small>{detailText}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function carriedForwardSummary({ relationState, promotionSignal, promotionDecision }) {
   return [
     relationState?.summary,
@@ -1150,6 +1186,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.continuity?.relationState, 'Relation State', onOpenItem)}
               {detailRow(data?.continuity?.promotionSignal, 'Promotion Signal', onOpenItem)}
               {detailRow(data?.continuity?.promotionDecision, 'Promotion Decision', onOpenItem)}
+              {worldModelContextRow({
+                summary: worldModelSignals?.summary || {},
+                currentSignal: worldModelSignals?.summary?.current_signal || summary?.continuity?.current_world_model || 'No active world-model signal',
+                uncertainCount: worldModelSignals?.summary?.uncertain_count || 0,
+                correctedCount: worldModelSignals?.summary?.corrected_count || 0,
+              }, onOpenItem)}
               {worldModelSignals.items.length === 0 ? (
                 <div className="mc-empty-state">
                   <strong>No active world-model signal</strong>

@@ -47,6 +47,9 @@ from apps.api.jarvis_api.services.temporal_recurrence_signal_tracking import (
 from apps.api.jarvis_api.services.witness_signal_tracking import (
     build_runtime_witness_signal_surface,
 )
+from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+    build_runtime_open_loop_signal_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -271,6 +274,7 @@ def mc_jarvis() -> dict:
     reflection_signals = build_runtime_reflection_signal_surface()
     temporal_recurrence_signals = build_runtime_temporal_recurrence_signal_surface()
     witness_signals = build_runtime_witness_signal_surface()
+    open_loop_signals = build_runtime_open_loop_signal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
     heartbeat = heartbeat_runtime_surface()
@@ -325,6 +329,7 @@ def mc_jarvis() -> dict:
             "reflection_signals": reflection_signals,
             "temporal_recurrence_signals": temporal_recurrence_signals,
             "witness_signals": witness_signals,
+            "open_loop_signals": open_loop_signals,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -443,6 +448,7 @@ def mc_runtime() -> dict:
         "runtime_reflection_signals": build_runtime_reflection_signal_surface(),
         "runtime_temporal_recurrence_signals": build_runtime_temporal_recurrence_signal_surface(),
         "runtime_witness_signals": build_runtime_witness_signal_surface(),
+        "runtime_open_loop_signals": build_runtime_open_loop_signal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
         "paths": {

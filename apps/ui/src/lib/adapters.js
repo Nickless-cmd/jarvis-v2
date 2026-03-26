@@ -522,6 +522,31 @@ function normalizeWitnessSignal(item = {}) {
   }
 }
 
+function normalizeOpenLoopSignal(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Open loop',
+    summary: item.summary || item.title || 'Open loop detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    source: item.source || '/mc/jarvis::open-loop-signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeRuntimeAwarenessSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1086,6 +1111,11 @@ export const backend = {
           active: Boolean(development.witness_signals?.active),
           summary: development.witness_signals?.summary || {},
           items: (development.witness_signals?.items || []).map(normalizeWitnessSignal),
+        },
+        openLoopSignals: {
+          active: Boolean(development.open_loop_signals?.active),
+          summary: development.open_loop_signals?.summary || {},
+          items: (development.open_loop_signals?.items || []).map(normalizeOpenLoopSignal),
         },
       },
       continuity: {

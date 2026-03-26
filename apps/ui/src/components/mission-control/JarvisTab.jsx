@@ -463,6 +463,49 @@ function witnessSignalRow(item, onOpen) {
   )
 }
 
+function openLoopSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'softening'
+    ? 'Softening loop'
+    : item.status === 'closed'
+      ? 'Closed loop'
+      : item.status === 'stale'
+        ? 'Stale loop'
+        : item.status === 'superseded'
+          ? 'Superseded loop'
+          : 'Open loop'
+  const detailText = [
+    lifecycleLabel,
+    item.statusReason,
+    item.rationale,
+    item.supportSummary,
+  ].filter(Boolean)[0] || 'Inspect bounded open-loop evidence'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Open Loop', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'open loop detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Open Loop'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'open'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function subsectionHeader(kicker, title) {
   return (
     <div className="support-card-header">
@@ -764,6 +807,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const reflectionSignals = data?.development?.reflectionSignals || { items: [], summary: {} }
   const temporalRecurrenceSignals = data?.development?.temporalRecurrenceSignals || { items: [], summary: {} }
   const witnessSignals = data?.development?.witnessSignals || { items: [], summary: {} }
+  const openLoopSignals = data?.development?.openLoopSignals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1287,6 +1331,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Open Loops</span>
+              <strong>{(openLoopSignals?.summary?.open_count || 0) + (openLoopSignals?.summary?.softening_count || 0) + (openLoopSignals?.summary?.closed_count || 0)}</strong>
+              <p>{openLoopSignals?.summary?.current_signal || 'No active open loop'}</p>
+              <p>
+                {openLoopSignals?.summary?.open_count || 0} open · {openLoopSignals?.summary?.softening_count || 0} softening · {openLoopSignals?.summary?.closed_count || 0} closed
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Lifecycle</span>
               <strong>
                 {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
@@ -1370,6 +1422,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {reflectionHistory.slice(0, 4).map((item) => reflectionHistoryRow(item, onOpenItem))}
               {temporalRecurrenceSignals.items.length > 0 ? subsectionHeader('Recurring Patterns', 'What Keeps Returning') : null}
               {temporalRecurrenceSignals.items.slice(0, 3).map((item) => temporalRecurrenceSignalRow(item, onOpenItem))}
+              {openLoopSignals.items.length > 0 ? subsectionHeader('Open Loops', 'What Remains Unresolved') : null}
+              {openLoopSignals.items.slice(0, 3).map((item) => openLoopSignalRow(item, onOpenItem))}
             </div>
           </div>
         </article>

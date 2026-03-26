@@ -13,6 +13,7 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
     repo_root = Path(__file__).resolve().parents[1]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
+    monkeypatch.chdir(repo_root)
 
     home = tmp_path / "home"
     home.mkdir(parents=True, exist_ok=True)
@@ -29,6 +30,7 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         "apps.api.jarvis_api.services.visible_model",
         "apps.api.jarvis_api.services.reflection_signal_tracking",
         "apps.api.jarvis_api.services.temporal_recurrence_signal_tracking",
+        "apps.api.jarvis_api.services.witness_signal_tracking",
         "apps.api.jarvis_api.routes.mission_control",
     ]
     modules: dict[str, object] = {}
@@ -55,5 +57,6 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         visible_model=modules["apps.api.jarvis_api.services.visible_model"],
         reflection_tracking=modules["apps.api.jarvis_api.services.reflection_signal_tracking"],
         temporal_recurrence_tracking=modules["apps.api.jarvis_api.services.temporal_recurrence_signal_tracking"],
+        witness_tracking=modules["apps.api.jarvis_api.services.witness_signal_tracking"],
         mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )

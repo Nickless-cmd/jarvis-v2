@@ -575,6 +575,31 @@ function normalizeInternalOppositionSignal(item = {}) {
   }
 }
 
+function normalizeSelfReviewSignal(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Self review signal',
+    summary: item.summary || item.title || 'Self review detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    source: item.source || '/mc/jarvis::self-review-signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeRuntimeAwarenessSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1149,6 +1174,11 @@ export const backend = {
           active: Boolean(development.internal_opposition_signals?.active),
           summary: development.internal_opposition_signals?.summary || {},
           items: (development.internal_opposition_signals?.items || []).map(normalizeInternalOppositionSignal),
+        },
+        selfReviewSignals: {
+          active: Boolean(development.self_review_signals?.active),
+          summary: development.self_review_signals?.summary || {},
+          items: (development.self_review_signals?.items || []).map(normalizeSelfReviewSignal),
         },
       },
       continuity: {

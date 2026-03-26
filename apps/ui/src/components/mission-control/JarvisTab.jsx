@@ -549,6 +549,47 @@ function internalOppositionSignalRow(item, onOpen) {
   )
 }
 
+function selfReviewSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'softening'
+    ? 'Softening review need'
+    : item.status === 'stale'
+      ? 'Stale review need'
+      : item.status === 'superseded'
+        ? 'Superseded review need'
+        : 'Active review need'
+  const detailText = [
+    lifecycleLabel,
+    item.statusReason,
+    item.rationale,
+    item.supportSummary,
+  ].filter(Boolean)[0] || 'Inspect bounded self-review need'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Self Review Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'self review detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Self Review Signal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.confidence ? <small>{item.confidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function subsectionHeader(kicker, title) {
   return (
     <div className="support-card-header">
@@ -852,6 +893,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const witnessSignals = data?.development?.witnessSignals || { items: [], summary: {} }
   const openLoopSignals = data?.development?.openLoopSignals || { items: [], summary: {} }
   const internalOppositionSignals = data?.development?.internalOppositionSignals || { items: [], summary: {} }
+  const selfReviewSignals = data?.development?.selfReviewSignals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1394,6 +1436,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Self Review Need</span>
+              <strong>{(selfReviewSignals?.summary?.active_count || 0) + (selfReviewSignals?.summary?.softening_count || 0)}</strong>
+              <p>{selfReviewSignals?.summary?.current_signal || 'No active self-review signal'}</p>
+              <p>
+                {selfReviewSignals?.summary?.softening_count || 0} softening · {selfReviewSignals?.summary?.stale_count || 0} stale · {selfReviewSignals?.summary?.superseded_count || 0} superseded
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Lifecycle</span>
               <strong>
                 {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
@@ -1481,6 +1531,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {openLoopSignals.items.slice(0, 3).map((item) => openLoopSignalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
+              {selfReviewSignals.items.length > 0 ? subsectionHeader('Self Review', 'What Should Enter Bounded Self-Review') : null}
+              {selfReviewSignals.items.slice(0, 3).map((item) => selfReviewSignalRow(item, onOpenItem))}
             </div>
           </div>
         </article>

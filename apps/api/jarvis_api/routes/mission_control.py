@@ -53,6 +53,9 @@ from apps.api.jarvis_api.services.open_loop_signal_tracking import (
 from apps.api.jarvis_api.services.internal_opposition_signal_tracking import (
     build_runtime_internal_opposition_signal_surface,
 )
+from apps.api.jarvis_api.services.self_review_signal_tracking import (
+    build_runtime_self_review_signal_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -279,6 +282,7 @@ def mc_jarvis() -> dict:
     witness_signals = build_runtime_witness_signal_surface()
     open_loop_signals = build_runtime_open_loop_signal_surface()
     internal_opposition_signals = build_runtime_internal_opposition_signal_surface()
+    self_review_signals = build_runtime_self_review_signal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
     heartbeat = heartbeat_runtime_surface()
@@ -335,6 +339,7 @@ def mc_jarvis() -> dict:
             "witness_signals": witness_signals,
             "open_loop_signals": open_loop_signals,
             "internal_opposition_signals": internal_opposition_signals,
+            "self_review_signals": self_review_signals,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -455,6 +460,7 @@ def mc_runtime() -> dict:
         "runtime_witness_signals": build_runtime_witness_signal_surface(),
         "runtime_open_loop_signals": build_runtime_open_loop_signal_surface(),
         "runtime_internal_opposition_signals": build_runtime_internal_opposition_signal_surface(),
+        "runtime_self_review_signals": build_runtime_self_review_signal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
         "paths": {

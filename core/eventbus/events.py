@@ -23,6 +23,7 @@ ALLOWED_EVENT_FAMILIES = {
     "witness_signal",
     "open_loop_signal",
     "internal_opposition_signal",
+    "self_review_signal",
     "self-model",
     "inner-voice",
     "incident",

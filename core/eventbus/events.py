@@ -25,6 +25,7 @@ ALLOWED_EVENT_FAMILIES = {
     "internal_opposition_signal",
     "self_review_signal",
     "self_review_record",
+    "self_review_run",
     "self-model",
     "inner-voice",
     "incident",

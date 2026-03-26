@@ -632,6 +632,48 @@ function selfReviewRecordRow(item, onOpen) {
   )
 }
 
+function selfReviewRunRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'active'
+    ? 'Active review snapshot'
+    : item.status === 'fading'
+      ? 'Fading review snapshot'
+      : item.status === 'stale'
+        ? 'Stale review snapshot'
+        : item.status === 'superseded'
+          ? 'Superseded review snapshot'
+          : 'Fresh review snapshot'
+  const detailText = [
+    item.shortReviewNote,
+    item.reviewFocus,
+    lifecycleLabel,
+  ].filter(Boolean)[0] || 'Inspect bounded self-review snapshot'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.runId || item.title}
+      onClick={() => onOpen(item.title || 'Self Review Snapshot', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'self review snapshot',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Self Review Snapshot'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'fresh'} />
+        {item.closureConfidence ? <small>closure {item.closureConfidence}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function subsectionHeader(kicker, title) {
   return (
     <div className="support-card-header">
@@ -937,6 +979,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const internalOppositionSignals = data?.development?.internalOppositionSignals || { items: [], summary: {} }
   const selfReviewSignals = data?.development?.selfReviewSignals || { items: [], summary: {} }
   const selfReviewRecords = data?.development?.selfReviewRecords || { items: [], summary: {} }
+  const selfReviewRuns = data?.development?.selfReviewRuns || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1498,6 +1541,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Self Review Runs</span>
+              <strong>{(selfReviewRuns?.summary?.fresh_count || 0) + (selfReviewRuns?.summary?.active_count || 0) + (selfReviewRuns?.summary?.fading_count || 0)}</strong>
+              <p>{selfReviewRuns?.summary?.current_run || 'No active self-review snapshot'}</p>
+              <p>
+                {selfReviewRuns?.summary?.fresh_count || 0} fresh · {selfReviewRuns?.summary?.active_count || 0} active · {selfReviewRuns?.summary?.fading_count || 0} fading
+              </p>
+              <p>
+                focus {selfReviewRuns?.summary?.current_review_focus || 'none'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Lifecycle</span>
               <strong>
                 {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
@@ -1589,6 +1643,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {selfReviewSignals.items.slice(0, 3).map((item) => selfReviewSignalRow(item, onOpenItem))}
               {selfReviewRecords.items.length > 0 ? subsectionHeader('Self Review Briefs', 'What This Review Should Look At') : null}
               {selfReviewRecords.items.slice(0, 3).map((item) => selfReviewRecordRow(item, onOpenItem))}
+              {selfReviewRuns.items.length > 0 ? subsectionHeader('Self Review Snapshots', 'What This Review Looks Like Right Now') : null}
+              {selfReviewRuns.items.slice(0, 3).map((item) => selfReviewRunRow(item, onOpenItem))}
             </div>
           </div>
         </article>

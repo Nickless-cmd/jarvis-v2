@@ -600,6 +600,39 @@ function normalizeSelfReviewSignal(item = {}) {
   }
 }
 
+function normalizeSelfReviewRecord(item = {}) {
+  return {
+    recordId: item.record_id || '',
+    recordType: item.record_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Self review brief',
+    summary: item.summary || item.title || 'Self review brief detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    reviewType: item.review_type || item.record_type || '',
+    trigger: item.trigger || item.record_type || '',
+    domain: item.domain || '',
+    openLoopStatus: item.open_loop_status || 'none',
+    oppositionStatus: item.opposition_status || 'none',
+    closureReadiness: item.closure_readiness || 'low',
+    closureConfidence: item.closure_confidence || 'low',
+    shortReason: item.short_reason || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    source: item.source || '/mc/jarvis::self-review-record',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeRuntimeAwarenessSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1179,6 +1212,11 @@ export const backend = {
           active: Boolean(development.self_review_signals?.active),
           summary: development.self_review_signals?.summary || {},
           items: (development.self_review_signals?.items || []).map(normalizeSelfReviewSignal),
+        },
+        selfReviewRecords: {
+          active: Boolean(development.self_review_records?.active),
+          summary: development.self_review_records?.summary || {},
+          items: (development.self_review_records?.items || []).map(normalizeSelfReviewRecord),
         },
       },
       continuity: {

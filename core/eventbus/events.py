@@ -22,6 +22,7 @@ ALLOWED_EVENT_FAMILIES = {
     "temporal_recurrence_signal",
     "witness_signal",
     "open_loop_signal",
+    "internal_opposition_signal",
     "self-model",
     "inner-voice",
     "incident",

@@ -476,6 +476,7 @@ function openLoopSignalRow(item, onOpen) {
           : 'Open loop'
   const detailText = [
     lifecycleLabel,
+    item.closureReason,
     item.statusReason,
     item.rationale,
     item.supportSummary,
@@ -497,6 +498,7 @@ function openLoopSignalRow(item, onOpen) {
       </div>
       <div className="mc-row-meta">
         <StatusPill status={item.status || 'open'} />
+        {item.closureReadiness ? <small>{`closure ${item.closureReadiness}`}</small> : null}
         {item.confidence ? <small>{item.confidence}</small> : null}
         {sourceLabel ? <small>{sourceLabel}</small> : null}
         {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
@@ -1336,6 +1338,9 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>{openLoopSignals?.summary?.current_signal || 'No active open loop'}</p>
               <p>
                 {openLoopSignals?.summary?.open_count || 0} open · {openLoopSignals?.summary?.softening_count || 0} softening · {openLoopSignals?.summary?.closed_count || 0} closed
+              </p>
+              <p>
+                {(openLoopSignals?.summary?.ready_count || 0)} high-readiness · current closure {openLoopSignals?.summary?.current_closure_confidence || 'low'}
               </p>
             </div>
             <div className="compact-metric">

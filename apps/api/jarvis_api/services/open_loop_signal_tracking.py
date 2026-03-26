@@ -75,11 +75,13 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
 def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, object]:
     refresh_runtime_open_loop_signal_statuses()
     items = list_runtime_open_loop_signals(limit=max(limit, 1))
-    open_items = [item for item in items if str(item.get("status") or "") == "open"]
-    softening = [item for item in items if str(item.get("status") or "") == "softening"]
-    closed = [item for item in items if str(item.get("status") or "") == "closed"]
-    stale = [item for item in items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in items if str(item.get("status") or "") == "superseded"]
+    snapshots = _build_governance_snapshots()
+    enriched_items = [_with_closure_governance(item, snapshots=snapshots) for item in items]
+    open_items = [item for item in enriched_items if str(item.get("status") or "") == "open"]
+    softening = [item for item in enriched_items if str(item.get("status") or "") == "softening"]
+    closed = [item for item in enriched_items if str(item.get("status") or "") == "closed"]
+    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
+    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
     ordered = [*open_items, *softening, *closed, *stale, *superseded]
     latest = next(iter(open_items or softening or closed or stale or superseded), None)
     return {
@@ -91,8 +93,10 @@ def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, objec
             "closed_count": len(closed),
             "stale_count": len(stale),
             "superseded_count": len(superseded),
+            "ready_count": len([item for item in ordered if str(item.get("closure_confidence") or "") == "high"]),
             "current_signal": str((latest or {}).get("title") or "No active open loop"),
             "current_status": str((latest or {}).get("status") or "none"),
+            "current_closure_confidence": str((latest or {}).get("closure_confidence") or "low"),
         },
     }
 
@@ -241,6 +245,110 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
     return candidates[:4]
 
 
+def _build_governance_snapshots() -> dict[str, dict[str, object]]:
+    snapshots: dict[str, dict[str, object]] = {}
+
+    for critic in list_runtime_reflective_critics(limit=18):
+        status = str(critic.get("status") or "")
+        if status not in {"active", "resolved"}:
+            continue
+        domain_key = _critic_domain_key(str(critic.get("canonical_key") or ""))
+        if not domain_key:
+            continue
+        bucket = snapshots.setdefault(domain_key, {})
+        if status == "active":
+            bucket["active_critic"] = critic
+        else:
+            bucket["resolved_critic"] = critic
+
+    for goal in list_runtime_goal_signals(limit=18):
+        status = str(goal.get("status") or "")
+        if status not in {"blocked", "completed"}:
+            continue
+        domain_key = _goal_domain_key(str(goal.get("canonical_key") or ""))
+        if not domain_key:
+            continue
+        bucket = snapshots.setdefault(domain_key, {})
+        if status == "blocked":
+            bucket["blocked_goal"] = goal
+        else:
+            bucket["completed_goal"] = goal
+
+    for reflection in list_runtime_reflection_signals(limit=18):
+        status = str(reflection.get("status") or "")
+        if status not in {"integrating", "settled"}:
+            continue
+        domain_key = _reflection_domain_key(str(reflection.get("canonical_key") or ""))
+        if not domain_key:
+            continue
+        bucket = snapshots.setdefault(domain_key, {})
+        if status == "integrating":
+            bucket["integrating_reflection"] = reflection
+        else:
+            bucket["settled_reflection"] = reflection
+
+    for recurrence in list_runtime_temporal_recurrence_signals(limit=18):
+        status = str(recurrence.get("status") or "")
+        if status not in {"active", "softening"}:
+            continue
+        domain_key = _temporal_domain_key(str(recurrence.get("canonical_key") or ""))
+        if not domain_key:
+            continue
+        bucket = snapshots.setdefault(domain_key, {})
+        if status == "active":
+            bucket["active_recurrence"] = recurrence
+        else:
+            bucket["softening_recurrence"] = recurrence
+
+    return snapshots
+
+
+def _with_closure_governance(
+    item: dict[str, object],
+    *,
+    snapshots: dict[str, dict[str, object]],
+) -> dict[str, object]:
+    enriched = dict(item)
+    domain_key = _open_loop_domain_key(str(item.get("canonical_key") or ""))
+    snapshot = snapshots.get(domain_key, {}) if domain_key else {}
+    active_critic = snapshot.get("active_critic")
+    blocked_goal = snapshot.get("blocked_goal")
+    completed_goal = snapshot.get("completed_goal")
+    integrating_reflection = snapshot.get("integrating_reflection")
+    settled_reflection = snapshot.get("settled_reflection")
+    active_recurrence = snapshot.get("active_recurrence")
+    softening_recurrence = snapshot.get("softening_recurrence")
+    status = str(item.get("status") or "")
+
+    closure_confidence = "low"
+    closure_reason = "No current closure evidence is strong enough to treat this loop as ready."
+
+    if status == "closed":
+        closure_confidence = "high"
+        closure_reason = "This loop already reads as conservatively closed by existing runtime truth."
+    elif active_critic or blocked_goal:
+        if settled_reflection or softening_recurrence or completed_goal:
+            closure_confidence = "medium"
+            closure_reason = "Some calming evidence exists, but active critic or blocked-goal pressure still keeps closure readiness bounded."
+        else:
+            closure_confidence = "low"
+            closure_reason = "Active critic or blocked-goal pressure is still present, so the loop is not close to closure."
+    elif settled_reflection and (softening_recurrence or completed_goal):
+        closure_confidence = "high"
+        closure_reason = "Settled reflection and calmer completion signals now point toward likely closure readiness."
+    elif integrating_reflection or softening_recurrence:
+        closure_confidence = "medium"
+        closure_reason = "The loop is easing through integration or softening, but closure evidence is not yet strong."
+    elif active_recurrence:
+        closure_confidence = "low"
+        closure_reason = "The loop still shows active recurrence, so closure readiness remains low."
+
+    enriched["closure_readiness"] = closure_confidence
+    enriched["closure_confidence"] = closure_confidence
+    enriched["closure_reason"] = closure_reason
+    return enriched
+
+
 def _persist_open_loop_signals(
     *,
     signals: list[dict[str, object]],
@@ -377,6 +485,11 @@ def _reflection_domain_key(canonical_key: str) -> str:
 
 
 def _temporal_domain_key(canonical_key: str) -> str:
+    parts = str(canonical_key or "").split(":")
+    return parts[2] if len(parts) >= 3 else ""
+
+
+def _open_loop_domain_key(canonical_key: str) -> str:
     parts = str(canonical_key or "").split(":")
     return parts[2] if len(parts) >= 3 else ""
 

@@ -5,7 +5,10 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
-from core.auth.profiles import get_provider_state, save_provider_credentials
+from core.auth.profiles import (
+    provider_has_real_credentials,
+    save_provider_credentials,
+)
 from core.runtime.config import PROVIDER_ROUTER_FILE
 from core.runtime.settings import load_settings, update_visible_execution_settings
 
@@ -296,16 +299,17 @@ def provider_router_lane_targets() -> dict[str, dict[str, object]]:
 def _provider_surface(item: dict[str, Any]) -> dict[str, object]:
     provider = str(item.get("provider") or "").strip()
     auth_profile = str(item.get("auth_profile") or "").strip()
-    auth_state = None
-    if provider and auth_profile:
-        auth_state = get_provider_state(profile=auth_profile, provider=provider)
     return {
         "provider": provider,
         "auth_mode": str(item.get("auth_mode") or "").strip(),
         "auth_profile": auth_profile,
         "base_url": str(item.get("base_url") or "").strip(),
         "enabled": bool(item.get("enabled", True)),
-        "credentials_ready": bool(auth_state and auth_state.get("status") == "active"),
+        "credentials_ready": (
+            provider_has_real_credentials(profile=auth_profile, provider=provider)
+            if provider and auth_profile
+            else False
+        ),
         "updated_at": item.get("updated_at"),
     }
 
@@ -434,8 +438,7 @@ def _credentials_ready(*, provider: str, auth_profile: str) -> bool:
         return True
     if not auth_profile:
         return False
-    auth_state = get_provider_state(profile=auth_profile, provider=provider)
-    return bool(auth_state and auth_state.get("status") == "active")
+    return provider_has_real_credentials(profile=auth_profile, provider=provider)
 
 
 def _upsert_provider(items: list[dict[str, object]], entry: dict[str, object]) -> None:

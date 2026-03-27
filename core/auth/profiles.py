@@ -96,6 +96,10 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
     if state is None:
         return None
     view = dict(state)
+    view["has_real_credentials"] = provider_has_real_credentials(
+        profile=profile,
+        provider=provider,
+    )
     view["auth_material_kind"] = get_provider_auth_material_kind(
         profile=profile,
         provider=provider,
@@ -164,6 +168,45 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
     return view
 
 
+def get_provider_credentials(
+    *, profile: str, provider: str
+) -> dict[str, Any] | None:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return None
+
+    credentials_path = Path(str(state.get("credentials_path") or ""))
+    if not credentials_path.exists():
+        return None
+    return _read_json(credentials_path)
+
+
+def provider_has_real_credentials(*, profile: str, provider: str) -> bool:
+    credentials = get_provider_credentials(profile=profile, provider=provider)
+    if not credentials:
+        return False
+
+    if credentials.get("real_oauth") is False:
+        return False
+
+    if any(
+        bool(credentials.get(flag))
+        for flag in (
+            "placeholder",
+            "oauth_stub",
+            "oauth_launch_stub",
+            "oauth_launch_intent",
+            "oauth_callback_stub",
+        )
+    ):
+        return False
+
+    api_key = str(credentials.get("api_key") or "").strip()
+    access_token = str(credentials.get("access_token") or "").strip()
+    refresh_token = str(credentials.get("refresh_token") or "").strip()
+    return bool(api_key or access_token or refresh_token)
+
+
 def get_provider_auth_material_kind(*, profile: str, provider: str) -> str:
     state = get_provider_state(profile=profile, provider=provider)
     if state is None:
@@ -180,6 +223,8 @@ def get_provider_auth_material_kind(*, profile: str, provider: str) -> str:
         return "missing"
 
     credentials = _read_json(credentials_path)
+    if provider_has_real_credentials(profile=profile, provider=provider):
+        return "real"
     if bool(credentials.get("oauth_callback_stub")):
         return "oauth-callback-stub"
     if bool(credentials.get("oauth_launch_intent")):
@@ -318,6 +363,10 @@ def get_provider_exchange_readiness(*, profile: str, provider: str) -> str:
 
     credentials = _read_json(credentials_path)
     oauth_state = str(credentials.get("oauth_state") or "").strip()
+    if oauth_state == "real-stored":
+        if provider_has_real_credentials(profile=profile, provider=provider):
+            return "exchange-complete"
+        return "stored-without-token"
     if oauth_state != "callback-received":
         return "not-applicable"
 

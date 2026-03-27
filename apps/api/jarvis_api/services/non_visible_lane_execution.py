@@ -8,15 +8,9 @@ from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from core.auth.profiles import (
-    get_provider_auth_material_kind,
-    get_provider_callback_validation_state,
-    get_provider_callback_intent_consistency,
-    get_provider_exchange_readiness,
-    get_provider_launch_freshness,
-    get_provider_launch_result_state,
-    get_provider_oauth_state,
     get_provider_state,
 )
+from core.auth.copilot_oauth import get_copilot_oauth_truth
 from core.runtime.provider_router import resolve_provider_router_target
 
 
@@ -167,35 +161,15 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         }
 
     if provider == "github-copilot":
-        oauth_state = get_provider_oauth_state(
-            profile=auth_profile,
-            provider="github-copilot",
-        )
+        oauth_truth = get_copilot_oauth_truth(profile=auth_profile)
+        oauth_state = str(oauth_truth["oauth_state"])
         auth_state = _github_copilot_auth_state(oauth_state=oauth_state)
-        auth_material_kind = get_provider_auth_material_kind(
-            profile=auth_profile,
-            provider="github-copilot",
-        )
-        launch_result_state = get_provider_launch_result_state(
-            profile=auth_profile,
-            provider="github-copilot",
-        )
-        launch_freshness = get_provider_launch_freshness(
-            profile=auth_profile,
-            provider="github-copilot",
-        )
-        callback_validation_state = get_provider_callback_validation_state(
-            profile=auth_profile,
-            provider="github-copilot",
-        )
-        exchange_readiness = get_provider_exchange_readiness(
-            profile=auth_profile,
-            provider="github-copilot",
-        )
-        callback_intent_consistency = get_provider_callback_intent_consistency(
-            profile=auth_profile,
-            provider="github-copilot",
-        )
+        auth_material_kind = str(oauth_truth["auth_material_kind"])
+        launch_result_state = str(oauth_truth["launch_result_state"])
+        launch_freshness = str(oauth_truth["launch_freshness"])
+        callback_validation_state = str(oauth_truth["callback_validation_state"])
+        exchange_readiness = str(oauth_truth["exchange_readiness"])
+        callback_intent_consistency = str(oauth_truth["callback_intent_consistency"])
         return {
             "status": _github_copilot_status(auth_state=auth_state),
             "can_execute": False,
@@ -205,7 +179,10 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "auth_material_kind": auth_material_kind,
             "oauth_state": oauth_state,
             "credentials_ready": credentials_ready,
-            "auth_status": _github_copilot_auth_status(auth_state=auth_state),
+            "auth_status": _github_copilot_auth_status(
+                auth_state=auth_state,
+                exchange_readiness=exchange_readiness,
+            ),
             "provider_ready": False,
             "coding_auth_path": coding_auth_path,
             "launch_result_state": launch_result_state,
@@ -395,11 +372,11 @@ def _github_copilot_status(*, auth_state: str) -> str:
     return "oauth-required"
 
 
-def _github_copilot_auth_status(*, auth_state: str) -> str:
+def _github_copilot_auth_status(*, auth_state: str, exchange_readiness: str) -> str:
     if auth_state == "oauth-stored":
-        return "ready"
+        return exchange_readiness if exchange_readiness != "not-applicable" else "exchange-complete"
     if auth_state == "oauth-callback-received":
-        return "oauth-callback-received"
+        return exchange_readiness if exchange_readiness != "not-applicable" else "exchange-ready"
     if auth_state == "oauth-browser-launch-attempted":
         return "oauth-browser-launch-attempted"
     if auth_state == "oauth-launch-intent-created":

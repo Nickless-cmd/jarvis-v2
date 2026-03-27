@@ -11,9 +11,8 @@ from uuid import uuid4
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     coding_lane_execution_truth,
 )
+from core.auth.copilot_oauth import get_copilot_oauth_truth
 from core.auth.profiles import (
-    get_provider_auth_material_kind,
-    get_provider_oauth_state,
     get_provider_state,
     get_provider_state_view,
     revoke_provider,
@@ -30,19 +29,8 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     init_db()
     coding_lane = coding_lane_execution_truth()
-    auth_material_kind = get_provider_auth_material_kind(
-        profile=args.auth_profile,
-        provider=_PROVIDER,
-    )
-    oauth_state = get_provider_oauth_state(
-        profile=args.auth_profile,
-        provider=_PROVIDER,
-    )
+    oauth_truth = get_copilot_oauth_truth(profile=args.auth_profile)
     provider_state = get_provider_state(
-        profile=args.auth_profile,
-        provider=_PROVIDER,
-    )
-    provider_state_view = get_provider_state_view(
         profile=args.auth_profile,
         provider=_PROVIDER,
     )
@@ -52,10 +40,18 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
                 "ok": True,
                 "provider": _PROVIDER,
                 "auth_profile": args.auth_profile,
-                "auth_material_kind": auth_material_kind,
-                "oauth_state": oauth_state,
+                "auth_material_kind": oauth_truth["auth_material_kind"],
+                "oauth_state": oauth_truth["oauth_state"],
+                "oauth_truth": oauth_truth,
                 "coding_lane": coding_lane,
-                "profile_state": provider_state_view if provider_state else None,
+                "profile_state": (
+                    get_provider_state_view(
+                        profile=args.auth_profile,
+                        provider=_PROVIDER,
+                    )
+                    if provider_state
+                    else None
+                ),
             },
             indent=2,
             ensure_ascii=False,

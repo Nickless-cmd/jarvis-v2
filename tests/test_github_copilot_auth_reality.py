@@ -1,0 +1,116 @@
+from __future__ import annotations
+
+
+def test_copilot_placeholder_state_is_not_credentials_ready(isolated_runtime) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+    provider_router = isolated_runtime.provider_router
+    lanes = isolated_runtime.non_visible_lane_execution
+
+    auth_profiles.save_provider_credentials(
+        profile="copilot",
+        provider="github-copilot",
+        credentials={
+            "placeholder": True,
+            "kind": "github-copilot-oauth-placeholder",
+            "oauth_state": "placeholder-stored",
+            "real_oauth": False,
+            "created_by": "test",
+        },
+    )
+    provider_router.configure_provider_router_entry(
+        provider="github-copilot",
+        model="gpt-4.1",
+        auth_mode="oauth",
+        auth_profile="copilot",
+        base_url="",
+        api_key="",
+        lane="coding",
+        set_visible=False,
+    )
+
+    truth = lanes.coding_lane_execution_truth()
+
+    assert truth["credentials_ready"] is False
+    assert truth["auth_material_kind"] == "placeholder"
+    assert truth["auth_status"] == "placeholder-only"
+    assert truth["exchange_readiness"] == "not-applicable"
+    assert truth["target"]["credentials_ready"] is False
+
+
+def test_copilot_real_token_material_surfaces_exchange_complete_but_not_executable(
+    isolated_runtime,
+) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+    provider_router = isolated_runtime.provider_router
+    lanes = isolated_runtime.non_visible_lane_execution
+
+    auth_profiles.save_provider_credentials(
+        profile="copilot-real",
+        provider="github-copilot",
+        credentials={
+            "access_token": "ghu_test_token",
+            "token_type": "bearer",
+            "oauth_state": "real-stored",
+            "token_exchange_completed": True,
+            "real_oauth": True,
+            "created_by": "test",
+        },
+    )
+    provider_router.configure_provider_router_entry(
+        provider="github-copilot",
+        model="gpt-4.1",
+        auth_mode="oauth",
+        auth_profile="copilot-real",
+        base_url="",
+        api_key="",
+        lane="coding",
+        set_visible=False,
+    )
+
+    truth = lanes.coding_lane_execution_truth()
+
+    assert truth["credentials_ready"] is True
+    assert truth["auth_material_kind"] == "real"
+    assert truth["exchange_readiness"] == "exchange-complete"
+    assert truth["auth_status"] == "exchange-complete"
+    assert truth["provider_status"] == "not-implemented"
+    assert truth["can_execute"] is False
+    assert truth["target"]["credentials_ready"] is True
+
+
+def test_provider_router_summary_does_not_mark_copilot_scaffold_as_auth_ready(
+    isolated_runtime,
+) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+    provider_router = isolated_runtime.provider_router
+
+    auth_profiles.save_provider_credentials(
+        profile="copilot-scaffold",
+        provider="github-copilot",
+        credentials={
+            "oauth_launch_intent": True,
+            "kind": "github-copilot-oauth-launch-intent",
+            "oauth_state": "launch-intent-created",
+            "real_oauth": False,
+            "created_by": "test",
+        },
+    )
+    provider_router.configure_provider_router_entry(
+        provider="github-copilot",
+        model="gpt-4.1",
+        auth_mode="oauth",
+        auth_profile="copilot-scaffold",
+        base_url="",
+        api_key="",
+        lane="coding",
+        set_visible=False,
+    )
+
+    summary = provider_router.provider_router_summary()
+    targets = summary["main_agent_selection"]["available_configured_targets"]
+    copilot_target = next(
+        item for item in targets if item["provider"] == "github-copilot"
+    )
+
+    assert copilot_target["credentials_ready"] is False
+    assert copilot_target["readiness_hint"] == "auth-required"

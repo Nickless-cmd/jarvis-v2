@@ -11,6 +11,9 @@ from apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking import 
 from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
     build_runtime_selfhood_proposal_surface,
 )
+from apps.api.jarvis_api.services.memory_md_update_proposal_tracking import (
+    build_runtime_memory_md_update_proposal_surface,
+)
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
@@ -146,6 +149,35 @@ def track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_
     return {
         **result,
         "summary": f"Drafted {result['created']} governed USER.md candidates from bounded proposals.",
+    }
+
+
+def track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
+    *,
+    session_id: str | None,
+    run_id: str,
+) -> dict[str, object]:
+    candidates = _extract_candidates_from_memory_md_update_proposals()
+    if not candidates:
+        return {
+            "created": 0,
+            "updated": 0,
+            "preference_updates": 0,
+            "memory_promotions": 0,
+            "items": [],
+            "summary": "No bounded MEMORY.md update proposal warranted candidate drafting.",
+        }
+    result = _persist_candidates(
+        candidates=candidates,
+        session_id=str(session_id or ""),
+        run_id=run_id,
+        source_mode="runtime_memory_md_proposal",
+        actor="runtime:memory-md-update-bridge",
+        status_reason="Candidate drafted from bounded MEMORY.md update proposal.",
+    )
+    return {
+        **result,
+        "summary": f"Drafted {result['created']} governed MEMORY.md candidates from bounded proposals.",
     }
 
 
@@ -322,6 +354,25 @@ def _extract_candidates_from_user_md_update_proposals() -> list[dict[str, str]]:
     return extracted
 
 
+def _extract_candidates_from_memory_md_update_proposals() -> list[dict[str, str]]:
+    extracted: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for proposal in build_runtime_memory_md_update_proposal_surface(limit=12).get("items", []):
+        if str(proposal.get("status") or "") not in {"fresh", "active", "fading"}:
+            continue
+        candidate = _candidate_from_memory_md_update_proposal(proposal)
+        if candidate is None:
+            continue
+        canonical_key = str(candidate.get("canonical_key") or "")
+        if not canonical_key or canonical_key in seen:
+            continue
+        if _candidate_already_applied(candidate):
+            continue
+        seen.add(canonical_key)
+        extracted.append(candidate)
+    return extracted
+
+
 def _extract_candidates_from_self_authored_prompt_proposals() -> list[dict[str, str]]:
     extracted: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -457,6 +508,68 @@ def _candidate_from_user_md_update_proposal(proposal: dict[str, object]) -> dict
         ),
         "support_summary": support_summary,
         "proposed_value": str(candidate_map["proposed_value"]),
+        "write_section": str(candidate_map["write_section"]),
+        "confidence": str(proposal.get("proposal_confidence") or proposal.get("confidence") or "low"),
+        "evidence_class": "runtime_support_only",
+        "support_count": max(int(proposal.get("support_count") or 1), 1),
+        "session_count": max(int(proposal.get("session_count") or 1), 1),
+    }
+
+
+def _candidate_from_memory_md_update_proposal(proposal: dict[str, object]) -> dict[str, str] | None:
+    proposal_type = str(proposal.get("proposal_type") or "")
+    memory_kind = str(proposal.get("memory_kind") or "").strip()
+    source_anchor = str(proposal.get("source_anchor") or "").strip()
+    domain = _memory_proposal_domain(str(proposal.get("canonical_key") or ""))
+    mapping = {
+        "open-followup-update": {
+            "canonical_key": f"workspace-memory:open-followup:{domain or 'carried-context'}",
+            "summary": "A bounded open follow-up may be worth carrying into MEMORY.md.",
+            "write_section": "## Curated Memory",
+        },
+        "carry-forward-thread-update": {
+            "canonical_key": f"workspace-memory:carry-forward-thread:{domain or 'carried-context'}",
+            "summary": "A bounded carry-forward thread may be worth carrying into MEMORY.md.",
+            "write_section": "## Curated Memory",
+        },
+        "stable-context-update": {
+            "canonical_key": f"workspace-memory:stable-context:{domain or 'carried-context'}",
+            "summary": "A bounded stable context may be worth carrying into MEMORY.md.",
+            "write_section": "## Curated Memory",
+        },
+    }
+    candidate_map = mapping.get(proposal_type)
+    if candidate_map is None:
+        return None
+    proposal_reason = str(proposal.get("proposal_reason") or proposal.get("summary") or "").strip()
+    proposed_update = str(proposal.get("proposed_update") or "").strip()
+    support_summary = " | ".join(
+        _unique_nonempty(
+            [
+                str(proposal.get("support_summary") or ""),
+                source_anchor,
+                f"memory-kind:{memory_kind}" if memory_kind else "",
+                "Candidate only. No MEMORY.md write has been applied.",
+            ]
+        )[:4]
+    )
+    return {
+        "candidate_type": "memory_promotion",
+        "target_file": "MEMORY.md",
+        "source_kind": "runtime-derived-support",
+        "canonical_key": str(candidate_map["canonical_key"]),
+        "summary": str(candidate_map["summary"]),
+        "reason": proposal_reason or "Bounded MEMORY.md proposal now warrants governed candidate drafting.",
+        "evidence_summary": " | ".join(
+            _unique_nonempty(
+                [
+                    str(proposal.get("evidence_summary") or ""),
+                    proposal_reason,
+                ]
+            )[:3]
+        ),
+        "support_summary": support_summary,
+        "proposed_value": f"- {proposed_update}" if proposed_update and not proposed_update.startswith("- ") else proposed_update,
         "write_section": str(candidate_map["write_section"]),
         "confidence": str(proposal.get("proposal_confidence") or proposal.get("confidence") or "low"),
         "evidence_class": "runtime_support_only",
@@ -700,6 +813,11 @@ def _candidate_already_applied(candidate: dict[str, str]) -> bool:
         if str(item.get("status") or "") == "applied":
             return True
     return False
+
+
+def _memory_proposal_domain(canonical_key: str) -> str:
+    parts = [part for part in canonical_key.split(":") if part]
+    return parts[-1] if parts else ""
 
 
 def _enrich_candidate_evidence(

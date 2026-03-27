@@ -28,6 +28,12 @@ _SELFHOOD_PROPOSAL_TYPE_LABELS = {
     "caution-shift-proposal": "caution",
 }
 
+_MEMORY_PROPOSAL_TYPE_LABELS = {
+    "open-followup-update": "open-followup",
+    "carry-forward-thread-update": "carry-forward-thread",
+    "stable-context-update": "stable-context",
+}
+
 _APPLY_READINESS_RANKS = {"low": 1, "medium": 2, "high": 3}
 _SAFE_USER_MD_CANONICAL_KEYS = {
     "user-preference:reply-style:plain-grounded-concise",
@@ -58,6 +64,12 @@ def _extract_proposal_types(
                         types.append(label)
         elif target_file in {"SOUL.md", "IDENTITY.md"}:
             for proposal_type, label in _SELFHOOD_PROPOSAL_TYPE_LABELS.items():
+                if proposal_type in canonical_key or label in canonical_key:
+                    if label not in seen:
+                        seen.add(label)
+                        types.append(label)
+        elif target_file == "MEMORY.md":
+            for proposal_type, label in _MEMORY_PROPOSAL_TYPE_LABELS.items():
                 if proposal_type in canonical_key or label in canonical_key:
                     if label not in seen:
                         seen.add(label)
@@ -98,6 +110,7 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
     soul_items = [_with_apply_readiness(item) for item in soul_items]
     identity_items = [_with_apply_readiness(item) for item in identity_items]
     preference_types = _extract_proposal_types(preference_items, "USER.md")
+    memory_types = _extract_proposal_types(memory_items, "MEMORY.md")
     prompt_types = _extract_proposal_types(prompt_items, "runtime/RUNTIME_FEEDBACK.md")
     soul_types = _extract_proposal_types(soul_items, "SOUL.md")
     identity_types = _extract_proposal_types(identity_items, "IDENTITY.md")
@@ -124,7 +137,7 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             applied_count=int(counts.get("memory_promotion:applied", 0)),
             superseded_count=int(counts.get("memory_promotion:superseded", 0)),
             items=memory_items,
-            proposal_types=[],
+            proposal_types=memory_types,
         ),
         "prompt_feedback_updates": _workflow_state(
             workflow_id="prompt_feedback_updates",

@@ -924,6 +924,48 @@ function dreamInfluenceProposalRow(item, onOpen) {
   )
 }
 
+function selfAuthoredPromptProposalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'active'
+    ? 'Active prompt proposal'
+    : item.status === 'fading'
+      ? 'Fading prompt proposal'
+      : item.status === 'stale'
+        ? 'Stale prompt proposal'
+        : item.status === 'superseded'
+          ? 'Superseded prompt proposal'
+          : 'Fresh prompt proposal'
+  const detailText = [
+    item.proposalReason,
+    item.proposedNudge,
+    lifecycleLabel,
+  ].filter(Boolean)[0] || 'Inspect bounded self-authored prompt proposal'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.proposalId || item.title}
+      onClick={() => onOpen(item.title || 'Self-Authored Prompt Proposal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'self-authored prompt proposal',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Self-Authored Prompt Proposal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'fresh'} />
+        {item.proposalConfidence ? <small>{`proposal ${item.proposalConfidence}`}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function subsectionHeader(kicker, title) {
   return (
     <div className="support-card-header">
@@ -1262,6 +1304,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const dreamHypothesisSignals = data?.development?.dreamHypothesisSignals || { items: [], summary: {} }
   const dreamAdoptionCandidates = data?.development?.dreamAdoptionCandidates || { items: [], summary: {} }
   const dreamInfluenceProposals = data?.development?.dreamInfluenceProposals || { items: [], summary: {} }
+  const selfAuthoredPromptProposals = data?.development?.selfAuthoredPromptProposals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1900,6 +1943,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Prompt Proposals</span>
+              <strong>{(selfAuthoredPromptProposals?.summary?.fresh_count || 0) + (selfAuthoredPromptProposals?.summary?.active_count || 0) + (selfAuthoredPromptProposals?.summary?.fading_count || 0)}</strong>
+              <p>{selfAuthoredPromptProposals?.summary?.current_proposal || 'No active self-authored prompt proposal'}</p>
+              <p>
+                {selfAuthoredPromptProposals?.summary?.fresh_count || 0} fresh · {selfAuthoredPromptProposals?.summary?.active_count || 0} active · {selfAuthoredPromptProposals?.summary?.fading_count || 0} fading
+              </p>
+              <p>
+                type {selfAuthoredPromptProposals?.summary?.current_proposal_type || 'none'} · proposal {selfAuthoredPromptProposals?.summary?.current_proposal_confidence || 'low'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Lifecycle</span>
               <strong>
                 {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
@@ -1989,7 +2043,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {openLoopClosureProposals.items.slice(0, 3).map((item) => openLoopClosureProposalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
-              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0 || dreamHypothesisSignals.items.length > 0 || dreamAdoptionCandidates.items.length > 0 || dreamInfluenceProposals.items.length > 0) ? (
+              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0 || dreamHypothesisSignals.items.length > 0 || dreamAdoptionCandidates.items.length > 0 || dreamInfluenceProposals.items.length > 0 || selfAuthoredPromptProposals.items.length > 0) ? (
                 <div className="mc-inline-group mc-inline-group-flush">
                   {subsectionHeader('Self Review', 'Bounded Review Flow')}
                   {selfReviewFlowSummary({
@@ -2015,6 +2069,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   {dreamAdoptionCandidates.items.slice(0, 2).map((item) => dreamAdoptionCandidateRow(item, onOpenItem))}
                   {dreamInfluenceProposals.items.length > 0 ? selfReviewStageLabel({ stage: 'Influence', count: dreamInfluenceProposals.items.length }) : null}
                   {dreamInfluenceProposals.items.slice(0, 2).map((item) => dreamInfluenceProposalRow(item, onOpenItem))}
+                  {selfAuthoredPromptProposals.items.length > 0 ? selfReviewStageLabel({ stage: 'Prompt', count: selfAuthoredPromptProposals.items.length }) : null}
+                  {selfAuthoredPromptProposals.items.slice(0, 2).map((item) => selfAuthoredPromptProposalRow(item, onOpenItem))}
                 </div>
               ) : null}
             </div>

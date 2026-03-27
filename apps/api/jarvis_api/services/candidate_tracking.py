@@ -5,6 +5,9 @@ from uuid import uuid4
 
 from apps.api.jarvis_api.services.chat_sessions import get_chat_session
 from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
+from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
+    build_runtime_user_md_update_proposal_surface,
+)
 from core.eventbus.bus import event_bus
 from core.runtime.db import list_runtime_contract_candidates
 from core.runtime.db import upsert_runtime_contract_candidate
@@ -110,6 +113,35 @@ def track_runtime_contract_candidates_for_session_review(
     }
 
 
+def track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
+    *,
+    session_id: str | None,
+    run_id: str,
+) -> dict[str, object]:
+    candidates = _extract_candidates_from_user_md_update_proposals()
+    if not candidates:
+        return {
+            "created": 0,
+            "updated": 0,
+            "preference_updates": 0,
+            "memory_promotions": 0,
+            "items": [],
+            "summary": "No bounded USER.md update proposal warranted candidate drafting.",
+        }
+    result = _persist_candidates(
+        candidates=candidates,
+        session_id=str(session_id or ""),
+        run_id=run_id,
+        source_mode="runtime_user_md_proposal",
+        actor="runtime:user-md-update-bridge",
+        status_reason="Candidate drafted from bounded USER.md update proposal.",
+    )
+    return {
+        **result,
+        "summary": f"Drafted {result['created']} governed USER.md candidates from bounded proposals.",
+    }
+
+
 def _preference_candidates(message: str) -> list[dict[str, str]]:
     text = message.lower()
     explicit = any(
@@ -196,6 +228,25 @@ def _preference_candidates(message: str) -> list[dict[str, str]]:
     return _dedupe_candidates(candidates)
 
 
+def _extract_candidates_from_user_md_update_proposals() -> list[dict[str, str]]:
+    extracted: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for proposal in build_runtime_user_md_update_proposal_surface(limit=12).get("items", []):
+        if str(proposal.get("status") or "") not in {"fresh", "active", "fading"}:
+            continue
+        candidate = _candidate_from_user_md_update_proposal(proposal)
+        if candidate is None:
+            continue
+        canonical_key = str(candidate.get("canonical_key") or "")
+        if not canonical_key or canonical_key in seen:
+            continue
+        if _candidate_already_applied(candidate):
+            continue
+        seen.add(canonical_key)
+        extracted.append(candidate)
+    return extracted
+
+
 def _memory_candidates(message: str) -> list[dict[str, str]]:
     text = message.lower()
     candidates: list[dict[str, str]] = []
@@ -232,6 +283,73 @@ def _memory_candidates(message: str) -> list[dict[str, str]]:
             )
         )
     return _dedupe_candidates(candidates)
+
+
+def _candidate_from_user_md_update_proposal(proposal: dict[str, object]) -> dict[str, str] | None:
+    proposal_type = str(proposal.get("proposal_type") or "")
+    mapping = {
+        "preference-update": {
+            "canonical_key": "user-preference:reply-style:plain-grounded-concise",
+            "summary": "User appears to prefer plain, grounded, and concise replies.",
+            "proposed_value": "- Reply preference: plain, grounded, and concise replies by default.",
+            "write_section": "## Durable Preferences",
+        },
+        "workstyle-update": {
+            "canonical_key": "user-workstyle:direction:stable-threading",
+            "summary": "User appears to prefer keeping direction stable once a thread is active.",
+            "proposed_value": "- Workstyle: prefers keeping direction stable once an active thread is underway.",
+            "write_section": "## Durable Preferences",
+        },
+        "cadence-preference-update": {
+            "canonical_key": "user-preference:review-style:challenge-before-settling",
+            "summary": "User appears to prefer challenge or review before settling too quickly.",
+            "proposed_value": "- Review preference: prefers challenge or review before settling too quickly.",
+            "write_section": "## Durable Preferences",
+        },
+        "reminder-worthiness-update": {
+            "canonical_key": "user-preference:reminders:assumption-caution",
+            "summary": "User-facing reminders may be worth surfacing when assumptions or context look fragile.",
+            "proposed_value": "- Reminder worthiness: assumption-fragility or unstable context may deserve explicit reminders.",
+            "write_section": "## Durable Preferences",
+        },
+    }
+    candidate_map = mapping.get(proposal_type)
+    if candidate_map is None:
+        return None
+    proposal_reason = str(proposal.get("proposal_reason") or proposal.get("summary") or "").strip()
+    source_anchor = str(proposal.get("source_anchor") or "").strip()
+    support_summary = " | ".join(
+        _unique_nonempty(
+            [
+                str(proposal.get("support_summary") or ""),
+                source_anchor,
+                "Candidate only. No USER.md write has been applied.",
+            ]
+        )[:4]
+    )
+    return {
+        "candidate_type": "preference_update",
+        "target_file": "USER.md",
+        "source_kind": "runtime-derived-support",
+        "canonical_key": str(candidate_map["canonical_key"]),
+        "summary": str(candidate_map["summary"]),
+        "reason": proposal_reason or "Bounded USER.md proposal now warrants governed candidate drafting.",
+        "evidence_summary": " | ".join(
+            _unique_nonempty(
+                [
+                    str(proposal.get("evidence_summary") or ""),
+                    proposal_reason,
+                ]
+            )[:3]
+        ),
+        "support_summary": support_summary,
+        "proposed_value": str(candidate_map["proposed_value"]),
+        "write_section": str(candidate_map["write_section"]),
+        "confidence": str(proposal.get("proposal_confidence") or proposal.get("confidence") or "low"),
+        "evidence_class": "runtime_support_only",
+        "support_count": max(int(proposal.get("support_count") or 1), 1),
+        "session_count": max(int(proposal.get("session_count") or 1), 1),
+    }
 
 
 def _extract_candidates_from_messages(

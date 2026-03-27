@@ -201,7 +201,7 @@ button { cursor: pointer; }
   background:linear-gradient(180deg, #1a2a3d, #172435); border:1px solid rgba(104,163,255,.1); border-radius:16px; padding:8px 12px;
 }
 .message-bubble.pending { border-color: rgba(40,177,163,.18); }
-.message-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:6px; margin-top:6px; border-top:1px solid rgba(255,255,255,.08); color:#9aa7b8; font-size:11px; }
+.message-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-bottom:6px; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,.08); color:#9aa7b8; font-size:11px; }
 .message-bubble p { margin:0; white-space:pre-wrap; line-height:1.58; font-size:14px; color:#e7edf5; }
 .message-row.user .message-bubble p { color:#eef4ff; }
 .thinking-indicator { display:flex; align-items:center; gap:6px; margin-top:8px; color:#9aa7b8; }

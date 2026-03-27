@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking import (
-    build_runtime_self_authored_prompt_proposal_surface,
+from apps.api.jarvis_api.services.user_understanding_signal_tracking import (
+    build_runtime_user_understanding_signal_surface,
 )
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
@@ -100,22 +100,23 @@ def build_runtime_user_md_update_proposal_surface(*, limit: int = 8) -> dict[str
 
 def _extract_user_md_update_proposals() -> list[dict[str, object]]:
     proposals: list[dict[str, object]] = []
-    for item in build_runtime_self_authored_prompt_proposal_surface(limit=12).get("items", []):
-        prompt_status = str(item.get("status") or "")
-        if prompt_status not in {"fresh", "active", "fading"}:
+    for item in build_runtime_user_understanding_signal_surface(limit=12).get("items", []):
+        signal_status = str(item.get("status") or "")
+        if signal_status not in {"active", "softening"}:
             continue
         proposal_type = _build_proposal_type(item=item)
         if not proposal_type:
             continue
         user_dimension = _build_user_dimension(item=item, proposal_type=proposal_type)
         proposal_confidence = _build_proposal_confidence(
-            prompt_confidence=str(item.get("proposal_confidence") or ""),
+            signal_confidence=str(item.get("signal_confidence") or item.get("confidence") or ""),
             proposal_type=proposal_type,
         )
         proposed_update = _build_proposed_update(proposal_type=proposal_type)
         proposal_reason = _build_proposal_reason(
             proposal_type=proposal_type,
             proposal_confidence=proposal_confidence,
+            signal_summary=str(item.get("signal_summary") or item.get("summary") or ""),
         )
         source_anchor = _build_source_anchor(item=item)
         proposals.append(
@@ -123,12 +124,12 @@ def _extract_user_md_update_proposals() -> list[dict[str, object]]:
                 "proposal_type": proposal_type,
                 "canonical_key": f"user-md-update-proposal:{proposal_type}:{user_dimension}",
                 "dimension_key": user_dimension,
-                "status": prompt_status,
+                "status": "fresh" if signal_status == "active" else "fading",
                 "title": f"USER.md update proposal: {_title_suffix(user_dimension)}",
                 "summary": proposal_reason,
-                "rationale": str(item.get("proposal_reason") or item.get("summary") or "")
-                or "A bounded self-authored prompt proposal now points toward a small USER.md update proposal.",
-                "source_kind": "runtime-derived-support",
+                "rationale": str(item.get("signal_summary") or item.get("summary") or "")
+                or "A bounded user-understanding signal now points toward a small USER.md update proposal.",
+                "source_kind": "user-understanding-derived",
                 "confidence": _stronger_confidence(
                     str(item.get("confidence") or "low"),
                     proposal_confidence,
@@ -141,7 +142,10 @@ def _extract_user_md_update_proposals() -> list[dict[str, object]]:
                 ),
                 "support_count": int(item.get("support_count") or 1),
                 "session_count": int(item.get("session_count") or 1),
-                "status_reason": _build_status_reason(proposal_type=proposal_type),
+                "status_reason": _build_status_reason(
+                    proposal_type=proposal_type,
+                    signal_status=signal_status,
+                ),
                 "user_dimension": user_dimension,
                 "proposed_update": proposed_update,
                 "proposal_reason": proposal_reason,
@@ -240,33 +244,35 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     enriched["user_dimension"] = _dimension_from_canonical_key(str(item.get("canonical_key") or ""))
     enriched["proposed_update"] = str(item.get("support_summary") or "")
     enriched["proposal_reason"] = str(item.get("summary") or "")
-    enriched["proposal_confidence"] = _proposal_confidence_from_summary(str(item.get("summary") or ""))
+    enriched["proposal_confidence"] = str(item.get("confidence") or "low")
     enriched["source_anchor"] = _source_anchor_from_support_summary(str(item.get("support_summary") or ""))
     return enriched
 
 
 def _build_proposal_type(*, item: dict[str, object]) -> str:
-    prompt_type = str(item.get("proposal_type") or "")
+    signal_type = str(item.get("signal_type") or "")
+    user_dimension = str(item.get("user_dimension") or "")
     mapping = {
-        "communication-nudge": "preference-update",
-        "focus-nudge": "workstyle-update",
-        "challenge-nudge": "cadence-preference-update",
-        "world-caution-nudge": "reminder-worthiness-update",
+        ("preference-signal", "language-preference"): "preference-update",
+        ("preference-signal", "reply-style"): "preference-update",
+        ("workstyle-signal", "workstyle"): "workstyle-update",
+        ("cadence-preference-signal", "reporting-cadence"): "cadence-preference-update",
+        ("reminder-worthiness-signal", "reminder-worthiness"): "reminder-worthiness-update",
     }
-    return mapping.get(prompt_type, "")
+    return mapping.get((signal_type, user_dimension), "")
 
 
 def _build_user_dimension(*, item: dict[str, object], proposal_type: str) -> str:
-    prompt_target = str(item.get("prompt_target") or "")
+    signal_dimension = str(item.get("user_dimension") or "")
+    if proposal_type == "preference-update" and signal_dimension == "language-preference":
+        return "language-preference"
     if proposal_type == "preference-update":
         return "reply-style"
     if proposal_type == "workstyle-update":
         return "workstyle"
     if proposal_type == "cadence-preference-update":
         return "cadence-preference"
-    if prompt_target == "world-caution":
-        return "reminder-worthiness"
-    return "user-insight"
+    return "reminder-worthiness"
 
 
 def _build_proposed_update(*, proposal_type: str) -> str:
@@ -276,44 +282,48 @@ def _build_proposed_update(*, proposal_type: str) -> str:
         return "User appears to prefer keeping direction stable once a thread is active."
     if proposal_type == "cadence-preference-update":
         return "User appears to prefer challenge or review before settling too quickly."
-    return "User-facing reminders may be worth surfacing when assumptions or context look fragile."
+    return "User appears to frame some collaboration preferences as worth carrying forward across turns."
 
 
-def _build_proposal_reason(*, proposal_type: str, proposal_confidence: str) -> str:
+def _build_proposal_reason(
+    *, proposal_type: str, proposal_confidence: str, signal_summary: str
+) -> str:
     if proposal_type == "preference-update":
-        return "This bounded lane now looks like a small durable preference update candidate for USER.md, not a writeback."
+        return signal_summary or "This bounded user-understanding signal now looks like a small durable preference update candidate for USER.md, not a writeback."
     if proposal_type == "workstyle-update":
-        return "This bounded lane now looks like a small workstyle update candidate for USER.md, not a profile mutation."
+        return signal_summary or "This bounded user-understanding signal now looks like a small workstyle update candidate for USER.md, not a profile mutation."
     if proposal_type == "cadence-preference-update":
-        return "This bounded lane now looks like a small cadence-preference update candidate for USER.md while it remains tentative."
-    return f"This bounded lane now looks like a small reminder-worthiness update candidate for USER.md while proposal confidence stays {proposal_confidence}."
+        return signal_summary or "This bounded user-understanding signal now looks like a small cadence-preference update candidate for USER.md while it remains tentative."
+    return signal_summary or f"This bounded user-understanding signal now looks like a small reminder-worthiness update candidate for USER.md while proposal confidence stays {proposal_confidence}."
 
 
-def _build_proposal_confidence(*, prompt_confidence: str, proposal_type: str) -> str:
-    if proposal_type in {"preference-update", "workstyle-update"} and prompt_confidence == "high":
+def _build_proposal_confidence(*, signal_confidence: str, proposal_type: str) -> str:
+    if proposal_type in {"preference-update", "workstyle-update"} and signal_confidence == "high":
         return "high"
-    if prompt_confidence in {"high", "medium"}:
+    if signal_confidence in {"high", "medium"}:
         return "medium"
     return "low"
 
 
 def _build_source_anchor(*, item: dict[str, object]) -> str:
     parts = [
-        str(item.get("proposal_type") or ""),
-        str(item.get("prompt_target") or ""),
+        str(item.get("signal_type") or ""),
+        str(item.get("user_dimension") or ""),
         str(item.get("influence_anchor") or ""),
+        str(item.get("source_anchor") or ""),
     ]
     return " · ".join([part for part in parts if part][:3])
 
 
-def _build_status_reason(*, proposal_type: str) -> str:
+def _build_status_reason(*, proposal_type: str, signal_status: str) -> str:
+    suffix = "later." if signal_status == "active" else "later while the understanding signal remains tentative."
     if proposal_type == "preference-update":
-        return "The bounded lane now most plausibly points toward a durable reply preference note later."
+        return f"The bounded user-understanding layer now most plausibly points toward a durable reply preference note {suffix}"
     if proposal_type == "workstyle-update":
-        return "The bounded lane now most plausibly points toward a durable workstyle note later."
+        return f"The bounded user-understanding layer now most plausibly points toward a durable workstyle note {suffix}"
     if proposal_type == "cadence-preference-update":
-        return "The bounded lane now most plausibly points toward a durable cadence-preference note later."
-    return "The bounded lane now most plausibly points toward a durable reminder-worthiness note later."
+        return f"The bounded user-understanding layer now most plausibly points toward a durable cadence-preference note {suffix}"
+    return f"The bounded user-understanding layer now most plausibly points toward a durable reminder-worthiness note {suffix}"
 
 
 def _title_suffix(user_dimension: str) -> str:
@@ -324,15 +334,6 @@ def _title_suffix(user_dimension: str) -> str:
 def _dimension_from_canonical_key(canonical_key: str) -> str:
     parts = canonical_key.split(":")
     return parts[-1] if len(parts) >= 3 else ""
-
-
-def _proposal_confidence_from_summary(summary: str) -> str:
-    text = str(summary or "").lower()
-    if "proposal confidence stays high" in text:
-        return "high"
-    if "bounded lane now looks" in text:
-        return "medium"
-    return "low"
 
 
 def _source_anchor_from_support_summary(summary: str) -> str:

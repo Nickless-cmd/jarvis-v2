@@ -101,7 +101,7 @@ button { cursor: pointer; }
 .sidebar-empty-state span { color:#8ca0b6; font-size:10px; line-height:1.4; }
 
 .chat-stage {
-  display:flex; flex-direction:column; gap:0; min-width:0; min-height:0; height:100%; overflow:hidden;
+  display:flex; flex-direction:column; gap:0; min-width:0; min-height:0; height:100%; overflow:hidden; position: relative;
 }
 .hero-card { padding:18px 20px; }
 .chat-header-bar {
@@ -243,20 +243,22 @@ button { cursor: pointer; }
 .send-btn:disabled { cursor: default; opacity:.58; box-shadow:none; }
 
 .chat-support-rail {
-  display:flex; flex-direction:column; gap:10px; min-height:0; overflow:auto;
-  padding:2px 0 2px;
+  display:flex; flex-direction:column; gap:0; min-height:0; overflow:hidden;
+  background: linear-gradient(180deg, #11161f 0%, #0f141c 100%);
+  border-left:1px solid rgba(255,255,255,.06);
+  padding:10px 12px;
 }
 .support-rail { display:flex; flex-direction:column; gap:14px; }
-.support-card { padding:15px; }
+.support-card { padding:12px; background: transparent; border: none; border-radius: 12px; box-shadow: none; }
 .support-card.compact { padding:14px; }
-.support-card-header { display:flex; flex-direction:column; gap:3px; margin-bottom:12px; }
+.support-card-header { display:flex; flex-direction:column; gap:3px; margin-bottom:8px; }
 .support-card-kicker {
-  color:#8ca0b6; font-size:9px; text-transform:uppercase; letter-spacing:.14em;
+  color:#8ca0b6; font-size:10px; text-transform:uppercase; letter-spacing:.12em;
 }
 .support-card-header strong { font-size:13px; }
 .support-status-banner {
   display:flex; align-items:flex-start; gap:10px; padding:10px 11px; margin-bottom:10px;
-  border-radius:12px; background:#131c27; border:1px solid rgba(255,255,255,.05);
+  border-radius:10px; background: rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.04);
 }
 .status-dot {
   width:8px; height:8px; border-radius:999px; background:#6d7f94; margin-top:4px; flex:0 0 auto;
@@ -264,10 +266,10 @@ button { cursor: pointer; }
 .status-dot.live { background:#49d2c3; box-shadow:0 0 10px rgba(73,210,195,.6); }
 .support-status-banner strong { display:block; font-size:12px; margin-bottom:3px; }
 .support-status-banner span { color:#8ca0b6; font-size:11px; line-height:1.4; }
-.support-stat-list { display:flex; flex-direction:column; gap:8px; }
+.support-stat-list { display:flex; flex-direction:column; gap:6px; }
 .support-stat-row {
-  display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 10px;
-  border-radius:10px; background:#131c27; border:1px solid rgba(255,255,255,.05);
+  display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 8px;
+  border-radius:8px; background: transparent; border:1px solid rgba(255,255,255,.03);
 }
 .support-stat-label { display:flex; align-items:center; gap:6px; color:#8ca0b6; font-size:11px; }
 .support-stat-row strong {

@@ -45,10 +45,9 @@ def approve_runtime_contract_candidate(
         status_reason=(
             status_reason_override
             if status_reason_override is not None
-            else (
-                f"Approved for governed apply. Superseded {superseded} older candidates."
-                if superseded
-                else "Approved for governed apply."
+            else _default_approval_status_reason(
+                candidate,
+                superseded=superseded,
             )
         ),
     )
@@ -151,10 +150,9 @@ def apply_runtime_contract_candidate(
         status_reason=(
             status_reason_override
             if status_reason_override is not None
-            else (
-                "Applied to workspace file."
-                if write_result["write_status"] == "written"
-                else "Equivalent content already present in workspace file."
+            else _default_apply_status_reason(
+                candidate,
+                write_status=str(write_result["write_status"] or ""),
             )
         ),
     )
@@ -315,6 +313,11 @@ def _candidate_write_material(candidate: dict[str, object]) -> dict[str, str]:
             "section_heading": str(candidate.get("write_section") or "## Curated Memory"),
             "content_line": proposed_value or _memory_line_from_key(candidate),
         }
+    if target_file in {"SOUL.md", "IDENTITY.md"}:
+        return {
+            "section_heading": str(candidate.get("write_section") or "## Proposed Canonical Self Shifts"),
+            "content_line": proposed_value or _canonical_self_line_from_key(candidate),
+        }
     raise ValueError("Unsupported target file")
 
 
@@ -335,6 +338,43 @@ def _memory_line_from_key(candidate: dict[str, object]) -> str:
         "workspace-memory:project-anchor:build-jarvis-together": "- Project anchor: Jarvis and the user are building Jarvis together.",
     }
     return mapping.get(canonical_key, f"- {str(candidate.get('summary') or '').strip()}")
+
+
+def _canonical_self_line_from_key(candidate: dict[str, object]) -> str:
+    return f"- {str(candidate.get('summary') or '').strip()}"
+
+
+def _default_approval_status_reason(
+    candidate: dict[str, object],
+    *,
+    superseded: int,
+) -> str:
+    target_file = str(candidate.get("target_file") or "")
+    if target_file in {"SOUL.md", "IDENTITY.md"}:
+        if superseded:
+            return (
+                "Approved for canonical self apply after explicit user approval. "
+                f"Superseded {superseded} older candidates."
+            )
+        return "Approved for canonical self apply after explicit user approval."
+    if superseded:
+        return f"Approved for governed apply. Superseded {superseded} older candidates."
+    return "Approved for governed apply."
+
+
+def _default_apply_status_reason(
+    candidate: dict[str, object],
+    *,
+    write_status: str,
+) -> str:
+    target_file = str(candidate.get("target_file") or "")
+    if target_file in {"SOUL.md", "IDENTITY.md"}:
+        if write_status == "written":
+            return "Applied to canonical self file after explicit user approval."
+        return "Equivalent canonical self content already present after explicit user approval."
+    if write_status == "written":
+        return "Applied to workspace file."
+    return "Equivalent content already present in workspace file."
 
 
 def _append_workspace_contract_line(

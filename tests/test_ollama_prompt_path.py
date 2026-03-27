@@ -77,3 +77,49 @@ def test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led(
     assert "Runtime capability truth:" in assembly.text
     assert "local model behavior guardrails" in assembly.derived_inputs
     assert "runtime capability and safety truth" in assembly.derived_inputs
+    assert "If the answer is present in recent transcript context or workspace truth, answer from that material directly." in assembly.text
+    assert "Do not fall back to 'I cannot remember' or 'I am still developing' unless the provided context truly does not contain the answer." in assembly.text
+
+
+def test_ollama_visible_prompt_includes_recent_transcript_slice_for_session_recall(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.chat_sessions import (
+        append_chat_message,
+        create_chat_session,
+    )
+
+    session = create_chat_session(title="Recall")
+    session_id = str(session["id"])
+    append_chat_message(session_id=session_id, role="user", content="Hej Jarvis")
+    append_chat_message(session_id=session_id, role="assistant", content="Hej Bjørn")
+    append_chat_message(session_id=session_id, role="user", content="Mit navn er Bjørn")
+    append_chat_message(session_id=session_id, role="assistant", content="Ja, det er det.")
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="hvad skrev jeg i beskeden før den sidste?",
+        session_id=session_id,
+    )
+
+    assert "Recent transcript slice:" in assembly.text
+    assert "Newest line is last." in assembly.text
+    assert "User: Hej Jarvis" in assembly.text
+    assert "Jarvis: Hej Bjørn" in assembly.text
+    assert "User: Mit navn er Bjørn" in assembly.text
+
+
+def test_ollama_visible_prompt_can_include_memory_for_danish_recall_queries(
+    isolated_runtime,
+) -> None:
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="kan du huske hvad jeg hedder?",
+        session_id="test-session",
+    )
+
+    assert "USER.md:" in assembly.text
+    assert "MEMORY.md:" in assembly.text
+    assert "MEMORY.md" in assembly.conditional_files

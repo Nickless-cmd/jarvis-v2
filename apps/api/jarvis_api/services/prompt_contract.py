@@ -118,8 +118,8 @@ def build_visible_chat_prompt_assembly(
 
     transcript = _recent_transcript_section(
         session_id,
-        limit=5 if compact else 8,
-        include=(not compact) or _should_include_transcript(user_message),
+        limit=6 if compact else 8,
+        include=True,
     )
     if transcript:
         parts.append(transcript)
@@ -398,6 +398,10 @@ def _local_model_behavior_instruction() -> str:
             "- Do not add notes, translations, parenthetical meta-comments, or commentary about following instructions.",
             "- Do not repeat self-descriptions, identity boilerplate, or greeting formulas unless directly relevant.",
             "- Do not mention being a persistent digital entity unless the user asks about identity or architecture.",
+            "- If the answer is present in recent transcript context or workspace truth, answer from that material directly.",
+            "- When asked about recent messages, use the recent transcript slice directly instead of giving a generic memory disclaimer.",
+            "- If USER.md or MEMORY.md contains the needed fact, state the fact plainly.",
+            "- Do not fall back to 'I cannot remember' or 'I am still developing' unless the provided context truly does not contain the answer.",
         ]
     )
 
@@ -520,13 +524,16 @@ def _recent_transcript_section(
     history = recent_chat_session_messages(session_id, limit=max(limit + 1, 1))
     if not history:
         return None
-    lines = ["Recent transcript slice:"]
+    lines = [
+        "Recent transcript slice:",
+        "Newest line is last.",
+    ]
     for item in history[-limit:]:
         role = "User" if item["role"] == "user" else "Jarvis"
         content = " ".join(str(item.get("content") or "").split())
         if len(content) > 180:
             content = content[:179].rstrip() + "…"
-        lines.append(f"- {role}: {content}")
+        lines.append(f"{role}: {content}")
     lines.append("Use this as recent transcript context, not as stable memory.")
     return "\n".join(lines)
 
@@ -954,11 +961,17 @@ def _should_include_memory(text: str, *, mode: str) -> bool:
     if mode == "heartbeat":
         return True
     triggers = (
+        "huske",
         "remember",
         "memory",
         "første besked",
-        "første besked",
         "hvad skrev jeg",
+        "forrige besked",
+        "beskeden før",
+        "før den sidste",
+        "mit navn",
+        "hvad hedder jeg",
+        "navn",
         "preference",
         "prefer",
         "relationship",
@@ -989,8 +1002,12 @@ def _should_include_guidance(text: str) -> bool:
 def _should_include_transcript(text: str) -> bool:
     normalized = str(text or "").lower()
     triggers = (
+        "huske",
         "første besked",
         "hvad skrev jeg",
+        "forrige besked",
+        "beskeden før",
+        "før den sidste",
         "remember",
         "memory",
         "session",

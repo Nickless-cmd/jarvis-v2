@@ -330,6 +330,7 @@ button { cursor: pointer; }
   background: linear-gradient(180deg, #11161f 0%, #0f141c 100%);
   border-bottom:1px solid rgba(255,255,255,.06);
 }
+.mc-header-title .eyebrow { margin: 0; }
 .mc-header-actions { display:flex; align-items:center; gap:10px; }
 .mc-meta-strip { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; max-width:480px; }
 .mc-meta-pill {

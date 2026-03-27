@@ -52,11 +52,9 @@ export function MissionControlPage({ selection, onSelectionChange }) {
 
   return (
     <div className="mission-control-phasea">
-      <section className="hero-card compact mc-header-card">
-        <div>
+      <section className="mc-header-card">
+        <div className="mc-header-title">
           <p className="eyebrow">Mission Control</p>
-          <h1>Control room</h1>
-          <p>Observability, execution, and evidence for Jarvis as an experiment.</p>
         </div>
         <div className="mc-header-actions">
           <div className="mc-meta-strip">

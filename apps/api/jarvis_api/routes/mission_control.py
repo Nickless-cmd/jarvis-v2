@@ -83,6 +83,9 @@ from apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking import 
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
+from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
+    build_runtime_selfhood_proposal_surface,
+)
 from apps.api.jarvis_api.services.open_loop_closure_proposal_tracking import (
     build_runtime_open_loop_closure_proposal_surface,
 )
@@ -323,6 +326,7 @@ def mc_jarvis() -> dict:
     dream_influence_proposals = build_runtime_dream_influence_proposal_surface()
     self_authored_prompt_proposals = build_runtime_self_authored_prompt_proposal_surface()
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
+    selfhood_proposals = build_runtime_selfhood_proposal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
     heartbeat = heartbeat_runtime_surface()
@@ -390,6 +394,7 @@ def mc_jarvis() -> dict:
             "dream_influence_proposals": dream_influence_proposals,
             "self_authored_prompt_proposals": self_authored_prompt_proposals,
             "user_md_update_proposals": user_md_update_proposals,
+            "selfhood_proposals": selfhood_proposals,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -521,6 +526,7 @@ def mc_runtime() -> dict:
         "runtime_dream_influence_proposals": build_runtime_dream_influence_proposal_surface(),
         "runtime_self_authored_prompt_proposals": build_runtime_self_authored_prompt_proposal_surface(),
         "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
+        "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
         "paths": {

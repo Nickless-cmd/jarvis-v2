@@ -324,8 +324,13 @@ button { cursor: pointer; }
 
 .mission-control-page { display:flex; flex-direction:column; gap:16px; }
 .mission-control-phasea { display:flex; flex-direction:column; gap:12px; height:100%; min-height:0; overflow:hidden; }
-.mc-header-card { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:16px 18px; }
-.mc-header-actions { display:flex; align-items:flex-start; gap:10px; }
+.mc-header-card { 
+  display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 14px; 
+  min-height:48px;
+  background: linear-gradient(180deg, #11161f 0%, #0f141c 100%);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.mc-header-actions { display:flex; align-items:center; gap:10px; }
 .mc-meta-strip { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; max-width:480px; }
 .mc-meta-pill {
   padding:6px 9px; border-radius:999px; background:#131c27; border:1px solid rgba(255,255,255,.05);

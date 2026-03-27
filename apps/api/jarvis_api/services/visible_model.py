@@ -563,15 +563,9 @@ def _probe_ollama_visible_target(*, model: str, base_url: str) -> dict[str, str 
 
 
 def _build_ollama_prompt(message: str, *, model: str, session_id: str | None) -> str:
-    instruction = _visible_system_instruction_for_provider(
-        provider="ollama",
-        model=model,
-        user_message=message,
-        session_id=session_id,
+    return _visible_input_to_text_prompt(
+        _build_visible_input(message, session_id=session_id)
     )
-    if not instruction:
-        return message
-    return f"{instruction}\n\nUser:\n{message}\n\nAssistant:\n"
 
 
 def _probe_openai_model(*, profile: str, model: str) -> dict[str, str | bool]:
@@ -679,6 +673,32 @@ def _build_visible_input(message: str, *, session_id: str | None) -> list[dict]:
             "content": [{"type": "input_text", "text": message}],
         },
     ]
+
+
+def _visible_input_to_text_prompt(items: list[dict]) -> str:
+    parts: list[str] = []
+    for item in items:
+        role = str(item.get("role") or "").strip()
+        content_items = item.get("content") or []
+        text_parts = [
+            str(content.get("text") or "").strip()
+            for content in content_items
+            if isinstance(content, dict) and str(content.get("text") or "").strip()
+        ]
+        if not text_parts:
+            continue
+        text = "\n\n".join(text_parts).strip()
+        if not text:
+            continue
+        if role == "system":
+            parts.append(text)
+            continue
+        if role == "user":
+            parts.append(f"User:\n{text}")
+            continue
+        parts.append(f"{role.title()}:\n{text}")
+    parts.append("Assistant:\n")
+    return "\n\n".join(part for part in parts if part).strip()
 
 
 def _visible_system_instruction_for_provider(

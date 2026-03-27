@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from apps.api.jarvis_api.services.chat_sessions import recent_chat_session_messages
-from core.identity.visible_identity import load_visible_identity_prompt
 from core.identity.runtime_contract import build_runtime_contract_state
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.memory.private_retained_memory_projection import (
@@ -69,21 +68,17 @@ def build_visible_chat_prompt_assembly(
         if local_rules:
             parts.append(local_rules)
             derived_inputs.append("local model behavior guardrails")
-        identity_prompt = load_visible_identity_prompt(name=name)
-        if identity_prompt:
-            parts.append(identity_prompt)
-            included_files.extend(["SOUL.md", "IDENTITY.md", "USER.md"])
-    else:
-        for filename in ("SOUL.md", "IDENTITY.md", "USER.md"):
-            section = _workspace_file_section(
-                workspace_dir / filename,
-                label=filename,
-                max_lines=5,
-                max_chars=340,
-            )
-            if section:
-                parts.append(section)
-                included_files.append(filename)
+
+    for filename in ("SOUL.md", "IDENTITY.md", "USER.md"):
+        section = _workspace_file_section(
+            workspace_dir / filename,
+            label=filename,
+            max_lines=3 if compact else 5,
+            max_chars=220 if compact else 340,
+        )
+        if section:
+            parts.append(section)
+            included_files.append(filename)
 
     if _should_include_memory(user_message, mode="visible_chat"):
         memory_section = _workspace_file_section(

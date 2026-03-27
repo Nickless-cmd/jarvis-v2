@@ -65,6 +65,9 @@ from apps.api.jarvis_api.services.self_review_run_tracking import (
 from apps.api.jarvis_api.services.self_review_outcome_tracking import (
     build_runtime_self_review_outcome_surface,
 )
+from apps.api.jarvis_api.services.self_review_cadence_signal_tracking import (
+    build_runtime_self_review_cadence_signal_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -295,6 +298,7 @@ def mc_jarvis() -> dict:
     self_review_records = build_runtime_self_review_record_surface()
     self_review_runs = build_runtime_self_review_run_surface()
     self_review_outcomes = build_runtime_self_review_outcome_surface()
+    self_review_cadence_signals = build_runtime_self_review_cadence_signal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
     heartbeat = heartbeat_runtime_surface()
@@ -355,6 +359,7 @@ def mc_jarvis() -> dict:
             "self_review_records": self_review_records,
             "self_review_runs": self_review_runs,
             "self_review_outcomes": self_review_outcomes,
+            "self_review_cadence_signals": self_review_cadence_signals,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -479,6 +484,7 @@ def mc_runtime() -> dict:
         "runtime_self_review_records": build_runtime_self_review_record_surface(),
         "runtime_self_review_runs": build_runtime_self_review_run_surface(),
         "runtime_self_review_outcomes": build_runtime_self_review_outcome_surface(),
+        "runtime_self_review_cadence_signals": build_runtime_self_review_cadence_signal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
         "paths": {

@@ -716,6 +716,46 @@ function selfReviewOutcomeRow(item, onOpen) {
   )
 }
 
+function selfReviewCadenceSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'softening'
+    ? 'Recently reviewed cadence'
+    : item.status === 'stale'
+      ? 'Stale cadence signal'
+      : item.status === 'superseded'
+        ? 'Superseded cadence signal'
+        : 'Active cadence signal'
+  const detailText = [
+    item.cadenceReason,
+    `${item.cadenceState || 'due'} · ${item.dueHint || 'Inspect cadence hint'}`,
+    lifecycleLabel,
+  ].filter(Boolean)[0] || 'Inspect bounded self-review cadence'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Self Review Cadence', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'self review cadence',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Self Review Cadence'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.cadenceState ? <small>{item.cadenceState}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function subsectionHeader(kicker, title) {
   return (
     <div className="support-card-header">
@@ -725,11 +765,12 @@ function subsectionHeader(kicker, title) {
   )
 }
 
-function selfReviewFlowSummary({ signals, records, runs, outcomes }) {
+function selfReviewFlowSummary({ signals, records, runs, outcomes, cadence }) {
   const signalCount = signals?.items?.length || 0
   const recordCount = records?.items?.length || 0
   const runCount = runs?.items?.length || 0
   const outcomeCount = outcomes?.items?.length || 0
+  const cadenceCount = cadence?.items?.length || 0
   return (
     <div className="mc-flow-summary">
       <span><strong className="mc-flow-stage">{signalCount}</strong> need</span>
@@ -739,6 +780,8 @@ function selfReviewFlowSummary({ signals, records, runs, outcomes }) {
       <span><strong className="mc-flow-stage">{runCount}</strong> snapshot</span>
       <span className="mc-flow-sep">→</span>
       <span><strong className="mc-flow-stage">{outcomeCount}</strong> outcome</span>
+      <span className="mc-flow-sep">→</span>
+      <span><strong className="mc-flow-stage">{cadenceCount}</strong> cadence</span>
     </div>
   )
 }
@@ -1046,6 +1089,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const selfReviewRecords = data?.development?.selfReviewRecords || { items: [], summary: {} }
   const selfReviewRuns = data?.development?.selfReviewRuns || { items: [], summary: {} }
   const selfReviewOutcomes = data?.development?.selfReviewOutcomes || { items: [], summary: {} }
+  const selfReviewCadenceSignals = data?.development?.selfReviewCadenceSignals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1629,6 +1673,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Review Cadence</span>
+              <strong>{(selfReviewCadenceSignals?.summary?.active_count || 0) + (selfReviewCadenceSignals?.summary?.softening_count || 0)}</strong>
+              <p>{selfReviewCadenceSignals?.summary?.current_signal || 'No active self-review cadence signal'}</p>
+              <p>
+                {selfReviewCadenceSignals?.summary?.softening_count || 0} softening · {selfReviewCadenceSignals?.summary?.stale_count || 0} stale · {selfReviewCadenceSignals?.summary?.superseded_count || 0} superseded
+              </p>
+              <p>
+                state {selfReviewCadenceSignals?.summary?.current_cadence_state || 'none'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Lifecycle</span>
               <strong>
                 {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
@@ -1716,7 +1771,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {openLoopSignals.items.slice(0, 3).map((item) => openLoopSignalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
-              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0) ? (
+              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0) ? (
                 <div className="mc-inline-group mc-inline-group-flush">
                   {subsectionHeader('Self Review', 'Bounded Review Flow')}
                   {selfReviewFlowSummary({
@@ -1724,6 +1779,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                     records: selfReviewRecords,
                     runs: selfReviewRuns,
                     outcomes: selfReviewOutcomes,
+                    cadence: selfReviewCadenceSignals,
                   })}
                   {selfReviewSignals.items.length > 0 ? selfReviewStageLabel({ stage: 'Need', count: selfReviewSignals.items.length }) : null}
                   {selfReviewSignals.items.slice(0, 2).map((item) => selfReviewSignalRow(item, onOpenItem))}
@@ -1733,6 +1789,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   {selfReviewRuns.items.slice(0, 2).map((item) => selfReviewRunRow(item, onOpenItem))}
                   {selfReviewOutcomes.items.length > 0 ? selfReviewStageLabel({ stage: 'Outcome', count: selfReviewOutcomes.items.length }) : null}
                   {selfReviewOutcomes.items.slice(0, 2).map((item) => selfReviewOutcomeRow(item, onOpenItem))}
+                  {selfReviewCadenceSignals.items.length > 0 ? selfReviewStageLabel({ stage: 'Cadence', count: selfReviewCadenceSignals.items.length }) : null}
+                  {selfReviewCadenceSignals.items.slice(0, 2).map((item) => selfReviewCadenceSignalRow(item, onOpenItem))}
                 </div>
               ) : null}
             </div>

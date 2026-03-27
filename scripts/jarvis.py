@@ -33,6 +33,13 @@ from core.cli.copilot_auth import (
     cmd_set_copilot_auth_state,
     cmd_start_copilot_oauth_launch_intent,
 )
+from core.cli.provider_config import (
+    cmd_configure_coding_lane,
+    cmd_configure_copilot_coding_lane,
+    cmd_configure_local_lane,
+    cmd_configure_provider,
+    cmd_select_main_agent,
+)
 from core.cli.http_fallback import (
     cancel_visible_run_via_api,
     fetch_visible_run_via_api,
@@ -51,11 +58,7 @@ from core.runtime.db import (
     get_capability_approval_request,
     init_db,
 )
-from core.runtime.provider_router import (
-    configure_provider_router_entry,
-    provider_router_summary,
-    select_main_agent_target,
-)
+from core.runtime.provider_router import provider_router_summary
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
     get_capability_invocation_truth,
@@ -162,126 +165,6 @@ def cmd_config(_: argparse.Namespace) -> None:
     )
 
 
-def cmd_configure_provider(args: argparse.Namespace) -> None:
-    ensure_runtime_dirs()
-    result = configure_provider_router_entry(
-        provider=args.provider,
-        model=args.model,
-        auth_mode=args.auth_mode,
-        auth_profile=args.auth_profile,
-        base_url=args.base_url,
-        api_key=args.api_key,
-        lane=args.lane,
-        set_visible=args.set_visible,
-    )
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "configured": result,
-                "provider_router": provider_router_summary(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
-
-
-def cmd_configure_coding_lane(args: argparse.Namespace) -> None:
-    ensure_runtime_dirs()
-    result = configure_provider_router_entry(
-        provider="openai",
-        model=args.model,
-        auth_mode="api-key",
-        auth_profile=args.auth_profile,
-        base_url=args.base_url,
-        api_key=args.api_key,
-        lane="coding",
-        set_visible=False,
-    )
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "configured": result,
-                "coding_lane": {
-                    "provider": "openai",
-                    "lane": "coding",
-                    "auth_mode": "api-key",
-                    "auth_profile": args.auth_profile,
-                },
-                "provider_router": provider_router_summary(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
-
-
-def cmd_configure_copilot_coding_lane(args: argparse.Namespace) -> None:
-    ensure_runtime_dirs()
-    result = configure_provider_router_entry(
-        provider="github-copilot",
-        model=args.model,
-        auth_mode="oauth",
-        auth_profile=args.auth_profile,
-        base_url="",
-        api_key="",
-        lane="coding",
-        set_visible=False,
-    )
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "configured": result,
-                "coding_lane": {
-                    "provider": "github-copilot",
-                    "lane": "coding",
-                    "auth_mode": "oauth",
-                    "auth_profile": args.auth_profile,
-                },
-                "provider_router": provider_router_summary(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
-
-
-def cmd_configure_local_lane(args: argparse.Namespace) -> None:
-    ensure_runtime_dirs()
-    result = configure_provider_router_entry(
-        provider="ollama",
-        model=args.model,
-        auth_mode="none",
-        auth_profile="",
-        base_url=args.base_url,
-        api_key="",
-        lane="local",
-        set_visible=False,
-    )
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "configured": result,
-                "local_lane": {
-                    "provider": "ollama",
-                    "lane": "local",
-                    "auth_mode": "none",
-                    "base_url": args.base_url,
-                    "model": args.model,
-                },
-                "local_lane_execution": local_lane_execution_truth(),
-                "provider_router": provider_router_summary(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
-
-
 def cmd_coding_lane_status(_: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     init_db()
@@ -300,26 +183,6 @@ def cmd_local_lane_status(_: argparse.Namespace) -> None:
     print(
         json.dumps(
             local_lane_execution_truth(),
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
-
-
-def cmd_select_main_agent(args: argparse.Namespace) -> None:
-    ensure_runtime_dirs()
-    result = select_main_agent_target(
-        provider=args.provider,
-        model=args.model,
-        auth_profile=args.auth_profile,
-    )
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "selected": result,
-                "provider_router": provider_router_summary(),
-            },
             indent=2,
             ensure_ascii=False,
         )

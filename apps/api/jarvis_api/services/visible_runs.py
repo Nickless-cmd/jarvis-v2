@@ -73,6 +73,9 @@ from apps.api.jarvis_api.services.dream_influence_proposal_tracking import (
 from apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking import (
     track_runtime_self_authored_prompt_proposals_for_visible_turn,
 )
+from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
+    track_runtime_user_md_update_proposals_for_visible_turn,
+)
 from apps.api.jarvis_api.services.open_loop_closure_proposal_tracking import (
     track_runtime_open_loop_closure_proposals_for_visible_turn,
 )
@@ -562,6 +565,13 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         return
     try:
         track_runtime_self_authored_prompt_proposals_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception:
+        return
+    try:
+        track_runtime_user_md_update_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )

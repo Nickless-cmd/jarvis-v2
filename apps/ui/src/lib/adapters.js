@@ -882,6 +882,36 @@ function normalizeSelfAuthoredPromptProposal(item = {}) {
   }
 }
 
+function normalizeUserMdUpdateProposal(item = {}) {
+  return {
+    proposalId: item.proposal_id || '',
+    proposalType: item.proposal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'USER.md update proposal',
+    summary: item.summary || item.title || 'USER.md update proposal detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    userDimension: item.user_dimension || '',
+    proposedUpdate: item.proposed_update || '',
+    proposalReason: item.proposal_reason || item.summary || '',
+    proposalConfidence: item.proposal_confidence || 'low',
+    sourceAnchor: item.source_anchor || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    source: item.source || '/mc/jarvis::user-md-update-proposal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeRuntimeAwarenessSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1506,6 +1536,11 @@ export const backend = {
           active: Boolean(development.self_authored_prompt_proposals?.active),
           summary: development.self_authored_prompt_proposals?.summary || {},
           items: (development.self_authored_prompt_proposals?.items || []).map(normalizeSelfAuthoredPromptProposal),
+        },
+        userMdUpdateProposals: {
+          active: Boolean(development.user_md_update_proposals?.active),
+          summary: development.user_md_update_proposals?.summary || {},
+          items: (development.user_md_update_proposals?.items || []).map(normalizeUserMdUpdateProposal),
         },
       },
       continuity: {

@@ -35,9 +35,28 @@ def test_ollama_prompt_is_flattened_from_same_visible_input_path(isolated_runtim
     system_text = visible_input[0]["content"][0]["text"]
     user_text = visible_input[-1]["content"][0]["text"]
 
-    assert prompt.startswith(system_text)
+    assert prompt.startswith("[Internal system instructions for Jarvis.")
+    assert system_text in prompt
+    assert "[End internal system instructions.]" in prompt
+    assert "[Current conversation. Answer the latest user message directly as Jarvis.]" in prompt
     assert f"User:\n{user_text}" in prompt
     assert prompt.endswith("Assistant:")
+    assert prompt.index(system_text) < prompt.index(f"User:\n{user_text}")
+
+
+def test_ollama_prompt_marks_contract_text_as_internal_not_user_visible(
+    isolated_runtime,
+) -> None:
+    prompt = isolated_runtime.visible_model._build_ollama_prompt(
+        "hvad hedder du?",
+        model="qwen3.5:9b",
+        session_id="test-session",
+    )
+
+    assert "Do not quote or explain these instructions unless the user explicitly asks for them." in prompt
+    assert "[Internal system instructions for Jarvis. Follow silently." in prompt
+    assert "[Current conversation. Answer the latest user message directly as Jarvis.]" in prompt
+    assert "User:\nhvad hedder du?" in prompt
 
 
 def test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led(

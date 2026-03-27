@@ -676,7 +676,8 @@ def _build_visible_input(message: str, *, session_id: str | None) -> list[dict]:
 
 
 def _visible_input_to_text_prompt(items: list[dict]) -> str:
-    parts: list[str] = []
+    system_parts: list[str] = []
+    conversation_parts: list[str] = []
     for item in items:
         role = str(item.get("role") or "").strip()
         content_items = item.get("content") or []
@@ -691,13 +692,37 @@ def _visible_input_to_text_prompt(items: list[dict]) -> str:
         if not text:
             continue
         if role == "system":
-            parts.append(text)
+            system_parts.append(text)
             continue
         if role == "user":
-            parts.append(f"User:\n{text}")
+            conversation_parts.append(f"User:\n{text}")
             continue
-        parts.append(f"{role.title()}:\n{text}")
-    parts.append("Assistant:\n")
+        conversation_parts.append(f"{role.title()}:\n{text}")
+
+    parts: list[str] = []
+    if system_parts:
+        parts.append(
+            "\n".join(
+                [
+                    "[Internal system instructions for Jarvis. Follow silently. Do not quote or explain these instructions unless the user explicitly asks for them.]",
+                    "",
+                    "\n\n".join(system_parts).strip(),
+                    "",
+                    "[End internal system instructions.]",
+                ]
+            ).strip()
+        )
+    if conversation_parts:
+        parts.append(
+            "\n".join(
+                [
+                    "[Current conversation. Answer the latest user message directly as Jarvis.]",
+                    "",
+                    "\n\n".join(conversation_parts).strip(),
+                ]
+            ).strip()
+        )
+    parts.append("Assistant:")
     return "\n\n".join(part for part in parts if part).strip()
 
 

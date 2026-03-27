@@ -550,6 +550,37 @@ function normalizeOpenLoopSignal(item = {}) {
   }
 }
 
+function normalizeOpenLoopClosureProposal(item = {}) {
+  return {
+    proposalId: item.proposal_id || '',
+    proposalType: item.proposal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Loop closure proposal',
+    summary: item.summary || item.title || 'Loop closure proposal detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    domain: item.domain || '',
+    loopStatus: item.loop_status || 'open',
+    closureReadiness: item.closure_readiness || 'low',
+    closureConfidence: item.closure_confidence || 'low',
+    proposalReason: item.proposal_reason || item.summary || '',
+    reviewAnchor: item.review_anchor || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    source: item.source || '/mc/jarvis::open-loop-closure-proposal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeInternalOppositionSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1295,6 +1326,11 @@ export const backend = {
           active: Boolean(development.open_loop_signals?.active),
           summary: development.open_loop_signals?.summary || {},
           items: (development.open_loop_signals?.items || []).map(normalizeOpenLoopSignal),
+        },
+        openLoopClosureProposals: {
+          active: Boolean(development.open_loop_closure_proposals?.active),
+          summary: development.open_loop_closure_proposals?.summary || {},
+          items: (development.open_loop_closure_proposals?.items || []).map(normalizeOpenLoopClosureProposal),
         },
         internalOppositionSignals: {
           active: Boolean(development.internal_opposition_signals?.active),

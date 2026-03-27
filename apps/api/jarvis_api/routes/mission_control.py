@@ -68,6 +68,9 @@ from apps.api.jarvis_api.services.self_review_outcome_tracking import (
 from apps.api.jarvis_api.services.self_review_cadence_signal_tracking import (
     build_runtime_self_review_cadence_signal_surface,
 )
+from apps.api.jarvis_api.services.open_loop_closure_proposal_tracking import (
+    build_runtime_open_loop_closure_proposal_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -293,6 +296,7 @@ def mc_jarvis() -> dict:
     temporal_recurrence_signals = build_runtime_temporal_recurrence_signal_surface()
     witness_signals = build_runtime_witness_signal_surface()
     open_loop_signals = build_runtime_open_loop_signal_surface()
+    open_loop_closure_proposals = build_runtime_open_loop_closure_proposal_surface()
     internal_opposition_signals = build_runtime_internal_opposition_signal_surface()
     self_review_signals = build_runtime_self_review_signal_surface()
     self_review_records = build_runtime_self_review_record_surface()
@@ -354,6 +358,7 @@ def mc_jarvis() -> dict:
             "temporal_recurrence_signals": temporal_recurrence_signals,
             "witness_signals": witness_signals,
             "open_loop_signals": open_loop_signals,
+            "open_loop_closure_proposals": open_loop_closure_proposals,
             "internal_opposition_signals": internal_opposition_signals,
             "self_review_signals": self_review_signals,
             "self_review_records": self_review_records,
@@ -479,6 +484,7 @@ def mc_runtime() -> dict:
         "runtime_temporal_recurrence_signals": build_runtime_temporal_recurrence_signal_surface(),
         "runtime_witness_signals": build_runtime_witness_signal_surface(),
         "runtime_open_loop_signals": build_runtime_open_loop_signal_surface(),
+        "runtime_open_loop_closure_proposals": build_runtime_open_loop_closure_proposal_surface(),
         "runtime_internal_opposition_signals": build_runtime_internal_opposition_signal_surface(),
         "runtime_self_review_signals": build_runtime_self_review_signal_surface(),
         "runtime_self_review_records": build_runtime_self_review_record_surface(),

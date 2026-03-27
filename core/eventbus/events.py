@@ -22,6 +22,7 @@ ALLOWED_EVENT_FAMILIES = {
     "temporal_recurrence_signal",
     "witness_signal",
     "open_loop_signal",
+    "open_loop_closure_proposal",
     "internal_opposition_signal",
     "self_review_signal",
     "self_review_record",

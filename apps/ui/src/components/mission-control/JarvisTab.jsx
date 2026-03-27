@@ -508,6 +508,48 @@ function openLoopSignalRow(item, onOpen) {
   )
 }
 
+function openLoopClosureProposalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'active'
+    ? 'Active closure proposal'
+    : item.status === 'fading'
+      ? 'Fading closure proposal'
+      : item.status === 'stale'
+        ? 'Stale closure proposal'
+        : item.status === 'superseded'
+          ? 'Superseded closure proposal'
+          : 'Fresh closure proposal'
+  const detailText = [
+    item.proposalReason,
+    item.reviewAnchor,
+    lifecycleLabel,
+  ].filter(Boolean)[0] || 'Inspect bounded loop-closure proposal'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.proposalId || item.title}
+      onClick={() => onOpen(item.title || 'Loop Closure Proposal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'loop closure proposal',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Loop Closure Proposal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'fresh'} />
+        {item.closureConfidence ? <small>{`closure ${item.closureConfidence}`}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function internalOppositionSignalRow(item, onOpen) {
   const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
   const lifecycleLabel = item.status === 'softening'
@@ -1084,6 +1126,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const temporalRecurrenceSignals = data?.development?.temporalRecurrenceSignals || { items: [], summary: {} }
   const witnessSignals = data?.development?.witnessSignals || { items: [], summary: {} }
   const openLoopSignals = data?.development?.openLoopSignals || { items: [], summary: {} }
+  const openLoopClosureProposals = data?.development?.openLoopClosureProposals || { items: [], summary: {} }
   const internalOppositionSignals = data?.development?.internalOppositionSignals || { items: [], summary: {} }
   const selfReviewSignals = data?.development?.selfReviewSignals || { items: [], summary: {} }
   const selfReviewRecords = data?.development?.selfReviewRecords || { items: [], summary: {} }
@@ -1624,6 +1667,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Closure Proposals</span>
+              <strong>{(openLoopClosureProposals?.summary?.fresh_count || 0) + (openLoopClosureProposals?.summary?.active_count || 0) + (openLoopClosureProposals?.summary?.fading_count || 0)}</strong>
+              <p>{openLoopClosureProposals?.summary?.current_proposal || 'No active loop-closure proposal'}</p>
+              <p>
+                {openLoopClosureProposals?.summary?.fresh_count || 0} fresh · {openLoopClosureProposals?.summary?.active_count || 0} active · {openLoopClosureProposals?.summary?.fading_count || 0} fading
+              </p>
+              <p>
+                type {openLoopClosureProposals?.summary?.current_proposal_type || 'none'} · closure {openLoopClosureProposals?.summary?.current_closure_confidence || 'low'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Internal Opposition</span>
               <strong>{(internalOppositionSignals?.summary?.active_count || 0) + (internalOppositionSignals?.summary?.softening_count || 0)}</strong>
               <p>{internalOppositionSignals?.summary?.current_signal || 'No active internal opposition signal'}</p>
@@ -1769,6 +1823,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {temporalRecurrenceSignals.items.slice(0, 3).map((item) => temporalRecurrenceSignalRow(item, onOpenItem))}
               {openLoopSignals.items.length > 0 ? subsectionHeader('Open Loops', 'What Remains Unresolved') : null}
               {openLoopSignals.items.slice(0, 3).map((item) => openLoopSignalRow(item, onOpenItem))}
+              {openLoopClosureProposals.items.length > 0 ? subsectionHeader('Loop Closure Proposals', 'What Looks Worth Considering For Closure') : null}
+              {openLoopClosureProposals.items.slice(0, 3).map((item) => openLoopClosureProposalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
               {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0) ? (

@@ -61,6 +61,9 @@ from apps.api.jarvis_api.services.self_review_outcome_tracking import (
 from apps.api.jarvis_api.services.self_review_cadence_signal_tracking import (
     track_runtime_self_review_cadence_signals_for_visible_turn,
 )
+from apps.api.jarvis_api.services.open_loop_closure_proposal_tracking import (
+    track_runtime_open_loop_closure_proposals_for_visible_turn,
+)
 from apps.api.jarvis_api.services.visible_model import (
     VisibleModelDelta,
     VisibleModelStreamCancelled,
@@ -519,6 +522,13 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         return
     try:
         track_runtime_self_review_cadence_signals_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception:
+        return
+    try:
+        track_runtime_open_loop_closure_proposals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )

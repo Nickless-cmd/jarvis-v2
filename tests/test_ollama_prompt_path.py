@@ -74,12 +74,15 @@ def test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led(
     )
 
     assert "Visible local-model behavior rules:" in assembly.text
+    assert "Visible chat guidance rules:" in assembly.text
     assert "Runtime capability truth:" in assembly.text
     assert "local model behavior guardrails" in assembly.derived_inputs
     assert "runtime capability and safety truth" in assembly.derived_inputs
+    assert "visible chat guidance rules" in assembly.derived_inputs
     assert "If the answer is present in recent transcript context or workspace truth, answer from that material directly." in assembly.text
     assert "Do not fall back to \"I cannot remember\" or \"I am still developing\"" in assembly.text
     assert "VISIBLE_LOCAL_MODEL.md" in assembly.conditional_files
+    assert "VISIBLE_CHAT_RULES.md" in assembly.conditional_files
 
 
 def test_ollama_visible_prompt_includes_recent_transcript_slice_for_session_recall(
@@ -109,6 +112,7 @@ def test_ollama_visible_prompt_includes_recent_transcript_slice_for_session_reca
     assert "User: Hej Jarvis" in assembly.text
     assert "Jarvis: Hej Bjørn" in assembly.text
     assert "User: Mit navn er Bjørn" in assembly.text
+    assert "Use the recent transcript slice as recent context, not as stable memory." in assembly.text
 
 
 def test_ollama_visible_prompt_can_include_memory_for_danish_recall_queries(
@@ -151,3 +155,30 @@ def test_ollama_local_model_rules_are_loaded_from_workspace_prompt_file(
 
     assert "Use the transcript directly before claiming missing memory." in assembly.text
     assert "Keep the answer grounded in workspace truth." in assembly.text
+
+
+def test_visible_chat_guidance_rules_are_loaded_from_workspace_prompt_file(
+    isolated_runtime,
+) -> None:
+    workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
+    (workspace_dir / "VISIBLE_CHAT_RULES.md").write_text(
+        "\n".join(
+            [
+                "# VISIBLE_CHAT_RULES",
+                "Use transcript context before generic continuity disclaimers.",
+                "Treat guidance files as hints, not authority.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="hvad skrev jeg i beskeden før den sidste?",
+        session_id="test-session",
+    )
+
+    assert "Use transcript context before generic continuity disclaimers." in assembly.text
+    assert "Treat guidance files as hints, not authority." in assembly.text

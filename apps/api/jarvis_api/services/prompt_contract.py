@@ -63,6 +63,12 @@ def build_visible_chat_prompt_assembly(
         parts.append(capability_truth)
         derived_inputs.append("runtime capability and safety truth")
 
+    visible_rules = _visible_chat_rules_instruction(workspace_dir=workspace_dir)
+    if visible_rules:
+        parts.append(visible_rules)
+        conditional_files.append("VISIBLE_CHAT_RULES.md")
+        derived_inputs.append("visible chat guidance rules")
+
     if compact:
         local_rules = _local_model_behavior_instruction(workspace_dir=workspace_dir)
         if local_rules:
@@ -336,15 +342,7 @@ def _workspace_guidance_section(
         max_lines=max_lines,
         max_chars=max_chars,
     )
-    if not section:
-        return None
-    return "\n".join(
-        [
-            section,
-            "- These notes guide usage and workspace conventions only.",
-            "- Runtime capability truth decides what is actually available now.",
-        ]
-    )
+    return section
 
 
 def _workspace_optional_file_section(
@@ -366,6 +364,16 @@ def _workspace_optional_file_section(
     )
 
 
+def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
+    return _workspace_optional_file_section(
+        workspace_dir / "VISIBLE_CHAT_RULES.md",
+        fallback_path=TEMPLATE_DIR / "VISIBLE_CHAT_RULES.md",
+        label="Visible chat guidance rules",
+        max_lines=6,
+        max_chars=220,
+    )
+
+
 def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     capability_truth = load_workspace_capabilities()
     capabilities = capability_truth.get("runtime_capabilities", [])
@@ -379,11 +387,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         for item in capabilities
         if item.get("runtime_status") == "approval-required"
     ]
-    lines = [
-        "Runtime capability truth:",
-        "- Runtime capability and policy truth outrank TOOLS.md and SKILLS.md guidance notes.",
-        "- TOOLS.md and SKILLS.md may describe conventions or hints only; file presence does not prove real execution authority.",
-    ]
+    lines = ["Runtime capability truth:"]
     if available:
         lines.append(
             "- Use a workspace capability only by replying with exactly one line in this form: "
@@ -516,7 +520,6 @@ def _visible_session_continuity_instruction() -> str | None:
         [
             "Visible session continuity:",
             "- " + " | ".join(parts),
-            "Use this only as tiny session continuity, not as transcript memory.",
         ]
     )
 
@@ -542,7 +545,6 @@ def _recent_transcript_section(
         if len(content) > 180:
             content = content[:179].rstrip() + "…"
         lines.append(f"{role}: {content}")
-    lines.append("Use this as recent transcript context, not as stable memory.")
     return "\n".join(lines)
 
 

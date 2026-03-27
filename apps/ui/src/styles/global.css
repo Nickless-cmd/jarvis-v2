@@ -355,6 +355,20 @@ button { cursor: pointer; }
 .mc-list { display:flex; flex-direction:column; gap:7px; }
 .mc-list.dense { max-height:460px; overflow:auto; padding-right:2px; }
 .mc-inline-group { display:flex; flex-direction:column; gap:6px; }
+.mc-inline-group.mc-inline-group-flush { gap:0; }
+.mc-flow-summary {
+  display:flex; align-items:center; gap:8px; padding:8px 12px; margin-bottom:8px;
+  border-radius:12px; background:#162230; border:1px solid rgba(255,255,255,.04);
+  font-size:11px; color:#8ca0b6;
+}
+.mc-flow-summary span { display:flex; align-items:center; gap:4px; }
+.mc-flow-summary .mc-flow-stage { color:#e7edf5; font-weight:500; }
+.mc-flow-summary .mc-flow-sep { color:#4a5a6e; }
+.mc-stage-label {
+  display:inline-flex; align-items:center; gap:4px; padding:3px 8px; margin-bottom:4px;
+  border-radius:6px; background:rgba(255,255,255,.03); font-size:10px; color:#6d7f94;
+  text-transform:uppercase; letter-spacing:.08em;
+}
 .mc-contract-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:10px; margin-top:12px; }
 .mc-contract-column {
   display:flex; flex-direction:column; gap:10px; padding:12px; border-radius:16px;

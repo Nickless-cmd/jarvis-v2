@@ -725,6 +725,29 @@ function subsectionHeader(kicker, title) {
   )
 }
 
+function selfReviewFlowSummary({ signals, records, runs, outcomes }) {
+  const signalCount = signals?.items?.length || 0
+  const recordCount = records?.items?.length || 0
+  const runCount = runs?.items?.length || 0
+  const outcomeCount = outcomes?.items?.length || 0
+  return (
+    <div className="mc-flow-summary">
+      <span><strong className="mc-flow-stage">{signalCount}</strong> need</span>
+      <span className="mc-flow-sep">→</span>
+      <span><strong className="mc-flow-stage">{recordCount}</strong> brief</span>
+      <span className="mc-flow-sep">→</span>
+      <span><strong className="mc-flow-stage">{runCount}</strong> snapshot</span>
+      <span className="mc-flow-sep">→</span>
+      <span><strong className="mc-flow-stage">{outcomeCount}</strong> outcome</span>
+    </div>
+  )
+}
+
+function selfReviewStageLabel({ stage, count }) {
+  if (!count) return null
+  return <span className="mc-stage-label">{stage} · {count}</span>
+}
+
 function goalDirectionRow({ summary, currentGoal, blockedCount, completedCount }, onOpen) {
   const detailText = [
     blockedCount ? `${blockedCount} blocked` : '',
@@ -1693,14 +1716,25 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {openLoopSignals.items.slice(0, 3).map((item) => openLoopSignalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
-              {selfReviewSignals.items.length > 0 ? subsectionHeader('Self Review', 'What Should Enter Bounded Self-Review') : null}
-              {selfReviewSignals.items.slice(0, 3).map((item) => selfReviewSignalRow(item, onOpenItem))}
-              {selfReviewRecords.items.length > 0 ? subsectionHeader('Self Review Briefs', 'What This Review Should Look At') : null}
-              {selfReviewRecords.items.slice(0, 3).map((item) => selfReviewRecordRow(item, onOpenItem))}
-              {selfReviewRuns.items.length > 0 ? subsectionHeader('Self Review Snapshots', 'What This Review Looks Like Right Now') : null}
-              {selfReviewRuns.items.slice(0, 3).map((item) => selfReviewRunRow(item, onOpenItem))}
-              {selfReviewOutcomes.items.length > 0 ? subsectionHeader('Review Outcomes', 'What This Review Points Toward Right Now') : null}
-              {selfReviewOutcomes.items.slice(0, 3).map((item) => selfReviewOutcomeRow(item, onOpenItem))}
+              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0) ? (
+                <div className="mc-inline-group mc-inline-group-flush">
+                  {subsectionHeader('Self Review', 'Bounded Review Flow')}
+                  {selfReviewFlowSummary({
+                    signals: selfReviewSignals,
+                    records: selfReviewRecords,
+                    runs: selfReviewRuns,
+                    outcomes: selfReviewOutcomes,
+                  })}
+                  {selfReviewSignals.items.length > 0 ? selfReviewStageLabel({ stage: 'Need', count: selfReviewSignals.items.length }) : null}
+                  {selfReviewSignals.items.slice(0, 2).map((item) => selfReviewSignalRow(item, onOpenItem))}
+                  {selfReviewRecords.items.length > 0 ? selfReviewStageLabel({ stage: 'Brief', count: selfReviewRecords.items.length }) : null}
+                  {selfReviewRecords.items.slice(0, 2).map((item) => selfReviewRecordRow(item, onOpenItem))}
+                  {selfReviewRuns.items.length > 0 ? selfReviewStageLabel({ stage: 'Snapshot', count: selfReviewRuns.items.length }) : null}
+                  {selfReviewRuns.items.slice(0, 2).map((item) => selfReviewRunRow(item, onOpenItem))}
+                  {selfReviewOutcomes.items.length > 0 ? selfReviewStageLabel({ stage: 'Outcome', count: selfReviewOutcomes.items.length }) : null}
+                  {selfReviewOutcomes.items.slice(0, 2).map((item) => selfReviewOutcomeRow(item, onOpenItem))}
+                </div>
+              ) : null}
             </div>
           </div>
         </article>

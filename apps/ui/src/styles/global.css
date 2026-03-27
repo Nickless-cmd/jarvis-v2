@@ -323,7 +323,7 @@ button { cursor: pointer; }
 .compact-list { gap:6px; }
 
 .mission-control-page { display:flex; flex-direction:column; gap:16px; }
-.mission-control-phasea { display:flex; flex-direction:column; gap:12px; height:100%; min-height:0; overflow:hidden; }
+.mission-control-phasea { display:flex; flex-direction:column; height:100%; min-height:0; overflow:hidden; }
 .mc-header-card { 
   display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 14px; 
   min-height:48px;
@@ -339,13 +339,13 @@ button { cursor: pointer; }
 }
 .mc-meta-pill.live { color:#49d2c3; border-color: rgba(40,177,163,.18); }
 .mc-tabbar {
-  display:flex; gap:8px; padding:6px; border-radius:18px; background:#111923; border:1px solid rgba(255,255,255,.06);
-  width:max-content; max-width:100%; overflow:auto;
+  display:flex; gap:4px; padding:6px 14px; background: transparent; border-bottom:1px solid rgba(255,255,255,.06);
+  width:100%; max-width:100%; overflow:auto;
 }
 .mc-tab {
-  border:none; background:transparent; color:#9aa7b8; border-radius:12px; padding:9px 13px; white-space:nowrap;
+  border:none; background:transparent; color:#9aa7b8; border-radius:8px; padding:8px 12px; white-space:nowrap; font-size:12px;
 }
-.mc-tab.active { background:rgba(40,177,163,.12); color:#e7edf5; border:1px solid rgba(40,177,163,.18); }
+.mc-tab.active { background:rgba(40,177,163,.12); color:#e7edf5; }
 .mc-tab-page, .mc-observability-shell { display:flex; flex-direction:column; gap:12px; min-height:0; overflow:auto; padding-right:2px; }
 .mc-summary-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; }
 .mc-section-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }

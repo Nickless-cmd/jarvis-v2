@@ -50,9 +50,9 @@ button { cursor: pointer; }
 .sidebar-footer-label {
   display:block; color:#e7edf5; font-size:11px; margin-bottom:6px; text-transform:uppercase; letter-spacing:.08em;
 }
-.app-content { padding: 10px 12px; min-width:0; min-height:0; overflow:hidden; }
+.app-content { padding: 0; min-width:0; min-height:0; overflow:hidden; }
 
-.chat-shell-grid { display:grid; grid-template-columns: minmax(0, 1fr) 260px; gap:16px; height:100%; min-height:0; }
+.chat-shell-grid { display:grid; grid-template-columns: minmax(0, 1fr) 240px; gap:0; height:100%; min-height:0; }
 .panel, .support-card, .hero-card, .composer-wrap, .mc-stat {
   background: linear-gradient(180deg, rgba(23,33,45,.92), rgba(18,25,35,.98));
   border:1px solid rgba(255,255,255,.07);
@@ -110,12 +110,10 @@ button { cursor: pointer; }
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  position: sticky;
-  top: 0;
-  z-index: 4;
   min-height:48px;
   background: linear-gradient(180deg, #11161f 0%, #0f141c 100%);
   border-bottom:1px solid rgba(255,255,255,.06);
+  flex-shrink: 0;
 }
 .chat-header-copy {
   min-width: 0;
@@ -210,7 +208,7 @@ button { cursor: pointer; }
 .thinking-dot:nth-child(2) { animation-delay: .12s; }
 .thinking-dot:nth-child(3) { animation-delay: .24s; }
 .composer-shell {
-  padding:8px 14px 12px; position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
+  padding:6px 12px 8px; position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
   background: linear-gradient(180deg, transparent, rgba(13,17,23,.72) 20%, rgba(13,17,23,.94));
 }
 .composer-wrap {
@@ -245,7 +243,7 @@ button { cursor: pointer; }
   background: linear-gradient(180deg, #11161f 0%, #0f141c 100%);
   border-left:1px solid rgba(255,255,255,.06);
   padding:10px 12px;
-  border-radius: 0;
+  height: 100%;
 }
 .support-rail { display:flex; flex-direction:column; gap:14px; }
 .support-card { padding:12px; background: transparent; border: none; border-radius: 12px; box-shadow: none; }

@@ -209,6 +209,7 @@ function normalizePendingWrite(item = {}) {
     supersededCount: Number(item.superseded_count || 0),
     items: (item.items || []).map(normalizeCandidateItem),
     proposalTypes: item.proposal_types || [],
+    isCanonicalSelf: Boolean(item.is_canonical_self),
     applyReadinessHighCount: Number(item.apply_readiness_high_count || 0),
     applyReadinessMediumCount: Number(item.apply_readiness_medium_count || 0),
     applyReadinessLowCount: Number(item.apply_readiness_low_count || 0),

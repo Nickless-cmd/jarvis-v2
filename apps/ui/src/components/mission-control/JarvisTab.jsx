@@ -1583,6 +1583,9 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                         ) : null}
                       </div>
                       <div className="mc-row-meta">
+                        {item.isCanonicalSelf ? (
+                          <span className="mc-status-pill status-approval-gated">explicit approval required</span>
+                        ) : null}
                         {item.pendingCount ? <span className="mc-status-pill status-proposed">{item.pendingCount} proposed</span> : null}
                         {item.approvedCount ? <span className="mc-status-pill status-approved">{item.approvedCount} approved</span> : null}
                         {item.currentApplyReadiness ? <small>{`apply ${item.currentApplyReadiness}`}</small> : null}

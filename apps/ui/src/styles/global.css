@@ -439,6 +439,7 @@ button { cursor: pointer; }
 .mc-status-pill.status-ticking { background:rgba(40,177,163,.2); color:#49d2c3; }
 .mc-status-pill.status-disabled { background:rgba(140,160,182,.12); color:#8ca0b6; }
 .mc-status-pill.status-default { background:rgba(140,160,182,.1); color:#8ca0b6; }
+.mc-status-pill.status-approval-gated { background:rgba(104,163,255,.15); color:#68a3ff; }
 .mc-inline-actions { display:flex; gap:10px; }
 .mc-inline-actions .primary-btn { flex:1; width:auto; margin:0; }
 .secondary-btn {

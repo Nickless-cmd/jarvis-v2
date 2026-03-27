@@ -149,6 +149,7 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             superseded_count=int(counts.get("soul_update:superseded", 0)),
             items=soul_items,
             proposal_types=soul_types,
+            is_canonical_self=True,
         ),
         "identity_updates": _workflow_state(
             workflow_id="identity_updates",
@@ -161,6 +162,7 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             superseded_count=int(counts.get("identity_update:superseded", 0)),
             items=identity_items,
             proposal_types=identity_types,
+            is_canonical_self=True,
         ),
     }
 
@@ -211,6 +213,7 @@ def _workflow_state(
     superseded_count: int,
     items: list[dict[str, object]],
     proposal_types: list[str] | None = None,
+    is_canonical_self: bool = False,
 ) -> dict[str, object]:
     actionable_items = [
         item
@@ -248,6 +251,7 @@ def _workflow_state(
         ],
         "summary": summary,
         "proposal_types": types,
+        "is_canonical_self": is_canonical_self,
         "apply_readiness_high_count": readiness_summary["high_count"],
         "apply_readiness_medium_count": readiness_summary["medium_count"],
         "apply_readiness_low_count": readiness_summary["low_count"],
@@ -276,12 +280,21 @@ def candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
     if status == "approved":
         if candidate_type == "preference_update" and target_file == "USER.md":
             return {"apply_readiness": "high", "apply_reason": "bounded-safe"}
-        if candidate_type in {"soul_update", "identity_update"} and target_file in {"SOUL.md", "IDENTITY.md"}:
-            return {"apply_readiness": "medium", "apply_reason": "needs-user-confirmation"}
+        if candidate_type in {"soul_update", "identity_update"} and target_file in {
+            "SOUL.md",
+            "IDENTITY.md",
+        }:
+            return {
+                "apply_readiness": "medium",
+                "apply_reason": "needs-user-confirmation",
+            }
         return {"apply_readiness": "medium", "apply_reason": "needs-review"}
 
     if candidate_type == "prompt_feedback_update":
-        if confidence == "high" and evidence_class in {"repeated_cross_session", "single_session_pattern"}:
+        if confidence == "high" and evidence_class in {
+            "repeated_cross_session",
+            "single_session_pattern",
+        }:
             return {"apply_readiness": "medium", "apply_reason": "needs-review"}
         return {"apply_readiness": "low", "apply_reason": "needs-review"}
 
@@ -290,17 +303,28 @@ def candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
             return {"apply_readiness": "high", "apply_reason": "bounded-safe"}
         if confidence == "high" and evidence_class == "repeated_cross_session":
             return {"apply_readiness": "medium", "apply_reason": "bounded-safe"}
-        if confidence in {"high", "medium"} and evidence_class in {"explicit_user_statement", "single_session_pattern"}:
-            return {"apply_readiness": "medium", "apply_reason": "needs-user-confirmation"}
+        if confidence in {"high", "medium"} and evidence_class in {
+            "explicit_user_statement",
+            "single_session_pattern",
+        }:
+            return {
+                "apply_readiness": "medium",
+                "apply_reason": "needs-user-confirmation",
+            }
         return {"apply_readiness": "low", "apply_reason": "still-tentative"}
 
-    if candidate_type in {"soul_update", "identity_update"} and target_file in {"SOUL.md", "IDENTITY.md"}:
+    if candidate_type in {"soul_update", "identity_update"} and target_file in {
+        "SOUL.md",
+        "IDENTITY.md",
+    }:
         return {"apply_readiness": "low", "apply_reason": "needs-user-confirmation"}
 
     return {"apply_readiness": "low", "apply_reason": "needs-review"}
 
 
-def _workflow_apply_readiness_summary(items: list[dict[str, object]]) -> dict[str, object]:
+def _workflow_apply_readiness_summary(
+    items: list[dict[str, object]],
+) -> dict[str, object]:
     counts = {"high_count": 0, "medium_count": 0, "low_count": 0}
     best_item: dict[str, object] | None = None
     for item in items:
@@ -311,13 +335,19 @@ def _workflow_apply_readiness_summary(items: list[dict[str, object]]) -> dict[st
             counts["medium_count"] += 1
         else:
             counts["low_count"] += 1
-        if best_item is None or _APPLY_READINESS_RANKS.get(readiness, 0) > _APPLY_READINESS_RANKS.get(
+        if best_item is None or _APPLY_READINESS_RANKS.get(
+            readiness, 0
+        ) > _APPLY_READINESS_RANKS.get(
             str(best_item.get("apply_readiness") or "low"),
             0,
         ):
             best_item = item
     return {
         **counts,
-        "current_apply_readiness": str((best_item or {}).get("apply_readiness") or "low"),
-        "current_apply_reason": str((best_item or {}).get("apply_reason") or "still-tentative"),
+        "current_apply_readiness": str(
+            (best_item or {}).get("apply_readiness") or "low"
+        ),
+        "current_apply_reason": str(
+            (best_item or {}).get("apply_reason") or "still-tentative"
+        ),
     }

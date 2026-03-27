@@ -14,6 +14,9 @@ from apps.api.jarvis_api.services.prompt_contract import build_visible_chat_prom
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
+from apps.api.jarvis_api.services.ollama_visible_prompt import (
+    serialize_ollama_visible_prompt,
+)
 from core.runtime.provider_router import resolve_provider_router_target
 from core.runtime.db import (
     get_private_temporal_promotion_signal,
@@ -563,7 +566,7 @@ def _probe_ollama_visible_target(*, model: str, base_url: str) -> dict[str, str 
 
 
 def _build_ollama_prompt(message: str, *, model: str, session_id: str | None) -> str:
-    return _visible_input_to_text_prompt(
+    return serialize_ollama_visible_prompt(
         _build_visible_input(message, session_id=session_id)
     )
 
@@ -673,57 +676,6 @@ def _build_visible_input(message: str, *, session_id: str | None) -> list[dict]:
             "content": [{"type": "input_text", "text": message}],
         },
     ]
-
-
-def _visible_input_to_text_prompt(items: list[dict]) -> str:
-    system_parts: list[str] = []
-    conversation_parts: list[str] = []
-    for item in items:
-        role = str(item.get("role") or "").strip()
-        content_items = item.get("content") or []
-        text_parts = [
-            str(content.get("text") or "").strip()
-            for content in content_items
-            if isinstance(content, dict) and str(content.get("text") or "").strip()
-        ]
-        if not text_parts:
-            continue
-        text = "\n\n".join(text_parts).strip()
-        if not text:
-            continue
-        if role == "system":
-            system_parts.append(text)
-            continue
-        if role == "user":
-            conversation_parts.append(f"User:\n{text}")
-            continue
-        conversation_parts.append(f"{role.title()}:\n{text}")
-
-    parts: list[str] = []
-    if system_parts:
-        parts.append(
-            "\n".join(
-                [
-                    "[Internal system instructions for Jarvis. Follow silently. Do not quote or explain these instructions unless the user explicitly asks for them.]",
-                    "",
-                    "\n\n".join(system_parts).strip(),
-                    "",
-                    "[End internal system instructions.]",
-                ]
-            ).strip()
-        )
-    if conversation_parts:
-        parts.append(
-            "\n".join(
-                [
-                    "[Current conversation. Answer the latest user message directly as Jarvis.]",
-                    "",
-                    "\n\n".join(conversation_parts).strip(),
-                ]
-            ).strip()
-        )
-    parts.append("Assistant:")
-    return "\n\n".join(part for part in parts if part).strip()
 
 
 def _visible_system_instruction_for_provider(

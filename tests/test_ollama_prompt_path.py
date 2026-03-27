@@ -42,6 +42,7 @@ def test_ollama_prompt_is_flattened_from_same_visible_input_path(isolated_runtim
     assert f"User:\n{user_text}" in prompt
     assert prompt.endswith("Assistant:")
     assert prompt.index(system_text) < prompt.index(f"User:\n{user_text}")
+    assert prompt.rfind(f"User:\n{user_text}") < prompt.rfind("Assistant:")
 
 
 def test_ollama_prompt_marks_contract_text_as_internal_not_user_visible(
@@ -57,6 +58,9 @@ def test_ollama_prompt_marks_contract_text_as_internal_not_user_visible(
     assert "[Internal system instructions for Jarvis. Follow silently." in prompt
     assert "[Current conversation. Answer the latest user message directly as Jarvis.]" in prompt
     assert "User:\nhvad hedder du?" in prompt
+    assert prompt.index("[End internal system instructions.]") < prompt.index(
+        "[Current conversation. Answer the latest user message directly as Jarvis.]"
+    )
 
 
 def test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led(

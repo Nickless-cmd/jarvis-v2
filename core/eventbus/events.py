@@ -29,6 +29,7 @@ ALLOWED_EVENT_FAMILIES = {
     "self_authored_prompt_proposal",
     "user_understanding_signal",
     "user_md_update_proposal",
+    "memory_md_update_proposal",
     "selfhood_proposal",
     "internal_opposition_signal",
     "self_review_signal",

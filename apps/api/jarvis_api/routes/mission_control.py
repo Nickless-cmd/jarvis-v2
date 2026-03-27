@@ -86,6 +86,9 @@ from apps.api.jarvis_api.services.user_understanding_signal_tracking import (
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
+from apps.api.jarvis_api.services.memory_md_update_proposal_tracking import (
+    build_runtime_memory_md_update_proposal_surface,
+)
 from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
     build_runtime_selfhood_proposal_surface,
 )
@@ -330,6 +333,7 @@ def mc_jarvis() -> dict:
     self_authored_prompt_proposals = build_runtime_self_authored_prompt_proposal_surface()
     user_understanding_signals = build_runtime_user_understanding_signal_surface()
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
+    memory_md_update_proposals = build_runtime_memory_md_update_proposal_surface()
     selfhood_proposals = build_runtime_selfhood_proposal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
@@ -399,6 +403,7 @@ def mc_jarvis() -> dict:
             "self_authored_prompt_proposals": self_authored_prompt_proposals,
             "user_understanding_signals": user_understanding_signals,
             "user_md_update_proposals": user_md_update_proposals,
+            "memory_md_update_proposals": memory_md_update_proposals,
             "selfhood_proposals": selfhood_proposals,
         },
         "continuity": {
@@ -532,6 +537,7 @@ def mc_runtime() -> dict:
         "runtime_self_authored_prompt_proposals": build_runtime_self_authored_prompt_proposal_surface(),
         "runtime_user_understanding_signals": build_runtime_user_understanding_signal_surface(),
         "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
+        "runtime_memory_md_update_proposals": build_runtime_memory_md_update_proposal_surface(),
         "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),

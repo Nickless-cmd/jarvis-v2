@@ -27,6 +27,7 @@ ALLOWED_EVENT_FAMILIES = {
     "dream_adoption_candidate",
     "dream_influence_proposal",
     "self_authored_prompt_proposal",
+    "user_understanding_signal",
     "user_md_update_proposal",
     "selfhood_proposal",
     "internal_opposition_signal",

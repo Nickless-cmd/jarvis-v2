@@ -1010,6 +1010,49 @@ function userMdUpdateProposalRow(item, onOpen) {
   )
 }
 
+function userUnderstandingSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'active'
+    ? 'Active user-understanding signal'
+    : item.status === 'softening'
+      ? 'Softening user-understanding signal'
+      : item.status === 'stale'
+        ? 'Stale user-understanding signal'
+        : item.status === 'superseded'
+          ? 'Superseded user-understanding signal'
+          : 'User-understanding signal'
+  const detailText = [
+    item.signalSummary,
+    item.sourceAnchor,
+    lifecycleLabel,
+  ].filter(Boolean)[0] || 'Inspect bounded user-understanding signal'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'User Understanding Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'user understanding signal',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'User Understanding Signal'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.signalConfidence ? <small>{`signal ${item.signalConfidence}`}</small> : null}
+        {item.userDimension ? <small>{item.userDimension}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function selfhoodProposalRow(item, onOpen) {
   const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
   const lifecycleLabel = item.status === 'active'
@@ -1392,6 +1435,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const dreamAdoptionCandidates = data?.development?.dreamAdoptionCandidates || { items: [], summary: {} }
   const dreamInfluenceProposals = data?.development?.dreamInfluenceProposals || { items: [], summary: {} }
   const selfAuthoredPromptProposals = data?.development?.selfAuthoredPromptProposals || { items: [], summary: {} }
+  const userUnderstandingSignals = data?.development?.userUnderstandingSignals || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
@@ -2052,6 +2096,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>User Understanding</span>
+              <strong>{(userUnderstandingSignals?.summary?.active_count || 0) + (userUnderstandingSignals?.summary?.softening_count || 0)}</strong>
+              <p>{userUnderstandingSignals?.summary?.current_signal || 'No active user-understanding signal'}</p>
+              <p>
+                {userUnderstandingSignals?.summary?.active_count || 0} active · {userUnderstandingSignals?.summary?.softening_count || 0} softening
+              </p>
+              <p>
+                type {userUnderstandingSignals?.summary?.current_signal_type || 'none'} · signal {userUnderstandingSignals?.summary?.current_signal_confidence || 'low'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>USER.md Proposals</span>
               <strong>{(userMdUpdateProposals?.summary?.fresh_count || 0) + (userMdUpdateProposals?.summary?.active_count || 0) + (userMdUpdateProposals?.summary?.fading_count || 0)}</strong>
               <p>{userMdUpdateProposals?.summary?.current_proposal || 'No active USER.md update proposal'}</p>
@@ -2163,7 +2218,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {openLoopClosureProposals.items.slice(0, 3).map((item) => openLoopClosureProposalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
-              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0 || dreamHypothesisSignals.items.length > 0 || dreamAdoptionCandidates.items.length > 0 || dreamInfluenceProposals.items.length > 0 || selfAuthoredPromptProposals.items.length > 0 || userMdUpdateProposals.items.length > 0 || selfhoodProposals.items.length > 0) ? (
+              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0 || dreamHypothesisSignals.items.length > 0 || dreamAdoptionCandidates.items.length > 0 || dreamInfluenceProposals.items.length > 0 || selfAuthoredPromptProposals.items.length > 0 || userUnderstandingSignals.items.length > 0 || userMdUpdateProposals.items.length > 0 || selfhoodProposals.items.length > 0) ? (
                 <div className="mc-inline-group mc-inline-group-flush">
                   {subsectionHeader('Self Review', 'Bounded Review Flow')}
                   {selfReviewFlowSummary({
@@ -2191,6 +2246,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   {dreamInfluenceProposals.items.slice(0, 2).map((item) => dreamInfluenceProposalRow(item, onOpenItem))}
                   {selfAuthoredPromptProposals.items.length > 0 ? selfReviewStageLabel({ stage: 'Prompt', count: selfAuthoredPromptProposals.items.length }) : null}
                   {selfAuthoredPromptProposals.items.slice(0, 2).map((item) => selfAuthoredPromptProposalRow(item, onOpenItem))}
+                  {userUnderstandingSignals.items.length > 0 ? selfReviewStageLabel({ stage: 'User Insight', count: userUnderstandingSignals.items.length }) : null}
+                  {userUnderstandingSignals.items.slice(0, 2).map((item) => userUnderstandingSignalRow(item, onOpenItem))}
                   {userMdUpdateProposals.items.length > 0 ? selfReviewStageLabel({ stage: 'USER.md', count: userMdUpdateProposals.items.length }) : null}
                   {userMdUpdateProposals.items.slice(0, 2).map((item) => userMdUpdateProposalRow(item, onOpenItem))}
                   {selfhoodProposals.items.length > 0 ? selfReviewStageLabel({ stage: 'Selfhood', count: selfhoodProposals.items.length }) : null}

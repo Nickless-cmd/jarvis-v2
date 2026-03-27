@@ -16,6 +16,9 @@ REQUIRED_WORKSPACE_FILES = (
     "MEMORY.md",
     "HEARTBEAT.md",
 )
+OPTIONAL_WORKSPACE_FILES = (
+    "VISIBLE_LOCAL_MODEL.md",
+)
 
 
 @dataclass(slots=True)
@@ -47,6 +50,19 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
         src = TEMPLATE_DIR / filename
         if not src.exists():
             raise FileNotFoundError(f"Missing required workspace template: {src}")
+
+        dest = workspace_dir / filename
+        if dest.exists():
+            existing_files.append(filename)
+            continue
+
+        shutil.copy2(src, dest)
+        created_files.append(filename)
+
+    for filename in OPTIONAL_WORKSPACE_FILES:
+        src = TEMPLATE_DIR / filename
+        if not src.exists():
+            continue
 
         dest = workspace_dir / filename
         if dest.exists():

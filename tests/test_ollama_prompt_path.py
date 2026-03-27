@@ -78,7 +78,8 @@ def test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led(
     assert "local model behavior guardrails" in assembly.derived_inputs
     assert "runtime capability and safety truth" in assembly.derived_inputs
     assert "If the answer is present in recent transcript context or workspace truth, answer from that material directly." in assembly.text
-    assert "Do not fall back to 'I cannot remember' or 'I am still developing' unless the provided context truly does not contain the answer." in assembly.text
+    assert "Do not fall back to \"I cannot remember\" or \"I am still developing\"" in assembly.text
+    assert "VISIBLE_LOCAL_MODEL.md" in assembly.conditional_files
 
 
 def test_ollama_visible_prompt_includes_recent_transcript_slice_for_session_recall(
@@ -123,3 +124,30 @@ def test_ollama_visible_prompt_can_include_memory_for_danish_recall_queries(
     assert "USER.md:" in assembly.text
     assert "MEMORY.md:" in assembly.text
     assert "MEMORY.md" in assembly.conditional_files
+
+
+def test_ollama_local_model_rules_are_loaded_from_workspace_prompt_file(
+    isolated_runtime,
+) -> None:
+    workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
+    (workspace_dir / "VISIBLE_LOCAL_MODEL.md").write_text(
+        "\n".join(
+            [
+                "# VISIBLE_LOCAL_MODEL",
+                "Use the transcript directly before claiming missing memory.",
+                "Keep the answer grounded in workspace truth.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="kan du huske hvad jeg hedder?",
+        session_id="test-session",
+    )
+
+    assert "Use the transcript directly before claiming missing memory." in assembly.text
+    assert "Keep the answer grounded in workspace truth." in assembly.text

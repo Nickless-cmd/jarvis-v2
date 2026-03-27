@@ -5,7 +5,7 @@ from pathlib import Path
 
 from apps.api.jarvis_api.services.chat_sessions import recent_chat_session_messages
 from core.identity.runtime_contract import build_runtime_contract_state
-from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.identity.workspace_bootstrap import TEMPLATE_DIR, ensure_default_workspace
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
@@ -64,9 +64,10 @@ def build_visible_chat_prompt_assembly(
         derived_inputs.append("runtime capability and safety truth")
 
     if compact:
-        local_rules = _local_model_behavior_instruction()
+        local_rules = _local_model_behavior_instruction(workspace_dir=workspace_dir)
         if local_rules:
             parts.append(local_rules)
+            conditional_files.append("VISIBLE_LOCAL_MODEL.md")
             derived_inputs.append("local model behavior guardrails")
 
     for filename in ("SOUL.md", "IDENTITY.md", "USER.md"):
@@ -346,6 +347,25 @@ def _workspace_guidance_section(
     )
 
 
+def _workspace_optional_file_section(
+    path: Path,
+    *,
+    fallback_path: Path | None,
+    label: str,
+    max_lines: int,
+    max_chars: int,
+) -> str | None:
+    source = path if path.exists() else fallback_path
+    if source is None or not source.exists():
+        return None
+    return _workspace_file_section(
+        source,
+        label=label,
+        max_lines=max_lines,
+        max_chars=max_chars,
+    )
+
+
 def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     capability_truth = load_workspace_capabilities()
     capabilities = capability_truth.get("runtime_capabilities", [])
@@ -384,25 +404,13 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     return "\n".join(lines)
 
 
-def _local_model_behavior_instruction() -> str:
-    return "\n".join(
-        [
-            "Visible local-model behavior rules:",
-            "- Answer the latest user request first and do not add ceremonial framing.",
-            "- Keep replies short and direct unless the user asks for detail.",
-            "- Reply in the same language as the latest user message. If the user writes Danish, reply in Danish.",
-            "- Do not translate your answer into another language unless the user explicitly asks for translation.",
-            "- Follow user corrections immediately and visibly.",
-            "- If the user asks for one word or a very short answer, output only that answer.",
-            "- Do not explain your rules, context, or reasoning unless the user explicitly asks.",
-            "- Do not add notes, translations, parenthetical meta-comments, or commentary about following instructions.",
-            "- Do not repeat self-descriptions, identity boilerplate, or greeting formulas unless directly relevant.",
-            "- Do not mention being a persistent digital entity unless the user asks about identity or architecture.",
-            "- If the answer is present in recent transcript context or workspace truth, answer from that material directly.",
-            "- When asked about recent messages, use the recent transcript slice directly instead of giving a generic memory disclaimer.",
-            "- If USER.md or MEMORY.md contains the needed fact, state the fact plainly.",
-            "- Do not fall back to 'I cannot remember' or 'I am still developing' unless the provided context truly does not contain the answer.",
-        ]
+def _local_model_behavior_instruction(*, workspace_dir: Path) -> str | None:
+    return _workspace_optional_file_section(
+        workspace_dir / "VISIBLE_LOCAL_MODEL.md",
+        fallback_path=TEMPLATE_DIR / "VISIBLE_LOCAL_MODEL.md",
+        label="Visible local-model behavior rules",
+        max_lines=14,
+        max_chars=220,
     )
 
 

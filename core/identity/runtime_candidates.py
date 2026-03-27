@@ -22,6 +22,10 @@ _PROMPT_PROPOSAL_TYPE_LABELS = {
 }
 
 _APPLY_READINESS_RANKS = {"low": 1, "medium": 2, "high": 3}
+_SAFE_USER_MD_CANONICAL_KEYS = {
+    "user-preference:reply-style:plain-grounded-concise",
+    "user-preference:review-style:challenge-before-settling",
+}
 
 
 def _extract_proposal_types(
@@ -204,18 +208,19 @@ def _workflow_state(
 
 def _with_apply_readiness(item: dict[str, object]) -> dict[str, object]:
     enriched = dict(item)
-    readiness = _candidate_apply_readiness(item)
+    readiness = candidate_apply_readiness(item)
     enriched["apply_readiness"] = readiness["apply_readiness"]
     enriched["apply_reason"] = readiness["apply_reason"]
     return enriched
 
 
-def _candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
+def candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
     status = str(item.get("status") or "")
     candidate_type = str(item.get("candidate_type") or "")
     target_file = str(item.get("target_file") or "")
     confidence = str(item.get("confidence") or "")
     evidence_class = str(item.get("evidence_class") or "")
+    canonical_key = str(item.get("canonical_key") or "")
 
     if status == "approved":
         if candidate_type == "preference_update" and target_file == "USER.md":
@@ -228,6 +233,8 @@ def _candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
         return {"apply_readiness": "low", "apply_reason": "needs-review"}
 
     if candidate_type == "preference_update" and target_file == "USER.md":
+        if confidence == "high" and canonical_key in _SAFE_USER_MD_CANONICAL_KEYS:
+            return {"apply_readiness": "high", "apply_reason": "bounded-safe"}
         if confidence == "high" and evidence_class == "repeated_cross_session":
             return {"apply_readiness": "medium", "apply_reason": "bounded-safe"}
         if confidence in {"high", "medium"} and evidence_class in {"explicit_user_statement", "single_session_pattern"}:

@@ -12,6 +12,7 @@ from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
 from core.eventbus.bus import event_bus
+from core.identity.candidate_workflow import auto_apply_safe_user_md_candidates
 from core.runtime.db import list_runtime_contract_candidates
 from core.runtime.db import upsert_runtime_contract_candidate
 
@@ -172,6 +173,15 @@ def track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_vi
         **result,
         "summary": f"Drafted {result['created']} governed prompt candidates from bounded proposals.",
     }
+
+
+def auto_apply_safe_user_md_candidates_for_visible_turn(
+    *,
+    session_id: str | None,
+    run_id: str,
+) -> dict[str, object]:
+    del session_id, run_id
+    return auto_apply_safe_user_md_candidates()
 
 
 def _preference_candidates(message: str) -> list[dict[str, str]]:

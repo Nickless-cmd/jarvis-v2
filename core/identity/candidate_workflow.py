@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
+from core.identity.runtime_candidates import candidate_apply_readiness
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.db import (
     get_runtime_contract_candidate,
@@ -15,9 +16,17 @@ from core.runtime.db import (
 )
 
 ALLOWED_CANDIDATE_STATUSES = {"proposed", "approved", "rejected", "applied", "superseded"}
+_AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS = {
+    "user-preference:reply-style:plain-grounded-concise",
+    "user-preference:review-style:challenge-before-settling",
+}
 
 
-def approve_runtime_contract_candidate(candidate_id: str) -> dict[str, object]:
+def approve_runtime_contract_candidate(
+    candidate_id: str,
+    *,
+    status_reason_override: str | None = None,
+) -> dict[str, object]:
     candidate = _require_candidate(candidate_id)
     _require_status(candidate, allowed={"proposed"})
     now = _now_iso()
@@ -34,9 +43,13 @@ def approve_runtime_contract_candidate(candidate_id: str) -> dict[str, object]:
         status="approved",
         updated_at=now,
         status_reason=(
-            f"Approved for governed apply. Superseded {superseded} older candidates."
-            if superseded
-            else "Approved for governed apply."
+            status_reason_override
+            if status_reason_override is not None
+            else (
+                f"Approved for governed apply. Superseded {superseded} older candidates."
+                if superseded
+                else "Approved for governed apply."
+            )
         ),
     )
     if updated is None:
@@ -78,7 +91,11 @@ def reject_runtime_contract_candidate(candidate_id: str) -> dict[str, object]:
     return updated
 
 
-def apply_runtime_contract_candidate(candidate_id: str) -> dict[str, object]:
+def apply_runtime_contract_candidate(
+    candidate_id: str,
+    *,
+    status_reason_override: str | None = None,
+) -> dict[str, object]:
     candidate = _require_candidate(candidate_id)
     _require_status(candidate, allowed={"approved"})
 
@@ -132,9 +149,13 @@ def apply_runtime_contract_candidate(candidate_id: str) -> dict[str, object]:
         status="applied",
         updated_at=now,
         status_reason=(
-            "Applied to workspace file."
-            if write_result["write_status"] == "written"
-            else "Equivalent content already present in workspace file."
+            status_reason_override
+            if status_reason_override is not None
+            else (
+                "Applied to workspace file."
+                if write_result["write_status"] == "written"
+                else "Equivalent content already present in workspace file."
+            )
         ),
     )
     if updated is None:
@@ -163,6 +184,46 @@ def apply_runtime_contract_candidate(candidate_id: str) -> dict[str, object]:
     return {
         "candidate": updated,
         "write": write,
+    }
+
+
+def auto_apply_safe_user_md_candidates() -> dict[str, object]:
+    considered = 0
+    auto_applied = 0
+    skipped = 0
+    items: list[dict[str, object]] = []
+
+    for candidate in list_runtime_contract_candidates(
+        candidate_type="preference_update",
+        target_file="USER.md",
+        status="proposed",
+        limit=12,
+    ):
+        considered += 1
+        if not _candidate_eligible_for_auto_apply(candidate):
+            skipped += 1
+            continue
+        approved = approve_runtime_contract_candidate(
+            str(candidate["candidate_id"]),
+            status_reason_override="Approved by bounded auto-apply policy for safe USER.md candidate.",
+        )
+        applied = apply_runtime_contract_candidate(
+            str(approved["candidate_id"]),
+            status_reason_override="Applied by bounded auto-apply policy for safe USER.md candidate.",
+        )
+        auto_applied += 1
+        items.append(applied["candidate"])
+
+    return {
+        "considered": considered,
+        "auto_applied": auto_applied,
+        "skipped": skipped,
+        "items": items,
+        "summary": (
+            f"Auto-applied {auto_applied} safe USER.md candidates."
+            if auto_applied
+            else "No safe USER.md candidates were eligible for auto-apply."
+        ),
     }
 
 
@@ -198,6 +259,47 @@ def _latest_equivalent_applied_candidate(candidate: dict[str, object]) -> dict[s
             continue
         return item
     return None
+
+
+def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
+    if str(candidate.get("target_file") or "") != "USER.md":
+        return False
+    if str(candidate.get("candidate_type") or "") != "preference_update":
+        return False
+    if str(candidate.get("status") or "") != "proposed":
+        return False
+    if str(candidate.get("confidence") or "") != "high":
+        return False
+    canonical_key = str(candidate.get("canonical_key") or "")
+    if canonical_key not in _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS:
+        return False
+    readiness = candidate_apply_readiness(candidate)
+    if str(readiness.get("apply_readiness") or "") != "high":
+        return False
+    dimension_key = _candidate_dimension_key(candidate)
+    if not dimension_key:
+        return False
+    for other in list_runtime_contract_candidates(
+        candidate_type="preference_update",
+        target_file="USER.md",
+        limit=20,
+    ):
+        if str(other.get("candidate_id") or "") == str(candidate.get("candidate_id") or ""):
+            continue
+        if str(other.get("status") or "") not in {"proposed", "approved"}:
+            continue
+        if _candidate_dimension_key(other) != dimension_key:
+            continue
+        return False
+    return True
+
+
+def _candidate_dimension_key(candidate: dict[str, object]) -> str:
+    canonical_key = str(candidate.get("canonical_key") or "")
+    parts = canonical_key.split(":")
+    if len(parts) < 2:
+        return canonical_key
+    return ":".join(parts[:2])
 
 
 def _candidate_write_material(candidate: dict[str, object]) -> dict[str, str]:

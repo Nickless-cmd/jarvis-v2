@@ -35,6 +35,7 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         "apps.api.jarvis_api.services.internal_opposition_signal_tracking",
         "apps.api.jarvis_api.services.self_review_signal_tracking",
         "apps.api.jarvis_api.services.self_review_record_tracking",
+        "apps.api.jarvis_api.services.self_review_run_tracking",
         "apps.api.jarvis_api.routes.mission_control",
     ]
     modules: dict[str, object] = {}
@@ -66,5 +67,6 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         internal_opposition_tracking=modules["apps.api.jarvis_api.services.internal_opposition_signal_tracking"],
         self_review_tracking=modules["apps.api.jarvis_api.services.self_review_signal_tracking"],
         self_review_record_tracking=modules["apps.api.jarvis_api.services.self_review_record_tracking"],
+        self_review_run_tracking=modules["apps.api.jarvis_api.services.self_review_run_tracking"],
         mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )

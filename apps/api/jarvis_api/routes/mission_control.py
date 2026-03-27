@@ -74,6 +74,9 @@ from apps.api.jarvis_api.services.dream_hypothesis_signal_tracking import (
 from apps.api.jarvis_api.services.dream_adoption_candidate_tracking import (
     build_runtime_dream_adoption_candidate_surface,
 )
+from apps.api.jarvis_api.services.dream_influence_proposal_tracking import (
+    build_runtime_dream_influence_proposal_surface,
+)
 from apps.api.jarvis_api.services.open_loop_closure_proposal_tracking import (
     build_runtime_open_loop_closure_proposal_surface,
 )
@@ -311,6 +314,7 @@ def mc_jarvis() -> dict:
     self_review_cadence_signals = build_runtime_self_review_cadence_signal_surface()
     dream_hypothesis_signals = build_runtime_dream_hypothesis_signal_surface()
     dream_adoption_candidates = build_runtime_dream_adoption_candidate_surface()
+    dream_influence_proposals = build_runtime_dream_influence_proposal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
     heartbeat = heartbeat_runtime_surface()
@@ -375,6 +379,7 @@ def mc_jarvis() -> dict:
             "self_review_cadence_signals": self_review_cadence_signals,
             "dream_hypothesis_signals": dream_hypothesis_signals,
             "dream_adoption_candidates": dream_adoption_candidates,
+            "dream_influence_proposals": dream_influence_proposals,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -503,6 +508,7 @@ def mc_runtime() -> dict:
         "runtime_self_review_cadence_signals": build_runtime_self_review_cadence_signal_surface(),
         "runtime_dream_hypothesis_signals": build_runtime_dream_hypothesis_signal_surface(),
         "runtime_dream_adoption_candidates": build_runtime_dream_adoption_candidate_surface(),
+        "runtime_dream_influence_proposals": build_runtime_dream_influence_proposal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
         "paths": {

@@ -817,6 +817,38 @@ function normalizeDreamAdoptionCandidate(item = {}) {
   }
 }
 
+function normalizeDreamInfluenceProposal(item = {}) {
+  return {
+    proposalId: item.proposal_id || '',
+    proposalType: item.proposal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Dream influence proposal',
+    summary: item.summary || item.title || 'Dream influence proposal detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    domain: item.domain || '',
+    hypothesisType: item.hypothesis_type || '',
+    candidateState: item.candidate_state || '',
+    influenceTarget: item.influence_target || '',
+    influenceConfidence: item.influence_confidence || 'low',
+    proposalReason: item.proposal_reason || item.summary || '',
+    influenceAnchor: item.influence_anchor || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    source: item.source || '/mc/jarvis::dream-influence-proposal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeRuntimeAwarenessSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1431,6 +1463,11 @@ export const backend = {
           active: Boolean(development.dream_adoption_candidates?.active),
           summary: development.dream_adoption_candidates?.summary || {},
           items: (development.dream_adoption_candidates?.items || []).map(normalizeDreamAdoptionCandidate),
+        },
+        dreamInfluenceProposals: {
+          active: Boolean(development.dream_influence_proposals?.active),
+          summary: development.dream_influence_proposals?.summary || {},
+          items: (development.dream_influence_proposals?.items || []).map(normalizeDreamInfluenceProposal),
         },
       },
       continuity: {

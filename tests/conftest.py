@@ -40,6 +40,7 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         "apps.api.jarvis_api.services.self_review_cadence_signal_tracking",
         "apps.api.jarvis_api.services.dream_hypothesis_signal_tracking",
         "apps.api.jarvis_api.services.dream_adoption_candidate_tracking",
+        "apps.api.jarvis_api.services.dream_influence_proposal_tracking",
         "apps.api.jarvis_api.services.open_loop_closure_proposal_tracking",
         "apps.api.jarvis_api.routes.mission_control",
     ]
@@ -77,6 +78,7 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         self_review_cadence_tracking=modules["apps.api.jarvis_api.services.self_review_cadence_signal_tracking"],
         dream_hypothesis_tracking=modules["apps.api.jarvis_api.services.dream_hypothesis_signal_tracking"],
         dream_adoption_candidate_tracking=modules["apps.api.jarvis_api.services.dream_adoption_candidate_tracking"],
+        dream_influence_proposal_tracking=modules["apps.api.jarvis_api.services.dream_influence_proposal_tracking"],
         open_loop_closure_proposal_tracking=modules["apps.api.jarvis_api.services.open_loop_closure_proposal_tracking"],
         mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )

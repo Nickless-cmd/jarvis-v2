@@ -21,6 +21,13 @@ _PROMPT_PROPOSAL_TYPE_LABELS = {
     "world-caution-nudge": "world-caution",
 }
 
+_SELFHOOD_PROPOSAL_TYPE_LABELS = {
+    "voice-shift-proposal": "voice",
+    "posture-shift-proposal": "posture",
+    "challenge-style-proposal": "challenge-style",
+    "caution-shift-proposal": "caution",
+}
+
 _APPLY_READINESS_RANKS = {"low": 1, "medium": 2, "high": 3}
 _SAFE_USER_MD_CANONICAL_KEYS = {
     "user-preference:reply-style:plain-grounded-concise",
@@ -49,6 +56,12 @@ def _extract_proposal_types(
                     if label not in seen:
                         seen.add(label)
                         types.append(label)
+        elif target_file in {"SOUL.md", "IDENTITY.md"}:
+            for proposal_type, label in _SELFHOOD_PROPOSAL_TYPE_LABELS.items():
+                if proposal_type in canonical_key or label in canonical_key:
+                    if label not in seen:
+                        seen.add(label)
+                        types.append(label)
     return types
 
 
@@ -69,11 +82,25 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
         target_file="runtime/RUNTIME_FEEDBACK.md",
         limit=8,
     )
+    soul_items = list_runtime_contract_candidates(
+        candidate_type="soul_update",
+        target_file="SOUL.md",
+        limit=8,
+    )
+    identity_items = list_runtime_contract_candidates(
+        candidate_type="identity_update",
+        target_file="IDENTITY.md",
+        limit=8,
+    )
     preference_items = [_with_apply_readiness(item) for item in preference_items]
     memory_items = [_with_apply_readiness(item) for item in memory_items]
     prompt_items = [_with_apply_readiness(item) for item in prompt_items]
+    soul_items = [_with_apply_readiness(item) for item in soul_items]
+    identity_items = [_with_apply_readiness(item) for item in identity_items]
     preference_types = _extract_proposal_types(preference_items, "USER.md")
     prompt_types = _extract_proposal_types(prompt_items, "runtime/RUNTIME_FEEDBACK.md")
+    soul_types = _extract_proposal_types(soul_items, "SOUL.md")
+    identity_types = _extract_proposal_types(identity_items, "IDENTITY.md")
     return {
         "preference_updates": _workflow_state(
             workflow_id="preference_updates",
@@ -110,6 +137,30 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             superseded_count=int(counts.get("prompt_feedback_update:superseded", 0)),
             items=prompt_items,
             proposal_types=prompt_types,
+        ),
+        "soul_updates": _workflow_state(
+            workflow_id="soul_updates",
+            label="SOUL.md Drafts",
+            target_file="SOUL.md",
+            proposed_count=int(counts.get("soul_update:proposed", 0)),
+            approved_count=int(counts.get("soul_update:approved", 0)),
+            rejected_count=int(counts.get("soul_update:rejected", 0)),
+            applied_count=int(counts.get("soul_update:applied", 0)),
+            superseded_count=int(counts.get("soul_update:superseded", 0)),
+            items=soul_items,
+            proposal_types=soul_types,
+        ),
+        "identity_updates": _workflow_state(
+            workflow_id="identity_updates",
+            label="IDENTITY.md Drafts",
+            target_file="IDENTITY.md",
+            proposed_count=int(counts.get("identity_update:proposed", 0)),
+            approved_count=int(counts.get("identity_update:approved", 0)),
+            rejected_count=int(counts.get("identity_update:rejected", 0)),
+            applied_count=int(counts.get("identity_update:applied", 0)),
+            superseded_count=int(counts.get("identity_update:superseded", 0)),
+            items=identity_items,
+            proposal_types=identity_types,
         ),
     }
 
@@ -225,6 +276,8 @@ def candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
     if status == "approved":
         if candidate_type == "preference_update" and target_file == "USER.md":
             return {"apply_readiness": "high", "apply_reason": "bounded-safe"}
+        if candidate_type in {"soul_update", "identity_update"} and target_file in {"SOUL.md", "IDENTITY.md"}:
+            return {"apply_readiness": "medium", "apply_reason": "needs-user-confirmation"}
         return {"apply_readiness": "medium", "apply_reason": "needs-review"}
 
     if candidate_type == "prompt_feedback_update":
@@ -240,6 +293,9 @@ def candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
         if confidence in {"high", "medium"} and evidence_class in {"explicit_user_statement", "single_session_pattern"}:
             return {"apply_readiness": "medium", "apply_reason": "needs-user-confirmation"}
         return {"apply_readiness": "low", "apply_reason": "still-tentative"}
+
+    if candidate_type in {"soul_update", "identity_update"} and target_file in {"SOUL.md", "IDENTITY.md"}:
+        return {"apply_readiness": "low", "apply_reason": "needs-user-confirmation"}
 
     return {"apply_readiness": "low", "apply_reason": "needs-review"}
 

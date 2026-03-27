@@ -8,6 +8,9 @@ from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
 from apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking import (
     build_runtime_self_authored_prompt_proposal_surface,
 )
+from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
+    build_runtime_selfhood_proposal_surface,
+)
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
@@ -175,6 +178,36 @@ def track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_vi
     }
 
 
+def track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn(
+    *,
+    session_id: str | None,
+    run_id: str,
+) -> dict[str, object]:
+    candidates = _extract_candidates_from_selfhood_proposals()
+    if not candidates:
+        return {
+            "created": 0,
+            "updated": 0,
+            "preference_updates": 0,
+            "memory_promotions": 0,
+            "canonical_self_updates": 0,
+            "items": [],
+            "summary": "No bounded selfhood proposal warranted canonical-self candidate drafting.",
+        }
+    result = _persist_candidates(
+        candidates=candidates,
+        session_id=str(session_id or ""),
+        run_id=run_id,
+        source_mode="runtime_selfhood_proposal",
+        actor="runtime:selfhood-bridge",
+        status_reason="Drafted from bounded canonical-self proposal. Explicit user approval is required before any SOUL.md or IDENTITY.md apply.",
+    )
+    return {
+        **result,
+        "summary": f"Drafted {result['created']} governed canonical-self candidates from bounded selfhood proposals.",
+    }
+
+
 def auto_apply_safe_user_md_candidates_for_visible_turn(
     *,
     session_id: str | None,
@@ -296,6 +329,25 @@ def _extract_candidates_from_self_authored_prompt_proposals() -> list[dict[str, 
         if str(proposal.get("status") or "") not in {"fresh", "active", "fading"}:
             continue
         candidate = _candidate_from_self_authored_prompt_proposal(proposal)
+        if candidate is None:
+            continue
+        canonical_key = str(candidate.get("canonical_key") or "")
+        if not canonical_key or canonical_key in seen:
+            continue
+        if _candidate_already_applied(candidate):
+            continue
+        seen.add(canonical_key)
+        extracted.append(candidate)
+    return extracted
+
+
+def _extract_candidates_from_selfhood_proposals() -> list[dict[str, str]]:
+    extracted: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for proposal in build_runtime_selfhood_proposal_surface(limit=12).get("items", []):
+        if str(proposal.get("status") or "") not in {"fresh", "active", "fading"}:
+            continue
+        candidate = _candidate_from_selfhood_proposal(proposal)
         if candidate is None:
             continue
         canonical_key = str(candidate.get("canonical_key") or "")
@@ -476,6 +528,59 @@ def _candidate_from_self_authored_prompt_proposal(proposal: dict[str, object]) -
     }
 
 
+def _candidate_from_selfhood_proposal(proposal: dict[str, object]) -> dict[str, str] | None:
+    proposal_type = str(proposal.get("proposal_type") or "")
+    target_file = str(proposal.get("selfhood_target") or "").strip()
+    domain = str(proposal.get("domain") or "").strip()
+    proposed_shift = str(proposal.get("proposed_shift") or "").strip()
+    source_anchor = str(proposal.get("source_anchor") or "").strip()
+    if target_file == "SOUL.md":
+        candidate_type = "soul_update"
+        canonical_key = f"soul-self:{proposal_type}:{domain or 'canonical-self'}"
+        summary = f"Canonical SOUL draft: {proposal_type}"
+        write_section = "## Proposed Canonical Self Shifts"
+    elif target_file == "IDENTITY.md":
+        candidate_type = "identity_update"
+        canonical_key = f"identity-self:{proposal_type}:{domain or 'canonical-self'}"
+        summary = f"Canonical IDENTITY draft: {proposal_type}"
+        write_section = "## Proposed Canonical Self Shifts"
+    else:
+        return None
+    proposal_reason = str(proposal.get("proposal_reason") or proposal.get("summary") or "").strip()
+    support_summary = " | ".join(
+        _unique_nonempty(
+            [
+                str(proposal.get("support_summary") or ""),
+                source_anchor,
+                "Draft only. Explicit user approval is required before any SOUL.md or IDENTITY.md write.",
+            ]
+        )[:4]
+    )
+    return {
+        "candidate_type": candidate_type,
+        "target_file": target_file,
+        "source_kind": "runtime-derived-support",
+        "canonical_key": canonical_key,
+        "summary": summary,
+        "reason": proposal_reason or "Bounded canonical-self proposal now warrants governed candidate drafting.",
+        "evidence_summary": " | ".join(
+            _unique_nonempty(
+                [
+                    str(proposal.get("evidence_summary") or ""),
+                    proposal_reason,
+                ]
+            )[:3]
+        ),
+        "support_summary": support_summary,
+        "proposed_value": proposed_shift,
+        "write_section": write_section,
+        "confidence": str(proposal.get("proposal_confidence") or proposal.get("confidence") or "low"),
+        "evidence_class": "runtime_support_only",
+        "support_count": max(int(proposal.get("support_count") or 1), 1),
+        "session_count": max(int(proposal.get("session_count") or 1), 1),
+    }
+
+
 def _extract_candidates_from_messages(
     messages: list[str],
     *,
@@ -512,12 +617,14 @@ def _persist_candidates(
             "created": 0,
             "preference_updates": 0,
             "memory_promotions": 0,
+            "canonical_self_updates": 0,
             "items": [],
         }
 
     persisted: list[dict[str, object]] = []
     preference_count = 0
     memory_count = 0
+    canonical_self_count = 0
     now = _now_iso()
     for candidate in candidates:
         persisted_candidate = upsert_runtime_contract_candidate(
@@ -552,6 +659,8 @@ def _persist_candidates(
             preference_count += 1
         if persisted_candidate["candidate_type"] == "memory_promotion":
             memory_count += 1
+        if persisted_candidate["candidate_type"] in {"soul_update", "identity_update"}:
+            canonical_self_count += 1
         event_bus.publish(
             "runtime.contract_candidate_proposed",
             {
@@ -573,6 +682,7 @@ def _persist_candidates(
         "updated": sum(1 for item in persisted if item.get("was_updated") and not item.get("was_created")),
         "preference_updates": preference_count,
         "memory_promotions": memory_count,
+        "canonical_self_updates": canonical_self_count,
         "items": persisted,
     }
 

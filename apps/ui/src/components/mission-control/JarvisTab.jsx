@@ -43,6 +43,7 @@ function candidateRow(item, onOpen) {
   const evidenceLabel = item.evidenceClass
     ? item.evidenceClass.replace(/_/g, ' ')
     : (item.sourceKind || '')
+  const applyLabel = item.applyReadiness ? `apply ${item.applyReadiness}` : ''
   return (
     <button
       className="mc-list-row mc-list-row-subtle"
@@ -61,6 +62,7 @@ function candidateRow(item, onOpen) {
       <div className="mc-row-meta">
         <StatusPill status={item.status || 'proposed'} />
         {item.confidence ? <small>{item.confidence}</small> : null}
+        {applyLabel ? <small>{applyLabel}</small> : null}
         {evidenceLabel ? <small>{evidenceLabel}</small> : null}
         {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
         <ChevronRight size={14} />
@@ -1539,6 +1541,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                       <div className="mc-row-meta">
                         {item.pendingCount ? <span className="mc-status-pill status-proposed">{item.pendingCount} proposed</span> : null}
                         {item.approvedCount ? <span className="mc-status-pill status-approved">{item.approvedCount} approved</span> : null}
+                        {item.currentApplyReadiness ? <small>{`apply ${item.currentApplyReadiness}`}</small> : null}
                         <ChevronRight size={14} />
                       </div>
                     </button>

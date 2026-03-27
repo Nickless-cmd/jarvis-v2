@@ -21,6 +21,8 @@ _PROMPT_PROPOSAL_TYPE_LABELS = {
     "world-caution-nudge": "world-caution",
 }
 
+_APPLY_READINESS_RANKS = {"low": 1, "medium": 2, "high": 3}
+
 
 def _extract_proposal_types(
     items: list[dict[str, object]], target_file: str
@@ -63,6 +65,9 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
         target_file="runtime/RUNTIME_FEEDBACK.md",
         limit=8,
     )
+    preference_items = [_with_apply_readiness(item) for item in preference_items]
+    memory_items = [_with_apply_readiness(item) for item in memory_items]
+    prompt_items = [_with_apply_readiness(item) for item in prompt_items]
     preference_types = _extract_proposal_types(preference_items, "USER.md")
     prompt_types = _extract_proposal_types(prompt_items, "runtime/RUNTIME_FEEDBACK.md")
     return {
@@ -157,6 +162,7 @@ def _workflow_state(
         for item in items
         if str(item.get("status") or "") in {"proposed", "approved"}
     ][:8]
+    readiness_summary = _workflow_apply_readiness_summary(actionable_items)
     summary = (
         f"{proposed_count} proposed, {approved_count} approved"
         if proposed_count > 0 or approved_count > 0
@@ -187,5 +193,68 @@ def _workflow_state(
         ],
         "summary": summary,
         "proposal_types": types,
+        "apply_readiness_high_count": readiness_summary["high_count"],
+        "apply_readiness_medium_count": readiness_summary["medium_count"],
+        "apply_readiness_low_count": readiness_summary["low_count"],
+        "current_apply_readiness": readiness_summary["current_apply_readiness"],
+        "current_apply_reason": readiness_summary["current_apply_reason"],
         "source": "/mc/runtime-contract",
+    }
+
+
+def _with_apply_readiness(item: dict[str, object]) -> dict[str, object]:
+    enriched = dict(item)
+    readiness = _candidate_apply_readiness(item)
+    enriched["apply_readiness"] = readiness["apply_readiness"]
+    enriched["apply_reason"] = readiness["apply_reason"]
+    return enriched
+
+
+def _candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
+    status = str(item.get("status") or "")
+    candidate_type = str(item.get("candidate_type") or "")
+    target_file = str(item.get("target_file") or "")
+    confidence = str(item.get("confidence") or "")
+    evidence_class = str(item.get("evidence_class") or "")
+
+    if status == "approved":
+        if candidate_type == "preference_update" and target_file == "USER.md":
+            return {"apply_readiness": "high", "apply_reason": "bounded-safe"}
+        return {"apply_readiness": "medium", "apply_reason": "needs-review"}
+
+    if candidate_type == "prompt_feedback_update":
+        if confidence == "high" and evidence_class in {"repeated_cross_session", "single_session_pattern"}:
+            return {"apply_readiness": "medium", "apply_reason": "needs-review"}
+        return {"apply_readiness": "low", "apply_reason": "needs-review"}
+
+    if candidate_type == "preference_update" and target_file == "USER.md":
+        if confidence == "high" and evidence_class == "repeated_cross_session":
+            return {"apply_readiness": "medium", "apply_reason": "bounded-safe"}
+        if confidence in {"high", "medium"} and evidence_class in {"explicit_user_statement", "single_session_pattern"}:
+            return {"apply_readiness": "medium", "apply_reason": "needs-user-confirmation"}
+        return {"apply_readiness": "low", "apply_reason": "still-tentative"}
+
+    return {"apply_readiness": "low", "apply_reason": "needs-review"}
+
+
+def _workflow_apply_readiness_summary(items: list[dict[str, object]]) -> dict[str, object]:
+    counts = {"high_count": 0, "medium_count": 0, "low_count": 0}
+    best_item: dict[str, object] | None = None
+    for item in items:
+        readiness = str(item.get("apply_readiness") or "low")
+        if readiness == "high":
+            counts["high_count"] += 1
+        elif readiness == "medium":
+            counts["medium_count"] += 1
+        else:
+            counts["low_count"] += 1
+        if best_item is None or _APPLY_READINESS_RANKS.get(readiness, 0) > _APPLY_READINESS_RANKS.get(
+            str(best_item.get("apply_readiness") or "low"),
+            0,
+        ):
+            best_item = item
+    return {
+        **counts,
+        "current_apply_readiness": str((best_item or {}).get("apply_readiness") or "low"),
+        "current_apply_reason": str((best_item or {}).get("apply_reason") or "still-tentative"),
     }

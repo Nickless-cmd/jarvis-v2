@@ -24,6 +24,7 @@ ALLOWED_EVENT_FAMILIES = {
     "open_loop_signal",
     "open_loop_closure_proposal",
     "dream_hypothesis_signal",
+    "dream_adoption_candidate",
     "internal_opposition_signal",
     "self_review_signal",
     "self_review_record",

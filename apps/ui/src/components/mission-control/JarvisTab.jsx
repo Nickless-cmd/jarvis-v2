@@ -1530,6 +1530,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                       <div>
                         <strong>{item.label}</strong>
                         <span>{item.summary}</span>
+                        {item.proposalTypes?.length > 0 ? (
+                          <span className="mc-proposal-types">
+                            {item.proposalTypes.join(' · ')}
+                          </span>
+                        ) : null}
                       </div>
                       <div className="mc-row-meta">
                         {item.pendingCount ? <span className="mc-status-pill status-proposed">{item.pendingCount} proposed</span> : null}

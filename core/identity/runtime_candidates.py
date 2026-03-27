@@ -7,6 +7,44 @@ from core.runtime.db import (
     runtime_contract_file_write_counts,
 )
 
+_USER_MD_PROPOSAL_TYPE_LABELS = {
+    "preference-update": "preference",
+    "workstyle-update": "workstyle",
+    "cadence-preference-update": "cadence",
+    "reminder-worthiness-update": "reminder",
+}
+
+_PROMPT_PROPOSAL_TYPE_LABELS = {
+    "communication-nudge": "communication",
+    "focus-nudge": "focus",
+    "challenge-nudge": "challenge",
+    "world-caution-nudge": "world-caution",
+}
+
+
+def _extract_proposal_types(
+    items: list[dict[str, object]], target_file: str
+) -> list[str]:
+    seen: set[str] = set()
+    types: list[str] = []
+    for item in items:
+        canonical_key = str(item.get("canonical_key") or "")
+        if not canonical_key:
+            continue
+        if target_file == "USER.md":
+            for proposal_type, label in _USER_MD_PROPOSAL_TYPE_LABELS.items():
+                if proposal_type in canonical_key or label in canonical_key:
+                    if label not in seen:
+                        seen.add(label)
+                        types.append(label)
+        elif target_file == "runtime/RUNTIME_FEEDBACK.md":
+            for proposal_type, label in _PROMPT_PROPOSAL_TYPE_LABELS.items():
+                if proposal_type in canonical_key or label in canonical_key:
+                    if label not in seen:
+                        seen.add(label)
+                        types.append(label)
+    return types
+
 
 def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
     counts = runtime_contract_candidate_counts()
@@ -25,6 +63,8 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
         target_file="runtime/RUNTIME_FEEDBACK.md",
         limit=8,
     )
+    preference_types = _extract_proposal_types(preference_items, "USER.md")
+    prompt_types = _extract_proposal_types(prompt_items, "runtime/RUNTIME_FEEDBACK.md")
     return {
         "preference_updates": _workflow_state(
             workflow_id="preference_updates",
@@ -36,6 +76,7 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             applied_count=int(counts.get("preference_update:applied", 0)),
             superseded_count=int(counts.get("preference_update:superseded", 0)),
             items=preference_items,
+            proposal_types=preference_types,
         ),
         "memory_promotions": _workflow_state(
             workflow_id="memory_promotions",
@@ -47,6 +88,7 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             applied_count=int(counts.get("memory_promotion:applied", 0)),
             superseded_count=int(counts.get("memory_promotion:superseded", 0)),
             items=memory_items,
+            proposal_types=[],
         ),
         "prompt_feedback_updates": _workflow_state(
             workflow_id="prompt_feedback_updates",
@@ -58,6 +100,7 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             applied_count=int(counts.get("prompt_feedback_update:applied", 0)),
             superseded_count=int(counts.get("prompt_feedback_update:superseded", 0)),
             items=prompt_items,
+            proposal_types=prompt_types,
         ),
     }
 
@@ -107,6 +150,7 @@ def _workflow_state(
     applied_count: int,
     superseded_count: int,
     items: list[dict[str, object]],
+    proposal_types: list[str] | None = None,
 ) -> dict[str, object]:
     actionable_items = [
         item
@@ -123,6 +167,7 @@ def _workflow_state(
             f"{summary} {rejected_count} rejected, "
             f"{applied_count} applied, {superseded_count} superseded."
         )
+    types = proposal_types or []
     return {
         "id": workflow_id,
         "label": label,
@@ -141,5 +186,6 @@ def _workflow_state(
             for item in actionable_items
         ],
         "summary": summary,
+        "proposal_types": types,
         "source": "/mc/runtime-contract",
     }

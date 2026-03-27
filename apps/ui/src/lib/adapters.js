@@ -208,6 +208,7 @@ function normalizePendingWrite(item = {}) {
     appliedCount: Number(item.applied_count || 0),
     supersededCount: Number(item.superseded_count || 0),
     items: (item.items || []).map(normalizeCandidateItem),
+    proposalTypes: item.proposal_types || [],
     source: item.source || '/mc/runtime-contract',
     summary: item.summary || 'No pending workflow items.',
   }

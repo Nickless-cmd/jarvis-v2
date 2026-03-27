@@ -5,6 +5,9 @@ from uuid import uuid4
 
 from apps.api.jarvis_api.services.chat_sessions import get_chat_session
 from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
+from apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking import (
+    build_runtime_self_authored_prompt_proposal_surface,
+)
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
@@ -142,6 +145,35 @@ def track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_
     }
 
 
+def track_runtime_contract_candidates_from_self_authored_prompt_proposals_for_visible_turn(
+    *,
+    session_id: str | None,
+    run_id: str,
+) -> dict[str, object]:
+    candidates = _extract_candidates_from_self_authored_prompt_proposals()
+    if not candidates:
+        return {
+            "created": 0,
+            "updated": 0,
+            "preference_updates": 0,
+            "memory_promotions": 0,
+            "items": [],
+            "summary": "No bounded self-authored prompt proposal warranted candidate drafting.",
+        }
+    result = _persist_candidates(
+        candidates=candidates,
+        session_id=str(session_id or ""),
+        run_id=run_id,
+        source_mode="runtime_self_authored_prompt_proposal",
+        actor="runtime:self-authored-prompt-bridge",
+        status_reason="Candidate drafted from bounded self-authored prompt proposal.",
+    )
+    return {
+        **result,
+        "summary": f"Drafted {result['created']} governed prompt candidates from bounded proposals.",
+    }
+
+
 def _preference_candidates(message: str) -> list[dict[str, str]]:
     text = message.lower()
     explicit = any(
@@ -235,6 +267,25 @@ def _extract_candidates_from_user_md_update_proposals() -> list[dict[str, str]]:
         if str(proposal.get("status") or "") not in {"fresh", "active", "fading"}:
             continue
         candidate = _candidate_from_user_md_update_proposal(proposal)
+        if candidate is None:
+            continue
+        canonical_key = str(candidate.get("canonical_key") or "")
+        if not canonical_key or canonical_key in seen:
+            continue
+        if _candidate_already_applied(candidate):
+            continue
+        seen.add(canonical_key)
+        extracted.append(candidate)
+    return extracted
+
+
+def _extract_candidates_from_self_authored_prompt_proposals() -> list[dict[str, str]]:
+    extracted: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for proposal in build_runtime_self_authored_prompt_proposal_surface(limit=12).get("items", []):
+        if str(proposal.get("status") or "") not in {"fresh", "active", "fading"}:
+            continue
+        candidate = _candidate_from_self_authored_prompt_proposal(proposal)
         if candidate is None:
             continue
         canonical_key = str(candidate.get("canonical_key") or "")
@@ -345,6 +396,69 @@ def _candidate_from_user_md_update_proposal(proposal: dict[str, object]) -> dict
         "support_summary": support_summary,
         "proposed_value": str(candidate_map["proposed_value"]),
         "write_section": str(candidate_map["write_section"]),
+        "confidence": str(proposal.get("proposal_confidence") or proposal.get("confidence") or "low"),
+        "evidence_class": "runtime_support_only",
+        "support_count": max(int(proposal.get("support_count") or 1), 1),
+        "session_count": max(int(proposal.get("session_count") or 1), 1),
+    }
+
+
+def _candidate_from_self_authored_prompt_proposal(proposal: dict[str, object]) -> dict[str, str] | None:
+    proposal_type = str(proposal.get("proposal_type") or "")
+    mapping = {
+        "communication-nudge": {
+            "canonical_key": "prompt-feedback:communication-style:plain-grounded-calibration",
+            "summary": "Prompt framing may need a small communication-style nudge.",
+            "proposed_value": "- Communication nudge: keep replies plain, grounded, and slightly more self-calibrating.",
+        },
+        "focus-nudge": {
+            "canonical_key": "prompt-feedback:direction-framing:stable-threading",
+            "summary": "Prompt framing may need a small direction-framing nudge.",
+            "proposed_value": "- Direction framing nudge: keep future framing pointed at the carried direction instead of reopening scope.",
+        },
+        "challenge-nudge": {
+            "canonical_key": "prompt-feedback:challenge-posture:review-before-settling",
+            "summary": "Prompt framing may need a small challenge-posture nudge.",
+            "proposed_value": "- Challenge posture nudge: carry a small internal challenge before settling on the current thread.",
+        },
+        "world-caution-nudge": {
+            "canonical_key": "prompt-feedback:world-caution:fragile-context-marker",
+            "summary": "Prompt framing may need a small world-caution nudge.",
+            "proposed_value": "- World caution nudge: add a small caution marker when world interpretation still looks unstable.",
+        },
+    }
+    candidate_map = mapping.get(proposal_type)
+    if candidate_map is None:
+        return None
+    proposal_reason = str(proposal.get("proposal_reason") or proposal.get("summary") or "").strip()
+    influence_anchor = str(proposal.get("influence_anchor") or "").strip()
+    support_summary = " | ".join(
+        _unique_nonempty(
+            [
+                str(proposal.get("support_summary") or ""),
+                influence_anchor,
+                "Candidate only. No prompt mutation has been applied.",
+            ]
+        )[:4]
+    )
+    return {
+        "candidate_type": "prompt_feedback_update",
+        "target_file": "runtime/RUNTIME_FEEDBACK.md",
+        "source_kind": "runtime-derived-support",
+        "canonical_key": str(candidate_map["canonical_key"]),
+        "summary": str(candidate_map["summary"]),
+        "reason": proposal_reason or "Bounded prompt proposal now warrants governed candidate drafting.",
+        "evidence_summary": " | ".join(
+            _unique_nonempty(
+                [
+                    str(proposal.get("evidence_summary") or ""),
+                    proposal_reason,
+                ]
+            )[:3]
+        ),
+        "support_summary": support_summary,
+        "proposed_value": str(candidate_map["proposed_value"]),
+        "write_section": "## Prompt Framing Drafts",
         "confidence": str(proposal.get("proposal_confidence") or proposal.get("confidence") or "low"),
         "evidence_class": "runtime_support_only",
         "support_count": max(int(proposal.get("support_count") or 1), 1),

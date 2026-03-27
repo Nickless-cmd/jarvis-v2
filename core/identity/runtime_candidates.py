@@ -20,6 +20,11 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
         target_file="MEMORY.md",
         limit=8,
     )
+    prompt_items = list_runtime_contract_candidates(
+        candidate_type="prompt_feedback_update",
+        target_file="runtime/RUNTIME_FEEDBACK.md",
+        limit=8,
+    )
     return {
         "preference_updates": _workflow_state(
             workflow_id="preference_updates",
@@ -42,6 +47,17 @@ def build_runtime_candidate_workflows() -> dict[str, dict[str, object]]:
             applied_count=int(counts.get("memory_promotion:applied", 0)),
             superseded_count=int(counts.get("memory_promotion:superseded", 0)),
             items=memory_items,
+        ),
+        "prompt_feedback_updates": _workflow_state(
+            workflow_id="prompt_feedback_updates",
+            label="Prompt Framing Drafts",
+            target_file="runtime/RUNTIME_FEEDBACK.md",
+            proposed_count=int(counts.get("prompt_feedback_update:proposed", 0)),
+            approved_count=int(counts.get("prompt_feedback_update:approved", 0)),
+            rejected_count=int(counts.get("prompt_feedback_update:rejected", 0)),
+            applied_count=int(counts.get("prompt_feedback_update:applied", 0)),
+            superseded_count=int(counts.get("prompt_feedback_update:superseded", 0)),
+            items=prompt_items,
         ),
     }
 

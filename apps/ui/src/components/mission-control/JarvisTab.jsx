@@ -798,6 +798,48 @@ function selfReviewCadenceSignalRow(item, onOpen) {
   )
 }
 
+function dreamHypothesisSignalRow(item, onOpen) {
+  const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
+  const lifecycleLabel = item.status === 'integrating'
+    ? 'Integrating dream hypothesis'
+    : item.status === 'fading'
+      ? 'Fading dream hypothesis'
+      : item.status === 'stale'
+        ? 'Stale dream hypothesis'
+        : item.status === 'superseded'
+          ? 'Superseded dream hypothesis'
+          : 'Active dream hypothesis'
+  const detailText = [
+    item.hypothesisNote,
+    item.hypothesisAnchor,
+    lifecycleLabel,
+  ].filter(Boolean)[0] || 'Inspect bounded dream hypothesis'
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.title}
+      onClick={() => onOpen(item.title || 'Dream Hypothesis', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'dream hypothesis',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Dream Hypothesis'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'active'} />
+        {item.hypothesisType ? <small>{item.hypothesisType}</small> : null}
+        {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function subsectionHeader(kicker, title) {
   return (
     <div className="support-card-header">
@@ -1133,6 +1175,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const selfReviewRuns = data?.development?.selfReviewRuns || { items: [], summary: {} }
   const selfReviewOutcomes = data?.development?.selfReviewOutcomes || { items: [], summary: {} }
   const selfReviewCadenceSignals = data?.development?.selfReviewCadenceSignals || { items: [], summary: {} }
+  const dreamHypothesisSignals = data?.development?.dreamHypothesisSignals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1738,6 +1781,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Dream Hypotheses</span>
+              <strong>{(dreamHypothesisSignals?.summary?.active_count || 0) + (dreamHypothesisSignals?.summary?.integrating_count || 0) + (dreamHypothesisSignals?.summary?.fading_count || 0)}</strong>
+              <p>{dreamHypothesisSignals?.summary?.current_signal || 'No active dream hypothesis signal'}</p>
+              <p>
+                {dreamHypothesisSignals?.summary?.integrating_count || 0} integrating · {dreamHypothesisSignals?.summary?.fading_count || 0} fading · {dreamHypothesisSignals?.summary?.stale_count || 0} stale
+              </p>
+              <p>
+                type {dreamHypothesisSignals?.summary?.current_hypothesis_type || 'none'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Lifecycle</span>
               <strong>
                 {developmentFocuses?.summary?.stale_count || 0} stale · {developmentFocuses?.summary?.completed_count || 0} done
@@ -1827,7 +1881,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {openLoopClosureProposals.items.slice(0, 3).map((item) => openLoopClosureProposalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
-              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0) ? (
+              {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0 || dreamHypothesisSignals.items.length > 0) ? (
                 <div className="mc-inline-group mc-inline-group-flush">
                   {subsectionHeader('Self Review', 'Bounded Review Flow')}
                   {selfReviewFlowSummary({
@@ -1847,6 +1901,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   {selfReviewOutcomes.items.slice(0, 2).map((item) => selfReviewOutcomeRow(item, onOpenItem))}
                   {selfReviewCadenceSignals.items.length > 0 ? selfReviewStageLabel({ stage: 'Cadence', count: selfReviewCadenceSignals.items.length }) : null}
                   {selfReviewCadenceSignals.items.slice(0, 2).map((item) => selfReviewCadenceSignalRow(item, onOpenItem))}
+                  {dreamHypothesisSignals.items.length > 0 ? selfReviewStageLabel({ stage: 'Hypothesis', count: dreamHypothesisSignals.items.length }) : null}
+                  {dreamHypothesisSignals.items.slice(0, 2).map((item) => dreamHypothesisSignalRow(item, onOpenItem))}
                 </div>
               ) : null}
             </div>

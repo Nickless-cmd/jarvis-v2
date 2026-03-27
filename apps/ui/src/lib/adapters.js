@@ -757,6 +757,35 @@ function normalizeSelfReviewCadenceSignal(item = {}) {
   }
 }
 
+function normalizeDreamHypothesisSignal(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || item.summary || 'Dream hypothesis',
+    summary: item.summary || item.title || 'Dream hypothesis detail',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    domain: item.domain || '',
+    hypothesisType: item.hypothesis_type || item.signal_type || '',
+    hypothesisNote: item.hypothesis_note || item.summary || '',
+    hypothesisAnchor: item.hypothesis_anchor || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    source: item.source || '/mc/jarvis::dream-hypothesis-signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeRuntimeAwarenessSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1361,6 +1390,11 @@ export const backend = {
           active: Boolean(development.self_review_cadence_signals?.active),
           summary: development.self_review_cadence_signals?.summary || {},
           items: (development.self_review_cadence_signals?.items || []).map(normalizeSelfReviewCadenceSignal),
+        },
+        dreamHypothesisSignals: {
+          active: Boolean(development.dream_hypothesis_signals?.active),
+          summary: development.dream_hypothesis_signals?.summary || {},
+          items: (development.dream_hypothesis_signals?.items || []).map(normalizeDreamHypothesisSignal),
         },
       },
       continuity: {

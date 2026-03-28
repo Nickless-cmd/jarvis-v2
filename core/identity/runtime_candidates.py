@@ -314,7 +314,16 @@ def candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
     if candidate_type == "memory_promotion" and target_file == "MEMORY.md":
         if status == "approved":
             return {"apply_readiness": "medium", "apply_reason": "needs-review"}
-        if canonical_key.startswith("workspace-memory:stable-context:") and confidence in {
+        if canonical_key.startswith(
+            "workspace-memory:remembered-fact:"
+        ) and confidence in {
+            "high",
+            "medium",
+        }:
+            return {"apply_readiness": "medium", "apply_reason": "factual-memory"}
+        if canonical_key.startswith(
+            "workspace-memory:stable-context:"
+        ) and confidence in {
             "high",
             "medium",
         }:
@@ -322,6 +331,8 @@ def candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
         if canonical_key.startswith("workspace-memory:open-followup:"):
             return {"apply_readiness": "low", "apply_reason": "still-tentative"}
         if canonical_key.startswith("workspace-memory:carry-forward-thread:"):
+            return {"apply_readiness": "low", "apply_reason": "still-tentative"}
+        if canonical_key.startswith("workspace-memory:remembered-fact:"):
             return {"apply_readiness": "low", "apply_reason": "still-tentative"}
         return {"apply_readiness": "low", "apply_reason": "needs-review"}
 

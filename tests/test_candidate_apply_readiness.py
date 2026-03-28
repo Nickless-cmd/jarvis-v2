@@ -67,7 +67,9 @@ def test_user_md_candidate_gets_bounded_apply_readiness(isolated_runtime) -> Non
     assert workflow["apply_readiness_medium_count"] >= 1
 
 
-def test_prompt_candidate_stays_low_readiness_and_never_auto_applies(isolated_runtime) -> None:
+def test_prompt_candidate_stays_low_readiness_and_never_auto_applies(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     mission_control = isolated_runtime.mission_control
 
@@ -93,7 +95,9 @@ def test_prompt_candidate_stays_low_readiness_and_never_auto_applies(isolated_ru
     assert contract["write_history"]["total"] == 0
 
 
-def test_approved_user_md_candidate_surfaces_high_apply_readiness(isolated_runtime) -> None:
+def test_approved_user_md_candidate_surfaces_high_apply_readiness(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     mission_control = isolated_runtime.mission_control
 
@@ -118,7 +122,9 @@ def test_approved_user_md_candidate_surfaces_high_apply_readiness(isolated_runti
     assert workflow["apply_readiness_high_count"] >= 1
 
 
-def test_memory_md_stable_context_candidate_gets_medium_apply_readiness(isolated_runtime) -> None:
+def test_memory_md_stable_context_candidate_gets_medium_apply_readiness(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     mission_control = isolated_runtime.mission_control
 
@@ -143,7 +149,9 @@ def test_memory_md_stable_context_candidate_gets_medium_apply_readiness(isolated
     assert workflow["apply_readiness_medium_count"] >= 1
 
 
-def test_memory_md_open_followup_candidate_stays_low_readiness_and_never_auto_applies(isolated_runtime) -> None:
+def test_memory_md_open_followup_candidate_stays_low_readiness_and_never_auto_applies(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     mission_control = isolated_runtime.mission_control
 
@@ -167,3 +175,98 @@ def test_memory_md_open_followup_candidate_stays_low_readiness_and_never_auto_ap
     assert workflow["current_apply_readiness"] == "low"
     assert db.recent_runtime_contract_file_writes(limit=8) == []
     assert contract["write_history"]["total"] == 0
+
+
+def test_memory_md_remembered_fact_candidate_gets_medium_readiness_for_high_confidence(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+
+    _insert_candidate(
+        db,
+        candidate_type="memory_promotion",
+        target_file="MEMORY.md",
+        status="proposed",
+        canonical_key="workspace-memory:remembered-fact:project-anchor",
+        confidence="high",
+        evidence_class="runtime_support_only",
+    )
+
+    contract = mission_control.mc_runtime_contract()
+    workflow = contract["pending_writes"]["memory_promotions"]
+    candidate = workflow["items"][0]
+
+    assert candidate["status"] == "proposed"
+    assert candidate["apply_readiness"] == "medium"
+    assert candidate["apply_reason"] == "factual-memory"
+    assert workflow["current_apply_readiness"] == "medium"
+    assert workflow["apply_readiness_medium_count"] >= 1
+
+
+def test_memory_md_remembered_fact_candidate_stays_low_for_low_confidence(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+
+    _insert_candidate(
+        db,
+        candidate_type="memory_promotion",
+        target_file="MEMORY.md",
+        status="proposed",
+        canonical_key="workspace-memory:remembered-fact:user-preference",
+        confidence="low",
+        evidence_class="runtime_support_only",
+    )
+
+    contract = mission_control.mc_runtime_contract()
+    workflow = contract["pending_writes"]["memory_promotions"]
+    candidate = workflow["items"][0]
+
+    assert candidate["status"] == "proposed"
+    assert candidate["apply_readiness"] == "low"
+    assert candidate["apply_reason"] == "still-tentative"
+    assert workflow["current_apply_readiness"] == "low"
+    assert db.recent_runtime_contract_file_writes(limit=8) == []
+    assert contract["write_history"]["total"] == 0
+
+
+def test_memory_md_remembered_fact_and_user_md_stay_separated(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+
+    _insert_candidate(
+        db,
+        candidate_type="memory_promotion",
+        target_file="MEMORY.md",
+        status="proposed",
+        canonical_key="workspace-memory:remembered-fact:language-preference",
+        confidence="high",
+        evidence_class="runtime_support_only",
+    )
+    _insert_candidate(
+        db,
+        candidate_type="preference_update",
+        target_file="USER.md",
+        status="proposed",
+        canonical_key="user-preference:language:danish",
+        confidence="high",
+        evidence_class="repeated_cross_session",
+    )
+
+    contract = mission_control.mc_runtime_contract()
+
+    memory_workflow = contract["pending_writes"]["memory_promotions"]
+    user_workflow = contract["pending_writes"]["preference_updates"]
+
+    memory_candidate = memory_workflow["items"][0]
+    user_candidate = user_workflow["items"][0]
+
+    assert memory_candidate["apply_readiness"] == "medium"
+    assert memory_candidate["apply_reason"] == "factual-memory"
+    assert user_candidate["apply_readiness"] == "medium"
+    assert user_candidate["apply_reason"] == "bounded-safe"
+
+    assert memory_candidate["target_file"] == "MEMORY.md"
+    assert user_candidate["target_file"] == "USER.md"

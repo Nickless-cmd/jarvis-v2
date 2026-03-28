@@ -115,6 +115,9 @@ from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import
 from apps.api.jarvis_api.services.private_temporal_promotion_signal_tracking import (
     build_runtime_private_temporal_promotion_signal_surface,
 )
+from apps.api.jarvis_api.services.chronicle_consolidation_signal_tracking import (
+    build_runtime_chronicle_consolidation_signal_surface,
+)
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
@@ -383,6 +386,7 @@ def mc_jarvis() -> dict:
     inner_visible_support_signals = build_runtime_inner_visible_support_signal_surface()
     executive_contradiction_signals = build_runtime_executive_contradiction_signal_surface()
     private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
+    chronicle_consolidation_signals = build_runtime_chronicle_consolidation_signal_surface()
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
     memory_md_update_proposals = build_runtime_memory_md_update_proposal_surface()
     selfhood_proposals = build_runtime_selfhood_proposal_surface()
@@ -465,6 +469,7 @@ def mc_jarvis() -> dict:
             "inner_visible_support_signals": inner_visible_support_signals,
             "executive_contradiction_signals": executive_contradiction_signals,
             "private_temporal_promotion_signals": private_temporal_promotion_signals,
+            "chronicle_consolidation_signals": chronicle_consolidation_signals,
             "user_md_update_proposals": user_md_update_proposals,
             "memory_md_update_proposals": memory_md_update_proposals,
             "selfhood_proposals": selfhood_proposals,
@@ -609,6 +614,7 @@ def mc_runtime() -> dict:
         "runtime_inner_visible_support_signals": build_runtime_inner_visible_support_signal_surface(),
         "runtime_executive_contradiction_signals": build_runtime_executive_contradiction_signal_surface(),
         "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),
+        "runtime_chronicle_consolidation_signals": build_runtime_chronicle_consolidation_signal_surface(),
         "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
         "runtime_memory_md_update_proposals": build_runtime_memory_md_update_proposal_surface(),
         "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),

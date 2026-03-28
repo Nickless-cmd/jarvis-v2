@@ -1532,6 +1532,10 @@ export const backend = {
           source: ((development.private_temporal_promotion_signals?.items || [])[0] || {}).source || '/mc/runtime.private_temporal_promotion_signal',
           summary: ((development.private_temporal_promotion_signals?.items || [])[0] || {}).promotion_summary || 'No bounded temporal promotion support',
         }),
+        chronicleConsolidationSupport: normalizeJarvisItem((development.chronicle_consolidation_signals?.items || [])[0] || {}, {
+          source: ((development.chronicle_consolidation_signals?.items || [])[0] || {}).source || '/mc/runtime.chronicle_consolidation_signal',
+          summary: ((development.chronicle_consolidation_signals?.items || [])[0] || {}).chronicle_summary || 'No bounded chronicle/consolidation support',
+        }),
         growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
           source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
           summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
@@ -1637,6 +1641,17 @@ export const backend = {
           items: (development.private_temporal_promotion_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.private_temporal_promotion_signal',
             summary: item.promotion_summary || item.summary || 'Inspect bounded temporal promotion support',
+          })),
+        },
+        chronicleConsolidationSignals: {
+          active: Boolean(development.chronicle_consolidation_signals?.active),
+          authority: development.chronicle_consolidation_signals?.authority || 'non-authoritative',
+          layerRole: development.chronicle_consolidation_signals?.layer_role || 'runtime-support',
+          writebackState: development.chronicle_consolidation_signals?.writeback_state || 'not-writing-to-canonical-files',
+          summary: development.chronicle_consolidation_signals?.summary || {},
+          items: (development.chronicle_consolidation_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.chronicle_consolidation_signal',
+            summary: item.chronicle_summary || item.summary || 'Inspect bounded chronicle/consolidation support',
           })),
         },
         reflectiveCritics: {

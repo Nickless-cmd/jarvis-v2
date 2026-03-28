@@ -37,6 +37,7 @@ ALLOWED_EVENT_FAMILIES = {
     "private_temporal_promotion_signal",
     "inner_visible_support_signal",
     "executive_contradiction_signal",
+    "chronicle_consolidation_signal",
     "user_md_update_proposal",
     "memory_md_update_proposal",
     "selfhood_proposal",

@@ -28,6 +28,7 @@ ALLOWED_EVENT_FAMILIES = {
     "dream_influence_proposal",
     "self_authored_prompt_proposal",
     "user_understanding_signal",
+    "remembered_fact_signal",
     "user_md_update_proposal",
     "memory_md_update_proposal",
     "selfhood_proposal",

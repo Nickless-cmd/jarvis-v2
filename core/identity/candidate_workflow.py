@@ -21,6 +21,10 @@ _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS = {
     "user-preference:review-style:challenge-before-settling",
 }
 _AUTO_APPLY_SAFE_MEMORY_MD_PREFIX = "workspace-memory:stable-context:"
+_AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS = {
+    "workspace-memory:remembered-fact:project-anchor",
+    "workspace-memory:remembered-fact:repo-context",
+}
 
 
 def approve_runtime_contract_candidate(
@@ -343,12 +347,18 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
     if str(candidate.get("confidence") or "") != "high":
         return False
     canonical_key = str(candidate.get("canonical_key") or "")
-    if not canonical_key.startswith(_AUTO_APPLY_SAFE_MEMORY_MD_PREFIX):
-        return False
     readiness = candidate_apply_readiness(candidate)
-    if str(readiness.get("apply_readiness") or "") != "medium":
-        return False
-    if str(readiness.get("apply_reason") or "") != "needs-review":
+    if canonical_key.startswith(_AUTO_APPLY_SAFE_MEMORY_MD_PREFIX):
+        if str(readiness.get("apply_readiness") or "") != "medium":
+            return False
+        if str(readiness.get("apply_reason") or "") != "needs-review":
+            return False
+    elif canonical_key in _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS:
+        if str(readiness.get("apply_readiness") or "") != "medium":
+            return False
+        if str(readiness.get("apply_reason") or "") != "factual-memory":
+            return False
+    else:
         return False
     for other in list_runtime_contract_candidates(
         candidate_type="memory_promotion",

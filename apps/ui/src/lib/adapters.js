@@ -1550,7 +1550,7 @@ export const backend = {
         }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
-          summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
+          summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
         }),
         executiveContradictionSupport: normalizeJarvisItem((development.executive_contradiction_signals?.items || [])[0] || {}, {
           source: ((development.executive_contradiction_signals?.items || [])[0] || {}).source || '/mc/runtime.executive_contradiction_signal',
@@ -1732,9 +1732,10 @@ export const backend = {
           proposalState: development.self_narrative_self_model_review_bridge?.proposal_state || 'not-selfhood-proposal',
           canonicalIdentityState: development.self_narrative_self_model_review_bridge?.canonical_identity_state || 'not-canonical-identity-truth',
           summary: development.self_narrative_self_model_review_bridge?.summary || {},
+          patterns: development.self_narrative_self_model_review_bridge?.patterns || [],
           items: (development.self_narrative_self_model_review_bridge?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.self_narrative_self_model_review_bridge',
-            summary: item.bridge_summary || item.summary || 'Inspect bounded self-narrative review bridge',
+            summary: item.pattern_summary || item.bridge_summary || item.summary || 'Inspect bounded self-narrative review bridge',
           })),
         },
         executiveContradictionSignals: {

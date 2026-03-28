@@ -2163,7 +2163,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{(selfNarrativeSelfModelReviewBridge?.summary?.active_count || 0) + (selfNarrativeSelfModelReviewBridge?.summary?.softening_count || 0)}</strong>
               <p>{selfNarrativeSelfModelReviewBridge?.summary?.current_bridge || 'No bounded self-narrative review bridge'}</p>
               <p>
-                state {selfNarrativeSelfModelReviewBridge?.summary?.current_state || 'none'} · review {selfNarrativeSelfModelReviewBridge?.summary?.current_review_state || 'no-review-input'}
+                pattern {selfNarrativeSelfModelReviewBridge?.summary?.pattern_count || 0} · review {selfNarrativeSelfModelReviewBridge?.summary?.current_review_state || 'no-review-input'}
               </p>
               <p>
                 {selfNarrativeSelfModelReviewBridge?.summary?.review_mode || 'read-only-review-support'} · {selfNarrativeSelfModelReviewBridge?.summary?.proposal_state || 'not-selfhood-proposal'}

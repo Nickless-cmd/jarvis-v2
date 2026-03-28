@@ -63,6 +63,7 @@ def test_self_narrative_review_bridge_stays_empty_without_narrative_substrate(is
 
     assert surface["active"] is False
     assert surface["items"] == []
+    assert surface["patterns"] == []
     assert surface["summary"]["active_count"] == 0
     assert runtime["runtime_self_narrative_self_model_review_bridge"]["items"] == []
 
@@ -87,6 +88,17 @@ def test_self_narrative_review_bridge_forms_read_only_bridge_from_narrative_and_
     assert item["bridge_direction"] in {"steadying", "deepening", "guarding", "opening", "firming"}
     assert item["bridge_weight"] in {"low", "medium", "high"}
     assert item["bridge_confidence"] in {"low", "medium", "high"}
+    assert item["pattern_type"] in {
+        "steady-becoming-pattern",
+        "watchful-becoming-pattern",
+        "firming-pattern",
+        "opening-pattern",
+        "deepening-pattern",
+        "coherent-review-pattern",
+    }
+    assert item["pattern_direction"] in {"steadying", "deepening", "guarding", "opening", "firming"}
+    assert item["pattern_weight"] in {"low", "medium", "high"}
+    assert item["pattern_confidence"] in {"low", "medium", "high"}
     assert item["review_state"] in {"narrative-and-self-model-visible", "narrative-awaiting-self-model-context"}
     assert item["authority"] == "non-authoritative"
     assert item["layer_role"] == "runtime-support"
@@ -116,7 +128,9 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
     assert {
         "active_count",
         "softening_count",
+        "pattern_count",
         "current_bridge",
+        "current_pattern",
         "current_status",
         "current_state",
         "current_direction",
@@ -139,6 +153,11 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
         "bridge_weight",
         "bridge_summary",
         "bridge_confidence",
+        "pattern_type",
+        "pattern_direction",
+        "pattern_weight",
+        "pattern_summary",
+        "pattern_confidence",
         "source_anchor",
         "review_state",
         "authority",
@@ -147,6 +166,7 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
         "proposal_state",
         "canonical_identity_state",
     }.issubset(surface["items"][0].keys())
+    assert surface["patterns"][0]["pattern_summary"]
     assert jarvis["development"]["self_narrative_self_model_review_bridge"]["summary"]["proposal_state"] == "not-selfhood-proposal"
     assert runtime["runtime_self_narrative_self_model_review_bridge"]["summary"]["review_mode"] == "read-only-review-support"
     assert jarvis["development"]["selfhood_proposals"]["summary"]["active_count"] == 0

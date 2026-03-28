@@ -1536,6 +1536,10 @@ export const backend = {
           source: ((development.chronicle_consolidation_signals?.items || [])[0] || {}).source || '/mc/runtime.chronicle_consolidation_signal',
           summary: ((development.chronicle_consolidation_signals?.items || [])[0] || {}).chronicle_summary || 'No bounded chronicle/consolidation support',
         }),
+        chronicleConsolidationBrief: normalizeJarvisItem((development.chronicle_consolidation_briefs?.items || [])[0] || {}, {
+          source: ((development.chronicle_consolidation_briefs?.items || [])[0] || {}).source || '/mc/runtime.chronicle_consolidation_brief',
+          summary: ((development.chronicle_consolidation_briefs?.items || [])[0] || {}).brief_reason || 'No bounded chronicle/consolidation brief',
+        }),
         growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
           source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
           summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
@@ -1652,6 +1656,17 @@ export const backend = {
           items: (development.chronicle_consolidation_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.chronicle_consolidation_signal',
             summary: item.chronicle_summary || item.summary || 'Inspect bounded chronicle/consolidation support',
+          })),
+        },
+        chronicleConsolidationBriefs: {
+          active: Boolean(development.chronicle_consolidation_briefs?.active),
+          authority: development.chronicle_consolidation_briefs?.authority || 'non-authoritative',
+          layerRole: development.chronicle_consolidation_briefs?.layer_role || 'runtime-support',
+          writebackState: development.chronicle_consolidation_briefs?.writeback_state || 'not-writing-to-canonical-files',
+          summary: development.chronicle_consolidation_briefs?.summary || {},
+          items: (development.chronicle_consolidation_briefs?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.chronicle_consolidation_brief',
+            summary: item.brief_reason || item.summary || 'Inspect bounded chronicle/consolidation brief',
           })),
         },
         reflectiveCritics: {

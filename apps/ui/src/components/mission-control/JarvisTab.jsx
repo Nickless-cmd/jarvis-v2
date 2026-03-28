@@ -1445,6 +1445,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
   const chronicleConsolidationSignals = data?.development?.chronicleConsolidationSignals || { items: [], summary: {} }
+  const chronicleConsolidationBriefs = data?.development?.chronicleConsolidationBriefs || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
@@ -2035,6 +2036,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {chronicleConsolidationSignals?.summary?.authority || 'non-authoritative'} · {chronicleConsolidationSignals?.summary?.writeback_state || 'not-writing-to-canonical-files'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Chronicle Brief</span>
+              <strong>{(chronicleConsolidationBriefs?.summary?.active_count || 0) + (chronicleConsolidationBriefs?.summary?.softening_count || 0)}</strong>
+              <p>{chronicleConsolidationBriefs?.summary?.current_brief || 'No bounded chronicle/consolidation brief'}</p>
+              <p>
+                type {chronicleConsolidationBriefs?.summary?.current_brief_type || 'none'} · weight {chronicleConsolidationBriefs?.summary?.current_weight || 'low'}
+              </p>
+              <p>
+                {chronicleConsolidationBriefs?.summary?.authority || 'non-authoritative'} · {chronicleConsolidationBriefs?.summary?.writeback_state || 'not-writing-to-canonical-files'}
               </p>
             </div>
             <div className="compact-metric">

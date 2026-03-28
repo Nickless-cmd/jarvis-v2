@@ -38,6 +38,7 @@ ALLOWED_EVENT_FAMILIES = {
     "inner_visible_support_signal",
     "regulation_homeostasis_signal",
     "relation_state_signal",
+    "relation_continuity_signal",
     "executive_contradiction_signal",
     "chronicle_consolidation_signal",
     "chronicle_consolidation_brief",

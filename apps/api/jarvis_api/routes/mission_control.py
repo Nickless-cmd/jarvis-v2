@@ -115,6 +115,9 @@ from apps.api.jarvis_api.services.regulation_homeostasis_signal_tracking import 
 from apps.api.jarvis_api.services.relation_state_signal_tracking import (
     build_runtime_relation_state_signal_surface,
 )
+from apps.api.jarvis_api.services.relation_continuity_signal_tracking import (
+    build_runtime_relation_continuity_signal_surface,
+)
 from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import (
     build_runtime_executive_contradiction_signal_surface,
 )
@@ -398,6 +401,7 @@ def mc_jarvis() -> dict:
     inner_visible_support_signals = build_runtime_inner_visible_support_signal_surface()
     regulation_homeostasis_signals = build_runtime_regulation_homeostasis_signal_surface()
     relation_state_signals = build_runtime_relation_state_signal_surface()
+    relation_continuity_signals = build_runtime_relation_continuity_signal_surface()
     executive_contradiction_signals = build_runtime_executive_contradiction_signal_surface()
     private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
     chronicle_consolidation_signals = build_runtime_chronicle_consolidation_signal_surface()
@@ -485,6 +489,7 @@ def mc_jarvis() -> dict:
             "inner_visible_support_signals": inner_visible_support_signals,
             "regulation_homeostasis_signals": regulation_homeostasis_signals,
             "relation_state_signals": relation_state_signals,
+            "relation_continuity_signals": relation_continuity_signals,
             "executive_contradiction_signals": executive_contradiction_signals,
             "private_temporal_promotion_signals": private_temporal_promotion_signals,
             "chronicle_consolidation_signals": chronicle_consolidation_signals,
@@ -634,6 +639,7 @@ def mc_runtime() -> dict:
         "runtime_inner_visible_support_signals": build_runtime_inner_visible_support_signal_surface(),
         "runtime_regulation_homeostasis_signals": build_runtime_regulation_homeostasis_signal_surface(),
         "runtime_relation_state_signals": build_runtime_relation_state_signal_surface(),
+        "runtime_relation_continuity_signals": build_runtime_relation_continuity_signal_surface(),
         "runtime_executive_contradiction_signals": build_runtime_executive_contradiction_signal_surface(),
         "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),
         "runtime_chronicle_consolidation_signals": build_runtime_chronicle_consolidation_signal_surface(),

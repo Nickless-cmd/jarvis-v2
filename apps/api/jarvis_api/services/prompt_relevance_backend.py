@@ -8,8 +8,8 @@ from urllib import request as urllib_request
 
 from core.identity.workspace_bootstrap import TEMPLATE_DIR
 from core.runtime.provider_router import resolve_provider_router_target
+from core.runtime.settings import load_settings
 
-RELEVANCE_MODEL = "llama3.1:8b"
 RELEVANCE_TIMEOUT_SECONDS = 3
 RELEVANCE_MAX_TEXT_CHARS = 240
 
@@ -26,23 +26,58 @@ class BoundedPromptRelevanceResult:
     confidence: str
 
 
+@dataclass(slots=True)
+class BoundedPromptRelevanceAttempt:
+    attempted: bool
+    success: bool
+    backend: str
+    provider: str | None
+    model: str | None
+    status: str
+    result: BoundedPromptRelevanceResult | None
+
+
 def run_bounded_nl_prompt_relevance(
     *,
     text: str,
     mode: str,
     compact: bool,
     workspace_dir: Path,
-) -> BoundedPromptRelevanceResult | None:
+) -> BoundedPromptRelevanceAttempt:
     if mode != "visible_chat":
-        return None
+        return BoundedPromptRelevanceAttempt(
+            attempted=False,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=None,
+            model=None,
+            status="unsupported-mode",
+            result=None,
+        )
 
-    base_url = _resolve_relevance_base_url()
-    if not base_url:
-        return None
+    target = _resolve_relevance_target()
+    if target is None:
+        return BoundedPromptRelevanceAttempt(
+            attempted=False,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=None,
+            model=_selected_relevance_model(),
+            status="backend-unavailable",
+            result=None,
+        )
 
     instructions = load_visible_relevance_prompt(workspace_dir=workspace_dir)
     if not instructions:
-        return None
+        return BoundedPromptRelevanceAttempt(
+            attempted=False,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=str(target.get("provider") or "").strip() or None,
+            model=str(target.get("model") or "").strip() or None,
+            status="prompt-missing",
+            result=None,
+        )
 
     prompt = _build_relevance_prompt(
         instructions=instructions,
@@ -51,7 +86,7 @@ def run_bounded_nl_prompt_relevance(
         compact=compact,
     )
     payload = {
-        "model": RELEVANCE_MODEL,
+        "model": str(target.get("model") or "").strip(),
         "prompt": prompt,
         "stream": False,
         "format": "json",
@@ -61,7 +96,7 @@ def run_bounded_nl_prompt_relevance(
         },
     }
     req = urllib_request.Request(
-        f"{base_url.rstrip('/')}/api/generate",
+        f"{str(target.get('base_url') or '').rstrip('/')}/api/generate",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -71,12 +106,61 @@ def run_bounded_nl_prompt_relevance(
         with urllib_request.urlopen(req, timeout=RELEVANCE_TIMEOUT_SECONDS) as response:
             data = json.loads(response.read().decode("utf-8"))
     except (urllib_error.URLError, urllib_error.HTTPError, TimeoutError, json.JSONDecodeError, OSError):
-        return None
+        return BoundedPromptRelevanceAttempt(
+            attempted=True,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=str(target.get("provider") or "").strip() or None,
+            model=str(target.get("model") or "").strip() or None,
+            status="request-failed",
+            result=None,
+        )
 
     parsed = _parse_relevance_response(str(data.get("response") or ""))
     if parsed is None:
-        return None
-    return parsed
+        return BoundedPromptRelevanceAttempt(
+            attempted=True,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=str(target.get("provider") or "").strip() or None,
+            model=str(target.get("model") or "").strip() or None,
+            status="parse-failed",
+            result=None,
+        )
+    return BoundedPromptRelevanceAttempt(
+        attempted=True,
+        success=True,
+        backend="bounded-local-ollama",
+        provider=str(target.get("provider") or "").strip() or None,
+        model=str(target.get("model") or "").strip() or None,
+        status="success",
+        result=parsed,
+    )
+
+
+def bounded_nl_prompt_relevance_smoke(
+    *,
+    text: str,
+    workspace_dir: Path,
+    mode: str = "visible_chat",
+    compact: bool = True,
+) -> dict[str, object]:
+    attempt = run_bounded_nl_prompt_relevance(
+        text=text,
+        mode=mode,
+        compact=compact,
+        workspace_dir=workspace_dir,
+    )
+    return {
+        "backend": attempt.backend,
+        "provider": attempt.provider,
+        "model": attempt.model,
+        "attempted": attempt.attempted,
+        "success": attempt.success,
+        "fallback_used": not attempt.success,
+        "status": attempt.status,
+        "confidence": attempt.result.confidence if attempt.result else None,
+    }
 
 
 def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
@@ -90,7 +174,10 @@ def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
     return None
 
 
-def _resolve_relevance_base_url() -> str | None:
+def _resolve_relevance_target() -> dict[str, str] | None:
+    model = _selected_relevance_model()
+    if not model:
+        return None
     for lane in ("local", "visible"):
         target = resolve_provider_router_target(lane=lane)
         if not bool(target.get("active")):
@@ -99,8 +186,18 @@ def _resolve_relevance_base_url() -> str | None:
             continue
         base_url = str(target.get("base_url") or "").strip()
         if base_url:
-            return base_url
+            return {
+                "provider": "ollama",
+                "model": model,
+                "base_url": base_url,
+            }
     return None
+
+
+def _selected_relevance_model() -> str:
+    settings = load_settings()
+    selected = str(settings.relevance_model_name or "").strip()
+    return selected or "llama3.1:8b"
 
 
 def _build_relevance_prompt(

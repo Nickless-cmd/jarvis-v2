@@ -5,6 +5,7 @@ from pathlib import Path
 
 from apps.api.jarvis_api.services.chat_sessions import recent_chat_session_messages
 from apps.api.jarvis_api.services.prompt_relevance_backend import (
+    BoundedPromptRelevanceAttempt,
     BoundedPromptRelevanceResult,
     run_bounded_nl_prompt_relevance,
 )
@@ -58,6 +59,13 @@ class PromptRelevanceDecision:
     include_transcript: bool
     include_continuity: bool
     include_support_signals: bool
+    backend_attempted: bool
+    backend_success: bool
+    fallback_used: bool
+    backend_name: str | None
+    backend_provider: str | None
+    backend_model: str | None
+    backend_status: str
 
 
 def build_visible_chat_prompt_assembly(
@@ -352,12 +360,13 @@ def build_prompt_relevance_decision(
     heuristic_guidance_relevant = _should_include_guidance(text)
     heuristic_transcript_relevant = _should_include_transcript(text)
     heuristic_continuity_relevant = _should_include_continuity(text)
-    nl_relevance = _bounded_nl_relevance_backend(
+    backend_attempt = _bounded_nl_relevance_backend(
         text=text,
         mode=mode,
         compact=compact,
         name=name,
     )
+    nl_relevance = backend_attempt.result if backend_attempt.success else None
 
     memory_relevant = heuristic_memory_relevant or bool(
         nl_relevance and nl_relevance.memory_relevant
@@ -396,6 +405,13 @@ def build_prompt_relevance_decision(
         include_transcript=include_transcript,
         include_continuity=include_continuity,
         include_support_signals=include_support_signals,
+        backend_attempted=backend_attempt.attempted,
+        backend_success=backend_attempt.success,
+        fallback_used=not backend_attempt.success,
+        backend_name=backend_attempt.backend,
+        backend_provider=backend_attempt.provider,
+        backend_model=backend_attempt.model,
+        backend_status=backend_attempt.status,
     )
 
 
@@ -405,7 +421,7 @@ def _bounded_nl_relevance_backend(
     mode: str,
     compact: bool,
     name: str,
-) -> BoundedPromptRelevanceResult | None:
+) -> BoundedPromptRelevanceAttempt:
     return run_bounded_nl_prompt_relevance(
         text=text,
         mode=mode,

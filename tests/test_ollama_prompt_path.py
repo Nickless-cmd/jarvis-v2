@@ -87,6 +87,8 @@ def test_visible_prompt_relevance_interface_keeps_generic_compact_chat_bounded(
     assert decision.include_transcript is True
     assert decision.include_continuity is False
     assert decision.include_support_signals is False
+    assert decision.fallback_used is True
+    assert decision.backend_status in {"backend-unavailable", "request-failed", "parse-failed", "prompt-missing"}
 
 
 def test_visible_prompt_relevance_interface_keeps_recall_queries_memory_aware(
@@ -108,16 +110,30 @@ def test_visible_prompt_relevance_interface_keeps_recall_queries_memory_aware(
     assert decision.include_transcript is True
     assert decision.include_continuity is False
     assert decision.include_support_signals is True
+    assert decision.fallback_used is True
 
 
 def test_visible_prompt_relevance_interface_keeps_heuristic_fallback_when_nl_is_missing(
     isolated_runtime,
     monkeypatch,
 ) -> None:
+    backend = __import__(
+        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        fromlist=["BoundedPromptRelevanceAttempt"],
+    )
+    attempt = backend.BoundedPromptRelevanceAttempt(
+        attempted=True,
+        success=False,
+        backend="bounded-local-ollama",
+        provider="ollama",
+        model="llama3.1:8b",
+        status="request-failed",
+        result=None,
+    )
     monkeypatch.setattr(
         isolated_runtime.prompt_contract,
         "_bounded_nl_relevance_backend",
-        lambda **_: None,
+        lambda **_: attempt,
     )
 
     decision = isolated_runtime.prompt_contract.build_prompt_relevance_decision(
@@ -130,12 +146,22 @@ def test_visible_prompt_relevance_interface_keeps_heuristic_fallback_when_nl_is_
     assert decision.transcript_relevant is True
     assert decision.include_memory is True
     assert decision.include_support_signals is True
+    assert decision.backend_attempted is True
+    assert decision.backend_success is False
+    assert decision.fallback_used is True
+    assert decision.backend_provider == "ollama"
+    assert decision.backend_model == "llama3.1:8b"
+    assert decision.backend_status == "request-failed"
 
 
 def test_visible_prompt_relevance_interface_can_use_bounded_nl_backend_for_paraphrase(
     isolated_runtime,
     monkeypatch,
 ) -> None:
+    backend = __import__(
+        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        fromlist=["BoundedPromptRelevanceAttempt", "BoundedPromptRelevanceResult"],
+    )
     assert (
         isolated_runtime.prompt_contract._should_include_memory(
             "what are we collaborating around lately?",
@@ -147,17 +173,24 @@ def test_visible_prompt_relevance_interface_can_use_bounded_nl_backend_for_parap
     monkeypatch.setattr(
         isolated_runtime.prompt_contract,
         "_bounded_nl_relevance_backend",
-        lambda **_: type(
-            "MockRelevance",
-            (),
-            {
-                "memory_relevant": True,
-                "guidance_relevant": False,
-                "transcript_relevant": True,
-                "continuity_relevant": False,
-                "support_signals_relevant": True,
-            },
-        )(),
+        lambda **_: backend.BoundedPromptRelevanceAttempt(
+            attempted=True,
+            success=True,
+            backend="bounded-local-ollama",
+            provider="ollama",
+            model="runtime-selected:mini",
+            status="success",
+            result=backend.BoundedPromptRelevanceResult(
+                backend="bounded-local-ollama",
+                mode="visible_chat",
+                memory_relevant=True,
+                guidance_relevant=False,
+                transcript_relevant=True,
+                continuity_relevant=False,
+                support_signals_relevant=True,
+                confidence="medium",
+            ),
+        ),
     )
 
     decision = isolated_runtime.prompt_contract.build_prompt_relevance_decision(
@@ -170,9 +203,14 @@ def test_visible_prompt_relevance_interface_can_use_bounded_nl_backend_for_parap
     assert decision.transcript_relevant is True
     assert decision.include_memory is True
     assert decision.include_support_signals is True
+    assert decision.backend_attempted is True
+    assert decision.backend_success is True
+    assert decision.fallback_used is False
+    assert decision.backend_model == "runtime-selected:mini"
+    assert decision.backend_status == "success"
 
 
-def test_bounded_nl_relevance_backend_loads_workspace_prompt_and_parses_json(
+def test_bounded_nl_relevance_backend_uses_runtime_selected_model_and_parses_json(
     isolated_runtime,
     monkeypatch,
 ) -> None:
@@ -202,6 +240,11 @@ def test_bounded_nl_relevance_backend_loads_workspace_prompt_and_parses_json(
             "provider": "ollama" if lane == "local" else None,
             "base_url": "http://127.0.0.1:11434" if lane == "local" else None,
         },
+    )
+    monkeypatch.setattr(
+        backend,
+        "load_settings",
+        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct"})(),
     )
 
     class _FakeResponse:
@@ -241,16 +284,55 @@ def test_bounded_nl_relevance_backend_loads_workspace_prompt_and_parses_json(
         workspace_dir=workspace_dir,
     )
 
-    assert result is not None
+    assert result.attempted is True
+    assert result.success is True
     assert result.backend == "bounded-local-ollama"
-    assert result.memory_relevant is True
-    assert result.transcript_relevant is True
-    assert result.support_signals_relevant is True
-    assert result.confidence == "medium"
+    assert result.provider == "ollama"
+    assert result.model == "llama3.1:8b-instruct"
+    assert result.status == "success"
+    assert result.result is not None
+    assert result.result.memory_relevant is True
+    assert result.result.transcript_relevant is True
+    assert result.result.support_signals_relevant is True
+    assert result.result.confidence == "medium"
     assert captured["timeout"] == backend.RELEVANCE_TIMEOUT_SECONDS
+    assert captured["payload"]["model"] == "llama3.1:8b-instruct"
     assert "Use memory_relevant for collaboration-paraphrase questions." in str(
         captured["payload"]["prompt"]
     )
+
+
+def test_bounded_nl_relevance_smoke_reports_fallback_status_when_backend_is_unavailable(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    backend = __import__(
+        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        fromlist=["bounded_nl_prompt_relevance_smoke"],
+    )
+    workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
+
+    monkeypatch.setattr(
+        backend,
+        "resolve_provider_router_target",
+        lambda lane: {"active": False, "provider": None, "base_url": None},
+    )
+    monkeypatch.setattr(
+        backend,
+        "load_settings",
+        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct"})(),
+    )
+
+    smoke = backend.bounded_nl_prompt_relevance_smoke(
+        text="what are we collaborating around lately?",
+        workspace_dir=workspace_dir,
+    )
+
+    assert smoke["attempted"] is False
+    assert smoke["success"] is False
+    assert smoke["fallback_used"] is True
+    assert smoke["model"] == "llama3.1:8b-instruct"
+    assert smoke["status"] == "backend-unavailable"
 
 
 def test_ollama_prompt_is_flattened_from_same_visible_input_path(isolated_runtime) -> None:

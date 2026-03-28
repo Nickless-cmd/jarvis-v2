@@ -1997,10 +1997,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{(innerVisibleSupportSignals?.summary?.active_count || 0) + (innerVisibleSupportSignals?.summary?.stale_count || 0)}</strong>
               <p>{innerVisibleSupportSignals?.summary?.current_signal || 'No bounded inner-visible support'}</p>
               <p>
-                tone {innerVisibleSupportSignals?.summary?.current_tone || 'none'} · stance {innerVisibleSupportSignals?.summary?.current_stance || 'steady'}
+                tone {innerVisibleSupportSignals?.summary?.current_tone || 'none'} · watchfulness {innerVisibleSupportSignals?.summary?.current_watchfulness || 'low'}
               </p>
               <p>
-                {innerVisibleSupportSignals?.summary?.authority || 'non-authoritative'} · {innerVisibleSupportSignals?.summary?.prompt_bridge_state || 'not-yet-bridged'}
+                {innerVisibleSupportSignals?.summary?.current_watchfulness_source || 'state-or-curiosity'} · {innerVisibleSupportSignals?.summary?.prompt_bridge_state || 'not-yet-bridged'}
               </p>
             </div>
             <div className="compact-metric">

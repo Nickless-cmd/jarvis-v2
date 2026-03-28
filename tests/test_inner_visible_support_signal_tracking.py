@@ -82,6 +82,36 @@ def _insert_inner_visible_support_signal(db, *, status: str, canonical_key: str,
     )
 
 
+def _insert_executive_contradiction_signal(
+    db,
+    *,
+    run_id: str,
+    status: str = "active",
+    pressure: str = "high",
+) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_executive_contradiction_signal(
+        signal_id=f"executive-contradiction-signal-{uuid4().hex}",
+        signal_type="executive-contradiction",
+        canonical_key="executive-contradiction:contradiction-pressure:workspace-search",
+        status=status,
+        title="Executive contradiction support: workspace search",
+        summary="Bounded executive contradiction pressure is asking Jarvis not to carry workspace search forward blindly.",
+        rationale="Validation executive contradiction runtime support",
+        source_kind="runtime-derived-support",
+        confidence="medium",
+        evidence_summary="executive contradiction evidence",
+        support_summary="Derived only from internal opposition, open-loop, self-review, and optional bounded inner-state support.",
+        status_reason="Validation executive contradiction support with no execution veto authority.",
+        run_id=run_id,
+        session_id="test-session",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+
 def test_inner_visible_support_stays_empty_without_private_state_grounding(
     isolated_runtime,
 ) -> None:
@@ -136,6 +166,33 @@ def test_inner_visible_support_forms_bounded_runtime_support_from_state_and_curi
     assert item["source_anchor"]
 
 
+def test_inner_visible_support_gets_small_bounded_executive_watchfulness_sharpening(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.inner_visible_support_signal_tracking
+    db = isolated_runtime.db
+
+    _insert_private_state_snapshot(db, run_id="visible-run-contradiction")
+    _insert_private_temporal_curiosity_state(db, run_id="visible-run-contradiction")
+    _insert_executive_contradiction_signal(db, run_id="visible-run-contradiction")
+
+    result = tracking.track_runtime_inner_visible_support_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="visible-run-contradiction",
+    )
+    surface = tracking.build_runtime_inner_visible_support_signal_surface(limit=8)
+    item = surface["items"][0]
+
+    assert result["created"] == 1
+    assert item["support_watchfulness"] == "medium"
+    assert item["support_watchfulness_source"] == "executive-contradiction"
+    assert item["support_contradiction_sharpening"] == "bounded-watchfulness"
+    assert "executive-contradiction" in item["grounding_mode"]
+    assert item["authority"] == "non-authoritative"
+    assert item["prompt_bridge_state"] == "not-yet-bridged"
+    assert "cannot directly veto execution" in item["status_reason"].lower()
+
+
 def test_inner_visible_support_surface_and_mc_shapes_remain_bounded(
     isolated_runtime,
 ) -> None:
@@ -178,6 +235,8 @@ def test_inner_visible_support_surface_and_mc_shapes_remain_bounded(
         "current_stance",
         "current_directness",
         "current_watchfulness",
+        "current_watchfulness_source",
+        "current_contradiction_sharpening",
         "current_momentum",
         "current_confidence",
         "authority",
@@ -198,6 +257,8 @@ def test_inner_visible_support_surface_and_mc_shapes_remain_bounded(
         "support_stance",
         "support_directness",
         "support_watchfulness",
+        "support_watchfulness_source",
+        "support_contradiction_sharpening",
         "support_momentum",
         "support_summary",
         "support_confidence",

@@ -1437,6 +1437,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const selfAuthoredPromptProposals = data?.development?.selfAuthoredPromptProposals || { items: [], summary: {} }
   const userUnderstandingSignals = data?.development?.userUnderstandingSignals || { items: [], summary: {} }
   const privateInnerNoteSignals = data?.development?.privateInnerNoteSignals || { items: [], summary: {} }
+  const privateInitiativeTensionSignals = data?.development?.privateInitiativeTensionSignals || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
@@ -1942,6 +1943,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Initiative Tension</span>
+              <strong>{(privateInitiativeTensionSignals?.summary?.active_count || 0) + (privateInitiativeTensionSignals?.summary?.stale_count || 0)}</strong>
+              <p>{privateInitiativeTensionSignals?.summary?.current_signal || 'No bounded initiative tension support'}</p>
+              <p>
+                type {privateInitiativeTensionSignals?.summary?.current_tension_type || 'none'} · intensity {privateInitiativeTensionSignals?.summary?.current_intensity || 'low'}
+              </p>
+              <p>
+                {privateInitiativeTensionSignals?.summary?.authority || 'non-authoritative'} · {privateInitiativeTensionSignals?.summary?.layer_role || 'runtime-support'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Goal Signals</span>
               <strong>{(goalSignals?.summary?.active_count || 0) + (goalSignals?.summary?.blocked_count || 0) || summary?.development?.goal_count || 0}</strong>
               <p>{goalSignals?.summary?.current_goal || summary?.development?.current_goal || 'No active goal signal'}</p>
@@ -2161,6 +2173,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.selfModel, 'Self Model', onOpenItem)}
               {detailRow(data?.development?.developmentState, 'Development State', onOpenItem)}
               {detailRow(data?.development?.privateInnerNoteSupport, 'Private Inner Note Support', onOpenItem)}
+              {detailRow(data?.development?.privateInitiativeTensionSupport, 'Private Initiative Tension Support', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}
               {detailRow(data?.development?.operationalAlignment, 'Preference Alignment', onOpenItem)}
               {detailRow(data?.development?.growthNote, 'Latest Growth Note', onOpenItem)}

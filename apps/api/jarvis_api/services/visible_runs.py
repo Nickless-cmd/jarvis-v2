@@ -88,6 +88,9 @@ from apps.api.jarvis_api.services.remembered_fact_signal_tracking import (
 from apps.api.jarvis_api.services.private_inner_note_signal_tracking import (
     track_runtime_private_inner_note_signals_for_visible_turn,
 )
+from apps.api.jarvis_api.services.private_initiative_tension_signal_tracking import (
+    track_runtime_private_initiative_tension_signals_for_visible_turn,
+)
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     track_runtime_user_md_update_proposals_for_visible_turn,
 )
@@ -609,6 +612,13 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         return
     try:
         track_runtime_private_inner_note_signals_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception:
+        return
+    try:
+        track_runtime_private_initiative_tension_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )

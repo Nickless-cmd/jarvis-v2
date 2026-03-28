@@ -1494,6 +1494,10 @@ export const backend = {
           source: ((development.private_inner_note_signals?.items || [])[0] || {}).source || '/mc/runtime.private_inner_note_signal',
           summary: ((development.private_inner_note_signals?.items || [])[0] || {}).note_summary || 'No bounded inner-note support',
         }),
+        privateInitiativeTensionSupport: normalizeJarvisItem((development.private_initiative_tension_signals?.items || [])[0] || {}, {
+          source: ((development.private_initiative_tension_signals?.items || [])[0] || {}).source || '/mc/runtime.private_initiative_tension_signal',
+          summary: ((development.private_initiative_tension_signals?.items || [])[0] || {}).tension_summary || 'No bounded initiative tension support',
+        }),
         growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
           source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
           summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
@@ -1527,6 +1531,16 @@ export const backend = {
           items: (development.private_inner_note_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.private_inner_note_signal',
             summary: item.note_summary || item.summary || 'Inspect bounded inner-note support',
+          })),
+        },
+        privateInitiativeTensionSignals: {
+          active: Boolean(development.private_initiative_tension_signals?.active),
+          authority: development.private_initiative_tension_signals?.authority || 'non-authoritative',
+          layerRole: development.private_initiative_tension_signals?.layer_role || 'runtime-support',
+          summary: development.private_initiative_tension_signals?.summary || {},
+          items: (development.private_initiative_tension_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.private_initiative_tension_signal',
+            summary: item.tension_summary || item.summary || 'Inspect bounded initiative tension support',
           })),
         },
         reflectiveCritics: {

@@ -30,6 +30,7 @@ ALLOWED_EVENT_FAMILIES = {
     "user_understanding_signal",
     "remembered_fact_signal",
     "private_inner_note_signal",
+    "private_initiative_tension_signal",
     "user_md_update_proposal",
     "memory_md_update_proposal",
     "selfhood_proposal",

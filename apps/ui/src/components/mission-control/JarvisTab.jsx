@@ -1448,6 +1448,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const meaningSignificanceSignals = data?.development?.meaningSignificanceSignals || { items: [], summary: {} }
   const temperamentTendencySignals = data?.development?.temperamentTendencySignals || { items: [], summary: {} }
   const selfNarrativeContinuitySignals = data?.development?.selfNarrativeContinuitySignals || { items: [], summary: {} }
+  const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
   const chronicleConsolidationSignals = data?.development?.chronicleConsolidationSignals || { items: [], summary: {} }
@@ -2158,6 +2159,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Self-Review Bridge</span>
+              <strong>{(selfNarrativeSelfModelReviewBridge?.summary?.active_count || 0) + (selfNarrativeSelfModelReviewBridge?.summary?.softening_count || 0)}</strong>
+              <p>{selfNarrativeSelfModelReviewBridge?.summary?.current_bridge || 'No bounded self-narrative review bridge'}</p>
+              <p>
+                state {selfNarrativeSelfModelReviewBridge?.summary?.current_state || 'none'} · review {selfNarrativeSelfModelReviewBridge?.summary?.current_review_state || 'no-review-input'}
+              </p>
+              <p>
+                {selfNarrativeSelfModelReviewBridge?.summary?.review_mode || 'read-only-review-support'} · {selfNarrativeSelfModelReviewBridge?.summary?.proposal_state || 'not-selfhood-proposal'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Reflection Signals</span>
               <strong>{(reflectionSignals?.summary?.active_count || 0) + (reflectionSignals?.summary?.integrating_count || 0) + (reflectionSignals?.summary?.settled_count || 0) || summary?.development?.reflection_signal_count || 0}</strong>
               <p>{reflectionSignals?.summary?.current_signal || summary?.development?.current_reflection_signal || 'No active reflection signal'}</p>
@@ -2364,6 +2376,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.meaningSignificanceSupport, 'Meaning/Significance Support', onOpenItem)}
               {detailRow(data?.development?.temperamentTendencySupport, 'Temperament Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeContinuitySupport, 'Self-Narrative Continuity Support', onOpenItem)}
+              {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}

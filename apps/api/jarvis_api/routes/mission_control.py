@@ -127,6 +127,9 @@ from apps.api.jarvis_api.services.temperament_tendency_signal_tracking import (
 from apps.api.jarvis_api.services.self_narrative_continuity_signal_tracking import (
     build_runtime_self_narrative_continuity_signal_surface,
 )
+from apps.api.jarvis_api.services.self_narrative_self_model_review_bridge import (
+    build_runtime_self_narrative_self_model_review_bridge_surface,
+)
 from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import (
     build_runtime_executive_contradiction_signal_surface,
 )
@@ -414,6 +417,7 @@ def mc_jarvis() -> dict:
     meaning_significance_signals = build_runtime_meaning_significance_signal_surface()
     temperament_tendency_signals = build_runtime_temperament_tendency_signal_surface()
     self_narrative_continuity_signals = build_runtime_self_narrative_continuity_signal_surface()
+    self_narrative_self_model_review_bridge = build_runtime_self_narrative_self_model_review_bridge_surface()
     executive_contradiction_signals = build_runtime_executive_contradiction_signal_surface()
     private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
     chronicle_consolidation_signals = build_runtime_chronicle_consolidation_signal_surface()
@@ -505,6 +509,7 @@ def mc_jarvis() -> dict:
             "meaning_significance_signals": meaning_significance_signals,
             "temperament_tendency_signals": temperament_tendency_signals,
             "self_narrative_continuity_signals": self_narrative_continuity_signals,
+            "self_narrative_self_model_review_bridge": self_narrative_self_model_review_bridge,
             "executive_contradiction_signals": executive_contradiction_signals,
             "private_temporal_promotion_signals": private_temporal_promotion_signals,
             "chronicle_consolidation_signals": chronicle_consolidation_signals,
@@ -658,6 +663,7 @@ def mc_runtime() -> dict:
         "runtime_meaning_significance_signals": build_runtime_meaning_significance_signal_surface(),
         "runtime_temperament_tendency_signals": build_runtime_temperament_tendency_signal_surface(),
         "runtime_self_narrative_continuity_signals": build_runtime_self_narrative_continuity_signal_surface(),
+        "runtime_self_narrative_self_model_review_bridge": build_runtime_self_narrative_self_model_review_bridge_surface(),
         "runtime_executive_contradiction_signals": build_runtime_executive_contradiction_signal_surface(),
         "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),
         "runtime_chronicle_consolidation_signals": build_runtime_chronicle_consolidation_signal_surface(),

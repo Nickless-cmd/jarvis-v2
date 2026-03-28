@@ -196,6 +196,7 @@ def run_bounded_nl_memory_entry_selection(
     entries: list[str],
     max_lines: int,
     workspace_dir: Path,
+    mode: str = "visible_chat",
 ) -> BoundedMemorySelectionAttempt:
     if not entries:
         return BoundedMemorySelectionAttempt(
@@ -238,6 +239,7 @@ def run_bounded_nl_memory_entry_selection(
         user_message=user_message,
         entries=bounded_entries,
         max_lines=max_lines,
+        mode=mode,
     )
     payload = {
         "model": str(target.get("model") or "").strip(),
@@ -385,18 +387,17 @@ def _build_memory_selection_prompt(
     user_message: str,
     entries: list[str],
     max_lines: int,
+    mode: str = "visible_chat",
 ) -> str:
     normalized = " ".join(str(user_message or "").split())
     if len(normalized) > RELEVANCE_MAX_TEXT_CHARS:
         normalized = normalized[: RELEVANCE_MAX_TEXT_CHARS - 1].rstrip() + "…"
-    entry_lines = [
-        f"{index}: {entry}"
-        for index, entry in enumerate(entries)
-    ]
+    entry_lines = [f"{index}: {entry}" for index, entry in enumerate(entries)]
     return "\n".join(
         [
             instructions,
             "Return JSON only with keys: selected_indexes, confidence.",
+            f"mode={mode}",
             f"max_lines={max(max_lines, 1)}",
             f"user_message={normalized or '(empty)'}",
             "memory_entries:",

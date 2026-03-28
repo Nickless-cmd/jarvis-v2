@@ -198,9 +198,14 @@ def build_visible_chat_prompt_assembly(
             max_lines=3 if compact else 4,
             max_chars=200 if compact else 280,
             workspace_dir=workspace_dir,
+            mode="visible_chat",
         )
         if memory_selection:
-            parts.append("\n".join(["MEMORY.md:", *[f"- {line}" for line in memory_selection.lines]]))
+            parts.append(
+                "\n".join(
+                    ["MEMORY.md:", *[f"- {line}" for line in memory_selection.lines]]
+                )
+            )
             conditional_files.append("MEMORY.md")
             if memory_selection.prompt_file_used:
                 conditional_files.append("VISIBLE_MEMORY_SELECTION.md")
@@ -303,15 +308,28 @@ def build_heartbeat_prompt_assembly(
             included_files.append(filename)
 
     if relevance.include_memory:
-        memory_section = _workspace_file_section(
+        memory_selection = _workspace_memory_section(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
+            user_message="heartbeat proposal check",
             max_lines=4,
             max_chars=260,
+            workspace_dir=workspace_dir,
+            mode="heartbeat",
         )
-        if memory_section:
-            parts.append(memory_section)
+        if memory_selection:
+            parts.append(
+                "\n".join(
+                    ["MEMORY.md:", *[f"- {line}" for line in memory_selection.lines]]
+                )
+            )
             conditional_files.append("MEMORY.md")
+            if memory_selection.prompt_file_used:
+                conditional_files.append("VISIBLE_MEMORY_SELECTION.md")
+            if memory_selection.backend_success:
+                derived_inputs.append("bounded NL memory entry selection")
+            elif memory_selection.fallback_used:
+                derived_inputs.append("heuristic memory entry selection fallback")
 
     due_summary = _heartbeat_due_summary(heartbeat_context or {})
     if due_summary:
@@ -400,15 +418,28 @@ def build_future_agent_task_prompt_assembly(
     )
 
     if relevance.include_memory:
-        memory_section = _workspace_file_section(
+        memory_selection = _workspace_memory_section(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
+            user_message=str(task_brief or "delegated task"),
             max_lines=4,
             max_chars=240,
+            workspace_dir=workspace_dir,
+            mode="future_agent_task",
         )
-        if memory_section:
-            parts.append(memory_section)
+        if memory_selection:
+            parts.append(
+                "\n".join(
+                    ["MEMORY.md:", *[f"- {line}" for line in memory_selection.lines]]
+                )
+            )
             conditional_files.append("MEMORY.md")
+            if memory_selection.prompt_file_used:
+                conditional_files.append("VISIBLE_MEMORY_SELECTION.md")
+            if memory_selection.backend_success:
+                derived_inputs.append("bounded NL memory entry selection")
+            elif memory_selection.fallback_used:
+                derived_inputs.append("heuristic memory entry selection fallback")
 
     if relevance.include_guidance or context.get("include_guidance"):
         for filename in ("TOOLS.md", "SKILLS.md"):
@@ -595,6 +626,7 @@ def _workspace_memory_section(
     max_lines: int,
     max_chars: int,
     workspace_dir: Path,
+    mode: str = "visible_chat",
 ) -> MemorySectionSelection | None:
     if not path.exists():
         return None
@@ -607,6 +639,7 @@ def _workspace_memory_section(
         max_lines=max_lines,
         max_chars=max_chars,
         workspace_dir=workspace_dir,
+        mode=mode,
     )
     if not selection.lines:
         return None
@@ -633,12 +666,14 @@ def _select_relevant_memory_entries(
     max_lines: int,
     max_chars: int,
     workspace_dir: Path,
+    mode: str = "visible_chat",
 ) -> MemorySectionSelection:
     backend_attempt = _bounded_nl_memory_selection(
         user_message=user_message,
         entries=entries,
         max_lines=max_lines,
         workspace_dir=workspace_dir,
+        mode=mode,
     )
     ordered: list[str]
     prompt_file_used = bool(
@@ -649,7 +684,11 @@ def _select_relevant_memory_entries(
     if backend_attempt.success and backend_attempt.result is not None:
         bounded_entries = entries[-8:]
         selected_indexes = backend_attempt.result.selected_indexes
-        ordered = [bounded_entries[index] for index in selected_indexes if 0 <= index < len(bounded_entries)]
+        ordered = [
+            bounded_entries[index]
+            for index in selected_indexes
+            if 0 <= index < len(bounded_entries)
+        ]
     else:
         ordered = _heuristic_relevant_memory_entries(
             entries,
@@ -705,12 +744,14 @@ def _bounded_nl_memory_selection(
     entries: list[str],
     max_lines: int,
     workspace_dir: Path,
+    mode: str = "visible_chat",
 ) -> BoundedMemorySelectionAttempt:
     return run_bounded_nl_memory_entry_selection(
         user_message=user_message,
         entries=entries,
         max_lines=max_lines,
         workspace_dir=workspace_dir,
+        mode=mode,
     )
 
 

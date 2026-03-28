@@ -435,11 +435,24 @@ def _canonical_self_line_from_key(candidate: dict[str, object]) -> str:
 
 
 def _chronicle_write_material(candidate: dict[str, object]) -> dict[str, str]:
-    proposed_value = str(candidate.get("proposed_value") or "").strip()
-    content_line = proposed_value or f"- {str(candidate.get('summary') or '').strip()}"
+    summary = _single_line(candidate.get("summary") or "")
+    reason = _single_line(candidate.get("reason") or "")
+    confidence = _single_line(candidate.get("confidence") or "low")
+    proposal_type, focus = _chronicle_entry_shape(candidate)
+    entry_date = _now_iso()[:10]
+    header = f"### {entry_date} | {proposal_type} | {focus}"
+    content_block = "\n".join(
+        [
+            header,
+            f"- Summary: {summary or 'Bounded chronicle carry-forward candidate.'}",
+            f"- Reason: {reason or 'Approved bounded chronicle draft.'}",
+            f"- Confidence: {confidence}",
+        ]
+    )
     return {
         "section_heading": "## Chronicle Entries",
-        "content_line": content_line,
+        "content_line": header,
+        "content_block": content_block,
     }
 
 
@@ -476,7 +489,7 @@ def _default_apply_status_reason(
     target_file = str(candidate.get("target_file") or "")
     if target_file == "runtime/CHRONICLE.md":
         if write_status == "written":
-            return "Applied to runtime chronicle file through chronicle-specific approved gate."
+            return "Applied as bounded chronicle entry through chronicle-specific approved gate."
         return "Equivalent chronicle content already present in runtime chronicle file."
     if target_file in {"SOUL.md", "IDENTITY.md"}:
         if write_status == "written":
@@ -526,6 +539,46 @@ def _append_workspace_contract_line(
     }
 
 
+def _append_workspace_contract_block(
+    *,
+    target_file: str,
+    section_heading: str,
+    content_block: str,
+) -> dict[str, str]:
+    workspace_dir = ensure_default_workspace()
+    path = Path(workspace_dir) / target_file
+    path.parent.mkdir(parents=True, exist_ok=True)
+    existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    normalized_block = str(content_block or "").strip()
+    if not normalized_block:
+        raise ValueError("Candidate has no writeable content block")
+
+    if normalized_block in existing:
+        return {
+            "write_status": "already-present",
+            "path": str(path),
+            "content_line": normalized_block.splitlines()[0].strip(),
+        }
+
+    lines = existing.splitlines()
+    heading = str(section_heading or "").strip()
+    block = normalized_block
+    if not lines:
+        next_text = f"{heading}\n\n{block}\n"
+    elif heading not in existing:
+        base = existing.rstrip()
+        next_text = f"{base}\n\n{heading}\n\n{block}\n"
+    else:
+        next_text = _insert_block_under_heading(existing, heading, block)
+
+    path.write_text(next_text, encoding="utf-8")
+    return {
+        "write_status": "written",
+        "path": str(path),
+        "content_line": block.splitlines()[0].strip(),
+    }
+
+
 def _insert_under_heading(text: str, heading: str, content_line: str) -> str:
     lines = text.splitlines()
     out: list[str] = []
@@ -546,6 +599,29 @@ def _insert_under_heading(text: str, heading: str, content_line: str) -> str:
     if not inserted:
         body = text.rstrip()
         return f"{body}\n\n{heading}\n\n{content_line}\n"
+    return "\n".join(out).rstrip() + "\n"
+
+
+def _insert_block_under_heading(text: str, heading: str, content_block: str) -> str:
+    lines = text.splitlines()
+    out: list[str] = []
+    inserted = False
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        out.append(line)
+        if line.strip() == heading and not inserted:
+            next_index = index + 1
+            while next_index < len(lines) and not lines[next_index].strip():
+                out.append(lines[next_index])
+                next_index += 1
+            out.append(content_block)
+            inserted = True
+            index = next_index - 1
+        index += 1
+    if not inserted:
+        body = text.rstrip()
+        return f"{body}\n\n{heading}\n\n{content_block}\n"
     return "\n".join(out).rstrip() + "\n"
 
 
@@ -585,10 +661,10 @@ def _apply_chronicle_runtime_contract_candidate(
         }
 
     material = _chronicle_write_material(candidate)
-    write_result = _append_workspace_contract_line(
+    write_result = _append_workspace_contract_block(
         target_file="runtime/CHRONICLE.md",
         section_heading=material["section_heading"],
-        content_line=material["content_line"],
+        content_block=str(material["content_block"]),
     )
     now = _now_iso()
     write = record_runtime_contract_file_write(
@@ -642,6 +718,18 @@ def _apply_chronicle_runtime_contract_candidate(
         "candidate": updated,
         "write": write,
     }
+
+
+def _chronicle_entry_shape(candidate: dict[str, object]) -> tuple[str, str]:
+    canonical_key = str(candidate.get("canonical_key") or "")
+    parts = [part for part in canonical_key.split(":") if part]
+    proposal_type = parts[1] if len(parts) >= 2 else "chronicle-draft"
+    focus = parts[2] if len(parts) >= 3 else "chronicle-thread"
+    return proposal_type, focus
+
+
+def _single_line(value: object) -> str:
+    return " ".join(str(value or "").split()).strip()
 
 
 def _now_iso() -> str:

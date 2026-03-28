@@ -205,13 +205,62 @@ def test_approved_chronicle_candidate_can_apply_via_chronicle_specific_gate(
     assert approved["status"] == "approved"
     assert "chronicle-specific gate" in str(approved["status_reason"]).lower()
     assert applied["candidate"]["status"] == "applied"
-    assert "runtime chronicle file" in str(applied["candidate"]["status_reason"]).lower()
+    assert "bounded chronicle entry" in str(applied["candidate"]["status_reason"]).lower()
     assert applied["write"]["target_file"] == "runtime/CHRONICLE.md"
     assert applied["write"]["actor"] == "runtime:chronicle-apply-gate"
-    assert str(candidate["proposed_value"]) in chronicle_text
+    assert "## Chronicle Entries" in chronicle_text
+    assert "### " in chronicle_text
+    assert "| consolidation-proposal | workspace-search" in chronicle_text
+    assert "- Summary:" in chronicle_text
+    assert "- Reason:" in chronicle_text
+    assert "- Confidence: high" in chronicle_text
+    assert str(candidate["summary"]) in chronicle_text
+    assert str(candidate["reason"]) in chronicle_text
+    assert applied["write"]["content_line"].startswith("### ")
     assert workflow["applied_count"] >= 1
     assert workflow["target_file"] == "runtime/CHRONICLE.md"
     assert any(
         str(item.get("target_file") or "") == "runtime/CHRONICLE.md"
         for item in contract["write_history"]["items"]
     )
+
+
+def test_chronicle_materialization_stays_bounded_and_separate_from_memory(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.candidate_tracking
+    workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
+    candidate_workflow = __import__(
+        "core.identity.candidate_workflow",
+        fromlist=["approve_runtime_contract_candidate", "apply_runtime_contract_candidate"],
+    )
+
+    _insert_chronicle_consolidation_proposal(
+        db,
+        status="active",
+        proposal_type="anchored-proposal",
+        canonical_key="chronicle-consolidation-proposal:anchored-proposal:archive-focus",
+        confidence="medium",
+    )
+
+    tracking.track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    candidate = db.list_runtime_contract_candidates(
+        candidate_type="chronicle_draft",
+        target_file="runtime/CHRONICLE.md",
+        limit=8,
+    )[0]
+    candidate_workflow.approve_runtime_contract_candidate(str(candidate["candidate_id"]))
+    candidate_workflow.apply_runtime_contract_candidate(str(candidate["candidate_id"]))
+
+    chronicle_text = (workspace_dir / "runtime" / "CHRONICLE.md").read_text(encoding="utf-8")
+
+    assert "## Chronicle Entries" in chronicle_text
+    assert "## Curated Memory" not in chronicle_text
+    assert "- Summary:" in chronicle_text
+    assert "- Reason:" in chronicle_text
+    assert "- Confidence:" in chronicle_text
+    assert chronicle_text.count("### ") == 1

@@ -67,6 +67,48 @@ def test_ollama_visible_prompt_assembly_uses_canonical_workspace_sections(
     assert "USER.md" in assembly.included_files
 
 
+def test_visible_prompt_relevance_interface_keeps_generic_compact_chat_bounded(
+    isolated_runtime,
+) -> None:
+    decision = isolated_runtime.prompt_contract.build_prompt_relevance_decision(
+        "Svar kort på dansk.",
+        mode="visible_chat",
+        compact=True,
+    )
+
+    assert decision.mode == "visible_chat"
+    assert decision.memory_relevant is False
+    assert decision.guidance_relevant is False
+    assert decision.transcript_relevant is False
+    assert decision.continuity_relevant is False
+    assert decision.include_memory is False
+    assert decision.include_guidance is False
+    assert decision.include_transcript is True
+    assert decision.include_continuity is False
+    assert decision.include_support_signals is False
+
+
+def test_visible_prompt_relevance_interface_keeps_recall_queries_memory_aware(
+    isolated_runtime,
+) -> None:
+    decision = isolated_runtime.prompt_contract.build_prompt_relevance_decision(
+        "kan du huske hvad jeg hedder?",
+        mode="visible_chat",
+        compact=True,
+    )
+
+    assert decision.mode == "visible_chat"
+    assert decision.memory_relevant is True
+    assert decision.guidance_relevant is False
+    assert decision.transcript_relevant is True
+    assert decision.continuity_relevant is False
+    assert decision.include_memory is True
+    assert decision.include_guidance is False
+    assert decision.include_transcript is True
+    assert decision.include_continuity is False
+    assert decision.include_support_signals is True
+
+
 def test_ollama_prompt_is_flattened_from_same_visible_input_path(isolated_runtime) -> None:
     visible_input = isolated_runtime.visible_model._build_visible_input(
         "Svar kort på dansk.",

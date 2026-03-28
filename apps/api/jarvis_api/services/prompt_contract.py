@@ -42,6 +42,20 @@ class PromptAssembly:
     excluded_files: list[str]
 
 
+@dataclass(slots=True)
+class PromptRelevanceDecision:
+    mode: str
+    memory_relevant: bool
+    guidance_relevant: bool
+    transcript_relevant: bool
+    continuity_relevant: bool
+    include_memory: bool
+    include_guidance: bool
+    include_transcript: bool
+    include_continuity: bool
+    include_support_signals: bool
+
+
 def build_visible_chat_prompt_assembly(
     *,
     provider: str,
@@ -57,6 +71,11 @@ def build_visible_chat_prompt_assembly(
     conditional_files: list[str] = []
     derived_inputs: list[str] = []
     excluded_files = ["BOOTSTRAP.md", "HEARTBEAT.md", *DEFAULT_EXCLUDED_FILES]
+    relevance = build_prompt_relevance_decision(
+        user_message,
+        mode="visible_chat",
+        compact=compact,
+    )
 
     capability_truth = _visible_capability_truth_instruction(compact=compact)
     if capability_truth:
@@ -87,7 +106,7 @@ def build_visible_chat_prompt_assembly(
             parts.append(section)
             included_files.append(filename)
 
-    if _should_include_memory(user_message, mode="visible_chat"):
+    if relevance.include_memory:
         memory_section = _workspace_memory_section(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
@@ -99,7 +118,7 @@ def build_visible_chat_prompt_assembly(
             parts.append(memory_section)
             conditional_files.append("MEMORY.md")
 
-    if _should_include_guidance(user_message):
+    if relevance.include_guidance:
         for filename in ("TOOLS.md", "SKILLS.md"):
             section = _workspace_guidance_section(
                 workspace_dir / filename,
@@ -112,13 +131,13 @@ def build_visible_chat_prompt_assembly(
                 conditional_files.append(filename)
 
     session_continuity = _visible_session_continuity_instruction()
-    if session_continuity and (not compact or _should_include_continuity(user_message)):
+    if session_continuity and relevance.include_continuity:
         parts.append(session_continuity)
         derived_inputs.append("bounded session continuity")
 
     support_sections = _visible_support_signal_sections(
         compact=compact,
-        include=(not compact) or _should_include_memory(user_message, mode="visible_chat"),
+        include=relevance.include_support_signals,
     )
     if support_sections:
         parts.extend(support_sections)
@@ -127,7 +146,7 @@ def build_visible_chat_prompt_assembly(
     transcript = _recent_transcript_section(
         session_id,
         limit=6 if compact else 8,
-        include=True,
+        include=relevance.include_transcript,
     )
     if transcript:
         parts.append(transcript)
@@ -155,6 +174,11 @@ def build_heartbeat_prompt_assembly(
     conditional_files: list[str] = []
     derived_inputs: list[str] = []
     excluded_files = ["runtime/RUNTIME_FEEDBACK.md", "boredom_templates.json", "full transcript", "heavy private/internal dumps"]
+    relevance = build_prompt_relevance_decision(
+        "heartbeat",
+        mode="heartbeat",
+        compact=False,
+    )
 
     parts.append(_heartbeat_runtime_truth_instruction(heartbeat_context or {}))
     derived_inputs.append("runtime heartbeat policy, schedule, and budget truth")
@@ -181,7 +205,7 @@ def build_heartbeat_prompt_assembly(
             parts.append(section)
             included_files.append(filename)
 
-    if _should_include_memory("heartbeat", mode="heartbeat"):
+    if relevance.include_memory:
         memory_section = _workspace_file_section(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
@@ -230,6 +254,11 @@ def build_future_agent_task_prompt_assembly(
     conditional_files: list[str] = []
     derived_inputs: list[str] = []
     excluded_files = ["BOOTSTRAP.md", "HEARTBEAT.md", *DEFAULT_EXCLUDED_FILES, "full transcript"]
+    relevance = build_prompt_relevance_decision(
+        task_brief,
+        mode="future_agent_task",
+        compact=False,
+    )
 
     runtime_truth = _future_agent_runtime_truth_instruction(context)
     if runtime_truth:
@@ -267,7 +296,7 @@ def build_future_agent_task_prompt_assembly(
         )
     )
 
-    if _should_include_memory(task_brief, mode="future_agent_task"):
+    if relevance.include_memory:
         memory_section = _workspace_file_section(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
@@ -278,7 +307,7 @@ def build_future_agent_task_prompt_assembly(
             parts.append(memory_section)
             conditional_files.append("MEMORY.md")
 
-    if _should_include_guidance(task_brief) or context.get("include_guidance"):
+    if relevance.include_guidance or context.get("include_guidance"):
         for filename in ("TOOLS.md", "SKILLS.md"):
             section = _workspace_guidance_section(
                 workspace_dir / filename,
@@ -302,6 +331,41 @@ def build_future_agent_task_prompt_assembly(
         conditional_files=conditional_files,
         derived_inputs=derived_inputs,
         excluded_files=excluded_files,
+    )
+
+
+def build_prompt_relevance_decision(
+    text: str,
+    *,
+    mode: str,
+    compact: bool,
+) -> PromptRelevanceDecision:
+    memory_relevant = _should_include_memory(text, mode=mode)
+    guidance_relevant = _should_include_guidance(text)
+    transcript_relevant = _should_include_transcript(text)
+    continuity_relevant = _should_include_continuity(text)
+
+    if mode == "visible_chat":
+        # Visible chat keeps a bounded recent transcript slice available by default.
+        include_transcript = True
+        include_continuity = (not compact) or continuity_relevant
+        include_support_signals = (not compact) or memory_relevant
+    else:
+        include_transcript = False
+        include_continuity = False
+        include_support_signals = False
+
+    return PromptRelevanceDecision(
+        mode=mode,
+        memory_relevant=memory_relevant,
+        guidance_relevant=guidance_relevant,
+        transcript_relevant=transcript_relevant,
+        continuity_relevant=continuity_relevant,
+        include_memory=memory_relevant,
+        include_guidance=guidance_relevant,
+        include_transcript=include_transcript,
+        include_continuity=include_continuity,
+        include_support_signals=include_support_signals,
     )
 
 

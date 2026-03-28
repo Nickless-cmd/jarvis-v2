@@ -310,6 +310,7 @@ function normalizeHeartbeatState(item = {}) {
     livenessReason: item.liveness_reason || '',
     livenessSummary: item.liveness_summary || '',
     livenessConfidence: item.liveness_confidence || 'low',
+    livenessThresholdState: item.liveness_threshold_state || 'quiet-threshold',
     sourceAnchor: item.source_anchor || '',
     plannerAuthorityState: item.planner_authority_state || 'not-planner-authority',
     canonicalSelfState: item.canonical_self_state || 'not-canonical-self-truth',

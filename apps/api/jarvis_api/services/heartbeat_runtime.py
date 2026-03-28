@@ -592,92 +592,184 @@ def _build_heartbeat_liveness_signal(
     metabolism = build_runtime_metabolism_state_signal_surface(limit=6)
     release_markers = build_runtime_release_marker_signal_surface(limit=6)
 
-    reasons: list[str] = []
-    source_anchor_parts: list[str] = []
+    reason_signals: list[tuple[int, str, str, bool]] = []
     score = 0
+    core_pressure_count = 0
+    propose_gate_count = 0
+
+    def add_signal(
+        *,
+        weight: int,
+        reason: str,
+        anchor: str,
+        core: bool = False,
+        propose_gate: bool = False,
+    ) -> None:
+        nonlocal score, core_pressure_count, propose_gate_count
+        score += weight
+        reason_signals.append((weight, reason, anchor, core))
+        if core:
+            core_pressure_count += 1
+        if propose_gate:
+            propose_gate_count += 1
 
     open_summary = open_loops.get("summary") or {}
     open_items = open_loops.get("items") or []
-    if open_loops.get("active") and (
-        int(open_summary.get("open_count") or 0) > 0
-        or int(open_summary.get("softening_count") or 0) > 0
-    ):
-        score += 3
-        reasons.append("open-loop continuity is still live")
-        if open_items:
-            source_anchor_parts.append(str((open_items[0] or {}).get("source_anchor") or (open_items[0] or {}).get("title") or "open-loop"))
+    open_anchor = (
+        str((open_items[0] or {}).get("source_anchor") or (open_items[0] or {}).get("title") or "open-loop")
+        if open_items
+        else "open-loop"
+    )
+    open_count = int(open_summary.get("open_count") or 0)
+    softening_count = int(open_summary.get("softening_count") or 0)
+    if open_loops.get("active") and open_count > 0:
+        add_signal(
+            weight=4,
+            reason="open-loop continuity is still live",
+            anchor=open_anchor,
+            core=True,
+            propose_gate=True,
+        )
+    elif open_loops.get("active") and softening_count > 0:
+        add_signal(
+            weight=2,
+            reason="softening open-loop continuity is still present",
+            anchor=open_anchor,
+            core=True,
+        )
 
     tension_summary = initiative_tension.get("summary") or {}
     tension_items = initiative_tension.get("items") or []
+    tension_anchor = (
+        str((tension_items[0] or {}).get("source_anchor") or (tension_items[0] or {}).get("title") or "initiative-tension")
+        if tension_items
+        else "initiative-tension"
+    )
+    tension_intensity = str(tension_summary.get("current_intensity") or "low")
     if int(tension_summary.get("active_count") or 0) > 0:
-        score += 2
-        reasons.append("private initiative tension is still carrying bounded pull")
-        if tension_items:
-            source_anchor_parts.append(str((tension_items[0] or {}).get("source_anchor") or (tension_items[0] or {}).get("title") or "initiative-tension"))
+        tension_weight = 3 if tension_intensity == "medium" else 2
+        add_signal(
+            weight=tension_weight,
+            reason="private initiative tension is still carrying bounded pull",
+            anchor=tension_anchor,
+            core=True,
+            propose_gate=tension_intensity == "medium",
+        )
 
     private_summary = private_state.get("summary") or {}
     private_items = private_state.get("items") or []
     current_pressure = str(private_summary.get("current_pressure") or "low")
+    private_anchor = (
+        str((private_items[0] or {}).get("source_anchor") or (private_items[0] or {}).get("title") or "private-state")
+        if private_items
+        else "private-state"
+    )
     if int(private_summary.get("active_count") or 0) > 0 and current_pressure in {"medium", "high"}:
-        score += 2
-        reasons.append("private state pressure is still present")
-        if private_items:
-            source_anchor_parts.append(str((private_items[0] or {}).get("source_anchor") or (private_items[0] or {}).get("title") or "private-state"))
+        add_signal(
+            weight=3 if current_pressure == "high" else 2,
+            reason="private state pressure is still present",
+            anchor=private_anchor,
+            core=True,
+            propose_gate=current_pressure == "high",
+        )
 
     relation_summary = relation_continuity.get("summary") or {}
     relation_items = relation_continuity.get("items") or []
     current_weight = str(relation_summary.get("current_weight") or "low")
+    relation_anchor = (
+        str((relation_items[0] or {}).get("source_anchor") or (relation_items[0] or {}).get("title") or "relation-continuity")
+        if relation_items
+        else "relation-continuity"
+    )
     if relation_continuity.get("active") and current_weight in {"medium", "high"}:
-        score += 1
-        reasons.append("relation continuity is still holding weight")
-        if relation_items:
-            source_anchor_parts.append(str((relation_items[0] or {}).get("source_anchor") or (relation_items[0] or {}).get("title") or "relation-continuity"))
+        add_signal(
+            weight=2 if current_weight == "high" else 1,
+            reason="relation continuity is still holding weight",
+            anchor=relation_anchor,
+        )
 
     regulation_summary = regulation.get("summary") or {}
     regulation_items = regulation.get("items") or []
-    if regulation.get("active") and str(regulation_summary.get("current_pressure") or "low") in {"medium", "high"}:
-        score += 1
-        reasons.append("regulation pressure is still elevated")
-        if regulation_items:
-            source_anchor_parts.append(str((regulation_items[0] or {}).get("source_anchor") or (regulation_items[0] or {}).get("title") or "regulation"))
+    regulation_pressure = str(regulation_summary.get("current_pressure") or "low")
+    regulation_anchor = (
+        str((regulation_items[0] or {}).get("source_anchor") or (regulation_items[0] or {}).get("title") or "regulation")
+        if regulation_items
+        else "regulation"
+    )
+    if regulation.get("active") and regulation_pressure in {"medium", "high"}:
+        add_signal(
+            weight=2 if regulation_pressure == "high" else 1,
+            reason="regulation pressure is still elevated",
+            anchor=regulation_anchor,
+        )
 
     witness_summary = witness.get("summary") or {}
     witness_items = witness.get("items") or []
+    witness_anchor = (
+        str((witness_items[0] or {}).get("source_anchor") or (witness_items[0] or {}).get("title") or "witness")
+        if witness_items
+        else "witness"
+    )
     if (
         int(witness_summary.get("carried_count") or 0) > 0
-        or str(witness_summary.get("current_persistence_state") or "none") in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+        or str(witness_summary.get("current_persistence_state") or "none")
+        in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
     ):
-        score += 1
-        reasons.append("witness continuity is still being carried")
-        if witness_items:
-            source_anchor_parts.append(str((witness_items[0] or {}).get("source_anchor") or (witness_items[0] or {}).get("title") or "witness"))
+        persistence_state = str(witness_summary.get("current_persistence_state") or "none")
+        add_signal(
+            weight=2 if persistence_state in {"carried-forward", "persistent"} else 1,
+            reason="witness continuity is still being carried",
+            anchor=witness_anchor,
+        )
 
     chronicle_summary = chronicle_briefs.get("summary") or {}
     chronicle_items = chronicle_briefs.get("items") or []
+    chronicle_anchor = (
+        str((chronicle_items[0] or {}).get("source_anchor") or (chronicle_items[0] or {}).get("title") or "chronicle-brief")
+        if chronicle_items
+        else "chronicle-brief"
+    )
     if chronicle_briefs.get("active") and str(chronicle_summary.get("current_weight") or "low") in {"medium", "high"}:
-        score += 1
-        reasons.append("chronicle continuity is still holding a brief thread")
-        if chronicle_items:
-            source_anchor_parts.append(str((chronicle_items[0] or {}).get("source_anchor") or (chronicle_items[0] or {}).get("title") or "chronicle-brief"))
+        add_signal(
+            weight=1,
+            reason="chronicle continuity is still holding a brief thread",
+            anchor=chronicle_anchor,
+        )
 
     metabolism_summary = metabolism.get("summary") or {}
     metabolism_items = metabolism.get("items") or []
-    if str(metabolism_summary.get("current_state") or "none") == "active-retaining":
-        score += 1
-        reasons.append("metabolism still reads as active retaining")
-        if metabolism_items:
-            source_anchor_parts.append(str((metabolism_items[0] or {}).get("source_anchor") or (metabolism_items[0] or {}).get("title") or "metabolism"))
+    metabolism_state = str(metabolism_summary.get("current_state") or "none")
+    metabolism_anchor = (
+        str((metabolism_items[0] or {}).get("source_anchor") or (metabolism_items[0] or {}).get("title") or "metabolism")
+        if metabolism_items
+        else "metabolism"
+    )
+    if metabolism_state in {"active-retaining", "consolidating"}:
+        add_signal(
+            weight=1,
+            reason="metabolism still reads as actively carrying shape",
+            anchor=metabolism_anchor,
+        )
 
     release_summary = release_markers.get("summary") or {}
-    if str(release_summary.get("current_state") or "none") in {"release-leaning", "release-ready"}:
+    release_state = str(release_summary.get("current_state") or "none")
+    if release_state == "release-ready":
+        score -= 2
+    elif release_state == "release-leaning":
         score -= 1
 
     if trigger == "manual":
-        score += 1
-        reasons.append("manual Mission Control trigger requested attention")
+        add_signal(
+            weight=1,
+            reason="manual Mission Control trigger requested attention",
+            anchor="manual-trigger",
+        )
     if bool(merged_state.get("due")):
-        score += 1
-        reasons.append("heartbeat cadence is currently due")
+        add_signal(
+            weight=1,
+            reason="heartbeat cadence is currently due",
+            anchor="heartbeat-cadence",
+        )
 
     if score <= 0:
         return {
@@ -686,6 +778,7 @@ def _build_heartbeat_liveness_signal(
             "liveness_reason": "no-bounded-liveness-pressure",
             "liveness_summary": "No bounded liveness pressure is currently strong enough to pull heartbeat beyond quiet observation.",
             "liveness_confidence": "low",
+            "liveness_threshold_state": "quiet-threshold",
             "source_anchor": "",
             "status": "inactive",
             "authority": "non-authoritative",
@@ -694,23 +787,59 @@ def _build_heartbeat_liveness_signal(
             "canonical_self_state": "not-canonical-self-truth",
         }
 
-    if score >= 7:
+    sorted_reasons = sorted(reason_signals, key=lambda item: item[0], reverse=True)
+    primary_reason = (
+        sorted_reasons[0][1]
+        if sorted_reasons
+        else "bounded runtime pressure is present"
+    )
+    source_anchor = " | ".join(
+        [
+            anchor
+            for _, _, anchor, _ in sorted_reasons
+            if str(anchor or "").strip()
+        ][:3]
+    )
+
+    if score >= 8 and core_pressure_count >= 2 and propose_gate_count >= 1:
+        liveness_pressure = "high"
+        liveness_state = "propose-worthy"
+        liveness_confidence = "high"
+        liveness_threshold_state = "propose-worthy-threshold"
+    elif score >= 5:
         liveness_pressure = "high"
         liveness_state = "alive-pressure"
-        liveness_confidence = "high"
-    elif score >= 4:
+        liveness_confidence = "high" if core_pressure_count >= 2 else "medium"
+        liveness_threshold_state = "alive-threshold"
+    elif score >= 2:
         liveness_pressure = "medium"
-        liveness_state = "responding"
+        liveness_state = "watchful"
         liveness_confidence = "medium"
+        liveness_threshold_state = "watchful-threshold"
     else:
         liveness_pressure = "low"
-        liveness_state = "watchful"
+        liveness_state = "quiet"
         liveness_confidence = "low"
+        liveness_threshold_state = "quiet-threshold"
 
-    primary_reason = reasons[0] if reasons else "bounded runtime pressure is present"
-    source_anchor = " | ".join(
-        [part for part in source_anchor_parts if str(part or "").strip()][:3]
-    )
+    if liveness_state == "quiet":
+        return {
+            "liveness_state": "quiet",
+            "liveness_pressure": "low",
+            "liveness_reason": primary_reason,
+            "liveness_summary": (
+                f"Heartbeat remains quiet because only light bounded liveness pressure is currently present."
+            ),
+            "liveness_confidence": liveness_confidence,
+            "liveness_threshold_state": liveness_threshold_state,
+            "source_anchor": source_anchor,
+            "status": "inactive",
+            "authority": "non-authoritative",
+            "layer_role": "runtime-support",
+            "planner_authority_state": "not-planner-authority",
+            "canonical_self_state": "not-canonical-self-truth",
+        }
+
     return {
         "liveness_state": liveness_state,
         "liveness_pressure": liveness_pressure,
@@ -719,6 +848,7 @@ def _build_heartbeat_liveness_signal(
             f"Heartbeat appears to have bounded liveness pressure because {primary_reason}."
         ),
         "liveness_confidence": liveness_confidence,
+        "liveness_threshold_state": liveness_threshold_state,
         "source_anchor": source_anchor,
         "status": "active",
         "authority": "non-authoritative",
@@ -839,8 +969,23 @@ def _execute_heartbeat_model(
     if provider == "phase1-runtime":
         liveness_summary = str((liveness or {}).get("liveness_summary") or "").strip()
         liveness_pressure = str((liveness or {}).get("liveness_pressure") or "low")
+        liveness_threshold_state = str(
+            (liveness or {}).get("liveness_threshold_state") or "quiet-threshold"
+        )
         summary = open_loops[0] if open_loops else (liveness_summary or "No current due work was detected.")
-        decision_type = "execute" if bool(policy.get("allow_execute")) else ("propose" if (open_loops or liveness_pressure in {"medium", "high"}) else "noop")
+        decision_type = (
+            "execute"
+            if bool(policy.get("allow_execute"))
+            else (
+                "propose"
+                if (
+                    open_loops
+                    or liveness_threshold_state == "propose-worthy-threshold"
+                    or (liveness_pressure == "high" and liveness_threshold_state == "alive-threshold")
+                )
+                else "noop"
+            )
+        )
         execute_action = "run_candidate_scan" if decision_type == "execute" else ""
         text = json.dumps(
             {
@@ -1240,9 +1385,16 @@ def _recover_bounded_heartbeat_liveness_decision(
 
     liveness_state = str((liveness or {}).get("liveness_state") or "quiet")
     liveness_pressure = str((liveness or {}).get("liveness_pressure") or "low")
+    liveness_threshold_state = str(
+        (liveness or {}).get("liveness_threshold_state") or "quiet-threshold"
+    )
     liveness_reason = str((liveness or {}).get("liveness_reason") or "").strip()
     liveness_summary = str((liveness or {}).get("liveness_summary") or "").strip()
-    if liveness_state == "quiet" or liveness_pressure not in {"medium", "high"}:
+    if (
+        liveness_state == "quiet"
+        or liveness_pressure not in {"medium", "high"}
+        or liveness_threshold_state != "propose-worthy-threshold"
+    ):
         return decision
 
     return {

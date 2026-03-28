@@ -1240,6 +1240,7 @@ def _heartbeat_liveness_summary(context: dict[str, object]) -> str | None:
                 f"- state={liveness.get('liveness_state') or 'quiet'}"
                 f" | pressure={liveness.get('liveness_pressure') or 'low'}"
                 f" | confidence={liveness.get('liveness_confidence') or 'low'}"
+                f" | threshold={liveness.get('liveness_threshold_state') or 'quiet-threshold'}"
             ),
             f"- reason={liveness.get('liveness_reason') or 'none'}",
             f"- summary={liveness.get('liveness_summary') or 'none'}",

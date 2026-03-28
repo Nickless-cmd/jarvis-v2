@@ -5,6 +5,9 @@ from uuid import uuid4
 
 from apps.api.jarvis_api.services.chat_sessions import get_chat_session
 from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
+from apps.api.jarvis_api.services.chronicle_consolidation_proposal_tracking import (
+    build_runtime_chronicle_consolidation_proposal_surface,
+)
 from apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking import (
     build_runtime_self_authored_prompt_proposal_surface,
 )
@@ -243,6 +246,37 @@ def track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn(
     }
 
 
+def track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn(
+    *,
+    session_id: str | None,
+    run_id: str,
+) -> dict[str, object]:
+    candidates = _extract_candidates_from_chronicle_consolidation_proposals()
+    if not candidates:
+        return {
+            "created": 0,
+            "updated": 0,
+            "preference_updates": 0,
+            "memory_promotions": 0,
+            "canonical_self_updates": 0,
+            "chronicle_drafts": 0,
+            "items": [],
+            "summary": "No bounded chronicle/consolidation proposal warranted chronicle candidate drafting.",
+        }
+    result = _persist_candidates(
+        candidates=candidates,
+        session_id=str(session_id or ""),
+        run_id=run_id,
+        source_mode="runtime_chronicle_consolidation_proposal",
+        actor="runtime:chronicle-proposal-bridge",
+        status_reason="Drafted from bounded chronicle proposal. No chronicle writeback or apply has occurred.",
+    )
+    return {
+        **result,
+        "summary": f"Drafted {result['created']} governed chronicle candidates from bounded chronicle proposals.",
+    }
+
+
 def auto_apply_safe_user_md_candidates_for_visible_turn(
     *,
     session_id: str | None,
@@ -411,6 +445,30 @@ def _extract_candidates_from_selfhood_proposals() -> list[dict[str, str]]:
         if str(proposal.get("status") or "") not in {"fresh", "active", "fading"}:
             continue
         candidate = _candidate_from_selfhood_proposal(proposal)
+        if candidate is None:
+            continue
+        canonical_key = str(candidate.get("canonical_key") or "")
+        if not canonical_key or canonical_key in seen:
+            continue
+        if _candidate_already_applied(candidate):
+            continue
+        seen.add(canonical_key)
+        extracted.append(candidate)
+    return extracted
+
+
+def _extract_candidates_from_chronicle_consolidation_proposals() -> list[dict[str, str]]:
+    extracted: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for proposal in build_runtime_chronicle_consolidation_proposal_surface(limit=12).get("items", []):
+        if str(proposal.get("status") or "") not in {"active", "softening"}:
+            continue
+        if str(proposal.get("proposal_confidence") or proposal.get("confidence") or "low") not in {
+            "medium",
+            "high",
+        }:
+            continue
+        candidate = _candidate_from_chronicle_consolidation_proposal(proposal)
         if candidate is None:
             continue
         canonical_key = str(candidate.get("canonical_key") or "")
@@ -711,6 +769,58 @@ def _candidate_from_selfhood_proposal(proposal: dict[str, object]) -> dict[str, 
     }
 
 
+def _candidate_from_chronicle_consolidation_proposal(
+    proposal: dict[str, object],
+) -> dict[str, str] | None:
+    proposal_type = str(proposal.get("proposal_type") or "").strip()
+    proposal_focus = str(proposal.get("proposal_focus") or "").strip()
+    focus_slug = _memory_proposal_domain(str(proposal.get("canonical_key") or "")) or _slug(
+        proposal_focus or "chronicle-thread"
+    )
+    if not proposal_type or not focus_slug:
+        return None
+    proposal_reason = str(proposal.get("proposal_reason") or proposal.get("summary") or "").strip()
+    source_anchor = str(proposal.get("source_anchor") or "").strip()
+    proposal_summary = str(proposal.get("proposal_summary") or proposal.get("summary") or "").strip()
+    proposed_value = (
+        f"- [{proposal_type}] {proposal_focus or focus_slug}: {proposal_reason}"
+        if proposal_reason
+        else f"- [{proposal_type}] {proposal_focus or focus_slug}: bounded chronicle draft candidate."
+    )
+    return {
+        "candidate_type": "chronicle_draft",
+        "target_file": "runtime/CHRONICLE.md",
+        "source_kind": "runtime-derived-support",
+        "canonical_key": f"chronicle-draft:{proposal_type}:{focus_slug}",
+        "summary": proposal_summary or "A bounded chronicle draft may be worth carrying forward.",
+        "reason": proposal_reason or "Bounded chronicle proposal now warrants governed chronicle candidate drafting.",
+        "evidence_summary": " | ".join(
+            _unique_nonempty(
+                [
+                    str(proposal.get("evidence_summary") or ""),
+                    proposal_summary,
+                    proposal_reason,
+                ]
+            )[:3]
+        ),
+        "support_summary": " | ".join(
+            _unique_nonempty(
+                [
+                    str(proposal.get("support_summary") or ""),
+                    source_anchor,
+                    "Draft only. No CHRONICLE.md write or apply has been executed.",
+                ]
+            )[:4]
+        ),
+        "proposed_value": proposed_value,
+        "write_section": "## Chronicle Drafts",
+        "confidence": str(proposal.get("proposal_confidence") or proposal.get("confidence") or "low"),
+        "evidence_class": "runtime_support_only",
+        "support_count": max(int(proposal.get("support_count") or 1), 1),
+        "session_count": max(int(proposal.get("session_count") or 1), 1),
+    }
+
+
 def _extract_candidates_from_messages(
     messages: list[str],
     *,
@@ -748,6 +858,7 @@ def _persist_candidates(
             "preference_updates": 0,
             "memory_promotions": 0,
             "canonical_self_updates": 0,
+            "chronicle_drafts": 0,
             "items": [],
         }
 
@@ -755,6 +866,7 @@ def _persist_candidates(
     preference_count = 0
     memory_count = 0
     canonical_self_count = 0
+    chronicle_count = 0
     now = _now_iso()
     for candidate in candidates:
         persisted_candidate = upsert_runtime_contract_candidate(
@@ -791,6 +903,8 @@ def _persist_candidates(
             memory_count += 1
         if persisted_candidate["candidate_type"] in {"soul_update", "identity_update"}:
             canonical_self_count += 1
+        if persisted_candidate["candidate_type"] == "chronicle_draft":
+            chronicle_count += 1
         event_bus.publish(
             "runtime.contract_candidate_proposed",
             {
@@ -813,6 +927,7 @@ def _persist_candidates(
         "preference_updates": preference_count,
         "memory_promotions": memory_count,
         "canonical_self_updates": canonical_self_count,
+        "chronicle_drafts": chronicle_count,
         "items": persisted,
     }
 
@@ -835,6 +950,14 @@ def _candidate_already_applied(candidate: dict[str, str]) -> bool:
 def _memory_proposal_domain(canonical_key: str) -> str:
     parts = [part for part in canonical_key.split(":") if part]
     return parts[-1] if parts else ""
+
+
+def _slug(value: str) -> str:
+    compact = "-".join(part for part in str(value).strip().lower().replace("/", " ").split() if part)
+    cleaned = "".join(char for char in compact if char.isalnum() or char == "-")
+    while "--" in cleaned:
+        cleaned = cleaned.replace("--", "-")
+    return cleaned.strip("-")
 
 
 def _enrich_candidate_evidence(

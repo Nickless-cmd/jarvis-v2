@@ -25,6 +25,7 @@ CANONICAL_WORKSPACE_FILES = (
 DERIVED_RUNTIME_FILES = (
     "runtime/RUNTIME_CAPABILITIES.md",
     "runtime/RUNTIME_FEEDBACK.md",
+    "runtime/CHRONICLE.md",
     "runtime/HEARTBEAT_STATE.json",
 )
 

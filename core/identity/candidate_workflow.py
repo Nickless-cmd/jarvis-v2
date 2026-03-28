@@ -102,6 +102,10 @@ def apply_runtime_contract_candidate(
 ) -> dict[str, object]:
     candidate = _require_candidate(candidate_id)
     _require_status(candidate, allowed={"approved"})
+    if str(candidate.get("target_file") or "") == "runtime/CHRONICLE.md":
+        raise ValueError(
+            "Chronicle drafts remain draft-only in this phase and cannot be applied."
+        )
 
     equivalent_applied = _latest_equivalent_applied_candidate(candidate)
     if equivalent_applied is not None:

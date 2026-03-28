@@ -76,6 +76,37 @@ def _insert_memory_md_update_proposal(db, *, status: str, proposal_type: str, ca
     )
 
 
+def _insert_remembered_fact_signal(
+    db,
+    *,
+    status: str,
+    signal_type: str,
+    canonical_key: str,
+    summary: str | None = None,
+) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_remembered_fact_signal(
+        signal_id=f"remembered-fact-{uuid4().hex}",
+        signal_type=signal_type,
+        canonical_key=canonical_key,
+        status=status,
+        title=f"Remembered fact: {signal_type}",
+        summary=summary or f"Remembered fact summary: {signal_type}",
+        rationale="Validation remembered fact",
+        source_kind="user-explicit",
+        confidence="high",
+        evidence_summary="remembered fact evidence",
+        support_summary="remembered fact support | Visible user anchor: validation anchor",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation remembered fact status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
 def test_memory_md_update_proposal_surface_stays_empty_without_relevant_grounding(isolated_runtime) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.memory_md_update_proposal_tracking
@@ -156,6 +187,64 @@ def test_memory_md_update_proposal_surface_forms_small_bounded_proposals(isolate
     assert db.recent_runtime_contract_file_writes(limit=8) == []
 
 
+def test_memory_md_update_proposal_surface_extends_with_remembered_fact_proposals(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.memory_md_update_proposal_tracking
+
+    _insert_open_loop(
+        db,
+        status="open",
+        signal_type="persistent-open-loop",
+        canonical_key="open-loop:persistent-open-loop:danish-concise-calibration",
+        summary="A bounded loop around danish concise calibration is still unresolved and carrying live pressure.",
+    )
+    _insert_remembered_fact_signal(
+        db,
+        status="active",
+        signal_type="explicit-user-fact",
+        canonical_key="remembered-fact:explicit-user-fact:user-name",
+        summary="User explicitly stated their name as Bjorn.",
+    )
+
+    result = tracking.track_runtime_memory_md_update_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_memory_md_update_proposal_surface(limit=8)
+    items_by_type = {item["proposal_type"]: item for item in surface["items"]}
+
+    assert result["created"] == 2
+    assert items_by_type["open-followup-update"]["memory_kind"] == "open-followup"
+    assert items_by_type["remembered-fact-update"]["memory_kind"] == "remembered-fact"
+    assert items_by_type["remembered-fact-update"]["status"] == "active"
+    assert items_by_type["remembered-fact-update"]["proposal_reason"] == "User explicitly stated their name as Bjorn."
+    assert items_by_type["remembered-fact-update"]["proposal_confidence"] == "high"
+
+
+def test_memory_md_update_proposal_surface_does_not_form_fact_proposals_without_relevant_fact_grounding(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.memory_md_update_proposal_tracking
+
+    _insert_remembered_fact_signal(
+        db,
+        status="stale",
+        signal_type="explicit-user-fact",
+        canonical_key="remembered-fact:explicit-user-fact:user-name",
+        summary="User explicitly stated their name as Bjorn.",
+    )
+
+    result = tracking.track_runtime_memory_md_update_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_memory_md_update_proposal_surface(limit=8)
+
+    assert result["created"] == 0
+    assert surface["items"] == []
+
+
 def test_memory_md_update_proposal_surface_and_mc_shapes_remain_bounded(isolated_runtime) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.memory_md_update_proposal_tracking
@@ -191,6 +280,12 @@ def test_memory_md_update_proposal_surface_and_mc_shapes_remain_bounded(isolated
         proposal_type="stable-context-update",
         canonical_key="memory-md-update-proposal:stable-context-update:older-review-style",
     )
+    _insert_memory_md_update_proposal(
+        db,
+        status="active",
+        proposal_type="remembered-fact-update",
+        canonical_key="memory-md-update-proposal:remembered-fact-update:user-name",
+    )
 
     surface = tracking.build_runtime_memory_md_update_proposal_surface(limit=8)
     jarvis = mission_control.mc_jarvis()
@@ -225,9 +320,10 @@ def test_memory_md_update_proposal_surface_and_mc_shapes_remain_bounded(isolated
         "source_anchor",
     }.issubset(surface["items"][0].keys())
     assert surface["summary"]["fresh_count"] == 1
-    assert surface["summary"]["active_count"] == 1
+    assert surface["summary"]["active_count"] == 2
     assert surface["summary"]["fading_count"] == 1
     assert surface["summary"]["stale_count"] == 1
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
     assert runtime_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
+    assert any(item["memory_kind"] == "remembered-fact" for item in surface["items"])

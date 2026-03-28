@@ -6,6 +6,9 @@ from uuid import uuid4
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
+from apps.api.jarvis_api.services.remembered_fact_signal_tracking import (
+    build_runtime_remembered_fact_signal_surface,
+)
 from apps.api.jarvis_api.services.witness_signal_tracking import (
     build_runtime_witness_signal_surface,
 )
@@ -150,6 +153,65 @@ def _extract_memory_md_update_proposals() -> list[dict[str, object]]:
                 "status_reason": _build_status_reason(proposal_type=proposal_type, source_status=loop_status),
                 "memory_kind": memory_kind,
                 "proposed_update": _build_proposed_update(proposal_type=proposal_type, domain_key=domain_key),
+                "proposal_reason": proposal_reason,
+                "proposal_confidence": proposal_confidence,
+                "source_anchor": source_anchor,
+            }
+        )
+
+    for item in build_runtime_remembered_fact_signal_surface(limit=12).get("items", []):
+        fact_status = str(item.get("status") or "")
+        if fact_status not in {"active", "softening"}:
+            continue
+        domain_key = _domain_from_canonical_key(str(item.get("canonical_key") or ""))
+        if not domain_key:
+            continue
+        proposal_type = "remembered-fact-update"
+        proposal_confidence = _build_proposal_confidence(
+            source_confidence=str(item.get("confidence") or "low"),
+            proposal_type=proposal_type,
+        )
+        proposal_reason = _build_proposal_reason(
+            proposal_type=proposal_type,
+            source_summary=str(item.get("fact_summary") or item.get("summary") or ""),
+            proposal_confidence=proposal_confidence,
+        )
+        source_anchor = _build_source_anchor(
+            source_type=str(item.get("signal_type") or ""),
+            domain_key=domain_key,
+            support_summary=str(item.get("support_summary") or ""),
+        )
+        proposals.append(
+            {
+                "proposal_type": proposal_type,
+                "canonical_key": f"memory-md-update-proposal:{proposal_type}:{domain_key}",
+                "dimension_key": f"{proposal_type}:{domain_key}",
+                "status": "active" if fact_status == "active" else "fading",
+                "title": f"MEMORY.md update proposal: {_title_suffix(domain_key)}",
+                "summary": proposal_reason,
+                "rationale": str(item.get("fact_summary") or item.get("summary") or "")
+                or "A bounded remembered-fact signal now points toward a small MEMORY.md remembered-fact proposal.",
+                "source_kind": "runtime-derived-support",
+                "confidence": _stronger_confidence(str(item.get("confidence") or "low"), proposal_confidence),
+                "evidence_summary": str(item.get("evidence_summary") or ""),
+                "support_summary": _merge_fragments(
+                    str(item.get("support_summary") or ""),
+                    source_anchor,
+                    _build_proposed_update(
+                        proposal_type=proposal_type,
+                        domain_key=domain_key,
+                        item=item,
+                    ),
+                ),
+                "support_count": int(item.get("support_count") or 1),
+                "session_count": int(item.get("session_count") or 1),
+                "status_reason": _build_status_reason(proposal_type=proposal_type, source_status=fact_status),
+                "memory_kind": "remembered-fact",
+                "proposed_update": _build_proposed_update(
+                    proposal_type=proposal_type,
+                    domain_key=domain_key,
+                    item=item,
+                ),
                 "proposal_reason": proposal_reason,
                 "proposal_confidence": proposal_confidence,
                 "source_anchor": source_anchor,
@@ -313,12 +375,15 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     return enriched
 
 
-def _build_proposed_update(*, proposal_type: str, domain_key: str) -> str:
+def _build_proposed_update(*, proposal_type: str, domain_key: str, item: dict[str, object] | None = None) -> str:
     title_suffix = _title_suffix(domain_key)
     if proposal_type == "open-followup-update":
         return f"Carry forward the still-open follow-up thread around {title_suffix.lower()}."
     if proposal_type == "carry-forward-thread-update":
         return f"Carry forward the softening thread around {title_suffix.lower()} as still relevant context."
+    if proposal_type == "remembered-fact-update":
+        fact_summary = str((item or {}).get("fact_summary") or (item or {}).get("summary") or "").strip()
+        return fact_summary or f"Carry forward the remembered fact around {title_suffix.lower()} as workspace memory."
     return f"Carry forward the stable context around {title_suffix.lower()} as remembered workspace continuity."
 
 
@@ -327,12 +392,16 @@ def _build_proposal_reason(*, proposal_type: str, source_summary: str, proposal_
         return source_summary or "This bounded runtime truth now looks like a small open follow-up candidate for MEMORY.md, not a writeback."
     if proposal_type == "carry-forward-thread-update":
         return source_summary or "This bounded runtime truth now looks like a small carry-forward thread candidate for MEMORY.md while it remains tentative."
+    if proposal_type == "remembered-fact-update":
+        return source_summary or f"This bounded remembered fact now looks like a small factual MEMORY.md candidate while proposal confidence stays {proposal_confidence}."
     return source_summary or f"This bounded runtime truth now looks like a small stable-context candidate for MEMORY.md while proposal confidence stays {proposal_confidence}."
 
 
 def _build_proposal_confidence(*, source_confidence: str, proposal_type: str) -> str:
     if proposal_type in {"open-followup-update", "stable-context-update"} and source_confidence in {"high", "medium"}:
         return "medium" if source_confidence == "medium" else "high"
+    if proposal_type == "remembered-fact-update" and source_confidence in {"high", "medium"}:
+        return source_confidence
     if source_confidence in {"high", "medium"}:
         return "medium"
     return "low"
@@ -348,6 +417,10 @@ def _build_status_reason(*, proposal_type: str, source_status: str) -> str:
         return "A bounded open-loop signal now warrants a visible MEMORY.md follow-up proposal without any writeback."
     if proposal_type == "carry-forward-thread-update":
         return "A bounded open-loop signal is softening, but still warrants a visible MEMORY.md carry-forward proposal."
+    if proposal_type == "remembered-fact-update":
+        if source_status == "active":
+            return "A bounded remembered-fact signal now warrants a visible MEMORY.md factual proposal without any writeback."
+        return "A bounded remembered-fact signal is softening, but still warrants a visible MEMORY.md factual proposal."
     if source_status == "fresh":
         return "A bounded witness signal now warrants a visible MEMORY.md stable-context proposal without any writeback."
     return "A bounded witness signal remains carried strongly enough to keep a visible MEMORY.md stable-context proposal active."
@@ -369,6 +442,7 @@ def _memory_kind_from_canonical_key(canonical_key: str) -> str:
         "open-followup-update": "open-followup",
         "carry-forward-thread-update": "carry-forward-thread",
         "stable-context-update": "stable-context",
+        "remembered-fact-update": "remembered-fact",
     }
     return mapping.get(proposal_type, "")
 

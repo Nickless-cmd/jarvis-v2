@@ -113,3 +113,28 @@ def test_memory_md_candidate_drafting_is_visible_in_existing_contract_surface(is
     assert "open-followup" in workflow["proposal_types"]
     assert "carry-forward-thread" in workflow["proposal_types"]
     assert all(str(item["target_file"]) == "MEMORY.md" for item in items)
+
+
+def test_memory_md_remembered_fact_proposal_can_draft_governed_candidate(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.candidate_tracking
+
+    _insert_memory_md_update_proposal(
+        db,
+        status="active",
+        proposal_type="remembered-fact-update",
+        canonical_key="memory-md-update-proposal:remembered-fact-update:user-name",
+    )
+
+    result = tracking.track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    candidates = db.list_runtime_contract_candidates(target_file="MEMORY.md", limit=8)
+
+    assert result["created"] == 1
+    assert result["memory_promotions"] == 1
+    assert candidates[0]["candidate_type"] == "memory_promotion"
+    assert candidates[0]["target_file"] == "MEMORY.md"
+    assert candidates[0]["canonical_key"] == "workspace-memory:remembered-fact:user-name"
+    assert candidates[0]["status"] == "proposed"

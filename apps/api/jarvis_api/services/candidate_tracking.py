@@ -549,6 +549,11 @@ def _candidate_from_memory_md_update_proposal(proposal: dict[str, object]) -> di
             "summary": "A bounded stable context may be worth carrying into MEMORY.md.",
             "write_section": "## Curated Memory",
         },
+        "remembered-fact-update": {
+            "canonical_key": f"workspace-memory:remembered-fact:{domain or 'remembered-fact'}",
+            "summary": "A bounded remembered fact may be worth carrying into MEMORY.md.",
+            "write_section": "## Curated Memory",
+        },
     }
     candidate_map = mapping.get(proposal_type)
     if candidate_map is None:

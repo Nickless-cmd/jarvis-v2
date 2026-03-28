@@ -1490,6 +1490,10 @@ export const backend = {
           source: development.development_state?.current?.source || '/mc/runtime.private_development_state',
           summary: development.development_state?.current?.preferred_direction || 'No preferred direction',
         }),
+        privateInnerNoteSupport: normalizeJarvisItem((development.private_inner_note_signals?.items || [])[0] || {}, {
+          source: ((development.private_inner_note_signals?.items || [])[0] || {}).source || '/mc/runtime.private_inner_note_signal',
+          summary: ((development.private_inner_note_signals?.items || [])[0] || {}).note_summary || 'No bounded inner-note support',
+        }),
         growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
           source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
           summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
@@ -1514,6 +1518,16 @@ export const backend = {
           active: Boolean(development.development_focuses?.active),
           summary: development.development_focuses?.summary || {},
           items: (development.development_focuses?.items || []).map(normalizeDevelopmentFocus),
+        },
+        privateInnerNoteSignals: {
+          active: Boolean(development.private_inner_note_signals?.active),
+          authority: development.private_inner_note_signals?.authority || 'non-authoritative',
+          layerRole: development.private_inner_note_signals?.layer_role || 'runtime-support',
+          summary: development.private_inner_note_signals?.summary || {},
+          items: (development.private_inner_note_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.private_inner_note_signal',
+            summary: item.note_summary || item.summary || 'Inspect bounded inner-note support',
+          })),
         },
         reflectiveCritics: {
           active: Boolean(development.reflective_critics?.active),

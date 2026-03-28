@@ -39,6 +39,7 @@ ALLOWED_EVENT_FAMILIES = {
     "executive_contradiction_signal",
     "chronicle_consolidation_signal",
     "chronicle_consolidation_brief",
+    "chronicle_consolidation_proposal",
     "user_md_update_proposal",
     "memory_md_update_proposal",
     "selfhood_proposal",

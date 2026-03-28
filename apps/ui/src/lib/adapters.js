@@ -1540,6 +1540,10 @@ export const backend = {
           source: ((development.chronicle_consolidation_briefs?.items || [])[0] || {}).source || '/mc/runtime.chronicle_consolidation_brief',
           summary: ((development.chronicle_consolidation_briefs?.items || [])[0] || {}).brief_reason || 'No bounded chronicle/consolidation brief',
         }),
+        chronicleConsolidationProposal: normalizeJarvisItem((development.chronicle_consolidation_proposals?.items || [])[0] || {}, {
+          source: ((development.chronicle_consolidation_proposals?.items || [])[0] || {}).source || '/mc/runtime.chronicle_consolidation_proposal',
+          summary: ((development.chronicle_consolidation_proposals?.items || [])[0] || {}).proposal_reason || 'No bounded chronicle/consolidation proposal',
+        }),
         growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
           source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
           summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
@@ -1667,6 +1671,17 @@ export const backend = {
           items: (development.chronicle_consolidation_briefs?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.chronicle_consolidation_brief',
             summary: item.brief_reason || item.summary || 'Inspect bounded chronicle/consolidation brief',
+          })),
+        },
+        chronicleConsolidationProposals: {
+          active: Boolean(development.chronicle_consolidation_proposals?.active),
+          authority: development.chronicle_consolidation_proposals?.authority || 'non-authoritative',
+          layerRole: development.chronicle_consolidation_proposals?.layer_role || 'runtime-support',
+          writebackState: development.chronicle_consolidation_proposals?.writeback_state || 'not-writing-to-canonical-files',
+          summary: development.chronicle_consolidation_proposals?.summary || {},
+          items: (development.chronicle_consolidation_proposals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.chronicle_consolidation_proposal',
+            summary: item.proposal_reason || item.summary || 'Inspect bounded chronicle/consolidation proposal',
           })),
         },
         reflectiveCritics: {

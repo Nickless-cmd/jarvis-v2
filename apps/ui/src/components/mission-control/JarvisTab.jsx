@@ -1446,6 +1446,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
   const chronicleConsolidationSignals = data?.development?.chronicleConsolidationSignals || { items: [], summary: {} }
   const chronicleConsolidationBriefs = data?.development?.chronicleConsolidationBriefs || { items: [], summary: {} }
+  const chronicleConsolidationProposals = data?.development?.chronicleConsolidationProposals || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
@@ -2047,6 +2048,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {chronicleConsolidationBriefs?.summary?.authority || 'non-authoritative'} · {chronicleConsolidationBriefs?.summary?.writeback_state || 'not-writing-to-canonical-files'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Chronicle Proposal</span>
+              <strong>{(chronicleConsolidationProposals?.summary?.active_count || 0) + (chronicleConsolidationProposals?.summary?.softening_count || 0)}</strong>
+              <p>{chronicleConsolidationProposals?.summary?.current_proposal || 'No bounded chronicle/consolidation proposal'}</p>
+              <p>
+                type {chronicleConsolidationProposals?.summary?.current_proposal_type || 'none'} · weight {chronicleConsolidationProposals?.summary?.current_weight || 'low'}
+              </p>
+              <p>
+                {chronicleConsolidationProposals?.summary?.authority || 'non-authoritative'} · {chronicleConsolidationProposals?.summary?.writeback_state || 'not-writing-to-canonical-files'}
               </p>
             </div>
             <div className="compact-metric">

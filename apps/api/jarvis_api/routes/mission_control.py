@@ -121,6 +121,9 @@ from apps.api.jarvis_api.services.chronicle_consolidation_signal_tracking import
 from apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking import (
     build_runtime_chronicle_consolidation_brief_surface,
 )
+from apps.api.jarvis_api.services.chronicle_consolidation_proposal_tracking import (
+    build_runtime_chronicle_consolidation_proposal_surface,
+)
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
@@ -391,6 +394,7 @@ def mc_jarvis() -> dict:
     private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
     chronicle_consolidation_signals = build_runtime_chronicle_consolidation_signal_surface()
     chronicle_consolidation_briefs = build_runtime_chronicle_consolidation_brief_surface()
+    chronicle_consolidation_proposals = build_runtime_chronicle_consolidation_proposal_surface()
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
     memory_md_update_proposals = build_runtime_memory_md_update_proposal_surface()
     selfhood_proposals = build_runtime_selfhood_proposal_surface()
@@ -475,6 +479,7 @@ def mc_jarvis() -> dict:
             "private_temporal_promotion_signals": private_temporal_promotion_signals,
             "chronicle_consolidation_signals": chronicle_consolidation_signals,
             "chronicle_consolidation_briefs": chronicle_consolidation_briefs,
+            "chronicle_consolidation_proposals": chronicle_consolidation_proposals,
             "user_md_update_proposals": user_md_update_proposals,
             "memory_md_update_proposals": memory_md_update_proposals,
             "selfhood_proposals": selfhood_proposals,
@@ -621,6 +626,7 @@ def mc_runtime() -> dict:
         "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),
         "runtime_chronicle_consolidation_signals": build_runtime_chronicle_consolidation_signal_surface(),
         "runtime_chronicle_consolidation_briefs": build_runtime_chronicle_consolidation_brief_surface(),
+        "runtime_chronicle_consolidation_proposals": build_runtime_chronicle_consolidation_proposal_surface(),
         "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
         "runtime_memory_md_update_proposals": build_runtime_memory_md_update_proposal_surface(),
         "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),

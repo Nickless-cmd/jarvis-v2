@@ -11,6 +11,9 @@ from apps.api.jarvis_api.services.visible_model import (
     visible_execution_readiness,
     visible_session_continuity_summary,
 )
+from apps.api.jarvis_api.services.prompt_contract import (
+    build_runtime_relevance_decision_surface,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -257,7 +260,9 @@ def mc_runs(limit: int = 20) -> dict:
     work = _visible_work_surface()
     recent_runs = list(surface.get("persisted_recent_runs") or [])[: max(limit, 1)]
     failed_runs = [
-        item for item in recent_runs if str(item.get("status") or "") in {"failed", "cancelled"}
+        item
+        for item in recent_runs
+        if str(item.get("status") or "") in {"failed", "cancelled"}
     ]
     return {
         "active_run": surface.get("active_run"),
@@ -280,10 +285,14 @@ def mc_approvals(limit: int = 20) -> dict:
     surface = _capability_invocation_surface()
     requests = list(surface.get("recent_approval_requests") or [])[: max(limit, 1)]
     pending = [item for item in requests if str(item.get("status") or "") == "pending"]
-    approved = [item for item in requests if str(item.get("status") or "") == "approved"]
+    approved = [
+        item for item in requests if str(item.get("status") or "") == "approved"
+    ]
     return {
         "requests": requests,
-        "recent_invocations": list(surface.get("persisted_recent_invocations") or [])[: max(limit, 1)],
+        "recent_invocations": list(surface.get("persisted_recent_invocations") or [])[
+            : max(limit, 1)
+        ],
         "recent_events": list(surface.get("recent_events") or []),
         "summary": {
             "pending_count": len(pending),
@@ -333,7 +342,9 @@ def mc_jarvis() -> dict:
     dream_hypothesis_signals = build_runtime_dream_hypothesis_signal_surface()
     dream_adoption_candidates = build_runtime_dream_adoption_candidate_surface()
     dream_influence_proposals = build_runtime_dream_influence_proposal_surface()
-    self_authored_prompt_proposals = build_runtime_self_authored_prompt_proposal_surface()
+    self_authored_prompt_proposals = (
+        build_runtime_self_authored_prompt_proposal_surface()
+    )
     user_understanding_signals = build_runtime_user_understanding_signal_surface()
     remembered_fact_signals = build_runtime_remembered_fact_signal_surface()
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
@@ -346,8 +357,12 @@ def mc_jarvis() -> dict:
     return {
         "summary": {
             "visible_identity": _jarvis_identity_summary(visible_identity),
-            "state_signal": _jarvis_state_signal(protected_voice, initiative_tension, private_state),
-            "retained_memory": _jarvis_retained_summary(retained_projection, retained_record),
+            "state_signal": _jarvis_state_signal(
+                protected_voice, initiative_tension, private_state
+            ),
+            "retained_memory": _jarvis_retained_summary(
+                retained_projection, retained_record
+            ),
             "development": _jarvis_development_summary(
                 self_model,
                 development_state,
@@ -547,6 +562,7 @@ def mc_runtime() -> dict:
         "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
+        "runtime_relevance_decisions": build_runtime_relevance_decision_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),
@@ -592,7 +608,9 @@ def mc_approve_capability_request(request_id: str) -> dict:
         approved_at=datetime.now(UTC).isoformat(),
     )
     if request is None:
-        raise HTTPException(status_code=404, detail="Capability approval request not found")
+        raise HTTPException(
+            status_code=404, detail="Capability approval request not found"
+        )
     return {
         "ok": True,
         "request": request,
@@ -737,7 +755,9 @@ def mc_update_main_agent_selection(payload: dict) -> dict:
     auth_profile = payload.get("auth_profile", "")
 
     if not isinstance(provider, str) or not provider.strip():
-        raise HTTPException(status_code=400, detail="provider must be a non-empty string")
+        raise HTTPException(
+            status_code=400, detail="provider must be a non-empty string"
+        )
     if not isinstance(model, str) or not model.strip():
         raise HTTPException(status_code=400, detail="model must be a non-empty string")
     if not isinstance(auth_profile, str):
@@ -764,7 +784,9 @@ def mc_update_main_agent_selection(payload: dict) -> dict:
                     model=model.strip(),
                     auth_mode="none",
                     auth_profile="",
-                    base_url=str(local_target.get("base_url") or "http://127.0.0.1:11434"),
+                    base_url=str(
+                        local_target.get("base_url") or "http://127.0.0.1:11434"
+                    ),
                     api_key="",
                     lane="local",
                     set_visible=False,
@@ -776,7 +798,9 @@ def mc_update_main_agent_selection(payload: dict) -> dict:
                         auth_profile=auth_profile,
                     )
                 except ValueError as nested_exc:
-                    raise HTTPException(status_code=400, detail=str(nested_exc)) from nested_exc
+                    raise HTTPException(
+                        status_code=400, detail=str(nested_exc)
+                    ) from nested_exc
                 return _main_agent_selection_surface()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -861,7 +885,9 @@ def _available_openai_profiles() -> list[dict[str, str]]:
         items.append(
             {
                 "profile": name,
-                "auth_status": str(state.get("status", "missing")) if state else "missing",
+                "auth_status": str(state.get("status", "missing"))
+                if state
+                else "missing",
             }
         )
     return items
@@ -1096,7 +1122,9 @@ def _jarvis_state_signal(
             limit=96,
         ),
         "current_pull": _preview_text(
-            str(voice.get("current_pull") or tension.get("tension_target") or "unknown"),
+            str(
+                voice.get("current_pull") or tension.get("tension_target") or "unknown"
+            ),
             limit=120,
         ),
         "confidence": str(
@@ -1173,13 +1201,24 @@ def _jarvis_development_summary(
             or "unknown"
         ),
         "focus_count": str(focus_summary.get("active_count") or 0),
-        "current_focus": str(focus_summary.get("current_focus") or "No active development focus"),
+        "current_focus": str(
+            focus_summary.get("current_focus") or "No active development focus"
+        ),
         "critic_count": str(critic_summary.get("active_count") or 0),
-        "current_critic": str(critic_summary.get("current_critic") or "No active critic signal"),
+        "current_critic": str(
+            critic_summary.get("current_critic") or "No active critic signal"
+        ),
         "self_model_signal_count": str(self_signal_summary.get("active_count") or 0),
-        "current_self_model_signal": str(self_signal_summary.get("current_signal") or "No active self-model signal"),
-        "goal_count": str((goal_summary.get("active_count") or 0) + (goal_summary.get("blocked_count") or 0)),
-        "current_goal": str(goal_summary.get("current_goal") or "No active goal signal"),
+        "current_self_model_signal": str(
+            self_signal_summary.get("current_signal") or "No active self-model signal"
+        ),
+        "goal_count": str(
+            (goal_summary.get("active_count") or 0)
+            + (goal_summary.get("blocked_count") or 0)
+        ),
+        "current_goal": str(
+            goal_summary.get("current_goal") or "No active goal signal"
+        ),
         "reflection_signal_count": str(
             (reflection_summary.get("active_count") or 0)
             + (reflection_summary.get("integrating_count") or 0)
@@ -1219,14 +1258,17 @@ def _jarvis_continuity_summary(
         ),
         "session_status": str(visible_session.get("latest_status") or "unknown"),
         "world_model_count": str(world_summary.get("active_count") or 0),
-        "current_world_model": str(world_summary.get("current_signal") or "No active world-model signal"),
+        "current_world_model": str(
+            world_summary.get("current_signal") or "No active world-model signal"
+        ),
         "runtime_awareness_count": str(
             (runtime_awareness_summary.get("active_count") or 0)
             + (runtime_awareness_summary.get("constrained_count") or 0)
             + (runtime_awareness_summary.get("recovered_count") or 0)
         ),
         "current_runtime_awareness": str(
-            runtime_awareness_summary.get("current_signal") or "No active runtime-awareness signal"
+            runtime_awareness_summary.get("current_signal")
+            or "No active runtime-awareness signal"
         ),
     }
 
@@ -1235,9 +1277,18 @@ def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
     state = heartbeat.get("state") or {}
     return {
         "enabled": "enabled" if state.get("enabled") else "disabled",
-        "status": str(state.get("schedule_state") or state.get("schedule_status") or "unknown"),
+        "status": str(
+            state.get("schedule_state") or state.get("schedule_status") or "unknown"
+        ),
         "decision": str(state.get("last_decision_type") or "none"),
-        "result": _preview_text(str(state.get("last_result") or state.get("summary") or "No heartbeat result yet."), limit=120),
+        "result": _preview_text(
+            str(
+                state.get("last_result")
+                or state.get("summary")
+                or "No heartbeat result yet."
+            ),
+            limit=120,
+        ),
         "next_tick_at": str(state.get("next_tick_at") or ""),
         "trigger": str(state.get("last_trigger_source") or "none"),
     }

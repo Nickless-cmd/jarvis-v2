@@ -9,6 +9,62 @@ from apps.api.jarvis_api.services.prompt_relevance_backend import (
     BoundedPromptRelevanceResult,
     run_bounded_nl_prompt_relevance,
 )
+
+_RELEVANCE_DECISION_HISTORY: list[dict[str, object]] = []
+_RELEVANCE_DECISION_HISTORY_LIMIT = 8
+
+
+def _track_relevance_decision(decision: PromptRelevanceDecision) -> None:
+    global _RELEVANCE_DECISION_HISTORY
+    entry = {
+        "mode": decision.mode,
+        "memory_relevant": decision.memory_relevant,
+        "guidance_relevant": decision.guidance_relevant,
+        "transcript_relevant": decision.transcript_relevant,
+        "continuity_relevant": decision.continuity_relevant,
+        "include_memory": decision.include_memory,
+        "include_guidance": decision.include_guidance,
+        "include_transcript": decision.include_transcript,
+        "include_continuity": decision.include_continuity,
+        "include_support_signals": decision.include_support_signals,
+        "backend_attempted": decision.backend_attempted,
+        "backend_success": decision.backend_success,
+        "fallback_used": decision.fallback_used,
+        "backend_name": decision.backend_name,
+        "backend_provider": decision.backend_provider,
+        "backend_model": decision.backend_model,
+        "backend_status": decision.backend_status,
+    }
+    _RELEVANCE_DECISION_HISTORY.insert(0, entry)
+    if len(_RELEVANCE_DECISION_HISTORY) > _RELEVANCE_DECISION_HISTORY_LIMIT:
+        _RELEVANCE_DECISION_HISTORY.pop()
+
+
+def build_runtime_relevance_decision_surface(*, limit: int = 8) -> dict[str, object]:
+    if not _RELEVANCE_DECISION_HISTORY:
+        return {
+            "active": False,
+            "items": [],
+            "summary": "No relevance decisions tracked yet.",
+        }
+    recent = _RELEVANCE_DECISION_HISTORY[:limit]
+    backend_attempted_count = sum(1 for item in recent if item.get("backend_attempted"))
+    backend_success_count = sum(1 for item in recent if item.get("backend_success"))
+    fallback_count = sum(1 for item in recent if item.get("fallback_used"))
+    modes = list({item.get("mode") for item in recent if item.get("mode")})
+    return {
+        "active": True,
+        "items": recent,
+        "summary": {
+            "total_decisions": len(recent),
+            "backend_attempted": backend_attempted_count,
+            "backend_success": backend_success_count,
+            "fallback_used": fallback_count,
+            "modes": modes,
+        },
+    }
+
+
 from core.identity.runtime_contract import build_runtime_contract_state
 from core.identity.workspace_bootstrap import TEMPLATE_DIR, ensure_default_workspace
 from core.memory.private_retained_memory_projection import (
@@ -411,7 +467,7 @@ def build_prompt_relevance_decision(
         include_continuity = False
         include_support_signals = False
 
-    return PromptRelevanceDecision(
+    decision = PromptRelevanceDecision(
         mode=mode,
         memory_relevant=memory_relevant,
         guidance_relevant=guidance_relevant,
@@ -430,6 +486,8 @@ def build_prompt_relevance_decision(
         backend_model=backend_attempt.model,
         backend_status=backend_attempt.status,
     )
+    _track_relevance_decision(decision)
+    return decision
 
 
 def _bounded_nl_relevance_backend(

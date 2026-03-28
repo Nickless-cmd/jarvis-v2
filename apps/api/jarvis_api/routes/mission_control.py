@@ -102,6 +102,9 @@ from apps.api.jarvis_api.services.private_inner_interplay_signal_tracking import
 from apps.api.jarvis_api.services.private_state_snapshot_tracking import (
     build_runtime_private_state_snapshot_surface,
 )
+from apps.api.jarvis_api.services.private_temporal_curiosity_state_tracking import (
+    build_runtime_private_temporal_curiosity_state_surface,
+)
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
@@ -366,6 +369,7 @@ def mc_jarvis() -> dict:
     )
     private_inner_interplay_signals = build_runtime_private_inner_interplay_signal_surface()
     private_state_snapshots = build_runtime_private_state_snapshot_surface()
+    private_temporal_curiosity_states = build_runtime_private_temporal_curiosity_state_surface()
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
     memory_md_update_proposals = build_runtime_memory_md_update_proposal_surface()
     selfhood_proposals = build_runtime_selfhood_proposal_surface()
@@ -444,6 +448,7 @@ def mc_jarvis() -> dict:
             "private_initiative_tension_signals": private_initiative_tension_signals,
             "private_inner_interplay_signals": private_inner_interplay_signals,
             "private_state_snapshots": private_state_snapshots,
+            "private_temporal_curiosity_states": private_temporal_curiosity_states,
             "user_md_update_proposals": user_md_update_proposals,
             "memory_md_update_proposals": memory_md_update_proposals,
             "selfhood_proposals": selfhood_proposals,
@@ -584,6 +589,7 @@ def mc_runtime() -> dict:
         "runtime_private_initiative_tension_signals": build_runtime_private_initiative_tension_signal_surface(),
         "runtime_private_inner_interplay_signals": build_runtime_private_inner_interplay_signal_surface(),
         "runtime_private_state_snapshots": build_runtime_private_state_snapshot_surface(),
+        "runtime_private_temporal_curiosity_states": build_runtime_private_temporal_curiosity_state_surface(),
         "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
         "runtime_memory_md_update_proposals": build_runtime_memory_md_update_proposal_surface(),
         "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),

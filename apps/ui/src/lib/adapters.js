@@ -1516,6 +1516,10 @@ export const backend = {
           source: ((development.private_state_snapshots?.items || [])[0] || {}).source || '/mc/runtime.private_state_snapshot',
           summary: ((development.private_state_snapshots?.items || [])[0] || {}).state_summary || 'No bounded private-state snapshot',
         }),
+        privateTemporalCuriosityState: normalizeJarvisItem((development.private_temporal_curiosity_states?.items || [])[0] || {}, {
+          source: ((development.private_temporal_curiosity_states?.items || [])[0] || {}).source || '/mc/runtime.private_temporal_curiosity_state',
+          summary: ((development.private_temporal_curiosity_states?.items || [])[0] || {}).curiosity_summary || 'No bounded temporal curiosity support',
+        }),
         growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
           source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
           summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
@@ -1579,6 +1583,16 @@ export const backend = {
           items: (development.private_state_snapshots?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.private_state_snapshot',
             summary: item.state_summary || item.summary || 'Inspect bounded private-state snapshot',
+          })),
+        },
+        privateTemporalCuriosityStates: {
+          active: Boolean(development.private_temporal_curiosity_states?.active),
+          authority: development.private_temporal_curiosity_states?.authority || 'non-authoritative',
+          layerRole: development.private_temporal_curiosity_states?.layer_role || 'runtime-support',
+          summary: development.private_temporal_curiosity_states?.summary || {},
+          items: (development.private_temporal_curiosity_states?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.private_temporal_curiosity_state',
+            summary: item.curiosity_summary || item.summary || 'Inspect bounded temporal curiosity support',
           })),
         },
         reflectiveCritics: {

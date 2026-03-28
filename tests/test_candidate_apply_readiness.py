@@ -116,3 +116,54 @@ def test_approved_user_md_candidate_surfaces_high_apply_readiness(isolated_runti
     assert candidate["apply_reason"] == "bounded-safe"
     assert workflow["current_apply_readiness"] == "high"
     assert workflow["apply_readiness_high_count"] >= 1
+
+
+def test_memory_md_stable_context_candidate_gets_medium_apply_readiness(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+
+    _insert_candidate(
+        db,
+        candidate_type="memory_promotion",
+        target_file="MEMORY.md",
+        status="proposed",
+        canonical_key="workspace-memory:stable-context:review-style",
+        confidence="medium",
+        evidence_class="runtime_support_only",
+    )
+
+    contract = mission_control.mc_runtime_contract()
+    workflow = contract["pending_writes"]["memory_promotions"]
+    candidate = workflow["items"][0]
+
+    assert candidate["status"] == "proposed"
+    assert candidate["apply_readiness"] == "medium"
+    assert candidate["apply_reason"] == "needs-review"
+    assert workflow["current_apply_readiness"] == "medium"
+    assert workflow["apply_readiness_medium_count"] >= 1
+
+
+def test_memory_md_open_followup_candidate_stays_low_readiness_and_never_auto_applies(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+
+    _insert_candidate(
+        db,
+        candidate_type="memory_promotion",
+        target_file="MEMORY.md",
+        status="proposed",
+        canonical_key="workspace-memory:open-followup:danish-concise-calibration",
+        confidence="medium",
+        evidence_class="runtime_support_only",
+    )
+
+    contract = mission_control.mc_runtime_contract()
+    workflow = contract["pending_writes"]["memory_promotions"]
+    candidate = workflow["items"][0]
+
+    assert candidate["status"] == "proposed"
+    assert candidate["apply_readiness"] == "low"
+    assert candidate["apply_reason"] == "still-tentative"
+    assert workflow["current_apply_readiness"] == "low"
+    assert db.recent_runtime_contract_file_writes(limit=8) == []
+    assert contract["write_history"]["total"] == 0

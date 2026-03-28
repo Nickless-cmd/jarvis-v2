@@ -95,6 +95,33 @@ def test_prompt_candidate_stays_low_readiness_and_never_auto_applies(
     assert contract["write_history"]["total"] == 0
 
 
+def test_approved_chronicle_candidate_gets_medium_readiness_through_specific_gate(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+
+    _insert_candidate(
+        db,
+        candidate_type="chronicle_draft",
+        target_file="runtime/CHRONICLE.md",
+        status="approved",
+        canonical_key="chronicle-draft:consolidation-proposal:workspace-search",
+        confidence="high",
+        evidence_class="runtime_support_only",
+    )
+
+    contract = mission_control.mc_runtime_contract()
+    workflow = contract["pending_writes"]["chronicle_drafts"]
+    candidate = workflow["items"][0]
+
+    assert candidate["status"] == "approved"
+    assert candidate["apply_readiness"] == "medium"
+    assert candidate["apply_reason"] == "chronicle-approved-gate"
+    assert workflow["current_apply_readiness"] == "medium"
+    assert workflow["apply_readiness_medium_count"] >= 1
+
+
 def test_approved_user_md_candidate_surfaces_high_apply_readiness(
     isolated_runtime,
 ) -> None:

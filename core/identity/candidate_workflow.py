@@ -103,8 +103,9 @@ def apply_runtime_contract_candidate(
     candidate = _require_candidate(candidate_id)
     _require_status(candidate, allowed={"approved"})
     if str(candidate.get("target_file") or "") == "runtime/CHRONICLE.md":
-        raise ValueError(
-            "Chronicle drafts remain draft-only in this phase and cannot be applied."
+        return _apply_chronicle_runtime_contract_candidate(
+            candidate,
+            status_reason_override=status_reason_override,
         )
 
     equivalent_applied = _latest_equivalent_applied_candidate(candidate)
@@ -405,6 +406,8 @@ def _candidate_write_material(candidate: dict[str, object]) -> dict[str, str]:
             "section_heading": str(candidate.get("write_section") or "## Proposed Canonical Self Shifts"),
             "content_line": proposed_value or _canonical_self_line_from_key(candidate),
         }
+    if target_file == "runtime/CHRONICLE.md":
+        return _chronicle_write_material(candidate)
     raise ValueError("Unsupported target file")
 
 
@@ -431,12 +434,28 @@ def _canonical_self_line_from_key(candidate: dict[str, object]) -> str:
     return f"- {str(candidate.get('summary') or '').strip()}"
 
 
+def _chronicle_write_material(candidate: dict[str, object]) -> dict[str, str]:
+    proposed_value = str(candidate.get("proposed_value") or "").strip()
+    content_line = proposed_value or f"- {str(candidate.get('summary') or '').strip()}"
+    return {
+        "section_heading": "## Chronicle Entries",
+        "content_line": content_line,
+    }
+
+
 def _default_approval_status_reason(
     candidate: dict[str, object],
     *,
     superseded: int,
 ) -> str:
     target_file = str(candidate.get("target_file") or "")
+    if target_file == "runtime/CHRONICLE.md":
+        if superseded:
+            return (
+                "Approved for chronicle apply through the chronicle-specific gate. "
+                f"Superseded {superseded} older candidates."
+            )
+        return "Approved for chronicle apply through the chronicle-specific gate."
     if target_file in {"SOUL.md", "IDENTITY.md"}:
         if superseded:
             return (
@@ -455,6 +474,10 @@ def _default_apply_status_reason(
     write_status: str,
 ) -> str:
     target_file = str(candidate.get("target_file") or "")
+    if target_file == "runtime/CHRONICLE.md":
+        if write_status == "written":
+            return "Applied to runtime chronicle file through chronicle-specific approved gate."
+        return "Equivalent chronicle content already present in runtime chronicle file."
     if target_file in {"SOUL.md", "IDENTITY.md"}:
         if write_status == "written":
             return "Applied to canonical self file after explicit user approval."
@@ -472,6 +495,7 @@ def _append_workspace_contract_line(
 ) -> dict[str, str]:
     workspace_dir = ensure_default_workspace()
     path = Path(workspace_dir) / target_file
+    path.parent.mkdir(parents=True, exist_ok=True)
     existing = path.read_text(encoding="utf-8") if path.exists() else ""
     normalized_line = " ".join(str(content_line or "").split()).strip()
     if not normalized_line:
@@ -523,6 +547,101 @@ def _insert_under_heading(text: str, heading: str, content_line: str) -> str:
         body = text.rstrip()
         return f"{body}\n\n{heading}\n\n{content_line}\n"
     return "\n".join(out).rstrip() + "\n"
+
+
+def _apply_chronicle_runtime_contract_candidate(
+    candidate: dict[str, object],
+    *,
+    status_reason_override: str | None = None,
+) -> dict[str, object]:
+    if str(candidate.get("candidate_type") or "") != "chronicle_draft":
+        raise ValueError("Unsupported chronicle candidate type")
+
+    equivalent_applied = _latest_equivalent_applied_candidate(candidate)
+    if equivalent_applied is not None:
+        updated = update_runtime_contract_candidate_status(
+            str(candidate["candidate_id"]),
+            status="superseded",
+            updated_at=_now_iso(),
+            status_reason=(
+                f"Equivalent canonical key already applied by {equivalent_applied['candidate_id']}."
+            ),
+        )
+        if updated is None:
+            raise RuntimeError("failed to supersede duplicate chronicle candidate")
+        event_bus.publish(
+            "runtime.contract_candidate_superseded",
+            {
+                "candidate_id": updated["candidate_id"],
+                "candidate_type": updated["candidate_type"],
+                "target_file": updated["target_file"],
+                "status": updated["status"],
+                "summary": updated["summary"],
+            },
+        )
+        return {
+            "candidate": updated,
+            "write": None,
+        }
+
+    material = _chronicle_write_material(candidate)
+    write_result = _append_workspace_contract_line(
+        target_file="runtime/CHRONICLE.md",
+        section_heading=material["section_heading"],
+        content_line=material["content_line"],
+    )
+    now = _now_iso()
+    write = record_runtime_contract_file_write(
+        write_id=f"write-{uuid4().hex}",
+        candidate_id=str(candidate["candidate_id"]),
+        target_file="runtime/CHRONICLE.md",
+        canonical_key=str(candidate["canonical_key"]),
+        write_status=write_result["write_status"],
+        actor="runtime:chronicle-apply-gate",
+        summary=str(candidate["summary"]),
+        content_line=material["content_line"],
+        created_at=now,
+    )
+    updated = update_runtime_contract_candidate_status(
+        str(candidate["candidate_id"]),
+        status="applied",
+        updated_at=now,
+        status_reason=(
+            status_reason_override
+            if status_reason_override is not None
+            else _default_apply_status_reason(
+                candidate,
+                write_status=str(write_result["write_status"] or ""),
+            )
+        ),
+    )
+    if updated is None:
+        raise RuntimeError("failed to mark chronicle candidate applied")
+    event_bus.publish(
+        "runtime.contract_candidate_applied",
+        {
+            "candidate_id": updated["candidate_id"],
+            "candidate_type": updated["candidate_type"],
+            "target_file": updated["target_file"],
+            "status": updated["status"],
+            "summary": updated["summary"],
+            "write_status": write["write_status"],
+        },
+    )
+    event_bus.publish(
+        "runtime.contract_file_updated",
+        {
+            "write_id": write["write_id"],
+            "candidate_id": write["candidate_id"],
+            "target_file": write["target_file"],
+            "write_status": write["write_status"],
+            "summary": write["summary"],
+        },
+    )
+    return {
+        "candidate": updated,
+        "write": write,
+    }
 
 
 def _now_iso() -> str:

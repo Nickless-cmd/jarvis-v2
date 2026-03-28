@@ -323,6 +323,8 @@ def candidate_apply_readiness(item: dict[str, object]) -> dict[str, str]:
     canonical_key = str(item.get("canonical_key") or "")
 
     if status == "approved":
+        if candidate_type == "chronicle_draft" and target_file == "runtime/CHRONICLE.md":
+            return {"apply_readiness": "medium", "apply_reason": "chronicle-approved-gate"}
         if candidate_type == "preference_update" and target_file == "USER.md":
             return {"apply_readiness": "high", "apply_reason": "bounded-safe"}
         if candidate_type in {"soul_update", "identity_update"} and target_file in {

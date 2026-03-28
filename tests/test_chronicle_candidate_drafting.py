@@ -132,9 +132,47 @@ def test_chronicle_candidate_is_visible_in_runtime_contract_pending_writes(
     assert contract["write_history"]["total"] == 0
 
 
-def test_chronicle_candidate_cannot_apply_in_this_phase(isolated_runtime) -> None:
+def test_chronicle_candidate_cannot_apply_without_approval(isolated_runtime) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.candidate_tracking
+    candidate_workflow = __import__(
+        "core.identity.candidate_workflow",
+        fromlist=["apply_runtime_contract_candidate"],
+    )
+
+    _insert_chronicle_consolidation_proposal(
+        db,
+        status="active",
+        proposal_type="consolidation-proposal",
+        canonical_key="chronicle-consolidation-proposal:consolidation-proposal:workspace-search",
+        confidence="high",
+    )
+
+    tracking.track_runtime_contract_candidates_from_chronicle_consolidation_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    candidate = db.list_runtime_contract_candidates(
+        candidate_type="chronicle_draft",
+        target_file="runtime/CHRONICLE.md",
+        limit=8,
+    )[0]
+
+    with pytest.raises(ValueError, match="Candidate must be in one of: approved"):
+        candidate_workflow.apply_runtime_contract_candidate(str(candidate["candidate_id"]))
+
+    refreshed = db.get_runtime_contract_candidate(str(candidate["candidate_id"]))
+    assert refreshed["status"] == "proposed"
+    assert db.recent_runtime_contract_file_writes(limit=8) == []
+
+
+def test_approved_chronicle_candidate_can_apply_via_chronicle_specific_gate(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.candidate_tracking
+    mission_control = isolated_runtime.mission_control
+    workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
     candidate_workflow = __import__(
         "core.identity.candidate_workflow",
         fromlist=["approve_runtime_contract_candidate", "apply_runtime_contract_candidate"],
@@ -157,11 +195,23 @@ def test_chronicle_candidate_cannot_apply_in_this_phase(isolated_runtime) -> Non
         target_file="runtime/CHRONICLE.md",
         limit=8,
     )[0]
+
     approved = candidate_workflow.approve_runtime_contract_candidate(str(candidate["candidate_id"]))
+    applied = candidate_workflow.apply_runtime_contract_candidate(str(candidate["candidate_id"]))
+    chronicle_text = (workspace_dir / "runtime" / "CHRONICLE.md").read_text(encoding="utf-8")
+    contract = mission_control.mc_runtime_contract()
+    workflow = contract["pending_writes"]["chronicle_drafts"]
 
-    with pytest.raises(ValueError, match="draft-only"):
-        candidate_workflow.apply_runtime_contract_candidate(str(approved["candidate_id"]))
-
-    refreshed = db.get_runtime_contract_candidate(str(candidate["candidate_id"]))
-    assert refreshed["status"] == "approved"
-    assert db.recent_runtime_contract_file_writes(limit=8) == []
+    assert approved["status"] == "approved"
+    assert "chronicle-specific gate" in str(approved["status_reason"]).lower()
+    assert applied["candidate"]["status"] == "applied"
+    assert "runtime chronicle file" in str(applied["candidate"]["status_reason"]).lower()
+    assert applied["write"]["target_file"] == "runtime/CHRONICLE.md"
+    assert applied["write"]["actor"] == "runtime:chronicle-apply-gate"
+    assert str(candidate["proposed_value"]) in chronicle_text
+    assert workflow["applied_count"] >= 1
+    assert workflow["target_file"] == "runtime/CHRONICLE.md"
+    assert any(
+        str(item.get("target_file") or "") == "runtime/CHRONICLE.md"
+        for item in contract["write_history"]["items"]
+    )

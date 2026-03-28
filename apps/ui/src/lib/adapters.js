@@ -1544,6 +1544,10 @@ export const backend = {
           source: ((development.temperament_tendency_signals?.items || [])[0] || {}).source || '/mc/runtime.temperament_tendency_signal',
           summary: ((development.temperament_tendency_signals?.items || [])[0] || {}).temperament_summary || 'No bounded temperament support',
         }),
+        selfNarrativeContinuitySupport: normalizeJarvisItem((development.self_narrative_continuity_signals?.items || [])[0] || {}, {
+          source: ((development.self_narrative_continuity_signals?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_continuity_signal',
+          summary: ((development.self_narrative_continuity_signals?.items || [])[0] || {}).narrative_summary || 'No bounded self-narrative continuity support',
+        }),
         executiveContradictionSupport: normalizeJarvisItem((development.executive_contradiction_signals?.items || [])[0] || {}, {
           source: ((development.executive_contradiction_signals?.items || [])[0] || {}).source || '/mc/runtime.executive_contradiction_signal',
           summary: ((development.executive_contradiction_signals?.items || [])[0] || {}).control_summary || 'No bounded executive contradiction support',
@@ -1703,6 +1707,17 @@ export const backend = {
           items: (development.temperament_tendency_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.temperament_tendency_signal',
             summary: item.temperament_summary || item.summary || 'Inspect bounded temperament support',
+          })),
+        },
+        selfNarrativeContinuitySignals: {
+          active: Boolean(development.self_narrative_continuity_signals?.active),
+          authority: development.self_narrative_continuity_signals?.authority || 'non-authoritative',
+          layerRole: development.self_narrative_continuity_signals?.layer_role || 'runtime-support',
+          canonicalIdentityState: development.self_narrative_continuity_signals?.canonical_identity_state || 'not-canonical-identity-truth',
+          summary: development.self_narrative_continuity_signals?.summary || {},
+          items: (development.self_narrative_continuity_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.self_narrative_continuity_signal',
+            summary: item.narrative_summary || item.summary || 'Inspect bounded self-narrative continuity support',
           })),
         },
         executiveContradictionSignals: {

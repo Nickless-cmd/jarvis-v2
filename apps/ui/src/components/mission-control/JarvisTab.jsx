@@ -1447,6 +1447,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const relationContinuitySignals = data?.development?.relationContinuitySignals || { items: [], summary: {} }
   const meaningSignificanceSignals = data?.development?.meaningSignificanceSignals || { items: [], summary: {} }
   const temperamentTendencySignals = data?.development?.temperamentTendencySignals || { items: [], summary: {} }
+  const selfNarrativeContinuitySignals = data?.development?.selfNarrativeContinuitySignals || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
   const chronicleConsolidationSignals = data?.development?.chronicleConsolidationSignals || { items: [], summary: {} }
@@ -2122,6 +2123,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Self-Narrative Support</span>
+              <strong>{(selfNarrativeContinuitySignals?.summary?.active_count || 0) + (selfNarrativeContinuitySignals?.summary?.softening_count || 0)}</strong>
+              <p>{selfNarrativeContinuitySignals?.summary?.current_signal || 'No bounded self-narrative continuity support'}</p>
+              <p>
+                state {selfNarrativeContinuitySignals?.summary?.current_state || 'none'} · direction {selfNarrativeContinuitySignals?.summary?.current_direction || 'steadying'}
+              </p>
+              <p>
+                {selfNarrativeContinuitySignals?.summary?.authority || 'non-authoritative'} · {selfNarrativeContinuitySignals?.summary?.canonical_identity_state || 'not-canonical-identity-truth'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Goal Signals</span>
               <strong>{(goalSignals?.summary?.active_count || 0) + (goalSignals?.summary?.blocked_count || 0) || summary?.development?.goal_count || 0}</strong>
               <p>{goalSignals?.summary?.current_goal || summary?.development?.current_goal || 'No active goal signal'}</p>
@@ -2351,6 +2363,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.relationContinuitySupport, 'Relation Continuity Support', onOpenItem)}
               {detailRow(data?.development?.meaningSignificanceSupport, 'Meaning/Significance Support', onOpenItem)}
               {detailRow(data?.development?.temperamentTendencySupport, 'Temperament Support', onOpenItem)}
+              {detailRow(data?.development?.selfNarrativeContinuitySupport, 'Self-Narrative Continuity Support', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}

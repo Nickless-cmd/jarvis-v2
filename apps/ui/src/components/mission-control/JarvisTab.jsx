@@ -1448,6 +1448,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const meaningSignificanceSignals = data?.development?.meaningSignificanceSignals || { items: [], summary: {} }
   const temperamentTendencySignals = data?.development?.temperamentTendencySignals || { items: [], summary: {} }
   const selfNarrativeContinuitySignals = data?.development?.selfNarrativeContinuitySignals || { items: [], summary: {} }
+  const metabolismStateSignals = data?.development?.metabolismStateSignals || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -2376,6 +2377,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.meaningSignificanceSupport, 'Meaning/Significance Support', onOpenItem)}
               {detailRow(data?.development?.temperamentTendencySupport, 'Temperament Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeContinuitySupport, 'Self-Narrative Continuity Support', onOpenItem)}
+              {detailRow(data?.development?.metabolismStateSupport, 'Metabolism Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
@@ -2550,6 +2552,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {witnessSignals?.summary?.fresh_count || 0} fresh · {witnessSignals?.summary?.carried_count || 0} carried · {witnessSignals?.summary?.fading_count || 0} fading
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Metabolism</span>
+              <strong>{(metabolismStateSignals?.summary?.active_count || 0) + (metabolismStateSignals?.summary?.softening_count || 0)}</strong>
+              <p>{metabolismStateSignals?.summary?.current_signal || 'No bounded metabolism support'}</p>
+              <p>
+                state {metabolismStateSignals?.summary?.current_state || 'none'} · direction {metabolismStateSignals?.summary?.current_direction || 'none'}
+              </p>
+              <p>
+                {metabolismStateSignals?.summary?.authority || 'non-authoritative'} · {metabolismStateSignals?.summary?.canonical_delete_state || 'not-canonical-deletion'}
               </p>
             </div>
           </div>

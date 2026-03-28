@@ -42,6 +42,7 @@ ALLOWED_EVENT_FAMILIES = {
     "meaning_significance_signal",
     "temperament_tendency_signal",
     "self_narrative_continuity_signal",
+    "metabolism_state_signal",
     "executive_contradiction_signal",
     "chronicle_consolidation_signal",
     "chronicle_consolidation_brief",

@@ -560,6 +560,41 @@ function normalizeWitnessSignal(item = {}) {
   }
 }
 
+function normalizeMetabolismStateSignal(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || 'Metabolism Signal',
+    summary: item.metabolism_summary || item.summary || '',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    metabolismState: item.metabolism_state || 'none',
+    metabolismDirection: item.metabolism_direction || 'none',
+    metabolismWeight: item.metabolism_weight || 'low',
+    metabolismSummary: item.metabolism_summary || '',
+    metabolismConfidence: item.metabolism_confidence || item.confidence || 'low',
+    sourceAnchor: item.source_anchor || '',
+    authority: item.authority || 'non-authoritative',
+    layerRole: item.layer_role || 'runtime-support',
+    canonicalDeleteState: item.canonical_delete_state || 'not-canonical-deletion',
+    selfErasureState: item.self_erasure_state || 'not-self-erasure',
+    source: item.source || '/mc/jarvis.development.metabolism_state_signals',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeOpenLoopSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1567,6 +1602,10 @@ export const backend = {
           source: ((development.self_narrative_continuity_signals?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_continuity_signal',
           summary: ((development.self_narrative_continuity_signals?.items || [])[0] || {}).narrative_summary || 'No bounded self-narrative continuity support',
         }),
+        metabolismStateSupport: normalizeJarvisItem((development.metabolism_state_signals?.items || [])[0] || {}, {
+          source: ((development.metabolism_state_signals?.items || [])[0] || {}).source || '/mc/runtime.metabolism_state_signal',
+          summary: ((development.metabolism_state_signals?.items || [])[0] || {}).metabolism_summary || 'No bounded metabolism support',
+        }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
           summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).proposal_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).sharpening_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
@@ -1742,6 +1781,15 @@ export const backend = {
             source: item.source || '/mc/runtime.self_narrative_continuity_signal',
             summary: item.narrative_summary || item.summary || 'Inspect bounded self-narrative continuity support',
           })),
+        },
+        metabolismStateSignals: {
+          active: Boolean(development.metabolism_state_signals?.active),
+          authority: development.metabolism_state_signals?.authority || 'non-authoritative',
+          layerRole: development.metabolism_state_signals?.layer_role || 'runtime-support',
+          canonicalDeleteState: development.metabolism_state_signals?.canonical_delete_state || 'not-canonical-deletion',
+          selfErasureState: development.metabolism_state_signals?.self_erasure_state || 'not-self-erasure',
+          summary: development.metabolism_state_signals?.summary || {},
+          items: (development.metabolism_state_signals?.items || []).map((item) => normalizeMetabolismStateSignal(item)),
         },
         selfNarrativeSelfModelReviewBridge: {
           active: Boolean(development.self_narrative_self_model_review_bridge?.active),

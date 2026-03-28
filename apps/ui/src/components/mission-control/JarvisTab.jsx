@@ -1442,6 +1442,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const privateStateSnapshots = data?.development?.privateStateSnapshots || { items: [], summary: {} }
   const privateTemporalCuriosityStates = data?.development?.privateTemporalCuriosityStates || { items: [], summary: {} }
   const innerVisibleSupportSignals = data?.development?.innerVisibleSupportSignals || { items: [], summary: {} }
+  const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
@@ -2003,6 +2004,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Executive Contradiction</span>
+              <strong>{(executiveContradictionSignals?.summary?.active_count || 0) + (executiveContradictionSignals?.summary?.softening_count || 0)}</strong>
+              <p>{executiveContradictionSignals?.summary?.current_signal || 'No bounded executive contradiction support'}</p>
+              <p>
+                type {executiveContradictionSignals?.summary?.current_control_type || 'none'} · pressure {executiveContradictionSignals?.summary?.current_pressure || 'low'}
+              </p>
+              <p>
+                {executiveContradictionSignals?.summary?.authority || 'non-authoritative'} · {executiveContradictionSignals?.summary?.execution_veto_state || 'not-authorized'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Temporal Promotion</span>
               <strong>{(privateTemporalPromotionSignals?.summary?.active_count || 0) + (privateTemporalPromotionSignals?.summary?.stale_count || 0)}</strong>
               <p>{privateTemporalPromotionSignals?.summary?.current_signal || 'No bounded temporal promotion support'}</p>
@@ -2238,6 +2250,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.privateStateSnapshot, 'Private State Snapshot', onOpenItem)}
               {detailRow(data?.development?.privateTemporalCuriosityState, 'Private Temporal Curiosity State', onOpenItem)}
               {detailRow(data?.development?.innerVisibleSupport, 'Inner Visible Support', onOpenItem)}
+              {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}
               {detailRow(data?.development?.operationalAlignment, 'Preference Alignment', onOpenItem)}

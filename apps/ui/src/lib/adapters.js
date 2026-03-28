@@ -1524,6 +1524,10 @@ export const backend = {
           source: ((development.inner_visible_support_signals?.items || [])[0] || {}).source || '/mc/runtime.inner_visible_support_signal',
           summary: ((development.inner_visible_support_signals?.items || [])[0] || {}).support_summary || 'No bounded inner-visible support',
         }),
+        executiveContradictionSupport: normalizeJarvisItem((development.executive_contradiction_signals?.items || [])[0] || {}, {
+          source: ((development.executive_contradiction_signals?.items || [])[0] || {}).source || '/mc/runtime.executive_contradiction_signal',
+          summary: ((development.executive_contradiction_signals?.items || [])[0] || {}).control_summary || 'No bounded executive contradiction support',
+        }),
         privateTemporalPromotionSignal: normalizeJarvisItem((development.private_temporal_promotion_signals?.items || [])[0] || {}, {
           source: ((development.private_temporal_promotion_signals?.items || [])[0] || {}).source || '/mc/runtime.private_temporal_promotion_signal',
           summary: ((development.private_temporal_promotion_signals?.items || [])[0] || {}).promotion_summary || 'No bounded temporal promotion support',
@@ -1612,6 +1616,17 @@ export const backend = {
           items: (development.inner_visible_support_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.inner_visible_support_signal',
             summary: item.support_summary || item.summary || 'Inspect bounded inner-visible support',
+          })),
+        },
+        executiveContradictionSignals: {
+          active: Boolean(development.executive_contradiction_signals?.active),
+          authority: development.executive_contradiction_signals?.authority || 'non-authoritative',
+          layerRole: development.executive_contradiction_signals?.layer_role || 'runtime-support',
+          executionVetoState: development.executive_contradiction_signals?.execution_veto_state || 'not-authorized',
+          summary: development.executive_contradiction_signals?.summary || {},
+          items: (development.executive_contradiction_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.executive_contradiction_signal',
+            summary: item.control_summary || item.summary || 'Inspect bounded executive contradiction support',
           })),
         },
         privateTemporalPromotionSignals: {

@@ -1,5 +1,51 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from uuid import uuid4
+
+
+def _apply_memory_candidate(
+    isolated_runtime,
+    *,
+    canonical_key: str,
+    summary: str,
+    proposed_value: str,
+) -> None:
+    db = isolated_runtime.db
+    candidate_workflow = __import__(
+        "core.identity.candidate_workflow",
+        fromlist=["approve_runtime_contract_candidate", "apply_runtime_contract_candidate"],
+    )
+
+    now = datetime.now(UTC).isoformat()
+    candidate = db.upsert_runtime_contract_candidate(
+        candidate_id=f"candidate-{uuid4().hex}",
+        candidate_type="memory_promotion",
+        target_file="MEMORY.md",
+        status="proposed",
+        source_kind="runtime-derived-support",
+        source_mode="test-runtime",
+        actor="runtime:test",
+        session_id="test-session",
+        run_id="test-run",
+        canonical_key=canonical_key,
+        summary=summary,
+        reason="Validation applied memory candidate",
+        evidence_summary="candidate evidence",
+        support_summary="candidate support",
+        confidence="high",
+        evidence_class="runtime_support_only",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation candidate status",
+        proposed_value=proposed_value,
+        write_section="## Curated Memory",
+    )
+    approved = candidate_workflow.approve_runtime_contract_candidate(str(candidate["candidate_id"]))
+    candidate_workflow.apply_runtime_contract_candidate(str(approved["candidate_id"]))
+
 
 def test_ollama_visible_prompt_assembly_uses_canonical_workspace_sections(
     isolated_runtime,
@@ -182,3 +228,79 @@ def test_visible_chat_guidance_rules_are_loaded_from_workspace_prompt_file(
 
     assert "Use transcript context before generic continuity disclaimers." in assembly.text
     assert "Treat guidance files as hints, not authority." in assembly.text
+
+
+def test_ollama_visible_prompt_can_include_relevant_applied_project_anchor_memory(
+    isolated_runtime,
+) -> None:
+    _apply_memory_candidate(
+        isolated_runtime,
+        canonical_key="workspace-memory:remembered-fact:project-anchor",
+        summary="A bounded remembered fact may be worth carrying into MEMORY.md.",
+        proposed_value="- Project anchor: Jarvis and the user are building Jarvis together.",
+    )
+    _apply_memory_candidate(
+        isolated_runtime,
+        canonical_key="workspace-memory:stable-context:review-style",
+        summary="A bounded stable context may be worth carrying into MEMORY.md.",
+        proposed_value="- Stable context: review style still matters across turns.",
+    )
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="hvad bygger vi sammen?",
+        session_id="test-session",
+    )
+
+    assert "MEMORY.md:" in assembly.text
+    assert "Project anchor: Jarvis and the user are building Jarvis together." in assembly.text
+    assert "Stable context: review style still matters across turns." not in assembly.text
+
+
+def test_ollama_visible_prompt_can_include_relevant_applied_repo_context_memory(
+    isolated_runtime,
+) -> None:
+    _apply_memory_candidate(
+        isolated_runtime,
+        canonical_key="workspace-memory:remembered-fact:repo-context",
+        summary="A bounded remembered fact may be worth carrying into MEMORY.md.",
+        proposed_value="- Working context: the current collaboration is in the Jarvis v2 repo.",
+    )
+    _apply_memory_candidate(
+        isolated_runtime,
+        canonical_key="workspace-memory:remembered-fact:project-anchor",
+        summary="A bounded remembered fact may be worth carrying into MEMORY.md.",
+        proposed_value="- Project anchor: Jarvis and the user are building Jarvis together.",
+    )
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="hvilket repo arbejder vi i lige nu?",
+        session_id="test-session",
+    )
+
+    assert "MEMORY.md:" in assembly.text
+    assert "Working context: the current collaboration is in the Jarvis v2 repo." in assembly.text
+    assert "Project anchor: Jarvis and the user are building Jarvis together." not in assembly.text
+
+
+def test_ollama_visible_prompt_does_not_dump_memory_for_irrelevant_generic_query(
+    isolated_runtime,
+) -> None:
+    _apply_memory_candidate(
+        isolated_runtime,
+        canonical_key="workspace-memory:remembered-fact:project-anchor",
+        summary="A bounded remembered fact may be worth carrying into MEMORY.md.",
+        proposed_value="- Project anchor: Jarvis and the user are building Jarvis together.",
+    )
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="Svar kort på dansk.",
+        session_id="test-session",
+    )
+
+    assert "MEMORY.md:" not in assembly.text

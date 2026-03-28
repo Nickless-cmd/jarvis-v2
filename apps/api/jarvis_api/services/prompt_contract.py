@@ -88,9 +88,10 @@ def build_visible_chat_prompt_assembly(
             included_files.append(filename)
 
     if _should_include_memory(user_message, mode="visible_chat"):
-        memory_section = _workspace_file_section(
+        memory_section = _workspace_memory_section(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
+            user_message=user_message,
             max_lines=3 if compact else 4,
             max_chars=200 if compact else 280,
         )
@@ -362,6 +363,117 @@ def _workspace_optional_file_section(
         max_lines=max_lines,
         max_chars=max_chars,
     )
+
+
+def _workspace_memory_section(
+    path: Path,
+    *,
+    label: str,
+    user_message: str,
+    max_lines: int,
+    max_chars: int,
+) -> str | None:
+    if not path.exists():
+        return None
+    entries = _workspace_memory_entries(path)
+    if not entries:
+        return None
+    selected = _select_relevant_memory_entries(
+        entries,
+        user_message=user_message,
+        max_lines=max_lines,
+        max_chars=max_chars,
+    )
+    if not selected:
+        return None
+    return "\n".join([f"{label}:", *[f"- {line}" for line in selected]])
+
+
+def _workspace_memory_entries(path: Path) -> list[str]:
+    entries: list[str] = []
+    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        normalized = " ".join(line.lstrip("-").split()).strip()
+        if not normalized:
+            continue
+        entries.append(normalized)
+    return entries
+
+
+def _select_relevant_memory_entries(
+    entries: list[str],
+    *,
+    user_message: str,
+    max_lines: int,
+    max_chars: int,
+) -> list[str]:
+    scored: list[tuple[int, int, str]] = []
+    for index, entry in enumerate(entries):
+        score = _memory_line_relevance_score(entry, user_message)
+        if score <= 0:
+            continue
+        scored.append((score, index, entry))
+
+    if scored:
+        chosen = sorted(scored, key=lambda item: (item[0], item[1]), reverse=True)[: max(max_lines, 1)]
+        ordered = [item[2] for item in sorted(chosen, key=lambda item: item[1])]
+    else:
+        ordered = entries[-max(max_lines, 1) :]
+
+    clipped: list[str] = []
+    for entry in ordered:
+        text = entry
+        if len(text) > max_chars:
+            text = text[: max_chars - 1].rstrip() + "…"
+        clipped.append(text)
+    return clipped
+
+
+def _memory_line_relevance_score(entry: str, user_message: str) -> int:
+    line = str(entry or "").lower()
+    query = str(user_message or "").lower()
+    score = 0
+
+    if _contains_any(query, ("mit navn", "hvad hedder jeg", "name", "navn")) and _contains_any(
+        line,
+        ("name", "navn"),
+    ):
+        score += 8
+    if _contains_any(
+        query,
+        ("bygger vi", "build", "building", "projekt", "project", "arbejder vi på"),
+    ) and _contains_any(
+        line,
+        ("project anchor", "building jarvis together", "jarvis together", "shared project"),
+    ):
+        score += 8
+    if _contains_any(
+        query,
+        ("repo", "repoet", "repository", "arbejder vi i", "working context", "hvilket repo"),
+    ) and _contains_any(
+        line,
+        ("jarvis v2 repo", "working context", "repo context", "repo"),
+    ):
+        score += 8
+    if _contains_any(
+        query,
+        ("context", "continuity", "stable", "carry", "workspace"),
+    ) and _contains_any(
+        line,
+        ("stable context", "carry forward", "carried", "workspace continuity"),
+    ):
+        score += 5
+
+    for token in ("jarvis", "repo", "project", "context", "name", "working", "build", "stable", "workspace"):
+        if token in query and token in line:
+            score += 1
+    return score
+
+
+def _contains_any(text: str, needles: tuple[str, ...]) -> bool:
+    return any(needle in text for needle in needles)
 
 
 def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
@@ -987,6 +1099,15 @@ def _should_include_memory(text: str, *, mode: str) -> bool:
         "relationship",
         "continuity",
         "session",
+        "repo",
+        "repoet",
+        "repository",
+        "projekt",
+        "project",
+        "bygger vi",
+        "arbejder vi i",
+        "arbejder vi på",
+        "working context",
     )
     return any(token in normalized for token in triggers)
 

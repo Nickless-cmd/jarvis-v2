@@ -666,6 +666,42 @@ function normalizeConsolidationTargetSignal(item = {}) {
   }
 }
 
+function normalizeSelectiveForgettingCandidate(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || 'Selective Forgetting Candidate',
+    summary: item.forgetting_candidate_summary || item.summary || '',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    forgettingCandidateState: item.forgetting_candidate_state || 'none',
+    forgettingCandidateReason: item.forgetting_candidate_reason || 'none',
+    forgettingCandidateWeight: item.forgetting_candidate_weight || 'low',
+    forgettingCandidateSummary: item.forgetting_candidate_summary || '',
+    forgettingCandidateConfidence: item.forgetting_candidate_confidence || item.confidence || 'low',
+    sourceAnchor: item.source_anchor || '',
+    authority: item.authority || 'non-authoritative',
+    layerRole: item.layer_role || 'runtime-support',
+    canonicalDeleteState: item.canonical_delete_state || 'not-deletion',
+    selfErasureState: item.self_erasure_state || 'not-self-erasure',
+    selectiveForgettingState: item.selective_forgetting_state || 'not-selective-forgetting-execution',
+    source: item.source || '/mc/jarvis.development.selective_forgetting_candidates',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeOpenLoopSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1685,6 +1721,10 @@ export const backend = {
           source: ((development.consolidation_target_signals?.items || [])[0] || {}).source || '/mc/runtime.consolidation_target_signal',
           summary: ((development.consolidation_target_signals?.items || [])[0] || {}).consolidation_summary || 'No bounded consolidation-target support',
         }),
+        selectiveForgettingCandidateSupport: normalizeJarvisItem((development.selective_forgetting_candidates?.items || [])[0] || {}, {
+          source: ((development.selective_forgetting_candidates?.items || [])[0] || {}).source || '/mc/runtime.selective_forgetting_candidate',
+          summary: ((development.selective_forgetting_candidates?.items || [])[0] || {}).forgetting_candidate_summary || 'No bounded selective-forgetting candidate',
+        }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
           summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).proposal_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).sharpening_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
@@ -1888,6 +1928,16 @@ export const backend = {
           canonicalMutationState: development.consolidation_target_signals?.canonical_mutation_state || 'not-canonical-mutation',
           summary: development.consolidation_target_signals?.summary || {},
           items: (development.consolidation_target_signals?.items || []).map((item) => normalizeConsolidationTargetSignal(item)),
+        },
+        selectiveForgettingCandidates: {
+          active: Boolean(development.selective_forgetting_candidates?.active),
+          authority: development.selective_forgetting_candidates?.authority || 'non-authoritative',
+          layerRole: development.selective_forgetting_candidates?.layer_role || 'runtime-support',
+          canonicalDeleteState: development.selective_forgetting_candidates?.canonical_delete_state || 'not-deletion',
+          selfErasureState: development.selective_forgetting_candidates?.self_erasure_state || 'not-self-erasure',
+          selectiveForgettingState: development.selective_forgetting_candidates?.selective_forgetting_state || 'not-selective-forgetting-execution',
+          summary: development.selective_forgetting_candidates?.summary || {},
+          items: (development.selective_forgetting_candidates?.items || []).map((item) => normalizeSelectiveForgettingCandidate(item)),
         },
         selfNarrativeSelfModelReviewBridge: {
           active: Boolean(development.self_narrative_self_model_review_bridge?.active),

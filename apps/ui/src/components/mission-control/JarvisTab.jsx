@@ -1451,6 +1451,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const metabolismStateSignals = data?.development?.metabolismStateSignals || { items: [], summary: {} }
   const releaseMarkerSignals = data?.development?.releaseMarkerSignals || { items: [], summary: {} }
   const consolidationTargetSignals = data?.development?.consolidationTargetSignals || { items: [], summary: {} }
+  const selectiveForgettingCandidates = data?.development?.selectiveForgettingCandidates || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -2381,6 +2382,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.selfNarrativeContinuitySupport, 'Self-Narrative Continuity Support', onOpenItem)}
               {detailRow(data?.development?.metabolismStateSupport, 'Metabolism Support', onOpenItem)}
               {detailRow(data?.development?.consolidationTargetSupport, 'Consolidation Support', onOpenItem)}
+              {detailRow(data?.development?.selectiveForgettingCandidateSupport, 'Forgetting Candidate Support', onOpenItem)}
               {detailRow(data?.development?.releaseMarkerSupport, 'Release Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
@@ -2589,6 +2591,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {consolidationTargetSignals?.summary?.authority || 'non-authoritative'} · {consolidationTargetSignals?.summary?.writeback_state || 'not-writeback'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Forgetting Candidates</span>
+              <strong>{(selectiveForgettingCandidates?.summary?.active_count || 0) + (selectiveForgettingCandidates?.summary?.softening_count || 0)}</strong>
+              <p>{selectiveForgettingCandidates?.summary?.current_signal || 'No bounded selective-forgetting candidate'}</p>
+              <p>
+                state {selectiveForgettingCandidates?.summary?.current_state || 'none'} · reason {selectiveForgettingCandidates?.summary?.current_reason || 'none'}
+              </p>
+              <p>
+                {selectiveForgettingCandidates?.summary?.authority || 'non-authoritative'} · {selectiveForgettingCandidates?.summary?.selective_forgetting_state || 'not-selective-forgetting-execution'}
               </p>
             </div>
           </div>

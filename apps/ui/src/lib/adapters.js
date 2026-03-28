@@ -1524,6 +1524,10 @@ export const backend = {
           source: ((development.inner_visible_support_signals?.items || [])[0] || {}).source || '/mc/runtime.inner_visible_support_signal',
           summary: ((development.inner_visible_support_signals?.items || [])[0] || {}).support_summary || 'No bounded inner-visible support',
         }),
+        regulationHomeostasisSupport: normalizeJarvisItem((development.regulation_homeostasis_signals?.items || [])[0] || {}, {
+          source: ((development.regulation_homeostasis_signals?.items || [])[0] || {}).source || '/mc/runtime.regulation_homeostasis_signal',
+          summary: ((development.regulation_homeostasis_signals?.items || [])[0] || {}).regulation_summary || 'No bounded regulation/homeostasis support',
+        }),
         executiveContradictionSupport: normalizeJarvisItem((development.executive_contradiction_signals?.items || [])[0] || {}, {
           source: ((development.executive_contradiction_signals?.items || [])[0] || {}).source || '/mc/runtime.executive_contradiction_signal',
           summary: ((development.executive_contradiction_signals?.items || [])[0] || {}).control_summary || 'No bounded executive contradiction support',
@@ -1628,6 +1632,17 @@ export const backend = {
           items: (development.inner_visible_support_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.inner_visible_support_signal',
             summary: item.support_summary || item.summary || 'Inspect bounded inner-visible support',
+          })),
+        },
+        regulationHomeostasisSignals: {
+          active: Boolean(development.regulation_homeostasis_signals?.active),
+          authority: development.regulation_homeostasis_signals?.authority || 'non-authoritative',
+          layerRole: development.regulation_homeostasis_signals?.layer_role || 'runtime-support',
+          canonicalMoodState: development.regulation_homeostasis_signals?.canonical_mood_state || 'not-canonical-mood-or-personality',
+          summary: development.regulation_homeostasis_signals?.summary || {},
+          items: (development.regulation_homeostasis_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.regulation_homeostasis_signal',
+            summary: item.regulation_summary || item.summary || 'Inspect bounded regulation/homeostasis support',
           })),
         },
         executiveContradictionSignals: {

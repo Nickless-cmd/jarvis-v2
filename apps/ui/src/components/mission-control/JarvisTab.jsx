@@ -1442,6 +1442,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const privateStateSnapshots = data?.development?.privateStateSnapshots || { items: [], summary: {} }
   const privateTemporalCuriosityStates = data?.development?.privateTemporalCuriosityStates || { items: [], summary: {} }
   const innerVisibleSupportSignals = data?.development?.innerVisibleSupportSignals || { items: [], summary: {} }
+  const regulationHomeostasisSignals = data?.development?.regulationHomeostasisSignals || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
   const chronicleConsolidationSignals = data?.development?.chronicleConsolidationSignals || { items: [], summary: {} }
@@ -2007,6 +2008,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Regulation Support</span>
+              <strong>{(regulationHomeostasisSignals?.summary?.active_count || 0) + (regulationHomeostasisSignals?.summary?.stale_count || 0)}</strong>
+              <p>{regulationHomeostasisSignals?.summary?.current_signal || 'No bounded regulation/homeostasis support'}</p>
+              <p>
+                state {regulationHomeostasisSignals?.summary?.current_state || 'none'} · pacing {regulationHomeostasisSignals?.summary?.current_pacing || 'steady'}
+              </p>
+              <p>
+                {regulationHomeostasisSignals?.summary?.canonical_mood_state || 'not-canonical-mood-or-personality'} · {regulationHomeostasisSignals?.summary?.authority || 'non-authoritative'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Executive Contradiction</span>
               <strong>{(executiveContradictionSignals?.summary?.active_count || 0) + (executiveContradictionSignals?.summary?.softening_count || 0)}</strong>
               <p>{executiveContradictionSignals?.summary?.current_signal || 'No bounded executive contradiction support'}</p>
@@ -2286,6 +2298,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.privateStateSnapshot, 'Private State Snapshot', onOpenItem)}
               {detailRow(data?.development?.privateTemporalCuriosityState, 'Private Temporal Curiosity State', onOpenItem)}
               {detailRow(data?.development?.innerVisibleSupport, 'Inner Visible Support', onOpenItem)}
+              {detailRow(data?.development?.regulationHomeostasisSupport, 'Regulation/Homeostasis Support', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}

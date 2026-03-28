@@ -1550,7 +1550,7 @@ export const backend = {
         }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
-          summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
+          summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).sharpening_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
         }),
         executiveContradictionSupport: normalizeJarvisItem((development.executive_contradiction_signals?.items || [])[0] || {}, {
           source: ((development.executive_contradiction_signals?.items || [])[0] || {}).source || '/mc/runtime.executive_contradiction_signal',
@@ -1734,9 +1734,10 @@ export const backend = {
           summary: development.self_narrative_self_model_review_bridge?.summary || {},
           patterns: development.self_narrative_self_model_review_bridge?.patterns || [],
           reviewInputs: development.self_narrative_self_model_review_bridge?.review_inputs || [],
+          sharpeningInputs: development.self_narrative_self_model_review_bridge?.sharpening_inputs || [],
           items: (development.self_narrative_self_model_review_bridge?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.self_narrative_self_model_review_bridge',
-            summary: item.review_input_summary || item.pattern_summary || item.bridge_summary || item.summary || 'Inspect bounded self-narrative review bridge',
+            summary: item.sharpening_input_summary || item.review_input_summary || item.pattern_summary || item.bridge_summary || item.summary || 'Inspect bounded self-narrative review bridge',
           })),
         },
         executiveContradictionSignals: {

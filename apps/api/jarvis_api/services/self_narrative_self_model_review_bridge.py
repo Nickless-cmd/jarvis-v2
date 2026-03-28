@@ -266,7 +266,9 @@ def _build_bridge_item(
         "sharpening_threshold_state": sharpening_threshold_state,
         "sharpening_input_state": sharpening_input_state,
         "sharpening_input_reason": sharpening_input_reason,
+        "sharpening_input_weight": narrative_weight,
         "sharpening_input_summary": sharpening_input_summary,
+        "sharpening_input_confidence": bridge_confidence,
         "self_model_alignment": self_model_alignment,
         "self_model_signal_title": self_model_title
         or "No active self-model review input",
@@ -329,7 +331,15 @@ def _sharpening_input_view(item: dict[str, object]) -> dict[str, object]:
         "sharpening_input_reason": str(
             item.get("sharpening_input_reason") or "Sharpening thresholds not met."
         ),
+        "sharpening_input_weight": str(
+            item.get("sharpening_input_weight") or item.get("pattern_weight") or "low"
+        ),
         "sharpening_input_summary": str(item.get("sharpening_input_summary") or ""),
+        "sharpening_input_confidence": str(
+            item.get("sharpening_input_confidence")
+            or item.get("pattern_confidence")
+            or "low"
+        ),
         "sharpening_threshold_state": str(
             item.get("sharpening_threshold_state") or "sharpening-thresholds-not-met"
         ),

@@ -86,6 +86,7 @@ def test_self_narrative_review_bridge_stays_empty_without_narrative_substrate(
     assert surface["items"] == []
     assert surface["patterns"] == []
     assert surface["review_inputs"] == []
+    assert surface["sharpening_inputs"] == []
     assert surface["summary"]["active_count"] == 0
     assert runtime["runtime_self_narrative_self_model_review_bridge"]["items"] == []
 
@@ -148,6 +149,13 @@ def test_self_narrative_review_bridge_forms_read_only_bridge_from_narrative_and_
     assert item["review_input_weight"] in {"low", "medium", "high"}
     assert item["review_input_confidence"] in {"low", "medium", "high"}
     assert item["threshold_state"] in {"thresholds-met", "thresholds-not-met"}
+    assert item["sharpening_input_state"] in {"sharpening-worthy", "not-sharpenable"}
+    assert item["sharpening_input_weight"] in {"low", "medium", "high"}
+    assert item["sharpening_input_confidence"] in {"low", "medium", "high"}
+    assert item["sharpening_threshold_state"] in {
+        "sharpening-thresholds-met",
+        "sharpening-thresholds-not-met",
+    }
     assert item["authority"] == "non-authoritative"
     assert item["layer_role"] == "runtime-support"
     assert item["review_mode"] == "read-only-review-support"
@@ -237,6 +245,9 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
         "current_review_state",
         "current_review_input_state",
         "current_threshold_state",
+        "current_sharpening_input_state",
+        "current_sharpening_threshold_state",
+        "sharpening_ready_count",
         "current_confidence",
         "authority",
         "layer_role",
@@ -268,6 +279,12 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
         "review_input_confidence",
         "threshold_state",
         "persistence_state",
+        "sharpening_input_state",
+        "sharpening_input_reason",
+        "sharpening_input_weight",
+        "sharpening_input_summary",
+        "sharpening_input_confidence",
+        "sharpening_threshold_state",
         "self_model_alignment",
         "authority",
         "layer_role",
@@ -277,6 +294,7 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
     }.issubset(surface["items"][0].keys())
     assert surface["patterns"][0]["pattern_summary"]
     assert surface["review_inputs"][0]["review_input_summary"]
+    assert surface["sharpening_inputs"][0]["sharpening_input_summary"]
     assert (
         jarvis["development"]["self_narrative_self_model_review_bridge"]["summary"][
             "proposal_state"

@@ -124,6 +124,102 @@ def _insert_witness(db, *, status: str, signal_type: str, canonical_key: str) ->
     )
 
 
+def _insert_self_narrative(db, *, focus: str, run_id: str = "test-run") -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_self_narrative_continuity_signal(
+        signal_id=f"self-narrative-{uuid4().hex}",
+        signal_type="self-narrative-continuity",
+        canonical_key=f"self-narrative-continuity:becoming-steady:{focus}",
+        status="active",
+        title=f"Self-narrative support: {focus.replace('-', ' ')}",
+        summary="Self-narrative summary",
+        rationale="Validation self-narrative",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="self narrative evidence",
+        support_summary="grounding-mode=test | narrative-direction=deepening | narrative-weight=high | self narrative anchor",
+        support_count=2,
+        session_count=2,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation self-narrative status",
+        run_id=run_id,
+        session_id="test-session",
+    )
+
+
+def _insert_meaning(db, *, focus: str, run_id: str = "test-run") -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_meaning_significance_signal(
+        signal_id=f"meaning-{uuid4().hex}",
+        signal_type="meaning-significance",
+        canonical_key=f"meaning-significance:developmental-significance:{focus}",
+        status="active",
+        title=f"Meaning significance support: {focus.replace('-', ' ')}",
+        summary="Meaning summary",
+        rationale="Validation meaning",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="meaning evidence",
+        support_summary="meaning support",
+        support_count=2,
+        session_count=2,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation meaning status",
+        run_id=run_id,
+        session_id="test-session",
+    )
+
+
+def _insert_temperament(db, *, focus: str, run_id: str = "test-run") -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_temperament_tendency_signal(
+        signal_id=f"temperament-{uuid4().hex}",
+        signal_type="temperament-tendency",
+        canonical_key=f"temperament-tendency:steadiness:{focus}",
+        status="active",
+        title=f"Temperament support: {focus.replace('-', ' ')}",
+        summary="Temperament summary",
+        rationale="Validation temperament",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="temperament evidence",
+        support_summary="temperament support",
+        support_count=2,
+        session_count=2,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation temperament status",
+        run_id=run_id,
+        session_id="test-session",
+    )
+
+
+def _insert_relation_continuity(db, *, focus: str, run_id: str = "test-run") -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_relation_continuity_signal(
+        signal_id=f"relation-continuity-{uuid4().hex}",
+        signal_type="relation-continuity",
+        canonical_key=f"relation-continuity:carried-alignment:{focus}",
+        status="active",
+        title=f"Relation continuity support: {focus.replace('-', ' ')}",
+        summary="Relation continuity summary",
+        rationale="Validation relation continuity",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="relation continuity evidence",
+        support_summary="relation continuity support",
+        support_count=2,
+        session_count=2,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation relation continuity status",
+        run_id=run_id,
+        session_id="test-session",
+    )
+
+
 def test_witness_surface_stays_empty_without_relevant_transition(isolated_runtime) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.witness_tracking
@@ -183,6 +279,7 @@ def test_witness_surface_forms_carried_lesson_when_transition_is_still_being_car
     assert surface["items"][0]["signal_type"] == "carried-lesson"
     assert surface["items"][0]["status"] == "fresh"
     assert surface["items"][0]["canonical_key"] == "witness-signal:carried-lesson:danish-concise-calibration"
+    assert surface["items"][0]["becoming_direction"] == "none"
 
 
 def test_witness_surface_forms_witnessed_turn_without_continued_carrying(isolated_runtime) -> None:
@@ -273,3 +370,63 @@ def test_witness_surface_and_mc_shape_remain_bounded(isolated_runtime) -> None:
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["current_status"] in {"fresh", "carried"}
     assert runtime_shape["summary"]["current_status"] in {"fresh", "carried"}
+
+
+def test_witness_surface_adds_becoming_synthesis_when_relevant_substrate_is_present(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.witness_tracking
+    mission_control = isolated_runtime.mission_control
+    focus = "danish-concise-calibration"
+
+    _insert_temporal_recurrence(
+        db,
+        canonical_key=f"temporal-recurrence:recurring-direction:{focus}",
+        minutes_ago=30,
+    )
+    _insert_reflection(
+        db,
+        canonical_key=f"reflection-signal:settled-thread:{focus}",
+        minutes_ago=20,
+    )
+    _insert_focus(
+        db,
+        canonical_key=f"development-focus:communication:{focus}",
+        minutes_ago=10,
+    )
+    _insert_self_narrative(db, focus=focus)
+    _insert_meaning(db, focus=focus)
+    _insert_temperament(db, focus=focus)
+    _insert_relation_continuity(db, focus=focus)
+
+    tracking.track_runtime_witness_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_witness_signal_surface(limit=6)
+    jarvis = mission_control.mc_jarvis()
+    runtime = mission_control.mc_runtime()
+    item = surface["items"][0]
+
+    assert item["becoming_direction"] in {
+        "deepening",
+        "steadying",
+        "guarding",
+        "opening",
+        "firming",
+    }
+    assert item["becoming_weight"] in {"low", "medium", "high"}
+    assert item["maturation_hint"]
+    assert item["becoming_summary"]
+    assert item["witness_confidence"] in {"low", "medium", "high"}
+    assert item["authority"] == "non-authoritative"
+    assert item["layer_role"] == "runtime-support"
+    assert item["canonical_identity_state"] == "not-canonical-identity-truth"
+    assert item["proposal_state"] == "not-selfhood-proposal"
+    assert item["moral_authority_state"] == "not-moral-authority"
+    assert "appears to be" in item["becoming_summary"] or "shows signs of" in item["becoming_summary"]
+    assert surface["summary"]["current_becoming_direction"] == item["becoming_direction"]
+    assert surface["summary"]["current_maturation_hint"] == item["maturation_hint"]
+    assert jarvis["development"]["witness_signals"]["summary"]["current_becoming_direction"] == item["becoming_direction"]
+    assert runtime["runtime_witness_signals"]["summary"]["current_becoming_direction"] == item["becoming_direction"]

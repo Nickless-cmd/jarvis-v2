@@ -5,9 +5,13 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
+    list_runtime_meaning_significance_signals,
+    list_runtime_relation_continuity_signals,
     list_runtime_development_focuses,
     list_runtime_goal_signals,
     list_runtime_reflection_signals,
+    list_runtime_self_narrative_continuity_signals,
+    list_runtime_temperament_tendency_signals,
     list_runtime_temporal_recurrence_signals,
     list_runtime_witness_signals,
     supersede_runtime_witness_signals_for_domain,
@@ -17,6 +21,7 @@ from core.runtime.db import (
 
 _CARRIED_AFTER_DAYS = 3
 _FADING_AFTER_DAYS = 14
+_CONFIDENCE_RANKS = {"low": 0, "medium": 1, "high": 2}
 
 
 def track_runtime_witness_signals_for_visible_turn(
@@ -25,7 +30,7 @@ def track_runtime_witness_signals_for_visible_turn(
     run_id: str,
 ) -> dict[str, object]:
     items = _persist_witness_signals(
-        signals=_extract_witness_candidates(),
+        signals=_extract_witness_candidates(run_id=run_id),
         session_id=str(session_id or "").strip(),
         run_id=run_id,
     )
@@ -97,7 +102,7 @@ def refresh_runtime_witness_signal_statuses() -> dict[str, int]:
 
 def build_runtime_witness_signal_surface(*, limit: int = 6) -> dict[str, object]:
     refresh_runtime_witness_signal_statuses()
-    items = list_runtime_witness_signals(limit=max(limit, 1))
+    items = [_with_surface_view(item) for item in list_runtime_witness_signals(limit=max(limit, 1))]
     fresh = [item for item in items if str(item.get("status") or "") == "fresh"]
     carried = [item for item in items if str(item.get("status") or "") == "carried"]
     fading = [item for item in items if str(item.get("status") or "") == "fading"]
@@ -114,11 +119,20 @@ def build_runtime_witness_signal_surface(*, limit: int = 6) -> dict[str, object]
             "superseded_count": len(superseded),
             "current_signal": str((latest or {}).get("title") or "No current witness signal"),
             "current_status": str((latest or {}).get("status") or "none"),
+            "current_becoming_direction": str((latest or {}).get("becoming_direction") or "none"),
+            "current_becoming_weight": str((latest or {}).get("becoming_weight") or "low"),
+            "current_maturation_hint": str((latest or {}).get("maturation_hint") or "none"),
+            "current_witness_confidence": str((latest or {}).get("witness_confidence") or str((latest or {}).get("confidence") or "low")),
+            "authority": "non-authoritative",
+            "layer_role": "runtime-support",
+            "canonical_identity_state": "not-canonical-identity-truth",
+            "proposal_state": "not-selfhood-proposal",
+            "moral_authority_state": "not-moral-authority",
         },
     }
 
 
-def _extract_witness_candidates() -> list[dict[str, object]]:
+def _extract_witness_candidates(*, run_id: str) -> list[dict[str, object]]:
     snapshots: dict[str, dict[str, object]] = {}
 
     for recurrence in list_runtime_temporal_recurrence_signals(limit=18):
@@ -169,6 +183,10 @@ def _extract_witness_candidates() -> list[dict[str, object]]:
         active_goal = snapshot.get("active_goal")
         completed_goal = snapshot.get("completed_goal")
         title_suffix = _domain_title(domain_key)
+        self_narrative = _latest_self_narrative_continuity(run_id=run_id, domain_key=domain_key)
+        meaning = _latest_meaning_significance(run_id=run_id, domain_key=domain_key)
+        temperament = _latest_temperament_tendency(run_id=run_id, domain_key=domain_key)
+        relation_continuity = _latest_relation_continuity(run_id=run_id, domain_key=domain_key)
 
         signal_type = "carried-lesson" if active_focus or active_goal or completed_goal or completed_focus else "settled-turn"
         summary = (
@@ -202,6 +220,10 @@ def _extract_witness_candidates() -> list[dict[str, object]]:
                     active_goal,
                     completed_goal,
                 ],
+                self_narrative=self_narrative,
+                meaning=meaning,
+                temperament=temperament,
+                relation_continuity=relation_continuity,
             )
         )
 
@@ -286,11 +308,47 @@ def _build_candidate(
     rationale: str,
     status_reason: str,
     source_items: list[dict[str, object] | None],
+    self_narrative: dict[str, object] | None,
+    meaning: dict[str, object] | None,
+    temperament: dict[str, object] | None,
+    relation_continuity: dict[str, object] | None,
 ) -> dict[str, object]:
     items = [item for item in source_items if item]
     support_count = max([int(item.get("support_count") or 1) for item in items], default=1)
     session_count = max([int(item.get("session_count") or 1) for item in items], default=1)
     confidence = "high" if len(items) >= 3 else "medium"
+    becoming_direction = _derive_becoming_direction(
+        signal_type=signal_type,
+        self_narrative=self_narrative,
+        meaning=meaning,
+        temperament=temperament,
+        relation_continuity=relation_continuity,
+    )
+    becoming_weight = _derive_becoming_weight(
+        self_narrative=self_narrative,
+        meaning=meaning,
+        temperament=temperament,
+        relation_continuity=relation_continuity,
+    )
+    maturation_hint = _derive_maturation_hint(
+        signal_type=signal_type,
+        self_narrative=self_narrative,
+        temperament=temperament,
+        relation_continuity=relation_continuity,
+    )
+    witness_confidence = _stronger_confidence(
+        confidence,
+        str((self_narrative or {}).get("narrative_confidence") or (self_narrative or {}).get("confidence") or "low"),
+        str((meaning or {}).get("meaning_confidence") or (meaning or {}).get("confidence") or "low"),
+        str((temperament or {}).get("temperament_confidence") or (temperament or {}).get("confidence") or "low"),
+        str((relation_continuity or {}).get("continuity_confidence") or (relation_continuity or {}).get("confidence") or "low"),
+    )
+    source_anchor = _merge_fragments(
+        _anchor(self_narrative),
+        _anchor(meaning),
+        _anchor(temperament),
+        _anchor(relation_continuity),
+    )
     return {
         "signal_type": signal_type,
         "canonical_key": f"witness-signal:{signal_type}:{domain_key}",
@@ -300,12 +358,33 @@ def _build_candidate(
         "summary": summary,
         "rationale": rationale,
         "source_kind": "derived-runtime-witness",
-        "confidence": confidence,
+        "confidence": witness_confidence,
         "evidence_summary": _merge_fragments(*[str(item.get("evidence_summary") or "") for item in items]),
-        "support_summary": _merge_fragments(*[str(item.get("support_summary") or "") for item in items]),
+        "support_summary": _merge_fragments(
+            *[str(item.get("support_summary") or "") for item in items],
+            f"becoming-direction={becoming_direction}",
+            f"becoming-weight={becoming_weight}",
+            f"maturation-hint={maturation_hint}",
+            f"witness-confidence={witness_confidence}",
+            source_anchor,
+        ),
         "support_count": support_count,
         "session_count": session_count,
-        "status_reason": status_reason,
+        "status_reason": (
+            status_reason
+            + " Inner witness synthesis remains descriptive runtime support only, not canonical identity truth, not selfhood proposal, and not moral authority."
+        ),
+        "becoming_direction": becoming_direction,
+        "becoming_weight": becoming_weight,
+        "becoming_summary": _becoming_summary(
+            domain_title=_domain_title(domain_key),
+            becoming_direction=becoming_direction,
+            becoming_weight=becoming_weight,
+            signal_type=signal_type,
+        ),
+        "maturation_hint": maturation_hint,
+        "witness_confidence": witness_confidence,
+        "source_anchor": source_anchor,
     }
 
 
@@ -346,7 +425,206 @@ def _merge_fragments(*values: str) -> str:
         normalized = " ".join(str(value or "").split()).strip()
         if normalized and normalized not in parts:
             parts.append(normalized)
-    return " | ".join(parts[:4])
+    return " | ".join(parts[:8])
+
+
+def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
+    support_summary = str(item.get("support_summary") or "")
+    becoming_direction = _summary_marker(support_summary, "becoming-direction") or "none"
+    becoming_weight = _summary_marker(support_summary, "becoming-weight") or "low"
+    maturation_hint = _summary_marker(support_summary, "maturation-hint") or "none"
+    witness_confidence = _summary_marker(support_summary, "witness-confidence") or str(item.get("confidence") or "low")
+    source_anchor = _last_summary_fragment(support_summary)
+    becoming_summary = _becoming_summary(
+        domain_title=_domain_title(_witness_domain_key(str(item.get("canonical_key") or ""))),
+        becoming_direction=becoming_direction,
+        becoming_weight=becoming_weight,
+        signal_type=str(item.get("signal_type") or "witness-signal"),
+    )
+    enriched = dict(item)
+    enriched.update(
+        {
+            "becoming_direction": becoming_direction,
+            "becoming_weight": becoming_weight,
+            "becoming_summary": becoming_summary,
+            "maturation_hint": maturation_hint,
+            "witness_confidence": witness_confidence,
+            "source_anchor": source_anchor,
+            "authority": "non-authoritative",
+            "layer_role": "runtime-support",
+            "canonical_identity_state": "not-canonical-identity-truth",
+            "proposal_state": "not-selfhood-proposal",
+            "moral_authority_state": "not-moral-authority",
+            "source": "/mc/runtime.witness_signals",
+        }
+    )
+    return enriched
+
+
+def _latest_self_narrative_continuity(*, run_id: str, domain_key: str) -> dict[str, object] | None:
+    return _latest_signal_for_domain(
+        list_runtime_self_narrative_continuity_signals(limit=18),
+        run_id=run_id,
+        domain_key=domain_key,
+    )
+
+
+def _latest_meaning_significance(*, run_id: str, domain_key: str) -> dict[str, object] | None:
+    return _latest_signal_for_domain(
+        list_runtime_meaning_significance_signals(limit=18),
+        run_id=run_id,
+        domain_key=domain_key,
+    )
+
+
+def _latest_temperament_tendency(*, run_id: str, domain_key: str) -> dict[str, object] | None:
+    return _latest_signal_for_domain(
+        list_runtime_temperament_tendency_signals(limit=18),
+        run_id=run_id,
+        domain_key=domain_key,
+    )
+
+
+def _latest_relation_continuity(*, run_id: str, domain_key: str) -> dict[str, object] | None:
+    return _latest_signal_for_domain(
+        list_runtime_relation_continuity_signals(limit=18),
+        run_id=run_id,
+        domain_key=domain_key,
+    )
+
+
+def _latest_signal_for_domain(
+    items: list[dict[str, object]],
+    *,
+    run_id: str,
+    domain_key: str,
+) -> dict[str, object] | None:
+    for item in items:
+        if str(item.get("status") or "") not in {"active", "softening"}:
+            continue
+        if str(item.get("run_id") or "") != run_id:
+            continue
+        if _focus_from_canonical_key(str(item.get("canonical_key") or "")) != domain_key:
+            continue
+        return item
+    return None
+
+
+def _focus_from_canonical_key(canonical_key: str) -> str:
+    parts = str(canonical_key or "").split(":")
+    return parts[-1] if len(parts) >= 3 else ""
+
+
+def _witness_domain_key(canonical_key: str) -> str:
+    parts = str(canonical_key or "").split(":")
+    return parts[-1] if len(parts) >= 3 else ""
+
+
+def _derive_becoming_direction(
+    *,
+    signal_type: str,
+    self_narrative: dict[str, object] | None,
+    meaning: dict[str, object] | None,
+    temperament: dict[str, object] | None,
+    relation_continuity: dict[str, object] | None,
+) -> str:
+    if not any([self_narrative, meaning, temperament, relation_continuity]):
+        return "none"
+    narrative_direction = str((self_narrative or {}).get("narrative_direction") or "")
+    meaning_type = str((meaning or {}).get("meaning_type") or "")
+    temperament_type = str((temperament or {}).get("temperament_type") or "")
+    continuity_state = str((relation_continuity or {}).get("continuity_state") or "")
+    if narrative_direction in {"deepening", "opening", "firming", "guarding", "steadying"}:
+        return narrative_direction
+    if temperament_type in {"caution", "watchful-restraint"}:
+        return "guarding"
+    if temperament_type in {"openness"}:
+        return "opening"
+    if temperament_type in {"firmness"}:
+        return "firming"
+    if meaning_type in {"developmental-significance", "carried-significance"}:
+        return "deepening"
+    if continuity_state in {"trustful-continuity", "carried-alignment"}:
+        return "steadying"
+    return "steadying" if signal_type == "carried-lesson" else "settling"
+
+
+def _derive_becoming_weight(
+    *,
+    self_narrative: dict[str, object] | None,
+    meaning: dict[str, object] | None,
+    temperament: dict[str, object] | None,
+    relation_continuity: dict[str, object] | None,
+) -> str:
+    weights = [
+        str((self_narrative or {}).get("narrative_weight") or "low"),
+        str((meaning or {}).get("meaning_weight") or "low"),
+        str((temperament or {}).get("temperament_weight") or "low"),
+        str((relation_continuity or {}).get("continuity_weight") or "low"),
+    ]
+    if "high" in weights:
+        return "high"
+    if "medium" in weights:
+        return "medium"
+    return "low"
+
+
+def _derive_maturation_hint(
+    *,
+    signal_type: str,
+    self_narrative: dict[str, object] | None,
+    temperament: dict[str, object] | None,
+    relation_continuity: dict[str, object] | None,
+) -> str:
+    if not any([self_narrative, temperament, relation_continuity]):
+        return "none"
+    narrative_state = str((self_narrative or {}).get("narrative_state") or "")
+    temperament_type = str((temperament or {}).get("temperament_type") or "")
+    continuity_state = str((relation_continuity or {}).get("continuity_state") or "")
+    if narrative_state:
+        return narrative_state
+    if signal_type == "carried-lesson" and continuity_state:
+        return continuity_state
+    if temperament_type:
+        return temperament_type
+    return "witnessed-settling"
+
+
+def _becoming_summary(
+    *,
+    domain_title: str,
+    becoming_direction: str,
+    becoming_weight: str,
+    signal_type: str,
+) -> str:
+    if becoming_direction == "none":
+        return f"Inner witness is holding only a bounded witnessed turn around {domain_title.lower()}, without enough becoming substrate yet."
+    witness_frame = "appears to be becoming" if signal_type == "carried-lesson" else "shows signs of becoming"
+    return (
+        f"Inner witness {witness_frame} more {becoming_direction.replace('-', ' ')} around {domain_title.lower()}, "
+        f"with {becoming_weight} bounded witness weight."
+    )
+
+
+def _summary_marker(text: str, key: str) -> str:
+    prefix = f"{key}="
+    for part in str(text or "").split("|"):
+        normalized = " ".join(part.split()).strip()
+        if normalized.startswith(prefix):
+            return normalized.removeprefix(prefix).strip()
+    return ""
+
+
+def _last_summary_fragment(text: str) -> str:
+    parts = [" ".join(part.split()).strip() for part in str(text or "").split("|")]
+    parts = [part for part in parts if part and "=" not in part]
+    return parts[-1] if parts else ""
+
+
+def _anchor(item: dict[str, object] | None) -> str:
+    if not item:
+        return ""
+    return str(item.get("source_anchor") or item.get("title") or "").strip()
 
 
 def _parse_dt(value: str) -> datetime | None:
@@ -360,3 +638,15 @@ def _parse_dt(value: str) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)
+
+
+def _stronger_confidence(*values: str) -> str:
+    strongest = "low"
+    strongest_rank = -1
+    for value in values:
+        normalized = str(value or "").strip()
+        rank = _CONFIDENCE_RANKS.get(normalized, -1)
+        if rank > strongest_rank:
+            strongest = normalized or strongest
+            strongest_rank = rank
+    return strongest if strongest in _CONFIDENCE_RANKS else "low"

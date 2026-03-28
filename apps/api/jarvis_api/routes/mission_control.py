@@ -139,6 +139,9 @@ from apps.api.jarvis_api.services.consolidation_target_signal_tracking import (
 from apps.api.jarvis_api.services.selective_forgetting_candidate_tracking import (
     build_runtime_selective_forgetting_candidate_surface,
 )
+from apps.api.jarvis_api.services.attachment_topology_signal_tracking import (
+    build_runtime_attachment_topology_signal_surface,
+)
 from apps.api.jarvis_api.services.self_narrative_self_model_review_bridge import (
     build_runtime_self_narrative_self_model_review_bridge_surface,
 )
@@ -433,6 +436,7 @@ def mc_jarvis() -> dict:
     release_marker_signals = build_runtime_release_marker_signal_surface()
     consolidation_target_signals = build_runtime_consolidation_target_signal_surface()
     selective_forgetting_candidates = build_runtime_selective_forgetting_candidate_surface()
+    attachment_topology_signals = build_runtime_attachment_topology_signal_surface()
     self_narrative_self_model_review_bridge = build_runtime_self_narrative_self_model_review_bridge_surface()
     executive_contradiction_signals = build_runtime_executive_contradiction_signal_surface()
     private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
@@ -529,6 +533,7 @@ def mc_jarvis() -> dict:
             "release_marker_signals": release_marker_signals,
             "consolidation_target_signals": consolidation_target_signals,
             "selective_forgetting_candidates": selective_forgetting_candidates,
+            "attachment_topology_signals": attachment_topology_signals,
             "self_narrative_self_model_review_bridge": self_narrative_self_model_review_bridge,
             "executive_contradiction_signals": executive_contradiction_signals,
             "private_temporal_promotion_signals": private_temporal_promotion_signals,
@@ -687,6 +692,7 @@ def mc_runtime() -> dict:
         "runtime_release_marker_signals": build_runtime_release_marker_signal_surface(),
         "runtime_consolidation_target_signals": build_runtime_consolidation_target_signal_surface(),
         "runtime_selective_forgetting_candidates": build_runtime_selective_forgetting_candidate_surface(),
+        "runtime_attachment_topology_signals": build_runtime_attachment_topology_signal_surface(),
         "runtime_self_narrative_self_model_review_bridge": build_runtime_self_narrative_self_model_review_bridge_surface(),
         "runtime_executive_contradiction_signals": build_runtime_executive_contradiction_signal_surface(),
         "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),

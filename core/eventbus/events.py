@@ -46,6 +46,7 @@ ALLOWED_EVENT_FAMILIES = {
     "release_marker_signal",
     "consolidation_target_signal",
     "selective_forgetting_candidate",
+    "attachment_topology_signal",
     "executive_contradiction_signal",
     "chronicle_consolidation_signal",
     "chronicle_consolidation_brief",

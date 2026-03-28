@@ -1452,6 +1452,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const releaseMarkerSignals = data?.development?.releaseMarkerSignals || { items: [], summary: {} }
   const consolidationTargetSignals = data?.development?.consolidationTargetSignals || { items: [], summary: {} }
   const selectiveForgettingCandidates = data?.development?.selectiveForgettingCandidates || { items: [], summary: {} }
+  const attachmentTopologySignals = data?.development?.attachmentTopologySignals || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -2403,6 +2404,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.consolidationTargetSupport, 'Consolidation Support', onOpenItem)}
               {detailRow(data?.development?.selectiveForgettingCandidateSupport, 'Forgetting Candidate Support', onOpenItem)}
               {detailRow(data?.development?.releaseMarkerSupport, 'Release Support', onOpenItem)}
+              {detailRow(data?.development?.attachmentTopologySupport, 'Attachment Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
@@ -2621,6 +2623,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {selectiveForgettingCandidates?.summary?.authority || 'non-authoritative'} · {selectiveForgettingCandidates?.summary?.selective_forgetting_state || 'not-selective-forgetting-execution'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Attachment Topology</span>
+              <strong>{(attachmentTopologySignals?.summary?.active_count || 0) + (attachmentTopologySignals?.summary?.softening_count || 0)}</strong>
+              <p>{attachmentTopologySignals?.summary?.current_signal || 'No bounded attachment-topology support'}</p>
+              <p>
+                state {attachmentTopologySignals?.summary?.current_state || 'none'} · focus {attachmentTopologySignals?.summary?.current_focus || 'none'}
+              </p>
+              <p>
+                {attachmentTopologySignals?.summary?.authority || 'non-authoritative'} · {attachmentTopologySignals?.summary?.planner_priority_state || 'not-planner-priority'}
               </p>
             </div>
           </div>

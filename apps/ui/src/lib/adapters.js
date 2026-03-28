@@ -1520,6 +1520,10 @@ export const backend = {
           source: ((development.private_temporal_curiosity_states?.items || [])[0] || {}).source || '/mc/runtime.private_temporal_curiosity_state',
           summary: ((development.private_temporal_curiosity_states?.items || [])[0] || {}).curiosity_summary || 'No bounded temporal curiosity support',
         }),
+        privateTemporalPromotionSignal: normalizeJarvisItem((development.private_temporal_promotion_signals?.items || [])[0] || {}, {
+          source: ((development.private_temporal_promotion_signals?.items || [])[0] || {}).source || '/mc/runtime.private_temporal_promotion_signal',
+          summary: ((development.private_temporal_promotion_signals?.items || [])[0] || {}).promotion_summary || 'No bounded temporal promotion support',
+        }),
         growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
           source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
           summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
@@ -1593,6 +1597,16 @@ export const backend = {
           items: (development.private_temporal_curiosity_states?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.private_temporal_curiosity_state',
             summary: item.curiosity_summary || item.summary || 'Inspect bounded temporal curiosity support',
+          })),
+        },
+        privateTemporalPromotionSignals: {
+          active: Boolean(development.private_temporal_promotion_signals?.active),
+          authority: development.private_temporal_promotion_signals?.authority || 'non-authoritative',
+          layerRole: development.private_temporal_promotion_signals?.layer_role || 'runtime-support',
+          summary: development.private_temporal_promotion_signals?.summary || {},
+          items: (development.private_temporal_promotion_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.private_temporal_promotion_signal',
+            summary: item.promotion_summary || item.summary || 'Inspect bounded temporal promotion support',
           })),
         },
         reflectiveCritics: {

@@ -42,6 +42,8 @@ def build_runtime_self_narrative_self_model_review_bridge_surface(
     latest = bridge_items[0] if bridge_items else None
     patterns = [_pattern_view(item) for item in bridge_items]
     latest_pattern = patterns[0] if patterns else None
+    review_inputs = [_review_input_view(item) for item in bridge_items]
+    latest_review_input = review_inputs[0] if review_inputs else None
     return {
         "active": active,
         "authority": "non-authoritative",
@@ -51,17 +53,24 @@ def build_runtime_self_narrative_self_model_review_bridge_surface(
         "canonical_identity_state": "not-canonical-identity-truth",
         "items": bridge_items,
         "patterns": patterns,
+        "review_inputs": review_inputs,
         "summary": {
             "active_count": len([item for item in bridge_items if str(item.get("status") or "") == "active"]),
             "softening_count": len([item for item in bridge_items if str(item.get("status") or "") == "softening"]),
             "pattern_count": len(patterns),
+            "review_ready_count": len(
+                [item for item in review_inputs if str(item.get("review_input_state") or "") == "review-worthy"]
+            ),
             "current_bridge": str((latest or {}).get("title") or "No active self-narrative review bridge"),
             "current_pattern": str((latest_pattern or {}).get("pattern_summary") or "No active self-narrative pattern summary"),
+            "current_review_input": str((latest_review_input or {}).get("review_input_summary") or "No active self-narrative review input"),
             "current_status": str((latest or {}).get("status") or "none"),
             "current_state": str((latest or {}).get("bridge_state") or "none"),
             "current_direction": str((latest or {}).get("bridge_direction") or "steadying"),
             "current_weight": str((latest or {}).get("bridge_weight") or "low"),
             "current_review_state": str((latest or {}).get("review_state") or "no-review-input"),
+            "current_review_input_state": str((latest_review_input or {}).get("review_input_state") or "not-review-worthy"),
+            "current_threshold_state": str((latest_review_input or {}).get("threshold_state") or "thresholds-not-met"),
             "current_confidence": str((latest or {}).get("bridge_confidence") or "low"),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
@@ -85,6 +94,7 @@ def _build_bridge_item(
 
     self_model_status = str((self_model_item or {}).get("status") or "")
     self_model_title = str((self_model_item or {}).get("title") or "").strip()
+    self_model_alignment = _self_model_alignment(self_model_item)
     review_state = (
         "narrative-and-self-model-visible"
         if self_model_item is not None
@@ -115,6 +125,29 @@ def _build_bridge_item(
         narrative_weight=narrative_weight,
         self_model_title=self_model_title,
     )
+    session_count = int(narrative_item.get("session_count") or 0)
+    support_count = int(narrative_item.get("support_count") or 0)
+    persistence_state = _persistence_state(session_count=session_count, support_count=support_count)
+    threshold_state = _threshold_state(
+        narrative_weight=narrative_weight,
+        pattern_confidence=bridge_confidence,
+        persistence_state=persistence_state,
+        self_model_alignment=self_model_alignment,
+    )
+    review_input_state = (
+        "review-worthy" if threshold_state == "thresholds-met" else "not-review-worthy"
+    )
+    review_input_reason = _review_input_reason(
+        narrative_weight=narrative_weight,
+        pattern_confidence=bridge_confidence,
+        persistence_state=persistence_state,
+        self_model_alignment=self_model_alignment,
+    )
+    review_input_summary = _review_input_summary(
+        review_input_state=review_input_state,
+        threshold_state=threshold_state,
+        self_model_title=self_model_title,
+    )
 
     return {
         "bridge_id": f"self-narrative-review-bridge:{str(narrative_item.get('signal_id') or '')}",
@@ -140,10 +173,18 @@ def _build_bridge_item(
         "pattern_confidence": bridge_confidence,
         "source_anchor": source_anchor,
         "review_state": review_state,
+        "review_input_state": review_input_state,
+        "review_input_reason": review_input_reason,
+        "review_input_weight": narrative_weight,
+        "review_input_summary": review_input_summary,
+        "review_input_confidence": bridge_confidence,
+        "threshold_state": threshold_state,
+        "persistence_state": persistence_state,
+        "self_model_alignment": self_model_alignment,
         "self_model_signal_title": self_model_title or "No active self-model review input",
         "self_model_signal_status": self_model_status or "none",
         "status_reason": (
-            "Bounded self-narrative review bridge remains read-only runtime support only, is not a selfhood proposal, and is not canonical identity truth."
+            "Bounded self-narrative review bridge remains read-only runtime support only, any review input gate is governance-visible and non-authoritative, it is not a selfhood proposal, and it is not canonical identity truth."
         ),
         "authority": "non-authoritative",
         "layer_role": "runtime-support",
@@ -166,6 +207,18 @@ def _pattern_view(item: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _review_input_view(item: dict[str, object]) -> dict[str, object]:
+    return {
+        "review_input_state": str(item.get("review_input_state") or "not-review-worthy"),
+        "review_input_reason": str(item.get("review_input_reason") or "Review thresholds not met."),
+        "review_input_weight": str(item.get("review_input_weight") or item.get("pattern_weight") or "low"),
+        "review_input_summary": str(item.get("review_input_summary") or ""),
+        "review_input_confidence": str(item.get("review_input_confidence") or item.get("pattern_confidence") or "low"),
+        "threshold_state": str(item.get("threshold_state") or "thresholds-not-met"),
+        "status": str(item.get("status") or "active"),
+    }
+
+
 def _pattern_type(
     *,
     narrative_state: str,
@@ -183,6 +236,82 @@ def _pattern_type(
     if review_state == "narrative-and-self-model-visible":
         return "coherent-review-pattern"
     return "steady-becoming-pattern"
+
+
+def _self_model_alignment(self_model_item: dict[str, object] | None) -> str:
+    if self_model_item is None:
+        return "no-self-model-context"
+    status = str(self_model_item.get("status") or "")
+    if status == "active":
+        return "coherent"
+    if status in {"corrected", "uncertain"}:
+        return "partial"
+    return "not-coherent"
+
+
+def _persistence_state(*, session_count: int, support_count: int) -> str:
+    if session_count > 1:
+        return "multiple-sessions"
+    if support_count > 1:
+        return "bounded-persistence-signal"
+    return "single-session"
+
+
+def _threshold_state(
+    *,
+    narrative_weight: str,
+    pattern_confidence: str,
+    persistence_state: str,
+    self_model_alignment: str,
+) -> str:
+    if (
+        narrative_weight == "high"
+        and pattern_confidence == "high"
+        and persistence_state in {"multiple-sessions", "bounded-persistence-signal"}
+        and self_model_alignment == "coherent"
+    ):
+        return "thresholds-met"
+    return "thresholds-not-met"
+
+
+def _review_input_reason(
+    *,
+    narrative_weight: str,
+    pattern_confidence: str,
+    persistence_state: str,
+    self_model_alignment: str,
+) -> str:
+    unmet: list[str] = []
+    if narrative_weight != "high":
+        unmet.append("narrative-weight-below-high")
+    if pattern_confidence != "high":
+        unmet.append("pattern-confidence-below-high")
+    if persistence_state not in {"multiple-sessions", "bounded-persistence-signal"}:
+        unmet.append("persistence-below-threshold")
+    if self_model_alignment != "coherent":
+        unmet.append("self-model-alignment-not-coherent")
+    if not unmet:
+        return "All bounded review-input thresholds are met."
+    return "Thresholds not met: " + ", ".join(unmet) + "."
+
+
+def _review_input_summary(
+    *,
+    review_input_state: str,
+    threshold_state: str,
+    self_model_title: str,
+) -> str:
+    if review_input_state == "review-worthy":
+        return (
+            "Bounded review-input gate is marking this pattern as review-worthy for future self-model sharpening, while remaining read-only and non-authoritative."
+        )
+    if self_model_title:
+        return (
+            f"Bounded review-input gate is not marking this pattern as review-worthy yet; {self_model_title.lower()} remains only read-only context and thresholds stay visible."
+        )
+    return (
+        f"Bounded review-input gate remains {threshold_state.replace('-', ' ')} with no active self-model context strong enough for review readiness."
+    )
 
 
 def _pattern_summary(

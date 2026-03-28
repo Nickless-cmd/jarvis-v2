@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from apps.api.jarvis_api.services.candidate_tracking import (
@@ -248,6 +249,15 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
     assembly = build_heartbeat_prompt_assembly(heartbeat_context=context, name=name)
     prompt = _heartbeat_prompt_text(assembly.text or "")
     started_at = now.isoformat()
+    execution_status = "not-run"
+    parse_status = "not-run"
+    raw_response = ""
+    result = {
+        "text": "",
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cost_usd": 0.0,
+    }
 
     try:
         result = _execute_heartbeat_model(
@@ -256,62 +266,21 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             policy=policy,
             open_loops=context["open_loops"],
         )
-        decision = _parse_heartbeat_decision(result["text"])
+        raw_response = str(result.get("text") or "")
+        execution_status = str(result.get("execution_status") or "success")
     except Exception as exc:
-        finished_at = datetime.now(UTC).isoformat()
-        tick = _record_heartbeat_outcome(
-            policy=policy,
-            persisted=persisted,
-            tick_id=f"heartbeat-tick:{uuid.uuid4()}",
-            trigger=trigger,
-            tick_status="blocked",
-            decision_type="noop",
-            decision_summary="Heartbeat runtime could not produce a bounded decision.",
-            decision_reason=str(exc),
-            blocked_reason="runtime-error",
-            currently_ticking=False,
-            last_trigger_source=trigger,
-            provider=target["provider"],
-            model=target["model"],
-            lane=target["lane"],
-            budget_status=str(policy["budget_status"]),
-            model_source=str(target.get("model_source") or ""),
-            resolution_status=str(target.get("resolution_status") or ""),
-            fallback_used=bool(target.get("fallback_used")),
-            ping_eligible=False,
-            ping_result="runtime-error",
-            action_status="blocked",
-            action_summary=str(exc),
-            action_type="",
-            action_artifact="",
-            raw_response="",
-            input_tokens=0,
-            output_tokens=0,
-            cost_usd=0.0,
-            started_at=started_at,
-            finished_at=finished_at,
-            workspace_dir=workspace_dir,
+        execution_status = _classify_heartbeat_execution_exception(exc)
+        decision = _bounded_heartbeat_failure_decision(
+            failure_kind="runtime",
+            detail=str(exc),
+            target=target,
         )
-        event_bus.publish(
-            "heartbeat.tick_blocked",
-            {
-                "tick_id": tick["tick_id"],
-                "blocked_reason": "runtime-error",
-                "detail": str(exc),
-                "trigger": trigger,
-                "lane": target["lane"],
-                "provider": target["provider"],
-                "model": target["model"],
-                "model_source": str(target.get("model_source") or ""),
-                "resolution_status": str(target.get("resolution_status") or ""),
-                "fallback_used": bool(target.get("fallback_used")),
-            },
-        )
-        return HeartbeatExecutionResult(
-            state=heartbeat_runtime_surface(name=name)["state"],
-            tick=tick,
-            policy=policy,
-        )
+    else:
+        decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
+
+    if execution_status == "success" and parse_status == "not-run":
+        parse_status = "success"
+
     event_bus.publish(
         "heartbeat.decision_produced",
         {
@@ -324,6 +293,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             "model_source": str(target.get("model_source") or ""),
             "resolution_status": str(target.get("resolution_status") or ""),
             "fallback_used": bool(target.get("fallback_used")),
+            "execution_status": execution_status,
+            "parse_status": parse_status,
         },
     )
 
@@ -354,16 +325,18 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
         model_source=str(target.get("model_source") or ""),
         resolution_status=str(target.get("resolution_status") or ""),
         fallback_used=bool(target.get("fallback_used")),
+        execution_status=execution_status,
+        parse_status=parse_status,
         ping_eligible=outcome["ping_eligible"],
         ping_result=outcome["ping_result"],
         action_status=outcome["action_status"],
         action_summary=outcome["action_summary"],
         action_type=outcome["action_type"],
         action_artifact=outcome["action_artifact"],
-        raw_response=result["text"],
-        input_tokens=result["input_tokens"],
-        output_tokens=result["output_tokens"],
-        cost_usd=result["cost_usd"],
+        raw_response=raw_response,
+        input_tokens=int(result.get("input_tokens") or 0),
+        output_tokens=int(result.get("output_tokens") or 0),
+        cost_usd=float(result.get("cost_usd") or 0.0),
         started_at=started_at,
         finished_at=finished_at,
         workspace_dir=workspace_dir,
@@ -384,6 +357,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "model_source": str(target.get("model_source") or ""),
                 "resolution_status": str(target.get("resolution_status") or ""),
                 "fallback_used": bool(target.get("fallback_used")),
+                "execution_status": execution_status,
+                "parse_status": parse_status,
             },
         )
     else:
@@ -403,6 +378,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "model_source": str(target.get("model_source") or ""),
                 "resolution_status": str(target.get("resolution_status") or ""),
                 "fallback_used": bool(target.get("fallback_used")),
+                "execution_status": execution_status,
+                "parse_status": parse_status,
             },
         )
         event_bus.publish(
@@ -421,6 +398,8 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "model_source": str(target.get("model_source") or ""),
                 "resolution_status": str(target.get("resolution_status") or ""),
                 "fallback_used": bool(target.get("fallback_used")),
+                "execution_status": execution_status,
+                "parse_status": parse_status,
             },
         )
 
@@ -577,6 +556,10 @@ def _select_heartbeat_target() -> dict[str, str | bool]:
             "fallback_used": False,
         }
 
+    runtime_selected_local = _runtime_selected_local_target(settings=settings)
+    if runtime_selected_local is not None:
+        return runtime_selected_local
+
     target = resolve_provider_router_target(lane="local")
     provider = str(target.get("provider") or "").strip()
     model = str(target.get("model") or "").strip()
@@ -587,8 +570,8 @@ def _select_heartbeat_target() -> dict[str, str | bool]:
             "model": model,
             "auth_profile": str(target.get("auth_profile") or "").strip(),
             "base_url": str(target.get("base_url") or "").strip(),
-            "model_source": "provider-router.local-lane",
-            "resolution_status": "runtime-local",
+            "model_source": "provider-router.local-lane-config",
+            "resolution_status": "config-local",
             "fallback_used": False,
         }
 
@@ -619,6 +602,29 @@ def _select_heartbeat_target() -> dict[str, str | bool]:
         "model_source": "heartbeat-fallback.visible-placeholder",
         "resolution_status": "bounded-fallback",
         "fallback_used": True,
+    }
+
+
+def _runtime_selected_local_target(
+    *, settings
+) -> dict[str, str | bool] | None:
+    visible_provider = str(getattr(settings, "visible_model_provider", "") or "").strip()
+    visible_model = str(getattr(settings, "visible_model_name", "") or "").strip()
+    visible_auth_profile = str(
+        getattr(settings, "visible_auth_profile", "") or ""
+    ).strip()
+    if visible_provider != "ollama" or not visible_model:
+        return None
+    target = resolve_provider_router_target(lane="visible")
+    return {
+        "lane": "local",
+        "provider": "ollama",
+        "model": visible_model,
+        "auth_profile": visible_auth_profile,
+        "base_url": str(target.get("base_url") or "").strip(),
+        "model_source": "runtime.settings.visible_model_name",
+        "resolution_status": "runtime-selected-local",
+        "fallback_used": False,
     }
 
 
@@ -667,6 +673,11 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
         "model": target["model"],
         "prompt": prompt,
         "stream": False,
+        "format": "json",
+        "options": {
+            "temperature": 0,
+            "num_predict": 160,
+        },
     }
     req = urllib_request.Request(
         f"{base_url.rstrip('/')}/api/generate",
@@ -674,8 +685,14 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib_request.urlopen(req, timeout=120) as response:
-        data = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib_request.urlopen(req, timeout=120) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib_error.HTTPError as exc:
+        detail = _http_error_detail(exc)
+        raise RuntimeError(f"ollama-http-error:{exc.code}:{detail}") from exc
+    except (urllib_error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("ollama-request-failed") from exc
     text = str(data.get("response") or "").strip()
     if not text:
         raise RuntimeError("Heartbeat ollama execution returned no response")
@@ -684,6 +701,7 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
         "input_tokens": int(data.get("prompt_eval_count") or _estimate_tokens(prompt)),
         "output_tokens": int(data.get("eval_count") or _estimate_tokens(text)),
         "cost_usd": 0.0,
+        "execution_status": "success",
     }
 
 
@@ -787,6 +805,65 @@ def _parse_heartbeat_decision(raw_text: str) -> dict[str, str]:
         "ping_text": str(data.get("ping_text") or "").strip(),
         "execute_action": str(data.get("execute_action") or "").strip(),
     }
+
+
+def _parse_heartbeat_decision_bounded(raw_text: str) -> tuple[dict[str, str], str]:
+    try:
+        return _parse_heartbeat_decision(raw_text), "success"
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return (
+            _bounded_heartbeat_failure_decision(
+                failure_kind="parse",
+                detail=raw_text[:240],
+                target=None,
+            ),
+            "parse-failed",
+        )
+
+
+def _bounded_heartbeat_failure_decision(
+    *,
+    failure_kind: str,
+    detail: str,
+    target: dict[str, object] | None,
+) -> dict[str, str]:
+    if failure_kind == "runtime":
+        model = str((target or {}).get("model") or "unknown-model").strip()
+        return {
+            "decision_type": "noop",
+            "summary": "Heartbeat recorded a bounded runtime failure on the selected model.",
+            "reason": f"runtime-failure on {model}: {detail[:200]}",
+            "proposed_action": "",
+            "ping_text": "",
+            "execute_action": "",
+        }
+    return {
+        "decision_type": "noop",
+        "summary": "Heartbeat recorded a bounded parse failure from the selected model.",
+        "reason": f"parse-failure: {detail[:200]}",
+        "proposed_action": "",
+        "ping_text": "",
+        "execute_action": "",
+    }
+
+
+def _classify_heartbeat_execution_exception(exc: Exception) -> str:
+    message = str(exc).strip().lower()
+    if message.startswith("ollama-http-error"):
+        return "http-error"
+    if "request-failed" in message:
+        return "request-failed"
+    return "runtime-failed"
+
+
+def _http_error_detail(exc: urllib_error.HTTPError) -> str:
+    try:
+        payload = exc.read().decode("utf-8", errors="replace").strip()
+    except Exception:
+        payload = ""
+    if not payload:
+        return "no-body"
+    return payload[:200]
 
 
 def _validate_heartbeat_decision(
@@ -1021,6 +1098,8 @@ def _record_heartbeat_outcome(
     model_source: str = "",
     resolution_status: str = "",
     fallback_used: bool = False,
+    execution_status: str = "",
+    parse_status: str = "",
     ping_eligible: bool,
     ping_result: str,
     action_status: str,
@@ -1049,6 +1128,8 @@ def _record_heartbeat_outcome(
         model_source=model_source,
         resolution_status=resolution_status,
         fallback_used=fallback_used,
+        execution_status=execution_status,
+        parse_status=parse_status,
         budget_status=budget_status,
         ping_eligible=ping_eligible,
         ping_result=ping_result,
@@ -1093,6 +1174,8 @@ def _record_heartbeat_outcome(
                 "model_source": model_source,
                 "resolution_status": resolution_status,
                 "fallback_used": fallback_used,
+                "execution_status": execution_status,
+                "parse_status": parse_status,
                 "budget_status": budget_status,
                 "last_ping_eligible": ping_eligible,
                 "last_ping_result": ping_result,
@@ -1132,6 +1215,8 @@ def _record_heartbeat_outcome(
         model_source=model_source,
         resolution_status=resolution_status,
         fallback_used=fallback_used,
+        execution_status=execution_status,
+        parse_status=parse_status,
         budget_status=budget_status,
         last_ping_eligible=ping_eligible,
         last_ping_result=ping_result,
@@ -1210,6 +1295,8 @@ def _merge_runtime_state(
         "model_source": str(persisted.get("model_source") or ""),
         "resolution_status": str(persisted.get("resolution_status") or ""),
         "fallback_used": bool(persisted.get("fallback_used")),
+        "execution_status": str(persisted.get("execution_status") or ""),
+        "parse_status": str(persisted.get("parse_status") or ""),
         "budget_status": str(persisted.get("budget_status") or policy["budget_status"]),
         "policy_summary": str(policy["summary"]),
         "last_ping_eligible": bool(persisted.get("last_ping_eligible")),
@@ -1280,6 +1367,8 @@ def _default_persisted_state() -> dict[str, object]:
         "model_source": "",
         "resolution_status": "",
         "fallback_used": False,
+        "execution_status": "",
+        "parse_status": "",
         "budget_status": "",
         "last_ping_eligible": False,
         "last_ping_result": "",
@@ -1342,6 +1431,8 @@ def _persist_runtime_state(
         model_source=str(merged_input.get("model_source") or ""),
         resolution_status=str(merged_input.get("resolution_status") or ""),
         fallback_used=bool(merged_input.get("fallback_used")),
+        execution_status=str(merged_input.get("execution_status") or ""),
+        parse_status=str(merged_input.get("parse_status") or ""),
         budget_status=str(merged_input.get("budget_status") or policy["budget_status"]),
         last_ping_eligible=bool(merged_input.get("last_ping_eligible")),
         last_ping_result=str(merged_input.get("last_ping_result") or ""),

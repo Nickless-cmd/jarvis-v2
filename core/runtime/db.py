@@ -443,6 +443,8 @@ def init_db() -> None:
                 model_source TEXT NOT NULL DEFAULT '',
                 resolution_status TEXT NOT NULL DEFAULT '',
                 fallback_used INTEGER NOT NULL DEFAULT 0,
+                execution_status TEXT NOT NULL DEFAULT '',
+                parse_status TEXT NOT NULL DEFAULT '',
                 budget_status TEXT NOT NULL DEFAULT '',
                 last_ping_eligible INTEGER NOT NULL DEFAULT 0,
                 last_ping_result TEXT NOT NULL DEFAULT '',
@@ -471,6 +473,8 @@ def init_db() -> None:
                 model_source TEXT NOT NULL DEFAULT '',
                 resolution_status TEXT NOT NULL DEFAULT '',
                 fallback_used INTEGER NOT NULL DEFAULT 0,
+                execution_status TEXT NOT NULL DEFAULT '',
+                parse_status TEXT NOT NULL DEFAULT '',
                 budget_status TEXT NOT NULL DEFAULT '',
                 ping_eligible INTEGER NOT NULL DEFAULT 0,
                 ping_result TEXT NOT NULL DEFAULT '',
@@ -12319,6 +12323,8 @@ def get_heartbeat_runtime_state() -> dict[str, object] | None:
                 model_source,
                 resolution_status,
                 fallback_used,
+                execution_status,
+                parse_status,
                 budget_status,
                 last_ping_eligible,
                 last_ping_result,
@@ -12362,6 +12368,8 @@ def upsert_heartbeat_runtime_state(
     model_source: str,
     resolution_status: str,
     fallback_used: bool,
+    execution_status: str,
+    parse_status: str,
     budget_status: str,
     last_ping_eligible: bool,
     last_ping_result: str,
@@ -12399,6 +12407,8 @@ def upsert_heartbeat_runtime_state(
                 model_source,
                 resolution_status,
                 fallback_used,
+                execution_status,
+                parse_status,
                 budget_status,
                 last_ping_eligible,
                 last_ping_result,
@@ -12408,7 +12418,7 @@ def upsert_heartbeat_runtime_state(
                 last_action_artifact,
                 updated_at
             )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 state_id = excluded.state_id,
                 last_tick_id = excluded.last_tick_id,
@@ -12433,6 +12443,8 @@ def upsert_heartbeat_runtime_state(
                 model_source = excluded.model_source,
                 resolution_status = excluded.resolution_status,
                 fallback_used = excluded.fallback_used,
+                execution_status = excluded.execution_status,
+                parse_status = excluded.parse_status,
                 budget_status = excluded.budget_status,
                 last_ping_eligible = excluded.last_ping_eligible,
                 last_ping_result = excluded.last_ping_result,
@@ -12466,6 +12478,8 @@ def upsert_heartbeat_runtime_state(
                 model_source,
                 resolution_status,
                 1 if fallback_used else 0,
+                execution_status,
+                parse_status,
                 budget_status,
                 1 if last_ping_eligible else 0,
                 last_ping_result,
@@ -12498,6 +12512,8 @@ def record_heartbeat_runtime_tick(
     model_source: str,
     resolution_status: str,
     fallback_used: bool,
+    execution_status: str,
+    parse_status: str,
     budget_status: str,
     ping_eligible: bool,
     ping_result: str,
@@ -12529,6 +12545,8 @@ def record_heartbeat_runtime_tick(
                 model_source,
                 resolution_status,
                 fallback_used,
+                execution_status,
+                parse_status,
                 budget_status,
                 ping_eligible,
                 ping_result,
@@ -12543,7 +12561,7 @@ def record_heartbeat_runtime_tick(
                 started_at,
                 finished_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 tick_id,
@@ -12559,6 +12577,8 @@ def record_heartbeat_runtime_tick(
                 model_source,
                 resolution_status,
                 1 if fallback_used else 0,
+                execution_status,
+                parse_status,
                 budget_status,
                 1 if ping_eligible else 0,
                 ping_result,
@@ -12599,6 +12619,8 @@ def get_heartbeat_runtime_tick(tick_id: str) -> dict[str, object] | None:
                 model_source,
                 resolution_status,
                 fallback_used,
+                execution_status,
+                parse_status,
                 budget_status,
                 ping_eligible,
                 ping_result,
@@ -12641,6 +12663,8 @@ def recent_heartbeat_runtime_ticks(limit: int = 10) -> list[dict[str, object]]:
                 model_source,
                 resolution_status,
                 fallback_used,
+                execution_status,
+                parse_status,
                 budget_status,
                 ping_eligible,
                 ping_result,
@@ -12717,6 +12741,8 @@ def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
         "model_source": row["model_source"],
         "resolution_status": row["resolution_status"],
         "fallback_used": bool(row["fallback_used"]),
+        "execution_status": row["execution_status"],
+        "parse_status": row["parse_status"],
         "budget_status": row["budget_status"],
         "last_ping_eligible": bool(row["last_ping_eligible"]),
         "last_ping_result": row["last_ping_result"],
@@ -12743,6 +12769,8 @@ def _heartbeat_runtime_tick_from_row(row: sqlite3.Row) -> dict[str, object]:
         "model_source": row["model_source"],
         "resolution_status": row["resolution_status"],
         "fallback_used": bool(row["fallback_used"]),
+        "execution_status": row["execution_status"],
+        "parse_status": row["parse_status"],
         "budget_status": row["budget_status"],
         "ping_eligible": bool(row["ping_eligible"]),
         "ping_result": row["ping_result"],
@@ -12881,6 +12909,20 @@ def _ensure_heartbeat_runtime_state_columns(conn: sqlite3.Connection) -> None:
             ADD COLUMN fallback_used INTEGER NOT NULL DEFAULT 0
             """
         )
+    if "execution_status" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN execution_status TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "parse_status" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN parse_status TEXT NOT NULL DEFAULT ''
+            """
+        )
 
 
 def _ensure_heartbeat_runtime_tick_columns(conn: sqlite3.Connection) -> None:
@@ -12919,6 +12961,20 @@ def _ensure_heartbeat_runtime_tick_columns(conn: sqlite3.Connection) -> None:
             """
             ALTER TABLE heartbeat_runtime_ticks
             ADD COLUMN fallback_used INTEGER NOT NULL DEFAULT 0
+            """
+        )
+    if "execution_status" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_ticks
+            ADD COLUMN execution_status TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "parse_status" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_ticks
+            ADD COLUMN parse_status TEXT NOT NULL DEFAULT ''
             """
         )
 

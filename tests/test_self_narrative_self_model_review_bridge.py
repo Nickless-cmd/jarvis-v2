@@ -69,13 +69,17 @@ def _insert_self_model_signal(
     )
 
 
-def test_self_narrative_review_bridge_stays_empty_without_narrative_substrate(isolated_runtime) -> None:
+def test_self_narrative_review_bridge_stays_empty_without_narrative_substrate(
+    isolated_runtime,
+) -> None:
     bridge = isolated_runtime.self_narrative_self_model_review_bridge
     db = isolated_runtime.db
 
     _insert_self_model_signal(db, run_id="visible-run-1")
 
-    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(limit=8)
+    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(
+        limit=8
+    )
     runtime = isolated_runtime.mission_control.mc_runtime()
 
     assert surface["active"] is False
@@ -86,7 +90,9 @@ def test_self_narrative_review_bridge_stays_empty_without_narrative_substrate(is
     assert runtime["runtime_self_narrative_self_model_review_bridge"]["items"] == []
 
 
-def test_self_narrative_review_bridge_forms_read_only_bridge_from_narrative_and_self_model(isolated_runtime) -> None:
+def test_self_narrative_review_bridge_forms_read_only_bridge_from_narrative_and_self_model(
+    isolated_runtime,
+) -> None:
     bridge = isolated_runtime.self_narrative_self_model_review_bridge
     db = isolated_runtime.db
 
@@ -98,12 +104,23 @@ def test_self_narrative_review_bridge_forms_read_only_bridge_from_narrative_and_
     )
     _insert_self_model_signal(db, run_id="test-run", status="active")
 
-    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(limit=8)
+    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(
+        limit=8
+    )
     item = surface["items"][0]
 
     assert surface["active"] is True
-    assert item["bridge_state"] in {"self-model-reviewable", "narrative-only-reviewable"}
-    assert item["bridge_direction"] in {"steadying", "deepening", "guarding", "opening", "firming"}
+    assert item["bridge_state"] in {
+        "self-model-reviewable",
+        "narrative-only-reviewable",
+    }
+    assert item["bridge_direction"] in {
+        "steadying",
+        "deepening",
+        "guarding",
+        "opening",
+        "firming",
+    }
     assert item["bridge_weight"] in {"low", "medium", "high"}
     assert item["bridge_confidence"] in {"low", "medium", "high"}
     assert item["pattern_type"] in {
@@ -114,10 +131,19 @@ def test_self_narrative_review_bridge_forms_read_only_bridge_from_narrative_and_
         "deepening-pattern",
         "coherent-review-pattern",
     }
-    assert item["pattern_direction"] in {"steadying", "deepening", "guarding", "opening", "firming"}
+    assert item["pattern_direction"] in {
+        "steadying",
+        "deepening",
+        "guarding",
+        "opening",
+        "firming",
+    }
     assert item["pattern_weight"] in {"low", "medium", "high"}
     assert item["pattern_confidence"] in {"low", "medium", "high"}
-    assert item["review_state"] in {"narrative-and-self-model-visible", "narrative-awaiting-self-model-context"}
+    assert item["review_state"] in {
+        "narrative-and-self-model-visible",
+        "narrative-awaiting-self-model-context",
+    }
     assert item["review_input_state"] in {"review-worthy", "not-review-worthy"}
     assert item["review_input_weight"] in {"low", "medium", "high"}
     assert item["review_input_confidence"] in {"low", "medium", "high"}
@@ -135,7 +161,9 @@ def test_self_narrative_review_bridge_forms_read_only_bridge_from_narrative_and_
     assert "threshold" in item["review_input_reason"].lower()
 
 
-def test_self_narrative_review_bridge_threshold_gate_marks_review_worthy_only_when_thresholds_are_met(isolated_runtime) -> None:
+def test_self_narrative_review_bridge_threshold_gate_marks_review_worthy_only_when_thresholds_are_met(
+    isolated_runtime,
+) -> None:
     bridge = isolated_runtime.self_narrative_self_model_review_bridge
     db = isolated_runtime.db
 
@@ -157,19 +185,26 @@ def test_self_narrative_review_bridge_threshold_gate_marks_review_worthy_only_wh
         session_count=2,
     )
 
-    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(limit=8)
+    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(
+        limit=8
+    )
     item = surface["items"][0]
     review_input = surface["review_inputs"][0]
 
     assert item["review_input_state"] == "review-worthy"
     assert item["threshold_state"] == "thresholds-met"
     assert item["self_model_alignment"] == "coherent"
-    assert item["persistence_state"] in {"multiple-sessions", "bounded-persistence-signal"}
+    assert item["persistence_state"] in {
+        "multiple-sessions",
+        "bounded-persistence-signal",
+    }
     assert review_input["review_input_state"] == "review-worthy"
     assert surface["summary"]["review_ready_count"] == 1
 
 
-def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effects(isolated_runtime) -> None:
+def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effects(
+    isolated_runtime,
+) -> None:
     bridge = isolated_runtime.self_narrative_self_model_review_bridge
     db = isolated_runtime.db
     mission_control = isolated_runtime.mission_control
@@ -181,7 +216,9 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
         title="Self-narrative support: workspace search",
     )
 
-    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(limit=8)
+    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(
+        limit=8
+    )
     jarvis = mission_control.mc_jarvis()
     runtime = mission_control.mc_runtime()
 
@@ -240,6 +277,97 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
     }.issubset(surface["items"][0].keys())
     assert surface["patterns"][0]["pattern_summary"]
     assert surface["review_inputs"][0]["review_input_summary"]
-    assert jarvis["development"]["self_narrative_self_model_review_bridge"]["summary"]["proposal_state"] == "not-selfhood-proposal"
-    assert runtime["runtime_self_narrative_self_model_review_bridge"]["summary"]["review_mode"] == "read-only-review-support"
+    assert (
+        jarvis["development"]["self_narrative_self_model_review_bridge"]["summary"][
+            "proposal_state"
+        ]
+        == "not-selfhood-proposal"
+    )
+    assert (
+        runtime["runtime_self_narrative_self_model_review_bridge"]["summary"][
+            "review_mode"
+        ]
+        == "read-only-review-support"
+    )
     assert jarvis["development"]["selfhood_proposals"]["summary"]["active_count"] == 0
+
+
+def test_self_narrative_review_bridge_sharpening_gate_marks_sharpening_worthy_only_when_sharpening_thresholds_are_met(
+    isolated_runtime,
+) -> None:
+    bridge = isolated_runtime.self_narrative_self_model_review_bridge
+    db = isolated_runtime.db
+
+    _insert_self_narrative_signal(
+        db,
+        status="active",
+        canonical_key="self-narrative-continuity:becoming-steady:workspace-search",
+        title="Self-narrative support: workspace search",
+        confidence="high",
+        support_count=2,
+        session_count=2,
+    )
+    _insert_self_model_signal(
+        db,
+        run_id="test-run",
+        status="active",
+        confidence="high",
+        support_count=2,
+        session_count=2,
+    )
+
+    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(
+        limit=8
+    )
+    item = surface["items"][0]
+    sharpening_input = surface["sharpening_inputs"][0]
+
+    assert item["review_input_state"] == "review-worthy"
+    assert item["threshold_state"] == "thresholds-met"
+    assert item["persistence_state"] == "multiple-sessions"
+    assert item["self_model_alignment"] == "coherent"
+    assert item["sharpening_input_state"] == "sharpening-worthy"
+    assert item["sharpening_threshold_state"] == "sharpening-thresholds-met"
+    assert sharpening_input["sharpening_input_state"] == "sharpening-worthy"
+    assert surface["summary"]["sharpening_ready_count"] == 1
+    assert surface["summary"]["review_ready_count"] == 1
+
+
+def test_self_narrative_review_bridge_sharpening_not_worthy_with_bounded_persistence(
+    isolated_runtime,
+) -> None:
+    bridge = isolated_runtime.self_narrative_self_model_review_bridge
+    db = isolated_runtime.db
+
+    _insert_self_narrative_signal(
+        db,
+        status="active",
+        canonical_key="self-narrative-continuity:becoming-steady:workspace-search",
+        title="Self-narrative support: workspace search",
+        confidence="high",
+        support_count=2,
+        session_count=1,
+    )
+    _insert_self_model_signal(
+        db,
+        run_id="test-run",
+        status="active",
+        confidence="high",
+        support_count=2,
+        session_count=1,
+    )
+
+    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(
+        limit=8
+    )
+    item = surface["items"][0]
+    sharpening_input = surface["sharpening_inputs"][0]
+
+    assert item["review_input_state"] == "review-worthy"
+    assert item["threshold_state"] == "thresholds-met"
+    assert item["persistence_state"] == "bounded-persistence-signal"
+    assert item["sharpening_input_state"] == "not-sharpenable"
+    assert item["sharpening_threshold_state"] == "sharpening-thresholds-not-met"
+    assert sharpening_input["sharpening_input_state"] == "not-sharpenable"
+    assert surface["summary"]["sharpening_ready_count"] == 0
+    assert surface["summary"]["review_ready_count"] == 1

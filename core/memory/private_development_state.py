@@ -36,7 +36,10 @@ def build_private_development_state_payload(
     )[:32]
     return {
         "state_id": "private-development-state:current",
-        "source": "private-growth-note+private-self-model+private-reflective-selection",
+        "source": (
+            "private-growth-note:private-runtime-grounded+"
+            "private-self-model+private-reflective-selection"
+        ),
         "retained_pattern": retained_pattern,
         "preferred_direction": preferred_direction,
         "recurring_tension": recurring_tension,

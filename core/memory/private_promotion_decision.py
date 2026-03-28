@@ -28,7 +28,10 @@ def build_private_promotion_decision_payload(
     )[:32]
     return {
         "decision_id": f"private-promotion-decision:{run_id}",
-        "source": "private-temporal-promotion-signal+private-development-state",
+        "source": (
+            "private-temporal-promotion-signal:private-runtime-grounded+"
+            "private-development-state"
+        ),
         "run_id": run_id,
         "work_id": work_id,
         "promotion_target": promotion_target,

@@ -25,7 +25,7 @@ def build_private_reflective_selection_payload(
     )[:32]
     return {
         "signal_id": f"private-reflective-selection:{run_id}",
-        "source": "private-growth-note+private-self-model",
+        "source": "private-growth-note:private-runtime-grounded+private-self-model",
         "run_id": run_id,
         "work_id": work_id,
         "selection_kind": selection_kind,
@@ -65,7 +65,7 @@ def _reconsider(
 
 
 def _fade(private_growth_note: dict[str, str]) -> str:
-    lesson = str(private_growth_note.get("lesson") or "").strip()
-    if "observe" in lesson:
+    learning_kind = str(private_growth_note.get("learning_kind") or "").strip().lower()
+    if learning_kind == "observe":
         return "low-signal-observation"
     return "none"

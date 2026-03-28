@@ -36,7 +36,10 @@ def build_private_retained_memory_record_payload(
     )[:32]
     return {
         "record_id": f"private-retained-memory-record:{run_id}",
-        "source": "private-promotion-decision+private-development-state",
+        "source": (
+            "private-promotion-decision:private-runtime-grounded+"
+            "private-development-state"
+        ),
         "run_id": run_id,
         "work_id": work_id,
         "retained_value": retained_value,

@@ -949,6 +949,38 @@ def _latest_item(items: list[dict]) -> dict | None:
     return items[0] if items else None
 
 
+def _with_private_lane_source_discipline(item: dict | None) -> dict | None:
+    if not item:
+        return item
+    source = str(item.get("source") or "")
+    grounded = "private-runtime-grounded" in source
+    return {
+        **item,
+        "private_lane_source_state": (
+            "private-runtime-grounded" if grounded else "legacy-source-unknown"
+        ),
+        "contamination_state": (
+            "decontaminated-from-visible-reply"
+            if grounded
+            else "legacy-contamination-unknown"
+        ),
+    }
+
+
+def _private_lane_surface_summary(item: dict | None) -> dict[str, str]:
+    normalized = _with_private_lane_source_discipline(item)
+    return {
+        "current_source_state": str(
+            (normalized or {}).get("private_lane_source_state")
+            or "legacy-source-unknown"
+        ),
+        "current_contamination_state": str(
+            (normalized or {}).get("contamination_state")
+            or "legacy-contamination-unknown"
+        ),
+    }
+
+
 def _path_state(path) -> dict[str, str | bool]:
     return {
         "path": str(path),
@@ -1072,9 +1104,18 @@ def _private_inner_note_surface() -> dict:
 
 def _private_growth_note_surface() -> dict:
     notes = recent_private_growth_notes(limit=5)
+    normalized_notes = [
+        item
+        for item in (
+            _with_private_lane_source_discipline(note)
+            for note in notes
+        )
+        if item
+    ]
     return {
-        "active": bool(notes),
-        "recent_notes": notes,
+        "active": bool(normalized_notes),
+        "recent_notes": normalized_notes,
+        "summary": _private_lane_surface_summary(_latest_item(normalized_notes)),
     }
 
 
@@ -1088,9 +1129,18 @@ def _private_self_model_surface() -> dict:
 
 def _private_reflective_selection_surface() -> dict:
     signals = recent_private_reflective_selections(limit=5)
+    normalized_signals = [
+        item
+        for item in (
+            _with_private_lane_source_discipline(signal)
+            for signal in signals
+        )
+        if item
+    ]
     return {
-        "active": bool(signals),
-        "recent_signals": signals,
+        "active": bool(normalized_signals),
+        "recent_signals": normalized_signals,
+        "summary": _private_lane_surface_summary(_latest_item(normalized_signals)),
     }
 
 
@@ -1187,37 +1237,66 @@ def _private_temporal_curiosity_state_surface() -> dict:
 
 
 def _private_temporal_promotion_signal_surface() -> dict:
-    signal = get_private_temporal_promotion_signal()
+    signal = _with_private_lane_source_discipline(get_private_temporal_promotion_signal())
     return {
         "active": bool(signal),
         "current": signal,
+        "summary": _private_lane_surface_summary(signal),
     }
 
 
 def _private_promotion_decision_surface() -> dict:
-    decision = get_private_promotion_decision()
+    decision = _with_private_lane_source_discipline(get_private_promotion_decision())
     return {
         "active": bool(decision),
         "current": decision,
+        "summary": _private_lane_surface_summary(decision),
     }
 
 
 def _private_retained_memory_record_surface() -> dict:
-    record = get_private_retained_memory_record()
+    record = _with_private_lane_source_discipline(get_private_retained_memory_record())
+    recent_records = [
+        item
+        for item in (
+            _with_private_lane_source_discipline(candidate)
+            for candidate in recent_private_retained_memory_records(limit=5)
+        )
+        if item
+    ]
     return {
         "active": bool(record),
         "current": record,
-        "recent_records": recent_private_retained_memory_records(limit=5),
+        "recent_records": recent_records,
+        "summary": _private_lane_surface_summary(record),
     }
 
 
 def _private_retained_memory_projection_surface() -> dict:
-    record = get_private_retained_memory_record()
-    recent_records = recent_private_retained_memory_records(limit=5)
-    return build_private_retained_memory_projection(
+    record = _with_private_lane_source_discipline(get_private_retained_memory_record())
+    recent_records = [
+        item
+        for item in (
+            _with_private_lane_source_discipline(candidate)
+            for candidate in recent_private_retained_memory_records(limit=5)
+        )
+        if item
+    ]
+    projection = build_private_retained_memory_projection(
         current_record=record,
         recent_records=recent_records,
     )
+    normalized_projection = _with_private_lane_source_discipline(projection)
+    if normalized_projection is None:
+        return projection
+    return {
+        **normalized_projection,
+        "current": _with_private_lane_source_discipline(
+            normalized_projection.get("current")
+            if isinstance(normalized_projection.get("current"), dict)
+            else None
+        ),
+    }
 
 
 def _recent_visible_run_events(limit: int = 5, scan_limit: int = 40) -> list[dict]:

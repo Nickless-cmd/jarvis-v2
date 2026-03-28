@@ -1912,6 +1912,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <span>Confidence</span>
               <strong>{summary?.retained_memory?.confidence || 'unknown'}</strong>
             </div>
+            <div className="compact-metric">
+              <span>Private source discipline</span>
+              <strong>{data?.memory?.retainedProjection?.private_lane_source_state || data?.memory?.retainedRecord?.summary?.current_source_state || 'unknown'}</strong>
+              <p>{data?.memory?.retainedProjection?.contamination_state || data?.memory?.retainedRecord?.summary?.current_contamination_state || 'unknown'}</p>
+            </div>
           </div>
           <div className="mc-list">
             {detailRow(data?.memory?.retainedProjection, 'Retained Projection', onOpenItem)}
@@ -2628,6 +2633,9 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.continuity?.relationState, 'Relation State', onOpenItem)}
               {detailRow(data?.continuity?.promotionSignal, 'Promotion Signal', onOpenItem)}
               {detailRow(data?.continuity?.promotionDecision, 'Promotion Decision', onOpenItem)}
+              <p className="muted">
+                {(data?.continuity?.promotionSignal?.summary?.current_source_state || data?.continuity?.promotionSignal?.current?.private_lane_source_state || 'unknown')} · {(data?.continuity?.promotionDecision?.summary?.current_contamination_state || data?.continuity?.promotionDecision?.current?.contamination_state || 'unknown')}
+              </p>
               {worldModelContextRow({
                 summary: worldModelSignals?.summary || {},
                 currentSignal: worldModelSignals?.summary?.current_signal || summary?.continuity?.current_world_model || 'No active world-model signal',

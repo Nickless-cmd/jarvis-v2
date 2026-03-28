@@ -29,7 +29,8 @@ def build_private_temporal_promotion_signal_payload(
     return {
         "signal_id": f"private-temporal-promotion-signal:{run_id}",
         "source": (
-            "private-state+private-reflective-selection+private-development-state+"
+            "private-state+private-reflective-selection+private-development-state:"
+            "private-runtime-grounded+"
             "protected-inner-voice"
         ),
         "run_id": run_id,

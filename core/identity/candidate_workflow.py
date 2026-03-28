@@ -20,6 +20,7 @@ _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS = {
     "user-preference:reply-style:plain-grounded-concise",
     "user-preference:review-style:challenge-before-settling",
 }
+_AUTO_APPLY_SAFE_MEMORY_MD_PREFIX = "workspace-memory:stable-context:"
 
 
 def approve_runtime_contract_candidate(
@@ -225,6 +226,46 @@ def auto_apply_safe_user_md_candidates() -> dict[str, object]:
     }
 
 
+def auto_apply_safe_memory_md_candidates() -> dict[str, object]:
+    considered = 0
+    auto_applied = 0
+    skipped = 0
+    items: list[dict[str, object]] = []
+
+    for candidate in list_runtime_contract_candidates(
+        candidate_type="memory_promotion",
+        target_file="MEMORY.md",
+        status="proposed",
+        limit=12,
+    ):
+        considered += 1
+        if not _memory_candidate_eligible_for_auto_apply(candidate):
+            skipped += 1
+            continue
+        approved = approve_runtime_contract_candidate(
+            str(candidate["candidate_id"]),
+            status_reason_override="Approved by bounded auto-apply policy for safe MEMORY.md candidate.",
+        )
+        applied = apply_runtime_contract_candidate(
+            str(approved["candidate_id"]),
+            status_reason_override="Applied by bounded auto-apply policy for safe MEMORY.md candidate.",
+        )
+        auto_applied += 1
+        items.append(applied["candidate"])
+
+    return {
+        "considered": considered,
+        "auto_applied": auto_applied,
+        "skipped": skipped,
+        "items": items,
+        "summary": (
+            f"Auto-applied {auto_applied} safe MEMORY.md candidates."
+            if auto_applied
+            else "No safe MEMORY.md candidates were eligible for auto-apply."
+        ),
+    }
+
+
 def _require_candidate(candidate_id: str) -> dict[str, object]:
     candidate = get_runtime_contract_candidate(candidate_id)
     if candidate is None:
@@ -287,6 +328,38 @@ def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
         if str(other.get("status") or "") not in {"proposed", "approved"}:
             continue
         if _candidate_dimension_key(other) != dimension_key:
+            continue
+        return False
+    return True
+
+
+def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
+    if str(candidate.get("target_file") or "") != "MEMORY.md":
+        return False
+    if str(candidate.get("candidate_type") or "") != "memory_promotion":
+        return False
+    if str(candidate.get("status") or "") != "proposed":
+        return False
+    if str(candidate.get("confidence") or "") != "high":
+        return False
+    canonical_key = str(candidate.get("canonical_key") or "")
+    if not canonical_key.startswith(_AUTO_APPLY_SAFE_MEMORY_MD_PREFIX):
+        return False
+    readiness = candidate_apply_readiness(candidate)
+    if str(readiness.get("apply_readiness") or "") != "medium":
+        return False
+    if str(readiness.get("apply_reason") or "") != "needs-review":
+        return False
+    for other in list_runtime_contract_candidates(
+        candidate_type="memory_promotion",
+        target_file="MEMORY.md",
+        limit=20,
+    ):
+        if str(other.get("candidate_id") or "") == str(candidate.get("candidate_id") or ""):
+            continue
+        if str(other.get("status") or "") not in {"proposed", "approved"}:
+            continue
+        if str(other.get("canonical_key") or "") != canonical_key:
             continue
         return False
     return True

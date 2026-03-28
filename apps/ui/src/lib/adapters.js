@@ -1520,6 +1520,10 @@ export const backend = {
           source: ((development.private_temporal_curiosity_states?.items || [])[0] || {}).source || '/mc/runtime.private_temporal_curiosity_state',
           summary: ((development.private_temporal_curiosity_states?.items || [])[0] || {}).curiosity_summary || 'No bounded temporal curiosity support',
         }),
+        innerVisibleSupport: normalizeJarvisItem((development.inner_visible_support_signals?.items || [])[0] || {}, {
+          source: ((development.inner_visible_support_signals?.items || [])[0] || {}).source || '/mc/runtime.inner_visible_support_signal',
+          summary: ((development.inner_visible_support_signals?.items || [])[0] || {}).support_summary || 'No bounded inner-visible support',
+        }),
         privateTemporalPromotionSignal: normalizeJarvisItem((development.private_temporal_promotion_signals?.items || [])[0] || {}, {
           source: ((development.private_temporal_promotion_signals?.items || [])[0] || {}).source || '/mc/runtime.private_temporal_promotion_signal',
           summary: ((development.private_temporal_promotion_signals?.items || [])[0] || {}).promotion_summary || 'No bounded temporal promotion support',
@@ -1597,6 +1601,17 @@ export const backend = {
           items: (development.private_temporal_curiosity_states?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.private_temporal_curiosity_state',
             summary: item.curiosity_summary || item.summary || 'Inspect bounded temporal curiosity support',
+          })),
+        },
+        innerVisibleSupportSignals: {
+          active: Boolean(development.inner_visible_support_signals?.active),
+          authority: development.inner_visible_support_signals?.authority || 'non-authoritative',
+          layerRole: development.inner_visible_support_signals?.layer_role || 'runtime-support',
+          promptBridgeState: development.inner_visible_support_signals?.prompt_bridge_state || 'not-yet-bridged',
+          summary: development.inner_visible_support_signals?.summary || {},
+          items: (development.inner_visible_support_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.inner_visible_support_signal',
+            summary: item.support_summary || item.summary || 'Inspect bounded inner-visible support',
           })),
         },
         privateTemporalPromotionSignals: {

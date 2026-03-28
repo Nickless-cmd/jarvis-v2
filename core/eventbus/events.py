@@ -35,6 +35,7 @@ ALLOWED_EVENT_FAMILIES = {
     "private_state_snapshot",
     "private_temporal_curiosity_state",
     "private_temporal_promotion_signal",
+    "inner_visible_support_signal",
     "user_md_update_proposal",
     "memory_md_update_proposal",
     "selfhood_proposal",

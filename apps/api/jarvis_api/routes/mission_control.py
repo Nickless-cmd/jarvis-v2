@@ -105,6 +105,9 @@ from apps.api.jarvis_api.services.private_state_snapshot_tracking import (
 from apps.api.jarvis_api.services.private_temporal_curiosity_state_tracking import (
     build_runtime_private_temporal_curiosity_state_surface,
 )
+from apps.api.jarvis_api.services.inner_visible_support_signal_tracking import (
+    build_runtime_inner_visible_support_signal_surface,
+)
 from apps.api.jarvis_api.services.private_temporal_promotion_signal_tracking import (
     build_runtime_private_temporal_promotion_signal_surface,
 )
@@ -373,6 +376,7 @@ def mc_jarvis() -> dict:
     private_inner_interplay_signals = build_runtime_private_inner_interplay_signal_surface()
     private_state_snapshots = build_runtime_private_state_snapshot_surface()
     private_temporal_curiosity_states = build_runtime_private_temporal_curiosity_state_surface()
+    inner_visible_support_signals = build_runtime_inner_visible_support_signal_surface()
     private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
     memory_md_update_proposals = build_runtime_memory_md_update_proposal_surface()
@@ -453,6 +457,7 @@ def mc_jarvis() -> dict:
             "private_inner_interplay_signals": private_inner_interplay_signals,
             "private_state_snapshots": private_state_snapshots,
             "private_temporal_curiosity_states": private_temporal_curiosity_states,
+            "inner_visible_support_signals": inner_visible_support_signals,
             "private_temporal_promotion_signals": private_temporal_promotion_signals,
             "user_md_update_proposals": user_md_update_proposals,
             "memory_md_update_proposals": memory_md_update_proposals,
@@ -595,6 +600,7 @@ def mc_runtime() -> dict:
         "runtime_private_inner_interplay_signals": build_runtime_private_inner_interplay_signal_surface(),
         "runtime_private_state_snapshots": build_runtime_private_state_snapshot_surface(),
         "runtime_private_temporal_curiosity_states": build_runtime_private_temporal_curiosity_state_surface(),
+        "runtime_inner_visible_support_signals": build_runtime_inner_visible_support_signal_surface(),
         "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),
         "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
         "runtime_memory_md_update_proposals": build_runtime_memory_md_update_proposal_surface(),

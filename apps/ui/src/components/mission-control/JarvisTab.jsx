@@ -1441,6 +1441,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const privateInnerInterplaySignals = data?.development?.privateInnerInterplaySignals || { items: [], summary: {} }
   const privateStateSnapshots = data?.development?.privateStateSnapshots || { items: [], summary: {} }
   const privateTemporalCuriosityStates = data?.development?.privateTemporalCuriosityStates || { items: [], summary: {} }
+  const innerVisibleSupportSignals = data?.development?.innerVisibleSupportSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
@@ -1991,6 +1992,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Inner Visible Support</span>
+              <strong>{(innerVisibleSupportSignals?.summary?.active_count || 0) + (innerVisibleSupportSignals?.summary?.stale_count || 0)}</strong>
+              <p>{innerVisibleSupportSignals?.summary?.current_signal || 'No bounded inner-visible support'}</p>
+              <p>
+                tone {innerVisibleSupportSignals?.summary?.current_tone || 'none'} · stance {innerVisibleSupportSignals?.summary?.current_stance || 'steady'}
+              </p>
+              <p>
+                {innerVisibleSupportSignals?.summary?.authority || 'non-authoritative'} · {innerVisibleSupportSignals?.summary?.prompt_bridge_state || 'not-yet-bridged'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Temporal Promotion</span>
               <strong>{(privateTemporalPromotionSignals?.summary?.active_count || 0) + (privateTemporalPromotionSignals?.summary?.stale_count || 0)}</strong>
               <p>{privateTemporalPromotionSignals?.summary?.current_signal || 'No bounded temporal promotion support'}</p>
@@ -2225,6 +2237,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.privateInnerInterplaySupport, 'Private Inner Interplay Support', onOpenItem)}
               {detailRow(data?.development?.privateStateSnapshot, 'Private State Snapshot', onOpenItem)}
               {detailRow(data?.development?.privateTemporalCuriosityState, 'Private Temporal Curiosity State', onOpenItem)}
+              {detailRow(data?.development?.innerVisibleSupport, 'Inner Visible Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}
               {detailRow(data?.development?.operationalAlignment, 'Preference Alignment', onOpenItem)}

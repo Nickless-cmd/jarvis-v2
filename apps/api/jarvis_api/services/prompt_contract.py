@@ -186,7 +186,12 @@ def build_heartbeat_prompt_assembly(
     included_files: list[str] = []
     conditional_files: list[str] = []
     derived_inputs: list[str] = []
-    excluded_files = ["runtime/RUNTIME_FEEDBACK.md", "boredom_templates.json", "full transcript", "heavy private/internal dumps"]
+    excluded_files = [
+        "runtime/RUNTIME_FEEDBACK.md",
+        "boredom_templates.json",
+        "full transcript",
+        "heavy private/internal dumps",
+    ]
     relevance = build_prompt_relevance_decision(
         "heartbeat",
         mode="heartbeat",
@@ -267,7 +272,12 @@ def build_future_agent_task_prompt_assembly(
     included_files: list[str] = []
     conditional_files: list[str] = []
     derived_inputs: list[str] = []
-    excluded_files = ["BOOTSTRAP.md", "HEARTBEAT.md", *DEFAULT_EXCLUDED_FILES, "full transcript"]
+    excluded_files = [
+        "BOOTSTRAP.md",
+        "HEARTBEAT.md",
+        *DEFAULT_EXCLUDED_FILES,
+        "full transcript",
+    ]
     relevance = build_prompt_relevance_decision(
         task_brief,
         mode="future_agent_task",
@@ -385,10 +395,17 @@ def build_prompt_relevance_decision(
     )
 
     if mode == "visible_chat":
-        # Visible chat keeps a bounded recent transcript slice available by default.
         include_transcript = True
         include_continuity = (not compact) or continuity_relevant
         include_support_signals = (not compact) or support_signals_relevant
+    elif mode == "heartbeat":
+        include_transcript = False
+        include_continuity = continuity_relevant
+        include_support_signals = support_signals_relevant
+    elif mode == "future_agent_task":
+        include_transcript = False
+        include_continuity = continuity_relevant
+        include_support_signals = support_signals_relevant
     else:
         include_transcript = False
         include_continuity = False
@@ -542,7 +559,9 @@ def _select_relevant_memory_entries(
         scored.append((score, index, entry))
 
     if scored:
-        chosen = sorted(scored, key=lambda item: (item[0], item[1]), reverse=True)[: max(max_lines, 1)]
+        chosen = sorted(scored, key=lambda item: (item[0], item[1]), reverse=True)[
+            : max(max_lines, 1)
+        ]
         ordered = [item[2] for item in sorted(chosen, key=lambda item: item[1])]
     else:
         ordered = entries[-max(max_lines, 1) :]
@@ -561,7 +580,9 @@ def _memory_line_relevance_score(entry: str, user_message: str) -> int:
     query = str(user_message or "").lower()
     score = 0
 
-    if _contains_any(query, ("mit navn", "hvad hedder jeg", "name", "navn")) and _contains_any(
+    if _contains_any(
+        query, ("mit navn", "hvad hedder jeg", "name", "navn")
+    ) and _contains_any(
         line,
         ("name", "navn"),
     ):
@@ -571,12 +592,24 @@ def _memory_line_relevance_score(entry: str, user_message: str) -> int:
         ("bygger vi", "build", "building", "projekt", "project", "arbejder vi på"),
     ) and _contains_any(
         line,
-        ("project anchor", "building jarvis together", "jarvis together", "shared project"),
+        (
+            "project anchor",
+            "building jarvis together",
+            "jarvis together",
+            "shared project",
+        ),
     ):
         score += 8
     if _contains_any(
         query,
-        ("repo", "repoet", "repository", "arbejder vi i", "working context", "hvilket repo"),
+        (
+            "repo",
+            "repoet",
+            "repository",
+            "arbejder vi i",
+            "working context",
+            "hvilket repo",
+        ),
     ) and _contains_any(
         line,
         ("jarvis v2 repo", "working context", "repo context", "repo"),
@@ -591,7 +624,17 @@ def _memory_line_relevance_score(entry: str, user_message: str) -> int:
     ):
         score += 5
 
-    for token in ("jarvis", "repo", "project", "context", "name", "working", "build", "stable", "workspace"):
+    for token in (
+        "jarvis",
+        "repo",
+        "project",
+        "context",
+        "name",
+        "working",
+        "build",
+        "stable",
+        "workspace",
+    ):
         if token in query and token in line:
             score += 1
     return score
@@ -633,15 +676,17 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         lines.append("- Currently available capability_ids:")
         limit = 4 if compact else 8
         for item in available[:limit]:
-            lines.append(f'  - {item["capability_id"]}: {item.get("name", "")}')
+            lines.append(f"  - {item['capability_id']}: {item.get('name', '')}")
     else:
-        lines.append("- No workspace capabilities are currently available for direct execution.")
+        lines.append(
+            "- No workspace capabilities are currently available for direct execution."
+        )
     if gated:
         lines.append(
             f"- Approval-gated capabilities currently known to runtime: {min(len(gated), 6)} shown below."
         )
         for item in gated[:6]:
-            lines.append(f'  - {item["capability_id"]}: approval required')
+            lines.append(f"  - {item['capability_id']}: approval required")
     return "\n".join(lines)
 
 
@@ -908,7 +953,9 @@ def _reflection_support_signal_instruction() -> str | None:
     if not dominant_reflection or not reflection_state:
         return None
 
-    reflection_direction = _reflection_direction_label(str(dominant.get("signal_type") or ""))
+    reflection_direction = _reflection_direction_label(
+        str(dominant.get("signal_type") or "")
+    )
     parts = [
         f"dominant_reflection={dominant_reflection}",
         f"reflection_state={reflection_state}",
@@ -952,7 +999,9 @@ def _world_model_support_signal_instruction() -> str | None:
     if not dominant_world_thread or not world_state:
         return None
 
-    world_direction = _world_model_direction_label(str(dominant.get("signal_type") or ""))
+    world_direction = _world_model_direction_label(
+        str(dominant.get("signal_type") or "")
+    )
     parts = [
         f"dominant_world_thread={dominant_world_thread}",
         f"world_state={world_state}",
@@ -1043,7 +1092,9 @@ def _runtime_awareness_support_signal_instruction() -> str | None:
     if not runtime_detail or not runtime_state:
         return None
 
-    runtime_direction = _runtime_awareness_direction_label(str(dominant.get("signal_type") or ""))
+    runtime_direction = _runtime_awareness_direction_label(
+        str(dominant.get("signal_type") or "")
+    )
     parts = [
         f"runtime_state={runtime_state}",
         f"runtime_detail={runtime_detail}",
@@ -1170,7 +1221,12 @@ def _runtime_awareness_direction_label(signal_type: str) -> str:
 def _development_focus_direction_label(focus_type: str, canonical_key: str) -> str:
     normalized_focus_type = str(focus_type or "").strip()
     if normalized_focus_type == "user-directed-improvement":
-        return str(canonical_key or "").removeprefix("development-focus:user-directed:").strip() or normalized_focus_type
+        return (
+            str(canonical_key or "")
+            .removeprefix("development-focus:user-directed:")
+            .strip()
+            or normalized_focus_type
+        )
     if normalized_focus_type == "runtime-development-thread":
         return "runtime-development"
     if normalized_focus_type == "communication-calibration":

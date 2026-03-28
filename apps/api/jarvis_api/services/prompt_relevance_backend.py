@@ -44,7 +44,8 @@ def run_bounded_nl_prompt_relevance(
     compact: bool,
     workspace_dir: Path,
 ) -> BoundedPromptRelevanceAttempt:
-    if mode != "visible_chat":
+    supported_modes = {"visible_chat", "heartbeat", "future_agent_task"}
+    if mode not in supported_modes:
         return BoundedPromptRelevanceAttempt(
             attempted=False,
             success=False,
@@ -105,7 +106,13 @@ def run_bounded_nl_prompt_relevance(
     try:
         with urllib_request.urlopen(req, timeout=RELEVANCE_TIMEOUT_SECONDS) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except (urllib_error.URLError, urllib_error.HTTPError, TimeoutError, json.JSONDecodeError, OSError):
+    except (
+        urllib_error.URLError,
+        urllib_error.HTTPError,
+        TimeoutError,
+        json.JSONDecodeError,
+        OSError,
+    ):
         return BoundedPromptRelevanceAttempt(
             attempted=True,
             success=False,
@@ -116,7 +123,7 @@ def run_bounded_nl_prompt_relevance(
             result=None,
         )
 
-    parsed = _parse_relevance_response(str(data.get("response") or ""))
+    parsed = _parse_relevance_response(str(data.get("response") or ""), mode)
     if parsed is None:
         return BoundedPromptRelevanceAttempt(
             attempted=True,
@@ -166,11 +173,15 @@ def bounded_nl_prompt_relevance_smoke(
 def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
     workspace_path = workspace_dir / "VISIBLE_RELEVANCE.md"
     if workspace_path.exists():
-        return workspace_path.read_text(encoding="utf-8", errors="replace").strip() or None
+        return (
+            workspace_path.read_text(encoding="utf-8", errors="replace").strip() or None
+        )
 
     template_path = TEMPLATE_DIR / "VISIBLE_RELEVANCE.md"
     if template_path.exists():
-        return template_path.read_text(encoding="utf-8", errors="replace").strip() or None
+        return (
+            template_path.read_text(encoding="utf-8", errors="replace").strip() or None
+        )
     return None
 
 
@@ -213,7 +224,7 @@ def _build_relevance_prompt(
     return "\n".join(
         [
             instructions,
-            'Return JSON only with keys: memory_relevant, guidance_relevant, transcript_relevant, continuity_relevant, support_signals_relevant, confidence.',
+            "Return JSON only with keys: memory_relevant, guidance_relevant, transcript_relevant, continuity_relevant, support_signals_relevant, confidence.",
             f"mode={mode}",
             f"compact={'true' if compact else 'false'}",
             f"user_message={normalized or '(empty)'}",
@@ -221,7 +232,9 @@ def _build_relevance_prompt(
     )
 
 
-def _parse_relevance_response(text: str) -> BoundedPromptRelevanceResult | None:
+def _parse_relevance_response(
+    text: str, mode: str
+) -> BoundedPromptRelevanceResult | None:
     body = str(text or "").strip()
     if not body:
         return None
@@ -246,7 +259,7 @@ def _parse_relevance_response(text: str) -> BoundedPromptRelevanceResult | None:
 
     return BoundedPromptRelevanceResult(
         backend="bounded-local-ollama",
-        mode="visible_chat",
+        mode=mode,
         memory_relevant=_coerce_bool(data.get("memory_relevant")),
         guidance_relevant=_coerce_bool(data.get("guidance_relevant")),
         transcript_relevant=_coerce_bool(data.get("transcript_relevant")),

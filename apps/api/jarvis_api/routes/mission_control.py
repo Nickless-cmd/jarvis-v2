@@ -12,6 +12,7 @@ from apps.api.jarvis_api.services.visible_model import (
     visible_session_continuity_summary,
 )
 from apps.api.jarvis_api.services.prompt_contract import (
+    build_runtime_memory_selection_surface,
     build_runtime_relevance_decision_surface,
 )
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
@@ -563,6 +564,7 @@ def mc_runtime() -> dict:
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
         "runtime_relevance_decisions": build_runtime_relevance_decision_surface(),
+        "runtime_memory_selections": build_runtime_memory_selection_surface(),
         "paths": {
             "config_dir": _path_state(CONFIG_DIR),
             "settings_file": _path_state(SETTINGS_FILE),

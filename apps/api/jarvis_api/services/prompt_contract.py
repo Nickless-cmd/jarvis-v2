@@ -42,6 +42,60 @@ def _track_relevance_decision(decision: PromptRelevanceDecision) -> None:
         _RELEVANCE_DECISION_HISTORY.pop()
 
 
+_MEMORY_SELECTION_HISTORY: list[dict[str, object]] = []
+_MEMORY_SELECTION_HISTORY_LIMIT = 8
+
+
+def _track_memory_selection(
+    selection: MemorySectionSelection, mode: str, candidate_count: int
+) -> None:
+    global _MEMORY_SELECTION_HISTORY
+    entry = {
+        "mode": mode,
+        "candidate_count": candidate_count,
+        "selected_count": len(selection.lines),
+        "selected_indexes": selection.lines,
+        "backend_attempted": selection.backend_attempted,
+        "backend_success": selection.backend_success,
+        "fallback_used": selection.fallback_used,
+        "backend_name": selection.backend_name,
+        "backend_provider": selection.backend_provider,
+        "backend_model": selection.backend_model,
+        "backend_status": selection.backend_status,
+        "prompt_file_used": selection.prompt_file_used,
+    }
+    _MEMORY_SELECTION_HISTORY.insert(0, entry)
+    if len(_MEMORY_SELECTION_HISTORY) > _MEMORY_SELECTION_HISTORY_LIMIT:
+        _MEMORY_SELECTION_HISTORY.pop()
+
+
+def build_runtime_memory_selection_surface(*, limit: int = 8) -> dict[str, object]:
+    if not _MEMORY_SELECTION_HISTORY:
+        return {
+            "active": False,
+            "items": [],
+            "summary": "No memory selection decisions tracked yet.",
+        }
+    recent = _MEMORY_SELECTION_HISTORY[:limit]
+    backend_attempted_count = sum(1 for item in recent if item.get("backend_attempted"))
+    backend_success_count = sum(1 for item in recent if item.get("backend_success"))
+    fallback_count = sum(1 for item in recent if item.get("fallback_used"))
+    modes = list({item.get("mode") for item in recent if item.get("mode")})
+    total_selected = sum(item.get("selected_count", 0) for item in recent)
+    return {
+        "active": True,
+        "items": recent,
+        "summary": {
+            "total_decisions": len(recent),
+            "backend_attempted": backend_attempted_count,
+            "backend_success": backend_success_count,
+            "fallback_used": fallback_count,
+            "modes": modes,
+            "total_entries_selected": total_selected,
+        },
+    }
+
+
 def build_runtime_relevance_decision_surface(*, limit: int = 8) -> dict[str, object]:
     if not _RELEVANCE_DECISION_HISTORY:
         return {
@@ -643,6 +697,7 @@ def _workspace_memory_section(
     )
     if not selection.lines:
         return None
+    _track_memory_selection(selection, mode, len(entries))
     return selection
 
 

@@ -1528,6 +1528,10 @@ export const backend = {
           source: ((development.regulation_homeostasis_signals?.items || [])[0] || {}).source || '/mc/runtime.regulation_homeostasis_signal',
           summary: ((development.regulation_homeostasis_signals?.items || [])[0] || {}).regulation_summary || 'No bounded regulation/homeostasis support',
         }),
+        relationStateSupport: normalizeJarvisItem((development.relation_state_signals?.items || [])[0] || {}, {
+          source: ((development.relation_state_signals?.items || [])[0] || {}).source || '/mc/runtime.relation_state_signal',
+          summary: ((development.relation_state_signals?.items || [])[0] || {}).relation_summary || 'No bounded relation-state support',
+        }),
         executiveContradictionSupport: normalizeJarvisItem((development.executive_contradiction_signals?.items || [])[0] || {}, {
           source: ((development.executive_contradiction_signals?.items || [])[0] || {}).source || '/mc/runtime.executive_contradiction_signal',
           summary: ((development.executive_contradiction_signals?.items || [])[0] || {}).control_summary || 'No bounded executive contradiction support',
@@ -1643,6 +1647,17 @@ export const backend = {
           items: (development.regulation_homeostasis_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.regulation_homeostasis_signal',
             summary: item.regulation_summary || item.summary || 'Inspect bounded regulation/homeostasis support',
+          })),
+        },
+        relationStateSignals: {
+          active: Boolean(development.relation_state_signals?.active),
+          authority: development.relation_state_signals?.authority || 'non-authoritative',
+          layerRole: development.relation_state_signals?.layer_role || 'runtime-support',
+          canonicalRelationState: development.relation_state_signals?.canonical_relation_state || 'not-canonical-relationship-truth',
+          summary: development.relation_state_signals?.summary || {},
+          items: (development.relation_state_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.relation_state_signal',
+            summary: item.relation_summary || item.summary || 'Inspect bounded relation-state support',
           })),
         },
         executiveContradictionSignals: {

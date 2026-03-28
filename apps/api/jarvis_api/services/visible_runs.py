@@ -107,6 +107,9 @@ from apps.api.jarvis_api.services.inner_visible_support_signal_tracking import (
 from apps.api.jarvis_api.services.regulation_homeostasis_signal_tracking import (
     track_runtime_regulation_homeostasis_signals_for_visible_turn,
 )
+from apps.api.jarvis_api.services.relation_state_signal_tracking import (
+    track_runtime_relation_state_signals_for_visible_turn,
+)
 from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import (
     track_runtime_executive_contradiction_signals_for_visible_turn,
 )
@@ -692,6 +695,13 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         return
     try:
         track_runtime_regulation_homeostasis_signals_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception:
+        return
+    try:
+        track_runtime_relation_state_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )

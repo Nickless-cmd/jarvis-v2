@@ -275,6 +275,9 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             model=target["model"],
             lane=target["lane"],
             budget_status=str(policy["budget_status"]),
+            model_source=str(target.get("model_source") or ""),
+            resolution_status=str(target.get("resolution_status") or ""),
+            fallback_used=bool(target.get("fallback_used")),
             ping_eligible=False,
             ping_result="runtime-error",
             action_status="blocked",
@@ -296,6 +299,12 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "blocked_reason": "runtime-error",
                 "detail": str(exc),
                 "trigger": trigger,
+                "lane": target["lane"],
+                "provider": target["provider"],
+                "model": target["model"],
+                "model_source": str(target.get("model_source") or ""),
+                "resolution_status": str(target.get("resolution_status") or ""),
+                "fallback_used": bool(target.get("fallback_used")),
             },
         )
         return HeartbeatExecutionResult(
@@ -312,6 +321,9 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             "lane": target["lane"],
             "provider": target["provider"],
             "model": target["model"],
+            "model_source": str(target.get("model_source") or ""),
+            "resolution_status": str(target.get("resolution_status") or ""),
+            "fallback_used": bool(target.get("fallback_used")),
         },
     )
 
@@ -339,6 +351,9 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
         model=target["model"],
         lane=target["lane"],
         budget_status=str(policy["budget_status"]),
+        model_source=str(target.get("model_source") or ""),
+        resolution_status=str(target.get("resolution_status") or ""),
+        fallback_used=bool(target.get("fallback_used")),
         ping_eligible=outcome["ping_eligible"],
         ping_result=outcome["ping_result"],
         action_status=outcome["action_status"],
@@ -363,6 +378,12 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "blocked_reason": outcome["blocked_reason"],
                 "action_type": outcome["action_type"],
                 "trigger": trigger,
+                "lane": target["lane"],
+                "provider": target["provider"],
+                "model": target["model"],
+                "model_source": str(target.get("model_source") or ""),
+                "resolution_status": str(target.get("resolution_status") or ""),
+                "fallback_used": bool(target.get("fallback_used")),
             },
         )
     else:
@@ -376,6 +397,12 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "summary": tick["decision_summary"],
                 "action_type": outcome["action_type"],
                 "action_status": outcome["action_status"],
+                "lane": target["lane"],
+                "provider": target["provider"],
+                "model": target["model"],
+                "model_source": str(target.get("model_source") or ""),
+                "resolution_status": str(target.get("resolution_status") or ""),
+                "fallback_used": bool(target.get("fallback_used")),
             },
         )
         event_bus.publish(
@@ -388,6 +415,12 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "action_type": outcome["action_type"],
                 "action_artifact": outcome["action_artifact"],
                 "ping_result": outcome["ping_result"],
+                "lane": target["lane"],
+                "provider": target["provider"],
+                "model": target["model"],
+                "model_source": str(target.get("model_source") or ""),
+                "resolution_status": str(target.get("resolution_status") or ""),
+                "fallback_used": bool(target.get("fallback_used")),
             },
         )
 
@@ -518,26 +551,64 @@ def _build_heartbeat_context(
     }
 
 
-def _select_heartbeat_target() -> dict[str, str]:
+def _select_heartbeat_target() -> dict[str, str | bool]:
+    supported_providers = {"phase1-runtime", "openai", "openrouter", "ollama"}
     settings = load_settings()
-    candidates = [
-        str(settings.cheap_model_lane or "cheap").strip() or "cheap",
-        "local",
-        "visible",
-    ]
+    heartbeat_provider = str(
+        getattr(settings, "heartbeat_model_provider", "") or ""
+    ).strip()
+    heartbeat_model = str(getattr(settings, "heartbeat_model_name", "") or "").strip()
+    heartbeat_auth_profile = str(
+        getattr(settings, "heartbeat_auth_profile", "") or ""
+    ).strip()
+    if (
+        heartbeat_provider
+        and heartbeat_model
+        and heartbeat_provider in supported_providers
+    ):
+        return {
+            "lane": "heartbeat",
+            "provider": heartbeat_provider,
+            "model": heartbeat_model,
+            "auth_profile": heartbeat_auth_profile,
+            "base_url": "",
+            "model_source": "runtime.settings.heartbeat_model",
+            "resolution_status": "heartbeat-configured",
+            "fallback_used": False,
+        }
+
+    target = resolve_provider_router_target(lane="local")
+    provider = str(target.get("provider") or "").strip()
+    model = str(target.get("model") or "").strip()
+    if provider and model and provider in supported_providers:
+        return {
+            "lane": "local",
+            "provider": provider,
+            "model": model,
+            "auth_profile": str(target.get("auth_profile") or "").strip(),
+            "base_url": str(target.get("base_url") or "").strip(),
+            "model_source": "provider-router.local-lane",
+            "resolution_status": "runtime-local",
+            "fallback_used": False,
+        }
+
+    candidates = ["visible", str(settings.cheap_model_lane or "cheap").strip() or "cheap"]
     for lane in candidates:
         target = resolve_provider_router_target(lane=lane)
         provider = str(target.get("provider") or "").strip()
         model = str(target.get("model") or "").strip()
         if not provider or not model:
             continue
-        if provider in {"phase1-runtime", "openai", "openrouter", "ollama"}:
+        if provider in supported_providers:
             return {
                 "lane": lane,
                 "provider": provider,
                 "model": model,
                 "auth_profile": str(target.get("auth_profile") or "").strip(),
                 "base_url": str(target.get("base_url") or "").strip(),
+                "model_source": f"provider-router.{lane}-lane-fallback",
+                "resolution_status": "bounded-fallback",
+                "fallback_used": True,
             }
     return {
         "lane": "visible",
@@ -545,6 +616,9 @@ def _select_heartbeat_target() -> dict[str, str]:
         "model": "visible-placeholder",
         "auth_profile": "",
         "base_url": "",
+        "model_source": "heartbeat-fallback.visible-placeholder",
+        "resolution_status": "bounded-fallback",
+        "fallback_used": True,
     }
 
 
@@ -944,6 +1018,9 @@ def _record_heartbeat_outcome(
     model: str,
     lane: str,
     budget_status: str,
+    model_source: str = "",
+    resolution_status: str = "",
+    fallback_used: bool = False,
     ping_eligible: bool,
     ping_result: str,
     action_status: str,
@@ -969,6 +1046,9 @@ def _record_heartbeat_outcome(
         provider=provider,
         model=model,
         lane=lane,
+        model_source=model_source,
+        resolution_status=resolution_status,
+        fallback_used=fallback_used,
         budget_status=budget_status,
         ping_eligible=ping_eligible,
         ping_result=ping_result,
@@ -1010,6 +1090,9 @@ def _record_heartbeat_outcome(
                 "provider": provider,
                 "model": model,
                 "lane": lane,
+                "model_source": model_source,
+                "resolution_status": resolution_status,
+                "fallback_used": fallback_used,
                 "budget_status": budget_status,
                 "last_ping_eligible": ping_eligible,
                 "last_ping_result": ping_result,
@@ -1046,6 +1129,9 @@ def _record_heartbeat_outcome(
         provider=provider,
         model=model,
         lane=lane,
+        model_source=model_source,
+        resolution_status=resolution_status,
+        fallback_used=fallback_used,
         budget_status=budget_status,
         last_ping_eligible=ping_eligible,
         last_ping_result=ping_result,
@@ -1121,6 +1207,9 @@ def _merge_runtime_state(
         "provider": str(persisted.get("provider") or ""),
         "model": str(persisted.get("model") or ""),
         "lane": str(persisted.get("lane") or ""),
+        "model_source": str(persisted.get("model_source") or ""),
+        "resolution_status": str(persisted.get("resolution_status") or ""),
+        "fallback_used": bool(persisted.get("fallback_used")),
         "budget_status": str(persisted.get("budget_status") or policy["budget_status"]),
         "policy_summary": str(policy["summary"]),
         "last_ping_eligible": bool(persisted.get("last_ping_eligible")),
@@ -1188,6 +1277,9 @@ def _default_persisted_state() -> dict[str, object]:
         "provider": "",
         "model": "",
         "lane": "",
+        "model_source": "",
+        "resolution_status": "",
+        "fallback_used": False,
         "budget_status": "",
         "last_ping_eligible": False,
         "last_ping_result": "",
@@ -1247,6 +1339,9 @@ def _persist_runtime_state(
         provider=str(merged_input.get("provider") or ""),
         model=str(merged_input.get("model") or ""),
         lane=str(merged_input.get("lane") or ""),
+        model_source=str(merged_input.get("model_source") or ""),
+        resolution_status=str(merged_input.get("resolution_status") or ""),
+        fallback_used=bool(merged_input.get("fallback_used")),
         budget_status=str(merged_input.get("budget_status") or policy["budget_status"]),
         last_ping_eligible=bool(merged_input.get("last_ping_eligible")),
         last_ping_result=str(merged_input.get("last_ping_result") or ""),

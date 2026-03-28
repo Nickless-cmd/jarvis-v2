@@ -440,6 +440,9 @@ def init_db() -> None:
                 provider TEXT NOT NULL DEFAULT '',
                 model TEXT NOT NULL DEFAULT '',
                 lane TEXT NOT NULL DEFAULT '',
+                model_source TEXT NOT NULL DEFAULT '',
+                resolution_status TEXT NOT NULL DEFAULT '',
+                fallback_used INTEGER NOT NULL DEFAULT 0,
                 budget_status TEXT NOT NULL DEFAULT '',
                 last_ping_eligible INTEGER NOT NULL DEFAULT 0,
                 last_ping_result TEXT NOT NULL DEFAULT '',
@@ -465,6 +468,9 @@ def init_db() -> None:
                 provider TEXT NOT NULL DEFAULT '',
                 model TEXT NOT NULL DEFAULT '',
                 lane TEXT NOT NULL DEFAULT '',
+                model_source TEXT NOT NULL DEFAULT '',
+                resolution_status TEXT NOT NULL DEFAULT '',
+                fallback_used INTEGER NOT NULL DEFAULT 0,
                 budget_status TEXT NOT NULL DEFAULT '',
                 ping_eligible INTEGER NOT NULL DEFAULT 0,
                 ping_result TEXT NOT NULL DEFAULT '',
@@ -12310,6 +12316,9 @@ def get_heartbeat_runtime_state() -> dict[str, object] | None:
                 provider,
                 model,
                 lane,
+                model_source,
+                resolution_status,
+                fallback_used,
                 budget_status,
                 last_ping_eligible,
                 last_ping_result,
@@ -12350,6 +12359,9 @@ def upsert_heartbeat_runtime_state(
     provider: str,
     model: str,
     lane: str,
+    model_source: str,
+    resolution_status: str,
+    fallback_used: bool,
     budget_status: str,
     last_ping_eligible: bool,
     last_ping_result: str,
@@ -12384,6 +12396,9 @@ def upsert_heartbeat_runtime_state(
                 provider,
                 model,
                 lane,
+                model_source,
+                resolution_status,
+                fallback_used,
                 budget_status,
                 last_ping_eligible,
                 last_ping_result,
@@ -12393,7 +12408,7 @@ def upsert_heartbeat_runtime_state(
                 last_action_artifact,
                 updated_at
             )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 state_id = excluded.state_id,
                 last_tick_id = excluded.last_tick_id,
@@ -12415,6 +12430,9 @@ def upsert_heartbeat_runtime_state(
                 provider = excluded.provider,
                 model = excluded.model,
                 lane = excluded.lane,
+                model_source = excluded.model_source,
+                resolution_status = excluded.resolution_status,
+                fallback_used = excluded.fallback_used,
                 budget_status = excluded.budget_status,
                 last_ping_eligible = excluded.last_ping_eligible,
                 last_ping_result = excluded.last_ping_result,
@@ -12445,6 +12463,9 @@ def upsert_heartbeat_runtime_state(
                 provider,
                 model,
                 lane,
+                model_source,
+                resolution_status,
+                1 if fallback_used else 0,
                 budget_status,
                 1 if last_ping_eligible else 0,
                 last_ping_result,
@@ -12474,6 +12495,9 @@ def record_heartbeat_runtime_tick(
     provider: str,
     model: str,
     lane: str,
+    model_source: str,
+    resolution_status: str,
+    fallback_used: bool,
     budget_status: str,
     ping_eligible: bool,
     ping_result: str,
@@ -12502,6 +12526,9 @@ def record_heartbeat_runtime_tick(
                 provider,
                 model,
                 lane,
+                model_source,
+                resolution_status,
+                fallback_used,
                 budget_status,
                 ping_eligible,
                 ping_result,
@@ -12516,7 +12543,7 @@ def record_heartbeat_runtime_tick(
                 started_at,
                 finished_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 tick_id,
@@ -12529,6 +12556,9 @@ def record_heartbeat_runtime_tick(
                 provider,
                 model,
                 lane,
+                model_source,
+                resolution_status,
+                1 if fallback_used else 0,
                 budget_status,
                 1 if ping_eligible else 0,
                 ping_result,
@@ -12566,6 +12596,9 @@ def get_heartbeat_runtime_tick(tick_id: str) -> dict[str, object] | None:
                 provider,
                 model,
                 lane,
+                model_source,
+                resolution_status,
+                fallback_used,
                 budget_status,
                 ping_eligible,
                 ping_result,
@@ -12605,6 +12638,9 @@ def recent_heartbeat_runtime_ticks(limit: int = 10) -> list[dict[str, object]]:
                 provider,
                 model,
                 lane,
+                model_source,
+                resolution_status,
+                fallback_used,
                 budget_status,
                 ping_eligible,
                 ping_result,
@@ -12678,6 +12714,9 @@ def _heartbeat_runtime_state_from_row(row: sqlite3.Row) -> dict[str, object]:
         "provider": row["provider"],
         "model": row["model"],
         "lane": row["lane"],
+        "model_source": row["model_source"],
+        "resolution_status": row["resolution_status"],
+        "fallback_used": bool(row["fallback_used"]),
         "budget_status": row["budget_status"],
         "last_ping_eligible": bool(row["last_ping_eligible"]),
         "last_ping_result": row["last_ping_result"],
@@ -12701,6 +12740,9 @@ def _heartbeat_runtime_tick_from_row(row: sqlite3.Row) -> dict[str, object]:
         "provider": row["provider"],
         "model": row["model"],
         "lane": row["lane"],
+        "model_source": row["model_source"],
+        "resolution_status": row["resolution_status"],
+        "fallback_used": bool(row["fallback_used"]),
         "budget_status": row["budget_status"],
         "ping_eligible": bool(row["ping_eligible"]),
         "ping_result": row["ping_result"],
@@ -12818,6 +12860,27 @@ def _ensure_heartbeat_runtime_state_columns(conn: sqlite3.Connection) -> None:
             ADD COLUMN last_action_artifact TEXT NOT NULL DEFAULT ''
             """
         )
+    if "model_source" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN model_source TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "resolution_status" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN resolution_status TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "fallback_used" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_state
+            ADD COLUMN fallback_used INTEGER NOT NULL DEFAULT 0
+            """
+        )
 
 
 def _ensure_heartbeat_runtime_tick_columns(conn: sqlite3.Connection) -> None:
@@ -12835,6 +12898,27 @@ def _ensure_heartbeat_runtime_tick_columns(conn: sqlite3.Connection) -> None:
             """
             ALTER TABLE heartbeat_runtime_ticks
             ADD COLUMN action_artifact TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "model_source" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_ticks
+            ADD COLUMN model_source TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "resolution_status" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_ticks
+            ADD COLUMN resolution_status TEXT NOT NULL DEFAULT ''
+            """
+        )
+    if "fallback_used" not in existing:
+        conn.execute(
+            """
+            ALTER TABLE heartbeat_runtime_ticks
+            ADD COLUMN fallback_used INTEGER NOT NULL DEFAULT 0
             """
         )
 

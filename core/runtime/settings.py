@@ -18,6 +18,9 @@ class RuntimeSettings:
     visible_model_provider: str = "phase1-runtime"
     visible_model_name: str = "visible-placeholder"
     visible_auth_profile: str = ""
+    heartbeat_model_provider: str = ""
+    heartbeat_model_name: str = ""
+    heartbeat_auth_profile: str = ""
     relevance_model_name: str = "llama3.1:8b"
 
     def to_dict(self) -> dict[str, str | int]:
@@ -32,6 +35,9 @@ class RuntimeSettings:
             "visible_model_provider": self.visible_model_provider,
             "visible_model_name": self.visible_model_name,
             "visible_auth_profile": self.visible_auth_profile,
+            "heartbeat_model_provider": self.heartbeat_model_provider,
+            "heartbeat_model_name": self.heartbeat_model_name,
+            "heartbeat_auth_profile": self.heartbeat_auth_profile,
             "relevance_model_name": self.relevance_model_name,
         }
 
@@ -60,6 +66,15 @@ def load_settings() -> RuntimeSettings:
         ),
         visible_auth_profile=str(
             data.get("visible_auth_profile", defaults.visible_auth_profile)
+        ),
+        heartbeat_model_provider=str(
+            data.get("heartbeat_model_provider", defaults.heartbeat_model_provider)
+        ),
+        heartbeat_model_name=str(
+            data.get("heartbeat_model_name", defaults.heartbeat_model_name)
+        ),
+        heartbeat_auth_profile=str(
+            data.get("heartbeat_auth_profile", defaults.heartbeat_auth_profile)
         ),
         relevance_model_name=str(
             data.get("relevance_model_name", defaults.relevance_model_name)

@@ -12,6 +12,8 @@ from core.runtime.settings import load_settings
 
 RELEVANCE_TIMEOUT_SECONDS = 3
 RELEVANCE_MAX_TEXT_CHARS = 240
+MEMORY_SELECTION_MAX_ENTRIES = 8
+MEMORY_ENTRY_MAX_CHARS = 140
 
 
 @dataclass(slots=True)
@@ -35,6 +37,24 @@ class BoundedPromptRelevanceAttempt:
     model: str | None
     status: str
     result: BoundedPromptRelevanceResult | None
+
+
+@dataclass(slots=True)
+class BoundedMemorySelectionResult:
+    backend: str
+    selected_indexes: list[int]
+    confidence: str
+
+
+@dataclass(slots=True)
+class BoundedMemorySelectionAttempt:
+    attempted: bool
+    success: bool
+    backend: str
+    provider: str | None
+    model: str | None
+    status: str
+    result: BoundedMemorySelectionResult | None
 
 
 def run_bounded_nl_prompt_relevance(
@@ -170,6 +190,118 @@ def bounded_nl_prompt_relevance_smoke(
     }
 
 
+def run_bounded_nl_memory_entry_selection(
+    *,
+    user_message: str,
+    entries: list[str],
+    max_lines: int,
+    workspace_dir: Path,
+) -> BoundedMemorySelectionAttempt:
+    if not entries:
+        return BoundedMemorySelectionAttempt(
+            attempted=False,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=None,
+            model=None,
+            status="no-entries",
+            result=None,
+        )
+
+    target = _resolve_relevance_target()
+    if target is None:
+        return BoundedMemorySelectionAttempt(
+            attempted=False,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=None,
+            model=_selected_relevance_model(),
+            status="backend-unavailable",
+            result=None,
+        )
+
+    instructions = load_visible_memory_selection_prompt(workspace_dir=workspace_dir)
+    if not instructions:
+        return BoundedMemorySelectionAttempt(
+            attempted=False,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=str(target.get("provider") or "").strip() or None,
+            model=str(target.get("model") or "").strip() or None,
+            status="prompt-missing",
+            result=None,
+        )
+
+    bounded_entries = _bounded_memory_candidates(entries)
+    prompt = _build_memory_selection_prompt(
+        instructions=instructions,
+        user_message=user_message,
+        entries=bounded_entries,
+        max_lines=max_lines,
+    )
+    payload = {
+        "model": str(target.get("model") or "").strip(),
+        "prompt": prompt,
+        "stream": False,
+        "format": "json",
+        "options": {
+            "temperature": 0,
+            "num_predict": 96,
+        },
+    }
+    req = urllib_request.Request(
+        f"{str(target.get('base_url') or '').rstrip('/')}/api/generate",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib_request.urlopen(req, timeout=RELEVANCE_TIMEOUT_SECONDS) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except (
+        urllib_error.URLError,
+        urllib_error.HTTPError,
+        TimeoutError,
+        json.JSONDecodeError,
+        OSError,
+    ):
+        return BoundedMemorySelectionAttempt(
+            attempted=True,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=str(target.get("provider") or "").strip() or None,
+            model=str(target.get("model") or "").strip() or None,
+            status="request-failed",
+            result=None,
+        )
+
+    parsed = _parse_memory_selection_response(
+        str(data.get("response") or ""),
+        entry_count=len(bounded_entries),
+        max_lines=max_lines,
+    )
+    if parsed is None:
+        return BoundedMemorySelectionAttempt(
+            attempted=True,
+            success=False,
+            backend="bounded-local-ollama",
+            provider=str(target.get("provider") or "").strip() or None,
+            model=str(target.get("model") or "").strip() or None,
+            status="parse-failed",
+            result=None,
+        )
+    return BoundedMemorySelectionAttempt(
+        attempted=True,
+        success=True,
+        backend="bounded-local-ollama",
+        provider=str(target.get("provider") or "").strip() or None,
+        model=str(target.get("model") or "").strip() or None,
+        status="success",
+        result=parsed,
+    )
+
+
 def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
     workspace_path = workspace_dir / "VISIBLE_RELEVANCE.md"
     if workspace_path.exists():
@@ -178,6 +310,21 @@ def load_visible_relevance_prompt(*, workspace_dir: Path) -> str | None:
         )
 
     template_path = TEMPLATE_DIR / "VISIBLE_RELEVANCE.md"
+    if template_path.exists():
+        return (
+            template_path.read_text(encoding="utf-8", errors="replace").strip() or None
+        )
+    return None
+
+
+def load_visible_memory_selection_prompt(*, workspace_dir: Path) -> str | None:
+    workspace_path = workspace_dir / "VISIBLE_MEMORY_SELECTION.md"
+    if workspace_path.exists():
+        return (
+            workspace_path.read_text(encoding="utf-8", errors="replace").strip() or None
+        )
+
+    template_path = TEMPLATE_DIR / "VISIBLE_MEMORY_SELECTION.md"
     if template_path.exists():
         return (
             template_path.read_text(encoding="utf-8", errors="replace").strip() or None
@@ -232,6 +379,32 @@ def _build_relevance_prompt(
     )
 
 
+def _build_memory_selection_prompt(
+    *,
+    instructions: str,
+    user_message: str,
+    entries: list[str],
+    max_lines: int,
+) -> str:
+    normalized = " ".join(str(user_message or "").split())
+    if len(normalized) > RELEVANCE_MAX_TEXT_CHARS:
+        normalized = normalized[: RELEVANCE_MAX_TEXT_CHARS - 1].rstrip() + "…"
+    entry_lines = [
+        f"{index}: {entry}"
+        for index, entry in enumerate(entries)
+    ]
+    return "\n".join(
+        [
+            instructions,
+            "Return JSON only with keys: selected_indexes, confidence.",
+            f"max_lines={max(max_lines, 1)}",
+            f"user_message={normalized or '(empty)'}",
+            "memory_entries:",
+            *entry_lines,
+        ]
+    )
+
+
 def _parse_relevance_response(
     text: str, mode: str
 ) -> BoundedPromptRelevanceResult | None:
@@ -267,6 +440,68 @@ def _parse_relevance_response(
         support_signals_relevant=_coerce_bool(data.get("support_signals_relevant")),
         confidence=confidence,
     )
+
+
+def _parse_memory_selection_response(
+    text: str,
+    *,
+    entry_count: int,
+    max_lines: int,
+) -> BoundedMemorySelectionResult | None:
+    body = str(text or "").strip()
+    if not body:
+        return None
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        start = body.find("{")
+        end = body.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        try:
+            data = json.loads(body[start : end + 1])
+        except json.JSONDecodeError:
+            return None
+
+    if not isinstance(data, dict):
+        return None
+
+    raw_indexes = data.get("selected_indexes")
+    if not isinstance(raw_indexes, list):
+        return None
+    selected_indexes: list[int] = []
+    for item in raw_indexes:
+        if not isinstance(item, int):
+            continue
+        if item < 0 or item >= entry_count:
+            continue
+        if item in selected_indexes:
+            continue
+        selected_indexes.append(item)
+    if not selected_indexes:
+        return None
+    selected_indexes = selected_indexes[: max(max_lines, 1)]
+
+    confidence = str(data.get("confidence") or "low").strip().lower()
+    if confidence not in {"low", "medium", "high"}:
+        confidence = "low"
+
+    return BoundedMemorySelectionResult(
+        backend="bounded-local-ollama",
+        selected_indexes=selected_indexes,
+        confidence=confidence,
+    )
+
+
+def _bounded_memory_candidates(entries: list[str]) -> list[str]:
+    bounded = entries[-MEMORY_SELECTION_MAX_ENTRIES:]
+    clipped: list[str] = []
+    for entry in bounded:
+        text = " ".join(str(entry or "").split())
+        if len(text) > MEMORY_ENTRY_MAX_CHARS:
+            text = text[: MEMORY_ENTRY_MAX_CHARS - 1].rstrip() + "…"
+        clipped.append(text)
+    return clipped
 
 
 def _coerce_bool(value: object) -> bool:

@@ -5,8 +5,10 @@ from pathlib import Path
 
 from apps.api.jarvis_api.services.chat_sessions import recent_chat_session_messages
 from apps.api.jarvis_api.services.prompt_relevance_backend import (
+    BoundedMemorySelectionAttempt,
     BoundedPromptRelevanceAttempt,
     BoundedPromptRelevanceResult,
+    run_bounded_nl_memory_entry_selection,
     run_bounded_nl_prompt_relevance,
 )
 
@@ -124,6 +126,19 @@ class PromptRelevanceDecision:
     backend_status: str
 
 
+@dataclass(slots=True)
+class MemorySectionSelection:
+    lines: list[str]
+    backend_attempted: bool
+    backend_success: bool
+    fallback_used: bool
+    backend_name: str | None
+    backend_provider: str | None
+    backend_model: str | None
+    backend_status: str
+    prompt_file_used: bool
+
+
 def build_visible_chat_prompt_assembly(
     *,
     provider: str,
@@ -176,16 +191,23 @@ def build_visible_chat_prompt_assembly(
             included_files.append(filename)
 
     if relevance.include_memory:
-        memory_section = _workspace_memory_section(
+        memory_selection = _workspace_memory_section(
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
             user_message=user_message,
             max_lines=3 if compact else 4,
             max_chars=200 if compact else 280,
+            workspace_dir=workspace_dir,
         )
-        if memory_section:
-            parts.append(memory_section)
+        if memory_selection:
+            parts.append("\n".join(["MEMORY.md:", *[f"- {line}" for line in memory_selection.lines]]))
             conditional_files.append("MEMORY.md")
+            if memory_selection.prompt_file_used:
+                conditional_files.append("VISIBLE_MEMORY_SELECTION.md")
+            if memory_selection.backend_success:
+                derived_inputs.append("bounded NL memory entry selection")
+            elif memory_selection.fallback_used:
+                derived_inputs.append("heuristic memory entry selection fallback")
 
     if relevance.include_guidance:
         for filename in ("TOOLS.md", "SKILLS.md"):
@@ -572,21 +594,23 @@ def _workspace_memory_section(
     user_message: str,
     max_lines: int,
     max_chars: int,
-) -> str | None:
+    workspace_dir: Path,
+) -> MemorySectionSelection | None:
     if not path.exists():
         return None
     entries = _workspace_memory_entries(path)
     if not entries:
         return None
-    selected = _select_relevant_memory_entries(
+    selection = _select_relevant_memory_entries(
         entries,
         user_message=user_message,
         max_lines=max_lines,
         max_chars=max_chars,
+        workspace_dir=workspace_dir,
     )
-    if not selected:
+    if not selection.lines:
         return None
-    return "\n".join([f"{label}:", *[f"- {line}" for line in selected]])
+    return selection
 
 
 def _workspace_memory_entries(path: Path) -> list[str]:
@@ -608,6 +632,55 @@ def _select_relevant_memory_entries(
     user_message: str,
     max_lines: int,
     max_chars: int,
+    workspace_dir: Path,
+) -> MemorySectionSelection:
+    backend_attempt = _bounded_nl_memory_selection(
+        user_message=user_message,
+        entries=entries,
+        max_lines=max_lines,
+        workspace_dir=workspace_dir,
+    )
+    ordered: list[str]
+    prompt_file_used = bool(
+        (workspace_dir / "VISIBLE_MEMORY_SELECTION.md").exists()
+        or (TEMPLATE_DIR / "VISIBLE_MEMORY_SELECTION.md").exists()
+    )
+
+    if backend_attempt.success and backend_attempt.result is not None:
+        bounded_entries = entries[-8:]
+        selected_indexes = backend_attempt.result.selected_indexes
+        ordered = [bounded_entries[index] for index in selected_indexes if 0 <= index < len(bounded_entries)]
+    else:
+        ordered = _heuristic_relevant_memory_entries(
+            entries,
+            user_message=user_message,
+            max_lines=max_lines,
+        )
+
+    clipped: list[str] = []
+    for entry in ordered:
+        text = entry
+        if len(text) > max_chars:
+            text = text[: max_chars - 1].rstrip() + "…"
+        clipped.append(text)
+    return MemorySectionSelection(
+        lines=clipped,
+        backend_attempted=backend_attempt.attempted,
+        backend_success=backend_attempt.success,
+        fallback_used=not backend_attempt.success,
+        backend_name=backend_attempt.backend,
+        backend_provider=backend_attempt.provider,
+        backend_model=backend_attempt.model,
+        backend_status=backend_attempt.status,
+        prompt_file_used=prompt_file_used,
+    )
+
+
+def _heuristic_relevant_memory_entries(
+    entries: list[str],
+    *,
+    user_message: str,
+    max_lines: int,
 ) -> list[str]:
     scored: list[tuple[int, int, str]] = []
     for index, entry in enumerate(entries):
@@ -623,14 +696,22 @@ def _select_relevant_memory_entries(
         ordered = [item[2] for item in sorted(chosen, key=lambda item: item[1])]
     else:
         ordered = entries[-max(max_lines, 1) :]
+    return ordered
 
-    clipped: list[str] = []
-    for entry in ordered:
-        text = entry
-        if len(text) > max_chars:
-            text = text[: max_chars - 1].rstrip() + "…"
-        clipped.append(text)
-    return clipped
+
+def _bounded_nl_memory_selection(
+    *,
+    user_message: str,
+    entries: list[str],
+    max_lines: int,
+    workspace_dir: Path,
+) -> BoundedMemorySelectionAttempt:
+    return run_bounded_nl_memory_entry_selection(
+        user_message=user_message,
+        entries=entries,
+        max_lines=max_lines,
+        workspace_dir=workspace_dir,
+    )
 
 
 def _memory_line_relevance_score(entry: str, user_message: str) -> int:

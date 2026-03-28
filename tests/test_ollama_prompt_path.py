@@ -335,6 +335,93 @@ def test_bounded_nl_relevance_smoke_reports_fallback_status_when_backend_is_unav
     assert smoke["status"] == "backend-unavailable"
 
 
+def test_bounded_nl_memory_selector_uses_workspace_prompt_and_parses_indexes(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    backend = __import__(
+        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        fromlist=["run_bounded_nl_memory_entry_selection"],
+    )
+    workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
+    (workspace_dir / "VISIBLE_MEMORY_SELECTION.md").write_text(
+        "\n".join(
+            [
+                "# VISIBLE_MEMORY_SELECTION",
+                "Prefer project anchor when the user asks what we are building.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        backend,
+        "resolve_provider_router_target",
+        lambda lane: {
+            "active": lane == "local",
+            "provider": "ollama" if lane == "local" else None,
+            "base_url": "http://127.0.0.1:11434" if lane == "local" else None,
+        },
+    )
+    monkeypatch.setattr(
+        backend,
+        "load_settings",
+        lambda: type("Settings", (), {"relevance_model_name": "llama3.1:8b-instruct"})(),
+    )
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return json.dumps(
+                {
+                    "response": json.dumps(
+                        {
+                            "selected_indexes": [1],
+                            "confidence": "medium",
+                        }
+                    )
+                }
+            ).encode("utf-8")
+
+    def _fake_urlopen(req, timeout):
+        captured["timeout"] = timeout
+        captured["payload"] = json.loads(req.data.decode("utf-8"))
+        return _FakeResponse()
+
+    monkeypatch.setattr(backend.urllib_request, "urlopen", _fake_urlopen)
+
+    result = backend.run_bounded_nl_memory_entry_selection(
+        user_message="what are we building together?",
+        entries=[
+            "Working context: the current collaboration is in the Jarvis v2 repo.",
+            "Project anchor: Jarvis and the user are building Jarvis together.",
+            "Stable context: review style still matters across turns.",
+        ],
+        max_lines=2,
+        workspace_dir=workspace_dir,
+    )
+
+    assert result.attempted is True
+    assert result.success is True
+    assert result.model == "llama3.1:8b-instruct"
+    assert result.status == "success"
+    assert result.result is not None
+    assert result.result.selected_indexes == [1]
+    assert captured["timeout"] == backend.RELEVANCE_TIMEOUT_SECONDS
+    assert captured["payload"]["model"] == "llama3.1:8b-instruct"
+    assert "Prefer project anchor when the user asks what we are building." in str(
+        captured["payload"]["prompt"]
+    )
+
+
 def test_ollama_prompt_is_flattened_from_same_visible_input_path(isolated_runtime) -> None:
     visible_input = isolated_runtime.visible_model._build_visible_input(
         "Svar kort på dansk.",
@@ -524,6 +611,86 @@ def test_ollama_visible_prompt_can_include_relevant_applied_project_anchor_memor
     assert "MEMORY.md:" in assembly.text
     assert "Project anchor: Jarvis and the user are building Jarvis together." in assembly.text
     assert "Stable context: review style still matters across turns." not in assembly.text
+
+
+def test_ollama_visible_prompt_can_use_bounded_nl_memory_selector_for_paraphrase(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    _apply_memory_candidate(
+        isolated_runtime,
+        canonical_key="workspace-memory:remembered-fact:repo-context",
+        summary="A bounded remembered fact may be worth carrying into MEMORY.md.",
+        proposed_value="- Working context: the current collaboration is in the Jarvis v2 repo.",
+    )
+    _apply_memory_candidate(
+        isolated_runtime,
+        canonical_key="workspace-memory:remembered-fact:project-anchor",
+        summary="A bounded remembered fact may be worth carrying into MEMORY.md.",
+        proposed_value="- Project anchor: Jarvis and the user are building Jarvis together.",
+    )
+
+    backend = __import__(
+        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        fromlist=["BoundedPromptRelevanceAttempt", "BoundedPromptRelevanceResult", "BoundedMemorySelectionAttempt", "BoundedMemorySelectionResult"],
+    )
+
+    monkeypatch.setattr(
+        isolated_runtime.prompt_contract,
+        "_bounded_nl_relevance_backend",
+        lambda **_: backend.BoundedPromptRelevanceAttempt(
+            attempted=True,
+            success=True,
+            backend="bounded-local-ollama",
+            provider="ollama",
+            model="runtime-selected:mini",
+            status="success",
+            result=backend.BoundedPromptRelevanceResult(
+                backend="bounded-local-ollama",
+                mode="visible_chat",
+                memory_relevant=True,
+                guidance_relevant=False,
+                transcript_relevant=True,
+                continuity_relevant=False,
+                support_signals_relevant=True,
+                confidence="medium",
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        isolated_runtime.prompt_contract,
+        "_bounded_nl_memory_selection",
+        lambda **kwargs: backend.BoundedMemorySelectionAttempt(
+            attempted=True,
+            success=True,
+            backend="bounded-local-ollama",
+            provider="ollama",
+            model="runtime-selected:mini",
+            status="success",
+            result=backend.BoundedMemorySelectionResult(
+                backend="bounded-local-ollama",
+                selected_indexes=[
+                    index
+                    for index, entry in enumerate(kwargs["entries"][-8:])
+                    if "Project anchor:" in entry
+                ][:1],
+                confidence="medium",
+            ),
+        ),
+    )
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="what are we collaborating around lately?",
+        session_id="test-session",
+    )
+
+    assert "MEMORY.md:" in assembly.text
+    assert "Project anchor: Jarvis and the user are building Jarvis together." in assembly.text
+    assert "Working context: the current collaboration is in the Jarvis v2 repo." not in assembly.text
+    assert "bounded NL memory entry selection" in assembly.derived_inputs
+    assert "VISIBLE_MEMORY_SELECTION.md" in assembly.conditional_files
 
 
 def test_ollama_visible_prompt_can_include_relevant_applied_repo_context_memory(

@@ -1540,6 +1540,10 @@ export const backend = {
           source: ((development.meaning_significance_signals?.items || [])[0] || {}).source || '/mc/runtime.meaning_significance_signal',
           summary: ((development.meaning_significance_signals?.items || [])[0] || {}).meaning_summary || 'No bounded meaning/significance support',
         }),
+        temperamentTendencySupport: normalizeJarvisItem((development.temperament_tendency_signals?.items || [])[0] || {}, {
+          source: ((development.temperament_tendency_signals?.items || [])[0] || {}).source || '/mc/runtime.temperament_tendency_signal',
+          summary: ((development.temperament_tendency_signals?.items || [])[0] || {}).temperament_summary || 'No bounded temperament support',
+        }),
         executiveContradictionSupport: normalizeJarvisItem((development.executive_contradiction_signals?.items || [])[0] || {}, {
           source: ((development.executive_contradiction_signals?.items || [])[0] || {}).source || '/mc/runtime.executive_contradiction_signal',
           summary: ((development.executive_contradiction_signals?.items || [])[0] || {}).control_summary || 'No bounded executive contradiction support',
@@ -1688,6 +1692,17 @@ export const backend = {
           items: (development.meaning_significance_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.meaning_significance_signal',
             summary: item.meaning_summary || item.summary || 'Inspect bounded meaning/significance support',
+          })),
+        },
+        temperamentTendencySignals: {
+          active: Boolean(development.temperament_tendency_signals?.active),
+          authority: development.temperament_tendency_signals?.authority || 'non-authoritative',
+          layerRole: development.temperament_tendency_signals?.layer_role || 'runtime-support',
+          canonicalPersonalityState: development.temperament_tendency_signals?.canonical_personality_state || 'not-canonical-personality-truth',
+          summary: development.temperament_tendency_signals?.summary || {},
+          items: (development.temperament_tendency_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.temperament_tendency_signal',
+            summary: item.temperament_summary || item.summary || 'Inspect bounded temperament support',
           })),
         },
         executiveContradictionSignals: {

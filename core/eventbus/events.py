@@ -40,6 +40,7 @@ ALLOWED_EVENT_FAMILIES = {
     "relation_state_signal",
     "relation_continuity_signal",
     "meaning_significance_signal",
+    "temperament_tendency_signal",
     "executive_contradiction_signal",
     "chronicle_consolidation_signal",
     "chronicle_consolidation_brief",

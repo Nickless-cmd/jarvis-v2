@@ -1439,6 +1439,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const privateInnerNoteSignals = data?.development?.privateInnerNoteSignals || { items: [], summary: {} }
   const privateInitiativeTensionSignals = data?.development?.privateInitiativeTensionSignals || { items: [], summary: {} }
   const privateInnerInterplaySignals = data?.development?.privateInnerInterplaySignals || { items: [], summary: {} }
+  const privateStateSnapshots = data?.development?.privateStateSnapshots || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
@@ -1966,6 +1967,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Private State</span>
+              <strong>{(privateStateSnapshots?.summary?.active_count || 0) + (privateStateSnapshots?.summary?.stale_count || 0)}</strong>
+              <p>{privateStateSnapshots?.summary?.current_snapshot || 'No bounded private-state snapshot'}</p>
+              <p>
+                tone {privateStateSnapshots?.summary?.current_tone || 'none'} · pressure {privateStateSnapshots?.summary?.current_pressure || 'low'}
+              </p>
+              <p>
+                {privateStateSnapshots?.summary?.authority || 'non-authoritative'} · {privateStateSnapshots?.summary?.layer_role || 'runtime-support'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Goal Signals</span>
               <strong>{(goalSignals?.summary?.active_count || 0) + (goalSignals?.summary?.blocked_count || 0) || summary?.development?.goal_count || 0}</strong>
               <p>{goalSignals?.summary?.current_goal || summary?.development?.current_goal || 'No active goal signal'}</p>
@@ -2187,6 +2199,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.privateInnerNoteSupport, 'Private Inner Note Support', onOpenItem)}
               {detailRow(data?.development?.privateInitiativeTensionSupport, 'Private Initiative Tension Support', onOpenItem)}
               {detailRow(data?.development?.privateInnerInterplaySupport, 'Private Inner Interplay Support', onOpenItem)}
+              {detailRow(data?.development?.privateStateSnapshot, 'Private State Snapshot', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}
               {detailRow(data?.development?.operationalAlignment, 'Preference Alignment', onOpenItem)}
               {detailRow(data?.development?.growthNote, 'Latest Growth Note', onOpenItem)}

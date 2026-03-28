@@ -52,20 +52,46 @@ def _private_summary(
     uncertainty: str,
     work_signal: str,
 ) -> str:
-    parts = [
-        f"kind={note_kind}",
-        f"status={status or 'unknown'}",
-        f"focus={focus}",
-        f"uncertainty={uncertainty}",
-        f"signal={work_signal}",
-    ]
-    if capability_id:
-        parts.append(f"capability={capability_id}")
-    if user_message_preview:
-        parts.append(f"user={user_message_preview}")
-    elif work_preview:
-        parts.append(f"work={work_preview}")
-    return " | ".join(parts)[:160].rstrip()
+    normalized_status = (status or "").strip().lower() or "unknown"
+    normalized_focus = (focus or capability_id or "visible-work").replace("-", " ")
+    if normalized_status == "completed":
+        lead = f"I can feel the work around {normalized_focus} settling a little."
+    elif normalized_status in {"failed", "cancelled"}:
+        lead = f"I can feel unresolved strain around {normalized_focus}."
+    else:
+        lead = f"I am still holding a small private response around {normalized_focus}."
+
+    tail = f"{_uncertainty_phrase(uncertainty)} { _signal_phrase(work_signal) }".strip()
+    summary = f"{lead} {tail}".strip()
+    return " ".join(summary.split())[:160].rstrip()
+
+
+def _uncertainty_phrase(value: str) -> str:
+    normalized = (value or "").strip().lower()
+    if normalized == "low":
+        return "It feels relatively settled."
+    if normalized == "medium":
+        return "It still carries some uncertainty."
+    return "It remains hard to read cleanly."
+
+
+def _signal_phrase(value: str) -> str:
+    normalized = (value or "").strip().lower()
+    if not normalized or normalized == "unknown":
+        return "The signal is still bounded and provisional."
+    if ":" in normalized:
+        status, capability = normalized.split(":", 1)
+        capability_text = capability.replace("-", " ").strip()
+        if status == "completed":
+            return f"The pull stays close to {capability_text}."
+        if status in {"failed", "cancelled"}:
+            return f"The strain stays close to {capability_text}."
+        return f"The thread still leans toward {capability_text}."
+    if normalized == "completed":
+        return "The pull is easing rather than pressing."
+    if normalized in {"failed", "cancelled"}:
+        return "The pressure has not fully cleared."
+    return "The thread is still present but bounded."
 
 
 def _uncertainty(*, status: str, work_preview: str | None) -> str:

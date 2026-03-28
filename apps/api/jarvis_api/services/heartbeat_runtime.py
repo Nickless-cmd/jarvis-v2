@@ -15,8 +15,35 @@ from urllib import request as urllib_request
 from apps.api.jarvis_api.services.candidate_tracking import (
     track_runtime_contract_candidates_for_session_review,
 )
+from apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking import (
+    build_runtime_chronicle_consolidation_brief_surface,
+)
+from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
+    build_runtime_metabolism_state_signal_surface,
+)
+from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+    build_runtime_open_loop_signal_surface,
+)
+from apps.api.jarvis_api.services.private_initiative_tension_signal_tracking import (
+    build_runtime_private_initiative_tension_signal_surface,
+)
+from apps.api.jarvis_api.services.private_state_snapshot_tracking import (
+    build_runtime_private_state_snapshot_surface,
+)
 from apps.api.jarvis_api.services.prompt_contract import build_heartbeat_prompt_assembly
+from apps.api.jarvis_api.services.regulation_homeostasis_signal_tracking import (
+    build_runtime_regulation_homeostasis_signal_surface,
+)
+from apps.api.jarvis_api.services.release_marker_signal_tracking import (
+    build_runtime_release_marker_signal_surface,
+)
+from apps.api.jarvis_api.services.relation_continuity_signal_tracking import (
+    build_runtime_relation_continuity_signal_surface,
+)
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
+from apps.api.jarvis_api.services.witness_signal_tracking import (
+    build_runtime_witness_signal_surface,
+)
 from core.auth.profiles import get_provider_state
 from core.eventbus.bus import event_bus
 from core.identity.runtime_candidates import build_runtime_candidate_workflows
@@ -142,6 +169,14 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         if str(item.get("family") or "") == "heartbeat"
     ][:8]
     merged = _merge_runtime_state(policy=policy, persisted=persisted, now=now)
+    liveness = _build_heartbeat_liveness_signal(
+        merged_state=merged,
+        trigger="surface",
+    )
+    merged = {
+        **merged,
+        **liveness,
+    }
     _write_heartbeat_state_artifact(
         workspace_dir=ensure_default_workspace(name=name),
         payload={
@@ -265,6 +300,7 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             target=target,
             policy=policy,
             open_loops=context["open_loops"],
+            liveness=context.get("liveness"),
         )
         raw_response = str(result.get("text") or "")
         execution_status = str(result.get("execution_status") or "success")
@@ -277,6 +313,12 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
         )
     else:
         decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
+
+    decision = _recover_bounded_heartbeat_liveness_decision(
+        decision=decision,
+        policy=policy,
+        liveness=context.get("liveness"),
+    )
 
     if execution_status == "success" and parse_status == "not-run":
         parse_status = "success"
@@ -517,6 +559,10 @@ def _build_heartbeat_context(
             f" | latest_run_id={continuity.get('latest_run_id') or 'none'}"
             f" | visible_provider_status={visible_status.get('provider_status') or 'unknown'}"
         )
+    liveness = _build_heartbeat_liveness_signal(
+        merged_state=merged_state,
+        trigger=trigger,
+    )
 
     return {
         "schedule_status": str(merged_state["schedule_status"]),
@@ -527,6 +573,158 @@ def _build_heartbeat_context(
         "recent_events": recent_events,
         "allowed_capabilities": allowed_capabilities,
         "continuity_summary": continuity_summary,
+        "liveness": liveness,
+    }
+
+
+def _build_heartbeat_liveness_signal(
+    *,
+    merged_state: dict[str, object],
+    trigger: str,
+) -> dict[str, object]:
+    open_loops = build_runtime_open_loop_signal_surface(limit=6)
+    relation_continuity = build_runtime_relation_continuity_signal_surface(limit=6)
+    regulation = build_runtime_regulation_homeostasis_signal_surface(limit=6)
+    witness = build_runtime_witness_signal_surface(limit=6)
+    private_state = build_runtime_private_state_snapshot_surface(limit=6)
+    initiative_tension = build_runtime_private_initiative_tension_signal_surface(limit=6)
+    chronicle_briefs = build_runtime_chronicle_consolidation_brief_surface(limit=6)
+    metabolism = build_runtime_metabolism_state_signal_surface(limit=6)
+    release_markers = build_runtime_release_marker_signal_surface(limit=6)
+
+    reasons: list[str] = []
+    source_anchor_parts: list[str] = []
+    score = 0
+
+    open_summary = open_loops.get("summary") or {}
+    open_items = open_loops.get("items") or []
+    if open_loops.get("active") and (
+        int(open_summary.get("open_count") or 0) > 0
+        or int(open_summary.get("softening_count") or 0) > 0
+    ):
+        score += 3
+        reasons.append("open-loop continuity is still live")
+        if open_items:
+            source_anchor_parts.append(str((open_items[0] or {}).get("source_anchor") or (open_items[0] or {}).get("title") or "open-loop"))
+
+    tension_summary = initiative_tension.get("summary") or {}
+    tension_items = initiative_tension.get("items") or []
+    if int(tension_summary.get("active_count") or 0) > 0:
+        score += 2
+        reasons.append("private initiative tension is still carrying bounded pull")
+        if tension_items:
+            source_anchor_parts.append(str((tension_items[0] or {}).get("source_anchor") or (tension_items[0] or {}).get("title") or "initiative-tension"))
+
+    private_summary = private_state.get("summary") or {}
+    private_items = private_state.get("items") or []
+    current_pressure = str(private_summary.get("current_pressure") or "low")
+    if int(private_summary.get("active_count") or 0) > 0 and current_pressure in {"medium", "high"}:
+        score += 2
+        reasons.append("private state pressure is still present")
+        if private_items:
+            source_anchor_parts.append(str((private_items[0] or {}).get("source_anchor") or (private_items[0] or {}).get("title") or "private-state"))
+
+    relation_summary = relation_continuity.get("summary") or {}
+    relation_items = relation_continuity.get("items") or []
+    current_weight = str(relation_summary.get("current_weight") or "low")
+    if relation_continuity.get("active") and current_weight in {"medium", "high"}:
+        score += 1
+        reasons.append("relation continuity is still holding weight")
+        if relation_items:
+            source_anchor_parts.append(str((relation_items[0] or {}).get("source_anchor") or (relation_items[0] or {}).get("title") or "relation-continuity"))
+
+    regulation_summary = regulation.get("summary") or {}
+    regulation_items = regulation.get("items") or []
+    if regulation.get("active") and str(regulation_summary.get("current_pressure") or "low") in {"medium", "high"}:
+        score += 1
+        reasons.append("regulation pressure is still elevated")
+        if regulation_items:
+            source_anchor_parts.append(str((regulation_items[0] or {}).get("source_anchor") or (regulation_items[0] or {}).get("title") or "regulation"))
+
+    witness_summary = witness.get("summary") or {}
+    witness_items = witness.get("items") or []
+    if (
+        int(witness_summary.get("carried_count") or 0) > 0
+        or str(witness_summary.get("current_persistence_state") or "none") in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+    ):
+        score += 1
+        reasons.append("witness continuity is still being carried")
+        if witness_items:
+            source_anchor_parts.append(str((witness_items[0] or {}).get("source_anchor") or (witness_items[0] or {}).get("title") or "witness"))
+
+    chronicle_summary = chronicle_briefs.get("summary") or {}
+    chronicle_items = chronicle_briefs.get("items") or []
+    if chronicle_briefs.get("active") and str(chronicle_summary.get("current_weight") or "low") in {"medium", "high"}:
+        score += 1
+        reasons.append("chronicle continuity is still holding a brief thread")
+        if chronicle_items:
+            source_anchor_parts.append(str((chronicle_items[0] or {}).get("source_anchor") or (chronicle_items[0] or {}).get("title") or "chronicle-brief"))
+
+    metabolism_summary = metabolism.get("summary") or {}
+    metabolism_items = metabolism.get("items") or []
+    if str(metabolism_summary.get("current_state") or "none") == "active-retaining":
+        score += 1
+        reasons.append("metabolism still reads as active retaining")
+        if metabolism_items:
+            source_anchor_parts.append(str((metabolism_items[0] or {}).get("source_anchor") or (metabolism_items[0] or {}).get("title") or "metabolism"))
+
+    release_summary = release_markers.get("summary") or {}
+    if str(release_summary.get("current_state") or "none") in {"release-leaning", "release-ready"}:
+        score -= 1
+
+    if trigger == "manual":
+        score += 1
+        reasons.append("manual Mission Control trigger requested attention")
+    if bool(merged_state.get("due")):
+        score += 1
+        reasons.append("heartbeat cadence is currently due")
+
+    if score <= 0:
+        return {
+            "liveness_state": "quiet",
+            "liveness_pressure": "low",
+            "liveness_reason": "no-bounded-liveness-pressure",
+            "liveness_summary": "No bounded liveness pressure is currently strong enough to pull heartbeat beyond quiet observation.",
+            "liveness_confidence": "low",
+            "source_anchor": "",
+            "status": "inactive",
+            "authority": "non-authoritative",
+            "layer_role": "runtime-support",
+            "planner_authority_state": "not-planner-authority",
+            "canonical_self_state": "not-canonical-self-truth",
+        }
+
+    if score >= 7:
+        liveness_pressure = "high"
+        liveness_state = "alive-pressure"
+        liveness_confidence = "high"
+    elif score >= 4:
+        liveness_pressure = "medium"
+        liveness_state = "responding"
+        liveness_confidence = "medium"
+    else:
+        liveness_pressure = "low"
+        liveness_state = "watchful"
+        liveness_confidence = "low"
+
+    primary_reason = reasons[0] if reasons else "bounded runtime pressure is present"
+    source_anchor = " | ".join(
+        [part for part in source_anchor_parts if str(part or "").strip()][:3]
+    )
+    return {
+        "liveness_state": liveness_state,
+        "liveness_pressure": liveness_pressure,
+        "liveness_reason": primary_reason,
+        "liveness_summary": (
+            f"Heartbeat appears to have bounded liveness pressure because {primary_reason}."
+        ),
+        "liveness_confidence": liveness_confidence,
+        "source_anchor": source_anchor,
+        "status": "active",
+        "authority": "non-authoritative",
+        "layer_role": "runtime-support",
+        "planner_authority_state": "not-planner-authority",
+        "canonical_self_state": "not-canonical-self-truth",
     }
 
 
@@ -634,12 +832,15 @@ def _execute_heartbeat_model(
     target: dict[str, str],
     policy: dict[str, object],
     open_loops: list[str],
+    liveness: dict[str, object] | None = None,
 ) -> dict[str, object]:
     provider = target["provider"]
     model = target["model"]
     if provider == "phase1-runtime":
-        summary = open_loops[0] if open_loops else "No current due work was detected."
-        decision_type = "execute" if bool(policy.get("allow_execute")) else ("propose" if open_loops else "noop")
+        liveness_summary = str((liveness or {}).get("liveness_summary") or "").strip()
+        liveness_pressure = str((liveness or {}).get("liveness_pressure") or "low")
+        summary = open_loops[0] if open_loops else (liveness_summary or "No current due work was detected.")
+        decision_type = "execute" if bool(policy.get("allow_execute")) else ("propose" if (open_loops or liveness_pressure in {"medium", "high"}) else "noop")
         execute_action = "run_candidate_scan" if decision_type == "execute" else ""
         text = json.dumps(
             {
@@ -1023,6 +1224,36 @@ def _validate_heartbeat_decision(
         "action_summary": decision["proposed_action"] or decision["summary"] or "Heartbeat outcome recorded.",
         "action_type": "",
         "action_artifact": "",
+    }
+
+
+def _recover_bounded_heartbeat_liveness_decision(
+    *,
+    decision: dict[str, str],
+    policy: dict[str, object],
+    liveness: dict[str, object] | None,
+) -> dict[str, str]:
+    if str(decision.get("decision_type") or "") != "noop":
+        return decision
+    if not bool(policy.get("allow_propose")):
+        return decision
+
+    liveness_state = str((liveness or {}).get("liveness_state") or "quiet")
+    liveness_pressure = str((liveness or {}).get("liveness_pressure") or "low")
+    liveness_reason = str((liveness or {}).get("liveness_reason") or "").strip()
+    liveness_summary = str((liveness or {}).get("liveness_summary") or "").strip()
+    if liveness_state == "quiet" or liveness_pressure not in {"medium", "high"}:
+        return decision
+
+    return {
+        "decision_type": "propose",
+        "summary": liveness_summary or "Heartbeat appears to have bounded liveness pressure and is proposing a small check-in rather than a noop.",
+        "reason": (
+            f"bounded-liveness-recovery: {liveness_reason or 'runtime liveness pressure is present'}"
+        )[:240],
+        "proposed_action": liveness_summary or "Review bounded runtime liveness pressure before the thread goes cold.",
+        "ping_text": "",
+        "execute_action": "",
     }
 
 

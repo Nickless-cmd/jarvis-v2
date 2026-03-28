@@ -467,6 +467,11 @@ def build_heartbeat_prompt_assembly(
         parts.append(continuity)
         derived_inputs.append("optional compact continuity summary")
 
+    liveness = _heartbeat_liveness_summary(heartbeat_context or {})
+    if liveness:
+        parts.append(liveness)
+        derived_inputs.append("bounded heartbeat liveness support")
+
     return PromptAssembly(
         mode="heartbeat",
         text="\n\n".join(part for part in parts if part).strip(),
@@ -1219,6 +1224,25 @@ def _heartbeat_continuity_summary(context: dict[str, object]) -> str | None:
         [
             "Heartbeat continuity summary:",
             f"- latest_visible_preview={preview}",
+        ]
+    )
+
+
+def _heartbeat_liveness_summary(context: dict[str, object]) -> str | None:
+    liveness = context.get("liveness") or {}
+    status = str(liveness.get("status") or "").strip()
+    if status != "active":
+        return None
+    return "\n".join(
+        [
+            "Heartbeat liveness support:",
+            (
+                f"- state={liveness.get('liveness_state') or 'quiet'}"
+                f" | pressure={liveness.get('liveness_pressure') or 'low'}"
+                f" | confidence={liveness.get('liveness_confidence') or 'low'}"
+            ),
+            f"- reason={liveness.get('liveness_reason') or 'none'}",
+            f"- summary={liveness.get('liveness_summary') or 'none'}",
         ]
     )
 

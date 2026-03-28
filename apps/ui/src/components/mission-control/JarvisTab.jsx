@@ -1762,6 +1762,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>{heartbeatState.lastResult || heartbeatState.blockedReason || 'No heartbeat result yet.'}</p>
             </div>
             <div className="compact-metric">
+              <span>Liveness</span>
+              <strong>{heartbeatState.livenessState || 'quiet'}</strong>
+              <p>{heartbeatState.livenessSummary || heartbeatState.livenessReason || 'No bounded liveness pressure recorded yet.'}</p>
+              <p>
+                pressure {heartbeatState.livenessPressure || 'low'} · confidence {heartbeatState.livenessConfidence || 'low'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Last Execute Action</span>
               <strong>{heartbeatState.lastActionType || 'none'}</strong>
               <p>{heartbeatState.lastActionSummary || heartbeatState.lastActionStatus || 'No execute action recorded yet.'}</p>
@@ -1957,6 +1965,9 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>{privateInnerNoteSignals?.summary?.current_signal || 'No bounded private inner note support'}</p>
               <p>
                 {privateInnerNoteSignals?.summary?.stale_count || 0} stale · {privateInnerNoteSignals?.summary?.superseded_count || 0} superseded
+              </p>
+              <p>
+                {privateInnerNoteSignals?.summary?.current_source_state || 'private-runtime-grounded'} · {privateInnerNoteSignals?.summary?.current_contamination_state || 'unknown'}
               </p>
               <p>
                 {privateInnerNoteSignals?.summary?.authority || 'non-authoritative'} · {privateInnerNoteSignals?.summary?.layer_role || 'runtime-support'}

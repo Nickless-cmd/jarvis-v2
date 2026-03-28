@@ -100,6 +100,12 @@ def test_private_inner_note_surface_forms_bounded_runtime_support_from_visible_w
     assert item["status"] == "active"
     assert item["note_confidence"] in {"low", "medium"}
     assert "visible-work-note:visible-run-1" in item["source_anchor"]
+    assert item["inner_voice_source_state"] == "private-runtime-grounded"
+    assert item["contamination_state"] == "decontaminated-from-visible-summary"
+    assert "Find the failing endpoint and explain it." not in item["note_summary"]
+    assert "Investigated the visible work unit" not in item["note_summary"]
+    assert "kind=" not in item["note_summary"]
+    assert "status=" not in item["note_summary"]
     assert "subordinate" in item["support_summary"].lower() or "non-authoritative" in item["support_summary"].lower()
 
 
@@ -141,6 +147,8 @@ def test_private_inner_note_surface_and_mc_shapes_remain_bounded(isolated_runtim
         "current_status",
         "current_note_type",
         "current_confidence",
+        "current_source_state",
+        "current_contamination_state",
         "authority",
         "layer_role",
     }.issubset(surface["summary"].keys())
@@ -157,6 +165,8 @@ def test_private_inner_note_surface_and_mc_shapes_remain_bounded(isolated_runtim
         "note_summary",
         "note_confidence",
         "source_anchor",
+        "inner_voice_source_state",
+        "contamination_state",
         "authority",
         "layer_role",
     }.issubset(surface["items"][0].keys())

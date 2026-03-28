@@ -102,6 +102,8 @@ def build_runtime_private_inner_note_signal_surface(*, limit: int = 8) -> dict[s
             "current_status": str((latest or {}).get("status") or "none"),
             "current_note_type": str((latest or {}).get("note_type") or "none"),
             "current_confidence": str((latest or {}).get("note_confidence") or "low"),
+            "current_source_state": str((latest or {}).get("inner_voice_source_state") or "none"),
+            "current_contamination_state": str((latest or {}).get("contamination_state") or "none"),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
         },
@@ -152,6 +154,8 @@ def _candidate_from_visible_note(visible_note: dict[str, object]) -> dict[str, o
         "support_summary": _merge_fragments(
             "Derived from the latest visible work note and kept non-authoritative.",
             source_anchor,
+            "contamination-state=decontaminated-from-visible-summary",
+            f"source-anchor={source_anchor}",
         ),
         "support_count": 1,
         "session_count": 1,
@@ -161,6 +165,8 @@ def _candidate_from_visible_note(visible_note: dict[str, object]) -> dict[str, o
         "signal_confidence": _confidence_from_uncertainty(str(payload.get("uncertainty") or "")),
         "source_anchor": source_anchor,
         "identity_alignment": str(payload.get("identity_alignment") or "subordinate-to-visible"),
+        "inner_voice_source_state": "private-runtime-grounded",
+        "contamination_state": "decontaminated-from-visible-summary",
         "work_signal": str(payload.get("work_signal") or ""),
         "uncertainty": str(payload.get("uncertainty") or "medium"),
         "focus": focus,
@@ -243,6 +249,8 @@ def _with_runtime_view(item: dict[str, object], signal: dict[str, object]) -> di
     enriched["note_confidence"] = str(signal.get("signal_confidence") or signal.get("confidence") or "low")
     enriched["source_anchor"] = str(signal.get("source_anchor") or "")
     enriched["identity_alignment"] = str(signal.get("identity_alignment") or "subordinate-to-visible")
+    enriched["inner_voice_source_state"] = str(signal.get("inner_voice_source_state") or "private-runtime-grounded")
+    enriched["contamination_state"] = str(signal.get("contamination_state") or "unknown")
     enriched["work_signal"] = str(signal.get("work_signal") or "")
     enriched["uncertainty"] = str(signal.get("uncertainty") or "medium")
     enriched["focus"] = str(signal.get("focus") or "")
@@ -253,14 +261,30 @@ def _with_runtime_view(item: dict[str, object], signal: dict[str, object]) -> di
 
 def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     enriched = dict(item)
+    support_summary = str(item.get("support_summary") or "")
     note_summary = str(item.get("note_summary") or item.get("summary") or "").strip()
     enriched["note_type"] = str(item.get("note_type") or "work-status-signal")
     enriched["note_summary"] = note_summary
     enriched["fact_summary"] = note_summary
     enriched["note_confidence"] = str(item.get("note_confidence") or item.get("confidence") or "low")
     enriched["signal_confidence"] = str(item.get("note_confidence") or item.get("confidence") or "low")
-    enriched["source_anchor"] = str(item.get("source_anchor") or item.get("support_summary") or "")
+    enriched["source_anchor"] = str(
+        item.get("source_anchor")
+        or _find_support_value(support_summary, "source-anchor")
+        or support_summary
+        or ""
+    )
     enriched["identity_alignment"] = str(item.get("identity_alignment") or "subordinate-to-visible")
+    enriched["inner_voice_source_state"] = str(
+        item.get("inner_voice_source_state")
+        or _find_support_value(support_summary, "inner-voice-source")
+        or "private-runtime-grounded"
+    )
+    enriched["contamination_state"] = str(
+        item.get("contamination_state")
+        or _find_support_value(support_summary, "contamination-state")
+        or "unknown"
+    )
     enriched["work_signal"] = str(item.get("work_signal") or "")
     enriched["uncertainty"] = str(item.get("uncertainty") or "medium")
     enriched["focus"] = str(item.get("focus") or "")
@@ -309,6 +333,15 @@ def _quote(text: str) -> str:
     if len(normalized) > 157:
         bounded += "..."
     return f'"{bounded}"'
+
+
+def _find_support_value(summary: str, key: str) -> str:
+    needle = f"{key}="
+    for part in str(summary or "").split("|"):
+        normalized = part.strip()
+        if normalized.startswith(needle):
+            return normalized[len(needle):].strip()
+    return ""
 
 
 def _parse_dt(value: str) -> datetime | None:

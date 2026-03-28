@@ -124,6 +124,8 @@ def build_runtime_witness_signal_surface(*, limit: int = 6) -> dict[str, object]
             "current_maturation_hint": str((latest or {}).get("maturation_hint") or "none"),
             "current_maturation_state": str((latest or {}).get("maturation_state") or "none"),
             "current_maturation_marker": str((latest or {}).get("maturation_marker") or "none"),
+            "current_persistence_state": str((latest or {}).get("persistence_state") or "none"),
+            "current_persistence_marker": str((latest or {}).get("persistence_marker") or "none"),
             "current_witness_confidence": str((latest or {}).get("witness_confidence") or str((latest or {}).get("confidence") or "low")),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
@@ -349,6 +351,17 @@ def _build_candidate(
         maturation_state=maturation_state,
         maturation_hint=maturation_hint,
     )
+    persistence_state = _derive_persistence_state(
+        status="fresh",
+        becoming_direction=becoming_direction,
+        maturation_state=maturation_state,
+        support_count=support_count,
+        session_count=session_count,
+    )
+    persistence_marker = _derive_persistence_marker(
+        persistence_state=persistence_state,
+        maturation_state=maturation_state,
+    )
     witness_confidence = _stronger_confidence(
         confidence,
         str((self_narrative or {}).get("narrative_confidence") or (self_narrative or {}).get("confidence") or "low"),
@@ -380,6 +393,8 @@ def _build_candidate(
             f"maturation-hint={maturation_hint}",
             f"maturation-state={maturation_state}",
             f"maturation-marker={maturation_marker}",
+            f"persistence-state={persistence_state}",
+            f"persistence-marker={persistence_marker}",
             f"witness-confidence={witness_confidence}",
             source_anchor,
         ),
@@ -406,6 +421,15 @@ def _build_candidate(
             becoming_direction=becoming_direction,
             maturation_state=maturation_state,
             maturation_marker=maturation_marker,
+        ),
+        "persistence_state": persistence_state,
+        "persistence_marker": persistence_marker,
+        "persistence_weight": becoming_weight,
+        "persistence_summary": _persistence_summary(
+            domain_title=_domain_title(domain_key),
+            persistence_state=persistence_state,
+            persistence_marker=persistence_marker,
+            becoming_direction=becoming_direction,
         ),
         "witness_confidence": witness_confidence,
         "source_anchor": source_anchor,
@@ -468,6 +492,17 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
         maturation_state=maturation_state,
         maturation_hint=maturation_hint,
     )
+    persistence_state = _derive_persistence_state(
+        status=str(item.get("status") or "fresh"),
+        becoming_direction=becoming_direction,
+        maturation_state=maturation_state,
+        support_count=int(item.get("support_count") or 0),
+        session_count=int(item.get("session_count") or 0),
+    )
+    persistence_marker = _derive_persistence_marker(
+        persistence_state=persistence_state,
+        maturation_state=maturation_state,
+    )
     witness_confidence = _summary_marker(support_summary, "witness-confidence") or str(item.get("confidence") or "low")
     source_anchor = _last_summary_fragment(support_summary)
     becoming_summary = _becoming_summary(
@@ -491,6 +526,15 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
                 becoming_direction=becoming_direction,
                 maturation_state=maturation_state,
                 maturation_marker=maturation_marker,
+            ),
+            "persistence_state": persistence_state,
+            "persistence_marker": persistence_marker,
+            "persistence_weight": becoming_weight,
+            "persistence_summary": _persistence_summary(
+                domain_title=_domain_title(_witness_domain_key(str(item.get("canonical_key") or ""))),
+                persistence_state=persistence_state,
+                persistence_marker=persistence_marker,
+                becoming_direction=becoming_direction,
             ),
             "witness_confidence": witness_confidence,
             "source_anchor": source_anchor,
@@ -675,6 +719,47 @@ def _derive_maturation_marker(
     return "emerging-marker"
 
 
+def _derive_persistence_state(
+    *,
+    status: str,
+    becoming_direction: str,
+    maturation_state: str,
+    support_count: int,
+    session_count: int,
+) -> str:
+    if becoming_direction == "none":
+        return "none"
+    if status == "carried":
+        return "carried-forward"
+    if session_count >= 3:
+        return "persistent"
+    if session_count >= 2:
+        return "stabilizing-over-time"
+    if support_count >= 3 or maturation_state in {"deepening", "consolidating"}:
+        return "recurring"
+    return "transient"
+
+
+def _derive_persistence_marker(
+    *,
+    persistence_state: str,
+    maturation_state: str,
+) -> str:
+    if persistence_state == "none":
+        return "none"
+    if persistence_state == "persistent":
+        return "persistent-marker"
+    if persistence_state == "carried-forward":
+        return "carried-forward-marker"
+    if persistence_state == "stabilizing-over-time":
+        return "stabilizing-over-time-marker"
+    if persistence_state == "recurring":
+        return "recurring-marker"
+    if maturation_state == "emerging":
+        return "transient-marker"
+    return "transient-marker"
+
+
 def _becoming_summary(
     *,
     domain_title: str,
@@ -703,6 +788,21 @@ def _maturation_summary(
     return (
         f"Inner witness shows signs of {maturation_state.replace('-', ' ')} toward {becoming_direction.replace('-', ' ')} "
         f"around {domain_title.lower()}, via {maturation_marker.replace('-', ' ')}."
+    )
+
+
+def _persistence_summary(
+    *,
+    domain_title: str,
+    persistence_state: str,
+    persistence_marker: str,
+    becoming_direction: str,
+) -> str:
+    if persistence_state == "none":
+        return f"Inner witness is not surfacing a bounded persistence signal around {domain_title.lower()} yet."
+    return (
+        f"Inner witness appears to persist {becoming_direction.replace('-', ' ')} around {domain_title.lower()} as "
+        f"{persistence_state.replace('-', ' ')}, via {persistence_marker.replace('-', ' ')}."
     )
 
 

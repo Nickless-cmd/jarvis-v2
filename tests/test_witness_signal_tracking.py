@@ -282,6 +282,8 @@ def test_witness_surface_forms_carried_lesson_when_transition_is_still_being_car
     assert surface["items"][0]["becoming_direction"] == "none"
     assert surface["items"][0]["maturation_state"] == "none"
     assert surface["items"][0]["maturation_marker"] == "none"
+    assert surface["items"][0]["persistence_state"] == "none"
+    assert surface["items"][0]["persistence_marker"] == "none"
 
 
 def test_witness_surface_forms_witnessed_turn_without_continued_carrying(isolated_runtime) -> None:
@@ -360,6 +362,8 @@ def test_witness_surface_and_mc_shape_remain_bounded(isolated_runtime) -> None:
         "current_maturation_hint",
         "current_maturation_state",
         "current_maturation_marker",
+        "current_persistence_state",
+        "current_persistence_marker",
         "current_witness_confidence",
     }.issubset(surface["summary"].keys())
     assert {
@@ -377,6 +381,10 @@ def test_witness_surface_and_mc_shape_remain_bounded(isolated_runtime) -> None:
         "maturation_marker",
         "maturation_weight",
         "maturation_summary",
+        "persistence_state",
+        "persistence_marker",
+        "persistence_weight",
+        "persistence_summary",
         "witness_confidence",
         "confidence",
         "updated_at",
@@ -452,6 +460,22 @@ def test_witness_surface_adds_becoming_synthesis_when_relevant_substrate_is_pres
     }
     assert item["maturation_weight"] in {"low", "medium", "high"}
     assert item["maturation_summary"]
+    assert item["persistence_state"] in {
+        "transient",
+        "recurring",
+        "stabilizing-over-time",
+        "carried-forward",
+        "persistent",
+    }
+    assert item["persistence_marker"] in {
+        "transient-marker",
+        "recurring-marker",
+        "stabilizing-over-time-marker",
+        "carried-forward-marker",
+        "persistent-marker",
+    }
+    assert item["persistence_weight"] in {"low", "medium", "high"}
+    assert item["persistence_summary"]
     assert item["becoming_summary"]
     assert item["witness_confidence"] in {"low", "medium", "high"}
     assert item["authority"] == "non-authoritative"
@@ -461,9 +485,12 @@ def test_witness_surface_adds_becoming_synthesis_when_relevant_substrate_is_pres
     assert item["moral_authority_state"] == "not-moral-authority"
     assert "appears to be" in item["becoming_summary"] or "shows signs of" in item["becoming_summary"]
     assert "shows signs of" in item["maturation_summary"]
+    assert "appears to persist" in item["persistence_summary"]
     assert surface["summary"]["current_becoming_direction"] == item["becoming_direction"]
     assert surface["summary"]["current_maturation_hint"] == item["maturation_hint"]
     assert surface["summary"]["current_maturation_state"] == item["maturation_state"]
     assert surface["summary"]["current_maturation_marker"] == item["maturation_marker"]
+    assert surface["summary"]["current_persistence_state"] == item["persistence_state"]
+    assert surface["summary"]["current_persistence_marker"] == item["persistence_marker"]
     assert jarvis["development"]["witness_signals"]["summary"]["current_becoming_direction"] == item["becoming_direction"]
     assert runtime["runtime_witness_signals"]["summary"]["current_becoming_direction"] == item["becoming_direction"]

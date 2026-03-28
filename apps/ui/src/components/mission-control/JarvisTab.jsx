@@ -2546,7 +2546,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{(witnessSignals?.summary?.fresh_count || 0) + (witnessSignals?.summary?.carried_count || 0)}</strong>
               <p>{witnessSignals?.summary?.current_signal || 'No witnessed development turn'}</p>
               <p>
-                marker {witnessSignals?.summary?.current_maturation_marker || 'none'} · state {witnessSignals?.summary?.current_maturation_state || 'none'}
+                persistence {witnessSignals?.summary?.current_persistence_state || 'none'} · marker {witnessSignals?.summary?.current_persistence_marker || 'none'}
               </p>
               <p>
                 {witnessSignals?.summary?.fresh_count || 0} fresh · {witnessSignals?.summary?.carried_count || 0} carried · {witnessSignals?.summary?.fading_count || 0} fading

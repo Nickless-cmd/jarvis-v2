@@ -44,6 +44,7 @@ ALLOWED_EVENT_FAMILIES = {
     "self_narrative_continuity_signal",
     "metabolism_state_signal",
     "release_marker_signal",
+    "consolidation_target_signal",
     "executive_contradiction_signal",
     "chronicle_consolidation_signal",
     "chronicle_consolidation_brief",

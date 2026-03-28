@@ -631,6 +631,41 @@ function normalizeReleaseMarkerSignal(item = {}) {
   }
 }
 
+function normalizeConsolidationTargetSignal(item = {}) {
+  return {
+    signalId: item.signal_id || '',
+    signalType: item.signal_type || '',
+    canonicalKey: item.canonical_key || '',
+    status: item.status || 'unknown',
+    title: item.title || 'Consolidation Target',
+    summary: item.consolidation_summary || item.summary || '',
+    rationale: item.rationale || '',
+    sourceKind: item.source_kind || '',
+    confidence: item.confidence || '',
+    evidenceSummary: item.evidence_summary || '',
+    supportSummary: item.support_summary || '',
+    statusReason: item.status_reason || '',
+    runId: item.run_id || '',
+    sessionId: item.session_id || '',
+    supportCount: Number(item.support_count || 0),
+    sessionCount: Number(item.session_count || 0),
+    mergeCount: Number(item.merge_count || 0),
+    consolidationState: item.consolidation_state || 'none',
+    consolidationFocus: item.consolidation_focus || 'none',
+    consolidationWeight: item.consolidation_weight || 'low',
+    consolidationSummary: item.consolidation_summary || '',
+    consolidationConfidence: item.consolidation_confidence || item.confidence || 'low',
+    sourceAnchor: item.source_anchor || '',
+    authority: item.authority || 'non-authoritative',
+    layerRole: item.layer_role || 'runtime-support',
+    writebackState: item.writeback_state || 'not-writeback',
+    canonicalMutationState: item.canonical_mutation_state || 'not-canonical-mutation',
+    source: item.source || '/mc/jarvis.development.consolidation_target_signals',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeOpenLoopSignal(item = {}) {
   return {
     signalId: item.signal_id || '',
@@ -1646,6 +1681,10 @@ export const backend = {
           source: ((development.release_marker_signals?.items || [])[0] || {}).source || '/mc/runtime.release_marker_signal',
           summary: ((development.release_marker_signals?.items || [])[0] || {}).release_summary || 'No bounded release support',
         }),
+        consolidationTargetSupport: normalizeJarvisItem((development.consolidation_target_signals?.items || [])[0] || {}, {
+          source: ((development.consolidation_target_signals?.items || [])[0] || {}).source || '/mc/runtime.consolidation_target_signal',
+          summary: ((development.consolidation_target_signals?.items || [])[0] || {}).consolidation_summary || 'No bounded consolidation-target support',
+        }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
           summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).proposal_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).sharpening_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
@@ -1840,6 +1879,15 @@ export const backend = {
           selectiveForgettingState: development.release_marker_signals?.selective_forgetting_state || 'not-selective-forgetting-execution',
           summary: development.release_marker_signals?.summary || {},
           items: (development.release_marker_signals?.items || []).map((item) => normalizeReleaseMarkerSignal(item)),
+        },
+        consolidationTargetSignals: {
+          active: Boolean(development.consolidation_target_signals?.active),
+          authority: development.consolidation_target_signals?.authority || 'non-authoritative',
+          layerRole: development.consolidation_target_signals?.layer_role || 'runtime-support',
+          writebackState: development.consolidation_target_signals?.writeback_state || 'not-writeback',
+          canonicalMutationState: development.consolidation_target_signals?.canonical_mutation_state || 'not-canonical-mutation',
+          summary: development.consolidation_target_signals?.summary || {},
+          items: (development.consolidation_target_signals?.items || []).map((item) => normalizeConsolidationTargetSignal(item)),
         },
         selfNarrativeSelfModelReviewBridge: {
           active: Boolean(development.self_narrative_self_model_review_bridge?.active),

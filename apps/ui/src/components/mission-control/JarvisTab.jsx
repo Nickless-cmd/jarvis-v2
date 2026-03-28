@@ -1450,6 +1450,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const selfNarrativeContinuitySignals = data?.development?.selfNarrativeContinuitySignals || { items: [], summary: {} }
   const metabolismStateSignals = data?.development?.metabolismStateSignals || { items: [], summary: {} }
   const releaseMarkerSignals = data?.development?.releaseMarkerSignals || { items: [], summary: {} }
+  const consolidationTargetSignals = data?.development?.consolidationTargetSignals || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -2379,6 +2380,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.temperamentTendencySupport, 'Temperament Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeContinuitySupport, 'Self-Narrative Continuity Support', onOpenItem)}
               {detailRow(data?.development?.metabolismStateSupport, 'Metabolism Support', onOpenItem)}
+              {detailRow(data?.development?.consolidationTargetSupport, 'Consolidation Support', onOpenItem)}
               {detailRow(data?.development?.releaseMarkerSupport, 'Release Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
@@ -2576,6 +2578,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {releaseMarkerSignals?.summary?.authority || 'non-authoritative'} · {releaseMarkerSignals?.summary?.selective_forgetting_state || 'not-selective-forgetting-execution'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Consolidation Targets</span>
+              <strong>{(consolidationTargetSignals?.summary?.active_count || 0) + (consolidationTargetSignals?.summary?.softening_count || 0)}</strong>
+              <p>{consolidationTargetSignals?.summary?.current_signal || 'No bounded consolidation-target support'}</p>
+              <p>
+                state {consolidationTargetSignals?.summary?.current_state || 'none'} · focus {consolidationTargetSignals?.summary?.current_focus || 'none'}
+              </p>
+              <p>
+                {consolidationTargetSignals?.summary?.authority || 'non-authoritative'} · {consolidationTargetSignals?.summary?.writeback_state || 'not-writeback'}
               </p>
             </div>
           </div>

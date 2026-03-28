@@ -1445,6 +1445,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const regulationHomeostasisSignals = data?.development?.regulationHomeostasisSignals || { items: [], summary: {} }
   const relationStateSignals = data?.development?.relationStateSignals || { items: [], summary: {} }
   const relationContinuitySignals = data?.development?.relationContinuitySignals || { items: [], summary: {} }
+  const meaningSignificanceSignals = data?.development?.meaningSignificanceSignals || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
   const chronicleConsolidationSignals = data?.development?.chronicleConsolidationSignals || { items: [], summary: {} }
@@ -2098,6 +2099,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
             </div>
             <div className="compact-metric">
+              <span>Meaning Support</span>
+              <strong>{(meaningSignificanceSignals?.summary?.active_count || 0) + (meaningSignificanceSignals?.summary?.softening_count || 0)}</strong>
+              <p>{meaningSignificanceSignals?.summary?.current_signal || 'No bounded meaning/significance support'}</p>
+              <p>
+                type {meaningSignificanceSignals?.summary?.current_type || 'none'} · weight {meaningSignificanceSignals?.summary?.current_weight || 'low'}
+              </p>
+              <p>
+                {meaningSignificanceSignals?.summary?.authority || 'non-authoritative'} · {meaningSignificanceSignals?.summary?.canonical_value_state || 'not-canonical-value-or-moral-truth'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Goal Signals</span>
               <strong>{(goalSignals?.summary?.active_count || 0) + (goalSignals?.summary?.blocked_count || 0) || summary?.development?.goal_count || 0}</strong>
               <p>{goalSignals?.summary?.current_goal || summary?.development?.current_goal || 'No active goal signal'}</p>
@@ -2325,6 +2337,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.regulationHomeostasisSupport, 'Regulation/Homeostasis Support', onOpenItem)}
               {detailRow(data?.development?.relationStateSupport, 'Relation State Support', onOpenItem)}
               {detailRow(data?.development?.relationContinuitySupport, 'Relation Continuity Support', onOpenItem)}
+              {detailRow(data?.development?.meaningSignificanceSupport, 'Meaning/Significance Support', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}

@@ -1536,6 +1536,10 @@ export const backend = {
           source: ((development.relation_continuity_signals?.items || [])[0] || {}).source || '/mc/runtime.relation_continuity_signal',
           summary: ((development.relation_continuity_signals?.items || [])[0] || {}).continuity_summary || 'No bounded relation continuity support',
         }),
+        meaningSignificanceSupport: normalizeJarvisItem((development.meaning_significance_signals?.items || [])[0] || {}, {
+          source: ((development.meaning_significance_signals?.items || [])[0] || {}).source || '/mc/runtime.meaning_significance_signal',
+          summary: ((development.meaning_significance_signals?.items || [])[0] || {}).meaning_summary || 'No bounded meaning/significance support',
+        }),
         executiveContradictionSupport: normalizeJarvisItem((development.executive_contradiction_signals?.items || [])[0] || {}, {
           source: ((development.executive_contradiction_signals?.items || [])[0] || {}).source || '/mc/runtime.executive_contradiction_signal',
           summary: ((development.executive_contradiction_signals?.items || [])[0] || {}).control_summary || 'No bounded executive contradiction support',
@@ -1673,6 +1677,17 @@ export const backend = {
           items: (development.relation_continuity_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.relation_continuity_signal',
             summary: item.continuity_summary || item.summary || 'Inspect bounded relation continuity support',
+          })),
+        },
+        meaningSignificanceSignals: {
+          active: Boolean(development.meaning_significance_signals?.active),
+          authority: development.meaning_significance_signals?.authority || 'non-authoritative',
+          layerRole: development.meaning_significance_signals?.layer_role || 'runtime-support',
+          canonicalValueState: development.meaning_significance_signals?.canonical_value_state || 'not-canonical-value-or-moral-truth',
+          summary: development.meaning_significance_signals?.summary || {},
+          items: (development.meaning_significance_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.meaning_significance_signal',
+            summary: item.meaning_summary || item.summary || 'Inspect bounded meaning/significance support',
           })),
         },
         executiveContradictionSignals: {

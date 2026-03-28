@@ -161,8 +161,8 @@ def test_inner_visible_support_forms_bounded_runtime_support_from_state_and_curi
     assert item["support_momentum"] in {"steady", "held", "carried"}
     assert item["authority"] == "non-authoritative"
     assert item["layer_role"] == "runtime-support"
-    assert item["prompt_bridge_state"] == "not-yet-bridged"
-    assert "not yet bridged" in item["status_reason"].lower()
+    assert item["prompt_bridge_state"] == "gated-visible-prompt-bridge"
+    assert "tiny gated prompt-support line" in item["status_reason"].lower()
     assert item["source_anchor"]
 
 
@@ -189,7 +189,7 @@ def test_inner_visible_support_gets_small_bounded_executive_watchfulness_sharpen
     assert item["support_contradiction_sharpening"] == "bounded-watchfulness"
     assert "executive-contradiction" in item["grounding_mode"]
     assert item["authority"] == "non-authoritative"
-    assert item["prompt_bridge_state"] == "not-yet-bridged"
+    assert item["prompt_bridge_state"] == "gated-visible-prompt-bridge"
     assert "cannot directly veto execution" in item["status_reason"].lower()
 
 
@@ -271,4 +271,4 @@ def test_inner_visible_support_surface_and_mc_shapes_remain_bounded(
     assert surface["summary"]["stale_count"] == 1
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["authority"] == "non-authoritative"
-    assert runtime_shape["summary"]["prompt_bridge_state"] == "not-yet-bridged"
+    assert runtime_shape["summary"]["prompt_bridge_state"] == "gated-visible-prompt-bridge"

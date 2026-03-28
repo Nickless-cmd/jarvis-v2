@@ -94,7 +94,7 @@ def build_runtime_inner_visible_support_signal_surface(*, limit: int = 8) -> dic
         "active": bool(active),
         "authority": "non-authoritative",
         "layer_role": "runtime-support",
-        "prompt_bridge_state": "not-yet-bridged",
+        "prompt_bridge_state": "gated-visible-prompt-bridge",
         "items": ordered,
         "summary": {
             "active_count": len(active),
@@ -116,7 +116,7 @@ def build_runtime_inner_visible_support_signal_surface(*, limit: int = 8) -> dic
             "current_confidence": str((latest or {}).get("support_confidence") or "low"),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
-            "prompt_bridge_state": "not-yet-bridged",
+            "prompt_bridge_state": "gated-visible-prompt-bridge",
         },
     }
 
@@ -232,7 +232,7 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
         "support_count": 1,
         "session_count": 1,
         "status_reason": (
-            "Bounded inner-visible support remains subordinate to visible/runtime truth, is non-authoritative, is not yet bridged into the visible prompt, and cannot directly veto execution."
+            "Bounded inner-visible support remains subordinate to visible/runtime truth, is non-authoritative, may contribute only one tiny gated prompt-support line, and cannot directly veto execution."
         ),
         "support_type": "bounded-inner-visible-support",
         "support_tone": support_tone,
@@ -251,7 +251,7 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
         if executive_contradiction
         else "",
         "grounding_mode": grounding_mode,
-        "prompt_bridge_state": "not-yet-bridged",
+        "prompt_bridge_state": "gated-visible-prompt-bridge",
     }
 
 
@@ -442,7 +442,7 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
                 item.get("grounding_mode"),
                 default="private-state+executive-contradiction" if has_executive_sharpening else "private-state",
             ),
-            "prompt_bridge_state": _value(item.get("prompt_bridge_state"), default="not-yet-bridged"),
+            "prompt_bridge_state": _value(item.get("prompt_bridge_state"), default="gated-visible-prompt-bridge"),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
             "source": "/mc/runtime.inner_visible_support_signal",

@@ -5,6 +5,40 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 
+def _insert_inner_visible_support_signal(
+    db,
+    *,
+    run_id: str = "test-run",
+    status: str = "active",
+    canonical_key: str = "inner-visible-support:careful-forward:workspace-search",
+    title: str = "Inner visible support: workspace search",
+    confidence: str = "medium",
+    support_summary: str = "Derived only from bounded private-state runtime support, optional temporal-curiosity sharpening, and small executive-contradiction watchfulness sharpening.",
+    status_reason: str = "Bounded inner-visible support remains subordinate to visible/runtime truth, is non-authoritative, may contribute only one tiny gated prompt-support line, and cannot directly veto execution.",
+) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_inner_visible_support_signal(
+        signal_id=f"inner-visible-support-signal-{uuid4().hex}",
+        signal_type="inner-visible-support",
+        canonical_key=canonical_key,
+        status=status,
+        title=title,
+        summary="Bounded inner-visible runtime support is holding a small outward-facing support shape.",
+        rationale="Validation inner-visible prompt bridge",
+        source_kind="runtime-derived-support",
+        confidence=confidence,
+        evidence_summary="inner visible support evidence",
+        support_summary=support_summary,
+        status_reason=status_reason,
+        run_id=run_id,
+        session_id="test-session",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+
 def _apply_memory_candidate(
     isolated_runtime,
     *,
@@ -719,6 +753,68 @@ def test_ollama_visible_prompt_can_include_relevant_applied_repo_context_memory(
     assert "MEMORY.md:" in assembly.text
     assert "Working context: the current collaboration is in the Jarvis v2 repo." in assembly.text
     assert "Project anchor: Jarvis and the user are building Jarvis together." not in assembly.text
+
+
+def test_ollama_visible_prompt_does_not_include_inner_visible_bridge_without_active_support(
+    isolated_runtime,
+) -> None:
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="Svar kort på dansk.",
+        session_id="test-session",
+    )
+    runtime = isolated_runtime.mission_control.mc_runtime()
+    bridge_surface = runtime["runtime_inner_visible_prompt_bridges"]
+
+    assert "Inner visible support (subordinate only, never authority):" not in assembly.text
+    assert bridge_surface["summary"]["current_reason"] == "no-active-signal"
+    assert bridge_surface["summary"]["current_status"] == "skipped"
+
+
+def test_ollama_visible_prompt_can_include_tiny_inner_visible_bridge_line(
+    isolated_runtime,
+) -> None:
+    _insert_inner_visible_support_signal(isolated_runtime.db)
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="Svar kort på dansk.",
+        session_id="test-session",
+    )
+    runtime = isolated_runtime.mission_control.mc_runtime()
+    bridge_surface = runtime["runtime_inner_visible_prompt_bridges"]
+    item = bridge_surface["items"][0]
+
+    assert "Inner visible support (subordinate only, never authority):" in assembly.text
+    assert "tone=careful-forward | stance=careful | directness=medium | watchfulness=medium | momentum=steady" in assembly.text
+    assert "bounded inner visible prompt bridge" in assembly.derived_inputs
+    assert item["included"] is True
+    assert item["reason"] == "included"
+    assert item["signal_id"]
+    assert item["prompt_bridge_state"] == "gated-visible-prompt-bridge"
+    assert item["subordinate"] is True
+
+
+def test_ollama_visible_prompt_skips_inner_visible_bridge_for_memory_heavy_query(
+    isolated_runtime,
+) -> None:
+    _insert_inner_visible_support_signal(isolated_runtime.db)
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="kan du huske hvad jeg hedder?",
+        session_id="test-session",
+    )
+    runtime = isolated_runtime.mission_control.mc_runtime()
+    bridge_surface = runtime["runtime_inner_visible_prompt_bridges"]
+
+    assert "Inner visible support (subordinate only, never authority):" not in assembly.text
+    assert "MEMORY.md:" in assembly.text
+    assert bridge_surface["summary"]["current_reason"] == "primary-context-query"
+    assert bridge_surface["summary"]["current_status"] == "skipped"
 
 
 def test_ollama_visible_prompt_does_not_dump_memory_for_irrelevant_generic_query(

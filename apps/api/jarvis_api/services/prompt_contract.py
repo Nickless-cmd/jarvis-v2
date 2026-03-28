@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from apps.api.jarvis_api.services.chat_sessions import recent_chat_session_messages
+from apps.api.jarvis_api.services.inner_visible_support_signal_tracking import (
+    build_runtime_inner_visible_support_signal_surface,
+)
 from apps.api.jarvis_api.services.prompt_relevance_backend import (
     BoundedMemorySelectionAttempt,
     BoundedPromptRelevanceAttempt,
@@ -44,6 +47,8 @@ def _track_relevance_decision(decision: PromptRelevanceDecision) -> None:
 
 _MEMORY_SELECTION_HISTORY: list[dict[str, object]] = []
 _MEMORY_SELECTION_HISTORY_LIMIT = 8
+_INNER_VISIBLE_PROMPT_BRIDGE_HISTORY: list[dict[str, object]] = []
+_INNER_VISIBLE_PROMPT_BRIDGE_HISTORY_LIMIT = 8
 
 
 def _track_memory_selection(
@@ -121,6 +126,40 @@ def build_runtime_relevance_decision_surface(*, limit: int = 8) -> dict[str, obj
     }
 
 
+def build_runtime_inner_visible_prompt_bridge_surface(*, limit: int = 8) -> dict[str, object]:
+    if not _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY:
+        return {
+            "active": False,
+            "items": [],
+            "summary": "No inner-visible prompt bridge decisions tracked yet.",
+        }
+    recent = _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY[:limit]
+    considered_count = sum(1 for item in recent if item.get("considered"))
+    included_count = sum(1 for item in recent if item.get("included"))
+    skipped_count = sum(
+        1 for item in recent if item.get("considered") and not item.get("included")
+    )
+    latest = recent[0]
+    return {
+        "active": True,
+        "items": recent,
+        "summary": {
+            "total_decisions": len(recent),
+            "considered_count": considered_count,
+            "included_count": included_count,
+            "skipped_count": skipped_count,
+            "current_reason": str(latest.get("reason") or "none"),
+            "current_signal_id": str(latest.get("signal_id") or ""),
+            "current_status": "included" if latest.get("included") else "skipped",
+            "current_prompt_bridge_state": str(
+                latest.get("prompt_bridge_state") or "gated-visible-prompt-bridge"
+            ),
+            "authority": "non-authoritative",
+            "layer_role": "runtime-support",
+        },
+    }
+
+
 from core.identity.runtime_contract import build_runtime_contract_state
 from core.identity.workspace_bootstrap import TEMPLATE_DIR, ensure_default_workspace
 from core.memory.private_retained_memory_projection import (
@@ -191,6 +230,24 @@ class MemorySectionSelection:
     backend_model: str | None
     backend_status: str
     prompt_file_used: bool
+
+
+@dataclass(slots=True)
+class InnerVisiblePromptBridgeDecision:
+    mode: str
+    considered: bool
+    included: bool
+    reason: str
+    signal_id: str | None
+    support_tone: str | None
+    support_stance: str | None
+    support_directness: str | None
+    support_watchfulness: str | None
+    support_momentum: str | None
+    confidence: str | None
+    prompt_bridge_state: str
+    line: str | None
+    subordinate: bool
 
 
 def build_visible_chat_prompt_assembly(
@@ -292,6 +349,16 @@ def build_visible_chat_prompt_assembly(
     if support_sections:
         parts.extend(support_sections)
         derived_inputs.append("bounded runtime support signals")
+
+    inner_visible_prompt_bridge = _build_inner_visible_prompt_bridge_decision(
+        user_message=user_message,
+        mode="visible_chat",
+        compact=compact,
+        relevance=relevance,
+    )
+    if inner_visible_prompt_bridge.included and inner_visible_prompt_bridge.line:
+        parts.append(inner_visible_prompt_bridge.line)
+        derived_inputs.append("bounded inner visible prompt bridge")
 
     transcript = _recent_transcript_section(
         session_id,
@@ -609,6 +676,141 @@ def _bounded_nl_relevance_backend(
         mode=mode,
         compact=compact,
         workspace_dir=ensure_default_workspace(name=name),
+    )
+
+
+def _track_inner_visible_prompt_bridge(
+    decision: InnerVisiblePromptBridgeDecision,
+) -> None:
+    global _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY
+    _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY.insert(
+        0,
+        {
+            "mode": decision.mode,
+            "considered": decision.considered,
+            "included": decision.included,
+            "reason": decision.reason,
+            "signal_id": decision.signal_id,
+            "support_tone": decision.support_tone,
+            "support_stance": decision.support_stance,
+            "support_directness": decision.support_directness,
+            "support_watchfulness": decision.support_watchfulness,
+            "support_momentum": decision.support_momentum,
+            "confidence": decision.confidence,
+            "prompt_bridge_state": decision.prompt_bridge_state,
+            "line": decision.line,
+            "subordinate": decision.subordinate,
+        },
+    )
+    if len(_INNER_VISIBLE_PROMPT_BRIDGE_HISTORY) > _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY_LIMIT:
+        _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY.pop()
+
+
+def _build_inner_visible_prompt_bridge_decision(
+    *,
+    user_message: str,
+    mode: str,
+    compact: bool,
+    relevance: PromptRelevanceDecision,
+) -> InnerVisiblePromptBridgeDecision:
+    decision = InnerVisiblePromptBridgeDecision(
+        mode=mode,
+        considered=mode == "visible_chat",
+        included=False,
+        reason="unsupported-mode" if mode != "visible_chat" else "not-evaluated",
+        signal_id=None,
+        support_tone=None,
+        support_stance=None,
+        support_directness=None,
+        support_watchfulness=None,
+        support_momentum=None,
+        confidence=None,
+        prompt_bridge_state="gated-visible-prompt-bridge",
+        line=None,
+        subordinate=True,
+    )
+    if mode != "visible_chat":
+        _track_inner_visible_prompt_bridge(decision)
+        return decision
+    if not compact:
+        decision.reason = "full-support-mode"
+        _track_inner_visible_prompt_bridge(decision)
+        return decision
+
+    signal = _latest_active_inner_visible_support_signal()
+    if signal is None:
+        decision.reason = "no-active-signal"
+        _track_inner_visible_prompt_bridge(decision)
+        return decision
+
+    decision.signal_id = str(signal.get("signal_id") or "")
+    decision.support_tone = str(signal.get("support_tone") or "")
+    decision.support_stance = str(signal.get("support_stance") or "")
+    decision.support_directness = str(signal.get("support_directness") or "")
+    decision.support_watchfulness = str(signal.get("support_watchfulness") or "")
+    decision.support_momentum = str(signal.get("support_momentum") or "")
+    decision.confidence = str(
+        signal.get("support_confidence") or signal.get("confidence") or ""
+    )
+    decision.prompt_bridge_state = str(
+        signal.get("prompt_bridge_state") or "gated-visible-prompt-bridge"
+    )
+
+    if decision.confidence not in {"medium", "high"}:
+        decision.reason = "low-confidence"
+        _track_inner_visible_prompt_bridge(decision)
+        return decision
+    if relevance.include_memory or relevance.include_guidance or relevance.continuity_relevant:
+        decision.reason = "primary-context-query"
+        _track_inner_visible_prompt_bridge(decision)
+        return decision
+    if _inner_visible_support_bridge_is_redundant(signal):
+        decision.reason = "redundant-steady-support"
+        _track_inner_visible_prompt_bridge(decision)
+        return decision
+
+    decision.line = _inner_visible_support_prompt_line(signal)
+    if not decision.line:
+        decision.reason = "empty-bridge-line"
+        _track_inner_visible_prompt_bridge(decision)
+        return decision
+
+    decision.included = True
+    decision.reason = "included"
+    _track_inner_visible_prompt_bridge(decision)
+    return decision
+
+
+def _latest_active_inner_visible_support_signal() -> dict[str, object] | None:
+    surface = build_runtime_inner_visible_support_signal_surface(limit=4)
+    for item in surface.get("items", []):
+        if str(item.get("status") or "") == "active":
+            return item
+    return None
+
+
+def _inner_visible_support_bridge_is_redundant(signal: dict[str, object]) -> bool:
+    return (
+        str(signal.get("support_tone") or "") == "steady-support"
+        and str(signal.get("support_stance") or "") == "steady"
+        and str(signal.get("support_directness") or "") == "high"
+        and str(signal.get("support_watchfulness") or "") == "low"
+        and str(signal.get("support_momentum") or "") == "steady"
+    )
+
+
+def _inner_visible_support_prompt_line(signal: dict[str, object]) -> str | None:
+    tone = str(signal.get("support_tone") or "").strip()
+    stance = str(signal.get("support_stance") or "").strip()
+    directness = str(signal.get("support_directness") or "").strip()
+    watchfulness = str(signal.get("support_watchfulness") or "").strip()
+    momentum = str(signal.get("support_momentum") or "").strip()
+    if not all((tone, stance, directness, watchfulness, momentum)):
+        return None
+    return (
+        "Inner visible support (subordinate only, never authority): "
+        f"tone={tone} | stance={stance} | directness={directness} | "
+        f"watchfulness={watchfulness} | momentum={momentum}"
     )
 
 

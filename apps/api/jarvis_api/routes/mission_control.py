@@ -96,6 +96,9 @@ from apps.api.jarvis_api.services.private_inner_note_signal_tracking import (
 from apps.api.jarvis_api.services.private_initiative_tension_signal_tracking import (
     build_runtime_private_initiative_tension_signal_surface,
 )
+from apps.api.jarvis_api.services.private_inner_interplay_signal_tracking import (
+    build_runtime_private_inner_interplay_signal_surface,
+)
 from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
@@ -358,6 +361,7 @@ def mc_jarvis() -> dict:
     private_initiative_tension_signals = (
         build_runtime_private_initiative_tension_signal_surface()
     )
+    private_inner_interplay_signals = build_runtime_private_inner_interplay_signal_surface()
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
     memory_md_update_proposals = build_runtime_memory_md_update_proposal_surface()
     selfhood_proposals = build_runtime_selfhood_proposal_surface()
@@ -434,6 +438,7 @@ def mc_jarvis() -> dict:
             "user_understanding_signals": user_understanding_signals,
             "private_inner_note_signals": private_inner_note_signals,
             "private_initiative_tension_signals": private_initiative_tension_signals,
+            "private_inner_interplay_signals": private_inner_interplay_signals,
             "user_md_update_proposals": user_md_update_proposals,
             "memory_md_update_proposals": memory_md_update_proposals,
             "selfhood_proposals": selfhood_proposals,
@@ -572,6 +577,7 @@ def mc_runtime() -> dict:
         "runtime_remembered_fact_signals": build_runtime_remembered_fact_signal_surface(),
         "runtime_private_inner_note_signals": build_runtime_private_inner_note_signal_surface(),
         "runtime_private_initiative_tension_signals": build_runtime_private_initiative_tension_signal_surface(),
+        "runtime_private_inner_interplay_signals": build_runtime_private_inner_interplay_signal_surface(),
         "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
         "runtime_memory_md_update_proposals": build_runtime_memory_md_update_proposal_surface(),
         "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),

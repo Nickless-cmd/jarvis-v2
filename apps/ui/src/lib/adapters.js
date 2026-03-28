@@ -1508,6 +1508,10 @@ export const backend = {
           source: ((development.private_initiative_tension_signals?.items || [])[0] || {}).source || '/mc/runtime.private_initiative_tension_signal',
           summary: ((development.private_initiative_tension_signals?.items || [])[0] || {}).tension_summary || 'No bounded initiative tension support',
         }),
+        privateInnerInterplaySupport: normalizeJarvisItem((development.private_inner_interplay_signals?.items || [])[0] || {}, {
+          source: ((development.private_inner_interplay_signals?.items || [])[0] || {}).source || '/mc/runtime.private_inner_interplay_signal',
+          summary: ((development.private_inner_interplay_signals?.items || [])[0] || {}).interplay_summary || 'No bounded inner interplay support',
+        }),
         growthNote: normalizeJarvisItem((development.growth_note?.recent_notes || [])[0] || {}, {
           source: ((development.growth_note?.recent_notes || [])[0] || {}).source || '/mc/runtime.private_growth_note',
           summary: ((development.growth_note?.recent_notes || [])[0] || {}).lesson || 'No recent lesson',
@@ -1551,6 +1555,16 @@ export const backend = {
           items: (development.private_initiative_tension_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.private_initiative_tension_signal',
             summary: item.tension_summary || item.summary || 'Inspect bounded initiative tension support',
+          })),
+        },
+        privateInnerInterplaySignals: {
+          active: Boolean(development.private_inner_interplay_signals?.active),
+          authority: development.private_inner_interplay_signals?.authority || 'non-authoritative',
+          layerRole: development.private_inner_interplay_signals?.layer_role || 'runtime-support',
+          summary: development.private_inner_interplay_signals?.summary || {},
+          items: (development.private_inner_interplay_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.private_inner_interplay_signal',
+            summary: item.interplay_summary || item.summary || 'Inspect bounded inner interplay support',
           })),
         },
         reflectiveCritics: {

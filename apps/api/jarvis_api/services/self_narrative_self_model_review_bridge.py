@@ -48,6 +48,8 @@ def build_runtime_self_narrative_self_model_review_bridge_surface(
     latest_review_input = review_inputs[0] if review_inputs else None
     sharpening_inputs = [_sharpening_input_view(item) for item in bridge_items]
     latest_sharpening_input = sharpening_inputs[0] if sharpening_inputs else None
+    proposal_inputs = [_proposal_input_view(item) for item in bridge_items]
+    latest_proposal_input = proposal_inputs[0] if proposal_inputs else None
     return {
         "active": active,
         "authority": "non-authoritative",
@@ -59,6 +61,7 @@ def build_runtime_self_narrative_self_model_review_bridge_surface(
         "patterns": patterns,
         "review_inputs": review_inputs,
         "sharpening_inputs": sharpening_inputs,
+        "proposal_inputs": proposal_inputs,
         "summary": {
             "active_count": len(
                 [
@@ -125,6 +128,26 @@ def build_runtime_self_narrative_self_model_review_bridge_surface(
                     if str(item.get("sharpening_input_state") or "")
                     == "sharpening-worthy"
                 ]
+            ),
+            "proposal_input_ready_count": len(
+                [
+                    item
+                    for item in proposal_inputs
+                    if str(item.get("proposal_input_state") or "")
+                    == "proposal-input-worthy"
+                ]
+            ),
+            "current_proposal_input": str(
+                (latest_proposal_input or {}).get("proposal_input_summary")
+                or "No active selfhood proposal input"
+            ),
+            "current_proposal_input_state": str(
+                (latest_proposal_input or {}).get("proposal_input_state")
+                or "not-proposal-input-worthy"
+            ),
+            "current_proposal_input_threshold_state": str(
+                (latest_proposal_input or {}).get("proposal_input_threshold_state")
+                or "proposal-input-thresholds-not-met"
             ),
             "current_confidence": str((latest or {}).get("bridge_confidence") or "low"),
             "authority": "non-authoritative",
@@ -231,6 +254,47 @@ def _build_bridge_item(
         sharpening_threshold_state=sharpening_threshold_state,
         self_model_title=self_model_title,
     )
+    stable_alignment_state = _stable_alignment_state(
+        self_model_alignment=self_model_alignment,
+        self_model_status=self_model_status,
+        pattern_confidence=bridge_confidence,
+    )
+    stability_window_state = _stability_window_state(
+        session_count=session_count,
+        support_count=support_count,
+    )
+    identity_relevance_state = _identity_relevance_state(
+        bridge_state=bridge_state,
+        self_model_title=self_model_title,
+        pattern_type=pattern_type,
+    )
+    governance_state = "explicitly-visible-in-mc"
+    proposal_input_threshold_state = _proposal_input_threshold_state(
+        sharpening_input_state=sharpening_input_state,
+        session_count=session_count,
+        stable_alignment_state=stable_alignment_state,
+        stability_window_state=stability_window_state,
+        identity_relevance_state=identity_relevance_state,
+        governance_state=governance_state,
+    )
+    proposal_input_state = (
+        "proposal-input-worthy"
+        if proposal_input_threshold_state == "proposal-input-thresholds-met"
+        else "not-proposal-input-worthy"
+    )
+    proposal_input_reason = _proposal_input_reason(
+        sharpening_input_state=sharpening_input_state,
+        session_count=session_count,
+        stable_alignment_state=stable_alignment_state,
+        stability_window_state=stability_window_state,
+        identity_relevance_state=identity_relevance_state,
+        governance_state=governance_state,
+    )
+    proposal_input_summary = _proposal_input_summary(
+        proposal_input_state=proposal_input_state,
+        proposal_input_threshold_state=proposal_input_threshold_state,
+        stability_window_state=stability_window_state,
+    )
 
     return {
         "bridge_id": f"self-narrative-review-bridge:{str(narrative_item.get('signal_id') or '')}",
@@ -269,6 +333,16 @@ def _build_bridge_item(
         "sharpening_input_weight": narrative_weight,
         "sharpening_input_summary": sharpening_input_summary,
         "sharpening_input_confidence": bridge_confidence,
+        "proposal_input_state": proposal_input_state,
+        "proposal_input_reason": proposal_input_reason,
+        "proposal_input_weight": narrative_weight,
+        "proposal_input_summary": proposal_input_summary,
+        "proposal_input_confidence": bridge_confidence,
+        "proposal_input_threshold_state": proposal_input_threshold_state,
+        "stability_window_state": stability_window_state,
+        "governance_state": governance_state,
+        "stable_alignment_state": stable_alignment_state,
+        "identity_relevance_state": identity_relevance_state,
         "self_model_alignment": self_model_alignment,
         "self_model_signal_title": self_model_title
         or "No active self-model review input",
@@ -342,6 +416,38 @@ def _sharpening_input_view(item: dict[str, object]) -> dict[str, object]:
         ),
         "sharpening_threshold_state": str(
             item.get("sharpening_threshold_state") or "sharpening-thresholds-not-met"
+        ),
+        "status": str(item.get("status") or "active"),
+    }
+
+
+def _proposal_input_view(item: dict[str, object]) -> dict[str, object]:
+    return {
+        "proposal_input_state": str(
+            item.get("proposal_input_state") or "not-proposal-input-worthy"
+        ),
+        "proposal_input_reason": str(
+            item.get("proposal_input_reason")
+            or "Proposal-input thresholds not met."
+        ),
+        "proposal_input_weight": str(
+            item.get("proposal_input_weight") or item.get("pattern_weight") or "low"
+        ),
+        "proposal_input_summary": str(item.get("proposal_input_summary") or ""),
+        "proposal_input_confidence": str(
+            item.get("proposal_input_confidence")
+            or item.get("pattern_confidence")
+            or "low"
+        ),
+        "proposal_input_threshold_state": str(
+            item.get("proposal_input_threshold_state")
+            or "proposal-input-thresholds-not-met"
+        ),
+        "stability_window_state": str(
+            item.get("stability_window_state") or "insufficient-window-evidence"
+        ),
+        "governance_state": str(
+            item.get("governance_state") or "explicitly-visible-in-mc"
         ),
         "status": str(item.get("status") or "active"),
     }
@@ -451,6 +557,113 @@ def _sharpening_input_summary(
     if self_model_title:
         return f"Bounded sharpening-input gate is not marking this pattern as sharpening-worthy yet; sharpening thresholds remain {sharpening_threshold_state.replace('-', ' ')}."
     return f"Bounded sharpening-input gate remains {sharpening_threshold_state.replace('-', ' ')} with no active sharpening context strong enough for sharpening readiness."
+
+
+def _stable_alignment_state(
+    *,
+    self_model_alignment: str,
+    self_model_status: str,
+    pattern_confidence: str,
+) -> str:
+    if (
+        self_model_alignment == "coherent"
+        and self_model_status == "active"
+        and pattern_confidence == "high"
+    ):
+        return "stable"
+    return "not-stable"
+
+
+def _stability_window_state(*, session_count: int, support_count: int) -> str:
+    if session_count >= 3 and support_count >= 3:
+        return "bounded-multi-session-approximation"
+    return "insufficient-window-evidence"
+
+
+def _identity_relevance_state(
+    *,
+    bridge_state: str,
+    self_model_title: str,
+    pattern_type: str,
+) -> str:
+    if (
+        bridge_state == "self-model-reviewable"
+        and self_model_title
+        and pattern_type in {
+            "coherent-review-pattern",
+            "firming-pattern",
+            "steady-becoming-pattern",
+            "watchful-becoming-pattern",
+            "deepening-pattern",
+            "opening-pattern",
+        }
+    ):
+        return "identity-relevant"
+    return "not-identity-relevant"
+
+
+def _proposal_input_threshold_state(
+    *,
+    sharpening_input_state: str,
+    session_count: int,
+    stable_alignment_state: str,
+    stability_window_state: str,
+    identity_relevance_state: str,
+    governance_state: str,
+) -> str:
+    if (
+        sharpening_input_state == "sharpening-worthy"
+        and session_count >= 3
+        and stable_alignment_state == "stable"
+        and stability_window_state == "bounded-multi-session-approximation"
+        and identity_relevance_state == "identity-relevant"
+        and governance_state == "explicitly-visible-in-mc"
+    ):
+        return "proposal-input-thresholds-met"
+    return "proposal-input-thresholds-not-met"
+
+
+def _proposal_input_reason(
+    *,
+    sharpening_input_state: str,
+    session_count: int,
+    stable_alignment_state: str,
+    stability_window_state: str,
+    identity_relevance_state: str,
+    governance_state: str,
+) -> str:
+    unmet: list[str] = []
+    if sharpening_input_state != "sharpening-worthy":
+        unmet.append("sharpening-input-not-worthy")
+    if session_count < 3:
+        unmet.append("coherence-persistence-below-3-sessions")
+    if stable_alignment_state != "stable":
+        unmet.append("self-model-alignment-not-stable")
+    if stability_window_state != "bounded-multi-session-approximation":
+        unmet.append("stability-window-not-yet-supported")
+    if identity_relevance_state != "identity-relevant":
+        unmet.append("identity-relevance-not-clear")
+    if governance_state != "explicitly-visible-in-mc":
+        unmet.append("governance-visibility-not-explicit")
+    if not unmet:
+        return "All bounded selfhood proposal-input thresholds are met."
+    return "Proposal-input thresholds not met: " + ", ".join(unmet) + "."
+
+
+def _proposal_input_summary(
+    *,
+    proposal_input_state: str,
+    proposal_input_threshold_state: str,
+    stability_window_state: str,
+) -> str:
+    if proposal_input_state == "proposal-input-worthy":
+        return (
+            "Bounded selfhood-proposal-input gate is marking this pattern as proposal-input-worthy for later selfhood review, while remaining read-only and non-authoritative."
+        )
+    return (
+        "Bounded selfhood-proposal-input gate is not marking this pattern as proposal-input-worthy yet; "
+        f"{proposal_input_threshold_state.replace('-', ' ')} and {stability_window_state.replace('-', ' ')} remain explicitly visible."
+    )
 
 
 def _review_input_reason(

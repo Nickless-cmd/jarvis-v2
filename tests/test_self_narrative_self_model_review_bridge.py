@@ -87,6 +87,7 @@ def test_self_narrative_review_bridge_stays_empty_without_narrative_substrate(
     assert surface["patterns"] == []
     assert surface["review_inputs"] == []
     assert surface["sharpening_inputs"] == []
+    assert surface["proposal_inputs"] == []
     assert surface["summary"]["active_count"] == 0
     assert runtime["runtime_self_narrative_self_model_review_bridge"]["items"] == []
 
@@ -155,6 +156,16 @@ def test_self_narrative_review_bridge_forms_read_only_bridge_from_narrative_and_
     assert item["sharpening_threshold_state"] in {
         "sharpening-thresholds-met",
         "sharpening-thresholds-not-met",
+    }
+    assert item["proposal_input_state"] in {
+        "proposal-input-worthy",
+        "not-proposal-input-worthy",
+    }
+    assert item["proposal_input_weight"] in {"low", "medium", "high"}
+    assert item["proposal_input_confidence"] in {"low", "medium", "high"}
+    assert item["proposal_input_threshold_state"] in {
+        "proposal-input-thresholds-met",
+        "proposal-input-thresholds-not-met",
     }
     assert item["authority"] == "non-authoritative"
     assert item["layer_role"] == "runtime-support"
@@ -248,6 +259,10 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
         "current_sharpening_input_state",
         "current_sharpening_threshold_state",
         "sharpening_ready_count",
+        "proposal_input_ready_count",
+        "current_proposal_input",
+        "current_proposal_input_state",
+        "current_proposal_input_threshold_state",
         "current_confidence",
         "authority",
         "layer_role",
@@ -285,6 +300,16 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
         "sharpening_input_summary",
         "sharpening_input_confidence",
         "sharpening_threshold_state",
+        "proposal_input_state",
+        "proposal_input_reason",
+        "proposal_input_weight",
+        "proposal_input_summary",
+        "proposal_input_confidence",
+        "proposal_input_threshold_state",
+        "stability_window_state",
+        "governance_state",
+        "stable_alignment_state",
+        "identity_relevance_state",
         "self_model_alignment",
         "authority",
         "layer_role",
@@ -295,6 +320,7 @@ def test_self_narrative_review_bridge_surfaces_in_mc_without_proposal_side_effec
     assert surface["patterns"][0]["pattern_summary"]
     assert surface["review_inputs"][0]["review_input_summary"]
     assert surface["sharpening_inputs"][0]["sharpening_input_summary"]
+    assert surface["proposal_inputs"][0]["proposal_input_summary"]
     assert (
         jarvis["development"]["self_narrative_self_model_review_bridge"]["summary"][
             "proposal_state"
@@ -389,3 +415,82 @@ def test_self_narrative_review_bridge_sharpening_not_worthy_with_bounded_persist
     assert sharpening_input["sharpening_input_state"] == "not-sharpenable"
     assert surface["summary"]["sharpening_ready_count"] == 0
     assert surface["summary"]["review_ready_count"] == 1
+
+
+def test_self_narrative_review_bridge_proposal_input_gate_marks_proposal_input_worthy_only_when_thresholds_are_met(
+    isolated_runtime,
+) -> None:
+    bridge = isolated_runtime.self_narrative_self_model_review_bridge
+    db = isolated_runtime.db
+
+    _insert_self_narrative_signal(
+        db,
+        status="active",
+        canonical_key="self-narrative-continuity:becoming-steady:workspace-search",
+        title="Self-narrative support: workspace search",
+        confidence="high",
+        support_count=3,
+        session_count=3,
+    )
+    _insert_self_model_signal(
+        db,
+        run_id="test-run",
+        status="active",
+        confidence="high",
+        support_count=3,
+        session_count=3,
+    )
+
+    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(
+        limit=8
+    )
+    item = surface["items"][0]
+    proposal_input = surface["proposal_inputs"][0]
+
+    assert item["sharpening_input_state"] == "sharpening-worthy"
+    assert item["proposal_input_state"] == "proposal-input-worthy"
+    assert item["proposal_input_threshold_state"] == "proposal-input-thresholds-met"
+    assert item["stability_window_state"] == "bounded-multi-session-approximation"
+    assert item["stable_alignment_state"] == "stable"
+    assert item["identity_relevance_state"] == "identity-relevant"
+    assert item["governance_state"] == "explicitly-visible-in-mc"
+    assert proposal_input["proposal_input_state"] == "proposal-input-worthy"
+    assert surface["summary"]["proposal_input_ready_count"] == 1
+
+
+def test_self_narrative_review_bridge_proposal_input_not_worthy_below_three_sessions(
+    isolated_runtime,
+) -> None:
+    bridge = isolated_runtime.self_narrative_self_model_review_bridge
+    db = isolated_runtime.db
+
+    _insert_self_narrative_signal(
+        db,
+        status="active",
+        canonical_key="self-narrative-continuity:becoming-steady:workspace-search",
+        title="Self-narrative support: workspace search",
+        confidence="high",
+        support_count=3,
+        session_count=2,
+    )
+    _insert_self_model_signal(
+        db,
+        run_id="test-run",
+        status="active",
+        confidence="high",
+        support_count=3,
+        session_count=2,
+    )
+
+    surface = bridge.build_runtime_self_narrative_self_model_review_bridge_surface(
+        limit=8
+    )
+    item = surface["items"][0]
+    proposal_input = surface["proposal_inputs"][0]
+
+    assert item["sharpening_input_state"] == "sharpening-worthy"
+    assert item["proposal_input_state"] == "not-proposal-input-worthy"
+    assert item["proposal_input_threshold_state"] == "proposal-input-thresholds-not-met"
+    assert item["stability_window_state"] == "insufficient-window-evidence"
+    assert proposal_input["proposal_input_state"] == "not-proposal-input-worthy"
+    assert surface["summary"]["proposal_input_ready_count"] == 0

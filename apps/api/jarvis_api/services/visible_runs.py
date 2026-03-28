@@ -125,6 +125,9 @@ from apps.api.jarvis_api.services.self_narrative_continuity_signal_tracking impo
 from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
     track_runtime_metabolism_state_signals_for_visible_turn,
 )
+from apps.api.jarvis_api.services.release_marker_signal_tracking import (
+    track_runtime_release_marker_signals_for_visible_turn,
+)
 from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import (
     track_runtime_executive_contradiction_signals_for_visible_turn,
 )
@@ -780,6 +783,13 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         return
     try:
         track_runtime_metabolism_state_signals_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception:
+        return
+    try:
+        track_runtime_release_marker_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )

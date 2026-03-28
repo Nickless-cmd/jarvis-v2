@@ -1449,6 +1449,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const temperamentTendencySignals = data?.development?.temperamentTendencySignals || { items: [], summary: {} }
   const selfNarrativeContinuitySignals = data?.development?.selfNarrativeContinuitySignals || { items: [], summary: {} }
   const metabolismStateSignals = data?.development?.metabolismStateSignals || { items: [], summary: {} }
+  const releaseMarkerSignals = data?.development?.releaseMarkerSignals || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -2378,6 +2379,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.temperamentTendencySupport, 'Temperament Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeContinuitySupport, 'Self-Narrative Continuity Support', onOpenItem)}
               {detailRow(data?.development?.metabolismStateSupport, 'Metabolism Support', onOpenItem)}
+              {detailRow(data?.development?.releaseMarkerSupport, 'Release Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
@@ -2563,6 +2565,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {metabolismStateSignals?.summary?.authority || 'non-authoritative'} · {metabolismStateSignals?.summary?.canonical_delete_state || 'not-canonical-deletion'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Release Markers</span>
+              <strong>{(releaseMarkerSignals?.summary?.active_count || 0) + (releaseMarkerSignals?.summary?.softening_count || 0)}</strong>
+              <p>{releaseMarkerSignals?.summary?.current_signal || 'No bounded release support'}</p>
+              <p>
+                state {releaseMarkerSignals?.summary?.current_state || 'none'} · direction {releaseMarkerSignals?.summary?.current_direction || 'none'}
+              </p>
+              <p>
+                {releaseMarkerSignals?.summary?.authority || 'non-authoritative'} · {releaseMarkerSignals?.summary?.selective_forgetting_state || 'not-selective-forgetting-execution'}
               </p>
             </div>
           </div>

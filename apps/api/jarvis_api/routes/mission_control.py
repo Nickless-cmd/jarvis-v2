@@ -130,6 +130,9 @@ from apps.api.jarvis_api.services.self_narrative_continuity_signal_tracking impo
 from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
     build_runtime_metabolism_state_signal_surface,
 )
+from apps.api.jarvis_api.services.release_marker_signal_tracking import (
+    build_runtime_release_marker_signal_surface,
+)
 from apps.api.jarvis_api.services.self_narrative_self_model_review_bridge import (
     build_runtime_self_narrative_self_model_review_bridge_surface,
 )
@@ -421,6 +424,7 @@ def mc_jarvis() -> dict:
     temperament_tendency_signals = build_runtime_temperament_tendency_signal_surface()
     self_narrative_continuity_signals = build_runtime_self_narrative_continuity_signal_surface()
     metabolism_state_signals = build_runtime_metabolism_state_signal_surface()
+    release_marker_signals = build_runtime_release_marker_signal_surface()
     self_narrative_self_model_review_bridge = build_runtime_self_narrative_self_model_review_bridge_surface()
     executive_contradiction_signals = build_runtime_executive_contradiction_signal_surface()
     private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
@@ -514,6 +518,7 @@ def mc_jarvis() -> dict:
             "temperament_tendency_signals": temperament_tendency_signals,
             "self_narrative_continuity_signals": self_narrative_continuity_signals,
             "metabolism_state_signals": metabolism_state_signals,
+            "release_marker_signals": release_marker_signals,
             "self_narrative_self_model_review_bridge": self_narrative_self_model_review_bridge,
             "executive_contradiction_signals": executive_contradiction_signals,
             "private_temporal_promotion_signals": private_temporal_promotion_signals,
@@ -669,6 +674,7 @@ def mc_runtime() -> dict:
         "runtime_temperament_tendency_signals": build_runtime_temperament_tendency_signal_surface(),
         "runtime_self_narrative_continuity_signals": build_runtime_self_narrative_continuity_signal_surface(),
         "runtime_metabolism_state_signals": build_runtime_metabolism_state_signal_surface(),
+        "runtime_release_marker_signals": build_runtime_release_marker_signal_surface(),
         "runtime_self_narrative_self_model_review_bridge": build_runtime_self_narrative_self_model_review_bridge_surface(),
         "runtime_executive_contradiction_signals": build_runtime_executive_contradiction_signal_surface(),
         "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),

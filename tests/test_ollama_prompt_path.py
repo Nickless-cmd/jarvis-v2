@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -107,6 +108,149 @@ def test_visible_prompt_relevance_interface_keeps_recall_queries_memory_aware(
     assert decision.include_transcript is True
     assert decision.include_continuity is False
     assert decision.include_support_signals is True
+
+
+def test_visible_prompt_relevance_interface_keeps_heuristic_fallback_when_nl_is_missing(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.prompt_contract,
+        "_bounded_nl_relevance_backend",
+        lambda **_: None,
+    )
+
+    decision = isolated_runtime.prompt_contract.build_prompt_relevance_decision(
+        "kan du huske hvad jeg hedder?",
+        mode="visible_chat",
+        compact=True,
+    )
+
+    assert decision.memory_relevant is True
+    assert decision.transcript_relevant is True
+    assert decision.include_memory is True
+    assert decision.include_support_signals is True
+
+
+def test_visible_prompt_relevance_interface_can_use_bounded_nl_backend_for_paraphrase(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    assert (
+        isolated_runtime.prompt_contract._should_include_memory(
+            "what are we collaborating around lately?",
+            mode="visible_chat",
+        )
+        is False
+    )
+
+    monkeypatch.setattr(
+        isolated_runtime.prompt_contract,
+        "_bounded_nl_relevance_backend",
+        lambda **_: type(
+            "MockRelevance",
+            (),
+            {
+                "memory_relevant": True,
+                "guidance_relevant": False,
+                "transcript_relevant": True,
+                "continuity_relevant": False,
+                "support_signals_relevant": True,
+            },
+        )(),
+    )
+
+    decision = isolated_runtime.prompt_contract.build_prompt_relevance_decision(
+        "what are we collaborating around lately?",
+        mode="visible_chat",
+        compact=True,
+    )
+
+    assert decision.memory_relevant is True
+    assert decision.transcript_relevant is True
+    assert decision.include_memory is True
+    assert decision.include_support_signals is True
+
+
+def test_bounded_nl_relevance_backend_loads_workspace_prompt_and_parses_json(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    backend = __import__(
+        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        fromlist=["run_bounded_nl_prompt_relevance"],
+    )
+    workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
+    (workspace_dir / "VISIBLE_RELEVANCE.md").write_text(
+        "\n".join(
+            [
+                "# VISIBLE_RELEVANCE",
+                "Use memory_relevant for collaboration-paraphrase questions.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        backend,
+        "resolve_provider_router_target",
+        lambda lane: {
+            "active": lane == "local",
+            "provider": "ollama" if lane == "local" else None,
+            "base_url": "http://127.0.0.1:11434" if lane == "local" else None,
+        },
+    )
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return json.dumps(
+                {
+                    "response": json.dumps(
+                        {
+                            "memory_relevant": True,
+                            "guidance_relevant": False,
+                            "transcript_relevant": True,
+                            "continuity_relevant": False,
+                            "support_signals_relevant": True,
+                            "confidence": "medium",
+                        }
+                    )
+                }
+            ).encode("utf-8")
+
+    def _fake_urlopen(req, timeout):
+        captured["timeout"] = timeout
+        captured["payload"] = json.loads(req.data.decode("utf-8"))
+        return _FakeResponse()
+
+    monkeypatch.setattr(backend.urllib_request, "urlopen", _fake_urlopen)
+
+    result = backend.run_bounded_nl_prompt_relevance(
+        text="what are we collaborating around lately?",
+        mode="visible_chat",
+        compact=True,
+        workspace_dir=workspace_dir,
+    )
+
+    assert result is not None
+    assert result.backend == "bounded-local-ollama"
+    assert result.memory_relevant is True
+    assert result.transcript_relevant is True
+    assert result.support_signals_relevant is True
+    assert result.confidence == "medium"
+    assert captured["timeout"] == backend.RELEVANCE_TIMEOUT_SECONDS
+    assert "Use memory_relevant for collaboration-paraphrase questions." in str(
+        captured["payload"]["prompt"]
+    )
 
 
 def test_ollama_prompt_is_flattened_from_same_visible_input_path(isolated_runtime) -> None:

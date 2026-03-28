@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from apps.api.jarvis_api.services.chat_sessions import recent_chat_session_messages
+from apps.api.jarvis_api.services.prompt_relevance_backend import (
+    BoundedPromptRelevanceResult,
+    run_bounded_nl_prompt_relevance,
+)
 from core.identity.runtime_contract import build_runtime_contract_state
 from core.identity.workspace_bootstrap import TEMPLATE_DIR, ensure_default_workspace
 from core.memory.private_retained_memory_projection import (
@@ -75,6 +79,7 @@ def build_visible_chat_prompt_assembly(
         user_message,
         mode="visible_chat",
         compact=compact,
+        name=name,
     )
 
     capability_truth = _visible_capability_truth_instruction(compact=compact)
@@ -178,6 +183,7 @@ def build_heartbeat_prompt_assembly(
         "heartbeat",
         mode="heartbeat",
         compact=False,
+        name=name,
     )
 
     parts.append(_heartbeat_runtime_truth_instruction(heartbeat_context or {}))
@@ -258,6 +264,7 @@ def build_future_agent_task_prompt_assembly(
         task_brief,
         mode="future_agent_task",
         compact=False,
+        name=name,
     )
 
     runtime_truth = _future_agent_runtime_truth_instruction(context)
@@ -339,17 +346,40 @@ def build_prompt_relevance_decision(
     *,
     mode: str,
     compact: bool,
+    name: str = "default",
 ) -> PromptRelevanceDecision:
-    memory_relevant = _should_include_memory(text, mode=mode)
-    guidance_relevant = _should_include_guidance(text)
-    transcript_relevant = _should_include_transcript(text)
-    continuity_relevant = _should_include_continuity(text)
+    heuristic_memory_relevant = _should_include_memory(text, mode=mode)
+    heuristic_guidance_relevant = _should_include_guidance(text)
+    heuristic_transcript_relevant = _should_include_transcript(text)
+    heuristic_continuity_relevant = _should_include_continuity(text)
+    nl_relevance = _bounded_nl_relevance_backend(
+        text=text,
+        mode=mode,
+        compact=compact,
+        name=name,
+    )
+
+    memory_relevant = heuristic_memory_relevant or bool(
+        nl_relevance and nl_relevance.memory_relevant
+    )
+    guidance_relevant = heuristic_guidance_relevant or bool(
+        nl_relevance and nl_relevance.guidance_relevant
+    )
+    transcript_relevant = heuristic_transcript_relevant or bool(
+        nl_relevance and nl_relevance.transcript_relevant
+    )
+    continuity_relevant = heuristic_continuity_relevant or bool(
+        nl_relevance and nl_relevance.continuity_relevant
+    )
+    support_signals_relevant = memory_relevant or bool(
+        nl_relevance and nl_relevance.support_signals_relevant
+    )
 
     if mode == "visible_chat":
         # Visible chat keeps a bounded recent transcript slice available by default.
         include_transcript = True
         include_continuity = (not compact) or continuity_relevant
-        include_support_signals = (not compact) or memory_relevant
+        include_support_signals = (not compact) or support_signals_relevant
     else:
         include_transcript = False
         include_continuity = False
@@ -366,6 +396,21 @@ def build_prompt_relevance_decision(
         include_transcript=include_transcript,
         include_continuity=include_continuity,
         include_support_signals=include_support_signals,
+    )
+
+
+def _bounded_nl_relevance_backend(
+    *,
+    text: str,
+    mode: str,
+    compact: bool,
+    name: str,
+) -> BoundedPromptRelevanceResult | None:
+    return run_bounded_nl_prompt_relevance(
+        text=text,
+        mode=mode,
+        compact=compact,
+        workspace_dir=ensure_default_workspace(name=name),
     )
 
 

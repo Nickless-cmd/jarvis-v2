@@ -280,6 +280,8 @@ def test_witness_surface_forms_carried_lesson_when_transition_is_still_being_car
     assert surface["items"][0]["status"] == "fresh"
     assert surface["items"][0]["canonical_key"] == "witness-signal:carried-lesson:danish-concise-calibration"
     assert surface["items"][0]["becoming_direction"] == "none"
+    assert surface["items"][0]["maturation_state"] == "none"
+    assert surface["items"][0]["maturation_marker"] == "none"
 
 
 def test_witness_surface_forms_witnessed_turn_without_continued_carrying(isolated_runtime) -> None:
@@ -353,6 +355,12 @@ def test_witness_surface_and_mc_shape_remain_bounded(isolated_runtime) -> None:
         "superseded_count",
         "current_signal",
         "current_status",
+        "current_becoming_direction",
+        "current_becoming_weight",
+        "current_maturation_hint",
+        "current_maturation_state",
+        "current_maturation_marker",
+        "current_witness_confidence",
     }.issubset(surface["summary"].keys())
     assert {
         "signal_id",
@@ -361,6 +369,15 @@ def test_witness_surface_and_mc_shape_remain_bounded(isolated_runtime) -> None:
         "status",
         "title",
         "summary",
+        "becoming_direction",
+        "becoming_weight",
+        "becoming_summary",
+        "maturation_hint",
+        "maturation_state",
+        "maturation_marker",
+        "maturation_weight",
+        "maturation_summary",
+        "witness_confidence",
         "confidence",
         "updated_at",
     }.issubset(surface["items"][0].keys())
@@ -418,6 +435,23 @@ def test_witness_surface_adds_becoming_synthesis_when_relevant_substrate_is_pres
     }
     assert item["becoming_weight"] in {"low", "medium", "high"}
     assert item["maturation_hint"]
+    assert item["maturation_state"] in {
+        "emerging",
+        "stabilizing",
+        "deepening",
+        "consolidating",
+        "carried",
+    }
+    assert item["maturation_marker"] in {
+        "emerging-marker",
+        "stabilizing-marker",
+        "deepening-marker",
+        "consolidating-marker",
+        "carried-marker",
+        "watchful-marker",
+    }
+    assert item["maturation_weight"] in {"low", "medium", "high"}
+    assert item["maturation_summary"]
     assert item["becoming_summary"]
     assert item["witness_confidence"] in {"low", "medium", "high"}
     assert item["authority"] == "non-authoritative"
@@ -426,7 +460,10 @@ def test_witness_surface_adds_becoming_synthesis_when_relevant_substrate_is_pres
     assert item["proposal_state"] == "not-selfhood-proposal"
     assert item["moral_authority_state"] == "not-moral-authority"
     assert "appears to be" in item["becoming_summary"] or "shows signs of" in item["becoming_summary"]
+    assert "shows signs of" in item["maturation_summary"]
     assert surface["summary"]["current_becoming_direction"] == item["becoming_direction"]
     assert surface["summary"]["current_maturation_hint"] == item["maturation_hint"]
+    assert surface["summary"]["current_maturation_state"] == item["maturation_state"]
+    assert surface["summary"]["current_maturation_marker"] == item["maturation_marker"]
     assert jarvis["development"]["witness_signals"]["summary"]["current_becoming_direction"] == item["becoming_direction"]
     assert runtime["runtime_witness_signals"]["summary"]["current_becoming_direction"] == item["becoming_direction"]

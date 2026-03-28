@@ -122,6 +122,8 @@ def build_runtime_witness_signal_surface(*, limit: int = 6) -> dict[str, object]
             "current_becoming_direction": str((latest or {}).get("becoming_direction") or "none"),
             "current_becoming_weight": str((latest or {}).get("becoming_weight") or "low"),
             "current_maturation_hint": str((latest or {}).get("maturation_hint") or "none"),
+            "current_maturation_state": str((latest or {}).get("maturation_state") or "none"),
+            "current_maturation_marker": str((latest or {}).get("maturation_marker") or "none"),
             "current_witness_confidence": str((latest or {}).get("witness_confidence") or str((latest or {}).get("confidence") or "low")),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
@@ -336,6 +338,17 @@ def _build_candidate(
         temperament=temperament,
         relation_continuity=relation_continuity,
     )
+    maturation_state = _derive_maturation_state(
+        signal_type=signal_type,
+        status="fresh",
+        becoming_direction=becoming_direction,
+        becoming_weight=becoming_weight,
+        maturation_hint=maturation_hint,
+    )
+    maturation_marker = _derive_maturation_marker(
+        maturation_state=maturation_state,
+        maturation_hint=maturation_hint,
+    )
     witness_confidence = _stronger_confidence(
         confidence,
         str((self_narrative or {}).get("narrative_confidence") or (self_narrative or {}).get("confidence") or "low"),
@@ -365,6 +378,8 @@ def _build_candidate(
             f"becoming-direction={becoming_direction}",
             f"becoming-weight={becoming_weight}",
             f"maturation-hint={maturation_hint}",
+            f"maturation-state={maturation_state}",
+            f"maturation-marker={maturation_marker}",
             f"witness-confidence={witness_confidence}",
             source_anchor,
         ),
@@ -383,6 +398,15 @@ def _build_candidate(
             signal_type=signal_type,
         ),
         "maturation_hint": maturation_hint,
+        "maturation_state": maturation_state,
+        "maturation_marker": maturation_marker,
+        "maturation_weight": becoming_weight,
+        "maturation_summary": _maturation_summary(
+            domain_title=_domain_title(domain_key),
+            becoming_direction=becoming_direction,
+            maturation_state=maturation_state,
+            maturation_marker=maturation_marker,
+        ),
         "witness_confidence": witness_confidence,
         "source_anchor": source_anchor,
     }
@@ -433,6 +457,17 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     becoming_direction = _summary_marker(support_summary, "becoming-direction") or "none"
     becoming_weight = _summary_marker(support_summary, "becoming-weight") or "low"
     maturation_hint = _summary_marker(support_summary, "maturation-hint") or "none"
+    maturation_state = _derive_maturation_state(
+        signal_type=str(item.get("signal_type") or "witness-signal"),
+        status=str(item.get("status") or "fresh"),
+        becoming_direction=becoming_direction,
+        becoming_weight=becoming_weight,
+        maturation_hint=maturation_hint,
+    )
+    maturation_marker = _derive_maturation_marker(
+        maturation_state=maturation_state,
+        maturation_hint=maturation_hint,
+    )
     witness_confidence = _summary_marker(support_summary, "witness-confidence") or str(item.get("confidence") or "low")
     source_anchor = _last_summary_fragment(support_summary)
     becoming_summary = _becoming_summary(
@@ -448,6 +483,15 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
             "becoming_weight": becoming_weight,
             "becoming_summary": becoming_summary,
             "maturation_hint": maturation_hint,
+            "maturation_state": maturation_state,
+            "maturation_marker": maturation_marker,
+            "maturation_weight": becoming_weight,
+            "maturation_summary": _maturation_summary(
+                domain_title=_domain_title(_witness_domain_key(str(item.get("canonical_key") or ""))),
+                becoming_direction=becoming_direction,
+                maturation_state=maturation_state,
+                maturation_marker=maturation_marker,
+            ),
             "witness_confidence": witness_confidence,
             "source_anchor": source_anchor,
             "authority": "non-authoritative",
@@ -590,6 +634,47 @@ def _derive_maturation_hint(
     return "witnessed-settling"
 
 
+def _derive_maturation_state(
+    *,
+    signal_type: str,
+    status: str,
+    becoming_direction: str,
+    becoming_weight: str,
+    maturation_hint: str,
+) -> str:
+    if becoming_direction == "none":
+        return "none"
+    if status == "carried":
+        return "carried"
+    if signal_type == "carried-lesson" and becoming_direction == "deepening":
+        return "deepening"
+    if becoming_weight == "high":
+        return "consolidating"
+    if maturation_hint in {"becoming-steady", "steadiness", "carried-alignment", "trustful-continuity"}:
+        return "stabilizing"
+    return "emerging"
+
+
+def _derive_maturation_marker(
+    *,
+    maturation_state: str,
+    maturation_hint: str,
+) -> str:
+    if maturation_state == "none":
+        return "none"
+    if maturation_state == "carried":
+        return "carried-marker"
+    if maturation_state == "deepening":
+        return "deepening-marker"
+    if maturation_state == "consolidating":
+        return "consolidating-marker"
+    if maturation_state == "stabilizing":
+        return "stabilizing-marker"
+    if maturation_hint in {"becoming-watchful", "watchful-restraint"}:
+        return "watchful-marker"
+    return "emerging-marker"
+
+
 def _becoming_summary(
     *,
     domain_title: str,
@@ -603,6 +688,21 @@ def _becoming_summary(
     return (
         f"Inner witness {witness_frame} more {becoming_direction.replace('-', ' ')} around {domain_title.lower()}, "
         f"with {becoming_weight} bounded witness weight."
+    )
+
+
+def _maturation_summary(
+    *,
+    domain_title: str,
+    becoming_direction: str,
+    maturation_state: str,
+    maturation_marker: str,
+) -> str:
+    if maturation_state == "none":
+        return f"Inner witness is not surfacing a bounded maturation marker around {domain_title.lower()} yet."
+    return (
+        f"Inner witness shows signs of {maturation_state.replace('-', ' ')} toward {becoming_direction.replace('-', ' ')} "
+        f"around {domain_title.lower()}, via {maturation_marker.replace('-', ' ')}."
     )
 
 

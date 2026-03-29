@@ -346,6 +346,14 @@ button { cursor: pointer; }
   border:none; background:transparent; color:#9aa7b8; border-radius:8px; padding:8px 14px; white-space:nowrap; font-size:12px;
 }
 .mc-tab.active { background:rgba(40,177,163,.12); color:#e7edf5; }
+.mc-sub-tabbar {
+  display:flex; gap:3px; padding:0 14px 8px; background: transparent; border-bottom:1px solid rgba(255,255,255,.04);
+  width:100%; max-width:100%; overflow:auto; flex-shrink: 0;
+}
+.mc-sub-tab {
+  border:none; background:transparent; color:#6d7f94; border-radius:6px; padding:6px 12px; white-space:nowrap; font-size:11px;
+}
+.mc-sub-tab.active { background:rgba(40,177,163,.08); color:#49d2c3; }
 .mc-tab-page, .mc-observability-shell { display:flex; flex-direction:column; gap:12px; flex:1; min-height:0; overflow:auto; padding:12px 14px; }
 .mc-summary-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; }
 .mc-section-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }

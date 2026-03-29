@@ -1408,7 +1408,7 @@ function integrationCarryOverRow({ reflectionSummary, reflectionHistory, carried
   )
 }
 
-export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false }) {
+export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = false, subTab = 'jarvis-core' }) {
   const summary = data?.summary || {}
   const contract = data?.contract || {}
   const heartbeat = data?.heartbeat || {}

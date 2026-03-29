@@ -9,6 +9,8 @@ import { OverviewTab } from '../components/mission-control/OverviewTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
 
+const DEFAULT_JARVIS_SUB_TAB = 'jarvis-core'
+
 export function MissionControlPage({ selection, onSelectionChange }) {
   const {
     activeTab,
@@ -32,6 +34,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     actOnDevelopmentFocus,
   } = useMissionControlPhaseA({ active: true, selection })
   const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
+  const [activeJarvisSubTab, setActiveJarvisSubTab] = useState(DEFAULT_JARVIS_SUB_TAB)
 
   const filteredObservability = useMemo(() => {
     if (!sections.observability) return sections.observability
@@ -73,7 +76,12 @@ export function MissionControlPage({ selection, onSelectionChange }) {
         </div>
       </section>
 
-      <MCTabBar activeTab={activeTab} onChange={setActiveTab} />
+      <MCTabBar 
+        activeTab={activeTab} 
+        onChange={setActiveTab}
+        activeJarvisSubTab={activeJarvisSubTab}
+        onJarvisSubTabChange={setActiveJarvisSubTab}
+      />
 
       {activeTab === 'overview' ? (
         <OverviewTab
@@ -128,6 +136,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
           onOpenItem={openJarvisDetail}
           onHeartbeatTick={actOnHeartbeatTick}
           heartbeatBusy={isRefreshing}
+          subTab={activeJarvisSubTab}
         />
       ) : null}
 

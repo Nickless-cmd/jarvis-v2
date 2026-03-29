@@ -133,6 +133,7 @@ def build_runtime_proactive_question_gate_surface(*, limit: int = 8) -> dict[str
             "current_reason": str((latest or {}).get("question_gate_reason") or "none"),
             "current_weight": str((latest or {}).get("question_gate_weight") or "low"),
             "current_confidence": str((latest or {}).get("question_gate_confidence") or "low"),
+            "current_continuity_mode": str((latest or {}).get("question_gate_continuity_mode") or "none"),
             "current_send_permission_state": str((latest or {}).get("send_permission_state") or "not-granted"),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
@@ -178,27 +179,46 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
     )
     if question_pressure is None or question_loop is None:
         return []
-    if not relation.get("active") or not meaning.get("active"):
-        return []
 
     question_readiness = str(question_loop.get("question_readiness") or "low")
     relation_weight = str(relation.get("summary", {}).get("current_weight") or "low")
     meaning_weight = str(meaning.get("summary", {}).get("current_weight") or "low")
-    if question_readiness == "low" and relation_weight == "low" and meaning_weight == "low":
+    witness_summary = witness.get("summary", {}) or {}
+    chronicle_summary = chronicle.get("summary", {}) or {}
+    attachment_summary = attachment.get("summary", {}) or {}
+    loyalty_summary = loyalty.get("summary", {}) or {}
+    continuity = _question_continuity_support(
+        relation=relation,
+        meaning=meaning,
+        witness=witness,
+        chronicle=chronicle,
+        attachment=attachment,
+        loyalty=loyalty,
+    )
+    if not continuity["supported"]:
         return []
 
     awareness_constrained = int(awareness.get("summary", {}).get("constrained_count") or 0) > 0
     release_state = str(release.get("summary", {}).get("current_state") or "none")
-    witness_carried = int(witness.get("summary", {}).get("carried_count") or 0) > 0
-    chronicle_weight = str(chronicle.get("summary", {}).get("current_weight") or "low")
-    loyalty_weight = str(loyalty.get("summary", {}).get("current_weight") or "low")
-    attachment_weight = str(attachment.get("summary", {}).get("current_weight") or "low")
+    witness_carried = int(witness_summary.get("carried_count") or 0) > 0
+    chronicle_weight = str(chronicle_summary.get("current_weight") or "low")
+    loyalty_weight = str(loyalty_summary.get("current_weight") or "low")
+    attachment_weight = str(attachment_summary.get("current_weight") or "low")
+    continuity_weight = str(continuity["weight"] or "low")
+    if (
+        question_readiness == "low"
+        and relation_weight == "low"
+        and meaning_weight == "low"
+        and continuity_weight == "low"
+    ):
+        return []
 
     gate_weight = _max_ranked(
         question_readiness,
         str(question_pressure.get("autonomy_pressure_weight") or "low"),
         relation_weight,
         meaning_weight,
+        continuity_weight,
     )
     if release_state in {"release-leaning", "releasing"} and gate_weight == "high":
         gate_weight = "medium"
@@ -213,6 +233,7 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
         loyalty_weight=loyalty_weight,
         attachment_weight=attachment_weight,
         question_readiness=question_readiness,
+        continuity_mode=str(continuity["mode"] or "bounded-question-candidate"),
     )
     gate_state = (
         "question-gated-candidate"
@@ -225,6 +246,9 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
         str(question_loop.get("source_anchor") or ""),
         _source_anchor(relation, fallback="relation-continuity"),
         _source_anchor(meaning, fallback="meaning-significance"),
+        _source_anchor(witness, fallback="witness"),
+        _source_anchor(chronicle, fallback="chronicle-brief"),
+        _source_anchor(attachment, fallback="attachment-topology"),
         _source_anchor(loyalty, fallback="loyalty-gradient"),
         _source_anchor(awareness, fallback="runtime-awareness"),
     )
@@ -233,6 +257,9 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
         str(question_loop.get("loop_confidence") or "low"),
         str(relation.get("summary", {}).get("current_confidence") or "low"),
         str(meaning.get("summary", {}).get("current_confidence") or "low"),
+        str(witness_summary.get("current_witness_confidence") or witness_summary.get("current_confidence") or "low"),
+        str(chronicle_summary.get("current_confidence") or "low"),
+        str(attachment_summary.get("current_confidence") or "low"),
         str(loyalty.get("summary", {}).get("current_confidence") or "low"),
     )
 
@@ -248,7 +275,7 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
             ),
             "rationale": (
                 "A proactive-question gate may return only when bounded question pressure and question-loop lifecycle already exist, "
-                "with relation and meaning continuity support, without granting execution or messaging authority."
+                "with legitimate continuity support already present in relation/meaning or in carried witness/chronicle plus attachment/loyalty hold, without granting execution or messaging authority."
             ),
             "source_kind": "runtime-derived-support",
             "confidence": confidence,
@@ -257,17 +284,26 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
                 str(question_loop.get("loop_summary") or ""),
                 str(relation.get("summary", {}).get("current_signal") or ""),
                 str(meaning.get("summary", {}).get("current_signal") or ""),
+                str(witness_summary.get("current_signal") or ""),
+                str(chronicle_summary.get("current_brief") or ""),
+                str(attachment_summary.get("current_signal") or ""),
+                str(loyalty_summary.get("current_signal") or ""),
             ),
             "support_summary": _merge_fragments(
                 f"question-gate-state={gate_state}",
                 f"question-gate-reason={gate_reason}",
                 f"question-gate-weight={gate_weight}",
                 f"question-gate-confidence={confidence}",
+                f"question-gate-continuity-mode={continuity['mode']}",
                 "send-permission-state=gated-candidate-only" if gate_state == "question-gated-candidate" else "send-permission-state=not-granted",
                 f"source-anchor={source_anchor}",
                 f"question-readiness={question_readiness}",
                 f"relation-weight={relation_weight}",
                 f"meaning-weight={meaning_weight}",
+                f"continuity-weight={continuity_weight}",
+                f"chronicle-weight={chronicle_weight}",
+                f"attachment-weight={attachment_weight}",
+                f"loyalty-weight={loyalty_weight}",
                 f"regulation-state={regulation.get('summary', {}).get('current_state') or 'none'}",
                 f"release-state={release_state}",
             ),
@@ -279,6 +315,9 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
             "session_count": max(
                 int(question_pressure.get("session_count") or 1),
                 int(question_loop.get("session_count") or 1),
+                int(witness_summary.get("carried_count") or 0),
+                int(attachment_summary.get("active_count") or 0),
+                int(loyalty_summary.get("active_count") or 0),
                 1,
             ),
             "status_reason": (
@@ -349,6 +388,7 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
         "question_gate_weight": _find_support_value(support_summary, "question-gate-weight", "low"),
         "question_gate_summary": str(item.get("summary") or ""),
         "question_gate_confidence": _find_support_value(support_summary, "question-gate-confidence", str(item.get("confidence") or "low")),
+        "question_gate_continuity_mode": _find_support_value(support_summary, "question-gate-continuity-mode", "relation-meaning-held"),
         "send_permission_state": _find_support_value(support_summary, "send-permission-state", "not-granted"),
         "source_anchor": _find_support_value(support_summary, "source-anchor", ""),
         "authority": "non-authoritative",
@@ -370,11 +410,16 @@ def _gate_reason(
     loyalty_weight: str,
     attachment_weight: str,
     question_readiness: str,
+    continuity_mode: str,
 ) -> str:
     if awareness_constrained:
         return "runtime-constrained"
     if release_state in {"release-leaning", "releasing"}:
         return "release-softened"
+    if continuity_mode == "carried-bonded-continuity":
+        return "carried-context"
+    if continuity_mode == "hybrid-continuity":
+        return "hybrid-continuity"
     if question_readiness == "high" and (loyalty_weight == "high" or attachment_weight == "high"):
         return "relationally-held"
     if witness_carried or chronicle_weight in {"medium", "high"}:
@@ -388,6 +433,49 @@ def _source_anchor(surface: dict[str, object], *, fallback: str) -> str:
         if anchor:
             return anchor
     return fallback
+
+
+def _question_continuity_support(
+    *,
+    relation: dict[str, object],
+    meaning: dict[str, object],
+    witness: dict[str, object],
+    chronicle: dict[str, object],
+    attachment: dict[str, object],
+    loyalty: dict[str, object],
+) -> dict[str, object]:
+    relation_weight = str(relation.get("summary", {}).get("current_weight") or "low")
+    meaning_weight = str(meaning.get("summary", {}).get("current_weight") or "low")
+    witness_summary = witness.get("summary") or {}
+    chronicle_summary = chronicle.get("summary") or {}
+    attachment_summary = attachment.get("summary") or {}
+    loyalty_summary = loyalty.get("summary") or {}
+
+    witness_carried = (
+        int(witness_summary.get("carried_count") or 0) > 0
+        or str(witness_summary.get("current_persistence_state") or "none")
+        in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+    )
+    chronicle_carried = bool(chronicle.get("active")) and str(
+        chronicle_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+    attachment_held = bool(attachment.get("active")) and str(
+        attachment_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+    loyalty_held = bool(loyalty.get("active")) and str(
+        loyalty_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+    same_moment = bool(relation.get("active")) and bool(meaning.get("active"))
+    carried_bonded = (witness_carried or chronicle_carried) and (attachment_held or loyalty_held)
+
+    if same_moment and carried_bonded:
+        return {"supported": True, "mode": "hybrid-continuity", "weight": _max_ranked(relation_weight, meaning_weight, "high")}
+    if same_moment:
+        return {"supported": True, "mode": "relation-meaning-held", "weight": _max_ranked(relation_weight, meaning_weight)}
+    if carried_bonded:
+        carried_weight = "high" if witness_carried and chronicle_carried and (attachment_held or loyalty_held) else "medium"
+        return {"supported": True, "mode": "carried-bonded-continuity", "weight": carried_weight}
+    return {"supported": False, "mode": "insufficient-continuity", "weight": "low"}
 
 
 def _find_support_value(summary: str, key: str, default: str) -> str:

@@ -852,6 +852,38 @@ def _build_heartbeat_liveness_signal(
             anchor=meaning_anchor,
         )
 
+    relation_meaning_held = (
+        relation_continuity.get("active")
+        and meaning_significance.get("active")
+        and current_weight in {"medium", "high"}
+        and meaning_weight in {"medium", "high"}
+    )
+    witness_persistence = str(witness_summary.get("current_persistence_state") or "none")
+    witness_carried = (
+        int(witness_summary.get("carried_count") or 0) > 0
+        or witness_persistence in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+    )
+    chronicle_held = chronicle_briefs.get("active") and str(
+        chronicle_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+    carried_continuity_held = witness_carried and chronicle_held
+    if relation_meaning_held:
+        add_signal(
+            weight=2 if current_weight == "high" or meaning_weight == "high" else 1,
+            reason="relation and meaning continuity are cohering as one carried thread",
+            anchor=" | ".join(anchor for anchor in [relation_anchor, meaning_anchor] if str(anchor or "").strip()),
+            core=True,
+            propose_gate=True,
+        )
+    if carried_continuity_held:
+        add_signal(
+            weight=2 if witness_persistence in {"carried-forward", "persistent"} else 1,
+            reason="witnessed continuity is still being carried into chronicle",
+            anchor=" | ".join(anchor for anchor in [witness_anchor, chronicle_anchor] if str(anchor or "").strip()),
+            core=True,
+            propose_gate=True,
+        )
+
     metabolism_summary = metabolism.get("summary") or {}
     metabolism_items = metabolism.get("items") or []
     metabolism_state = str(metabolism_summary.get("current_state") or "none")

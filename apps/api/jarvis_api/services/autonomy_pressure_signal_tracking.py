@@ -140,6 +140,7 @@ def build_runtime_autonomy_pressure_signal_surface(*, limit: int = 8) -> dict[st
             "current_type": str((latest or {}).get("autonomy_pressure_type") or "none"),
             "current_weight": str((latest or {}).get("autonomy_pressure_weight") or "low"),
             "current_confidence": str((latest or {}).get("autonomy_pressure_confidence") or "low"),
+            "current_continuity_mode": str((latest or {}).get("autonomy_pressure_continuity_mode") or "none"),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
             "planner_authority_state": "not-planner-authority",
@@ -225,37 +226,45 @@ def _extract_autonomy_pressure_candidates() -> list[dict[str, object]]:
     loyalty_summary = loyalty.get("summary") or {}
     relation_weight = str(relation_summary.get("current_weight") or "low")
     meaning_weight = str(meaning_summary.get("current_weight") or "low")
+    chronicle_weight = str(chronicle.get("summary", {}).get("current_weight") or "low")
     loyalty_weight = str(loyalty_summary.get("current_weight") or "low")
     attachment_weight = str(attachment_summary.get("current_weight") or "low")
     witness_persistence = str(witness_summary.get("current_persistence_state") or "none")
-    if (
-        relation.get("active")
-        and meaning.get("active")
-        and (
-            loyalty.get("active")
-            or attachment.get("active")
-            or int(witness_summary.get("carried_count") or 0) > 0
-        )
-    ):
+    continuity = _question_continuity_support(
+        relation=relation,
+        meaning=meaning,
+        witness=witness,
+        chronicle=chronicle,
+        attachment=attachment,
+        loyalty=loyalty,
+    )
+    if continuity["supported"]:
         weight = (
             "high"
             if (
                 meaning_weight == "high"
+                or relation_weight == "high"
                 or loyalty_weight == "high"
                 or attachment_weight == "high"
                 or witness_persistence in {"carried-forward", "persistent"}
+                or chronicle_weight == "high"
             )
             else "medium"
         )
         confidence = _stronger_confidence(
             str(relation_summary.get("current_confidence") or "low"),
             str(meaning_summary.get("current_confidence") or "low"),
+            str(chronicle.get("summary", {}).get("current_confidence") or "low"),
             str(loyalty_summary.get("current_confidence") or "low"),
             str(attachment_summary.get("current_confidence") or "low"),
+            str(witness_summary.get("current_witness_confidence") or witness_summary.get("current_confidence") or "low"),
         )
         question_anchor = _merge_fragments(
             _source_anchor(relation, fallback="relation-continuity"),
             _source_anchor(meaning, fallback="meaning-significance"),
+            _source_anchor(witness, fallback="witness"),
+            _source_anchor(chronicle, fallback="chronicle-brief"),
+            _source_anchor(attachment, fallback="attachment-topology"),
             _source_anchor(loyalty, fallback="loyalty-gradient"),
         )
         candidates.append(
@@ -266,14 +275,17 @@ def _extract_autonomy_pressure_candidates() -> list[dict[str, object]]:
                 confidence=confidence,
                 title="Autonomy pressure: question carry",
                 summary=(
-                    "Bounded autonomy pressure is observing question-worthy carry from relation continuity, meaning significance, and carried attachment. "
+                    "Bounded autonomy pressure is observing question-worthy carry from relation continuity, meaning significance, and carried continuity substrate. "
                     "This is not send permission and not proactive execution."
                 ),
-                rationale="Question pressure is grounded in relation and meaning support with carried witness, attachment, or loyalty context.",
+                rationale="Question pressure is grounded in existing continuity substrate, where carried witness or chronicle support may legitimately reinforce relation/meaning through attachment or loyalty hold.",
                 source_anchor=question_anchor,
                 evidence_summary=_merge_fragments(
                     str(relation_summary.get("current_signal") or ""),
                     str(meaning_summary.get("current_signal") or ""),
+                    str(witness_summary.get("current_signal") or ""),
+                    str(chronicle.get("summary", {}).get("current_brief") or ""),
+                    str(attachment_summary.get("current_signal") or ""),
                     str(loyalty_summary.get("current_signal") or ""),
                 ),
                 support_summary=_merge_fragments(
@@ -281,15 +293,25 @@ def _extract_autonomy_pressure_candidates() -> list[dict[str, object]]:
                     "autonomy-pressure-type=question-pressure",
                     f"autonomy-pressure-weight={weight}",
                     f"autonomy-pressure-confidence={confidence}",
+                    f"autonomy-pressure-continuity-mode={continuity['mode']}",
                     f"source-anchor={question_anchor}",
                     f"relation-weight={relation_weight}",
                     f"meaning-weight={meaning_weight}",
+                    f"chronicle-weight={chronicle_weight}",
+                    f"witness-persistence={witness_persistence}",
+                    f"attachment-weight={attachment_weight}",
+                    f"loyalty-weight={loyalty_weight}",
                 ),
                 support_count=max(
                     int(relation_summary.get("active_count") or 0) + int(meaning_summary.get("active_count") or 0),
                     2,
                 ),
-                session_count=max(int(witness_summary.get("carried_count") or 0), 1),
+                session_count=max(
+                    int(witness_summary.get("carried_count") or 0),
+                    int(attachment_summary.get("active_count") or 0),
+                    int(loyalty_summary.get("active_count") or 0),
+                    1,
+                ),
                 status_reason="Bounded question pressure is present, but messaging remains explicitly gated.",
             )
         )
@@ -478,6 +500,9 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
         support_summary, "source-anchor", str(item.get("title") or "autonomy-pressure")
     )
     enriched["autonomy_pressure_summary"] = str(item.get("summary") or "")
+    enriched["autonomy_pressure_continuity_mode"] = _find_support_value(
+        support_summary, "autonomy-pressure-continuity-mode", "relation-meaning-held"
+    )
     enriched["authority"] = "non-authoritative"
     enriched["layer_role"] = "runtime-support"
     enriched["planner_authority_state"] = "not-planner-authority"
@@ -534,6 +559,47 @@ def _source_anchor(surface: dict[str, object], *, fallback: str) -> str:
         return str(item.get("source_anchor") or item.get("title") or fallback)
     summary = surface.get("summary") or {}
     return str(summary.get("current_signal") or fallback)
+
+
+def _question_continuity_support(
+    *,
+    relation: dict[str, object],
+    meaning: dict[str, object],
+    witness: dict[str, object],
+    chronicle: dict[str, object],
+    attachment: dict[str, object],
+    loyalty: dict[str, object],
+) -> dict[str, object]:
+    witness_summary = witness.get("summary") or {}
+    chronicle_summary = chronicle.get("summary") or {}
+    attachment_summary = attachment.get("summary") or {}
+    loyalty_summary = loyalty.get("summary") or {}
+
+    witness_carried = (
+        int(witness_summary.get("carried_count") or 0) > 0
+        or str(witness_summary.get("current_persistence_state") or "none")
+        in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+    )
+    chronicle_carried = bool(chronicle.get("active")) and str(
+        chronicle_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+    attachment_held = bool(attachment.get("active")) and str(
+        attachment_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+    loyalty_held = bool(loyalty.get("active")) and str(
+        loyalty_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+
+    same_moment = bool(relation.get("active")) and bool(meaning.get("active"))
+    carried_bonded = (witness_carried or chronicle_carried) and (attachment_held or loyalty_held)
+
+    if same_moment and carried_bonded:
+        return {"supported": True, "mode": "hybrid-continuity"}
+    if same_moment:
+        return {"supported": True, "mode": "relation-meaning-held"}
+    if carried_bonded:
+        return {"supported": True, "mode": "carried-bonded-continuity"}
+    return {"supported": False, "mode": "insufficient-continuity"}
 
 
 def _stronger_confidence(*values: str) -> str:

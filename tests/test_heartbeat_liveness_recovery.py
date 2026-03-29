@@ -240,6 +240,73 @@ def test_heartbeat_liveness_adds_bounded_companion_pressure_under_silence(
     assert signal["liveness_propose_gate_count"] == 0
 
 
+def test_heartbeat_liveness_uses_relation_meaning_and_witness_chronicle_as_propose_gates(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_open_loop_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_private_initiative_tension_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_private_state_snapshot_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_regulation_homeostasis_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_metabolism_state_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_release_marker_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "visible_session_continuity", lambda: _inactive_continuity())
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "build_runtime_relation_continuity_signal_surface",
+        lambda limit=6: {
+            "active": True,
+            "items": [{"title": "Relation continuity", "source_anchor": "relation anchor"}],
+            "summary": {"current_weight": "high"},
+        },
+    )
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "build_runtime_meaning_significance_signal_surface",
+        lambda limit=6: {
+            "active": True,
+            "items": [{"title": "Meaning significance", "source_anchor": "meaning anchor"}],
+            "summary": {"current_weight": "high"},
+        },
+    )
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "build_runtime_witness_signal_surface",
+        lambda limit=6: {
+            "active": True,
+            "items": [{"title": "Witness", "source_anchor": "witness anchor"}],
+            "summary": {"carried_count": 1, "current_persistence_state": "persistent"},
+        },
+    )
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "build_runtime_chronicle_consolidation_brief_surface",
+        lambda limit=6: {
+            "active": True,
+            "items": [{"title": "Chronicle brief", "source_anchor": "chronicle anchor"}],
+            "summary": {"current_weight": "high"},
+        },
+    )
+
+    signal = heartbeat_runtime._build_heartbeat_liveness_signal(
+        merged_state={"due": False},
+        trigger="surface",
+    )
+
+    assert signal["status"] == "active"
+    assert signal["liveness_state"] == "propose-worthy"
+    assert signal["liveness_threshold_state"] == "propose-worthy-threshold"
+    assert signal["liveness_propose_gate_count"] >= 2
+    assert signal["liveness_core_pressure_count"] >= 2
+    assert signal["liveness_reason"] in {
+        "relation continuity is still holding weight",
+        "relation and meaning continuity are cohering as one carried thread",
+        "witnessed continuity is still being carried into chronicle",
+    }
+
+
 def test_heartbeat_liveness_recovery_prevents_empty_noop_when_pressure_exists(
     isolated_runtime,
 ) -> None:

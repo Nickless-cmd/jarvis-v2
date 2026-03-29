@@ -33,6 +33,11 @@ button { cursor: pointer; }
 .brand-subtitle { color:#8ca0b6; font-size:11px; }
 .brand-status-dot {
   margin-left:auto; width:6px; height:6px; border-radius:999px; background:#57d88e; box-shadow:0 0 8px rgba(87,216,142,.7);
+  animation: breathe 2.5s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(87,216,142,.7); }
+  50% { opacity: 0.6; box-shadow: 0 0 4px rgba(87,216,142,.4); }
 }
 .global-nav { display:flex; flex-direction:column; gap:1px; padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.06); }
 .nav-item {
@@ -349,7 +354,7 @@ button { cursor: pointer; }
 }
 .mc-meta-pill.live { color:#49d2c3; border-color: rgba(40,177,163,.18); }
 .mc-tabbar {
-  display:flex; gap:4px; padding:10px 14px; background: transparent; border-bottom:1px solid rgba(255,255,255,.06);
+  display:flex; gap:4px; padding:12px 14px 10px; background: rgba(17,22,31,.6); border-bottom:1px solid rgba(40,177,163,.08);
   width:100%; max-width:100%; overflow:auto; flex-shrink: 0;
 }
 .mc-tab {

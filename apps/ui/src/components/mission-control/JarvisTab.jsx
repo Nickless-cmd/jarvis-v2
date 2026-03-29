@@ -1773,6 +1773,9 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>
                 threshold {heartbeatState.livenessThresholdState || 'quiet-threshold'}
               </p>
+              <p>
+                score {heartbeatState.livenessScore || 0} · signals {heartbeatState.livenessSignalCount || 0} · core {heartbeatState.livenessCorePressureCount || 0} · gates {heartbeatState.livenessProposeGateCount || 0}
+              </p>
             </div>
             <div className="compact-metric">
               <span>Last Execute Action</span>

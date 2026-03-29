@@ -32,6 +32,10 @@ def test_heartbeat_liveness_stays_quiet_without_runtime_substrate(
     assert signal["liveness_state"] == "quiet"
     assert signal["liveness_pressure"] == "low"
     assert signal["liveness_threshold_state"] == "quiet-threshold"
+    assert signal["liveness_score"] == 0
+    assert signal["liveness_signal_count"] == 0
+    assert signal["liveness_core_pressure_count"] == 0
+    assert signal["liveness_propose_gate_count"] == 0
     assert signal["planner_authority_state"] == "not-planner-authority"
     assert signal["canonical_self_state"] == "not-canonical-self-truth"
 
@@ -100,6 +104,8 @@ def test_heartbeat_liveness_forms_from_bounded_runtime_pressure(
     assert signal["status"] == "active"
     assert signal["liveness_state"] in {"alive-pressure", "propose-worthy"}
     assert signal["liveness_pressure"] == "high"
+    assert signal["liveness_score"] >= 8
+    assert signal["liveness_signal_count"] >= 4
     assert signal["liveness_threshold_state"] in {
         "alive-threshold",
         "propose-worthy-threshold",
@@ -259,6 +265,11 @@ def test_heartbeat_runtime_surface_exposes_liveness_fields(
             "liveness_summary": "Heartbeat appears to have bounded liveness pressure because witness continuity is still being carried.",
             "liveness_confidence": "medium",
             "liveness_threshold_state": "watchful-threshold",
+            "liveness_score": 3,
+            "liveness_signal_count": 2,
+            "liveness_core_pressure_count": 1,
+            "liveness_propose_gate_count": 0,
+            "liveness_debug_summary": "score=3 signals=2 core_pressure=1 propose_gates=0",
             "source_anchor": "witness anchor",
             "status": "active",
             "authority": "non-authoritative",
@@ -274,5 +285,9 @@ def test_heartbeat_runtime_surface_exposes_liveness_fields(
     assert state["liveness_state"] == "watchful"
     assert state["liveness_pressure"] == "medium"
     assert state["liveness_threshold_state"] == "watchful-threshold"
+    assert state["liveness_score"] == 3
+    assert state["liveness_signal_count"] == 2
+    assert state["liveness_core_pressure_count"] == 1
+    assert state["liveness_propose_gate_count"] == 0
     assert state["planner_authority_state"] == "not-planner-authority"
     assert state["canonical_self_state"] == "not-canonical-self-truth"

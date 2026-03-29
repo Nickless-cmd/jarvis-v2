@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI
 
 from apps.api.jarvis_api.services.heartbeat_runtime import (
@@ -14,6 +16,8 @@ from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.bootstrap import ensure_runtime_dirs
 from core.runtime.db import init_db
+
+logger = logging.getLogger("uvicorn.error")
 
 
 def create_app() -> FastAPI:
@@ -30,12 +34,16 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     async def on_startup() -> None:
+        logger.info("jarvis api startup begin")
         start_heartbeat_scheduler()
         event_bus.publish("runtime.started", {"component": "api"})
+        logger.info("jarvis api startup complete")
 
     @app.on_event("shutdown")
     async def on_shutdown() -> None:
+        logger.info("jarvis api shutdown begin")
         stop_heartbeat_scheduler()
+        logger.info("jarvis api shutdown complete")
 
     return app
 

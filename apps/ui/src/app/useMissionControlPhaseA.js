@@ -10,8 +10,41 @@ const TAB_REFRESH_MS = {
 
 const RUN_RELATED_FAMILIES = new Set(['runtime'])
 const APPROVAL_RELATED_FAMILIES = new Set(['approvals', 'tool', 'runtime'])
-const OBS_RELATED_FAMILIES = new Set(['runtime', 'cost', 'approvals', 'incident', 'channel', 'tool', 'heartbeat'])
-const JARVIS_RELATED_FAMILIES = new Set(['heartbeat', 'memory', 'inner-voice', 'self-model'])
+const OBS_RELATED_FAMILIES = new Set([
+  'runtime',
+  'cost',
+  'approvals',
+  'incident',
+  'channel',
+  'tool',
+  'heartbeat',
+  'open_loop_signal',
+  'private_inner_note_signal',
+  'private_initiative_tension_signal',
+  'private_state_snapshot',
+  'relation_continuity_signal',
+  'regulation_homeostasis_signal',
+  'witness_signal',
+  'chronicle_consolidation_brief',
+  'metabolism_state_signal',
+  'release_marker_signal',
+])
+const JARVIS_RELATED_FAMILIES = new Set([
+  'heartbeat',
+  'memory',
+  'inner-voice',
+  'self-model',
+  'open_loop_signal',
+  'private_inner_note_signal',
+  'private_initiative_tension_signal',
+  'private_state_snapshot',
+  'relation_continuity_signal',
+  'regulation_homeostasis_signal',
+  'witness_signal',
+  'chronicle_consolidation_brief',
+  'metabolism_state_signal',
+  'release_marker_signal',
+])
 
 export function useMissionControlPhaseA({ active, selection }) {
   const [activeTab, setActiveTab] = useState('overview')

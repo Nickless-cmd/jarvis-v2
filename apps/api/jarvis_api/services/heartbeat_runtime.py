@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import threading
 import time
@@ -72,6 +73,7 @@ _HEARTBEAT_SCHEDULER_THREAD: threading.Thread | None = None
 _HEARTBEAT_SCHEDULER_INTERVAL_SECONDS = 30
 _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT: dict[str, object] = {}
 _STALE_TICK_RECOVERY_WINDOW_MINUTES = 10
+logger = logging.getLogger("uvicorn.error")
 
 
 @dataclass(slots=True)
@@ -79,6 +81,14 @@ class HeartbeatExecutionResult:
     state: dict[str, object]
     tick: dict[str, object]
     policy: dict[str, object]
+
+
+def _log_debug(message: str, **fields: object) -> None:
+    detail = " ".join(
+        f"{key}={json.dumps(value, ensure_ascii=False)}"
+        for key, value in fields.items()
+    )
+    logger.debug("%s%s", message, f" | {detail}" if detail else "")
 
 
 def start_heartbeat_scheduler(*, name: str = "default") -> None:
@@ -102,6 +112,13 @@ def start_heartbeat_scheduler(*, name: str = "default") -> None:
         "schedule_state": str(recovery.get("schedule_state") or ""),
         "due": bool(recovery.get("due")),
     }
+    logger.info(
+        "heartbeat scheduler started name=%s due=%s schedule_state=%s recovery_status=%s",
+        name,
+        bool(recovery.get("due")),
+        str(recovery.get("schedule_state") or "unknown"),
+        str(recovery.get("recovery_status") or "idle"),
+    )
     event_bus.publish(
         "heartbeat.scheduler_started",
         {
@@ -123,12 +140,21 @@ def stop_heartbeat_scheduler(*, name: str = "default") -> None:
     _HEARTBEAT_SCHEDULER_THREAD = None
     _mark_scheduler_stopped(name=name)
     _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT = {}
+    logger.info("heartbeat scheduler stopped name=%s", name)
 
 
 def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
     surface = heartbeat_runtime_surface(name=name)
     state = dict(surface["state"])
     _emit_schedule_transitions(state)
+    _log_debug(
+        "heartbeat schedule poll",
+        name=name,
+        schedule_state=state.get("schedule_state"),
+        due=state.get("due"),
+        next_tick_at=state.get("next_tick_at"),
+        last_tick_at=state.get("last_tick_at"),
+    )
     if state.get("schedule_state") == "due":
         run_heartbeat_tick(name=name, trigger="scheduled")
         return heartbeat_runtime_surface(name=name)
@@ -143,6 +169,14 @@ def _poll_heartbeat_schedule_with_trigger(
     surface = heartbeat_runtime_surface(name=name)
     state = dict(surface["state"])
     _emit_schedule_transitions(state)
+    _log_debug(
+        "heartbeat startup poll",
+        name=name,
+        due_trigger=due_trigger,
+        schedule_state=state.get("schedule_state"),
+        due=state.get("due"),
+        next_tick_at=state.get("next_tick_at"),
+    )
     if state.get("schedule_state") == "due":
         if due_trigger == "startup-recovery":
             event_bus.publish(
@@ -232,9 +266,24 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             "next_tick_at": merged_before["next_tick_at"],
         },
     )
+    _log_debug(
+        "heartbeat tick started",
+        name=name,
+        trigger=trigger,
+        enabled=merged_before.get("enabled"),
+        schedule_state=merged_before.get("schedule_state"),
+        due=merged_before.get("due"),
+        scheduler_health=merged_before.get("scheduler_health"),
+    )
 
     blocked_reason = _tick_blocked_reason(merged_before)
     if blocked_reason:
+        logger.warning(
+            "heartbeat tick blocked trigger=%s blocked_reason=%s schedule_state=%s",
+            trigger,
+            blocked_reason,
+            str(merged_before.get("schedule_state") or "unknown"),
+        )
         tick = _record_heartbeat_outcome(
             policy=policy,
             persisted=persisted,
@@ -281,6 +330,18 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
 
     target = _select_heartbeat_target()
     context = _build_heartbeat_context(policy=policy, merged_state=merged_before, trigger=trigger)
+    _log_debug(
+        "heartbeat context built",
+        trigger=trigger,
+        target_provider=target.get("provider"),
+        target_model=target.get("model"),
+        target_lane=target.get("lane"),
+        open_loop_count=len(context.get("open_loops") or []),
+        due_count=len(context.get("due_items") or []),
+        liveness_state=(context.get("liveness") or {}).get("liveness_state"),
+        liveness_score=(context.get("liveness") or {}).get("liveness_score"),
+        liveness_signal_count=(context.get("liveness") or {}).get("liveness_signal_count"),
+    )
     assembly = build_heartbeat_prompt_assembly(heartbeat_context=context, name=name)
     prompt = _heartbeat_prompt_text(assembly.text or "")
     started_at = now.isoformat()
@@ -338,6 +399,15 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             "execution_status": execution_status,
             "parse_status": parse_status,
         },
+    )
+    _log_debug(
+        "heartbeat decision produced",
+        trigger=trigger,
+        execution_status=execution_status,
+        parse_status=parse_status,
+        decision_type=decision.get("decision_type"),
+        reason=decision.get("reason"),
+        summary=decision.get("summary"),
     )
 
     outcome = _validate_heartbeat_decision(
@@ -423,6 +493,13 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
                 "execution_status": execution_status,
                 "parse_status": parse_status,
             },
+        )
+        logger.info(
+            "heartbeat tick completed trigger=%s decision_type=%s action_status=%s liveness_state=%s",
+            trigger,
+            str(decision.get("decision_type") or "unknown"),
+            str(tick.get("action_status") or "unknown"),
+            str((context.get("liveness") or {}).get("liveness_state") or "quiet"),
         )
         event_bus.publish(
             f"heartbeat.{decision['decision_type']}",
@@ -772,13 +849,18 @@ def _build_heartbeat_liveness_signal(
         )
 
     if score <= 0:
-        return {
+        signal = {
             "liveness_state": "quiet",
             "liveness_pressure": "low",
             "liveness_reason": "no-bounded-liveness-pressure",
             "liveness_summary": "No bounded liveness pressure is currently strong enough to pull heartbeat beyond quiet observation.",
             "liveness_confidence": "low",
             "liveness_threshold_state": "quiet-threshold",
+            "liveness_score": 0,
+            "liveness_signal_count": len(reason_signals),
+            "liveness_core_pressure_count": core_pressure_count,
+            "liveness_propose_gate_count": propose_gate_count,
+            "liveness_debug_summary": "score=0 signals=0 core_pressure=0 propose_gates=0",
             "source_anchor": "",
             "status": "inactive",
             "authority": "non-authoritative",
@@ -786,6 +868,17 @@ def _build_heartbeat_liveness_signal(
             "planner_authority_state": "not-planner-authority",
             "canonical_self_state": "not-canonical-self-truth",
         }
+        _log_debug(
+            "heartbeat liveness built",
+            trigger=trigger,
+            state=signal["liveness_state"],
+            pressure=signal["liveness_pressure"],
+            score=signal["liveness_score"],
+            signal_count=signal["liveness_signal_count"],
+            core_pressure_count=signal["liveness_core_pressure_count"],
+            propose_gate_count=signal["liveness_propose_gate_count"],
+        )
+        return signal
 
     sorted_reasons = sorted(reason_signals, key=lambda item: item[0], reverse=True)
     primary_reason = (
@@ -823,7 +916,7 @@ def _build_heartbeat_liveness_signal(
         liveness_threshold_state = "quiet-threshold"
 
     if liveness_state == "quiet":
-        return {
+        signal = {
             "liveness_state": "quiet",
             "liveness_pressure": "low",
             "liveness_reason": primary_reason,
@@ -832,6 +925,14 @@ def _build_heartbeat_liveness_signal(
             ),
             "liveness_confidence": liveness_confidence,
             "liveness_threshold_state": liveness_threshold_state,
+            "liveness_score": score,
+            "liveness_signal_count": len(reason_signals),
+            "liveness_core_pressure_count": core_pressure_count,
+            "liveness_propose_gate_count": propose_gate_count,
+            "liveness_debug_summary": (
+                f"score={score} signals={len(reason_signals)} "
+                f"core_pressure={core_pressure_count} propose_gates={propose_gate_count}"
+            ),
             "source_anchor": source_anchor,
             "status": "inactive",
             "authority": "non-authoritative",
@@ -839,8 +940,20 @@ def _build_heartbeat_liveness_signal(
             "planner_authority_state": "not-planner-authority",
             "canonical_self_state": "not-canonical-self-truth",
         }
+        _log_debug(
+            "heartbeat liveness built",
+            trigger=trigger,
+            state=signal["liveness_state"],
+            pressure=signal["liveness_pressure"],
+            score=signal["liveness_score"],
+            signal_count=signal["liveness_signal_count"],
+            core_pressure_count=signal["liveness_core_pressure_count"],
+            propose_gate_count=signal["liveness_propose_gate_count"],
+            primary_reason=signal["liveness_reason"],
+        )
+        return signal
 
-    return {
+    signal = {
         "liveness_state": liveness_state,
         "liveness_pressure": liveness_pressure,
         "liveness_reason": primary_reason,
@@ -849,6 +962,14 @@ def _build_heartbeat_liveness_signal(
         ),
         "liveness_confidence": liveness_confidence,
         "liveness_threshold_state": liveness_threshold_state,
+        "liveness_score": score,
+        "liveness_signal_count": len(reason_signals),
+        "liveness_core_pressure_count": core_pressure_count,
+        "liveness_propose_gate_count": propose_gate_count,
+        "liveness_debug_summary": (
+            f"score={score} signals={len(reason_signals)} "
+            f"core_pressure={core_pressure_count} propose_gates={propose_gate_count}"
+        ),
         "source_anchor": source_anchor,
         "status": "active",
         "authority": "non-authoritative",
@@ -856,6 +977,18 @@ def _build_heartbeat_liveness_signal(
         "planner_authority_state": "not-planner-authority",
         "canonical_self_state": "not-canonical-self-truth",
     }
+    _log_debug(
+        "heartbeat liveness built",
+        trigger=trigger,
+        state=signal["liveness_state"],
+        pressure=signal["liveness_pressure"],
+        score=signal["liveness_score"],
+        signal_count=signal["liveness_signal_count"],
+        core_pressure_count=signal["liveness_core_pressure_count"],
+        propose_gate_count=signal["liveness_propose_gate_count"],
+        primary_reason=signal["liveness_reason"],
+    )
+    return signal
 
 
 def _select_heartbeat_target() -> dict[str, str | bool]:
@@ -1987,6 +2120,12 @@ def _heartbeat_busy_result(*, name: str, trigger: str) -> HeartbeatExecutionResu
 
 
 def _heartbeat_scheduler_loop(*, name: str, startup_recovery_requested: bool) -> None:
+    logger.info(
+        "heartbeat scheduler loop entered name=%s startup_recovery_requested=%s interval_seconds=%s",
+        name,
+        startup_recovery_requested,
+        _HEARTBEAT_SCHEDULER_INTERVAL_SECONDS,
+    )
     try:
         _poll_heartbeat_schedule_with_trigger(
             name=name,
@@ -2003,8 +2142,10 @@ def _heartbeat_scheduler_loop(*, name: str, startup_recovery_requested: bool) ->
         )
     while not _HEARTBEAT_SCHEDULER_STOP.wait(_HEARTBEAT_SCHEDULER_INTERVAL_SECONDS):
         try:
+            _log_debug("heartbeat scheduler iteration", name=name)
             poll_heartbeat_schedule(name=name)
         except Exception as exc:
+            logger.exception("heartbeat scheduler iteration failed name=%s", name)
             event_bus.publish(
                 "heartbeat.tick_blocked",
                 {
@@ -2079,6 +2220,14 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
                 "updated_at": now.isoformat(),
             },
         )
+    _log_debug(
+        "heartbeat scheduler startup prepared",
+        name=name,
+        schedule_state=startup_state.get("schedule_state"),
+        due=startup_state.get("due"),
+        startup_recovery_requested=should_trigger_recovery,
+        blocked_reason=startup_state.get("blocked_reason"),
+    )
     return {
         **startup_state,
         "startup_recovery_requested": should_trigger_recovery,

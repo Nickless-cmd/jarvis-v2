@@ -7,6 +7,8 @@ from core.eventbus.bus import event_bus
 from core.memory.private_inner_note import build_private_inner_note_payload
 from core.runtime.db import (
     list_runtime_private_inner_note_signals,
+    list_runtime_private_initiative_tension_signals,
+    list_runtime_private_inner_interplay_signals,
     recent_visible_work_notes,
     supersede_runtime_private_inner_note_signals_for_focus,
     update_runtime_private_inner_note_signal_status,
@@ -139,6 +141,48 @@ def _latest_visible_work_note_for_run(run_id: str) -> dict[str, object] | None:
     return None
 
 
+def _latest_cognitive_signal_for_run(run_id: str) -> dict[str, object] | None:
+    normalized_run_id = str(run_id or "").strip()
+    if not normalized_run_id:
+        return None
+
+    for item in list_runtime_private_inner_interplay_signals(limit=8):
+        if str(item.get("run_id") or "") != normalized_run_id:
+            continue
+        if str(item.get("status") or "") != "active":
+            continue
+        return item
+
+    for item in list_runtime_private_initiative_tension_signals(limit=8):
+        if str(item.get("run_id") or "") != normalized_run_id:
+            continue
+        if str(item.get("status") or "") != "active":
+            continue
+        return item
+
+    return None
+
+
+def _cognitive_source_label(signal: dict[str, object]) -> str:
+    signal_type = str(signal.get("signal_type") or "").strip()
+    if signal_type == "private-inner-interplay":
+        target = str(signal.get("focus") or signal.get("title") or "something").strip()
+        if target.startswith("Private inner interplay support:"):
+            target = target[len("Private inner interplay support:") :].strip()
+        return f"inner interplay around {target}"
+    if signal_type == "private-initiative-tension":
+        target = str(
+            signal.get("tension_target") or signal.get("title") or "something"
+        ).strip()
+        if target.startswith("Private initiative tension support:"):
+            target = target[len("Private initiative tension support:") :].strip()
+        tension_type = str(signal.get("tension_type") or "pull")
+        if tension_type == "unresolved":
+            return f"unresolved tension around {target}"
+        return f"{tension_type} around {target}"
+    return "cognitive signal"
+
+
 def _candidate_from_visible_note(visible_note: dict[str, object]) -> dict[str, object]:
     payload = build_private_inner_note_payload(
         run_id=str(visible_note.get("run_id") or ""),
@@ -150,6 +194,7 @@ def _candidate_from_visible_note(visible_note: dict[str, object]) -> dict[str, o
         capability_id=str(visible_note.get("capability_id") or "").strip() or None,
         created_at=str(visible_note.get("created_at") or datetime.now(UTC).isoformat()),
     )
+    run_id = str(visible_note.get("run_id") or "")
     focus = str(payload.get("focus") or "visible-work")
     note_summary = str(payload.get("private_summary") or "").strip()
     work_preview = str(visible_note.get("work_preview") or "").strip()
@@ -157,28 +202,49 @@ def _candidate_from_visible_note(visible_note: dict[str, object]) -> dict[str, o
     status = str(visible_note.get("status") or "unknown").strip().lower() or "unknown"
     evidence_summary = _quote(work_preview or user_preview or note_summary)
     source_anchor = _source_anchor(visible_note)
+
+    cognitive_signal = _latest_cognitive_signal_for_run(run_id)
+    if cognitive_signal:
+        cognitive_source = _cognitive_source_label(cognitive_signal)
+        summary = f"I'm drawn back to {focus.replace('-', ' ')} — {cognitive_source}."
+        rationale = "A private inner note returns as bounded reflection, informed by cognitive core signals and visible work."
+        support_summary = _merge_fragments(
+            f"I notice {cognitive_source}.",
+            source_anchor,
+            "contamination-state=decontaminated-from-visible-summary",
+            f"cognitive-connection={cognitive_signal.get('signal_type', 'unknown')}",
+        )
+        status_reason = f"I register {cognitive_signal.get('signal_type', 'cognitive-signal')} alongside visible work."
+        inner_voice_source_state = "cognitive-core-connected"
+    else:
+        summary = f"I notice a quiet inner thread around {focus.replace('-', ' ')}."
+        rationale = "A private inner note may return as bounded reflection when grounded in visible work."
+        support_summary = _merge_fragments(
+            "I hold this as bounded reflection.",
+            source_anchor,
+            "contamination-state=decontaminated-from-visible-summary",
+            f"source-anchor={source_anchor}",
+        )
+        status_reason = f"I notice the work around {focus.replace('-', ' ')} has settled into this form."
+        inner_voice_source_state = "private-runtime-grounded"
+
     return {
         "signal_type": "private-inner-note",
         "canonical_key": f"private-inner-note:work-status:{focus}",
         "focus_key": focus,
         "status": "active",
         "title": f"Private inner note: {focus.replace('-', ' ')}",
-        "summary": f"I notice a quiet inner thread around {focus.replace('-', ' ')}.",
-        "rationale": "A private inner note may return as bounded reflection when grounded in visible work.",
+        "summary": summary,
+        "rationale": rationale,
         "source_kind": "runtime-derived-support",
         "confidence": _confidence_from_uncertainty(
             str(payload.get("uncertainty") or "")
         ),
         "evidence_summary": evidence_summary,
-        "support_summary": _merge_fragments(
-            "Grounded in visible work, kept bounded.",
-            source_anchor,
-            "contamination-state=decontaminated-from-visible-summary",
-            f"source-anchor={source_anchor}",
-        ),
+        "support_summary": support_summary,
         "support_count": 1,
         "session_count": 1,
-        "status_reason": f"Grounded in visible work status {status}.",
+        "status_reason": status_reason,
         "note_type": str(payload.get("note_kind") or "work-status-signal"),
         "note_summary": note_summary,
         "signal_confidence": _confidence_from_uncertainty(
@@ -188,7 +254,7 @@ def _candidate_from_visible_note(visible_note: dict[str, object]) -> dict[str, o
         "identity_alignment": str(
             payload.get("identity_alignment") or "subordinate-to-visible"
         ),
-        "inner_voice_source_state": "private-runtime-grounded",
+        "inner_voice_source_state": inner_voice_source_state,
         "contamination_state": "decontaminated-from-visible-summary",
         "work_signal": str(payload.get("work_signal") or ""),
         "uncertainty": str(payload.get("uncertainty") or "medium"),

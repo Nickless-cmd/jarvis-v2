@@ -55,7 +55,9 @@ def refresh_runtime_private_inner_note_signal_statuses() -> dict[str, int]:
     for item in list_runtime_private_inner_note_signals(limit=40):
         if str(item.get("status") or "") != "active":
             continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
+        updated_at = _parse_dt(
+            str(item.get("updated_at") or item.get("created_at") or "")
+        )
         if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
             continue
         refreshed_item = update_runtime_private_inner_note_signal_status(
@@ -80,13 +82,21 @@ def refresh_runtime_private_inner_note_signal_statuses() -> dict[str, int]:
     return {"stale_marked": refreshed}
 
 
-def build_runtime_private_inner_note_signal_surface(*, limit: int = 8) -> dict[str, object]:
+def build_runtime_private_inner_note_signal_surface(
+    *, limit: int = 8
+) -> dict[str, object]:
     refresh_runtime_private_inner_note_signal_statuses()
     items = list_runtime_private_inner_note_signals(limit=max(limit, 1))
     enriched_items = [_with_surface_view(item) for item in items]
-    active = [item for item in enriched_items if str(item.get("status") or "") == "active"]
-    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
+    active = [
+        item for item in enriched_items if str(item.get("status") or "") == "active"
+    ]
+    stale = [
+        item for item in enriched_items if str(item.get("status") or "") == "stale"
+    ]
+    superseded = [
+        item for item in enriched_items if str(item.get("status") or "") == "superseded"
+    ]
     ordered = [*active, *stale, *superseded]
     latest = next(iter(active or stale or superseded), None)
     return {
@@ -98,12 +108,18 @@ def build_runtime_private_inner_note_signal_surface(*, limit: int = 8) -> dict[s
             "active_count": len(active),
             "stale_count": len(stale),
             "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active private inner note support"),
+            "current_signal": str(
+                (latest or {}).get("title") or "No active private inner note support"
+            ),
             "current_status": str((latest or {}).get("status") or "none"),
             "current_note_type": str((latest or {}).get("note_type") or "none"),
             "current_confidence": str((latest or {}).get("note_confidence") or "low"),
-            "current_source_state": str((latest or {}).get("inner_voice_source_state") or "none"),
-            "current_contamination_state": str((latest or {}).get("contamination_state") or "none"),
+            "current_source_state": str(
+                (latest or {}).get("inner_voice_source_state") or "none"
+            ),
+            "current_contamination_state": str(
+                (latest or {}).get("contamination_state") or "none"
+            ),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
         },
@@ -128,7 +144,8 @@ def _candidate_from_visible_note(visible_note: dict[str, object]) -> dict[str, o
         run_id=str(visible_note.get("run_id") or ""),
         work_id=str(visible_note.get("work_id") or ""),
         status=str(visible_note.get("status") or ""),
-        user_message_preview=str(visible_note.get("user_message_preview") or "").strip() or None,
+        user_message_preview=str(visible_note.get("user_message_preview") or "").strip()
+        or None,
         work_preview=str(visible_note.get("work_preview") or "").strip() or None,
         capability_id=str(visible_note.get("capability_id") or "").strip() or None,
         created_at=str(visible_note.get("created_at") or datetime.now(UTC).isoformat()),
@@ -145,26 +162,32 @@ def _candidate_from_visible_note(visible_note: dict[str, object]) -> dict[str, o
         "canonical_key": f"private-inner-note:work-status:{focus}",
         "focus_key": focus,
         "status": "active",
-        "title": f"Private inner note support: {focus.replace('-', ' ')}",
-        "summary": f"Bounded runtime support remains subordinate to visible work around {focus.replace('-', ' ')}.",
-        "rationale": "A private inner note may return as bounded runtime support only when it is clearly grounded in visible work and remains subordinate to visible/runtime truth.",
+        "title": f"Private inner note: {focus.replace('-', ' ')}",
+        "summary": f"I notice a quiet inner thread around {focus.replace('-', ' ')}.",
+        "rationale": "A private inner note may return as bounded reflection when grounded in visible work.",
         "source_kind": "runtime-derived-support",
-        "confidence": _confidence_from_uncertainty(str(payload.get("uncertainty") or "")),
+        "confidence": _confidence_from_uncertainty(
+            str(payload.get("uncertainty") or "")
+        ),
         "evidence_summary": evidence_summary,
         "support_summary": _merge_fragments(
-            "Derived from the latest visible work note and kept non-authoritative.",
+            "Grounded in visible work, kept bounded.",
             source_anchor,
             "contamination-state=decontaminated-from-visible-summary",
             f"source-anchor={source_anchor}",
         ),
         "support_count": 1,
         "session_count": 1,
-        "status_reason": f"Derived from visible work status {status} as bounded private runtime support, not canonical self.",
+        "status_reason": f"Grounded in visible work status {status}.",
         "note_type": str(payload.get("note_kind") or "work-status-signal"),
         "note_summary": note_summary,
-        "signal_confidence": _confidence_from_uncertainty(str(payload.get("uncertainty") or "")),
+        "signal_confidence": _confidence_from_uncertainty(
+            str(payload.get("uncertainty") or "")
+        ),
         "source_anchor": source_anchor,
-        "identity_alignment": str(payload.get("identity_alignment") or "subordinate-to-visible"),
+        "identity_alignment": str(
+            payload.get("identity_alignment") or "subordinate-to-visible"
+        ),
         "inner_voice_source_state": "private-runtime-grounded",
         "contamination_state": "decontaminated-from-visible-summary",
         "work_signal": str(payload.get("work_signal") or ""),
@@ -242,15 +265,25 @@ def _persist_private_inner_note_signals(
     return persisted
 
 
-def _with_runtime_view(item: dict[str, object], signal: dict[str, object]) -> dict[str, object]:
+def _with_runtime_view(
+    item: dict[str, object], signal: dict[str, object]
+) -> dict[str, object]:
     enriched = dict(item)
     enriched["note_type"] = str(signal.get("note_type") or "work-status-signal")
     enriched["note_summary"] = str(signal.get("note_summary") or "")
-    enriched["note_confidence"] = str(signal.get("signal_confidence") or signal.get("confidence") or "low")
+    enriched["note_confidence"] = str(
+        signal.get("signal_confidence") or signal.get("confidence") or "low"
+    )
     enriched["source_anchor"] = str(signal.get("source_anchor") or "")
-    enriched["identity_alignment"] = str(signal.get("identity_alignment") or "subordinate-to-visible")
-    enriched["inner_voice_source_state"] = str(signal.get("inner_voice_source_state") or "private-runtime-grounded")
-    enriched["contamination_state"] = str(signal.get("contamination_state") or "unknown")
+    enriched["identity_alignment"] = str(
+        signal.get("identity_alignment") or "subordinate-to-visible"
+    )
+    enriched["inner_voice_source_state"] = str(
+        signal.get("inner_voice_source_state") or "private-runtime-grounded"
+    )
+    enriched["contamination_state"] = str(
+        signal.get("contamination_state") or "unknown"
+    )
     enriched["work_signal"] = str(signal.get("work_signal") or "")
     enriched["uncertainty"] = str(signal.get("uncertainty") or "medium")
     enriched["focus"] = str(signal.get("focus") or "")
@@ -266,15 +299,21 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     enriched["note_type"] = str(item.get("note_type") or "work-status-signal")
     enriched["note_summary"] = note_summary
     enriched["fact_summary"] = note_summary
-    enriched["note_confidence"] = str(item.get("note_confidence") or item.get("confidence") or "low")
-    enriched["signal_confidence"] = str(item.get("note_confidence") or item.get("confidence") or "low")
+    enriched["note_confidence"] = str(
+        item.get("note_confidence") or item.get("confidence") or "low"
+    )
+    enriched["signal_confidence"] = str(
+        item.get("note_confidence") or item.get("confidence") or "low"
+    )
     enriched["source_anchor"] = str(
         item.get("source_anchor")
         or _find_support_value(support_summary, "source-anchor")
         or support_summary
         or ""
     )
-    enriched["identity_alignment"] = str(item.get("identity_alignment") or "subordinate-to-visible")
+    enriched["identity_alignment"] = str(
+        item.get("identity_alignment") or "subordinate-to-visible"
+    )
     enriched["inner_voice_source_state"] = str(
         item.get("inner_voice_source_state")
         or _find_support_value(support_summary, "inner-voice-source")
@@ -340,7 +379,7 @@ def _find_support_value(summary: str, key: str) -> str:
     for part in str(summary or "").split("|"):
         normalized = part.strip()
         if normalized.startswith(needle):
-            return normalized[len(needle):].strip()
+            return normalized[len(needle) :].strip()
     return ""
 
 

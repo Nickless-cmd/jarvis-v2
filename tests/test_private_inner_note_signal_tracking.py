@@ -4,7 +4,9 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 
-def _insert_visible_work_note(db, *, run_id: str, status: str, capability_id: str = "workspace-search") -> None:
+def _insert_visible_work_note(
+    db, *, run_id: str, status: str, capability_id: str = "workspace-search"
+) -> None:
     now = datetime.now(UTC).isoformat()
     with db.connect() as conn:
         conn.execute(
@@ -35,7 +37,9 @@ def _insert_visible_work_note(db, *, run_id: str, status: str, capability_id: st
         conn.commit()
 
 
-def _insert_private_inner_note_signal(db, *, status: str, canonical_key: str, title: str) -> None:
+def _insert_private_inner_note_signal(
+    db, *, status: str, canonical_key: str, title: str
+) -> None:
     now = datetime.now(UTC).isoformat()
     db.upsert_runtime_private_inner_note_signal(
         signal_id=f"private-inner-note-signal-{uuid4().hex}",
@@ -47,7 +51,7 @@ def _insert_private_inner_note_signal(db, *, status: str, canonical_key: str, ti
         rationale="Validation private inner note support signal",
         source_kind="runtime-derived-support",
         confidence="medium",
-        evidence_summary="\"Investigated the visible work unit and narrowed the failing endpoint path.\"",
+        evidence_summary='"Investigated the visible work unit and narrowed the failing endpoint path."',
         support_summary="Derived from the latest visible work note and kept non-authoritative.",
         status_reason="Validation bounded private inner note support",
         run_id="test-run",
@@ -59,7 +63,9 @@ def _insert_private_inner_note_signal(db, *, status: str, canonical_key: str, ti
     )
 
 
-def test_private_inner_note_surface_stays_empty_without_visible_grounding(isolated_runtime) -> None:
+def test_private_inner_note_surface_stays_empty_without_visible_grounding(
+    isolated_runtime,
+) -> None:
     tracking = isolated_runtime.private_inner_note_signal_tracking
 
     result = tracking.track_runtime_private_inner_note_signals_for_visible_turn(
@@ -106,10 +112,15 @@ def test_private_inner_note_surface_forms_bounded_runtime_support_from_visible_w
     assert "Investigated the visible work unit" not in item["note_summary"]
     assert "kind=" not in item["note_summary"]
     assert "status=" not in item["note_summary"]
-    assert "subordinate" in item["support_summary"].lower() or "non-authoritative" in item["support_summary"].lower()
+    assert (
+        "bounded" in item["support_summary"].lower()
+        or "subordinate" in item["support_summary"].lower()
+    )
 
 
-def test_private_inner_note_surface_and_mc_shapes_remain_bounded(isolated_runtime) -> None:
+def test_private_inner_note_surface_and_mc_shapes_remain_bounded(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.private_inner_note_signal_tracking
     mission_control = isolated_runtime.mission_control

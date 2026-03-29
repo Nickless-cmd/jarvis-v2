@@ -1,0 +1,230 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from uuid import uuid4
+
+
+def _insert_witness_signal(db, *, run_id: str, status: str = "carried") -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_witness_signal(
+        signal_id=f"witness-signal-{uuid4().hex}",
+        signal_type="witness",
+        canonical_key="witness:settling:test-pattern",
+        status=status,
+        title="Witness signal for test",
+        summary="A pattern appears to be settling around this area.",
+        rationale="Validation witness signal",
+        source_kind="runtime-observation",
+        confidence="medium",
+        evidence_summary="test evidence",
+        support_summary="Derived from visible work.",
+        status_reason="Validation witness",
+        run_id=run_id,
+        session_id="test-session",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _insert_chronicle_brief(db, *, run_id: str) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_chronicle_consolidation_brief(
+        brief_id=f"chronicle-brief-{uuid4().hex}",
+        brief_type="key-moment",
+        canonical_key="chronicle-brief:test-pattern",
+        status="briefed",
+        title="Chronicle brief for test",
+        summary="Key moment that shaped direction.",
+        rationale="Validation chronicle brief",
+        source_kind="runtime-observation",
+        confidence="medium",
+        evidence_summary="test evidence",
+        support_summary="Derived from chronicle consolidation.",
+        status_reason="Validation chronicle brief",
+        run_id=run_id,
+        session_id="test-session",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _insert_self_narrative_signal(db, *, run_id: str) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_self_narrative_continuity_signal(
+        signal_id=f"self-narrative-signal-{uuid4().hex}",
+        signal_type="self-narrative-continuity",
+        canonical_key="self-narrative:continuity:test-pattern",
+        status="active",
+        title="Self-narrative continuity for test",
+        summary="The narrative seems to be shifting toward this area.",
+        rationale="Validation self-narrative",
+        source_kind="runtime-observation",
+        confidence="medium",
+        evidence_summary="test evidence",
+        support_summary="Derived from self-narrative continuity.",
+        status_reason="Validation self-narrative",
+        run_id=run_id,
+        session_id="test-session",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _insert_release_marker(db, *, run_id: str) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_release_marker_signal(
+        signal_id=f"release-marker-{uuid4().hex}",
+        signal_type="release-marker",
+        canonical_key="release-marker:test-pattern",
+        status="released",
+        title="Release marker for test",
+        summary="Something appears to be loosening around this area.",
+        rationale="Validation release marker",
+        source_kind="runtime-observation",
+        confidence="low",
+        evidence_summary="test evidence",
+        support_summary="Derived from metabolism state.",
+        status_reason="Validation release marker",
+        run_id=run_id,
+        session_id="test-session",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def test_diary_synthesis_surface_stays_empty_without_grounding(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.diary_synthesis_signal_tracking
+
+    result = tracking.track_diary_synthesis_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="missing-run",
+    )
+    surface = tracking.build_diary_synthesis_signal_surface(limit=8)
+
+    assert result["created"] == 0
+    assert result["updated"] == 0
+    assert surface["active"] is False
+    assert surface["items"] == []
+    assert surface["summary"]["active_count"] == 0
+    assert surface["summary"]["authority"] == "non-authoritative"
+
+
+def test_diary_synthesis_forms_bounded_reflection_from_witness(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.diary_synthesis_signal_tracking
+    db = isolated_runtime.db
+
+    _insert_witness_signal(db, run_id="diary-run-1", status="carried")
+    result = tracking.track_diary_synthesis_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="diary-run-1",
+    )
+    surface = tracking.build_diary_synthesis_signal_surface(limit=8)
+
+    assert result["created"] == 1
+    assert surface["active"] is True
+    assert len(surface["items"]) == 1
+    item = surface["items"][0]
+    assert item["signal_type"] == "diary-synthesis"
+    assert item["diary_state"] in {"settling", "emerging", "observing"}
+    assert item["authority"] == "non-authoritative"
+    assert item["layer_role"] == "runtime-support"
+    assert item["status"] == "active"
+    assert (
+        "no canonical" in item["status_reason"].lower()
+        or "without" in item["status_reason"].lower()
+    )
+    assert (
+        "I notice" in item["support_summary"]
+        or "patterns" in item["support_summary"].lower()
+    )
+
+
+def test_diary_synthesis_forms_reflection_from_multiple_sources(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.diary_synthesis_signal_tracking
+    db = isolated_runtime.db
+
+    _insert_witness_signal(db, run_id="diary-run-2", status="carried")
+    _insert_chronicle_brief(db, run_id="diary-run-2")
+    _insert_self_narrative_signal(db, run_id="diary-run-2")
+
+    result = tracking.track_diary_synthesis_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="diary-run-2",
+    )
+    surface = tracking.build_diary_synthesis_signal_surface(limit=8)
+
+    assert result["created"] == 1
+    assert surface["active"] is True
+    item = surface["items"][0]
+    assert item["signal_type"] == "diary-synthesis"
+    assert (
+        "witness" in item["source_anchor"].lower()
+        or "chronicle" in item["source_anchor"].lower()
+        or "self-narrative" in item["source_anchor"].lower()
+    )
+    assert item["authority"] == "non-authoritative"
+    assert (
+        "no" in item["status_reason"].lower()
+        or "without" in item["status_reason"].lower()
+    )
+
+
+def test_diary_synthesis_surface_and_mc_shapes_remain_bounded(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.diary_synthesis_signal_tracking
+    mission_control = isolated_runtime.mission_control
+
+    _insert_witness_signal(db, run_id="diary-run-3", status="carried")
+
+    tracking.track_diary_synthesis_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="diary-run-3",
+    )
+    surface = tracking.build_diary_synthesis_signal_surface(limit=8)
+
+    assert {
+        "active_count",
+        "stale_count",
+        "superseded_count",
+        "current_signal",
+        "current_status",
+        "current_state",
+        "current_confidence",
+        "authority",
+        "layer_role",
+    }.issubset(surface["summary"].keys())
+    assert {
+        "signal_id",
+        "signal_type",
+        "canonical_key",
+        "status",
+        "title",
+        "summary",
+        "confidence",
+        "updated_at",
+        "diary_state",
+        "diary_weight",
+        "diary_focus",
+        "diary_confidence",
+        "source_anchor",
+        "authority",
+        "layer_role",
+    }.issubset(surface["items"][0].keys())
+    assert surface["summary"]["authority"] == "non-authoritative"
+    assert surface["summary"]["layer_role"] == "runtime-support"

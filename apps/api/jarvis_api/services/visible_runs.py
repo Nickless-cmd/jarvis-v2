@@ -98,6 +98,9 @@ from apps.api.jarvis_api.services.private_inner_interplay_signal_tracking import
 from apps.api.jarvis_api.services.private_state_snapshot_tracking import (
     track_runtime_private_state_snapshots_for_visible_turn,
 )
+from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+    track_diary_synthesis_signals_for_visible_turn,
+)
 from apps.api.jarvis_api.services.private_temporal_curiosity_state_tracking import (
     track_runtime_private_temporal_curiosity_states_for_visible_turn,
 )
@@ -247,7 +250,9 @@ _LAST_VISIBLE_RUN_OUTCOME: dict[str, str] | None = None
 _LAST_VISIBLE_CAPABILITY_USE: dict[str, object] | None = None
 
 
-def start_visible_run(message: str, session_id: str | None = None) -> AsyncIterator[str]:
+def start_visible_run(
+    message: str, session_id: str | None = None
+) -> AsyncIterator[str]:
     settings = load_settings()
     run = VisibleRun(
         run_id=f"visible-{uuid4().hex}",
@@ -353,7 +358,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 status="failed",
                 error=str(exc) or "visible-run-failed",
             )
-            for failure_chunk in _fail_visible_run(run, str(exc) or "visible-run-failed"):
+            for failure_chunk in _fail_visible_run(
+                run, str(exc) or "visible-run-failed"
+            ):
                 yield failure_chunk
             return
 
@@ -370,7 +377,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             return
 
         capability_call = _extract_capability_call(result.text)
-        if buffering_capability_marker and not capability_call and buffered_capability_text:
+        if (
+            buffering_capability_marker
+            and not capability_call
+            and buffered_capability_text
+        ):
             yield _sse(
                 "delta",
                 {
@@ -705,6 +716,13 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
     except Exception:
         return
     try:
+        track_diary_synthesis_signals_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception:
+        return
+    try:
         track_runtime_private_temporal_curiosity_states_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
@@ -1002,15 +1020,9 @@ def _capability_visible_text(*, capability_id: str, invocation: dict) -> str:
             )
 
     if text:
-        return (
-            f"[Capability {capability_id} via {execution_mode}]\n"
-            f"{text}"
-        )
+        return f"[Capability {capability_id} via {execution_mode}]\n{text}"
     if detail:
-        return (
-            f"[Capability {capability_id} via {execution_mode}]\n"
-            f"{detail}"
-        )
+        return f"[Capability {capability_id} via {execution_mode}]\n{detail}"
     return f"[Capability {capability_id} via {execution_mode}] {status}"
 
 
@@ -1213,9 +1225,7 @@ def get_visible_work_surface() -> dict[str, object]:
         "model": visible_work.get("model") or current_unit.get("model"),
         "started_at": visible_work.get("started_at") or current_unit.get("started_at"),
         "finished_at": current_unit.get("finished_at"),
-        "current_user_message_preview": visible_work.get(
-            "current_user_message_preview"
-        )
+        "current_user_message_preview": visible_work.get("current_user_message_preview")
         or current_unit.get("user_message_preview"),
         "capability_id": visible_work.get("capability_id")
         or current_unit.get("capability_id"),
@@ -1240,7 +1250,8 @@ def get_visible_selected_work_surface() -> dict[str, object]:
         or selected_unit.get("run_id"),
         "status": visible_work_surface.get("status") or selected_unit.get("status"),
         "lane": visible_work_surface.get("lane") or selected_unit.get("lane"),
-        "provider": visible_work_surface.get("provider") or selected_unit.get("provider"),
+        "provider": visible_work_surface.get("provider")
+        or selected_unit.get("provider"),
         "model": visible_work_surface.get("model") or selected_unit.get("model"),
         "selected_user_message_preview": visible_work_surface.get(
             "current_user_message_preview"
@@ -1300,7 +1311,9 @@ def get_visible_selected_work_item() -> dict[str, object]:
         )
         or visible_work_surface.get("latest_work_preview")
         or selected_unit.get("work_preview"),
-        "recent_work_ids": list(visible_selected_work_surface.get("recent_work_ids") or []),
+        "recent_work_ids": list(
+            visible_selected_work_surface.get("recent_work_ids") or []
+        ),
         "selection_source": "active-visible-work"
         if visible_selected_work_surface.get("active")
         else "persisted-visible-work-unit",

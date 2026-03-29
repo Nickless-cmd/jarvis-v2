@@ -6,6 +6,7 @@ from uuid import uuid4
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     list_runtime_chronicle_consolidation_briefs,
+    list_runtime_diary_synthesis_signals,
     list_runtime_metabolism_state_signals,
     list_runtime_release_marker_signals,
     list_runtime_self_narrative_continuity_signals,

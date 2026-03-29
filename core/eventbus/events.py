@@ -33,6 +33,7 @@ ALLOWED_EVENT_FAMILIES = {
     "private_initiative_tension_signal",
     "private_inner_interplay_signal",
     "private_state_snapshot",
+    "diary_synthesis_signal",
     "private_temporal_curiosity_state",
     "private_temporal_promotion_signal",
     "inner_visible_support_signal",

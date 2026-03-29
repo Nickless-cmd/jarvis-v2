@@ -55,7 +55,9 @@ def refresh_runtime_private_state_snapshot_statuses() -> dict[str, int]:
     for item in list_runtime_private_state_snapshots(limit=40):
         if str(item.get("status") or "") != "active":
             continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
+        updated_at = _parse_dt(
+            str(item.get("updated_at") or item.get("created_at") or "")
+        )
         if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
             continue
         refreshed_item = update_runtime_private_state_snapshot_status(
@@ -80,13 +82,21 @@ def refresh_runtime_private_state_snapshot_statuses() -> dict[str, int]:
     return {"stale_marked": refreshed}
 
 
-def build_runtime_private_state_snapshot_surface(*, limit: int = 8) -> dict[str, object]:
+def build_runtime_private_state_snapshot_surface(
+    *, limit: int = 8
+) -> dict[str, object]:
     refresh_runtime_private_state_snapshot_statuses()
     items = list_runtime_private_state_snapshots(limit=max(limit, 1))
     enriched_items = [_with_surface_view(item) for item in items]
-    active = [item for item in enriched_items if str(item.get("status") or "") == "active"]
-    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
+    active = [
+        item for item in enriched_items if str(item.get("status") or "") == "active"
+    ]
+    stale = [
+        item for item in enriched_items if str(item.get("status") or "") == "stale"
+    ]
+    superseded = [
+        item for item in enriched_items if str(item.get("status") or "") == "superseded"
+    ]
     ordered = [*active, *stale, *superseded]
     latest = next(iter(active or stale or superseded), None)
     return {
@@ -98,7 +108,9 @@ def build_runtime_private_state_snapshot_surface(*, limit: int = 8) -> dict[str,
             "active_count": len(active),
             "stale_count": len(stale),
             "superseded_count": len(superseded),
-            "current_snapshot": str((latest or {}).get("title") or "No active private-state snapshot"),
+            "current_snapshot": str(
+                (latest or {}).get("title") or "No active private-state snapshot"
+            ),
             "current_status": str((latest or {}).get("status") or "none"),
             "current_tone": str((latest or {}).get("state_tone") or "none"),
             "current_pressure": str((latest or {}).get("state_pressure") or "low"),
@@ -134,8 +146,16 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
     )
     state_confidence = _stronger_confidence(
         str(inner_note.get("note_confidence") or inner_note.get("confidence") or "low"),
-        str(initiative_tension.get("tension_confidence") or initiative_tension.get("confidence") or "low"),
-        str(inner_interplay.get("interplay_confidence") or inner_interplay.get("confidence") or "low"),
+        str(
+            initiative_tension.get("tension_confidence")
+            or initiative_tension.get("confidence")
+            or "low"
+        ),
+        str(
+            inner_interplay.get("interplay_confidence")
+            or inner_interplay.get("confidence")
+            or "low"
+        ),
     )
     state_summary = _bounded_state_summary(
         inner_note=inner_note,
@@ -159,24 +179,24 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
         "canonical_key": f"private-state-snapshot:{state_tone}:{focus}",
         "focus_key": focus,
         "status": "active",
-        "title": f"Private state snapshot: {focus.replace('-', ' ')}",
+        "title": f"Private state: {focus.replace('-', ' ')}",
         "summary": (
-            f"Bounded runtime private-state snapshot is holding a small inner-state view around {focus.replace('-', ' ')}."
+            f"I notice things feel {('steadier' if state_tone != 'steady-pressure' else 'pressured')} around {focus.replace('-', ' ')}."
         ),
         "rationale": (
-            "A bounded private-state snapshot may return only as a small synthesis over already-returned inner-note, initiative-tension, and inner-interplay runtime support layers, without becoming canonical self, a mood controller, or planner authority."
+            "A private state snapshot may return only as a small synthesis over already-returned inner-note, initiative-tension, and inner-interplay signals, without becoming canonical self, a mood controller, or planner authority."
         ),
         "source_kind": "runtime-derived-support",
         "confidence": state_confidence,
         "evidence_summary": evidence_summary,
         "support_summary": _merge_fragments(
-            "Derived only from active bounded inner-layer runtime support signals.",
+            "I notice inner-note, initiative-tension, and inner-interplay all present.",
             source_anchor,
         ),
         "support_count": 1,
         "session_count": 1,
         "status_reason": (
-            "Bounded private-state snapshot remains subordinate to visible/runtime truth and carries no planner, execution, canonical-self, or prompt authority."
+            "I register this as bounded state with no planner authority, execution authority, canonical-self authority, or prompt authority."
         ),
         "state_tone": state_tone,
         "state_pressure": state_pressure,
@@ -201,7 +221,9 @@ def _persist_private_state_snapshots(
     for snapshot in snapshots:
         persisted_item = upsert_runtime_private_state_snapshot(
             snapshot_id=f"private-state-snapshot-{uuid4().hex}",
-            snapshot_type=str(snapshot.get("snapshot_type") or "private-state-runtime-snapshot"),
+            snapshot_type=str(
+                snapshot.get("snapshot_type") or "private-state-runtime-snapshot"
+            ),
             canonical_key=str(snapshot.get("canonical_key") or ""),
             status=str(snapshot.get("status") or "active"),
             title=str(snapshot.get("title") or ""),
@@ -289,17 +311,24 @@ def _latest_inner_interplay_support(*, run_id: str) -> dict[str, object] | None:
     return None
 
 
-def _with_runtime_view(item: dict[str, object], snapshot: dict[str, object]) -> dict[str, object]:
+def _with_runtime_view(
+    item: dict[str, object], snapshot: dict[str, object]
+) -> dict[str, object]:
     enriched = dict(item)
     enriched["state_tone"] = str(snapshot.get("state_tone") or "steady-support")
     enriched["state_pressure"] = str(snapshot.get("state_pressure") or "low")
-    enriched["state_confidence"] = str(snapshot.get("state_confidence") or snapshot.get("confidence") or "low")
+    enriched["state_confidence"] = str(
+        snapshot.get("state_confidence") or snapshot.get("confidence") or "low"
+    )
     enriched["state_summary"] = str(snapshot.get("state_summary") or "")
     enriched["note_signal_id"] = str(snapshot.get("note_signal_id") or "")
     enriched["tension_signal_id"] = str(snapshot.get("tension_signal_id") or "")
     enriched["interplay_signal_id"] = str(snapshot.get("interplay_signal_id") or "")
     enriched["source_anchor"] = str(snapshot.get("source_anchor") or "")
-    enriched["grounding_mode"] = str(snapshot.get("grounding_mode") or "inner-note+initiative-tension+inner-interplay")
+    enriched["grounding_mode"] = str(
+        snapshot.get("grounding_mode")
+        or "inner-note+initiative-tension+inner-interplay"
+    )
     enriched["authority"] = "non-authoritative"
     enriched["layer_role"] = "runtime-support"
     return enriched
@@ -310,9 +339,15 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     canonical_key = str(item.get("canonical_key") or "")
     inferred_tone = _canonical_segment(canonical_key, index=1) or "steady-support"
     enriched["state_tone"] = str(item.get("state_tone") or inferred_tone)
-    enriched["state_pressure"] = str(item.get("state_pressure") or _pressure_from_tone(inferred_tone))
-    enriched["state_confidence"] = str(item.get("state_confidence") or item.get("confidence") or "low")
-    enriched["state_summary"] = str(item.get("state_summary") or item.get("summary") or "")
+    enriched["state_pressure"] = str(
+        item.get("state_pressure") or _pressure_from_tone(inferred_tone)
+    )
+    enriched["state_confidence"] = str(
+        item.get("state_confidence") or item.get("confidence") or "low"
+    )
+    enriched["state_summary"] = str(
+        item.get("state_summary") or item.get("summary") or ""
+    )
     enriched["note_signal_id"] = str(item.get("note_signal_id") or "")
     enriched["tension_signal_id"] = str(item.get("tension_signal_id") or "")
     enriched["interplay_signal_id"] = str(item.get("interplay_signal_id") or "")
@@ -322,7 +357,9 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
         or item.get("snapshot_id")
         or ""
     )
-    enriched["grounding_mode"] = str(item.get("grounding_mode") or "inner-note+initiative-tension+inner-interplay")
+    enriched["grounding_mode"] = str(
+        item.get("grounding_mode") or "inner-note+initiative-tension+inner-interplay"
+    )
     enriched["authority"] = "non-authoritative"
     enriched["layer_role"] = "runtime-support"
     enriched["source"] = "/mc/runtime.private_state_snapshot"
@@ -347,19 +384,25 @@ def _bounded_state_summary(
     inner_interplay: dict[str, object],
     tone: str,
 ) -> str:
-    note_summary = str(inner_note.get("note_summary") or inner_note.get("summary") or "").strip()
+    note_summary = str(
+        inner_note.get("note_summary") or inner_note.get("summary") or ""
+    ).strip()
     tension_summary = str(
-        initiative_tension.get("tension_summary") or initiative_tension.get("summary") or ""
+        initiative_tension.get("tension_summary")
+        or initiative_tension.get("summary")
+        or ""
     ).strip()
     interplay_summary = str(
         inner_interplay.get("interplay_summary") or inner_interplay.get("summary") or ""
     ).strip()
     prefix = (
-        "Bounded private-state support is holding steady pressure."
+        "I notice there is still some pressure around this."
         if tone == "steady-pressure"
-        else "Bounded private-state support is holding steady support."
+        else "I notice things feel steadier around this."
     )
-    return _merge_fragments(prefix, note_summary, tension_summary, interplay_summary)[:240]
+    return _merge_fragments(prefix, note_summary, tension_summary, interplay_summary)[
+        :240
+    ]
 
 
 def _state_pressure(level: str, *, interplay_type: str) -> str:

@@ -1457,6 +1457,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const autonomyPressureSignals = data?.development?.autonomyPressureSignals || { items: [], summary: {} }
   const proactiveLoopLifecycleSignals = data?.development?.proactiveLoopLifecycleSignals || { items: [], summary: {} }
   const proactiveQuestionGates = data?.development?.proactiveQuestionGates || { items: [], summary: {} }
+  const webchatExecutionPilot = data?.development?.webchatExecutionPilot || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -1792,6 +1793,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>{heartbeatState.lastActionSummary || heartbeatState.lastActionStatus || 'No execute action recorded yet.'}</p>
             </div>
             <div className="compact-metric">
+              <span>Execution Pilot</span>
+              <strong>{webchatExecutionPilot?.summary?.current_delivery_state || 'none'}</strong>
+              <p>{webchatExecutionPilot?.summary?.current_candidate || 'No tiny governed webchat execution pilot recorded yet.'}</p>
+              <p>
+                type {webchatExecutionPilot?.summary?.current_execution_type || 'none'} · channel {webchatExecutionPilot?.summary?.current_channel || 'webchat'}
+              </p>
+              <p>
+                cooldown {webchatExecutionPilot?.summary?.current_cooldown_state || 'ready'} · kill switch {webchatExecutionPilot?.summary?.current_kill_switch_state || 'enabled'}
+              </p>
+              <p>
+                {webchatExecutionPilot?.summary?.proactive_execution_state || 'tiny-governed-webchat-only'} · {webchatExecutionPilot?.summary?.planner_authority_state || 'not-planner-authority'}
+              </p>
+            </div>
+            <div className="compact-metric">
               <span>Recovery</span>
               <strong>{heartbeatState.recoveryStatus || 'idle'}</strong>
               <p>{heartbeatState.lastRecoveryAt || 'No recovery activity recorded.'}</p>
@@ -1814,6 +1829,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   createdAt: heartbeatState.updatedAt || data?.fetchedAt,
                   summary: heartbeatPolicy.summary || 'Inspect HEARTBEAT.md-derived policy.',
                 }, 'Heartbeat Policy', onOpenItem)}
+                {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>
             </div>
 

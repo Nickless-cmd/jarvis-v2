@@ -1764,6 +1764,10 @@ export const backend = {
           source: ((development.proactive_question_gates?.items || [])[0] || {}).source || '/mc/runtime.proactive_question_gate',
           summary: ((development.proactive_question_gates?.items || [])[0] || {}).question_gate_summary || 'No bounded proactive-question gate support',
         }),
+        webchatExecutionPilotSupport: normalizeJarvisItem((development.webchat_execution_pilot?.items || [])[0] || {}, {
+          source: ((development.webchat_execution_pilot?.items || [])[0] || {}).source || '/mc/runtime.execution_pilot',
+          summary: ((development.webchat_execution_pilot?.items || [])[0] || {}).execution_summary || 'No tiny governed webchat execution pilot',
+        }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
           summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).proposal_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).sharpening_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
@@ -2047,6 +2051,22 @@ export const backend = {
           items: (development.proactive_question_gates?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.proactive_question_gate',
             summary: item.question_gate_summary || item.summary || 'Inspect bounded proactive-question gate support',
+          })),
+        },
+        webchatExecutionPilot: {
+          active: Boolean(development.webchat_execution_pilot?.active),
+          authority: development.webchat_execution_pilot?.authority || 'non-authoritative',
+          layerRole: development.webchat_execution_pilot?.layer_role || 'runtime-support',
+          plannerAuthorityState: development.webchat_execution_pilot?.planner_authority_state || 'not-planner-authority',
+          proactiveExecutionState: development.webchat_execution_pilot?.proactive_execution_state || 'tiny-governed-webchat-only',
+          canonicalIntentionState: development.webchat_execution_pilot?.canonical_intention_state || 'not-canonical-intention-truth',
+          promptInclusionState: development.webchat_execution_pilot?.prompt_inclusion_state || 'not-prompt-included',
+          workflowBridgeState: development.webchat_execution_pilot?.workflow_bridge_state || 'not-workflow-bridge',
+          discordExecutionState: development.webchat_execution_pilot?.discord_execution_state || 'not-enabled',
+          summary: development.webchat_execution_pilot?.summary || {},
+          items: (development.webchat_execution_pilot?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.execution_pilot',
+            summary: item.execution_summary || item.summary || 'Inspect tiny governed webchat execution pilot',
           })),
         },
         selfNarrativeSelfModelReviewBridge: {

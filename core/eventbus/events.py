@@ -51,6 +51,7 @@ ALLOWED_EVENT_FAMILIES = {
     "autonomy_pressure_signal",
     "proactive_loop_lifecycle",
     "proactive_question_gate",
+    "execution_pilot",
     "executive_contradiction_signal",
     "chronicle_consolidation_signal",
     "chronicle_consolidation_brief",

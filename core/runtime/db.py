@@ -524,6 +524,7 @@ def init_db() -> None:
         _ensure_runtime_autonomy_pressure_signal_table(conn)
         _ensure_runtime_proactive_loop_lifecycle_signal_table(conn)
         _ensure_runtime_proactive_question_gate_table(conn)
+        _ensure_runtime_webchat_execution_pilot_table(conn)
         _ensure_runtime_executive_contradiction_signal_table(conn)
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
@@ -17997,6 +17998,87 @@ def upsert_runtime_proactive_question_gate(
     return gate
 
 
+def record_runtime_webchat_execution_pilot(
+    *,
+    pilot_id: str,
+    canonical_key: str,
+    status: str,
+    execution_type: str,
+    title: str,
+    summary: str,
+    rationale: str,
+    source_kind: str,
+    confidence: str,
+    evidence_summary: str,
+    support_summary: str,
+    status_reason: str = "",
+    run_id: str = "",
+    session_id: str = "",
+    support_count: int = 1,
+    session_count: int = 0,
+    delivery_channel: str = "webchat",
+    delivery_state: str = "blocked",
+    created_at: str,
+    updated_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_runtime_webchat_execution_pilot_table(conn)
+        conn.execute(
+            """
+            INSERT INTO runtime_webchat_execution_pilots (
+                pilot_id,
+                canonical_key,
+                status,
+                execution_type,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                delivery_channel,
+                delivery_state,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                pilot_id,
+                canonical_key,
+                status,
+                execution_type,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                max(int(support_count or 0), 1),
+                max(int(session_count or 0), 0),
+                delivery_channel,
+                delivery_state,
+                created_at,
+                updated_at,
+            ),
+        )
+        conn.commit()
+    pilot = get_runtime_webchat_execution_pilot(pilot_id)
+    if pilot is None:
+        raise RuntimeError("runtime webchat execution pilot was not persisted")
+    return pilot
+
+
 def list_runtime_attachment_topology_signals(
     *,
     status: str | None = None,
@@ -18222,6 +18304,52 @@ def list_runtime_proactive_question_gates(
     return [_runtime_proactive_question_gate_from_row(row) for row in rows]
 
 
+def list_runtime_webchat_execution_pilots(
+    *,
+    status: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_runtime_webchat_execution_pilot_table(conn)
+        params: list[object] = []
+        where = ""
+        if status:
+            where = "WHERE status = ?"
+            params.append(status)
+        params.append(max(int(limit or 0), 1))
+        rows = conn.execute(
+            f"""
+            SELECT
+                pilot_id,
+                canonical_key,
+                status,
+                execution_type,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                delivery_channel,
+                delivery_state,
+                created_at,
+                updated_at
+            FROM runtime_webchat_execution_pilots
+            {where}
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        ).fetchall()
+    return [_runtime_webchat_execution_pilot_from_row(row) for row in rows]
+
+
 def get_runtime_attachment_topology_signal(signal_id: str) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_attachment_topology_signal_table(conn)
@@ -18400,6 +18528,43 @@ def get_runtime_proactive_question_gate(gate_id: str) -> dict[str, object] | Non
     if row is None:
         return None
     return _runtime_proactive_question_gate_from_row(row)
+
+
+def get_runtime_webchat_execution_pilot(pilot_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_webchat_execution_pilot_table(conn)
+        row = conn.execute(
+            """
+            SELECT
+                pilot_id,
+                canonical_key,
+                status,
+                execution_type,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                delivery_channel,
+                delivery_state,
+                created_at,
+                updated_at
+            FROM runtime_webchat_execution_pilots
+            WHERE pilot_id = ?
+            LIMIT 1
+            """,
+            (pilot_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _runtime_webchat_execution_pilot_from_row(row)
 
 
 def update_runtime_attachment_topology_signal_status(
@@ -23247,6 +23412,48 @@ def _ensure_runtime_proactive_question_gate_table(conn: sqlite3.Connection) -> N
     )
 
 
+def _ensure_runtime_webchat_execution_pilot_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runtime_webchat_execution_pilots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pilot_id TEXT NOT NULL UNIQUE,
+            canonical_key TEXT NOT NULL,
+            status TEXT NOT NULL,
+            execution_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            rationale TEXT NOT NULL,
+            source_kind TEXT NOT NULL,
+            confidence TEXT NOT NULL,
+            evidence_summary TEXT NOT NULL,
+            support_summary TEXT NOT NULL,
+            status_reason TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
+            support_count INTEGER NOT NULL DEFAULT 1,
+            session_count INTEGER NOT NULL DEFAULT 0,
+            delivery_channel TEXT NOT NULL DEFAULT 'webchat',
+            delivery_state TEXT NOT NULL DEFAULT 'blocked',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_webchat_execution_pilots_status
+        ON runtime_webchat_execution_pilots(status, id DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_webchat_execution_pilots_canonical_key
+        ON runtime_webchat_execution_pilots(canonical_key, id DESC)
+        """
+    )
+
+
 def _ensure_runtime_executive_contradiction_signal_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -24088,6 +24295,31 @@ def _runtime_proactive_question_gate_from_row(row: sqlite3.Row) -> dict[str, obj
         "support_count": int(row["support_count"] or 0),
         "session_count": int(row["session_count"] or 0),
         "merge_count": int(row["merge_count"] or 0),
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def _runtime_webchat_execution_pilot_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "pilot_id": row["pilot_id"],
+        "canonical_key": row["canonical_key"],
+        "status": row["status"],
+        "execution_type": row["execution_type"],
+        "title": row["title"],
+        "summary": row["summary"],
+        "rationale": row["rationale"],
+        "source_kind": row["source_kind"],
+        "confidence": row["confidence"],
+        "evidence_summary": row["evidence_summary"],
+        "support_summary": row["support_summary"],
+        "status_reason": row["status_reason"],
+        "run_id": row["run_id"],
+        "session_id": row["session_id"],
+        "support_count": int(row["support_count"] or 0),
+        "session_count": int(row["session_count"] or 0),
+        "delivery_channel": row["delivery_channel"],
+        "delivery_state": row["delivery_state"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }

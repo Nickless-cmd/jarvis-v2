@@ -154,6 +154,9 @@ from apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking import (
 from apps.api.jarvis_api.services.proactive_question_gate_tracking import (
     build_runtime_proactive_question_gate_surface,
 )
+from apps.api.jarvis_api.services.tiny_webchat_execution_pilot import (
+    build_runtime_webchat_execution_pilot_surface,
+)
 from apps.api.jarvis_api.services.self_narrative_self_model_review_bridge import (
     build_runtime_self_narrative_self_model_review_bridge_surface,
 )
@@ -453,6 +456,7 @@ def mc_jarvis() -> dict:
     autonomy_pressure_signals = build_runtime_autonomy_pressure_signal_surface()
     proactive_loop_lifecycle_signals = build_runtime_proactive_loop_lifecycle_surface()
     proactive_question_gates = build_runtime_proactive_question_gate_surface()
+    webchat_execution_pilot = build_runtime_webchat_execution_pilot_surface()
     self_narrative_self_model_review_bridge = build_runtime_self_narrative_self_model_review_bridge_surface()
     executive_contradiction_signals = build_runtime_executive_contradiction_signal_surface()
     private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
@@ -554,6 +558,7 @@ def mc_jarvis() -> dict:
             "autonomy_pressure_signals": autonomy_pressure_signals,
             "proactive_loop_lifecycle_signals": proactive_loop_lifecycle_signals,
             "proactive_question_gates": proactive_question_gates,
+            "webchat_execution_pilot": webchat_execution_pilot,
             "self_narrative_self_model_review_bridge": self_narrative_self_model_review_bridge,
             "executive_contradiction_signals": executive_contradiction_signals,
             "private_temporal_promotion_signals": private_temporal_promotion_signals,
@@ -717,6 +722,7 @@ def mc_runtime() -> dict:
         "runtime_autonomy_pressure_signals": build_runtime_autonomy_pressure_signal_surface(),
         "runtime_proactive_loop_lifecycle_signals": build_runtime_proactive_loop_lifecycle_surface(),
         "runtime_proactive_question_gates": build_runtime_proactive_question_gate_surface(),
+        "runtime_webchat_execution_pilot": build_runtime_webchat_execution_pilot_surface(),
         "runtime_self_narrative_self_model_review_bridge": build_runtime_self_narrative_self_model_review_bridge_surface(),
         "runtime_executive_contradiction_signals": build_runtime_executive_contradiction_signal_surface(),
         "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),

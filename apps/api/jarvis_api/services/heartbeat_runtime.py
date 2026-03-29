@@ -1595,7 +1595,7 @@ def _validate_heartbeat_decision(
                 "action_artifact": "",
             }
         ping_channel = str(policy["ping_channel"])
-        if ping_channel not in {"internal-only", "none"}:
+        if ping_channel not in {"internal-only", "none", "webchat"}:
             return {
                 "tick_id": tick_id,
                 "blocked_reason": "unsupported-ping-channel",
@@ -1616,6 +1616,39 @@ def _validate_heartbeat_decision(
                 "action_summary": "Ping is allowed in policy, but no usable bounded ping channel is configured.",
                 "action_type": "",
                 "action_artifact": "",
+            }
+        if ping_channel == "webchat":
+            from apps.api.jarvis_api.services.tiny_webchat_execution_pilot import (
+                maybe_run_tiny_webchat_execution_pilot,
+            )
+
+            pilot_result = maybe_run_tiny_webchat_execution_pilot(
+                policy=policy,
+                heartbeat_tick_id=tick_id,
+                decision_summary=str(decision.get("summary") or ""),
+                ping_text=str(decision.get("ping_text") or ""),
+            )
+            item = pilot_result.get("item") or {}
+            if str(pilot_result.get("delivery_state") or "") != "sent":
+                return {
+                    "tick_id": tick_id,
+                    "blocked_reason": str(pilot_result.get("blocked_reason") or "webchat-delivery-blocked"),
+                    "ping_eligible": False,
+                    "ping_result": str(pilot_result.get("delivery_state") or "blocked"),
+                    "action_status": "blocked",
+                    "action_summary": str(pilot_result.get("summary") or "Tiny webchat execution pilot was blocked."),
+                    "action_type": "webchat-proactive-question",
+                    "action_artifact": str(item.get("pilot_id") or ""),
+                }
+            return {
+                "tick_id": tick_id,
+                "blocked_reason": "",
+                "ping_eligible": True,
+                "ping_result": "sent-webchat",
+                "action_status": "sent",
+                "action_summary": str(pilot_result.get("summary") or "Tiny webchat execution pilot delivered one bounded proactive question."),
+                "action_type": "webchat-proactive-question",
+                "action_artifact": str(item.get("pilot_id") or ""),
             }
         return {
             "tick_id": tick_id,

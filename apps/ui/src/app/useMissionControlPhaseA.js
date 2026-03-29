@@ -31,6 +31,7 @@ const OBS_RELATED_FAMILIES = new Set([
   'autonomy_pressure_signal',
   'proactive_loop_lifecycle',
   'proactive_question_gate',
+  'execution_pilot',
 ])
 const JARVIS_RELATED_FAMILIES = new Set([
   'heartbeat',
@@ -50,6 +51,7 @@ const JARVIS_RELATED_FAMILIES = new Set([
   'autonomy_pressure_signal',
   'proactive_loop_lifecycle',
   'proactive_question_gate',
+  'execution_pilot',
 ])
 
 export function useMissionControlPhaseA({ active, selection }) {

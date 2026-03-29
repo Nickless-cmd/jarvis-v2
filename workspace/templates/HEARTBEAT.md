@@ -3,9 +3,9 @@
 Status: enabled
 Interval Minutes: 180
 Allow Propose: true
-Allow Execute: false
-Allow Ping: false
-Ping Channel: none
+Allow Execute: true
+Allow Ping: true
+Ping Channel: webchat
 Budget: bounded-internal-only
 Kill Switch: enabled
 

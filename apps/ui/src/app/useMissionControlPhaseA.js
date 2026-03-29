@@ -29,6 +29,7 @@ const OBS_RELATED_FAMILIES = new Set([
   'metabolism_state_signal',
   'release_marker_signal',
   'autonomy_pressure_signal',
+  'proactive_loop_lifecycle',
 ])
 const JARVIS_RELATED_FAMILIES = new Set([
   'heartbeat',
@@ -46,6 +47,7 @@ const JARVIS_RELATED_FAMILIES = new Set([
   'metabolism_state_signal',
   'release_marker_signal',
   'autonomy_pressure_signal',
+  'proactive_loop_lifecycle',
 ])
 
 export function useMissionControlPhaseA({ active, selection }) {

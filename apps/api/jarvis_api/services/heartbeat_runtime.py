@@ -22,6 +22,9 @@ from apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking import 
 from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
     build_runtime_metabolism_state_signal_surface,
 )
+from apps.api.jarvis_api.services.meaning_significance_signal_tracking import (
+    build_runtime_meaning_significance_signal_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -89,6 +92,20 @@ def _log_debug(message: str, **fields: object) -> None:
         for key, value in fields.items()
     )
     logger.debug("%s%s", message, f" | {detail}" if detail else "")
+
+
+def _hours_since_iso(value: object) -> float | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    delta = datetime.now(UTC) - parsed.astimezone(UTC)
+    return max(delta.total_seconds() / 3600.0, 0.0)
 
 
 def start_heartbeat_scheduler(*, name: str = "default") -> None:
@@ -666,13 +683,20 @@ def _build_heartbeat_liveness_signal(
     private_state = build_runtime_private_state_snapshot_surface(limit=6)
     initiative_tension = build_runtime_private_initiative_tension_signal_surface(limit=6)
     chronicle_briefs = build_runtime_chronicle_consolidation_brief_surface(limit=6)
+    meaning_significance = build_runtime_meaning_significance_signal_surface(limit=6)
     metabolism = build_runtime_metabolism_state_signal_surface(limit=6)
     release_markers = build_runtime_release_marker_signal_surface(limit=6)
+    continuity = visible_session_continuity()
 
     reason_signals: list[tuple[int, str, str, bool]] = []
     score = 0
     core_pressure_count = 0
     propose_gate_count = 0
+    companion_pressure_weight = 0
+    companion_pressure_state = "inactive"
+    companion_pressure_reason = "no-bounded-companion-pressure"
+    idle_presence_state = "inactive"
+    checkin_worthiness = "low"
 
     def add_signal(
         *,
@@ -813,6 +837,21 @@ def _build_heartbeat_liveness_signal(
             anchor=chronicle_anchor,
         )
 
+    meaning_summary = meaning_significance.get("summary") or {}
+    meaning_items = meaning_significance.get("items") or []
+    meaning_weight = str(meaning_summary.get("current_weight") or "low")
+    meaning_anchor = (
+        str((meaning_items[0] or {}).get("source_anchor") or (meaning_items[0] or {}).get("title") or "meaning-significance")
+        if meaning_items
+        else "meaning-significance"
+    )
+    if meaning_significance.get("active") and meaning_weight in {"medium", "high"}:
+        add_signal(
+            weight=1,
+            reason="meaning significance is still softly carried",
+            anchor=meaning_anchor,
+        )
+
     metabolism_summary = metabolism.get("summary") or {}
     metabolism_items = metabolism.get("items") or []
     metabolism_state = str(metabolism_summary.get("current_state") or "none")
@@ -834,6 +873,81 @@ def _build_heartbeat_liveness_signal(
         score -= 2
     elif release_state == "release-leaning":
         score -= 1
+
+    silence_hours = _hours_since_iso(continuity.get("latest_finished_at"))
+    companion_reasons: list[tuple[int, str, str]] = []
+
+    def add_companion_reason(weight: int, reason: str, anchor: str) -> None:
+        companion_reasons.append((weight, reason, anchor))
+
+    if softening_count > 0:
+        add_companion_reason(
+            1,
+            "older open-loop continuity is still carrying a light pull",
+            open_anchor,
+        )
+    if silence_hours is not None and silence_hours >= 6 and current_weight in {"medium", "high"}:
+        add_companion_reason(
+            2 if silence_hours >= 24 and current_weight == "high" else 1,
+            "relation continuity is holding bounded distance under silence",
+            relation_anchor,
+        )
+    persistence_state = str(witness_summary.get("current_persistence_state") or "none")
+    if silence_hours is not None and silence_hours >= 6 and (
+        int(witness_summary.get("carried_count") or 0) > 0
+        or persistence_state in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+    ):
+        add_companion_reason(
+            2 if persistence_state in {"carried-forward", "persistent"} and silence_hours >= 24 else 1,
+            "witness continuity is persisting without a recent outlet",
+            witness_anchor,
+        )
+    if silence_hours is not None and silence_hours >= 12 and str(chronicle_summary.get("current_weight") or "low") in {"medium", "high"}:
+        add_companion_reason(
+            1,
+            "chronicle continuity is still carrying a small longer-horizon brief",
+            chronicle_anchor,
+        )
+    if silence_hours is not None and silence_hours >= 12 and meaning_weight in {"medium", "high"}:
+        add_companion_reason(
+            1,
+            "meaning significance is still softly carried under silence",
+            meaning_anchor,
+        )
+
+    if companion_reasons:
+        raw_companion_weight = sum(weight for weight, _, _ in companion_reasons)
+        companion_pressure_weight = min(raw_companion_weight, 4)
+        strongest_companion = sorted(companion_reasons, key=lambda item: item[0], reverse=True)[0]
+        companion_pressure_reason = strongest_companion[1]
+        companion_anchor = " | ".join(
+            [
+                anchor
+                for _, _, anchor in companion_reasons
+                if str(anchor or "").strip()
+            ][:3]
+        )
+        if companion_pressure_weight >= 3:
+            companion_pressure_state = "present"
+        elif companion_pressure_weight >= 1:
+            companion_pressure_state = "light"
+        if silence_hours is not None and silence_hours >= 24 and companion_pressure_weight >= 2:
+            idle_presence_state = "sustained"
+        elif silence_hours is not None and silence_hours >= 6:
+            idle_presence_state = "present"
+        elif companion_pressure_weight > 0:
+            idle_presence_state = "light"
+        if companion_pressure_weight >= 4 or (
+            silence_hours is not None and silence_hours >= 24 and companion_pressure_weight >= 3
+        ):
+            checkin_worthiness = "medium"
+        elif companion_pressure_weight >= 2:
+            checkin_worthiness = "low-present"
+        add_signal(
+            weight=companion_pressure_weight,
+            reason=companion_pressure_reason,
+            anchor=companion_anchor,
+        )
 
     if trigger == "manual":
         add_signal(
@@ -860,7 +974,15 @@ def _build_heartbeat_liveness_signal(
             "liveness_signal_count": len(reason_signals),
             "liveness_core_pressure_count": core_pressure_count,
             "liveness_propose_gate_count": propose_gate_count,
-            "liveness_debug_summary": "score=0 signals=0 core_pressure=0 propose_gates=0",
+            "companion_pressure_state": companion_pressure_state,
+            "companion_pressure_reason": companion_pressure_reason,
+            "companion_pressure_weight": companion_pressure_weight,
+            "idle_presence_state": idle_presence_state,
+            "checkin_worthiness": checkin_worthiness,
+            "liveness_debug_summary": (
+                "score=0 signals=0 core_pressure=0 propose_gates=0 "
+                f"companion={companion_pressure_weight}/{companion_pressure_state} idle={idle_presence_state}"
+            ),
             "source_anchor": "",
             "status": "inactive",
             "authority": "non-authoritative",
@@ -929,9 +1051,15 @@ def _build_heartbeat_liveness_signal(
             "liveness_signal_count": len(reason_signals),
             "liveness_core_pressure_count": core_pressure_count,
             "liveness_propose_gate_count": propose_gate_count,
+            "companion_pressure_state": companion_pressure_state,
+            "companion_pressure_reason": companion_pressure_reason,
+            "companion_pressure_weight": companion_pressure_weight,
+            "idle_presence_state": idle_presence_state,
+            "checkin_worthiness": checkin_worthiness,
             "liveness_debug_summary": (
                 f"score={score} signals={len(reason_signals)} "
-                f"core_pressure={core_pressure_count} propose_gates={propose_gate_count}"
+                f"core_pressure={core_pressure_count} propose_gates={propose_gate_count} "
+                f"companion={companion_pressure_weight}/{companion_pressure_state} idle={idle_presence_state}"
             ),
             "source_anchor": source_anchor,
             "status": "inactive",
@@ -966,9 +1094,15 @@ def _build_heartbeat_liveness_signal(
         "liveness_signal_count": len(reason_signals),
         "liveness_core_pressure_count": core_pressure_count,
         "liveness_propose_gate_count": propose_gate_count,
+        "companion_pressure_state": companion_pressure_state,
+        "companion_pressure_reason": companion_pressure_reason,
+        "companion_pressure_weight": companion_pressure_weight,
+        "idle_presence_state": idle_presence_state,
+        "checkin_worthiness": checkin_worthiness,
         "liveness_debug_summary": (
             f"score={score} signals={len(reason_signals)} "
-            f"core_pressure={core_pressure_count} propose_gates={propose_gate_count}"
+            f"core_pressure={core_pressure_count} propose_gates={propose_gate_count} "
+            f"companion={companion_pressure_weight}/{companion_pressure_state} idle={idle_presence_state}"
         ),
         "source_anchor": source_anchor,
         "status": "active",

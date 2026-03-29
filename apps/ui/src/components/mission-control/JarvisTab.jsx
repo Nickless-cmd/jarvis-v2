@@ -1776,6 +1776,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>
                 score {heartbeatState.livenessScore || 0} · signals {heartbeatState.livenessSignalCount || 0} · core {heartbeatState.livenessCorePressureCount || 0} · gates {heartbeatState.livenessProposeGateCount || 0}
               </p>
+              <p>
+                companion {heartbeatState.companionPressureState || 'inactive'} · weight {heartbeatState.companionPressureWeight || 0} · idle {heartbeatState.idlePresenceState || 'inactive'} · check-in {heartbeatState.checkinWorthiness || 'low'}
+              </p>
+              <p>
+                {heartbeatState.companionPressureReason || 'No bounded companion-pressure recorded yet.'}
+              </p>
             </div>
             <div className="compact-metric">
               <span>Last Execute Action</span>

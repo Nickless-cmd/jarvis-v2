@@ -374,3 +374,157 @@ def test_visible_input_self_report_grounding_explicitly_marks_bounded_uncertaint
     assert "current_runtime_state=none-recorded" in block
     assert "do not invent stronger certainty" in block
     assert "If asked whether you are guessing" in block
+
+
+def test_visible_input_self_report_open_loop_query_includes_consistency_guard(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.visible_model,
+        "visible_execution_readiness",
+        lambda: {
+            "provider": "phase1-runtime",
+            "model": "phase1",
+            "provider_status": "ready",
+            "auth_status": "not-required",
+            "live_verified": True,
+        },
+    )
+    now = datetime.now(UTC).isoformat()
+    isolated_runtime.db.upsert_runtime_open_loop_signal(
+        signal_id=f"open-loop-consistency-{uuid4().hex}",
+        signal_type="open-loop",
+        canonical_key="open-loop:open-loop:visible-work",
+        status="open",
+        title="Open loop: Visible work",
+        summary="Bounded open loop is still active.",
+        rationale="Validation open loop consistency",
+        source_kind="derived-runtime-open-loop",
+        confidence="high",
+        evidence_summary="open loop evidence",
+        support_summary="source-anchor=open-loop-anchor",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation open loop status",
+        run_id="validation-run",
+        session_id="validation-session",
+    )
+
+    system_text = _system_text_from_visible_input(
+        isolated_runtime.visible_model,
+        "har du åbne loops, eller ingen åbne loops lige nu?",
+    )
+    block = next(
+        part for part in system_text.split("\n\n")
+        if part.startswith("Runtime self-report grounding:")
+    )
+
+    assert "For open-loop questions, lead with open_loop_count/open_loop_state/open_loop_current." in block
+    assert "Runtime currently shows at least one open loop, so do not answer that there are none." in block
+    assert "Never say there are no open loops when open_loop_count is above 0." in block
+
+
+def test_visible_input_self_report_current_state_query_routes_to_state_surfaces_first(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.visible_model,
+        "visible_execution_readiness",
+        lambda: {
+            "provider": "ollama",
+            "model": "qwen3.5:9b",
+            "provider_status": "ready",
+            "auth_status": "not-required",
+            "live_verified": True,
+        },
+    )
+    now = datetime.now(UTC).isoformat()
+    isolated_runtime.db.upsert_runtime_private_state_snapshot(
+        snapshot_id=f"private-state-{uuid4().hex}",
+        snapshot_type="private-state-snapshot",
+        canonical_key="private-state:reflective-pressure",
+        status="active",
+        title="Private state: reflective pressure",
+        summary="Jarvis is carrying reflective pressure with bounded internal tension.",
+        rationale="Validation private state",
+        source_kind="derived-private-state",
+        confidence="high",
+        evidence_summary="private evidence",
+        support_summary="support",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation private state status",
+        run_id="validation-run",
+        session_id="validation-session",
+    )
+    isolated_runtime.db.upsert_runtime_regulation_homeostasis_signal(
+        signal_id=f"regulation-{uuid4().hex}",
+        signal_type="regulation-homeostasis",
+        canonical_key="regulation-homeostasis:reflective-pressure",
+        status="active",
+        title="Regulation: reflective pressure",
+        summary="Bounded regulation pressure is present.",
+        rationale="Validation regulation",
+        source_kind="derived-regulation",
+        confidence="high",
+        evidence_summary="regulation evidence",
+        support_summary="support",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation regulation status",
+        run_id="validation-run",
+        session_id="validation-session",
+    )
+
+    system_text = _system_text_from_visible_input(
+        isolated_runtime.visible_model,
+        "hvad er din aktuelle tilstand lige nu?",
+    )
+    block = next(
+        part for part in system_text.split("\n\n")
+        if part.startswith("Runtime self-report grounding:")
+    )
+
+    assert "For current-state questions, use current_runtime_state first" in block
+    assert "current_runtime_state=" in block
+    assert "regulation=reflective-pressure/" in block
+    assert "private_state=reflective-pressure/" in block
+    assert "backend_provider=ollama" in block
+
+
+def test_visible_input_self_report_certainty_query_is_routed_to_gradated_uncertainty(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.visible_model,
+        "visible_execution_readiness",
+        lambda: {
+            "provider": "unknown",
+            "model": "unknown",
+            "provider_status": "unknown",
+            "auth_status": "unknown",
+            "live_verified": False,
+        },
+    )
+
+    system_text = _system_text_from_visible_input(
+        isolated_runtime.visible_model,
+        "er du sikker på det her, eller digter du?",
+    )
+    block = next(
+        part for part in system_text.split("\n\n")
+        if part.startswith("Runtime self-report grounding:")
+    )
+
+    assert "For certainty or guessing questions, explain how grounded the answer is from these runtime facts rather than answering with a bare yes or no." in block
+    assert "For certainty questions, answer in degrees like grounded, partly grounded, uncertain, or guessing." in block
+    assert "If the user asks whether you are making things up, answer plainly" in block

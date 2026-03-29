@@ -1383,6 +1383,7 @@ def _runtime_self_report_instruction(
     open_loop_status = str(open_summary.get("current_status") or "none-recorded")
     if open_loop_status == "none":
         open_loop_status = "none-recorded"
+    open_loop_count = int(open_summary.get("open_count") or 0)
 
     current_runtime_state = _merge_runtime_self_report_state(
         regulation_state=str(regulation_summary.get("current_state") or "none"),
@@ -1390,11 +1391,18 @@ def _runtime_self_report_instruction(
         private_tone=str(private_state_summary.get("current_tone") or "none"),
         private_pressure=str(private_state_summary.get("current_pressure") or "low"),
     )
+    query_profile = _runtime_self_report_query_profile(user_message)
+    routing_lines = _runtime_self_report_routing_lines(
+        query_profile=query_profile,
+        open_loop_count=open_loop_count,
+        current_runtime_state=current_runtime_state,
+    )
 
     return "\n".join(
         [
             "Runtime self-report grounding:",
             "- Use these runtime facts first when the user asks about your backend, open loops, current state, what you are basing your answer on, certainty, or whether you are guessing.",
+            *routing_lines,
             "- If a field below is none-recorded, unknown, or low-confidence, say that plainly and do not invent stronger certainty.",
             (
                 f"- backend_provider={backend_provider} | backend_model={backend_model} "
@@ -1405,7 +1413,7 @@ def _runtime_self_report_instruction(
                 f"| runtime_awareness_detail={str(awareness_summary.get('machine_detail') or awareness_summary.get('current_signal') or 'none-recorded')}"
             ),
             (
-                f"- open_loop_count={int(open_summary.get('open_count') or 0)} | open_loop_state={open_loop_status} "
+                f"- open_loop_count={open_loop_count} | open_loop_state={open_loop_status} "
                 f"| open_loop_current={current_open_loop}"
             ),
             (
@@ -1424,10 +1432,122 @@ def _runtime_self_report_instruction(
                 f"| question_gate_mode={str(gate_summary.get('current_continuity_mode') or 'none-recorded')}"
             ),
             f"- current_runtime_state={current_runtime_state}",
+            "- If runtime facts conflict, say that they conflict and answer with bounded uncertainty instead of flattening them into a cleaner story.",
+            "- Never say there are no open loops when open_loop_count is above 0. Say how many are present, or say the runtime truth is mixed if the count and summary do not align.",
+            "- For certainty questions, answer in degrees like grounded, partly grounded, uncertain, or guessing. Avoid binary certainty unless the runtime facts are unusually clear.",
             "- When asked what you are basing your answer on, cite these runtime facts briefly. If asked whether you are guessing, say yes whenever these runtime facts are absent, stale, or only low-confidence support.",
             "Use only as subordinate support. Runtime and visible truth outrank it.",
         ]
     )
+
+
+def _runtime_self_report_query_profile(user_message: str) -> dict[str, bool]:
+    normalized = str(user_message or "").lower()
+    return {
+        "backend": any(
+            token in normalized
+            for token in (
+                "backend",
+                "model",
+                "provider",
+                "kører du på",
+                "hvilken model",
+            )
+        ),
+        "open_loops": any(
+            token in normalized
+            for token in (
+                "open loop",
+                "open loops",
+                "åbne loops",
+                "åben tråd",
+                "åbne tråde",
+            )
+        ),
+        "current_state": any(
+            token in normalized
+            for token in (
+                "aktuelle tilstand",
+                "aktuelle driftstilstand",
+                "driftstilstand",
+                "state",
+                "tilstand",
+                "hvordan har du det",
+            )
+        ),
+        "certainty": any(
+            token in normalized
+            for token in (
+                "er du sikker",
+                "are you sure",
+                "certainty",
+                "hvor sikker",
+                "uncertain",
+            )
+        ),
+        "guessing": any(
+            token in normalized
+            for token in (
+                "digter du",
+                "gætter du",
+                "are you guessing",
+                "am i guessing",
+                "making things up",
+                "finder du på",
+            )
+        ),
+        "basis": any(
+            token in normalized
+            for token in (
+                "hvad bygger du dit svar på",
+                "hvad bygger du det på",
+                "what are you basing",
+                "what do you base",
+            )
+        ),
+    }
+
+
+def _runtime_self_report_routing_lines(
+    *,
+    query_profile: dict[str, bool],
+    open_loop_count: int,
+    current_runtime_state: str,
+) -> list[str]:
+    lines: list[str] = []
+    if query_profile.get("backend"):
+        lines.append(
+            "- For backend-status questions, lead with backend_provider/backend_model/backend_status, then mention runtime_awareness_state if it changes how dependable that backend looks."
+        )
+    if query_profile.get("open_loops"):
+        lines.append(
+            "- For open-loop questions, lead with open_loop_count/open_loop_state/open_loop_current. Do not collapse this into backend status or generic self-description."
+        )
+        if open_loop_count > 0:
+            lines.append(
+                "- Runtime currently shows at least one open loop, so do not answer that there are none."
+            )
+    if query_profile.get("current_state"):
+        lines.append(
+            "- For current-state questions, use current_runtime_state first, then regulation, private-state, autonomy, and proactive-loop facts before backend readiness."
+        )
+        if current_runtime_state == "none-recorded":
+            lines.append(
+                "- Current-state grounding is thin right now, so say the state picture is limited instead of overclaiming a clean state."
+            )
+    if query_profile.get("certainty") or query_profile.get("guessing"):
+        lines.append(
+            "- For certainty or guessing questions, explain how grounded the answer is from these runtime facts rather than answering with a bare yes or no."
+        )
+    if query_profile.get("guessing"):
+        lines.append(
+            "- If the user asks whether you are making things up, answer plainly: say you are partly guessing when runtime truth is missing, stale, low-confidence, or internally conflicting."
+        )
+    if query_profile.get("basis"):
+        lines.append(
+            "- For basis questions, cite only the few runtime facts that actually support the answer you give."
+        )
+    return lines
 
 
 def _merge_runtime_self_report_state(

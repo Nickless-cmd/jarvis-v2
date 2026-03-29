@@ -43,3 +43,33 @@ export function updateSessionMessage(session, messageId, updater) {
     messages: nextMessages,
   }
 }
+
+export function upsertSessionMessage(session, message) {
+  const normalized = {
+    id: String(message?.id || '').trim(),
+    role: String(message?.role || '').trim() || 'assistant',
+    content: String(message?.content || '').trim(),
+    ts: String(message?.ts || '').trim(),
+    created_at: String(message?.created_at || '').trim(),
+  }
+  if (!normalized.id || !normalized.content) {
+    return session
+  }
+
+  const existingIndex = session.messages.findIndex((item) => item.id === normalized.id)
+  const nextMessages =
+    existingIndex >= 0
+      ? session.messages.map((item, index) => (index === existingIndex ? { ...item, ...normalized, pending: false } : item))
+      : [...session.messages, normalized]
+  const firstUser = nextMessages.find((item) => item.role === 'user')
+  const title = firstUser ? previewText(firstUser.content) : session.title
+
+  return {
+    ...session,
+    title,
+    lastMessage: previewText(nextMessages.at(-1)?.content),
+    message_count: nextMessages.length,
+    updated_at: normalized.created_at || session.updated_at,
+    messages: nextMessages,
+  }
+}

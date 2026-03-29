@@ -13,6 +13,7 @@ from apps.api.jarvis_api.services.chat_sessions import (
     create_chat_session,
     get_chat_session,
 )
+from core.eventbus.bus import event_bus
 
 
 def _insert_autonomy_question_pressure(db, *, weight: str = "high") -> None:
@@ -453,3 +454,34 @@ def test_execution_pilot_message_uses_concrete_focus_when_loop_focus_is_none(
     assert chat is not None
     assert "Visible work" in chat["messages"][0]["content"]
     assert "none" not in chat["messages"][0]["content"].lower()
+
+
+def test_execution_pilot_publishes_live_chat_event_for_sent_message(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    pilot = isolated_runtime.tiny_webchat_execution_pilot
+
+    _insert_autonomy_question_pressure(db)
+    _insert_question_loop(db)
+    _insert_question_gate(db)
+    session = create_chat_session(title="Pilot live sync")
+
+    result = pilot.maybe_run_tiny_webchat_execution_pilot(
+        policy=_policy(),
+        heartbeat_tick_id="tick-live-sync",
+        decision_summary="Heartbeat wants to ping.",
+        ping_text="",
+    )
+
+    recent = event_bus.recent(limit=8)
+    chat_event = next(
+        item for item in recent
+        if item["kind"] == "channel.chat_message_appended"
+        and item["payload"].get("source") == "proactive-execution-pilot"
+    )
+
+    assert result["delivery_state"] == "sent"
+    assert chat_event["payload"]["session_id"] == session["id"]
+    assert chat_event["payload"]["message"]["role"] == "assistant"
+    assert "Hvad vil du helst have" in chat_event["payload"]["message"]["content"]

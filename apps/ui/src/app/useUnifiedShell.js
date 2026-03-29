@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { backend } from '../lib/adapters'
-import { appendMessagesToSession, updateSessionMessage } from '../lib/sessionState'
+import { appendMessagesToSession, updateSessionMessage, upsertSessionMessage } from '../lib/sessionState'
 
 const ACTIVE_SESSION_KEY = 'jarvis-ui-active-session'
 
@@ -27,6 +27,7 @@ export function useUnifiedShell() {
   const [error, setError] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
+  const liveSubscriptionStartedAtRef = useRef(Date.now())
 
   async function refreshShell() {
     const next = await backend.getShell()
@@ -88,6 +89,34 @@ export function useUnifiedShell() {
   useEffect(() => {
     initialize()
   }, [])
+
+  useEffect(() => {
+    liveSubscriptionStartedAtRef.current = Date.now()
+    const stop = backend.subscribeMissionControlEvents((event) => {
+      if (event.kind !== 'channel.chat_message_appended') return
+      if (Date.parse(String(event.createdAt || '')) < liveSubscriptionStartedAtRef.current) return
+
+      const payload = event.payload || {}
+      if (payload.source !== 'proactive-execution-pilot') return
+      if (String(payload.session_id || '') !== String(activeSessionId || '')) return
+
+      const message = payload.message || {}
+      setActiveSession((current) => (current ? upsertSessionMessage(current, message) : current))
+      setSessions((current) =>
+        current.map((session) =>
+          session.id === String(payload.session_id || '')
+            ? {
+                ...session,
+                last_message: String(message.content || session.last_message || 'Ready'),
+                message_count: Math.max(Number(session.message_count || 0), 0) + 1,
+                updated_at: String(message.created_at || session.updated_at || ''),
+              }
+            : session
+        )
+      )
+    })
+    return stop
+  }, [activeSessionId])
 
   const activeSessionSummary = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) || null,

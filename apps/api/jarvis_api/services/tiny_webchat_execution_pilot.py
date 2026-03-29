@@ -80,6 +80,14 @@ def maybe_run_tiny_webchat_execution_pilot(
             role="assistant",
             content=str(candidate.get("message_text") or ""),
         )
+        event_bus.publish(
+            "channel.chat_message_appended",
+            {
+                "session_id": target_session_id,
+                "message": message,
+                "source": "proactive-execution-pilot",
+            },
+        )
         delivery_state = "sent"
         delivery_message_id = str(message.get("id") or "")
         status_reason = "One bounded proactive clarification question was delivered to webchat."

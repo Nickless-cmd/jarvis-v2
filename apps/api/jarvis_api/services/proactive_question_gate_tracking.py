@@ -195,6 +195,13 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
         attachment=attachment,
         loyalty=loyalty,
     )
+    loop_continuity = _initiative_loop_gate_continuity_support(
+        question_pressure=question_pressure,
+        question_loop=question_loop,
+        regulation=regulation,
+        awareness=awareness,
+    )
+    continuity = continuity if continuity["supported"] else loop_continuity
     if not continuity["supported"]:
         return []
 
@@ -420,6 +427,8 @@ def _gate_reason(
         return "carried-context"
     if continuity_mode == "hybrid-continuity":
         return "hybrid-continuity"
+    if continuity_mode == "initiative-loop-continuity":
+        return "initiative-loop-carried"
     if question_readiness == "high" and (loyalty_weight == "high" or attachment_weight == "high"):
         return "relationally-held"
     if witness_carried or chronicle_weight in {"medium", "high"}:
@@ -476,6 +485,31 @@ def _question_continuity_support(
         carried_weight = "high" if witness_carried and chronicle_carried and (attachment_held or loyalty_held) else "medium"
         return {"supported": True, "mode": "carried-bonded-continuity", "weight": carried_weight}
     return {"supported": False, "mode": "insufficient-continuity", "weight": "low"}
+
+
+def _initiative_loop_gate_continuity_support(
+    *,
+    question_pressure: dict[str, object],
+    question_loop: dict[str, object],
+    regulation: dict[str, object],
+    awareness: dict[str, object],
+) -> dict[str, object]:
+    continuity_mode = str(question_pressure.get("autonomy_pressure_continuity_mode") or "none")
+    if continuity_mode != "initiative-loop-continuity":
+        return {"supported": False, "mode": "insufficient-continuity", "weight": "low"}
+
+    awareness_summary = awareness.get("summary") or {}
+    awareness_present = bool(awareness.get("active")) or any(
+        int(awareness_summary.get(key) or 0) > 0 for key in ("active_count", "constrained_count", "recovered_count")
+    )
+    if not bool(regulation.get("active")) or not awareness_present:
+        return {"supported": False, "mode": "insufficient-continuity", "weight": "low"}
+
+    question_readiness = str(question_loop.get("question_readiness") or "low")
+    pressure_weight = str(question_pressure.get("autonomy_pressure_weight") or "low")
+    regulation_pressure = str(regulation.get("summary", {}).get("current_pressure") or "low")
+    weight = "high" if question_readiness in {"medium", "high"} else _max_ranked(pressure_weight, regulation_pressure, "medium")
+    return {"supported": True, "mode": "initiative-loop-continuity", "weight": weight}
 
 
 def _find_support_value(summary: str, key: str, default: str) -> str:

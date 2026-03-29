@@ -232,6 +232,54 @@ def _insert_runtime_awareness_constraint(db) -> None:
     )
 
 
+def _insert_runtime_awareness_ready(db) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_awareness_signal(
+        signal_id=f"awareness-ready-{uuid4().hex}",
+        signal_type="visible-local-runtime",
+        canonical_key="runtime-awareness:visible-local-runtime",
+        status="active",
+        title="Visible local model lane is ready",
+        summary="Visible local runtime is ready.",
+        rationale="Validation runtime awareness",
+        source_kind="runtime-health",
+        confidence="high",
+        evidence_summary="runtime awareness ready evidence",
+        support_summary="source-anchor=runtime-awareness-ready-anchor",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation awareness ready status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
+def _insert_regulation(db, *, pressure: str = "low") -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_regulation_homeostasis_signal(
+        signal_id=f"regulation-{uuid4().hex}",
+        signal_type="effort-regulation",
+        canonical_key="regulation-homeostasis:effort-regulation:danish-concise-calibration",
+        status="active",
+        title="Regulation support: Danish concise calibration",
+        summary="Bounded regulation pressure remains present.",
+        rationale="Validation regulation",
+        source_kind="runtime-derived-support",
+        confidence="medium",
+        evidence_summary="regulation evidence",
+        support_summary=f"regulation-pressure={pressure} | source-anchor=regulation-anchor",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation regulation status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
 def test_proactive_question_gate_stays_empty_without_question_loop_and_pressure(
     isolated_runtime,
 ) -> None:
@@ -354,3 +402,50 @@ def test_proactive_question_gate_accepts_carried_bonded_continuity_without_relat
     assert item["question_gate_continuity_mode"] == "carried-bonded-continuity"
     assert item["question_gate_reason"] == "carried-context"
     assert surface["summary"]["current_continuity_mode"] == "carried-bonded-continuity"
+
+
+def test_proactive_question_gate_accepts_initiative_loop_continuity_without_relation_meaning(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.proactive_question_gate_tracking
+
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_autonomy_pressure_signal(
+        signal_id=f"autonomy-pressure-loop-{uuid4().hex}",
+        signal_type="autonomy-pressure",
+        canonical_key="autonomy-pressure:question-pressure",
+        status="active",
+        title="Autonomy pressure: carried loop question",
+        summary="Bounded autonomy pressure is carrying a question via initiative-loop continuity.",
+        rationale="Validation initiative-loop continuity",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="initiative-loop question evidence",
+        support_summary=(
+            "autonomy-pressure-state=question-emerging | autonomy-pressure-type=question-pressure | "
+            "autonomy-pressure-weight=medium | autonomy-pressure-confidence=high | "
+            "autonomy-pressure-continuity-mode=initiative-loop-continuity | source-anchor=initiative-loop-anchor"
+        ),
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation initiative-loop continuity status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+    _insert_question_loop(db, readiness="medium")
+    _insert_regulation(db, pressure="low")
+    _insert_runtime_awareness_ready(db)
+
+    tracking.track_runtime_proactive_question_gates_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_proactive_question_gate_surface(limit=8)
+
+    item = surface["items"][0]
+    assert item["question_gate_continuity_mode"] == "initiative-loop-continuity"
+    assert item["question_gate_reason"] == "initiative-loop-carried"
+    assert item["question_gate_state"] == "question-gated-candidate"

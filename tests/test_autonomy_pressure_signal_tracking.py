@@ -256,6 +256,30 @@ def _insert_runtime_awareness(db) -> None:
     )
 
 
+def _insert_runtime_awareness_ready(db) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_awareness_signal(
+        signal_id=f"awareness-ready-{uuid4().hex}",
+        signal_type="visible-local-runtime",
+        canonical_key="runtime-awareness:visible-local-runtime",
+        status="active",
+        title="Visible local model lane is ready",
+        summary="Visible local runtime is ready.",
+        rationale="Validation runtime awareness ready",
+        source_kind="runtime-health",
+        confidence="high",
+        evidence_summary="runtime awareness ready evidence",
+        support_summary="source-anchor=runtime-awareness-ready-anchor",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation awareness ready status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
 def _insert_open_loop_closure_proposal(db) -> None:
     now = datetime.now(UTC).isoformat()
     db.upsert_runtime_open_loop_closure_proposal(
@@ -426,3 +450,31 @@ def test_autonomy_question_pressure_can_be_carried_by_witness_chronicle_and_atta
         "carried-bonded-continuity",
         "hybrid-continuity",
     }
+
+
+def test_autonomy_question_pressure_forms_from_initiative_loop_continuity_without_relation_meaning(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.autonomy_pressure_signal_tracking
+
+    _insert_open_loop(db)
+    _insert_initiative_tension(db, intensity="low")
+    _insert_regulation(db, pressure="low")
+    _insert_runtime_awareness_ready(db)
+
+    result = tracking.track_runtime_autonomy_pressure_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_autonomy_pressure_signal_surface(limit=8)
+
+    question_pressure = next(
+        item
+        for item in surface["items"]
+        if item["autonomy_pressure_type"] == "question-pressure"
+    )
+    assert result["created"] == 2
+    assert question_pressure["autonomy_pressure_continuity_mode"] == "initiative-loop-continuity"
+    assert question_pressure["autonomy_pressure_weight"] in {"medium", "high"}
+    assert question_pressure["autonomy_pressure_state"] in {"question-emerging", "question-worthy"}

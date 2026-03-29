@@ -238,6 +238,16 @@ def _extract_autonomy_pressure_candidates() -> list[dict[str, object]]:
         attachment=attachment,
         loyalty=loyalty,
     )
+    loop_continuity = _initiative_loop_question_support(
+        open_loops=open_loops,
+        initiative=initiative,
+        regulation=regulation,
+        awareness=awareness,
+        witness=witness,
+        chronicle=chronicle,
+        attachment=attachment,
+        loyalty=loyalty,
+    )
     if continuity["supported"]:
         weight = (
             "high"
@@ -313,6 +323,67 @@ def _extract_autonomy_pressure_candidates() -> list[dict[str, object]]:
                     1,
                 ),
                 status_reason="Bounded question pressure is present, but messaging remains explicitly gated.",
+            )
+        )
+    elif loop_continuity["supported"]:
+        weight = str(loop_continuity["weight"] or "medium")
+        confidence = _stronger_confidence(
+            str(initiative_summary.get("current_confidence") or "low"),
+            str(regulation_summary.get("current_confidence") or "low"),
+            str(witness_summary.get("current_witness_confidence") or witness_summary.get("current_confidence") or "low"),
+            str(chronicle.get("summary", {}).get("current_confidence") or "low"),
+            str(attachment_summary.get("current_confidence") or "low"),
+            str(loyalty_summary.get("current_confidence") or "low"),
+        )
+        question_anchor = str(loop_continuity["source_anchor"] or "")
+        candidates.append(
+            _candidate(
+                pressure_type="question-pressure",
+                pressure_state="question-worthy" if weight == "high" else "question-emerging",
+                weight=weight,
+                confidence=confidence,
+                title="Autonomy pressure: carried loop question",
+                summary=(
+                    "Bounded autonomy pressure is observing question-worthy carry from open-loop continuity, initiative carry, regulation support, and situated runtime readiness. "
+                    "This is not send permission and not proactive execution."
+                ),
+                rationale=(
+                    "Question pressure may be carried by an already-lived initiative loop when open-loop continuity, initiative tension, regulation support, "
+                    "and a usable runtime are concurrently present, even before stricter relation/meaning substrate has materialized."
+                ),
+                source_anchor=question_anchor,
+                evidence_summary=_merge_fragments(
+                    str(open_summary.get("current_signal") or ""),
+                    str(initiative_summary.get("current_signal") or ""),
+                    str(regulation_summary.get("current_signal") or ""),
+                    str(awareness.get("summary", {}).get("current_signal") or ""),
+                    str(witness_summary.get("current_signal") or ""),
+                    str(chronicle.get("summary", {}).get("current_brief") or ""),
+                ),
+                support_summary=_merge_fragments(
+                    f"autonomy-pressure-state={'question-worthy' if weight == 'high' else 'question-emerging'}",
+                    "autonomy-pressure-type=question-pressure",
+                    f"autonomy-pressure-weight={weight}",
+                    f"autonomy-pressure-confidence={confidence}",
+                    f"autonomy-pressure-continuity-mode={loop_continuity['mode']}",
+                    f"source-anchor={question_anchor}",
+                    f"open-loop-count={int(open_summary.get('open_count') or 0)}",
+                    f"tension-intensity={tension_intensity}",
+                    f"regulation-pressure={regulation_pressure}",
+                    f"runtime-awareness-state={loop_continuity['awareness_state']}",
+                ),
+                support_count=max(
+                    int(initiative_summary.get("active_count") or 0),
+                    int(open_summary.get("open_count") or 0),
+                    2,
+                ),
+                session_count=max(
+                    int(open_summary.get("open_count") or 0),
+                    int(attachment_summary.get("active_count") or 0),
+                    int(loyalty_summary.get("active_count") or 0),
+                    1,
+                ),
+                status_reason="Bounded question pressure is present through carried initiative-loop continuity, but messaging remains explicitly gated.",
             )
         )
 
@@ -600,6 +671,73 @@ def _question_continuity_support(
     if carried_bonded:
         return {"supported": True, "mode": "carried-bonded-continuity"}
     return {"supported": False, "mode": "insufficient-continuity"}
+
+
+def _initiative_loop_question_support(
+    *,
+    open_loops: dict[str, object],
+    initiative: dict[str, object],
+    regulation: dict[str, object],
+    awareness: dict[str, object],
+    witness: dict[str, object],
+    chronicle: dict[str, object],
+    attachment: dict[str, object],
+    loyalty: dict[str, object],
+) -> dict[str, object]:
+    open_summary = open_loops.get("summary") or {}
+    initiative_summary = initiative.get("summary") or {}
+    awareness_summary = awareness.get("summary") or {}
+    witness_summary = witness.get("summary") or {}
+    chronicle_summary = chronicle.get("summary") or {}
+    attachment_summary = attachment.get("summary") or {}
+    loyalty_summary = loyalty.get("summary") or {}
+
+    open_count = int(open_summary.get("open_count") or 0)
+    initiative_active = int(initiative_summary.get("active_count") or 0) > 0
+    regulation_active = bool(regulation.get("active"))
+    awareness_constrained = int(awareness_summary.get("constrained_count") or 0) > 0
+    awareness_ready = int(awareness_summary.get("active_count") or 0) > 0 and not awareness_constrained
+    if open_count <= 0 or not initiative_active or not regulation_active or not awareness_ready:
+        return {
+            "supported": False,
+            "mode": "insufficient-continuity",
+            "weight": "low",
+            "source_anchor": "",
+            "awareness_state": "not-ready",
+        }
+
+    witness_carried = (
+        int(witness_summary.get("carried_count") or 0) > 0
+        or str(witness_summary.get("current_persistence_state") or "none")
+        in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+    )
+    chronicle_carried = bool(chronicle.get("active")) and str(
+        chronicle_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+    attachment_held = bool(attachment.get("active")) and str(
+        attachment_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+    loyalty_held = bool(loyalty.get("active")) and str(
+        loyalty_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}
+
+    weight = "high" if (witness_carried or chronicle_carried or attachment_held or loyalty_held or open_count > 1) else "medium"
+    return {
+        "supported": True,
+        "mode": "initiative-loop-continuity",
+        "weight": weight,
+        "source_anchor": _merge_fragments(
+            _source_anchor(open_loops, fallback="open-loop"),
+            _source_anchor(initiative, fallback="initiative-tension"),
+            _source_anchor(regulation, fallback="regulation-homeostasis"),
+            _source_anchor(awareness, fallback="runtime-awareness"),
+            _source_anchor(witness, fallback="witness"),
+            _source_anchor(chronicle, fallback="chronicle-brief"),
+            _source_anchor(attachment, fallback="attachment-topology"),
+            _source_anchor(loyalty, fallback="loyalty-gradient"),
+        ),
+        "awareness_state": "ready",
+    }
 
 
 def _stronger_confidence(*values: str) -> str:

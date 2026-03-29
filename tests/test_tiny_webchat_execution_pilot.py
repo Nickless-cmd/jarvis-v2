@@ -105,6 +105,102 @@ def _policy(*, allow_ping: bool = True, ping_channel: str = "webchat", kill_swit
     }
 
 
+def _insert_open_loop(db) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_open_loop_signal(
+        signal_id=f"open-loop-{uuid4().hex}",
+        signal_type="open-loop",
+        canonical_key="open-loop:open-loop:visible-work",
+        status="open",
+        title="Open loop: Visible work",
+        summary="A bounded loop around visible work is still carrying live pressure through active focus, active goal carry, initiative tension, and regulation support.",
+        rationale="Validation open loop",
+        source_kind="derived-runtime-open-loop",
+        confidence="high",
+        evidence_summary="open loop evidence",
+        support_summary="source-anchor=open-loop-anchor",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation open loop status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
+def _insert_initiative_tension(db) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_private_initiative_tension_signal(
+        signal_id=f"initiative-{uuid4().hex}",
+        signal_type="unresolved",
+        canonical_key="private-initiative-tension:unresolved:visible-work",
+        status="active",
+        title="Private initiative tension support: Visible work",
+        summary="Bounded initiative tension is still carrying unresolved pressure.",
+        rationale="Validation initiative tension",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="initiative evidence",
+        support_summary="tension-level=low | source-anchor=initiative-anchor",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation initiative tension status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
+def _insert_regulation(db) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_regulation_homeostasis_signal(
+        signal_id=f"regulation-{uuid4().hex}",
+        signal_type="regulation-homeostasis",
+        canonical_key="regulation-homeostasis:steady-support:visible-work",
+        status="active",
+        title="Regulation support: visible work",
+        summary="Bounded regulation/homeostasis runtime support is holding a small regulation state around visible work.",
+        rationale="Validation regulation",
+        source_kind="runtime-derived-support",
+        confidence="medium",
+        evidence_summary="regulation evidence",
+        support_summary="regulation-pressure=low | source-anchor=regulation-anchor",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation regulation status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
+def _insert_runtime_awareness_ready(db) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_awareness_signal(
+        signal_id=f"awareness-ready-{uuid4().hex}",
+        signal_type="visible-local-runtime",
+        canonical_key="runtime-awareness:visible-local-runtime",
+        status="active",
+        title="Visible local model lane is ready",
+        summary="Visible local runtime is ready.",
+        rationale="Validation runtime awareness",
+        source_kind="runtime-health",
+        confidence="high",
+        evidence_summary="runtime awareness ready evidence",
+        support_summary="source-anchor=runtime-awareness-ready-anchor",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation awareness ready status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
 def test_execution_pilot_stays_empty_without_valid_question_gate(
     isolated_runtime,
 ) -> None:
@@ -242,3 +338,46 @@ def test_execution_pilot_is_exposed_in_mission_control_and_stays_non_authoritati
     assert runtime["summary"]["proactive_execution_state"] == "tiny-governed-webchat-only"
     assert runtime["summary"]["discord_execution_state"] == "not-enabled"
     assert isolated_runtime.db.runtime_contract_file_write_counts() == {}
+
+
+def test_execution_pilot_opens_from_current_like_initiative_loop_continuity(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    autonomy = isolated_runtime.autonomy_pressure_signal_tracking
+    loops = isolated_runtime.proactive_loop_lifecycle_tracking
+    gates = isolated_runtime.proactive_question_gate_tracking
+    pilot = isolated_runtime.tiny_webchat_execution_pilot
+
+    _insert_open_loop(db)
+    _insert_initiative_tension(db)
+    _insert_regulation(db)
+    _insert_runtime_awareness_ready(db)
+    session = create_chat_session(title="Current-like continuity")
+
+    autonomy.track_runtime_autonomy_pressure_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    loops.track_runtime_proactive_loop_lifecycle_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    gates.track_runtime_proactive_question_gates_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+
+    result = pilot.maybe_run_tiny_webchat_execution_pilot(
+        policy=_policy(),
+        heartbeat_tick_id="tick-current-like",
+        decision_summary="Heartbeat wants to ping.",
+        ping_text="",
+    )
+    gate_surface = gates.build_runtime_proactive_question_gate_surface(limit=8)
+    chat = get_chat_session(session["id"])
+
+    assert gate_surface["items"][0]["question_gate_continuity_mode"] == "initiative-loop-continuity"
+    assert result["delivery_state"] == "sent"
+    assert chat is not None
+    assert len(chat["messages"]) == 1

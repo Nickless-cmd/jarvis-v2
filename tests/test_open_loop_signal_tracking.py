@@ -160,6 +160,74 @@ def _insert_open_loop(db, *, status: str, signal_type: str, canonical_key: str) 
     )
 
 
+def _insert_initiative_tension(
+    db,
+    *,
+    canonical_key: str = "private-initiative-tension:retention-pull:reinforce-retain",
+    title: str = "Private initiative tension support: Stabilize visible-work",
+    support_summary: str = (
+        "Derived from visible work plus bounded runtime support layers. | "
+        "Stabilize visible-work (development-focus:runtime:visible-work:reinforce-retain) | "
+        "identity thread visible-work | Preferred direction reinforce:retain"
+    ),
+) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_private_initiative_tension_signal(
+        signal_id=f"initiative-{uuid4().hex}",
+        signal_type="private-initiative-tension",
+        canonical_key=canonical_key,
+        status="active",
+        title=title,
+        summary="Bounded initiative tension is still carrying directional pressure.",
+        rationale="Validation initiative tension",
+        source_kind="runtime-derived-support",
+        confidence="medium",
+        evidence_summary="initiative tension evidence",
+        support_summary=support_summary,
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Bounded initiative tension remains active.",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
+def _insert_regulation(
+    db,
+    *,
+    canonical_key: str = "regulation-homeostasis:steady-support:visible-work",
+    title: str = "Regulation support: visible work",
+    support_summary: str = (
+        "Derived only from bounded private-state runtime support. | "
+        "grounding-mode=private-state+inner-visible-sharpening | "
+        "Private state snapshot: visible work [private-state-snapshot:steady-support:visible-work]"
+    ),
+) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_regulation_homeostasis_signal(
+        signal_id=f"regulation-{uuid4().hex}",
+        signal_type="regulation-homeostasis",
+        canonical_key=canonical_key,
+        status="active",
+        title=title,
+        summary="Bounded regulation support is holding a small state around visible work.",
+        rationale="Validation regulation",
+        source_kind="runtime-derived-support",
+        confidence="medium",
+        evidence_summary="regulation evidence",
+        support_summary=support_summary,
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Bounded regulation support remains active.",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
 def test_open_loop_surface_stays_empty_without_relevant_pressure(isolated_runtime) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.open_loop_tracking
@@ -181,6 +249,72 @@ def test_open_loop_surface_stays_empty_without_relevant_pressure(isolated_runtim
     assert surface["summary"]["open_count"] == 0
     assert surface["summary"]["softening_count"] == 0
     assert surface["summary"]["closed_count"] == 0
+
+
+def test_open_loop_surface_forms_live_pressure_loop_for_focus_goal_tension_and_regulation(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.open_loop_tracking
+
+    _insert_focus(
+        db,
+        canonical_key="development-focus:runtime:visible-work:reinforce-retain",
+        minutes_ago=20,
+    )
+    _insert_goal(
+        db,
+        canonical_key="goal-signal:runtime-visible-work-reinforce-retain",
+        status="active",
+        minutes_ago=15,
+    )
+    _insert_initiative_tension(db)
+    _insert_regulation(db)
+
+    tracking.track_runtime_open_loop_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_open_loop_signal_surface(limit=8)
+
+    assert surface["active"] is True
+    assert surface["summary"]["open_count"] == 1
+    item = surface["items"][0]
+    assert item["signal_type"] == "open-loop"
+    assert item["status"] == "open"
+    assert item["source_kind"] == "derived-runtime-open-loop"
+    assert "bounded" in item["summary"].lower()
+    assert "initiative tension" in item["summary"].lower()
+    assert "without becoming planner authority" in item["rationale"].lower()
+
+
+def test_open_loop_surface_does_not_turn_active_goal_into_loop_without_tension_and_regulation(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.open_loop_tracking
+
+    _insert_focus(
+        db,
+        canonical_key="development-focus:runtime:visible-work:reinforce-retain",
+        minutes_ago=20,
+    )
+    _insert_goal(
+        db,
+        canonical_key="goal-signal:runtime-visible-work-reinforce-retain",
+        status="active",
+        minutes_ago=15,
+    )
+
+    tracking.track_runtime_open_loop_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_open_loop_signal_surface(limit=8)
+
+    assert surface["active"] is False
+    assert surface["items"] == []
+    assert surface["summary"]["open_count"] == 0
 
 
 def test_open_loop_surface_forms_persistent_open_loop_for_clear_repeated_pressure(isolated_runtime) -> None:

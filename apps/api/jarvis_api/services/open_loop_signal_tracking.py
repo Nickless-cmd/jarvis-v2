@@ -8,8 +8,10 @@ from core.runtime.db import (
     list_runtime_development_focuses,
     list_runtime_goal_signals,
     list_runtime_open_loop_signals,
+    list_runtime_private_initiative_tension_signals,
     list_runtime_reflective_critics,
     list_runtime_reflection_signals,
+    list_runtime_regulation_homeostasis_signals,
     list_runtime_temporal_recurrence_signals,
     supersede_runtime_open_loop_signals_for_domain,
     update_runtime_open_loop_signal_status,
@@ -17,6 +19,35 @@ from core.runtime.db import (
 )
 
 _STALE_AFTER_DAYS = 14
+_THREAD_TOKEN_STOPWORDS = {
+    "active",
+    "around",
+    "bounded",
+    "current",
+    "development",
+    "direction",
+    "focus",
+    "goal",
+    "homeostasis",
+    "initiative",
+    "loop",
+    "loops",
+    "open",
+    "pressure",
+    "private",
+    "regulation",
+    "retain",
+    "runtime",
+    "signal",
+    "signals",
+    "stabilize",
+    "state",
+    "steady",
+    "support",
+    "thread",
+    "tension",
+    "visible",
+}
 
 
 def track_runtime_open_loop_signals_for_visible_turn(
@@ -103,6 +134,9 @@ def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, objec
 
 def _extract_open_loop_candidates() -> list[dict[str, object]]:
     snapshots: dict[str, dict[str, object]] = {}
+    active_goals: list[dict[str, object]] = []
+    active_tensions: list[dict[str, object]] = []
+    active_regulation: list[dict[str, object]] = []
 
     for focus in list_runtime_development_focuses(limit=18):
         if str(focus.get("status") or "") != "active":
@@ -133,6 +167,7 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
             if status == "blocked":
                 bucket["blocked_goal"] = goal
             elif status == "active":
+                active_goals.append(goal)
                 bucket["active_goal"] = goal
             else:
                 bucket["completed_goal"] = goal
@@ -162,6 +197,16 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
                 bucket["active_recurrence"] = recurrence
             else:
                 bucket["softening_recurrence"] = recurrence
+
+    for tension in list_runtime_private_initiative_tension_signals(limit=18):
+        if str(tension.get("status") or "") != "active":
+            continue
+        active_tensions.append(tension)
+
+    for regulation in list_runtime_regulation_homeostasis_signals(limit=18):
+        if str(regulation.get("status") or "") != "active":
+            continue
+        active_regulation.append(regulation)
 
     candidates: list[dict[str, object]] = []
     for domain_key, snapshot in snapshots.items():
@@ -196,6 +241,51 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
                         blocked_goal,
                         active_reflection,
                         active_recurrence,
+                    ],
+                )
+            )
+            continue
+
+        live_pressure_goal = _match_live_pressure_item(
+            anchors=[active_focus],
+            candidates=active_goals,
+            minimum_overlap=2,
+        )
+        live_pressure_tension = _match_live_pressure_item(
+            anchors=[active_focus, live_pressure_goal],
+            candidates=active_tensions,
+            minimum_overlap=2,
+        )
+        live_pressure_regulation = _match_live_pressure_item(
+            anchors=[active_focus, live_pressure_goal],
+            candidates=active_regulation,
+            minimum_overlap=1,
+        )
+        if active_focus and live_pressure_goal and live_pressure_tension and live_pressure_regulation:
+            candidates.append(
+                _build_candidate(
+                    domain_key=domain_key,
+                    signal_type="open-loop",
+                    status="open",
+                    title=f"Open loop: {title_suffix}",
+                    summary=(
+                        f"A bounded loop around {title_suffix.lower()} is still carrying live pressure through active focus, "
+                        "active goal carry, initiative tension, and regulation support."
+                    ),
+                    rationale=(
+                        "Existing focus and goal carry may materialize a bounded live loop only when initiative tension and "
+                        "regulation support are concurrently aligned in the same thread, without becoming planner authority "
+                        "or treating all active goals as loops."
+                    ),
+                    status_reason=(
+                        "The bounded thread is still visibly unresolved through aligned focus, goal, initiative-tension, "
+                        "and regulation carry."
+                    ),
+                    source_items=[
+                        active_focus,
+                        live_pressure_goal,
+                        live_pressure_tension,
+                        live_pressure_regulation,
                     ],
                 )
             )
@@ -506,6 +596,56 @@ def _merge_fragments(*values: str) -> str:
         if normalized and normalized not in parts:
             parts.append(normalized)
     return " | ".join(parts[:4])
+
+
+def _match_live_pressure_item(
+    *,
+    anchors: list[dict[str, object] | None],
+    candidates: list[dict[str, object] | None],
+    minimum_overlap: int,
+) -> dict[str, object] | None:
+    valid_anchors = [item for item in anchors if item]
+    if not valid_anchors:
+        return None
+    best_item: dict[str, object] | None = None
+    best_score = 0
+    for candidate in candidates:
+        if not candidate:
+            continue
+        score = 0
+        for anchor in valid_anchors:
+            score = max(score, _thread_overlap(anchor, candidate))
+        if score < minimum_overlap or score <= best_score:
+            continue
+        best_item = candidate
+        best_score = score
+    return best_item
+
+
+def _thread_overlap(left: dict[str, object], right: dict[str, object]) -> int:
+    return len(_thread_tokens(left) & _thread_tokens(right))
+
+
+def _thread_tokens(item: dict[str, object]) -> set[str]:
+    fragments = [
+        str(item.get("canonical_key") or ""),
+        str(item.get("title") or ""),
+        str(item.get("summary") or ""),
+        str(item.get("support_summary") or ""),
+        str(item.get("status_reason") or ""),
+    ]
+    tokens: set[str] = set()
+    for fragment in fragments:
+        normalized = str(fragment or "").lower()
+        for raw_token in normalized.replace(":", " ").replace("|", " ").replace("[", " ").replace("]", " ").split():
+            token = "".join(ch for ch in raw_token if ch.isalnum() or ch == "-").strip("-")
+            if len(token) < 4:
+                continue
+            if token in _THREAD_TOKEN_STOPWORDS:
+                continue
+            tokens.add(token)
+            tokens.update(part for part in token.split("-") if len(part) >= 4 and part not in _THREAD_TOKEN_STOPWORDS)
+    return tokens
 
 
 def _parse_dt(value: str) -> datetime | None:

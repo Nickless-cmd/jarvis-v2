@@ -1752,6 +1752,10 @@ export const backend = {
           source: ((development.loyalty_gradient_signals?.items || [])[0] || {}).source || '/mc/runtime.loyalty_gradient_signal',
           summary: ((development.loyalty_gradient_signals?.items || [])[0] || {}).gradient_summary || 'No bounded loyalty-gradient support',
         }),
+        autonomyPressureSupport: normalizeJarvisItem((development.autonomy_pressure_signals?.items || [])[0] || {}, {
+          source: ((development.autonomy_pressure_signals?.items || [])[0] || {}).source || '/mc/runtime.autonomy_pressure_signal',
+          summary: ((development.autonomy_pressure_signals?.items || [])[0] || {}).autonomy_pressure_summary || 'No bounded autonomy-pressure support',
+        }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
           summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).proposal_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).sharpening_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
@@ -1990,6 +1994,21 @@ export const backend = {
           items: (development.loyalty_gradient_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.loyalty_gradient_signal',
             summary: item.gradient_summary || item.summary || 'Inspect bounded loyalty-gradient support',
+          })),
+        },
+        autonomyPressureSignals: {
+          active: Boolean(development.autonomy_pressure_signals?.active),
+          authority: development.autonomy_pressure_signals?.authority || 'non-authoritative',
+          layerRole: development.autonomy_pressure_signals?.layer_role || 'runtime-support',
+          plannerAuthorityState: development.autonomy_pressure_signals?.planner_authority_state || 'not-planner-authority',
+          proactiveExecutionState: development.autonomy_pressure_signals?.proactive_execution_state || 'not-proactive-execution',
+          canonicalIntentionState: development.autonomy_pressure_signals?.canonical_intention_state || 'not-canonical-intention-truth',
+          promptInclusionState: development.autonomy_pressure_signals?.prompt_inclusion_state || 'not-prompt-included',
+          workflowBridgeState: development.autonomy_pressure_signals?.workflow_bridge_state || 'not-workflow-bridge',
+          summary: development.autonomy_pressure_signals?.summary || {},
+          items: (development.autonomy_pressure_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.autonomy_pressure_signal',
+            summary: item.autonomy_pressure_summary || item.summary || 'Inspect bounded autonomy-pressure support',
           })),
         },
         selfNarrativeSelfModelReviewBridge: {

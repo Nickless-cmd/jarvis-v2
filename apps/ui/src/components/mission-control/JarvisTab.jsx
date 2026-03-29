@@ -1454,6 +1454,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const selectiveForgettingCandidates = data?.development?.selectiveForgettingCandidates || { items: [], summary: {} }
   const attachmentTopologySignals = data?.development?.attachmentTopologySignals || { items: [], summary: {} }
   const loyaltyGradientSignals = data?.development?.loyaltyGradientSignals || { items: [], summary: {} }
+  const autonomyPressureSignals = data?.development?.autonomyPressureSignals || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -2416,6 +2417,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.releaseMarkerSupport, 'Release Support', onOpenItem)}
               {detailRow(data?.development?.attachmentTopologySupport, 'Attachment Support', onOpenItem)}
               {detailRow(data?.development?.loyaltyGradientSupport, 'Loyalty Gradient Support', onOpenItem)}
+              {detailRow(data?.development?.autonomyPressureSupport, 'Autonomy Pressure Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
@@ -2656,6 +2658,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {loyaltyGradientSignals?.summary?.canonical_preference_state || 'not-canonical-preference-truth'} · {loyaltyGradientSignals?.summary?.workflow_bridge_state || 'not-workflow-bridge'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Autonomy Pressure</span>
+              <strong>{(autonomyPressureSignals?.summary?.active_count || 0) + (autonomyPressureSignals?.summary?.softening_count || 0)}</strong>
+              <p>{autonomyPressureSignals?.summary?.current_signal || 'No bounded autonomy-pressure support'}</p>
+              <p>
+                type {autonomyPressureSignals?.summary?.current_type || 'none'} · weight {autonomyPressureSignals?.summary?.current_weight || 'low'}
+              </p>
+              <p>
+                {autonomyPressureSignals?.summary?.planner_authority_state || 'not-planner-authority'} · {autonomyPressureSignals?.summary?.proactive_execution_state || 'not-proactive-execution'}
               </p>
             </div>
           </div>

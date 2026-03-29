@@ -1543,6 +1543,45 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
         </article>
       </section>
 
+      <section className="now-section">
+        <div className="now-header">
+          <h3>Now</h3>
+          <p className="muted">What's important right now</p>
+        </div>
+        <div className="now-grid">
+          <div className="now-card">
+            <span>Current Focus</span>
+            <strong>{developmentFocuses?.summary?.current_focus || developmentFocuses?.items?.[0]?.title || 'No active focus'}</strong>
+            <small>{developmentFocuses?.summary?.active_count || 0} active focus{developmentFocuses?.summary?.active_count !== 1 ? 's' : ''}</small>
+          </div>
+          <div className="now-card">
+            <span>Open Loops</span>
+            <strong>{openLoopSignals?.summary?.active_count || openLoopSignals?.items?.length || 0} loop{openLoopSignals?.items?.length !== 1 ? 's' : ''} open</strong>
+            <small>{openLoopSignals?.summary?.unresolved_count || 0} unresolved</small>
+          </div>
+          <div className="now-card">
+            <span>Pressure</span>
+            <strong>{privateInitiativeTensionSignals?.items?.[0]?.tension_type?.replace(/-/g, ' ') || privateInitiativeTensionSignals?.summary?.current_tension || 'Low'}</strong>
+            <small>{privateInitiativeTensionSignals?.items?.length || 0} tension signal{privateInitiativeTensionSignals?.items?.length !== 1 ? 's' : ''}</small>
+          </div>
+          <div className="now-card">
+            <span>Stability</span>
+            <strong>{privateStateSnapshots?.summary?.current_state?.replace(/-/g, ' ') || privateStateSnapshots?.items?.[0]?.state_tone || 'Stable'}</strong>
+            <small>{privateStateSnapshots?.summary?.active_count || 0} state signal{privateStateSnapshots?.summary?.active_count !== 1 ? 's' : ''}</small>
+          </div>
+          <div className="now-card now-card-highlight">
+            <span>Recent Shift</span>
+            <strong>{recentShift?.label || 'No recent shifts'}</strong>
+            <small>{recentShift?.time || ''}</small>
+          </div>
+          <div className="now-card">
+            <span>Confidence</span>
+            <strong>{diarySynthesisSignals?.summary?.current_confidence?.replace(/-/g, ' ') || privateStateSnapshots?.items?.[0]?.state_confidence || 'Medium'}</strong>
+            <small>{diarySynthesisSignals?.summary?.active_count || 0} synthesis</small>
+          </div>
+        </div>
+      </section>
+
       <section className="mc-section-grid">
         <article className="support-card" id="jarvis-contract" title={sectionTitleWithMeta({
           source: '/mc/runtime-contract',

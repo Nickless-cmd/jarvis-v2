@@ -137,6 +137,9 @@ from apps.api.jarvis_api.services.selective_forgetting_candidate_tracking import
 from apps.api.jarvis_api.services.attachment_topology_signal_tracking import (
     track_runtime_attachment_topology_signals_for_visible_turn,
 )
+from apps.api.jarvis_api.services.loyalty_gradient_signal_tracking import (
+    track_runtime_loyalty_gradient_signals_for_visible_turn,
+)
 from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import (
     track_runtime_executive_contradiction_signals_for_visible_turn,
 )
@@ -820,6 +823,13 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         return
     try:
         track_runtime_attachment_topology_signals_for_visible_turn(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception:
+        return
+    try:
+        track_runtime_loyalty_gradient_signals_for_visible_turn(
             session_id=run.session_id,
             run_id=run.run_id,
         )

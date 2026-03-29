@@ -1738,6 +1738,10 @@ export const backend = {
           source: ((development.attachment_topology_signals?.items || [])[0] || {}).source || '/mc/runtime.attachment_topology_signal',
           summary: ((development.attachment_topology_signals?.items || [])[0] || {}).attachment_summary || 'No bounded attachment-topology support',
         }),
+        loyaltyGradientSupport: normalizeJarvisItem((development.loyalty_gradient_signals?.items || [])[0] || {}, {
+          source: ((development.loyalty_gradient_signals?.items || [])[0] || {}).source || '/mc/runtime.loyalty_gradient_signal',
+          summary: ((development.loyalty_gradient_signals?.items || [])[0] || {}).gradient_summary || 'No bounded loyalty-gradient support',
+        }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
           summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).proposal_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).sharpening_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
@@ -1962,6 +1966,20 @@ export const backend = {
           items: (development.attachment_topology_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.attachment_topology_signal',
             summary: item.attachment_summary || item.summary || 'Inspect bounded attachment-topology support',
+          })),
+        },
+        loyaltyGradientSignals: {
+          active: Boolean(development.loyalty_gradient_signals?.active),
+          authority: development.loyalty_gradient_signals?.authority || 'non-authoritative',
+          layerRole: development.loyalty_gradient_signals?.layer_role || 'runtime-support',
+          plannerPriorityState: development.loyalty_gradient_signals?.planner_priority_state || 'not-planner-priority',
+          canonicalPreferenceState: development.loyalty_gradient_signals?.canonical_preference_state || 'not-canonical-preference-truth',
+          promptInclusionState: development.loyalty_gradient_signals?.prompt_inclusion_state || 'not-prompt-included',
+          workflowBridgeState: development.loyalty_gradient_signals?.workflow_bridge_state || 'not-workflow-bridge',
+          summary: development.loyalty_gradient_signals?.summary || {},
+          items: (development.loyalty_gradient_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.loyalty_gradient_signal',
+            summary: item.gradient_summary || item.summary || 'Inspect bounded loyalty-gradient support',
           })),
         },
         selfNarrativeSelfModelReviewBridge: {

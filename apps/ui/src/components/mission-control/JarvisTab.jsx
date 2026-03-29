@@ -1453,6 +1453,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const consolidationTargetSignals = data?.development?.consolidationTargetSignals || { items: [], summary: {} }
   const selectiveForgettingCandidates = data?.development?.selectiveForgettingCandidates || { items: [], summary: {} }
   const attachmentTopologySignals = data?.development?.attachmentTopologySignals || { items: [], summary: {} }
+  const loyaltyGradientSignals = data?.development?.loyaltyGradientSignals || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -2405,6 +2406,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.selectiveForgettingCandidateSupport, 'Forgetting Candidate Support', onOpenItem)}
               {detailRow(data?.development?.releaseMarkerSupport, 'Release Support', onOpenItem)}
               {detailRow(data?.development?.attachmentTopologySupport, 'Attachment Support', onOpenItem)}
+              {detailRow(data?.development?.loyaltyGradientSupport, 'Loyalty Gradient Support', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
@@ -2634,6 +2636,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 {attachmentTopologySignals?.summary?.authority || 'non-authoritative'} · {attachmentTopologySignals?.summary?.planner_priority_state || 'not-planner-priority'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Loyalty Gradient</span>
+              <strong>{(loyaltyGradientSignals?.summary?.active_count || 0) + (loyaltyGradientSignals?.summary?.softening_count || 0)}</strong>
+              <p>{loyaltyGradientSignals?.summary?.current_signal || 'No bounded loyalty-gradient support'}</p>
+              <p>
+                state {loyaltyGradientSignals?.summary?.current_state || 'none'} · rank {loyaltyGradientSignals?.summary?.current_rank || 0}
+              </p>
+              <p>
+                {loyaltyGradientSignals?.summary?.canonical_preference_state || 'not-canonical-preference-truth'} · {loyaltyGradientSignals?.summary?.workflow_bridge_state || 'not-workflow-bridge'}
               </p>
             </div>
           </div>

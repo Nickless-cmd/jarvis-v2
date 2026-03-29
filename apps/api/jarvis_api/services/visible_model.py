@@ -686,6 +686,9 @@ def _visible_system_instruction_for_provider(
         model=model,
         user_message=user_message,
         session_id=session_id,
+        runtime_self_report_context={
+            "visible_execution_readiness": visible_execution_readiness(),
+        },
     )
     return assembly.text or None
 

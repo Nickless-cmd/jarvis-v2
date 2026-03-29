@@ -257,6 +257,7 @@ def build_visible_chat_prompt_assembly(
     user_message: str,
     session_id: str | None = None,
     name: str = "default",
+    runtime_self_report_context: dict[str, object] | None = None,
 ) -> PromptAssembly:
     compact = provider == "ollama"
     workspace_dir = ensure_default_workspace(name=name)
@@ -341,6 +342,14 @@ def build_visible_chat_prompt_assembly(
     if session_continuity and relevance.include_continuity:
         parts.append(session_continuity)
         derived_inputs.append("bounded session continuity")
+
+    runtime_self_report = _runtime_self_report_instruction(
+        user_message=user_message,
+        runtime_self_report_context=runtime_self_report_context or {},
+    )
+    if runtime_self_report:
+        parts.append(runtime_self_report)
+        derived_inputs.append("grounded runtime self-report support")
 
     support_sections = _visible_support_signal_sections(
         compact=compact,
@@ -1318,6 +1327,141 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
     return sections
 
 
+def _runtime_self_report_instruction(
+    *,
+    user_message: str,
+    runtime_self_report_context: dict[str, object],
+) -> str | None:
+    if not _should_include_self_report(user_message):
+        return None
+
+    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+        build_runtime_open_loop_signal_surface,
+    )
+    from apps.api.jarvis_api.services.autonomy_pressure_signal_tracking import (
+        build_runtime_autonomy_pressure_signal_surface,
+    )
+    from apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking import (
+        build_runtime_proactive_loop_lifecycle_surface,
+    )
+    from apps.api.jarvis_api.services.proactive_question_gate_tracking import (
+        build_runtime_proactive_question_gate_surface,
+    )
+    from apps.api.jarvis_api.services.regulation_homeostasis_signal_tracking import (
+        build_runtime_regulation_homeostasis_signal_surface,
+    )
+    from apps.api.jarvis_api.services.private_state_snapshot_tracking import (
+        build_runtime_private_state_snapshot_surface,
+    )
+
+    readiness = runtime_self_report_context.get("visible_execution_readiness") or {}
+    runtime_awareness = _runtime_awareness_prompt_surface(limit=4)
+    open_loops = build_runtime_open_loop_signal_surface(limit=4)
+    autonomy = build_runtime_autonomy_pressure_signal_surface(limit=4)
+    proactive_loops = build_runtime_proactive_loop_lifecycle_surface(limit=4)
+    question_gate = build_runtime_proactive_question_gate_surface(limit=4)
+    regulation = build_runtime_regulation_homeostasis_signal_surface(limit=4)
+    private_state = build_runtime_private_state_snapshot_surface(limit=4)
+
+    awareness_summary = runtime_awareness.get("summary") or {}
+    open_summary = open_loops.get("summary") or {}
+    autonomy_summary = autonomy.get("summary") or {}
+    proactive_summary = proactive_loops.get("summary") or {}
+    gate_summary = question_gate.get("summary") or {}
+    regulation_summary = regulation.get("summary") or {}
+    private_state_summary = private_state.get("summary") or {}
+
+    backend_provider = str(readiness.get("provider") or "unknown").strip() or "unknown"
+    backend_model = str(readiness.get("model") or "unknown").strip() or "unknown"
+    backend_status = str(readiness.get("provider_status") or "unknown").strip() or "unknown"
+    auth_status = str(readiness.get("auth_status") or "unknown").strip() or "unknown"
+    live_verified = str(bool(readiness.get("live_verified"))).lower()
+
+    current_open_loop = str(open_summary.get("current_signal") or "").strip()
+    if not current_open_loop or current_open_loop.startswith("No active"):
+        current_open_loop = "none-recorded"
+    open_loop_status = str(open_summary.get("current_status") or "none-recorded")
+    if open_loop_status == "none":
+        open_loop_status = "none-recorded"
+
+    current_runtime_state = _merge_runtime_self_report_state(
+        regulation_state=str(regulation_summary.get("current_state") or "none"),
+        regulation_pressure=str(regulation_summary.get("current_pressure") or "low"),
+        private_tone=str(private_state_summary.get("current_tone") or "none"),
+        private_pressure=str(private_state_summary.get("current_pressure") or "low"),
+    )
+
+    return "\n".join(
+        [
+            "Runtime self-report grounding:",
+            "- Use these runtime facts first when the user asks about your backend, open loops, current state, what you are basing your answer on, certainty, or whether you are guessing.",
+            "- If a field below is none-recorded, unknown, or low-confidence, say that plainly and do not invent stronger certainty.",
+            (
+                f"- backend_provider={backend_provider} | backend_model={backend_model} "
+                f"| backend_status={backend_status} | auth_status={auth_status} | live_verified={live_verified}"
+            ),
+            (
+                f"- runtime_awareness_state={str(awareness_summary.get('current_status') or 'none-recorded')} "
+                f"| runtime_awareness_detail={str(awareness_summary.get('machine_detail') or awareness_summary.get('current_signal') or 'none-recorded')}"
+            ),
+            (
+                f"- open_loop_count={int(open_summary.get('open_count') or 0)} | open_loop_state={open_loop_status} "
+                f"| open_loop_current={current_open_loop}"
+            ),
+            (
+                f"- autonomy_state={str(autonomy_summary.get('current_state') or 'none-recorded')} "
+                f"| autonomy_type={str(autonomy_summary.get('current_type') or 'none-recorded')} "
+                f"| autonomy_confidence={str(autonomy_summary.get('current_confidence') or 'low')}"
+            ),
+            (
+                f"- proactive_loop_state={str(proactive_summary.get('current_state') or 'none-recorded')} "
+                f"| proactive_loop_kind={str(proactive_summary.get('current_kind') or 'none-recorded')} "
+                f"| proactive_loop_focus={str(proactive_summary.get('current_focus') or 'none-recorded')}"
+            ),
+            (
+                f"- question_gate_state={str(gate_summary.get('current_state') or 'none-recorded')} "
+                f"| question_gate_reason={str(gate_summary.get('current_reason') or 'none-recorded')} "
+                f"| question_gate_mode={str(gate_summary.get('current_continuity_mode') or 'none-recorded')}"
+            ),
+            f"- current_runtime_state={current_runtime_state}",
+            "- When asked what you are basing your answer on, cite these runtime facts briefly. If asked whether you are guessing, say yes whenever these runtime facts are absent, stale, or only low-confidence support.",
+            "Use only as subordinate support. Runtime and visible truth outrank it.",
+        ]
+    )
+
+
+def _merge_runtime_self_report_state(
+    *,
+    regulation_state: str,
+    regulation_pressure: str,
+    private_tone: str,
+    private_pressure: str,
+) -> str:
+    parts: list[str] = []
+    if regulation_state and regulation_state != "none":
+        parts.append(f"regulation={regulation_state}/{regulation_pressure or 'low'}")
+    if private_tone and private_tone != "none":
+        parts.append(f"private_state={private_tone}/{private_pressure or 'low'}")
+    return " | ".join(parts) if parts else "none-recorded"
+
+
+def _runtime_awareness_prompt_surface(*, limit: int) -> dict[str, object]:
+    items = list_runtime_awareness_signals(limit=max(limit, 1))
+    constrained = [item for item in items if str(item.get("status") or "") == "constrained"]
+    active = [item for item in items if str(item.get("status") or "") == "active"]
+    recovered = [item for item in items if str(item.get("status") or "") == "recovered"]
+    stale = [item for item in items if str(item.get("status") or "") == "stale"]
+    superseded = [item for item in items if str(item.get("status") or "") == "superseded"]
+    latest = next(iter(constrained or active or recovered or stale or superseded), None)
+    return {
+        "summary": {
+            "current_signal": str((latest or {}).get("title") or "No active runtime-awareness signal"),
+            "current_status": str((latest or {}).get("status") or "none-recorded"),
+            "machine_detail": str((latest or {}).get("title") or "none-recorded"),
+        }
+    }
+
+
 def _private_support_signal_instruction() -> str | None:
     notes = recent_private_inner_notes(limit=1)
     if not notes:
@@ -1801,6 +1945,33 @@ def _should_include_continuity(text: str) -> bool:
         "session",
         "første besked",
         "hvad skrev jeg",
+    )
+    return any(token in normalized for token in triggers)
+
+
+def _should_include_self_report(text: str) -> bool:
+    normalized = str(text or "").lower()
+    triggers = (
+        "backend",
+        "runtime",
+        "state",
+        "tilstand",
+        "open loop",
+        "open loops",
+        "åbne loops",
+        "aktuelle driftstilstand",
+        "driftstilstand",
+        "hvad bygger du dit svar på",
+        "hvad bygger du det på",
+        "what are you basing",
+        "what do you base",
+        "er du sikker",
+        "are you sure",
+        "digter du",
+        "are you guessing",
+        "am i guessing",
+        "gætter du",
+        "om dig selv",
     )
     return any(token in normalized for token in triggers)
 

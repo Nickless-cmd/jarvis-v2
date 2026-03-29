@@ -265,3 +265,112 @@ def test_visible_support_blocks_remain_small_subordinate_helper_sections(isolate
         assert "current_status" not in block
         assert "machine_state" not in block
         assert "machine_detail" not in block
+
+
+def test_visible_input_includes_runtime_self_report_grounding_for_backend_status_query(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.visible_model,
+        "visible_execution_readiness",
+        lambda: {
+            "provider": "ollama",
+            "model": "qwen3.5:9b",
+            "provider_status": "ready",
+            "auth_status": "not-required",
+            "live_verified": True,
+        },
+    )
+    _insert_runtime_awareness_signal(isolated_runtime.db, status="constrained")
+
+    system_text = _system_text_from_visible_input(
+        isolated_runtime.visible_model,
+        "hvad er din backend status?",
+    )
+
+    assert "Runtime self-report grounding:" in system_text
+    assert "backend_provider=ollama" in system_text
+    assert "backend_model=qwen3.5:9b" in system_text
+    assert "backend_status=ready" in system_text
+    assert "runtime_awareness_state=constrained" in system_text
+
+
+def test_visible_input_includes_runtime_self_report_grounding_for_open_loop_query(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.visible_model,
+        "visible_execution_readiness",
+        lambda: {
+            "provider": "phase1-runtime",
+            "model": "phase1",
+            "provider_status": "local-fallback",
+            "auth_status": "not-required",
+            "live_verified": False,
+        },
+    )
+    now = datetime.now(UTC).isoformat()
+    isolated_runtime.db.upsert_runtime_open_loop_signal(
+        signal_id=f"open-loop-self-report-{uuid4().hex}",
+        signal_type="open-loop",
+        canonical_key="open-loop:open-loop:visible-work",
+        status="open",
+        title="Open loop: Visible work",
+        summary="Bounded open loop is still active.",
+        rationale="Validation open loop",
+        source_kind="derived-runtime-open-loop",
+        confidence="high",
+        evidence_summary="open loop evidence",
+        support_summary="source-anchor=open-loop-anchor",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation open loop status",
+        run_id="validation-run",
+        session_id="validation-session",
+    )
+
+    system_text = _system_text_from_visible_input(
+        isolated_runtime.visible_model,
+        "har du åbne loops lige nu?",
+    )
+
+    assert "Runtime self-report grounding:" in system_text
+    assert "open_loop_count=1" in system_text
+    assert "open_loop_state=open" in system_text
+    assert "open_loop_current=Open loop: Visible work" in system_text
+
+
+def test_visible_input_self_report_grounding_explicitly_marks_bounded_uncertainty_when_runtime_truth_is_missing(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.visible_model,
+        "visible_execution_readiness",
+        lambda: {
+            "provider": "unknown",
+            "model": "unknown",
+            "provider_status": "unknown",
+            "auth_status": "unknown",
+            "live_verified": False,
+        },
+    )
+
+    system_text = _system_text_from_visible_input(
+        isolated_runtime.visible_model,
+        "er du sikker, eller gætter du om din aktuelle tilstand?",
+    )
+    block = next(
+        part for part in system_text.split("\n\n")
+        if part.startswith("Runtime self-report grounding:")
+    )
+
+    assert "open_loop_state=none-recorded" in block
+    assert "open_loop_current=none-recorded" in block
+    assert "current_runtime_state=none-recorded" in block
+    assert "do not invent stronger certainty" in block
+    assert "If asked whether you are guessing" in block

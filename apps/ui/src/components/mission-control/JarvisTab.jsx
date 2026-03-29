@@ -1440,6 +1440,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const privateInitiativeTensionSignals = data?.development?.privateInitiativeTensionSignals || { items: [], summary: {} }
   const privateInnerInterplaySignals = data?.development?.privateInnerInterplaySignals || { items: [], summary: {} }
   const privateStateSnapshots = data?.development?.privateStateSnapshots || { items: [], summary: {} }
+  const diarySynthesisSignals = data?.development?.diarySynthesisSignals || { items: [], summary: {} }
   const privateTemporalCuriosityStates = data?.development?.privateTemporalCuriosityStates || { items: [], summary: {} }
   const innerVisibleSupportSignals = data?.development?.innerVisibleSupportSignals || { items: [], summary: {} }
   const regulationHomeostasisSignals = data?.development?.regulationHomeostasisSignals || { items: [], summary: {} }
@@ -2421,6 +2422,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.privateInitiativeTensionSupport, 'Private Initiative Tension Support', onOpenItem)}
               {detailRow(data?.development?.privateInnerInterplaySupport, 'Private Inner Interplay Support', onOpenItem)}
               {detailRow(data?.development?.privateStateSnapshot, 'Private State Snapshot', onOpenItem)}
+              {detailRow(data?.development?.diarySynthesisSupport, 'Diary Synthesis', onOpenItem)}
               {detailRow(data?.development?.privateTemporalCuriosityState, 'Private Temporal Curiosity State', onOpenItem)}
               {detailRow(data?.development?.innerVisibleSupport, 'Inner Visible Support', onOpenItem)}
               {detailRow(data?.development?.regulationHomeostasisSupport, 'Regulation/Homeostasis Support', onOpenItem)}

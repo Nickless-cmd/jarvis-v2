@@ -1696,6 +1696,10 @@ export const backend = {
           source: ((development.private_state_snapshots?.items || [])[0] || {}).source || '/mc/runtime.private_state_snapshot',
           summary: ((development.private_state_snapshots?.items || [])[0] || {}).state_summary || 'No bounded private-state snapshot',
         }),
+        diarySynthesisSupport: normalizeJarvisItem((development.diary_synthesis_signals?.items || [])[0] || {}, {
+          source: ((development.diary_synthesis_signals?.items || [])[0] || {}).source || '/mc/runtime.diary_synthesis_signal',
+          summary: ((development.diary_synthesis_signals?.items || [])[0] || {}).diary_summary || 'No diary synthesis reflection',
+        }),
         privateTemporalCuriosityState: normalizeJarvisItem((development.private_temporal_curiosity_states?.items || [])[0] || {}, {
           source: ((development.private_temporal_curiosity_states?.items || [])[0] || {}).source || '/mc/runtime.private_temporal_curiosity_state',
           summary: ((development.private_temporal_curiosity_states?.items || [])[0] || {}).curiosity_summary || 'No bounded temporal curiosity support',
@@ -1855,6 +1859,16 @@ export const backend = {
           items: (development.private_state_snapshots?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.private_state_snapshot',
             summary: item.state_summary || item.summary || 'Inspect bounded private-state snapshot',
+          })),
+        },
+        diarySynthesisSignals: {
+          active: Boolean(development.diary_synthesis_signals?.active),
+          authority: development.diary_synthesis_signals?.authority || 'non-authoritative',
+          layerRole: development.diary_synthesis_signals?.layer_role || 'runtime-support',
+          summary: development.diary_synthesis_signals?.summary || {},
+          items: (development.diary_synthesis_signals?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.diary_synthesis_signal',
+            summary: item.diary_summary || item.summary || 'Inspect diary synthesis reflection',
           })),
         },
         privateTemporalCuriosityStates: {

@@ -103,6 +103,9 @@ from apps.api.jarvis_api.services.private_inner_interplay_signal_tracking import
 from apps.api.jarvis_api.services.private_state_snapshot_tracking import (
     build_runtime_private_state_snapshot_surface,
 )
+from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+    build_diary_synthesis_signal_surface,
+)
 from apps.api.jarvis_api.services.private_temporal_curiosity_state_tracking import (
     build_runtime_private_temporal_curiosity_state_surface,
 )
@@ -437,32 +440,55 @@ def mc_jarvis() -> dict:
     private_initiative_tension_signals = (
         build_runtime_private_initiative_tension_signal_surface()
     )
-    private_inner_interplay_signals = build_runtime_private_inner_interplay_signal_surface()
+    private_inner_interplay_signals = (
+        build_runtime_private_inner_interplay_signal_surface()
+    )
     private_state_snapshots = build_runtime_private_state_snapshot_surface()
-    private_temporal_curiosity_states = build_runtime_private_temporal_curiosity_state_surface()
+    diary_synthesis_signals = build_diary_synthesis_signal_surface()
+    private_temporal_curiosity_states = (
+        build_runtime_private_temporal_curiosity_state_surface()
+    )
     inner_visible_support_signals = build_runtime_inner_visible_support_signal_surface()
-    regulation_homeostasis_signals = build_runtime_regulation_homeostasis_signal_surface()
+    regulation_homeostasis_signals = (
+        build_runtime_regulation_homeostasis_signal_surface()
+    )
     relation_state_signals = build_runtime_relation_state_signal_surface()
     relation_continuity_signals = build_runtime_relation_continuity_signal_surface()
     meaning_significance_signals = build_runtime_meaning_significance_signal_surface()
     temperament_tendency_signals = build_runtime_temperament_tendency_signal_surface()
-    self_narrative_continuity_signals = build_runtime_self_narrative_continuity_signal_surface()
+    self_narrative_continuity_signals = (
+        build_runtime_self_narrative_continuity_signal_surface()
+    )
     metabolism_state_signals = build_runtime_metabolism_state_signal_surface()
     release_marker_signals = build_runtime_release_marker_signal_surface()
     consolidation_target_signals = build_runtime_consolidation_target_signal_surface()
-    selective_forgetting_candidates = build_runtime_selective_forgetting_candidate_surface()
+    selective_forgetting_candidates = (
+        build_runtime_selective_forgetting_candidate_surface()
+    )
     attachment_topology_signals = build_runtime_attachment_topology_signal_surface()
     loyalty_gradient_signals = build_runtime_loyalty_gradient_signal_surface()
     autonomy_pressure_signals = build_runtime_autonomy_pressure_signal_surface()
     proactive_loop_lifecycle_signals = build_runtime_proactive_loop_lifecycle_surface()
     proactive_question_gates = build_runtime_proactive_question_gate_surface()
     webchat_execution_pilot = build_runtime_webchat_execution_pilot_surface()
-    self_narrative_self_model_review_bridge = build_runtime_self_narrative_self_model_review_bridge_surface()
-    executive_contradiction_signals = build_runtime_executive_contradiction_signal_surface()
-    private_temporal_promotion_signals = build_runtime_private_temporal_promotion_signal_surface()
-    chronicle_consolidation_signals = build_runtime_chronicle_consolidation_signal_surface()
-    chronicle_consolidation_briefs = build_runtime_chronicle_consolidation_brief_surface()
-    chronicle_consolidation_proposals = build_runtime_chronicle_consolidation_proposal_surface()
+    self_narrative_self_model_review_bridge = (
+        build_runtime_self_narrative_self_model_review_bridge_surface()
+    )
+    executive_contradiction_signals = (
+        build_runtime_executive_contradiction_signal_surface()
+    )
+    private_temporal_promotion_signals = (
+        build_runtime_private_temporal_promotion_signal_surface()
+    )
+    chronicle_consolidation_signals = (
+        build_runtime_chronicle_consolidation_signal_surface()
+    )
+    chronicle_consolidation_briefs = (
+        build_runtime_chronicle_consolidation_brief_surface()
+    )
+    chronicle_consolidation_proposals = (
+        build_runtime_chronicle_consolidation_proposal_surface()
+    )
     user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
     memory_md_update_proposals = build_runtime_memory_md_update_proposal_surface()
     selfhood_proposals = build_runtime_selfhood_proposal_surface()
@@ -541,6 +567,7 @@ def mc_jarvis() -> dict:
             "private_initiative_tension_signals": private_initiative_tension_signals,
             "private_inner_interplay_signals": private_inner_interplay_signals,
             "private_state_snapshots": private_state_snapshots,
+            "diary_synthesis_signals": diary_synthesis_signals,
             "private_temporal_curiosity_states": private_temporal_curiosity_states,
             "inner_visible_support_signals": inner_visible_support_signals,
             "regulation_homeostasis_signals": regulation_homeostasis_signals,
@@ -705,6 +732,7 @@ def mc_runtime() -> dict:
         "runtime_private_initiative_tension_signals": build_runtime_private_initiative_tension_signal_surface(),
         "runtime_private_inner_interplay_signals": build_runtime_private_inner_interplay_signal_surface(),
         "runtime_private_state_snapshots": build_runtime_private_state_snapshot_surface(),
+        "runtime_diary_synthesis_signals": build_diary_synthesis_signal_surface(),
         "runtime_private_temporal_curiosity_states": build_runtime_private_temporal_curiosity_state_surface(),
         "runtime_inner_visible_support_signals": build_runtime_inner_visible_support_signal_surface(),
         "runtime_regulation_homeostasis_signals": build_runtime_regulation_homeostasis_signal_surface(),
@@ -1142,10 +1170,7 @@ def _private_growth_note_surface() -> dict:
     notes = recent_private_growth_notes(limit=5)
     normalized_notes = [
         item
-        for item in (
-            _with_private_lane_source_discipline(note)
-            for note in notes
-        )
+        for item in (_with_private_lane_source_discipline(note) for note in notes)
         if item
     ]
     return {
@@ -1167,10 +1192,7 @@ def _private_reflective_selection_surface() -> dict:
     signals = recent_private_reflective_selections(limit=5)
     normalized_signals = [
         item
-        for item in (
-            _with_private_lane_source_discipline(signal)
-            for signal in signals
-        )
+        for item in (_with_private_lane_source_discipline(signal) for signal in signals)
         if item
     ]
     return {
@@ -1273,7 +1295,9 @@ def _private_temporal_curiosity_state_surface() -> dict:
 
 
 def _private_temporal_promotion_signal_surface() -> dict:
-    signal = _with_private_lane_source_discipline(get_private_temporal_promotion_signal())
+    signal = _with_private_lane_source_discipline(
+        get_private_temporal_promotion_signal()
+    )
     return {
         "active": bool(signal),
         "current": signal,

@@ -54,7 +54,9 @@ def refresh_runtime_private_inner_interplay_signal_statuses() -> dict[str, int]:
     for item in list_runtime_private_inner_interplay_signals(limit=40):
         if str(item.get("status") or "") != "active":
             continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
+        updated_at = _parse_dt(
+            str(item.get("updated_at") or item.get("created_at") or "")
+        )
         if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
             continue
         refreshed_item = update_runtime_private_inner_interplay_signal_status(
@@ -79,13 +81,21 @@ def refresh_runtime_private_inner_interplay_signal_statuses() -> dict[str, int]:
     return {"stale_marked": refreshed}
 
 
-def build_runtime_private_inner_interplay_signal_surface(*, limit: int = 8) -> dict[str, object]:
+def build_runtime_private_inner_interplay_signal_surface(
+    *, limit: int = 8
+) -> dict[str, object]:
     refresh_runtime_private_inner_interplay_signal_statuses()
     items = list_runtime_private_inner_interplay_signals(limit=max(limit, 1))
     enriched_items = [_with_surface_view(item) for item in items]
-    active = [item for item in enriched_items if str(item.get("status") or "") == "active"]
-    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
+    active = [
+        item for item in enriched_items if str(item.get("status") or "") == "active"
+    ]
+    stale = [
+        item for item in enriched_items if str(item.get("status") or "") == "stale"
+    ]
+    superseded = [
+        item for item in enriched_items if str(item.get("status") or "") == "superseded"
+    ]
     ordered = [*active, *stale, *superseded]
     latest = next(iter(active or stale or superseded), None)
     return {
@@ -97,10 +107,17 @@ def build_runtime_private_inner_interplay_signal_surface(*, limit: int = 8) -> d
             "active_count": len(active),
             "stale_count": len(stale),
             "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active private inner interplay support"),
+            "current_signal": str(
+                (latest or {}).get("title")
+                or "No active private inner interplay support"
+            ),
             "current_status": str((latest or {}).get("status") or "none"),
-            "current_interplay_type": str((latest or {}).get("interplay_type") or "none"),
-            "current_confidence": str((latest or {}).get("interplay_confidence") or "low"),
+            "current_interplay_type": str(
+                (latest or {}).get("interplay_type") or "none"
+            ),
+            "current_confidence": str(
+                (latest or {}).get("interplay_confidence") or "low"
+            ),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
         },
@@ -114,14 +131,14 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
         return None
 
     note_focus = _note_focus(inner_note)
-    tension_type = str(initiative_tension.get("tension_type") or "").strip() or _canonical_tension_type(
+    tension_type = str(
+        initiative_tension.get("tension_type") or ""
+    ).strip() or _canonical_tension_type(
         str(initiative_tension.get("canonical_key") or "")
     )
     relation_key = _relation_key(note_focus=note_focus, tension=initiative_tension)
     interplay_type = (
-        "unresolved-support"
-        if tension_type == "unresolved"
-        else "aligned-support"
+        "unresolved-support" if tension_type == "unresolved" else "aligned-support"
     )
     source_anchor = _merge_fragments(
         _support_anchor(inner_note),
@@ -153,12 +170,12 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
         "canonical_key": f"private-inner-interplay:{interplay_type}:{relation_key}",
         "relation_key": relation_key,
         "status": "active",
-        "title": f"Private inner interplay support: {target_label}",
+        "title": f"Private inner interplay: {target_label}",
         "summary": (
-            f"Bounded runtime inner interplay is linking current note support with current initiative tension around {target_label.lower()}."
+            f"I can feel both steadiness and tension gathering around {target_label.lower()}."
         ),
         "rationale": (
-            "A bounded private inner interplay signal may return only when active inner-note and initiative-tension support are both grounded in current visible/runtime truth, without becoming a planner or hidden self-engine."
+            "A private inner interplay may return when active inner-note and initiative-tension are both grounded in current visible/runtime truth, without becoming a planner or hidden self-engine."
         ),
         "source_kind": "runtime-derived-support",
         "confidence": confidence,
@@ -167,13 +184,13 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
             str(initiative_tension.get("evidence_summary") or ""),
         ),
         "support_summary": _merge_fragments(
-            "Derived from active bounded inner-note and initiative-tension runtime support signals.",
+            "I notice both inner-note and initiative-tension present.",
             source_anchor,
         ),
         "support_count": 1,
         "session_count": 1,
         "status_reason": (
-            "Bounded inner interplay remains subordinate to visible/runtime truth and carries no planner, execution, or canonical-self authority."
+            "I register this as bounded interplay with no planner authority, execution authority, or canonical-self authority."
         ),
         "interplay_type": interplay_type,
         "interplay_summary": interplay_summary,
@@ -275,7 +292,9 @@ def _latest_initiative_tension_support(*, run_id: str) -> dict[str, object] | No
     return None
 
 
-def _with_runtime_view(item: dict[str, object], signal: dict[str, object]) -> dict[str, object]:
+def _with_runtime_view(
+    item: dict[str, object], signal: dict[str, object]
+) -> dict[str, object]:
     enriched = dict(item)
     enriched["interplay_type"] = str(signal.get("interplay_type") or "aligned-support")
     enriched["interplay_summary"] = str(signal.get("interplay_summary") or "")
@@ -286,7 +305,9 @@ def _with_runtime_view(item: dict[str, object], signal: dict[str, object]) -> di
     enriched["tension_signal_id"] = str(signal.get("tension_signal_id") or "")
     enriched["focus"] = str(signal.get("focus") or "")
     enriched["source_anchor"] = str(signal.get("source_anchor") or "")
-    enriched["grounding_mode"] = str(signal.get("grounding_mode") or "inner-note+initiative-tension")
+    enriched["grounding_mode"] = str(
+        signal.get("grounding_mode") or "inner-note+initiative-tension"
+    )
     enriched["authority"] = "non-authoritative"
     enriched["layer_role"] = "runtime-support"
     return enriched
@@ -297,7 +318,9 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     canonical_key = str(item.get("canonical_key") or "")
     inferred_type = _canonical_interplay_type(canonical_key) or "aligned-support"
     enriched["interplay_type"] = str(item.get("interplay_type") or inferred_type)
-    enriched["interplay_summary"] = str(item.get("interplay_summary") or item.get("summary") or "")
+    enriched["interplay_summary"] = str(
+        item.get("interplay_summary") or item.get("summary") or ""
+    )
     enriched["interplay_confidence"] = str(
         item.get("interplay_confidence") or item.get("confidence") or "low"
     )
@@ -310,7 +333,9 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
         or item.get("signal_id")
         or ""
     )
-    enriched["grounding_mode"] = str(item.get("grounding_mode") or "inner-note+initiative-tension")
+    enriched["grounding_mode"] = str(
+        item.get("grounding_mode") or "inner-note+initiative-tension"
+    )
     enriched["authority"] = "non-authoritative"
     enriched["layer_role"] = "runtime-support"
     enriched["source"] = "/mc/runtime.private_inner_interplay_signal"
@@ -325,7 +350,9 @@ def _relation_key(*, note_focus: str, tension: dict[str, object]) -> str:
             tail = parts[-1].strip()
             if tail:
                 return tail[:96]
-    tension_target = str(tension.get("tension_target") or tension.get("title") or "").strip()
+    tension_target = str(
+        tension.get("tension_target") or tension.get("title") or ""
+    ).strip()
     if tension_target:
         return _slug(tension_target)
     return note_focus[:96]
@@ -366,19 +393,23 @@ def _title_target(title: str) -> str:
     prefix = "Private initiative tension support:"
     value = str(title or "").strip()
     if value.startswith(prefix):
-        return value[len(prefix):].strip()[:96]
+        return value[len(prefix) :].strip()[:96]
     return value[:96]
 
 
 def _canonical_tension_type(canonical_key: str) -> str:
-    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    parts = [
+        part.strip() for part in str(canonical_key or "").split(":") if part.strip()
+    ]
     if len(parts) >= 2:
         return parts[1][:32]
     return ""
 
 
 def _canonical_interplay_type(canonical_key: str) -> str:
-    parts = [part.strip() for part in str(canonical_key or "").split(":") if part.strip()]
+    parts = [
+        part.strip() for part in str(canonical_key or "").split(":") if part.strip()
+    ]
     if len(parts) >= 2:
         return parts[1][:32]
     return ""
@@ -388,7 +419,9 @@ def _stronger_confidence(left: str, right: str) -> str:
     ranks = {"low": 0, "medium": 1, "high": 2}
     left_norm = str(left or "low").strip().lower() or "low"
     right_norm = str(right or "low").strip().lower() or "low"
-    return left_norm if ranks.get(left_norm, 0) >= ranks.get(right_norm, 0) else right_norm
+    return (
+        left_norm if ranks.get(left_norm, 0) >= ranks.get(right_norm, 0) else right_norm
+    )
 
 
 def _merge_fragments(*parts: str) -> str:

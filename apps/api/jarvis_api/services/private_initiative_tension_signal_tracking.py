@@ -56,7 +56,9 @@ def refresh_runtime_private_initiative_tension_signal_statuses() -> dict[str, in
     for item in list_runtime_private_initiative_tension_signals(limit=40):
         if str(item.get("status") or "") != "active":
             continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
+        updated_at = _parse_dt(
+            str(item.get("updated_at") or item.get("created_at") or "")
+        )
         if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
             continue
         refreshed_item = update_runtime_private_initiative_tension_signal_status(
@@ -81,13 +83,21 @@ def refresh_runtime_private_initiative_tension_signal_statuses() -> dict[str, in
     return {"stale_marked": refreshed}
 
 
-def build_runtime_private_initiative_tension_signal_surface(*, limit: int = 8) -> dict[str, object]:
+def build_runtime_private_initiative_tension_signal_surface(
+    *, limit: int = 8
+) -> dict[str, object]:
     refresh_runtime_private_initiative_tension_signal_statuses()
     items = list_runtime_private_initiative_tension_signals(limit=max(limit, 1))
     enriched_items = [_with_surface_view(item) for item in items]
-    active = [item for item in enriched_items if str(item.get("status") or "") == "active"]
-    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
+    active = [
+        item for item in enriched_items if str(item.get("status") or "") == "active"
+    ]
+    stale = [
+        item for item in enriched_items if str(item.get("status") or "") == "stale"
+    ]
+    superseded = [
+        item for item in enriched_items if str(item.get("status") or "") == "superseded"
+    ]
     ordered = [*active, *stale, *superseded]
     latest = next(iter(active or stale or superseded), None)
     return {
@@ -99,11 +109,16 @@ def build_runtime_private_initiative_tension_signal_surface(*, limit: int = 8) -
             "active_count": len(active),
             "stale_count": len(stale),
             "superseded_count": len(superseded),
-            "current_signal": str((latest or {}).get("title") or "No active private initiative tension support"),
+            "current_signal": str(
+                (latest or {}).get("title")
+                or "No active private initiative tension support"
+            ),
             "current_status": str((latest or {}).get("status") or "none"),
             "current_tension_type": str((latest or {}).get("tension_type") or "none"),
             "current_intensity": str((latest or {}).get("tension_level") or "low"),
-            "current_confidence": str((latest or {}).get("tension_confidence") or "low"),
+            "current_confidence": str(
+                (latest or {}).get("tension_confidence") or "low"
+            ),
             "authority": "non-authoritative",
             "layer_role": "runtime-support",
         },
@@ -121,8 +136,17 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
     if active_open_loop is None and active_focus is None:
         return None
 
-    note_status = str(visible_note.get("status") or "unknown").strip().lower() or "unknown"
-    note_focus = str((inner_note_support or {}).get("focus") or visible_note.get("capability_id") or "visible-work").strip() or "visible-work"
+    note_status = (
+        str(visible_note.get("status") or "unknown").strip().lower() or "unknown"
+    )
+    note_focus = (
+        str(
+            (inner_note_support or {}).get("focus")
+            or visible_note.get("capability_id")
+            or "visible-work"
+        ).strip()
+        or "visible-work"
+    )
     source_anchor = _merge_fragments(
         _source_anchor_from_visible_note(visible_note),
         str((inner_note_support or {}).get("source_anchor") or ""),
@@ -133,32 +157,53 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
     if active_open_loop is not None:
         domain_key = _domain_key(active_open_loop, fallback=note_focus)
         tension_type = "unresolved"
-        tension_target = str(active_open_loop.get("title") or active_open_loop.get("summary") or "current bounded loop")[:96]
+        tension_target = str(
+            active_open_loop.get("title")
+            or active_open_loop.get("summary")
+            or "current bounded loop"
+        )[:96]
         tension_level = "medium"
-        reason = str(active_open_loop.get("status_reason") or active_open_loop.get("summary") or "A bounded open loop is still carrying visible pressure.")[:160]
-        title = f"Private initiative tension support: {tension_target}"
-        summary = f"Bounded runtime initiative tension is still carrying unresolved pressure around {tension_target.lower()}."
-        rationale = "A bounded initiative-tension support signal may return when visible work and current open-loop pressure still point at unresolved effort, without granting any execution authority."
+        reason = str(
+            active_open_loop.get("status_reason")
+            or active_open_loop.get("summary")
+            or "A bounded open loop is still carrying visible pressure."
+        )[:160]
+        title = f"Private initiative tension: {tension_target}"
+        summary = f"Something still pulls at me around {tension_target.lower()}."
+        rationale = "A private initiative tension may return when visible work and current open-loop pressure still point at unresolved effort, without granting any execution authority."
         confidence = "medium"
     else:
         domain_key = _domain_key(active_focus, fallback=note_focus)
-        focus_title = str(active_focus.get("title") or active_focus.get("summary") or "current development focus")[:96]
-        tension_type = "curiosity-pull" if note_focus != "visible-work" else "retention-pull"
+        focus_title = str(
+            active_focus.get("title")
+            or active_focus.get("summary")
+            or "current development focus"
+        )[:96]
+        tension_type = (
+            "curiosity-pull" if note_focus != "visible-work" else "retention-pull"
+        )
         tension_target = focus_title
         tension_level = "medium" if note_status in {"failed", "cancelled"} else "low"
-        reason = str(active_focus.get("status_reason") or active_focus.get("summary") or "A bounded development focus is still carrying directional pressure.")[:160]
-        title = f"Private initiative tension support: {focus_title}"
-        summary = f"Bounded runtime initiative tension is still carrying directional pressure around {focus_title.lower()}."
-        rationale = "A bounded initiative-tension support signal may return when visible work and a live development focus still point at directional pull, without becoming a planner or executor."
+        reason = str(
+            active_focus.get("status_reason")
+            or active_focus.get("summary")
+            or "A bounded development focus is still carrying directional pressure."
+        )[:160]
+        title = f"Private initiative tension: {focus_title}"
+        summary = f"I feel a pull toward {focus_title.lower()}."
+        rationale = "A private initiative tension may return when visible work and a live development focus still point at directional pull, without becoming a planner or executor."
         confidence = "low" if tension_level == "low" else "medium"
 
     support_summary = _merge_fragments(
-        "Derived from visible work plus bounded runtime support layers.",
+        "I can feel the pressure from this.",
         source_anchor,
         str((active_open_loop or active_focus or {}).get("support_summary") or ""),
     )
     evidence_summary = _merge_fragments(
-        _quote(str(visible_note.get("work_preview") or "") or str(visible_note.get("user_message_preview") or "")),
+        _quote(
+            str(visible_note.get("work_preview") or "")
+            or str(visible_note.get("user_message_preview") or "")
+        ),
         str((active_open_loop or active_focus or {}).get("evidence_summary") or ""),
     )
     return {
@@ -175,7 +220,7 @@ def _extract_candidate_for_run(*, run_id: str) -> dict[str, object] | None:
         "support_summary": support_summary,
         "support_count": 1,
         "session_count": 1,
-        "status_reason": f"Bounded initiative tension remains subordinate to visible/runtime truth and carries no execution authority. {reason}",
+        "status_reason": f"I register this as bounded tension without execution authority. {reason}",
         "tension_type": tension_type,
         "tension_target": tension_target,
         "tension_level": tension_level,
@@ -295,16 +340,22 @@ def _latest_inner_note_support(*, run_id: str) -> dict[str, object] | None:
     return None
 
 
-def _with_runtime_view(item: dict[str, object], signal: dict[str, object]) -> dict[str, object]:
+def _with_runtime_view(
+    item: dict[str, object], signal: dict[str, object]
+) -> dict[str, object]:
     enriched = dict(item)
     enriched["tension_type"] = str(signal.get("tension_type") or "retention-pull")
     enriched["tension_target"] = str(signal.get("tension_target") or "")
     enriched["tension_level"] = str(signal.get("tension_level") or "low")
     enriched["tension_summary"] = str(signal.get("tension_summary") or "")
-    enriched["tension_confidence"] = str(signal.get("tension_confidence") or signal.get("confidence") or "low")
+    enriched["tension_confidence"] = str(
+        signal.get("tension_confidence") or signal.get("confidence") or "low"
+    )
     enriched["source_anchor"] = str(signal.get("source_anchor") or "")
     enriched["focus"] = str(signal.get("focus") or "")
-    enriched["grounding_mode"] = str(signal.get("grounding_mode") or "visible-work+runtime-support")
+    enriched["grounding_mode"] = str(
+        signal.get("grounding_mode") or "visible-work+runtime-support"
+    )
     enriched["authority"] = "non-authoritative"
     enriched["layer_role"] = "runtime-support"
     return enriched
@@ -319,11 +370,19 @@ def _with_surface_view(item: dict[str, object]) -> dict[str, object]:
     enriched["tension_type"] = str(item.get("tension_type") or inferred_type)
     enriched["tension_target"] = str(item.get("tension_target") or inferred_target)
     enriched["tension_level"] = str(item.get("tension_level") or inferred_level)
-    enriched["tension_summary"] = str(item.get("tension_summary") or item.get("summary") or "")
-    enriched["tension_confidence"] = str(item.get("tension_confidence") or item.get("confidence") or "low")
-    enriched["source_anchor"] = str(item.get("source_anchor") or item.get("support_summary") or "")
+    enriched["tension_summary"] = str(
+        item.get("tension_summary") or item.get("summary") or ""
+    )
+    enriched["tension_confidence"] = str(
+        item.get("tension_confidence") or item.get("confidence") or "low"
+    )
+    enriched["source_anchor"] = str(
+        item.get("source_anchor") or item.get("support_summary") or ""
+    )
     enriched["focus"] = str(item.get("focus") or "")
-    enriched["grounding_mode"] = str(item.get("grounding_mode") or "visible-work+runtime-support")
+    enriched["grounding_mode"] = str(
+        item.get("grounding_mode") or "visible-work+runtime-support"
+    )
     enriched["authority"] = "non-authoritative"
     enriched["layer_role"] = "runtime-support"
     return enriched

@@ -1456,6 +1456,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const loyaltyGradientSignals = data?.development?.loyaltyGradientSignals || { items: [], summary: {} }
   const autonomyPressureSignals = data?.development?.autonomyPressureSignals || { items: [], summary: {} }
   const proactiveLoopLifecycleSignals = data?.development?.proactiveLoopLifecycleSignals || { items: [], summary: {} }
+  const proactiveQuestionGates = data?.development?.proactiveQuestionGates || { items: [], summary: {} }
   const selfNarrativeSelfModelReviewBridge = data?.development?.selfNarrativeSelfModelReviewBridge || { items: [], summary: {} }
   const executiveContradictionSignals = data?.development?.executiveContradictionSignals || { items: [], summary: {} }
   const privateTemporalPromotionSignals = data?.development?.privateTemporalPromotionSignals || { items: [], summary: {} }
@@ -2420,6 +2421,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.loyaltyGradientSupport, 'Loyalty Gradient Support', onOpenItem)}
               {detailRow(data?.development?.autonomyPressureSupport, 'Autonomy Pressure Support', onOpenItem)}
               {detailRow(data?.development?.proactiveLoopLifecycleSupport, 'Proactive Loop Support', onOpenItem)}
+              {detailRow(data?.development?.proactiveQuestionGateSupport, 'Proactive Question Gate', onOpenItem)}
               {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
               {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
               {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
@@ -2682,6 +2684,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 q {proactiveLoopLifecycleSignals?.summary?.current_question_readiness || 'low'} · c {proactiveLoopLifecycleSignals?.summary?.current_closure_readiness || 'low'}
+              </p>
+            </div>
+            <div className="compact-metric">
+              <span>Question Gates</span>
+              <strong>{(proactiveQuestionGates?.summary?.active_count || 0) + (proactiveQuestionGates?.summary?.softening_count || 0)}</strong>
+              <p>{proactiveQuestionGates?.summary?.current_gate || 'No bounded proactive-question gate support'}</p>
+              <p>
+                state {proactiveQuestionGates?.summary?.current_state || 'none'} · reason {proactiveQuestionGates?.summary?.current_reason || 'none'}
+              </p>
+              <p>
+                {proactiveQuestionGates?.summary?.current_send_permission_state || 'not-granted'} · {proactiveQuestionGates?.summary?.proactive_execution_state || 'not-proactive-execution'}
               </p>
             </div>
           </div>

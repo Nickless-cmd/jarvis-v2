@@ -1760,6 +1760,10 @@ export const backend = {
           source: ((development.proactive_loop_lifecycle_signals?.items || [])[0] || {}).source || '/mc/runtime.proactive_loop_lifecycle',
           summary: ((development.proactive_loop_lifecycle_signals?.items || [])[0] || {}).loop_summary || 'No bounded proactive-loop lifecycle support',
         }),
+        proactiveQuestionGateSupport: normalizeJarvisItem((development.proactive_question_gates?.items || [])[0] || {}, {
+          source: ((development.proactive_question_gates?.items || [])[0] || {}).source || '/mc/runtime.proactive_question_gate',
+          summary: ((development.proactive_question_gates?.items || [])[0] || {}).question_gate_summary || 'No bounded proactive-question gate support',
+        }),
         selfNarrativeReviewBridgeSupport: normalizeJarvisItem((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}, {
           source: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).source || '/mc/runtime.self_narrative_self_model_review_bridge',
           summary: ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).proposal_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).sharpening_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).review_input_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).pattern_summary || ((development.self_narrative_self_model_review_bridge?.items || [])[0] || {}).bridge_summary || 'No bounded self-narrative review bridge',
@@ -2028,6 +2032,21 @@ export const backend = {
           items: (development.proactive_loop_lifecycle_signals?.items || []).map((item) => normalizeJarvisItem(item, {
             source: item.source || '/mc/runtime.proactive_loop_lifecycle',
             summary: item.loop_summary || item.summary || 'Inspect bounded proactive-loop lifecycle support',
+          })),
+        },
+        proactiveQuestionGates: {
+          active: Boolean(development.proactive_question_gates?.active),
+          authority: development.proactive_question_gates?.authority || 'non-authoritative',
+          layerRole: development.proactive_question_gates?.layer_role || 'runtime-support',
+          plannerAuthorityState: development.proactive_question_gates?.planner_authority_state || 'not-planner-authority',
+          proactiveExecutionState: development.proactive_question_gates?.proactive_execution_state || 'not-proactive-execution',
+          canonicalIntentionState: development.proactive_question_gates?.canonical_intention_state || 'not-canonical-intention-truth',
+          promptInclusionState: development.proactive_question_gates?.prompt_inclusion_state || 'not-prompt-included',
+          workflowBridgeState: development.proactive_question_gates?.workflow_bridge_state || 'not-workflow-bridge',
+          summary: development.proactive_question_gates?.summary || {},
+          items: (development.proactive_question_gates?.items || []).map((item) => normalizeJarvisItem(item, {
+            source: item.source || '/mc/runtime.proactive_question_gate',
+            summary: item.question_gate_summary || item.summary || 'Inspect bounded proactive-question gate support',
           })),
         },
         selfNarrativeSelfModelReviewBridge: {

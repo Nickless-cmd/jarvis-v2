@@ -523,6 +523,7 @@ def init_db() -> None:
         _ensure_runtime_loyalty_gradient_signal_table(conn)
         _ensure_runtime_autonomy_pressure_signal_table(conn)
         _ensure_runtime_proactive_loop_lifecycle_signal_table(conn)
+        _ensure_runtime_proactive_question_gate_table(conn)
         _ensure_runtime_executive_contradiction_signal_table(conn)
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
@@ -17795,6 +17796,207 @@ def upsert_runtime_proactive_loop_lifecycle_signal(
     return signal
 
 
+def upsert_runtime_proactive_question_gate(
+    *,
+    gate_id: str,
+    gate_type: str,
+    canonical_key: str,
+    status: str,
+    title: str,
+    summary: str,
+    rationale: str,
+    source_kind: str,
+    confidence: str,
+    evidence_summary: str,
+    support_summary: str,
+    status_reason: str = "",
+    run_id: str = "",
+    session_id: str = "",
+    support_count: int = 1,
+    session_count: int = 1,
+    created_at: str,
+    updated_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_runtime_proactive_question_gate_table(conn)
+        existing = None
+        if canonical_key:
+            existing = conn.execute(
+                """
+                SELECT
+                    gate_id,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    support_count,
+                    session_count,
+                    merge_count,
+                    created_at,
+                    updated_at
+                FROM runtime_proactive_question_gates
+                WHERE canonical_key = ?
+                  AND status IN ('active', 'softening', 'stale')
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (canonical_key,),
+            ).fetchone()
+
+        if existing is None:
+            conn.execute(
+                """
+                INSERT INTO runtime_proactive_question_gates (
+                    gate_id,
+                    gate_type,
+                    canonical_key,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    support_count,
+                    session_count,
+                    merge_count,
+                    created_at,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    gate_id,
+                    gate_type,
+                    canonical_key,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    max(int(support_count or 0), 1),
+                    max(int(session_count or 0), 1),
+                    0,
+                    created_at,
+                    updated_at,
+                ),
+            )
+            conn.commit()
+            resolved_id = gate_id
+            meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
+        else:
+            resolved_id = str(existing["gate_id"])
+            merged_source_kind = _stronger_ranked_value(
+                str(existing["source_kind"] or ""),
+                source_kind,
+                _SOURCE_KIND_RANKS,
+            )
+            merged_confidence = _stronger_ranked_value(
+                str(existing["confidence"] or ""),
+                confidence,
+                _CONFIDENCE_RANKS,
+            )
+            merged_evidence_summary = _merge_text_fragments(
+                str(existing["evidence_summary"] or ""),
+                evidence_summary,
+                limit=4,
+            )
+            merged_support_summary = _merge_text_fragments(
+                str(existing["support_summary"] or ""),
+                support_summary,
+                limit=8,
+            )
+            merged_status_reason = _merge_text_fragments(
+                str(existing["status_reason"] or ""),
+                status_reason,
+                limit=4,
+            )
+            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
+            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            same_payload = (
+                status == str(existing["status"] or "")
+                and title == str(existing["title"] or "")
+                and summary == str(existing["summary"] or "")
+                and rationale == str(existing["rationale"] or "")
+                and merged_source_kind == str(existing["source_kind"] or "")
+                and merged_confidence == str(existing["confidence"] or "")
+                and merged_evidence_summary == str(existing["evidence_summary"] or "")
+                and merged_support_summary == str(existing["support_summary"] or "")
+                and merged_status_reason == str(existing["status_reason"] or "")
+                and run_id == str(existing["run_id"] or "")
+                and session_id == str(existing["session_id"] or "")
+                and merged_support_count == int(existing["support_count"] or 0)
+                and merged_session_count == int(existing["session_count"] or 0)
+            )
+            if same_payload:
+                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+            else:
+                conn.execute(
+                    """
+                    UPDATE runtime_proactive_question_gates
+                    SET
+                        status = ?,
+                        title = ?,
+                        summary = ?,
+                        rationale = ?,
+                        source_kind = ?,
+                        confidence = ?,
+                        evidence_summary = ?,
+                        support_summary = ?,
+                        status_reason = ?,
+                        run_id = ?,
+                        session_id = ?,
+                        support_count = ?,
+                        session_count = ?,
+                        merge_count = COALESCE(merge_count, 0) + 1,
+                        updated_at = ?
+                    WHERE gate_id = ?
+                    """,
+                    (
+                        status,
+                        title,
+                        summary,
+                        rationale,
+                        merged_source_kind,
+                        merged_confidence,
+                        merged_evidence_summary,
+                        merged_support_summary,
+                        merged_status_reason,
+                        run_id,
+                        session_id,
+                        merged_support_count,
+                        merged_session_count,
+                        updated_at,
+                        resolved_id,
+                    ),
+                )
+                conn.commit()
+                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+
+    gate = get_runtime_proactive_question_gate(resolved_id)
+    if gate is None:
+        raise RuntimeError("runtime proactive-question gate was not persisted")
+    gate.update(meta)
+    return gate
+
+
 def list_runtime_attachment_topology_signals(
     *,
     status: str | None = None,
@@ -17975,6 +18177,51 @@ def list_runtime_proactive_loop_lifecycle_signals(
     return [_runtime_proactive_loop_lifecycle_signal_from_row(row) for row in rows]
 
 
+def list_runtime_proactive_question_gates(
+    *,
+    status: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_runtime_proactive_question_gate_table(conn)
+        params: list[object] = []
+        where = ""
+        if status:
+            where = "WHERE status = ?"
+            params.append(status)
+        params.append(max(int(limit or 0), 1))
+        rows = conn.execute(
+            f"""
+            SELECT
+                gate_id,
+                gate_type,
+                canonical_key,
+                status,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                merge_count,
+                created_at,
+                updated_at
+            FROM runtime_proactive_question_gates
+            {where}
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        ).fetchall()
+    return [_runtime_proactive_question_gate_from_row(row) for row in rows]
+
+
 def get_runtime_attachment_topology_signal(signal_id: str) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_attachment_topology_signal_table(conn)
@@ -18119,6 +18366,42 @@ def get_runtime_proactive_loop_lifecycle_signal(signal_id: str) -> dict[str, obj
     return _runtime_proactive_loop_lifecycle_signal_from_row(row)
 
 
+def get_runtime_proactive_question_gate(gate_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_proactive_question_gate_table(conn)
+        row = conn.execute(
+            """
+            SELECT
+                gate_id,
+                gate_type,
+                canonical_key,
+                status,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                merge_count,
+                created_at,
+                updated_at
+            FROM runtime_proactive_question_gates
+            WHERE gate_id = ?
+            LIMIT 1
+            """,
+            (gate_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _runtime_proactive_question_gate_from_row(row)
+
+
 def update_runtime_attachment_topology_signal_status(
     signal_id: str,
     *,
@@ -18247,6 +18530,38 @@ def update_runtime_proactive_loop_lifecycle_signal_status(
     return get_runtime_proactive_loop_lifecycle_signal(signal_id)
 
 
+def update_runtime_proactive_question_gate_status(
+    gate_id: str,
+    *,
+    status: str,
+    updated_at: str,
+    status_reason: str = "",
+) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_proactive_question_gate_table(conn)
+        row = conn.execute(
+            """
+            SELECT gate_id
+            FROM runtime_proactive_question_gates
+            WHERE gate_id = ?
+            LIMIT 1
+            """,
+            (gate_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            """
+            UPDATE runtime_proactive_question_gates
+            SET status = ?, status_reason = ?, updated_at = ?
+            WHERE gate_id = ?
+            """,
+            (status, status_reason, updated_at, gate_id),
+        )
+        conn.commit()
+    return get_runtime_proactive_question_gate(gate_id)
+
+
 def supersede_runtime_attachment_topology_signals_for_domain(
     *,
     domain_key: str,
@@ -18361,6 +18676,36 @@ def supersede_runtime_proactive_loop_lifecycle_signals_for_kind(
                 updated_at,
                 f"proactive-loop-lifecycle:{loop_kind}:%",
                 exclude_signal_id,
+            ),
+        )
+        conn.commit()
+        return int(cursor.rowcount or 0)
+
+
+def supersede_runtime_proactive_question_gates_for_kind(
+    *,
+    gate_type: str,
+    exclude_gate_id: str,
+    updated_at: str,
+    status_reason: str,
+) -> int:
+    with connect() as conn:
+        _ensure_runtime_proactive_question_gate_table(conn)
+        cursor = conn.execute(
+            """
+            UPDATE runtime_proactive_question_gates
+            SET status = 'superseded',
+                status_reason = ?,
+                updated_at = ?
+            WHERE canonical_key LIKE ?
+              AND gate_id != ?
+              AND status IN ('active', 'softening', 'stale')
+            """,
+            (
+                status_reason,
+                updated_at,
+                f"proactive-question-gate:%",
+                exclude_gate_id,
             ),
         )
         conn.commit()
@@ -22861,6 +23206,47 @@ def _ensure_runtime_proactive_loop_lifecycle_signal_table(conn: sqlite3.Connecti
     )
 
 
+def _ensure_runtime_proactive_question_gate_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runtime_proactive_question_gates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gate_id TEXT NOT NULL UNIQUE,
+            gate_type TEXT NOT NULL,
+            canonical_key TEXT NOT NULL,
+            status TEXT NOT NULL,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            rationale TEXT NOT NULL,
+            source_kind TEXT NOT NULL,
+            confidence TEXT NOT NULL,
+            evidence_summary TEXT NOT NULL,
+            support_summary TEXT NOT NULL,
+            status_reason TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
+            support_count INTEGER NOT NULL DEFAULT 1,
+            session_count INTEGER NOT NULL DEFAULT 1,
+            merge_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_proactive_question_gates_status
+        ON runtime_proactive_question_gates(status, id DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_proactive_question_gates_canonical_key
+        ON runtime_proactive_question_gates(canonical_key, id DESC)
+        """
+    )
+
+
 def _ensure_runtime_executive_contradiction_signal_table(conn: sqlite3.Connection) -> None:
     conn.execute(
         """
@@ -23663,6 +24049,30 @@ def _runtime_proactive_loop_lifecycle_signal_from_row(row: sqlite3.Row) -> dict[
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
+        "canonical_key": row["canonical_key"],
+        "status": row["status"],
+        "title": row["title"],
+        "summary": row["summary"],
+        "rationale": row["rationale"],
+        "source_kind": row["source_kind"],
+        "confidence": row["confidence"],
+        "evidence_summary": row["evidence_summary"],
+        "support_summary": row["support_summary"],
+        "status_reason": row["status_reason"],
+        "run_id": row["run_id"],
+        "session_id": row["session_id"],
+        "support_count": int(row["support_count"] or 0),
+        "session_count": int(row["session_count"] or 0),
+        "merge_count": int(row["merge_count"] or 0),
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def _runtime_proactive_question_gate_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "gate_id": row["gate_id"],
+        "gate_type": row["gate_type"],
         "canonical_key": row["canonical_key"],
         "status": row["status"],
         "title": row["title"],

@@ -50,6 +50,7 @@ ALLOWED_EVENT_FAMILIES = {
     "loyalty_gradient_signal",
     "autonomy_pressure_signal",
     "proactive_loop_lifecycle",
+    "proactive_question_gate",
     "executive_contradiction_signal",
     "chronicle_consolidation_signal",
     "chronicle_consolidation_brief",

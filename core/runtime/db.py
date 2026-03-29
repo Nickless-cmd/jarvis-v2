@@ -2846,7 +2846,11 @@ def upsert_runtime_development_focus(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -2888,7 +2892,11 @@ def upsert_runtime_development_focus(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     focus = get_runtime_development_focus(resolved_id)
     if focus is None:
@@ -3147,7 +3155,11 @@ def upsert_runtime_reflective_critic(
             meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
         else:
             resolved_id = str(existing["critic_id"])
-            merged_status = "active" if status == "active" else str(status or existing["status"] or "active")
+            merged_status = (
+                "active"
+                if status == "active"
+                else str(status or existing["status"] or "active")
+            )
             merged_source_kind = _stronger_ranked_value(
                 str(existing["source_kind"] or ""),
                 source_kind,
@@ -3170,8 +3182,12 @@ def upsert_runtime_reflective_critic(
                 str(existing["status_reason"] or ""),
                 status_reason,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 merged_status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -3188,7 +3204,11 @@ def upsert_runtime_reflective_critic(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -3230,7 +3250,11 @@ def upsert_runtime_reflective_critic(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     critic = get_runtime_reflective_critic(resolved_id)
     if critic is None:
@@ -3489,7 +3513,11 @@ def upsert_runtime_world_model_signal(
             meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
         else:
             resolved_id = str(existing["signal_id"])
-            merged_status = status if status == "active" else str(status or existing["status"] or "uncertain")
+            merged_status = (
+                status
+                if status == "active"
+                else str(status or existing["status"] or "uncertain")
+            )
             merged_source_kind = _stronger_ranked_value(
                 str(existing["source_kind"] or ""),
                 source_kind,
@@ -3512,8 +3540,12 @@ def upsert_runtime_world_model_signal(
                 str(existing["status_reason"] or ""),
                 status_reason,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 merged_status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -3530,7 +3562,11 @@ def upsert_runtime_world_model_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -3572,7 +3608,11 @@ def upsert_runtime_world_model_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_world_model_signal(resolved_id)
     if signal is None:
@@ -3831,7 +3871,11 @@ def upsert_runtime_self_model_signal(
             meta = {"was_created": True, "was_updated": True, "merge_state": "created"}
         else:
             resolved_id = str(existing["signal_id"])
-            merged_status = status if status == "active" else str(status or existing["status"] or "uncertain")
+            merged_status = (
+                status
+                if status == "active"
+                else str(status or existing["status"] or "uncertain")
+            )
             merged_source_kind = _stronger_ranked_value(
                 str(existing["source_kind"] or ""),
                 source_kind,
@@ -3854,8 +3898,12 @@ def upsert_runtime_self_model_signal(
                 str(existing["status_reason"] or ""),
                 status_reason,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 merged_status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -3872,7 +3920,11 @@ def upsert_runtime_self_model_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -3914,7 +3966,11 @@ def upsert_runtime_self_model_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_self_model_signal(resolved_id)
     if signal is None:
@@ -4200,8 +4256,12 @@ def upsert_runtime_goal_signal(
                 str(existing["status_reason"] or ""),
                 status_reason,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 merged_status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -4218,7 +4278,11 @@ def upsert_runtime_goal_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -4260,7 +4324,11 @@ def upsert_runtime_goal_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     goal = get_runtime_goal_signal(resolved_id)
     if goal is None:
@@ -4540,8 +4608,12 @@ def upsert_runtime_awareness_signal(
                 str(existing["status_reason"] or ""),
                 status_reason,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -4558,7 +4630,11 @@ def upsert_runtime_awareness_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -4600,7 +4676,11 @@ def upsert_runtime_awareness_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_awareness_signal(resolved_id)
     if signal is None:
@@ -4884,8 +4964,12 @@ def upsert_runtime_reflection_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -4902,7 +4986,11 @@ def upsert_runtime_reflection_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -4944,7 +5032,11 @@ def upsert_runtime_reflection_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_reflection_signal(resolved_id)
     if signal is None:
@@ -5228,8 +5320,12 @@ def upsert_runtime_temporal_recurrence_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -5246,7 +5342,11 @@ def upsert_runtime_temporal_recurrence_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -5288,7 +5388,11 @@ def upsert_runtime_temporal_recurrence_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_temporal_recurrence_signal(resolved_id)
     if signal is None:
@@ -5572,8 +5676,12 @@ def upsert_runtime_witness_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -5590,7 +5698,11 @@ def upsert_runtime_witness_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -5632,7 +5744,11 @@ def upsert_runtime_witness_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_witness_signal(resolved_id)
     if signal is None:
@@ -5916,8 +6032,12 @@ def upsert_runtime_open_loop_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -5934,7 +6054,11 @@ def upsert_runtime_open_loop_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -5976,7 +6100,11 @@ def upsert_runtime_open_loop_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_open_loop_signal(resolved_id)
     if signal is None:
@@ -6260,8 +6388,12 @@ def upsert_runtime_internal_opposition_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -6278,7 +6410,11 @@ def upsert_runtime_internal_opposition_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -6320,7 +6456,11 @@ def upsert_runtime_internal_opposition_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_internal_opposition_signal(resolved_id)
     if signal is None:
@@ -6604,8 +6744,12 @@ def upsert_runtime_self_review_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -6622,7 +6766,11 @@ def upsert_runtime_self_review_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -6664,7 +6812,11 @@ def upsert_runtime_self_review_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_self_review_signal(resolved_id)
     if signal is None:
@@ -6948,8 +7100,12 @@ def upsert_runtime_self_review_record(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -6966,7 +7122,11 @@ def upsert_runtime_self_review_record(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -7008,7 +7168,11 @@ def upsert_runtime_self_review_record(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     record = get_runtime_self_review_record(resolved_id)
     if record is None:
@@ -7292,8 +7456,12 @@ def upsert_runtime_self_review_run(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -7310,7 +7478,11 @@ def upsert_runtime_self_review_run(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -7352,7 +7524,11 @@ def upsert_runtime_self_review_run(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     run = get_runtime_self_review_run(resolved_id)
     if run is None:
@@ -7636,8 +7812,12 @@ def upsert_runtime_self_review_outcome(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -7654,7 +7834,11 @@ def upsert_runtime_self_review_outcome(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -7696,7 +7880,11 @@ def upsert_runtime_self_review_outcome(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     outcome = get_runtime_self_review_outcome(resolved_id)
     if outcome is None:
@@ -7980,8 +8168,12 @@ def upsert_runtime_self_review_cadence_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -7998,7 +8190,11 @@ def upsert_runtime_self_review_cadence_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -8040,7 +8236,11 @@ def upsert_runtime_self_review_cadence_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_self_review_cadence_signal(resolved_id)
     if signal is None:
@@ -8324,8 +8524,12 @@ def upsert_runtime_open_loop_closure_proposal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -8342,7 +8546,11 @@ def upsert_runtime_open_loop_closure_proposal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -8384,7 +8592,11 @@ def upsert_runtime_open_loop_closure_proposal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     proposal = get_runtime_open_loop_closure_proposal(resolved_id)
     if proposal is None:
@@ -8438,7 +8650,9 @@ def list_runtime_open_loop_closure_proposals(
     return [_runtime_open_loop_closure_proposal_from_row(row) for row in rows]
 
 
-def get_runtime_open_loop_closure_proposal(proposal_id: str) -> dict[str, object] | None:
+def get_runtime_open_loop_closure_proposal(
+    proposal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_open_loop_closure_proposal_table(conn)
         row = conn.execute(
@@ -8668,8 +8882,12 @@ def upsert_runtime_dream_hypothesis_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -8686,7 +8904,11 @@ def upsert_runtime_dream_hypothesis_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -8728,7 +8950,11 @@ def upsert_runtime_dream_hypothesis_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_dream_hypothesis_signal(resolved_id)
     if signal is None:
@@ -9012,8 +9238,12 @@ def upsert_runtime_dream_adoption_candidate(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -9030,7 +9260,11 @@ def upsert_runtime_dream_adoption_candidate(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -9072,7 +9306,11 @@ def upsert_runtime_dream_adoption_candidate(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     candidate = get_runtime_dream_adoption_candidate(resolved_id)
     if candidate is None:
@@ -9356,8 +9594,12 @@ def upsert_runtime_dream_influence_proposal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -9374,7 +9616,11 @@ def upsert_runtime_dream_influence_proposal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -9416,7 +9662,11 @@ def upsert_runtime_dream_influence_proposal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     proposal = get_runtime_dream_influence_proposal(resolved_id)
     if proposal is None:
@@ -9700,8 +9950,12 @@ def upsert_runtime_self_authored_prompt_proposal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -9718,7 +9972,11 @@ def upsert_runtime_self_authored_prompt_proposal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -9760,7 +10018,11 @@ def upsert_runtime_self_authored_prompt_proposal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     proposal = get_runtime_self_authored_prompt_proposal(resolved_id)
     if proposal is None:
@@ -9814,7 +10076,9 @@ def list_runtime_self_authored_prompt_proposals(
     return [_runtime_self_authored_prompt_proposal_from_row(row) for row in rows]
 
 
-def get_runtime_self_authored_prompt_proposal(proposal_id: str) -> dict[str, object] | None:
+def get_runtime_self_authored_prompt_proposal(
+    proposal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_self_authored_prompt_proposal_table(conn)
         row = conn.execute(
@@ -10044,8 +10308,12 @@ def upsert_runtime_user_md_update_proposal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -10062,7 +10330,11 @@ def upsert_runtime_user_md_update_proposal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -10104,7 +10376,11 @@ def upsert_runtime_user_md_update_proposal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     proposal = get_runtime_user_md_update_proposal(resolved_id)
     if proposal is None:
@@ -10388,8 +10664,12 @@ def upsert_runtime_memory_md_update_proposal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -10406,7 +10686,11 @@ def upsert_runtime_memory_md_update_proposal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -10448,7 +10732,11 @@ def upsert_runtime_memory_md_update_proposal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     proposal = get_runtime_memory_md_update_proposal(resolved_id)
     if proposal is None:
@@ -10732,8 +11020,12 @@ def upsert_runtime_user_understanding_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -10750,7 +11042,11 @@ def upsert_runtime_user_understanding_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -10792,7 +11088,11 @@ def upsert_runtime_user_understanding_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_user_understanding_signal(resolved_id)
     if signal is None:
@@ -11076,8 +11376,12 @@ def upsert_runtime_remembered_fact_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -11094,7 +11398,11 @@ def upsert_runtime_remembered_fact_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -11136,7 +11444,11 @@ def upsert_runtime_remembered_fact_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_remembered_fact_signal(resolved_id)
     if signal is None:
@@ -11277,8 +11589,12 @@ def upsert_runtime_private_inner_note_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -11295,7 +11611,11 @@ def upsert_runtime_private_inner_note_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -11337,7 +11657,11 @@ def upsert_runtime_private_inner_note_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_private_inner_note_signal(resolved_id)
     if signal is None:
@@ -11621,8 +11945,12 @@ def upsert_runtime_private_initiative_tension_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -11639,7 +11967,11 @@ def upsert_runtime_private_initiative_tension_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -11681,11 +12013,17 @@ def upsert_runtime_private_initiative_tension_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_private_initiative_tension_signal(resolved_id)
     if signal is None:
-        raise RuntimeError("runtime private initiative tension signal was not persisted")
+        raise RuntimeError(
+            "runtime private initiative tension signal was not persisted"
+        )
     signal.update(meta)
     return signal
 
@@ -11735,7 +12073,9 @@ def list_runtime_private_initiative_tension_signals(
     return [_runtime_private_initiative_tension_signal_from_row(row) for row in rows]
 
 
-def get_runtime_private_initiative_tension_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_private_initiative_tension_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_private_initiative_tension_signal_table(conn)
         row = conn.execute(
@@ -11965,8 +12305,12 @@ def upsert_runtime_private_inner_interplay_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -11983,7 +12327,11 @@ def upsert_runtime_private_inner_interplay_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -12025,7 +12373,11 @@ def upsert_runtime_private_inner_interplay_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_private_inner_interplay_signal(resolved_id)
     if signal is None:
@@ -12079,7 +12431,9 @@ def list_runtime_private_inner_interplay_signals(
     return [_runtime_private_inner_interplay_signal_from_row(row) for row in rows]
 
 
-def get_runtime_private_inner_interplay_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_private_inner_interplay_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_private_inner_interplay_signal_table(conn)
         row = conn.execute(
@@ -12309,8 +12663,12 @@ def upsert_runtime_private_state_snapshot(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -12327,7 +12685,11 @@ def upsert_runtime_private_state_snapshot(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -12369,7 +12731,11 @@ def upsert_runtime_private_state_snapshot(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     snapshot = get_runtime_private_state_snapshot(resolved_id)
     if snapshot is None:
@@ -12521,6 +12887,376 @@ def supersede_runtime_private_state_snapshots_for_focus(
         return int(cursor.rowcount or 0)
 
 
+def list_runtime_diary_synthesis_signals(
+    *,
+    status: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_runtime_diary_synthesis_signal_table(conn)
+        clauses: list[str] = []
+        params: list[object] = []
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = conn.execute(
+            f"""
+            SELECT
+                signal_id,
+                signal_type,
+                canonical_key,
+                status,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                merge_count,
+                created_at,
+                updated_at
+            FROM runtime_diary_synthesis_signals
+            {where}
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (*params, max(limit, 1)),
+        ).fetchall()
+    return [_runtime_diary_synthesis_signal_from_row(row) for row in rows]
+
+
+def get_diary_synthesis_signal(signal_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_diary_synthesis_signal_table(conn)
+        row = conn.execute(
+            """
+            SELECT
+                signal_id,
+                signal_type,
+                canonical_key,
+                status,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                merge_count,
+                created_at,
+                updated_at
+            FROM runtime_diary_synthesis_signals
+            WHERE signal_id = ?
+            LIMIT 1
+            """,
+            (signal_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _runtime_diary_synthesis_signal_from_row(row)
+
+
+def update_diary_synthesis_signal_status(
+    signal_id: str,
+    *,
+    status: str,
+    updated_at: str,
+    status_reason: str = "",
+) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_diary_synthesis_signal_table(conn)
+        row = conn.execute(
+            """
+            SELECT signal_id
+            FROM runtime_diary_synthesis_signals
+            WHERE signal_id = ?
+            LIMIT 1
+            """,
+            (signal_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            """
+            UPDATE runtime_diary_synthesis_signals
+            SET status = ?,
+                updated_at = ?,
+                status_reason = ?
+            WHERE signal_id = ?
+            """,
+            (status, updated_at, status_reason, signal_id),
+        )
+        conn.commit()
+        return get_diary_synthesis_signal(signal_id)
+
+
+def supersede_diary_synthesis_signals_for_focus(
+    *,
+    focus_key: str,
+    exclude_signal_id: str,
+    updated_at: str,
+    status_reason: str,
+) -> int:
+    with connect() as conn:
+        _ensure_runtime_diary_synthesis_signal_table(conn)
+        cursor = conn.execute(
+            """
+            UPDATE runtime_diary_synthesis_signals
+            SET status = 'superseded',
+                status_reason = ?,
+                updated_at = ?
+            WHERE canonical_key LIKE ?
+              AND signal_id != ?
+              AND status IN ('active', 'stale')
+            """,
+            (
+                status_reason,
+                updated_at,
+                f"diary-synthesis:%:{focus_key}",
+                exclude_signal_id,
+            ),
+        )
+        conn.commit()
+        return int(cursor.rowcount or 0)
+
+
+def upsert_diary_synthesis_signal(
+    *,
+    signal_id: str,
+    signal_type: str,
+    canonical_key: str,
+    status: str,
+    title: str,
+    summary: str,
+    rationale: str,
+    source_kind: str,
+    confidence: str,
+    evidence_summary: str,
+    support_summary: str,
+    status_reason: str = "",
+    run_id: str = "",
+    session_id: str = "",
+    support_count: int = 1,
+    session_count: int = 1,
+    created_at: str,
+    updated_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_runtime_diary_synthesis_signal_table(conn)
+        existing = None
+        if canonical_key:
+            existing = conn.execute(
+                """
+                SELECT
+                    signal_id,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    support_count,
+                    session_count,
+                    merge_count,
+                    created_at,
+                    updated_at
+                FROM runtime_diary_synthesis_signals
+                WHERE canonical_key = ?
+                  AND status IN ('active', 'stale')
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (canonical_key,),
+            ).fetchone()
+
+        if existing is None:
+            conn.execute(
+                """
+                INSERT INTO runtime_diary_synthesis_signals (
+                    signal_id,
+                    signal_type,
+                    canonical_key,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    support_count,
+                    session_count,
+                    merge_count,
+                    created_at,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    signal_id,
+                    signal_type,
+                    canonical_key,
+                    status,
+                    title,
+                    summary,
+                    rationale,
+                    source_kind,
+                    confidence,
+                    evidence_summary,
+                    support_summary,
+                    status_reason,
+                    run_id,
+                    session_id,
+                    support_count,
+                    session_count,
+                    0,
+                    created_at,
+                    updated_at,
+                ),
+            )
+            conn.commit()
+            return {
+                "was_created": True,
+                "was_updated": False,
+                **get_diary_synthesis_signal(signal_id),
+            }
+
+        was_created = False
+        old_merge_count = existing[15] if len(existing) > 15 else 0
+        conn.execute(
+            """
+            UPDATE runtime_diary_synthesis_signals
+            SET status = ?,
+                title = ?,
+                summary = ?,
+                rationale = ?,
+                source_kind = ?,
+                confidence = ?,
+                evidence_summary = ?,
+                support_summary = ?,
+                status_reason = ?,
+                run_id = ?,
+                session_id = ?,
+                support_count = ?,
+                session_count = ?,
+                merge_count = ?,
+                updated_at = ?
+            WHERE signal_id = ?
+            """,
+            (
+                status,
+                title,
+                summary,
+                rationale,
+                source_kind,
+                confidence,
+                evidence_summary,
+                support_summary,
+                status_reason,
+                run_id,
+                session_id,
+                support_count,
+                session_count,
+                old_merge_count + 1,
+                updated_at,
+                existing[0],
+            ),
+        )
+        conn.commit()
+        return {
+            "was_created": was_created,
+            "was_updated": True,
+            **get_diary_synthesis_signal(existing[0]),
+        }
+
+
+def _runtime_diary_synthesis_signal_from_row(
+    row: tuple[object, ...],
+) -> dict[str, object]:
+    return {
+        "signal_id": str(row[0]),
+        "signal_type": str(row[1]),
+        "canonical_key": str(row[2]),
+        "status": str(row[3]),
+        "title": str(row[4]),
+        "summary": str(row[5]),
+        "rationale": str(row[6]),
+        "source_kind": str(row[7]),
+        "confidence": str(row[8]),
+        "evidence_summary": str(row[9]),
+        "support_summary": str(row[10]),
+        "status_reason": str(row[11]),
+        "run_id": str(row[12]),
+        "session_id": str(row[13]),
+        "support_count": int(row[14]) if row[14] else 1,
+        "session_count": int(row[15]) if row[15] else 1,
+        "merge_count": int(row[16]) if row[16] else 0,
+        "created_at": str(row[17]),
+        "updated_at": str(row[18]),
+    }
+
+
+def _ensure_runtime_diary_synthesis_signal_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runtime_diary_synthesis_signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            signal_id TEXT NOT NULL UNIQUE,
+            signal_type TEXT NOT NULL,
+            canonical_key TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'active',
+            title TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL DEFAULT '',
+            rationale TEXT NOT NULL DEFAULT '',
+            source_kind TEXT NOT NULL DEFAULT '',
+            confidence TEXT NOT NULL DEFAULT '',
+            evidence_summary TEXT NOT NULL DEFAULT '',
+            support_summary TEXT NOT NULL DEFAULT '',
+            status_reason TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
+            support_count INTEGER NOT NULL DEFAULT 1,
+            session_count INTEGER NOT NULL DEFAULT 1,
+            merge_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_diary_synthesis_signals_status
+        ON runtime_diary_synthesis_signals(status, id DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_diary_synthesis_signals_canonical_key
+        ON runtime_diary_synthesis_signals(canonical_key, id DESC)
+        """
+    )
+
+
 def upsert_runtime_private_temporal_curiosity_state(
     *,
     state_id: str,
@@ -12653,8 +13389,12 @@ def upsert_runtime_private_temporal_curiosity_state(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -12671,7 +13411,11 @@ def upsert_runtime_private_temporal_curiosity_state(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -12713,7 +13457,11 @@ def upsert_runtime_private_temporal_curiosity_state(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     state = get_runtime_private_temporal_curiosity_state(resolved_id)
     if state is None:
@@ -12767,7 +13515,9 @@ def list_runtime_private_temporal_curiosity_states(
     return [_runtime_private_temporal_curiosity_state_from_row(row) for row in rows]
 
 
-def get_runtime_private_temporal_curiosity_state(state_id: str) -> dict[str, object] | None:
+def get_runtime_private_temporal_curiosity_state(
+    state_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_private_temporal_curiosity_state_table(conn)
         row = conn.execute(
@@ -12997,8 +13747,12 @@ def upsert_runtime_private_temporal_promotion_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -13015,7 +13769,11 @@ def upsert_runtime_private_temporal_promotion_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -13057,11 +13815,17 @@ def upsert_runtime_private_temporal_promotion_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_private_temporal_promotion_signal(resolved_id)
     if signal is None:
-        raise RuntimeError("runtime private temporal promotion signal was not persisted")
+        raise RuntimeError(
+            "runtime private temporal promotion signal was not persisted"
+        )
     signal.update(meta)
     return signal
 
@@ -13111,7 +13875,9 @@ def list_runtime_private_temporal_promotion_signals(
     return [_runtime_private_temporal_promotion_signal_from_row(row) for row in rows]
 
 
-def get_runtime_private_temporal_promotion_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_private_temporal_promotion_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_private_temporal_promotion_signal_table(conn)
         row = conn.execute(
@@ -13341,8 +14107,12 @@ def upsert_runtime_inner_visible_support_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -13359,7 +14129,11 @@ def upsert_runtime_inner_visible_support_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -13401,7 +14175,11 @@ def upsert_runtime_inner_visible_support_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_inner_visible_support_signal(resolved_id)
     if signal is None:
@@ -13455,7 +14233,9 @@ def list_runtime_inner_visible_support_signals(
     return [_runtime_inner_visible_support_signal_from_row(row) for row in rows]
 
 
-def get_runtime_inner_visible_support_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_inner_visible_support_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_inner_visible_support_signal_table(conn)
         row = conn.execute(
@@ -13685,8 +14465,12 @@ def upsert_runtime_regulation_homeostasis_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -13703,7 +14487,11 @@ def upsert_runtime_regulation_homeostasis_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -13745,7 +14533,11 @@ def upsert_runtime_regulation_homeostasis_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_regulation_homeostasis_signal(resolved_id)
     if signal is None:
@@ -13799,7 +14591,9 @@ def list_runtime_regulation_homeostasis_signals(
     return [_runtime_regulation_homeostasis_signal_from_row(row) for row in rows]
 
 
-def get_runtime_regulation_homeostasis_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_regulation_homeostasis_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_regulation_homeostasis_signal_table(conn)
         row = conn.execute(
@@ -14029,8 +14823,12 @@ def upsert_runtime_relation_state_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -14047,7 +14845,11 @@ def upsert_runtime_relation_state_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -14089,7 +14891,11 @@ def upsert_runtime_relation_state_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_relation_state_signal(resolved_id)
     if signal is None:
@@ -14373,8 +15179,12 @@ def upsert_runtime_relation_continuity_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -14391,7 +15201,11 @@ def upsert_runtime_relation_continuity_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -14433,7 +15247,11 @@ def upsert_runtime_relation_continuity_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_relation_continuity_signal(resolved_id)
     if signal is None:
@@ -14717,8 +15535,12 @@ def upsert_runtime_meaning_significance_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -14735,7 +15557,11 @@ def upsert_runtime_meaning_significance_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -14777,7 +15603,11 @@ def upsert_runtime_meaning_significance_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_meaning_significance_signal(resolved_id)
     if signal is None:
@@ -15061,8 +15891,12 @@ def upsert_runtime_temperament_tendency_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -15079,7 +15913,11 @@ def upsert_runtime_temperament_tendency_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -15121,7 +15959,11 @@ def upsert_runtime_temperament_tendency_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_temperament_tendency_signal(resolved_id)
     if signal is None:
@@ -15405,8 +16247,12 @@ def upsert_runtime_self_narrative_continuity_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -15423,7 +16269,11 @@ def upsert_runtime_self_narrative_continuity_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -15465,7 +16315,11 @@ def upsert_runtime_self_narrative_continuity_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_self_narrative_continuity_signal(resolved_id)
     if signal is None:
@@ -15519,7 +16373,9 @@ def list_runtime_self_narrative_continuity_signals(
     return [_runtime_self_narrative_continuity_signal_from_row(row) for row in rows]
 
 
-def get_runtime_self_narrative_continuity_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_self_narrative_continuity_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_self_narrative_continuity_signal_table(conn)
         row = conn.execute(
@@ -15749,8 +16605,12 @@ def upsert_runtime_metabolism_state_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -15767,7 +16627,11 @@ def upsert_runtime_metabolism_state_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -15809,7 +16673,11 @@ def upsert_runtime_metabolism_state_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_metabolism_state_signal(resolved_id)
     if signal is None:
@@ -16093,8 +16961,12 @@ def upsert_runtime_release_marker_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -16111,7 +16983,11 @@ def upsert_runtime_release_marker_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -16153,7 +17029,11 @@ def upsert_runtime_release_marker_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_release_marker_signal(resolved_id)
     if signal is None:
@@ -16437,8 +17317,12 @@ def upsert_runtime_consolidation_target_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -16455,7 +17339,11 @@ def upsert_runtime_consolidation_target_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -16497,7 +17385,11 @@ def upsert_runtime_consolidation_target_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_consolidation_target_signal(resolved_id)
     if signal is None:
@@ -16781,8 +17673,12 @@ def upsert_runtime_selective_forgetting_candidate(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -16799,7 +17695,11 @@ def upsert_runtime_selective_forgetting_candidate(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -16841,7 +17741,11 @@ def upsert_runtime_selective_forgetting_candidate(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_selective_forgetting_candidate(resolved_id)
     if signal is None:
@@ -16895,7 +17799,9 @@ def list_runtime_selective_forgetting_candidates(
     return [_runtime_selective_forgetting_candidate_from_row(row) for row in rows]
 
 
-def get_runtime_selective_forgetting_candidate(signal_id: str) -> dict[str, object] | None:
+def get_runtime_selective_forgetting_candidate(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_selective_forgetting_candidate_table(conn)
         row = conn.execute(
@@ -17125,8 +18031,12 @@ def upsert_runtime_attachment_topology_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -17143,7 +18053,11 @@ def upsert_runtime_attachment_topology_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -17185,7 +18099,11 @@ def upsert_runtime_attachment_topology_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_attachment_topology_signal(resolved_id)
     if signal is None:
@@ -17326,8 +18244,12 @@ def upsert_runtime_loyalty_gradient_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -17344,7 +18266,11 @@ def upsert_runtime_loyalty_gradient_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -17386,7 +18312,11 @@ def upsert_runtime_loyalty_gradient_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_loyalty_gradient_signal(resolved_id)
     if signal is None:
@@ -17527,8 +18457,12 @@ def upsert_runtime_autonomy_pressure_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -17545,7 +18479,11 @@ def upsert_runtime_autonomy_pressure_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -17587,7 +18525,11 @@ def upsert_runtime_autonomy_pressure_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_autonomy_pressure_signal(resolved_id)
     if signal is None:
@@ -17728,8 +18670,12 @@ def upsert_runtime_proactive_loop_lifecycle_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -17746,7 +18692,11 @@ def upsert_runtime_proactive_loop_lifecycle_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -17788,7 +18738,11 @@ def upsert_runtime_proactive_loop_lifecycle_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_proactive_loop_lifecycle_signal(resolved_id)
     if signal is None:
@@ -17929,8 +18883,12 @@ def upsert_runtime_proactive_question_gate(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -17947,7 +18905,11 @@ def upsert_runtime_proactive_question_gate(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -17989,7 +18951,11 @@ def upsert_runtime_proactive_question_gate(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     gate = get_runtime_proactive_question_gate(resolved_id)
     if gate is None:
@@ -18458,7 +19424,9 @@ def get_runtime_autonomy_pressure_signal(signal_id: str) -> dict[str, object] | 
     return _runtime_autonomy_pressure_signal_from_row(row)
 
 
-def get_runtime_proactive_loop_lifecycle_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_proactive_loop_lifecycle_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_proactive_loop_lifecycle_signal_table(conn)
         row = conn.execute(
@@ -19009,8 +19977,12 @@ def upsert_runtime_executive_contradiction_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -19027,7 +19999,11 @@ def upsert_runtime_executive_contradiction_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -19069,7 +20045,11 @@ def upsert_runtime_executive_contradiction_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_executive_contradiction_signal(resolved_id)
     if signal is None:
@@ -19123,7 +20103,9 @@ def list_runtime_executive_contradiction_signals(
     return [_runtime_executive_contradiction_signal_from_row(row) for row in rows]
 
 
-def get_runtime_executive_contradiction_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_executive_contradiction_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_executive_contradiction_signal_table(conn)
         row = conn.execute(
@@ -19353,8 +20335,12 @@ def upsert_runtime_chronicle_consolidation_signal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -19371,7 +20357,11 @@ def upsert_runtime_chronicle_consolidation_signal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -19413,7 +20403,11 @@ def upsert_runtime_chronicle_consolidation_signal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     signal = get_runtime_chronicle_consolidation_signal(resolved_id)
     if signal is None:
@@ -19467,7 +20461,9 @@ def list_runtime_chronicle_consolidation_signals(
     return [_runtime_chronicle_consolidation_signal_from_row(row) for row in rows]
 
 
-def get_runtime_chronicle_consolidation_signal(signal_id: str) -> dict[str, object] | None:
+def get_runtime_chronicle_consolidation_signal(
+    signal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_signal_table(conn)
         row = conn.execute(
@@ -19697,8 +20693,12 @@ def upsert_runtime_chronicle_consolidation_brief(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -19715,7 +20715,11 @@ def upsert_runtime_chronicle_consolidation_brief(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -19757,7 +20761,11 @@ def upsert_runtime_chronicle_consolidation_brief(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     brief = get_runtime_chronicle_consolidation_brief(resolved_id)
     if brief is None:
@@ -19811,7 +20819,9 @@ def list_runtime_chronicle_consolidation_briefs(
     return [_runtime_chronicle_consolidation_brief_from_row(row) for row in rows]
 
 
-def get_runtime_chronicle_consolidation_brief(brief_id: str) -> dict[str, object] | None:
+def get_runtime_chronicle_consolidation_brief(
+    brief_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_brief_table(conn)
         row = conn.execute(
@@ -20041,8 +21051,12 @@ def upsert_runtime_chronicle_consolidation_proposal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -20059,7 +21073,11 @@ def upsert_runtime_chronicle_consolidation_proposal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -20101,7 +21119,11 @@ def upsert_runtime_chronicle_consolidation_proposal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     proposal = get_runtime_chronicle_consolidation_proposal(resolved_id)
     if proposal is None:
@@ -20155,7 +21177,9 @@ def list_runtime_chronicle_consolidation_proposals(
     return [_runtime_chronicle_consolidation_proposal_from_row(row) for row in rows]
 
 
-def get_runtime_chronicle_consolidation_proposal(proposal_id: str) -> dict[str, object] | None:
+def get_runtime_chronicle_consolidation_proposal(
+    proposal_id: str,
+) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_runtime_chronicle_consolidation_proposal_table(conn)
         row = conn.execute(
@@ -20528,8 +21552,12 @@ def upsert_runtime_selfhood_proposal(
                 status_reason,
                 limit=4,
             )
-            merged_support_count = max(int(existing["support_count"] or 0), max(int(support_count or 0), 1))
-            merged_session_count = max(int(existing["session_count"] or 0), max(int(session_count or 0), 1))
+            merged_support_count = max(
+                int(existing["support_count"] or 0), max(int(support_count or 0), 1)
+            )
+            merged_session_count = max(
+                int(existing["session_count"] or 0), max(int(session_count or 0), 1)
+            )
             same_payload = (
                 status == str(existing["status"] or "")
                 and title == str(existing["title"] or "")
@@ -20546,7 +21574,11 @@ def upsert_runtime_selfhood_proposal(
                 and merged_session_count == int(existing["session_count"] or 0)
             )
             if same_payload:
-                meta = {"was_created": False, "was_updated": False, "merge_state": "unchanged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": False,
+                    "merge_state": "unchanged",
+                }
             else:
                 conn.execute(
                     """
@@ -20588,7 +21620,11 @@ def upsert_runtime_selfhood_proposal(
                     ),
                 )
                 conn.commit()
-                meta = {"was_created": False, "was_updated": True, "merge_state": "merged"}
+                meta = {
+                    "was_created": False,
+                    "was_updated": True,
+                    "merge_state": "merged",
+                }
 
     proposal = get_runtime_selfhood_proposal(resolved_id)
     if proposal is None:
@@ -22346,7 +23382,9 @@ def _ensure_runtime_dream_influence_proposal_table(conn: sqlite3.Connection) -> 
     )
 
 
-def _ensure_runtime_self_authored_prompt_proposal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_self_authored_prompt_proposal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_self_authored_prompt_proposals (
@@ -22551,7 +23589,9 @@ def _ensure_runtime_private_inner_note_signal_table(conn: sqlite3.Connection) ->
     )
 
 
-def _ensure_runtime_private_initiative_tension_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_private_initiative_tension_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_private_initiative_tension_signals (
@@ -22592,7 +23632,9 @@ def _ensure_runtime_private_initiative_tension_signal_table(conn: sqlite3.Connec
     )
 
 
-def _ensure_runtime_private_inner_interplay_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_private_inner_interplay_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_private_inner_interplay_signals (
@@ -22674,7 +23716,9 @@ def _ensure_runtime_private_state_snapshot_table(conn: sqlite3.Connection) -> No
     )
 
 
-def _ensure_runtime_private_temporal_curiosity_state_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_private_temporal_curiosity_state_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_private_temporal_curiosity_states (
@@ -22715,7 +23759,9 @@ def _ensure_runtime_private_temporal_curiosity_state_table(conn: sqlite3.Connect
     )
 
 
-def _ensure_runtime_private_temporal_promotion_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_private_temporal_promotion_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_private_temporal_promotion_signals (
@@ -22756,7 +23802,9 @@ def _ensure_runtime_private_temporal_promotion_signal_table(conn: sqlite3.Connec
     )
 
 
-def _ensure_runtime_inner_visible_support_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_inner_visible_support_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_inner_visible_support_signals (
@@ -22797,7 +23845,9 @@ def _ensure_runtime_inner_visible_support_signal_table(conn: sqlite3.Connection)
     )
 
 
-def _ensure_runtime_regulation_homeostasis_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_regulation_homeostasis_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_regulation_homeostasis_signals (
@@ -23002,7 +24052,9 @@ def _ensure_runtime_temperament_tendency_signal_table(conn: sqlite3.Connection) 
     )
 
 
-def _ensure_runtime_self_narrative_continuity_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_self_narrative_continuity_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_self_narrative_continuity_signals (
@@ -23166,7 +24218,9 @@ def _ensure_runtime_consolidation_target_signal_table(conn: sqlite3.Connection) 
     )
 
 
-def _ensure_runtime_selective_forgetting_candidate_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_selective_forgetting_candidate_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_selective_forgetting_candidates (
@@ -23330,7 +24384,9 @@ def _ensure_runtime_autonomy_pressure_signal_table(conn: sqlite3.Connection) -> 
     )
 
 
-def _ensure_runtime_proactive_loop_lifecycle_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_proactive_loop_lifecycle_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_proactive_loop_lifecycle_signals (
@@ -23454,7 +24510,9 @@ def _ensure_runtime_webchat_execution_pilot_table(conn: sqlite3.Connection) -> N
     )
 
 
-def _ensure_runtime_executive_contradiction_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_executive_contradiction_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_executive_contradiction_signals (
@@ -23495,7 +24553,9 @@ def _ensure_runtime_executive_contradiction_signal_table(conn: sqlite3.Connectio
     )
 
 
-def _ensure_runtime_chronicle_consolidation_signal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_chronicle_consolidation_signal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_chronicle_consolidation_signals (
@@ -23536,7 +24596,9 @@ def _ensure_runtime_chronicle_consolidation_signal_table(conn: sqlite3.Connectio
     )
 
 
-def _ensure_runtime_chronicle_consolidation_brief_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_chronicle_consolidation_brief_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_chronicle_consolidation_briefs (
@@ -23577,7 +24639,9 @@ def _ensure_runtime_chronicle_consolidation_brief_table(conn: sqlite3.Connection
     )
 
 
-def _ensure_runtime_chronicle_consolidation_proposal_table(conn: sqlite3.Connection) -> None:
+def _ensure_runtime_chronicle_consolidation_proposal_table(
+    conn: sqlite3.Connection,
+) -> None:
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_chronicle_consolidation_proposals (
@@ -23796,7 +24860,9 @@ def _runtime_private_inner_note_signal_from_row(row: sqlite3.Row) -> dict[str, o
     }
 
 
-def _runtime_private_initiative_tension_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_private_initiative_tension_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -23820,7 +24886,9 @@ def _runtime_private_initiative_tension_signal_from_row(row: sqlite3.Row) -> dic
     }
 
 
-def _runtime_private_inner_interplay_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_private_inner_interplay_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -23868,7 +24936,9 @@ def _runtime_private_state_snapshot_from_row(row: sqlite3.Row) -> dict[str, obje
     }
 
 
-def _runtime_private_temporal_curiosity_state_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_private_temporal_curiosity_state_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "state_id": row["state_id"],
         "state_type": row["state_type"],
@@ -23892,7 +24962,9 @@ def _runtime_private_temporal_curiosity_state_from_row(row: sqlite3.Row) -> dict
     }
 
 
-def _runtime_private_temporal_promotion_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_private_temporal_promotion_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -23916,7 +24988,9 @@ def _runtime_private_temporal_promotion_signal_from_row(row: sqlite3.Row) -> dic
     }
 
 
-def _runtime_inner_visible_support_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_inner_visible_support_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -23940,7 +25014,9 @@ def _runtime_inner_visible_support_signal_from_row(row: sqlite3.Row) -> dict[str
     }
 
 
-def _runtime_regulation_homeostasis_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_regulation_homeostasis_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24012,7 +25088,9 @@ def _runtime_relation_continuity_signal_from_row(row: sqlite3.Row) -> dict[str, 
     }
 
 
-def _runtime_meaning_significance_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_meaning_significance_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24036,7 +25114,9 @@ def _runtime_meaning_significance_signal_from_row(row: sqlite3.Row) -> dict[str,
     }
 
 
-def _runtime_temperament_tendency_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_temperament_tendency_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24060,7 +25140,9 @@ def _runtime_temperament_tendency_signal_from_row(row: sqlite3.Row) -> dict[str,
     }
 
 
-def _runtime_self_narrative_continuity_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_self_narrative_continuity_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24132,7 +25214,9 @@ def _runtime_release_marker_signal_from_row(row: sqlite3.Row) -> dict[str, objec
     }
 
 
-def _runtime_consolidation_target_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_consolidation_target_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24156,7 +25240,9 @@ def _runtime_consolidation_target_signal_from_row(row: sqlite3.Row) -> dict[str,
     }
 
 
-def _runtime_selective_forgetting_candidate_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_selective_forgetting_candidate_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24252,7 +25338,9 @@ def _runtime_autonomy_pressure_signal_from_row(row: sqlite3.Row) -> dict[str, ob
     }
 
 
-def _runtime_proactive_loop_lifecycle_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_proactive_loop_lifecycle_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24325,7 +25413,9 @@ def _runtime_webchat_execution_pilot_from_row(row: sqlite3.Row) -> dict[str, obj
     }
 
 
-def _runtime_executive_contradiction_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_executive_contradiction_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24349,7 +25439,9 @@ def _runtime_executive_contradiction_signal_from_row(row: sqlite3.Row) -> dict[s
     }
 
 
-def _runtime_chronicle_consolidation_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_chronicle_consolidation_signal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "signal_id": row["signal_id"],
         "signal_type": row["signal_type"],
@@ -24373,7 +25465,9 @@ def _runtime_chronicle_consolidation_signal_from_row(row: sqlite3.Row) -> dict[s
     }
 
 
-def _runtime_chronicle_consolidation_brief_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_chronicle_consolidation_brief_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "brief_id": row["brief_id"],
         "brief_type": row["brief_type"],
@@ -24397,7 +25491,9 @@ def _runtime_chronicle_consolidation_brief_from_row(row: sqlite3.Row) -> dict[st
     }
 
 
-def _runtime_chronicle_consolidation_proposal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_chronicle_consolidation_proposal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "proposal_id": row["proposal_id"],
         "proposal_type": row["proposal_type"],
@@ -24877,7 +25973,9 @@ def _runtime_dream_influence_proposal_from_row(row: sqlite3.Row) -> dict[str, ob
     }
 
 
-def _runtime_self_authored_prompt_proposal_from_row(row: sqlite3.Row) -> dict[str, object]:
+def _runtime_self_authored_prompt_proposal_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
     return {
         "proposal_id": row["proposal_id"],
         "proposal_type": row["proposal_type"],

@@ -9,7 +9,9 @@ import pytest
 
 
 @pytest.fixture()
-def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleNamespace:
+def isolated_runtime(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> SimpleNamespace:
     repo_root = Path(__file__).resolve().parents[1]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
@@ -54,6 +56,7 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         "apps.api.jarvis_api.services.private_initiative_tension_signal_tracking",
         "apps.api.jarvis_api.services.private_inner_interplay_signal_tracking",
         "apps.api.jarvis_api.services.private_state_snapshot_tracking",
+        "apps.api.jarvis_api.services.diary_synthesis_signal_tracking",
         "apps.api.jarvis_api.services.private_temporal_curiosity_state_tracking",
         "apps.api.jarvis_api.services.inner_visible_support_signal_tracking",
         "apps.api.jarvis_api.services.regulation_homeostasis_signal_tracking",
@@ -111,54 +114,155 @@ def isolated_runtime(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleN
         visible_model=modules["apps.api.jarvis_api.services.visible_model"],
         heartbeat_runtime=modules["apps.api.jarvis_api.services.heartbeat_runtime"],
         candidate_tracking=modules["apps.api.jarvis_api.services.candidate_tracking"],
-        non_visible_lane_execution=modules["apps.api.jarvis_api.services.non_visible_lane_execution"],
-        reflection_tracking=modules["apps.api.jarvis_api.services.reflection_signal_tracking"],
-        temporal_recurrence_tracking=modules["apps.api.jarvis_api.services.temporal_recurrence_signal_tracking"],
-        witness_tracking=modules["apps.api.jarvis_api.services.witness_signal_tracking"],
-        open_loop_tracking=modules["apps.api.jarvis_api.services.open_loop_signal_tracking"],
-        internal_opposition_tracking=modules["apps.api.jarvis_api.services.internal_opposition_signal_tracking"],
-        self_review_tracking=modules["apps.api.jarvis_api.services.self_review_signal_tracking"],
-        self_review_record_tracking=modules["apps.api.jarvis_api.services.self_review_record_tracking"],
-        self_review_run_tracking=modules["apps.api.jarvis_api.services.self_review_run_tracking"],
-        self_review_outcome_tracking=modules["apps.api.jarvis_api.services.self_review_outcome_tracking"],
-        self_review_cadence_tracking=modules["apps.api.jarvis_api.services.self_review_cadence_signal_tracking"],
-        dream_hypothesis_tracking=modules["apps.api.jarvis_api.services.dream_hypothesis_signal_tracking"],
-        dream_adoption_candidate_tracking=modules["apps.api.jarvis_api.services.dream_adoption_candidate_tracking"],
-        dream_influence_proposal_tracking=modules["apps.api.jarvis_api.services.dream_influence_proposal_tracking"],
-        self_authored_prompt_proposal_tracking=modules["apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking"],
-        user_understanding_signal_tracking=modules["apps.api.jarvis_api.services.user_understanding_signal_tracking"],
-        remembered_fact_signal_tracking=modules["apps.api.jarvis_api.services.remembered_fact_signal_tracking"],
-        private_inner_note_signal_tracking=modules["apps.api.jarvis_api.services.private_inner_note_signal_tracking"],
-        private_initiative_tension_signal_tracking=modules["apps.api.jarvis_api.services.private_initiative_tension_signal_tracking"],
-        private_inner_interplay_signal_tracking=modules["apps.api.jarvis_api.services.private_inner_interplay_signal_tracking"],
-        private_state_snapshot_tracking=modules["apps.api.jarvis_api.services.private_state_snapshot_tracking"],
-        private_temporal_curiosity_state_tracking=modules["apps.api.jarvis_api.services.private_temporal_curiosity_state_tracking"],
-        inner_visible_support_signal_tracking=modules["apps.api.jarvis_api.services.inner_visible_support_signal_tracking"],
-        regulation_homeostasis_signal_tracking=modules["apps.api.jarvis_api.services.regulation_homeostasis_signal_tracking"],
-        relation_state_signal_tracking=modules["apps.api.jarvis_api.services.relation_state_signal_tracking"],
-        relation_continuity_signal_tracking=modules["apps.api.jarvis_api.services.relation_continuity_signal_tracking"],
-        meaning_significance_signal_tracking=modules["apps.api.jarvis_api.services.meaning_significance_signal_tracking"],
-        temperament_tendency_signal_tracking=modules["apps.api.jarvis_api.services.temperament_tendency_signal_tracking"],
-        self_narrative_continuity_signal_tracking=modules["apps.api.jarvis_api.services.self_narrative_continuity_signal_tracking"],
-        metabolism_state_signal_tracking=modules["apps.api.jarvis_api.services.metabolism_state_signal_tracking"],
-        release_marker_signal_tracking=modules["apps.api.jarvis_api.services.release_marker_signal_tracking"],
-        consolidation_target_signal_tracking=modules["apps.api.jarvis_api.services.consolidation_target_signal_tracking"],
-        selective_forgetting_candidate_tracking=modules["apps.api.jarvis_api.services.selective_forgetting_candidate_tracking"],
-        attachment_topology_signal_tracking=modules["apps.api.jarvis_api.services.attachment_topology_signal_tracking"],
-        loyalty_gradient_signal_tracking=modules["apps.api.jarvis_api.services.loyalty_gradient_signal_tracking"],
-        autonomy_pressure_signal_tracking=modules["apps.api.jarvis_api.services.autonomy_pressure_signal_tracking"],
-        proactive_loop_lifecycle_tracking=modules["apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking"],
-        proactive_question_gate_tracking=modules["apps.api.jarvis_api.services.proactive_question_gate_tracking"],
-        tiny_webchat_execution_pilot=modules["apps.api.jarvis_api.services.tiny_webchat_execution_pilot"],
-        self_narrative_self_model_review_bridge=modules["apps.api.jarvis_api.services.self_narrative_self_model_review_bridge"],
-        executive_contradiction_signal_tracking=modules["apps.api.jarvis_api.services.executive_contradiction_signal_tracking"],
-        private_temporal_promotion_signal_tracking=modules["apps.api.jarvis_api.services.private_temporal_promotion_signal_tracking"],
-        chronicle_consolidation_signal_tracking=modules["apps.api.jarvis_api.services.chronicle_consolidation_signal_tracking"],
-        chronicle_consolidation_brief_tracking=modules["apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking"],
-        chronicle_consolidation_proposal_tracking=modules["apps.api.jarvis_api.services.chronicle_consolidation_proposal_tracking"],
-        user_md_update_proposal_tracking=modules["apps.api.jarvis_api.services.user_md_update_proposal_tracking"],
-        memory_md_update_proposal_tracking=modules["apps.api.jarvis_api.services.memory_md_update_proposal_tracking"],
-        selfhood_proposal_tracking=modules["apps.api.jarvis_api.services.selfhood_proposal_tracking"],
-        open_loop_closure_proposal_tracking=modules["apps.api.jarvis_api.services.open_loop_closure_proposal_tracking"],
+        non_visible_lane_execution=modules[
+            "apps.api.jarvis_api.services.non_visible_lane_execution"
+        ],
+        reflection_tracking=modules[
+            "apps.api.jarvis_api.services.reflection_signal_tracking"
+        ],
+        temporal_recurrence_tracking=modules[
+            "apps.api.jarvis_api.services.temporal_recurrence_signal_tracking"
+        ],
+        witness_tracking=modules[
+            "apps.api.jarvis_api.services.witness_signal_tracking"
+        ],
+        open_loop_tracking=modules[
+            "apps.api.jarvis_api.services.open_loop_signal_tracking"
+        ],
+        internal_opposition_tracking=modules[
+            "apps.api.jarvis_api.services.internal_opposition_signal_tracking"
+        ],
+        self_review_tracking=modules[
+            "apps.api.jarvis_api.services.self_review_signal_tracking"
+        ],
+        self_review_record_tracking=modules[
+            "apps.api.jarvis_api.services.self_review_record_tracking"
+        ],
+        self_review_run_tracking=modules[
+            "apps.api.jarvis_api.services.self_review_run_tracking"
+        ],
+        self_review_outcome_tracking=modules[
+            "apps.api.jarvis_api.services.self_review_outcome_tracking"
+        ],
+        self_review_cadence_tracking=modules[
+            "apps.api.jarvis_api.services.self_review_cadence_signal_tracking"
+        ],
+        dream_hypothesis_tracking=modules[
+            "apps.api.jarvis_api.services.dream_hypothesis_signal_tracking"
+        ],
+        dream_adoption_candidate_tracking=modules[
+            "apps.api.jarvis_api.services.dream_adoption_candidate_tracking"
+        ],
+        dream_influence_proposal_tracking=modules[
+            "apps.api.jarvis_api.services.dream_influence_proposal_tracking"
+        ],
+        self_authored_prompt_proposal_tracking=modules[
+            "apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking"
+        ],
+        user_understanding_signal_tracking=modules[
+            "apps.api.jarvis_api.services.user_understanding_signal_tracking"
+        ],
+        remembered_fact_signal_tracking=modules[
+            "apps.api.jarvis_api.services.remembered_fact_signal_tracking"
+        ],
+        private_inner_note_signal_tracking=modules[
+            "apps.api.jarvis_api.services.private_inner_note_signal_tracking"
+        ],
+        private_initiative_tension_signal_tracking=modules[
+            "apps.api.jarvis_api.services.private_initiative_tension_signal_tracking"
+        ],
+        private_inner_interplay_signal_tracking=modules[
+            "apps.api.jarvis_api.services.private_inner_interplay_signal_tracking"
+        ],
+        private_state_snapshot_tracking=modules[
+            "apps.api.jarvis_api.services.private_state_snapshot_tracking"
+        ],
+        diary_synthesis_signal_tracking=modules[
+            "apps.api.jarvis_api.services.diary_synthesis_signal_tracking"
+        ],
+        private_temporal_curiosity_state_tracking=modules[
+            "apps.api.jarvis_api.services.private_temporal_curiosity_state_tracking"
+        ],
+        inner_visible_support_signal_tracking=modules[
+            "apps.api.jarvis_api.services.inner_visible_support_signal_tracking"
+        ],
+        regulation_homeostasis_signal_tracking=modules[
+            "apps.api.jarvis_api.services.regulation_homeostasis_signal_tracking"
+        ],
+        relation_state_signal_tracking=modules[
+            "apps.api.jarvis_api.services.relation_state_signal_tracking"
+        ],
+        relation_continuity_signal_tracking=modules[
+            "apps.api.jarvis_api.services.relation_continuity_signal_tracking"
+        ],
+        meaning_significance_signal_tracking=modules[
+            "apps.api.jarvis_api.services.meaning_significance_signal_tracking"
+        ],
+        temperament_tendency_signal_tracking=modules[
+            "apps.api.jarvis_api.services.temperament_tendency_signal_tracking"
+        ],
+        self_narrative_continuity_signal_tracking=modules[
+            "apps.api.jarvis_api.services.self_narrative_continuity_signal_tracking"
+        ],
+        metabolism_state_signal_tracking=modules[
+            "apps.api.jarvis_api.services.metabolism_state_signal_tracking"
+        ],
+        release_marker_signal_tracking=modules[
+            "apps.api.jarvis_api.services.release_marker_signal_tracking"
+        ],
+        consolidation_target_signal_tracking=modules[
+            "apps.api.jarvis_api.services.consolidation_target_signal_tracking"
+        ],
+        selective_forgetting_candidate_tracking=modules[
+            "apps.api.jarvis_api.services.selective_forgetting_candidate_tracking"
+        ],
+        attachment_topology_signal_tracking=modules[
+            "apps.api.jarvis_api.services.attachment_topology_signal_tracking"
+        ],
+        loyalty_gradient_signal_tracking=modules[
+            "apps.api.jarvis_api.services.loyalty_gradient_signal_tracking"
+        ],
+        autonomy_pressure_signal_tracking=modules[
+            "apps.api.jarvis_api.services.autonomy_pressure_signal_tracking"
+        ],
+        proactive_loop_lifecycle_tracking=modules[
+            "apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking"
+        ],
+        proactive_question_gate_tracking=modules[
+            "apps.api.jarvis_api.services.proactive_question_gate_tracking"
+        ],
+        tiny_webchat_execution_pilot=modules[
+            "apps.api.jarvis_api.services.tiny_webchat_execution_pilot"
+        ],
+        self_narrative_self_model_review_bridge=modules[
+            "apps.api.jarvis_api.services.self_narrative_self_model_review_bridge"
+        ],
+        executive_contradiction_signal_tracking=modules[
+            "apps.api.jarvis_api.services.executive_contradiction_signal_tracking"
+        ],
+        private_temporal_promotion_signal_tracking=modules[
+            "apps.api.jarvis_api.services.private_temporal_promotion_signal_tracking"
+        ],
+        chronicle_consolidation_signal_tracking=modules[
+            "apps.api.jarvis_api.services.chronicle_consolidation_signal_tracking"
+        ],
+        chronicle_consolidation_brief_tracking=modules[
+            "apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking"
+        ],
+        chronicle_consolidation_proposal_tracking=modules[
+            "apps.api.jarvis_api.services.chronicle_consolidation_proposal_tracking"
+        ],
+        user_md_update_proposal_tracking=modules[
+            "apps.api.jarvis_api.services.user_md_update_proposal_tracking"
+        ],
+        memory_md_update_proposal_tracking=modules[
+            "apps.api.jarvis_api.services.memory_md_update_proposal_tracking"
+        ],
+        selfhood_proposal_tracking=modules[
+            "apps.api.jarvis_api.services.selfhood_proposal_tracking"
+        ],
+        open_loop_closure_proposal_tracking=modules[
+            "apps.api.jarvis_api.services.open_loop_closure_proposal_tracking"
+        ],
         mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )

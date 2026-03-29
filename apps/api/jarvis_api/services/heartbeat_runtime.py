@@ -1725,7 +1725,7 @@ def _recover_bounded_heartbeat_liveness_decision(
     if (
         liveness_state == "quiet"
         or liveness_pressure not in {"medium", "high"}
-        or liveness_threshold_state != "propose-worthy-threshold"
+        or liveness_threshold_state not in {"propose-worthy-threshold", "alive-threshold"}
     ):
         return decision
 

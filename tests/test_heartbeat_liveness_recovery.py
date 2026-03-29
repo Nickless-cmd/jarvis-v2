@@ -336,6 +336,34 @@ def test_heartbeat_liveness_recovery_prevents_empty_noop_when_pressure_exists(
     assert "liveness pressure" in recovered["summary"].lower()
 
 
+def test_heartbeat_liveness_recovery_promotes_high_alive_threshold_to_propose(
+    isolated_runtime,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    recovered = heartbeat_runtime._recover_bounded_heartbeat_liveness_decision(
+        decision={
+            "decision_type": "noop",
+            "summary": "Heartbeat recorded a bounded parse failure from the selected model.",
+            "reason": "parse-failure: {}",
+            "proposed_action": "",
+            "ping_text": "",
+            "execute_action": "",
+        },
+        policy={"allow_propose": True},
+        liveness={
+            "liveness_state": "alive-pressure",
+            "liveness_pressure": "high",
+            "liveness_reason": "open-loop continuity is still live",
+            "liveness_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+            "liveness_threshold_state": "alive-threshold",
+        },
+    )
+
+    assert recovered["decision_type"] == "propose"
+    assert "bounded-liveness-recovery" in recovered["reason"]
+
+
 def test_heartbeat_liveness_recovery_does_not_promote_watchful_presence_to_propose(
     isolated_runtime,
 ) -> None:

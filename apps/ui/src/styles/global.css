@@ -326,16 +326,26 @@ button { cursor: pointer; }
 .mission-control-phasea { display:flex; flex-direction:column; height:100%; min-height:0; overflow:hidden; }
 .mc-header-card { 
   display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 14px; 
-  min-height:48px;
+  min-height:52px;
   background: linear-gradient(180deg, #11161f 0%, #0f141c 100%);
-  border-bottom:1px solid rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(40,177,163,.12);
 }
-.mc-header-title .eyebrow { margin: 0; }
-.mc-header-actions { display:flex; align-items:center; gap:10px; }
-.mc-meta-strip { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; max-width:480px; }
+.mc-header-title .eyebrow { margin: 0; font-size:13px; font-weight:600; letter-spacing:0.5px; }
+.mc-header-actions { display:flex; align-items:center; gap:12px; }
+.mc-shell-status { display:flex; align-items:center; gap:12px; }
+.mc-status-group { display:flex; align-items:center; gap:8px; }
+.mc-status-indicator {
+  display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:4px;
+  font-size:9px; font-weight:600; letter-spacing:0.8px; color:#6b7a8f;
+}
+.mc-status-indicator.live { color:#49d2c3; background:rgba(40,177,163,.12); }
+.mc-status-indicator.idle { color:#6b7a8f; background:rgba(255,255,255,.04); }
+.mc-status-indicator.status-ok { color:#7dd87d; background:rgba(125,216,125,.1); }
+.mc-status-divider { width:1px; height:20px; background:rgba(255,255,255,.08); }
+.mc-meta-strip { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; max-width:320px; }
 .mc-meta-pill {
-  padding:6px 9px; border-radius:999px; background:#131c27; border:1px solid rgba(255,255,255,.05);
-  color:#8ca0b6; font-size:11px; line-height:1;
+  padding:5px 9px; border-radius:6px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.05);
+  color:#8ca0b6; font-size:10px; line-height:1;
 }
 .mc-meta-pill.live { color:#49d2c3; border-color: rgba(40,177,163,.18); }
 .mc-tabbar {
@@ -526,7 +536,10 @@ button { cursor: pointer; }
   .chat-header-copy, .chat-header-controls { width: 100%; }
   .header-status-pill { display:none; }
   .chat-header-subtitle { display:none; }
-  .mc-header-card { flex-direction: column; }
+  .mc-header-card { flex-direction: column; gap:8px; padding:10px; }
+  .mc-shell-status { flex-direction:column; gap:6px; width:100%; }
+  .mc-status-group { justify-content:center; }
+  .mc-meta-strip { justify-content:center; max-width:100%; }
   .mc-header-actions, .mc-meta-strip { width:100%; justify-content:space-between; }
   .mc-toolbar { flex-direction: column; align-items:stretch; }
   .mc-summary-grid, .mc-section-grid, .mc-keyval-grid, .compact-grid.compact-grid-4, .compact-grid.compact-grid-5, .mc-contract-grid { grid-template-columns: 1fr; }

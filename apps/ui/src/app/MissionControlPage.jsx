@@ -1,4 +1,4 @@
-import { RefreshCcw } from 'lucide-react'
+import { Activity, RefreshCcw, Radio, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { JarvisTab } from '../components/mission-control/JarvisTab'
@@ -60,15 +60,22 @@ export function MissionControlPage({ selection, onSelectionChange }) {
           <p className="eyebrow">Mission Control</p>
         </div>
         <div className="mc-header-actions">
-          <div className="mc-meta-strip">
-            <span className="mc-meta-pill" title={`Current tab freshness: ${freshnessLabel}`}>{freshnessLabel}</span>
-            <span className="mc-meta-pill" title={`Update strategy for ${activeTab}`}>{updateModeLabel}</span>
-            <span
-              className={`mc-meta-pill ${lastRealtimeEventAt ? 'live' : ''}`}
-              title="Shared realtime manager active only while Mission Control is open"
-            >
-              {lastRealtimeEventAt ? `Last event ${formatFreshness(lastRealtimeEventAt)}` : 'MC live'}
-            </span>
+          <div className="mc-shell-status">
+            <div className="mc-status-group">
+              <span className={`mc-status-indicator ${lastRealtimeEventAt ? 'live' : 'idle'}`} title={lastRealtimeEventAt ? `Last event: ${formatFreshness(lastRealtimeEventAt)}` : 'No recent events'}>
+                <Radio size={10} />
+                {lastRealtimeEventAt ? 'LIVE' : 'IDLE'}
+              </span>
+              <span className="mc-status-indicator status-ok" title="Connection healthy">
+                <Zap size={10} />
+                ACTIVE
+              </span>
+            </div>
+            <div className="mc-status-divider" />
+            <div className="mc-meta-strip">
+              <span className="mc-meta-pill" title={`Current tab freshness: ${freshnessLabel}`}>{freshnessLabel}</span>
+              <span className="mc-meta-pill" title={`Update strategy for ${activeTab}`}>{updateModeLabel}</span>
+            </div>
           </div>
           <button className="icon-btn" onClick={() => refreshAll({ background: true })} title="Refresh Mission Control">
             <RefreshCcw size={15} className={isRefreshing ? 'spin' : ''} />

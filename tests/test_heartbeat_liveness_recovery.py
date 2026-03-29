@@ -364,6 +364,41 @@ def test_heartbeat_liveness_recovery_promotes_high_alive_threshold_to_propose(
     assert "bounded-liveness-recovery" in recovered["reason"]
 
 
+def test_heartbeat_liveness_recovery_promotes_to_ping_when_webchat_candidate_is_ready(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "_heartbeat_ping_candidate_ready",
+        lambda policy: True,
+    )
+
+    recovered = heartbeat_runtime._recover_bounded_heartbeat_liveness_decision(
+        decision={
+            "decision_type": "noop",
+            "summary": "Heartbeat recorded a bounded parse failure from the selected model.",
+            "reason": "parse-failure: {}",
+            "proposed_action": "",
+            "ping_text": "",
+            "execute_action": "",
+        },
+        policy={"allow_propose": True, "allow_ping": True, "kill_switch": "enabled", "ping_channel": "webchat"},
+        liveness={
+            "liveness_state": "alive-pressure",
+            "liveness_pressure": "high",
+            "liveness_reason": "open-loop continuity is still live",
+            "liveness_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+            "liveness_threshold_state": "alive-threshold",
+        },
+    )
+
+    assert recovered["decision_type"] == "ping"
+    assert "bounded-liveness-ping-recovery" in recovered["reason"]
+
+
 def test_heartbeat_liveness_recovery_does_not_promote_watchful_presence_to_propose(
     isolated_runtime,
 ) -> None:

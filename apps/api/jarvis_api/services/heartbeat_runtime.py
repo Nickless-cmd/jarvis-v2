@@ -1729,6 +1729,18 @@ def _recover_bounded_heartbeat_liveness_decision(
     ):
         return decision
 
+    if _heartbeat_ping_candidate_ready(policy=policy):
+        return {
+            "decision_type": "ping",
+            "summary": liveness_summary or "Heartbeat appears to have bounded liveness pressure and is surfacing one bounded proactive question rather than a noop.",
+            "reason": (
+                f"bounded-liveness-ping-recovery: {liveness_reason or 'runtime liveness pressure is present'}"
+            )[:240],
+            "proposed_action": "",
+            "ping_text": "",
+            "execute_action": "",
+        }
+
     return {
         "decision_type": "propose",
         "summary": liveness_summary or "Heartbeat appears to have bounded liveness pressure and is proposing a small check-in rather than a noop.",
@@ -1739,6 +1751,27 @@ def _recover_bounded_heartbeat_liveness_decision(
         "ping_text": "",
         "execute_action": "",
     }
+
+
+def _heartbeat_ping_candidate_ready(*, policy: dict[str, object]) -> bool:
+    if not bool(policy.get("allow_ping")):
+        return False
+    if str(policy.get("kill_switch") or "enabled") != "enabled":
+        return False
+    if str(policy.get("ping_channel") or "none").strip() != "webchat":
+        return False
+    try:
+        from apps.api.jarvis_api.services.tiny_webchat_execution_pilot import (
+            _build_execution_candidate,
+        )
+    except Exception:
+        return False
+    candidate = _build_execution_candidate(
+        heartbeat_tick_id="heartbeat-recovery-preview",
+        decision_summary="bounded-liveness-recovery-preview",
+        ping_text="",
+    )
+    return candidate is not None
 
 
 def _execute_heartbeat_internal_action(

@@ -269,13 +269,14 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
         str(attachment_summary.get("current_confidence") or "low"),
         str(loyalty.get("summary", {}).get("current_confidence") or "low"),
     )
+    focus = _question_loop_focus(question_loop)
 
     return [
         {
             "gate_type": "proactive-question-gate",
-            "canonical_key": f"proactive-question-gate:{_slug(str(question_loop.get('loop_focus') or 'bounded-question-loop'))}",
+            "canonical_key": f"proactive-question-gate:{_slug(focus)}",
             "status": status,
-            "title": f"Proactive question gate: {str(question_loop.get('loop_focus') or 'bounded question loop')[:96]}",
+            "title": f"Proactive question gate: {focus[:96]}",
             "summary": (
                 "Bounded proactive-question gating is surfacing a runtime question candidate only. "
                 "This is not send permission and not proactive execution."
@@ -510,6 +511,35 @@ def _initiative_loop_gate_continuity_support(
     regulation_pressure = str(regulation.get("summary", {}).get("current_pressure") or "low")
     weight = "high" if question_readiness in {"medium", "high"} else _max_ranked(pressure_weight, regulation_pressure, "medium")
     return {"supported": True, "mode": "initiative-loop-continuity", "weight": weight}
+
+
+def _question_loop_focus(question_loop: dict[str, object]) -> str:
+    for value in (
+        question_loop.get("loop_focus"),
+        question_loop.get("title"),
+        question_loop.get("loop_summary"),
+    ):
+        candidate = _normalize_focus_candidate(value)
+        if candidate:
+            return candidate[:96]
+    return "bounded question loop"
+
+
+def _normalize_focus_candidate(value: object) -> str:
+    candidate = str(value or "").strip()
+    if not candidate:
+        return ""
+    lowered = candidate.lower()
+    if lowered in {"none", "n/a", "null", "bounded loop", "bounded question loop", "current thread"}:
+        return ""
+    for prefix in ("Proactive loop lifecycle: ", "Open loop: ", "Proactive question gate: "):
+        if candidate.startswith(prefix):
+            candidate = candidate[len(prefix):].strip()
+            lowered = candidate.lower()
+            break
+    if not candidate or lowered.startswith("bounded proactive-loop lifecycle is carrying"):
+        return ""
+    return "" if lowered in {"none", "n/a", "null"} else candidate
 
 
 def _find_support_value(summary: str, key: str, default: str) -> str:

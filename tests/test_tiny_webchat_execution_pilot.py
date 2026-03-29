@@ -381,3 +381,75 @@ def test_execution_pilot_opens_from_current_like_initiative_loop_continuity(
     assert result["delivery_state"] == "sent"
     assert chat is not None
     assert len(chat["messages"]) == 1
+
+
+def test_execution_pilot_message_uses_concrete_focus_when_loop_focus_is_none(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    pilot = isolated_runtime.tiny_webchat_execution_pilot
+
+    _insert_autonomy_question_pressure(db)
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_proactive_loop_lifecycle_signal(
+        signal_id=f"question-loop-none-{uuid4().hex}",
+        signal_type="proactive-loop-lifecycle",
+        canonical_key="proactive-loop-lifecycle:question-loop:visible-work",
+        status="active",
+        title="Proactive loop lifecycle: Visible work",
+        summary="Bounded proactive-loop lifecycle is carrying a question-capable thread.",
+        rationale="Validation proactive loop lifecycle",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="question loop evidence",
+        support_summary=(
+            "loop-state=loop-question-worthy | loop-kind=question-loop | loop-focus=none | "
+            "loop-weight=high | loop-confidence=high | question-readiness=high | closure-readiness=low | source-anchor=loop-anchor"
+        ),
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation proactive loop lifecycle status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+    db.upsert_runtime_proactive_question_gate(
+        gate_id=f"proactive-question-gate-{uuid4().hex}",
+        gate_type="proactive-question-gate",
+        canonical_key="proactive-question-gate:none",
+        status="active",
+        title="Proactive question gate: Visible work",
+        summary="Bounded proactive-question gating is surfacing a runtime question candidate only.",
+        rationale="Validation proactive-question gate",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="question gate evidence",
+        support_summary=(
+            "question-gate-state=question-gated-candidate | question-gate-reason=relationally-held | "
+            "question-gate-weight=high | question-gate-confidence=high | send-permission-state=gated-candidate-only | "
+            "source-anchor=question-gate-anchor"
+        ),
+        status_reason="Validation proactive-question gate status",
+        run_id="test-run",
+        session_id="test-session",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+    session = create_chat_session(title="Pilot concrete focus")
+
+    result = pilot.maybe_run_tiny_webchat_execution_pilot(
+        policy=_policy(),
+        heartbeat_tick_id="tick-concrete-focus",
+        decision_summary="Heartbeat wants to ping.",
+        ping_text="",
+    )
+    chat = get_chat_session(session["id"])
+
+    assert result["delivery_state"] == "sent"
+    assert result["item"]["title"] == "Tiny webchat execution pilot: Visible work"
+    assert chat is not None
+    assert "Visible work" in chat["messages"][0]["content"]
+    assert "none" not in chat["messages"][0]["content"].lower()

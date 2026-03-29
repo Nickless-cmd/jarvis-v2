@@ -506,10 +506,36 @@ def _best_loop_focus(
         latest_loop.get("title"),
         relation.get("summary", {}).get("current_signal"),
     ):
-        candidate = str(value or "").strip()
-        if candidate and not candidate.lower().startswith("no active"):
+        candidate = _normalize_focus_candidate(value)
+        if candidate:
             return candidate[:96]
     return "bounded loop"
+
+
+def _normalize_focus_candidate(value: object) -> str:
+    candidate = str(value or "").strip()
+    if not candidate:
+        return ""
+    lowered = candidate.lower()
+    if lowered in {"none", "n/a", "null", "bounded loop", "bounded question loop", "current thread"}:
+        return ""
+    if lowered.startswith("no active"):
+        return ""
+    for prefix in (
+        "Open loop: ",
+        "Proactive loop lifecycle: ",
+        "Relation continuity: ",
+        "Meaning significance: ",
+        "Attachment topology: ",
+        "Loyalty gradient: ",
+    ):
+        if candidate.startswith(prefix):
+            candidate = candidate[len(prefix):].strip()
+            lowered = candidate.lower()
+            break
+    if not candidate or lowered in {"none", "n/a", "null"}:
+        return ""
+    return candidate
 
 
 def _derive_loop_state(

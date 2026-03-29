@@ -221,7 +221,11 @@ def _build_execution_candidate(
     if question_gate is None or question_loop is None or question_pressure is None:
         return None
 
-    focus = str(question_loop.get("loop_focus") or "current thread").strip() or "current thread"
+    focus = _execution_focus(
+        question_gate=question_gate,
+        question_loop=question_loop,
+        question_pressure=question_pressure,
+    )
     confidence = _stronger_confidence(
         str(question_gate.get("question_gate_confidence") or "low"),
         str(question_loop.get("loop_confidence") or "low"),
@@ -271,6 +275,47 @@ def _build_execution_candidate(
         ),
         "message_text": message_text,
     }
+
+
+def _execution_focus(
+    *,
+    question_gate: dict[str, object],
+    question_loop: dict[str, object],
+    question_pressure: dict[str, object],
+) -> str:
+    for value in (
+        question_loop.get("loop_focus"),
+        question_gate.get("title"),
+        question_loop.get("title"),
+        question_pressure.get("title"),
+    ):
+        candidate = _normalize_focus_candidate(value)
+        if candidate:
+            return candidate[:96]
+    return "current thread"
+
+
+def _normalize_focus_candidate(value: object) -> str:
+    candidate = str(value or "").strip()
+    if not candidate:
+        return ""
+    lowered = candidate.lower()
+    if lowered in {"none", "n/a", "null", "bounded loop", "bounded question loop"}:
+        return ""
+    for prefix in (
+        "Proactive question gate: ",
+        "Proactive loop lifecycle: ",
+        "Open loop: ",
+        "Autonomy pressure: ",
+        "Tiny webchat execution pilot: ",
+    ):
+        if candidate.startswith(prefix):
+            candidate = candidate[len(prefix):].strip()
+            lowered = candidate.lower()
+            break
+    if not candidate or lowered in {"none", "n/a", "null"}:
+        return ""
+    return candidate
 
 
 def _message_text(*, focus: str, ping_text: str) -> str:

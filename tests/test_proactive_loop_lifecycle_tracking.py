@@ -299,3 +299,47 @@ def test_proactive_loop_lifecycle_surface_is_exposed_in_mission_control_runtime(
     assert runtime["summary"]["proactive_execution_state"] == "not-proactive-execution"
     assert runtime["summary"]["prompt_inclusion_state"] == "not-prompt-included"
     assert runtime["summary"]["workflow_bridge_state"] == "not-workflow-bridge"
+
+
+def test_proactive_loop_lifecycle_prefers_meaningful_open_loop_focus_over_none(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.proactive_loop_lifecycle_tracking
+
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_open_loop_signal(
+        signal_id=f"open-loop-focus-{uuid4().hex}",
+        signal_type="open-loop",
+        canonical_key="open-loop:open-loop:visible-work",
+        status="open",
+        title="Open loop: Visible work",
+        summary="Bounded open loop is still active.",
+        rationale="Validation open loop",
+        source_kind="derived-runtime-open-loop",
+        confidence="high",
+        evidence_summary="open loop evidence",
+        support_summary="source-anchor=open-loop-anchor",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation open loop status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+    _insert_autonomy_pressure(
+        db,
+        pressure_type="question-pressure",
+        pressure_state="question-worthy",
+        weight="high",
+    )
+
+    tracking.track_runtime_proactive_loop_lifecycle_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_proactive_loop_lifecycle_surface(limit=8)
+
+    item = next(item for item in surface["items"] if item["loop_kind"] == "question-loop")
+    assert item["loop_focus"] == "Visible work"

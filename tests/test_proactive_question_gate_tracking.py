@@ -449,3 +449,48 @@ def test_proactive_question_gate_accepts_initiative_loop_continuity_without_rela
     assert item["question_gate_continuity_mode"] == "initiative-loop-continuity"
     assert item["question_gate_reason"] == "initiative-loop-carried"
     assert item["question_gate_state"] == "question-gated-candidate"
+
+
+def test_proactive_question_gate_uses_loop_title_when_loop_focus_is_none(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.proactive_question_gate_tracking
+
+    _insert_autonomy_question_pressure(db)
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_proactive_loop_lifecycle_signal(
+        signal_id=f"question-loop-none-{uuid4().hex}",
+        signal_type="proactive-loop-lifecycle",
+        canonical_key="proactive-loop-lifecycle:question-loop:visible-work",
+        status="active",
+        title="Proactive loop lifecycle: Visible work",
+        summary="Bounded proactive-loop lifecycle is carrying a question-capable thread.",
+        rationale="Validation proactive loop lifecycle",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="question loop evidence",
+        support_summary=(
+            "loop-state=loop-question-worthy | loop-kind=question-loop | loop-focus=none | "
+            "loop-weight=high | loop-confidence=high | question-readiness=high | closure-readiness=low | source-anchor=loop-anchor"
+        ),
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation proactive loop lifecycle status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+    _insert_relation_continuity(db)
+    _insert_meaning(db)
+
+    tracking.track_runtime_proactive_question_gates_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_proactive_question_gate_surface(limit=8)
+
+    item = surface["items"][0]
+    assert item["title"] == "Proactive question gate: Visible work"
+    assert item["canonical_key"] == "proactive-question-gate:visible-work"

@@ -398,3 +398,86 @@ def test_diary_synthesis_no_deletion_claims(
         assert "gone" not in summary_lower
         assert "i deleted" not in summary_lower
         assert "i forgot" not in summary_lower
+
+
+def test_diary_confidence_boosts_with_release_state(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+        _diary_confidence,
+    )
+
+    signal_low = {"confidence": "low", "support_summary": ""}
+    confidence_low = _diary_confidence(signal_low)
+    assert confidence_low == "low"
+
+    signal_release_ready = {
+        "confidence": "low",
+        "support_summary": "release-state=release-ready",
+    }
+    confidence_boosted = _diary_confidence(signal_release_ready)
+    assert confidence_boosted in {"medium", "high"}
+
+    signal_release_leaning = {
+        "confidence": "low",
+        "support_summary": "release-state=release-leaning",
+    }
+    confidence_leaning = _diary_confidence(signal_release_leaning)
+    assert confidence_leaning in {"medium", "high"}
+
+
+def test_diary_weight_considers_release_strength(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+        _diary_weight,
+    )
+
+    signal_no_release = {"confidence": "low", "support_summary": ""}
+    weight_no_release = _diary_weight(signal_no_release)
+    assert weight_no_release == "low"
+
+    signal_release_ready = {
+        "confidence": "low",
+        "support_summary": "release-state=release-ready",
+    }
+    weight_ready = _diary_weight(signal_release_ready)
+    assert weight_ready in {"medium", "high"}
+
+
+def test_diary_source_anchor_prioritizes_release(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+        _source_anchor_from_signals,
+    )
+
+    metabolism_release = {
+        "support_summary": "release-state=release-ready",
+        "status": "active",
+    }
+    witness = {"status": "carried", "confidence": "medium"}
+    chronicle = {"status": "briefed"}
+
+    anchor = _source_anchor_from_signals(
+        witness=witness,
+        chronicle=chronicle,
+        self_narrative=None,
+        metabolism=metabolism_release,
+    )
+
+    assert "release" in anchor.lower()
+
+    metabolism_no_release = {
+        "support_summary": "",
+        "status": "active",
+    }
+    anchor_no_release = _source_anchor_from_signals(
+        witness=witness,
+        chronicle=chronicle,
+        self_narrative=None,
+        metabolism=metabolism_no_release,
+    )
+
+    assert "release" not in anchor_no_release.lower()
+    assert "metabolism" in anchor_no_release.lower()

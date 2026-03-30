@@ -331,16 +331,38 @@ def _extract_release_state(metabolism: dict[str, object]) -> str:
 
 def _diary_weight(*signals: dict[str, object | None]) -> str:
     weights = []
+    release_weight = 0
+
     for sig in signals:
         if sig is None:
             continue
         conf = str(sig.get("confidence") or sig.get("weight") or "low").strip().lower()
         weights.append(conf)
-    if "high" in weights:
+
+        release_state = _extract_release_state_from_signal(sig)
+        if release_state in {"release-ready"}:
+            release_weight = 3
+        elif release_state in {"release-leaning"} and release_weight < 2:
+            release_weight = 2
+        elif release_state in {"release-emerging"} and release_weight < 1:
+            release_weight = 1
+
+    if release_weight >= 3 or "high" in weights:
         return "high"
-    if "medium" in weights:
+    if release_weight >= 2 or "medium" in weights:
         return "medium"
     return "low"
+
+
+def _extract_release_state_from_signal(sig: dict[str, object] | None) -> str:
+    if sig is None:
+        return "none"
+    support_summary = str(sig.get("support_summary") or "")
+    for segment in support_summary.split("|"):
+        segment = segment.strip()
+        if segment.startswith("release-state="):
+            return segment.split("=", 1)[-1].strip()
+    return "none"
 
 
 def _diary_summary(
@@ -440,17 +462,33 @@ def _source_anchor_from_signals(
     self_narrative: dict[str, object] | None,
     metabolism: dict[str, object] | None,
 ) -> str:
-    anchors = []
-    if witness is not None:
-        anchors.append("witness")
-    if chronicle is not None:
-        anchors.append("chronicle")
-    if self_narrative is not None:
-        anchors.append("self-narrative")
+    primary_anchors = []
+    secondary_anchors = []
+
     if metabolism is not None:
-        anchors.append("metabolism")
-    if anchors:
-        return " + ".join(anchors)
+        release_state = _extract_release_state_from_signal(metabolism)
+        if release_state not in {"none", ""}:
+            primary_anchors.append("release")
+        else:
+            secondary_anchors.append("metabolism")
+
+    if witness is not None:
+        status = str(witness.get("status") or "").strip()
+        if status == "carried":
+            secondary_anchors.append("witness")
+        else:
+            secondary_anchors.append("witness")
+
+    if chronicle is not None:
+        secondary_anchors.append("chronicle")
+
+    if self_narrative is not None:
+        secondary_anchors.append("self-narrative")
+
+    if primary_anchors:
+        return " + ".join([*primary_anchors, *secondary_anchors[:2]])
+    if secondary_anchors:
+        return " + ".join(secondary_anchors[:3])
     return "runtime-observation"
 
 
@@ -458,6 +496,8 @@ def _diary_confidence(*signals: dict[str, object | None]) -> str:
     ranks = {"low": 0, "medium": 1, "high": 2}
     best = "low"
     best_score = -1
+    release_boost = 0
+
     for sig in signals:
         if sig is None:
             continue
@@ -466,7 +506,19 @@ def _diary_confidence(*signals: dict[str, object | None]) -> str:
         if score > best_score:
             best = conf
             best_score = score
-    return best
+
+        release_state = _extract_release_state_from_signal(sig)
+        if release_state == "release-ready":
+            release_boost = 2
+        elif release_state == "release-leaning" and release_boost < 1:
+            release_boost = 1
+
+    final_score = best_score + release_boost
+    if final_score >= 3:
+        return "high"
+    if final_score >= 1:
+        return "medium"
+    return "low"
 
 
 def _with_runtime_view(

@@ -42,6 +42,8 @@ from core.tools.workspace_capabilities import load_workspace_capabilities
 
 READINESS_PROBE_TTL_SECONDS = 15
 _READINESS_PROBE_CACHE: dict[tuple[str, str, str], dict[str, str | bool]] = {}
+GITHUB_VISIBLE_COOLDOWN_TTL_MINUTES = 10
+_GITHUB_VISIBLE_COOLDOWN_UNTIL: dict[str, datetime] = {}
 OPENAI_TEXT_PRICING_PER_1M_TOKENS: dict[str, tuple[Decimal, Decimal]] = {
     "gpt-5": (Decimal("1.25"), Decimal("10.00")),
     "gpt-5-mini": (Decimal("0.25"), Decimal("2.00")),
@@ -123,6 +125,52 @@ def _normalize_github_models_model_id(model: str) -> str:
         f"GitHub Models: cannot resolve model ID '{model}'. "
         f"Use a known model name (e.g., 'gpt-4.1', 'gpt-5-mini') or full API ID (e.g., 'openai/gpt-4.1')."
     )
+
+
+def _set_github_visible_cooldown(
+    profile: str, ttl_minutes: int = GITHUB_VISIBLE_COOLDOWN_TTL_MINUTES
+) -> None:
+    from datetime import timedelta
+
+    global _GITHUB_VISIBLE_COOLDOWN_UNTIL
+    _GITHUB_VISIBLE_COOLDOWN_UNTIL[profile] = datetime.now(UTC) + timedelta(
+        minutes=ttl_minutes
+    )
+
+
+def _is_github_visible_cooled_down(profile: str) -> bool:
+    global _GITHUB_VISIBLE_COOLDOWN_UNTIL
+    cooldown_until = _GITHUB_VISIBLE_COOLDOWN_UNTIL.get(profile)
+    if cooldown_until is None:
+        return False
+    if datetime.now(UTC) >= cooldown_until:
+        _GITHUB_VISIBLE_COOLDOWN_UNTIL.pop(profile, None)
+        return False
+    return True
+
+
+def _get_github_visible_cooldown_status(profile: str) -> dict[str, object]:
+    global _GITHUB_VISIBLE_COOLDOWN_UNTIL
+    cooldown_until = _GITHUB_VISIBLE_COOLDOWN_UNTIL.get(profile)
+    if cooldown_until is None:
+        return {
+            "cooled_down": False,
+            "cooldown_until": None,
+            "seconds_remaining": 0,
+        }
+    remaining = (cooldown_until - datetime.now(UTC)).total_seconds()
+    if remaining <= 0:
+        _GITHUB_VISIBLE_COOLDOWN_UNTIL.pop(profile, None)
+        return {
+            "cooled_down": False,
+            "cooldown_until": None,
+            "seconds_remaining": 0,
+        }
+    return {
+        "cooled_down": True,
+        "cooldown_until": cooldown_until.isoformat(),
+        "seconds_remaining": int(remaining),
+    }
 
 
 def execute_visible_model(
@@ -262,9 +310,17 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
         has_real_credentials = bool(oauth_truth.get("has_real_credentials", False))
         exchange_readiness = str(oauth_truth.get("exchange_readiness", ""))
 
-        auth_ready = has_real_credentials and oauth_state == "real-stored"
+        cooldown_status = _get_github_visible_cooldown_status(profile)
+        is_cooled_down = bool(cooldown_status.get("cooled_down"))
 
-        if auth_ready:
+        auth_ready = (
+            has_real_credentials and oauth_state == "real-stored" and not is_cooled_down
+        )
+
+        if is_cooled_down:
+            auth_status = "rate-limited-cooldown"
+            provider_status = "rate-limited"
+        elif auth_ready:
             auth_status = "ready-github-models"
             provider_status = "ready"
         else:
@@ -284,6 +340,7 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "provider_status": provider_status,
             "probe_cache": "not-run",
             "checked_at": None,
+            "cooldown": cooldown_status,
         }
 
     return {
@@ -441,6 +498,12 @@ def _execute_github_copilot_visible_model(
 
     settings = load_settings()
     profile = settings.visible_auth_profile or "default"
+
+    if _is_github_visible_cooled_down(profile):
+        raise VisibleModelRateLimited(
+            "GitHub Copilot visible lane is temporarily rate-limited. Please try again in a few minutes, or switch to a local lane."
+        )
+
     access_token = _load_github_copilot_token(profile=profile)
 
     normalized_model = _normalize_github_models_model_id(model)
@@ -463,8 +526,9 @@ def _execute_github_copilot_visible_model(
     except RuntimeError as exc:
         error_msg = str(exc)
         if "HTTP 429" in error_msg:
+            _set_github_visible_cooldown(profile)
             raise VisibleModelRateLimited(
-                "Backend is temporarily rate-limited. Please try again in a moment, or switch to a local lane."
+                "GitHub Copilot visible lane is temporarily rate-limited. Please try again in a few minutes, or switch to a local lane."
             )
         if "HTTP" in error_msg:
             code = (

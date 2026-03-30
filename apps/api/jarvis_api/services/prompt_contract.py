@@ -126,7 +126,9 @@ def build_runtime_relevance_decision_surface(*, limit: int = 8) -> dict[str, obj
     }
 
 
-def build_runtime_inner_visible_prompt_bridge_surface(*, limit: int = 8) -> dict[str, object]:
+def build_runtime_inner_visible_prompt_bridge_surface(
+    *, limit: int = 8
+) -> dict[str, object]:
     if not _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY:
         return {
             "active": False,
@@ -716,7 +718,10 @@ def _track_inner_visible_prompt_bridge(
             "subordinate": decision.subordinate,
         },
     )
-    if len(_INNER_VISIBLE_PROMPT_BRIDGE_HISTORY) > _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY_LIMIT:
+    if (
+        len(_INNER_VISIBLE_PROMPT_BRIDGE_HISTORY)
+        > _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY_LIMIT
+    ):
         _INNER_VISIBLE_PROMPT_BRIDGE_HISTORY.pop()
 
 
@@ -774,7 +779,11 @@ def _build_inner_visible_prompt_bridge_decision(
         decision.reason = "low-confidence"
         _track_inner_visible_prompt_bridge(decision)
         return decision
-    if relevance.include_memory or relevance.include_guidance or relevance.continuity_relevant:
+    if (
+        relevance.include_memory
+        or relevance.include_guidance
+        or relevance.continuity_relevant
+    ):
         decision.reason = "primary-context-query"
         _track_inner_visible_prompt_bridge(decision)
         return decision
@@ -1373,7 +1382,9 @@ def _runtime_self_report_instruction(
 
     backend_provider = str(readiness.get("provider") or "unknown").strip() or "unknown"
     backend_model = str(readiness.get("model") or "unknown").strip() or "unknown"
-    backend_status = str(readiness.get("provider_status") or "unknown").strip() or "unknown"
+    backend_status = (
+        str(readiness.get("provider_status") or "unknown").strip() or "unknown"
+    )
     auth_status = str(readiness.get("auth_status") or "unknown").strip() or "unknown"
     live_verified = str(bool(readiness.get("live_verified"))).lower()
 
@@ -1400,8 +1411,10 @@ def _runtime_self_report_instruction(
 
     return "\n".join(
         [
-            "Runtime self-report grounding:",
+            "RUNTIME SELF-REPORT GROUNDING (Jarvis-specific):",
+            "- You are Jarvis, a persistent digital entity with runtime state. You are NOT a generic OpenAI/ChatGPT assistant.",
             "- Use these runtime facts first when the user asks about your backend, open loops, current state, what you are basing your answer on, certainty, or whether you are guessing.",
+            "- Do NOT respond as 'ChatGPT', 'OpenAI assistant', or generic server helpdesk. Your identity is Jarvis, grounded in these runtime facts.",
             *routing_lines,
             "- If a field below is none-recorded, unknown, or low-confidence, say that plainly and do not invent stronger certainty.",
             (
@@ -1517,7 +1530,7 @@ def _runtime_self_report_routing_lines(
     lines: list[str] = []
     if query_profile.get("backend"):
         lines.append(
-            "- For backend-status questions, lead with backend_provider/backend_model/backend_status, then mention runtime_awareness_state if it changes how dependable that backend looks."
+            "- For backend-status questions, lead with backend_provider/backend_model/backend_status from YOUR runtime. Say 'Jarvis backend is X' not 'The backend is X' or 'I use OpenAI'."
         )
     if query_profile.get("open_loops"):
         lines.append(
@@ -1567,15 +1580,21 @@ def _merge_runtime_self_report_state(
 
 def _runtime_awareness_prompt_surface(*, limit: int) -> dict[str, object]:
     items = list_runtime_awareness_signals(limit=max(limit, 1))
-    constrained = [item for item in items if str(item.get("status") or "") == "constrained"]
+    constrained = [
+        item for item in items if str(item.get("status") or "") == "constrained"
+    ]
     active = [item for item in items if str(item.get("status") or "") == "active"]
     recovered = [item for item in items if str(item.get("status") or "") == "recovered"]
     stale = [item for item in items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in items if str(item.get("status") or "") == "superseded"]
+    superseded = [
+        item for item in items if str(item.get("status") or "") == "superseded"
+    ]
     latest = next(iter(constrained or active or recovered or stale or superseded), None)
     return {
         "summary": {
-            "current_signal": str((latest or {}).get("title") or "No active runtime-awareness signal"),
+            "current_signal": str(
+                (latest or {}).get("title") or "No active runtime-awareness signal"
+            ),
             "current_status": str((latest or {}).get("status") or "none-recorded"),
             "machine_detail": str((latest or {}).get("title") or "none-recorded"),
         }

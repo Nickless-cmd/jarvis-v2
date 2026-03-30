@@ -121,13 +121,17 @@ def _insert_self_model(db) -> None:
     )
 
 
-def test_visible_input_omits_world_model_support_block_when_no_relevant_signals_exist(isolated_runtime) -> None:
+def test_visible_input_omits_world_model_support_block_when_no_relevant_signals_exist(
+    isolated_runtime,
+) -> None:
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
 
     assert "World-model support signal:" not in system_text
 
 
-def test_visible_input_includes_small_subordinate_world_model_support_block(isolated_runtime) -> None:
+def test_visible_input_includes_small_subordinate_world_model_support_block(
+    isolated_runtime,
+) -> None:
     _insert_world_model_signal(isolated_runtime.db)
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
@@ -137,15 +141,21 @@ def test_visible_input_includes_small_subordinate_world_model_support_block(isol
     assert "world_state=active" in system_text
     assert "world_direction=workspace-scope" in system_text
     assert "world_confidence=high" in system_text
-    assert "Use only as subordinate support. Runtime and visible truth outrank it." in system_text
+    assert (
+        "Use only as subordinate support. Runtime and visible truth outrank it."
+        in system_text
+    )
 
 
-def test_visible_input_world_model_support_block_stays_bounded(isolated_runtime) -> None:
+def test_visible_input_world_model_support_block_stays_bounded(
+    isolated_runtime,
+) -> None:
     _insert_world_model_signal(isolated_runtime.db)
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
     world_block = next(
-        part for part in system_text.split("\n\n")
+        part
+        for part in system_text.split("\n\n")
         if part.startswith("World-model support signal:")
     )
 
@@ -157,23 +167,33 @@ def test_visible_input_world_model_support_block_stays_bounded(isolated_runtime)
     assert "current_status" not in world_block
 
 
-def test_visible_input_omits_goal_support_block_when_no_relevant_signals_exist(isolated_runtime) -> None:
+def test_visible_input_omits_goal_support_block_when_no_relevant_signals_exist(
+    isolated_runtime,
+) -> None:
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
 
     assert "Goal support signal:" not in system_text
 
 
-def test_visible_input_includes_small_subordinate_goal_support_block(isolated_runtime) -> None:
+def test_visible_input_includes_small_subordinate_goal_support_block(
+    isolated_runtime,
+) -> None:
     _insert_goal_signal(isolated_runtime.db)
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
 
     assert "Goal support signal:" in system_text
-    assert "current_goal_direction=Current direction: Danish concise calibration" in system_text
+    assert (
+        "current_goal_direction=Current direction: Danish concise calibration"
+        in system_text
+    )
     assert "goal_state=blocked" in system_text
     assert "goal_direction=danish-concise-calibration" in system_text
     assert "goal_confidence=high" in system_text
-    assert "Use only as subordinate support. Runtime and visible truth outrank it." in system_text
+    assert (
+        "Use only as subordinate support. Runtime and visible truth outrank it."
+        in system_text
+    )
 
 
 def test_visible_input_goal_support_block_stays_bounded(isolated_runtime) -> None:
@@ -181,7 +201,8 @@ def test_visible_input_goal_support_block_stays_bounded(isolated_runtime) -> Non
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
     goal_block = next(
-        part for part in system_text.split("\n\n")
+        part
+        for part in system_text.split("\n\n")
         if part.startswith("Goal support signal:")
     )
 
@@ -193,13 +214,17 @@ def test_visible_input_goal_support_block_stays_bounded(isolated_runtime) -> Non
     assert "current_status" not in goal_block
 
 
-def test_visible_input_omits_runtime_awareness_support_block_when_no_relevant_signals_exist(isolated_runtime) -> None:
+def test_visible_input_omits_runtime_awareness_support_block_when_no_relevant_signals_exist(
+    isolated_runtime,
+) -> None:
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
 
     assert "Runtime-awareness support signal:" not in system_text
 
 
-def test_visible_input_includes_small_subordinate_runtime_awareness_support_block(isolated_runtime) -> None:
+def test_visible_input_includes_small_subordinate_runtime_awareness_support_block(
+    isolated_runtime,
+) -> None:
     _insert_runtime_awareness_signal(isolated_runtime.db)
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
@@ -209,15 +234,21 @@ def test_visible_input_includes_small_subordinate_runtime_awareness_support_bloc
     assert "runtime_detail=Visible local model lane is constrained" in system_text
     assert "runtime_direction=local-visible-lane" in system_text
     assert "runtime_confidence=high" in system_text
-    assert "Use only as subordinate support. Runtime and visible truth outrank it." in system_text
+    assert (
+        "Use only as subordinate support. Runtime and visible truth outrank it."
+        in system_text
+    )
 
 
-def test_visible_input_runtime_awareness_support_block_stays_bounded(isolated_runtime) -> None:
+def test_visible_input_runtime_awareness_support_block_stays_bounded(
+    isolated_runtime,
+) -> None:
     _insert_runtime_awareness_signal(isolated_runtime.db)
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
     runtime_block = next(
-        part for part in system_text.split("\n\n")
+        part
+        for part in system_text.split("\n\n")
         if part.startswith("Runtime-awareness support signal:")
     )
 
@@ -231,7 +262,9 @@ def test_visible_input_runtime_awareness_support_block_stays_bounded(isolated_ru
     assert "machine_detail" not in runtime_block
 
 
-def test_visible_support_blocks_remain_small_subordinate_helper_sections(isolated_runtime) -> None:
+def test_visible_support_blocks_remain_small_subordinate_helper_sections(
+    isolated_runtime,
+) -> None:
     _insert_self_model(isolated_runtime.db)
     _insert_reflection_signal(isolated_runtime.db)
     _insert_world_model_signal(isolated_runtime.db)
@@ -254,7 +287,12 @@ def test_visible_support_blocks_remain_small_subordinate_helper_sections(isolate
     ]
 
     assert len(support_blocks) == 5
-    assert system_text.count("Use only as subordinate support. Runtime and visible truth outrank it.") >= 5
+    assert (
+        system_text.count(
+            "Use only as subordinate support. Runtime and visible truth outrank it."
+        )
+        >= 5
+    )
     for block in support_blocks:
         assert "recent_history" not in block
         assert "evidence_summary" not in block
@@ -289,7 +327,9 @@ def test_visible_input_includes_runtime_self_report_grounding_for_backend_status
         "hvad er din backend status?",
     )
 
-    assert "Runtime self-report grounding:" in system_text
+    assert "RUNTIME SELF-REPORT GROUNDING" in system_text
+    assert "Jarvis-specific" in system_text
+    assert "NOT a generic OpenAI" in system_text
     assert "backend_provider=ollama" in system_text
     assert "backend_model=qwen3.5:9b" in system_text
     assert "backend_status=ready" in system_text
@@ -338,7 +378,7 @@ def test_visible_input_includes_runtime_self_report_grounding_for_open_loop_quer
         "har du åbne loops lige nu?",
     )
 
-    assert "Runtime self-report grounding:" in system_text
+    assert "RUNTIME SELF-REPORT GROUNDING" in system_text
     assert "open_loop_count=1" in system_text
     assert "open_loop_state=open" in system_text
     assert "open_loop_current=Open loop: Visible work" in system_text
@@ -365,8 +405,9 @@ def test_visible_input_self_report_grounding_explicitly_marks_bounded_uncertaint
         "er du sikker, eller gætter du om din aktuelle tilstand?",
     )
     block = next(
-        part for part in system_text.split("\n\n")
-        if part.startswith("Runtime self-report grounding:")
+        part
+        for part in system_text.split("\n\n")
+        if part.startswith("RUNTIME SELF-REPORT GROUNDING")
     )
 
     assert "open_loop_state=none-recorded" in block
@@ -418,12 +459,19 @@ def test_visible_input_self_report_open_loop_query_includes_consistency_guard(
         "har du åbne loops, eller ingen åbne loops lige nu?",
     )
     block = next(
-        part for part in system_text.split("\n\n")
-        if part.startswith("Runtime self-report grounding:")
+        part
+        for part in system_text.split("\n\n")
+        if part.startswith("RUNTIME SELF-REPORT GROUNDING")
     )
 
-    assert "For open-loop questions, lead with open_loop_count/open_loop_state/open_loop_current." in block
-    assert "Runtime currently shows at least one open loop, so do not answer that there are none." in block
+    assert (
+        "For open-loop questions, lead with open_loop_count/open_loop_state/open_loop_current."
+        in block
+    )
+    assert (
+        "Runtime currently shows at least one open loop, so do not answer that there are none."
+        in block
+    )
     assert "Never say there are no open loops when open_loop_count is above 0." in block
 
 
@@ -489,8 +537,9 @@ def test_visible_input_self_report_current_state_query_routes_to_state_surfaces_
         "hvad er din aktuelle tilstand lige nu?",
     )
     block = next(
-        part for part in system_text.split("\n\n")
-        if part.startswith("Runtime self-report grounding:")
+        part
+        for part in system_text.split("\n\n")
+        if part.startswith("RUNTIME SELF-REPORT GROUNDING")
     )
 
     assert "For current-state questions, use current_runtime_state first" in block
@@ -521,10 +570,17 @@ def test_visible_input_self_report_certainty_query_is_routed_to_gradated_uncerta
         "er du sikker på det her, eller digter du?",
     )
     block = next(
-        part for part in system_text.split("\n\n")
-        if part.startswith("Runtime self-report grounding:")
+        part
+        for part in system_text.split("\n\n")
+        if part.startswith("RUNTIME SELF-REPORT GROUNDING")
     )
 
-    assert "For certainty or guessing questions, explain how grounded the answer is from these runtime facts rather than answering with a bare yes or no." in block
-    assert "For certainty questions, answer in degrees like grounded, partly grounded, uncertain, or guessing." in block
+    assert (
+        "For certainty or guessing questions, explain how grounded the answer is from these runtime facts rather than answering with a bare yes or no."
+        in block
+    )
+    assert (
+        "For certainty questions, answer in degrees like grounded, partly grounded, uncertain, or guessing."
+        in block
+    )
     assert "If the user asks whether you are making things up, answer plainly" in block

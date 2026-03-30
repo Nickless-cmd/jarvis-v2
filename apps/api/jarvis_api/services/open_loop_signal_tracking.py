@@ -464,7 +464,84 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
                 )
             )
 
+    readiness = get_open_loop_creation_readiness()
+    if readiness.get("readiness") == "ready":
+        readiness_candidate = _materialize_from_creation_readiness(
+            readiness=readiness,
+            existing_domain_keys={snapshots.keys()},
+        )
+        if readiness_candidate:
+            candidates.append(readiness_candidate)
+
     return candidates[:4]
+
+
+def _materialize_from_creation_readiness(
+    readiness: dict[str, object],
+    existing_domain_keys: set[str],
+) -> dict[str, object] | None:
+    aligned_signals = readiness.get("aligned_signals", [])
+    if len(aligned_signals) < 3:
+        return None
+
+    from apps.api.jarvis_api.services.private_initiative_tension_signal_tracking import (
+        build_runtime_private_initiative_tension_signal_surface,
+    )
+    from apps.api.jarvis_api.services.autonomy_pressure_signal_tracking import (
+        build_runtime_autonomy_pressure_signal_surface,
+    )
+
+    tension = build_runtime_private_initiative_tension_signal_surface(limit=8)
+    autonomy = build_runtime_autonomy_pressure_signal_surface(limit=8)
+
+    focus_title = "aligned runtime threads"
+    source_items = []
+
+    active_tensions = [
+        item
+        for item in tension.get("items", [])
+        if str(item.get("status") or "") == "active"
+    ]
+    if active_tensions:
+        source_items.append(active_tensions[0])
+        tension_title = str(active_tensions[0].get("title") or "")
+        if tension_title:
+            focus_title = tension_title.replace(
+                "Private initiative tension: ", ""
+            ).strip()
+
+    active_pressures = [
+        item
+        for item in autonomy.get("items", [])
+        if str(item.get("status") or "") == "active"
+    ]
+    if active_pressures:
+        source_items.append(active_pressures[0])
+
+    domain_key = f"creation-readiness:{focus_title.replace(' ', '-').lower()[:32]}"
+    if domain_key in existing_domain_keys:
+        return None
+
+    existing_loops = list_runtime_open_loop_signals(limit=20)
+    for loop in existing_loops:
+        if str(loop.get("status") or "") not in {"open", "softening"}:
+            continue
+        loop_title = str(loop.get("title") or "").lower()
+        if focus_title.lower() in loop_title or domain_key in str(
+            loop.get("canonical_key") or ""
+        ):
+            return None
+
+    return _build_candidate(
+        domain_key=domain_key,
+        signal_type="open-loop",
+        status="open",
+        title=f"Open loop: {focus_title}",
+        summary=f"A bounded loop around {focus_title.lower()} emerged from aligned initiative tension and autonomy pressure.",
+        rationale="Bounded open loop may materialize only when at least three aligned signals (initiative-tension, autonomy-pressure, proactive-loop, question-gate) point in the same direction, without becoming planner authority or task execution.",
+        status_reason="The bounded thread emerged from strong aligned runtime signals, not from autonomous task creation.",
+        source_items=source_items,
+    )
 
 
 def _build_governance_snapshots() -> dict[str, dict[str, object]]:

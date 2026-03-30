@@ -623,3 +623,74 @@ def test_open_loop_creation_readiness_surface_included(
     assert "confidence" in readiness
     assert "aligned_signals" in readiness
     assert "alignment_count" in readiness
+
+
+def test_open_loop_materialization_only_at_ready_threshold(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+        _materialize_from_creation_readiness,
+    )
+
+    readiness_none = {
+        "readiness": "none",
+        "aligned_signals": [],
+        "alignment_count": 0,
+    }
+    result_none = _materialize_from_creation_readiness(
+        readiness=readiness_none,
+        existing_domain_keys=set(),
+    )
+    assert result_none is None
+
+    readiness_partial = {
+        "readiness": "partial",
+        "aligned_signals": ["initiative-tension", "autonomy-pressure"],
+        "alignment_count": 2,
+    }
+    result_partial = _materialize_from_creation_readiness(
+        readiness=readiness_partial,
+        existing_domain_keys=set(),
+    )
+    assert result_partial is None
+
+    readiness_emerging = {
+        "readiness": "emerging",
+        "aligned_signals": ["initiative-tension"],
+        "alignment_count": 1,
+    }
+    result_emerging = _materialize_from_creation_readiness(
+        readiness=readiness_emerging,
+        existing_domain_keys=set(),
+    )
+    assert result_emerging is None
+
+
+def test_open_loop_materialization_guards_against_duplicates(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+        _materialize_from_creation_readiness,
+    )
+
+    readiness_ready = {
+        "readiness": "ready",
+        "aligned_signals": [
+            "initiative-tension",
+            "autonomy-pressure",
+            "proactive-loop",
+        ],
+        "alignment_count": 3,
+    }
+
+    result_first = _materialize_from_creation_readiness(
+        readiness=readiness_ready,
+        existing_domain_keys=set(),
+    )
+    assert result_first is not None
+
+    result_duplicate = _materialize_from_creation_readiness(
+        readiness=readiness_ready,
+        existing_domain_keys={result_first.get("domain_key", "")},
+    )
+    assert result_duplicate is None

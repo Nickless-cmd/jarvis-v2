@@ -584,3 +584,93 @@ def test_visible_input_self_report_certainty_query_is_routed_to_gradated_uncerta
         in block
     )
     assert "If the user asks whether you are making things up, answer plainly" in block
+
+
+def test_visible_self_report_includes_self_action_limits_guard(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.visible_model,
+        "visible_execution_readiness",
+        lambda: {
+            "provider": "phase1-runtime",
+            "model": "phase1",
+            "provider_status": "local-fallback",
+            "auth_status": "not-required",
+            "live_verified": False,
+        },
+    )
+    now = datetime.now(UTC).isoformat()
+    isolated_runtime.db.upsert_runtime_open_loop_signal(
+        signal_id=f"open-loop-self-action-{uuid4().hex}",
+        signal_type="open-loop",
+        canonical_key="open-loop:test:sample-loop",
+        status="open",
+        title="Open loop: sample loop",
+        summary="A bounded sample loop.",
+        rationale="Validation test.",
+        source_kind="test",
+        confidence="medium",
+        evidence_summary="test evidence",
+        support_summary="test support",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="test",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+    system_text = _system_text_from_visible_input(
+        isolated_runtime.visible_model,
+        "what open loops do you have",
+    )
+
+    assert "RUNTIME SELF-REPORT GROUNDING" in system_text
+    assert "IMPORTANT SELF-ACTION LIMITS" in system_text
+    assert (
+        "Do NOT claim you have created, closed, tested, or are managing loops"
+        in system_text
+    )
+    assert "Do NOT claim" in system_text
+    assert (
+        "trying again" in system_text.lower() or "reconnecting" in system_text.lower()
+    )
+    assert "State observed runtime status only" in system_text
+
+
+def test_visible_self_report_limits_fake_retry_language(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.visible_model,
+        "visible_execution_readiness",
+        lambda: {
+            "provider": "phase1-runtime",
+            "model": "phase1",
+            "provider_status": "local-fallback",
+            "auth_status": "not-required",
+            "live_verified": False,
+        },
+    )
+
+    system_text = _system_text_from_visible_input(
+        isolated_runtime.visible_model,
+        "what is your current state",
+    )
+
+    assert "RUNTIME SELF-REPORT GROUNDING" in system_text
+    assert "IMPORTANT SELF-ACTION LIMITS" in system_text
+    guard_block = next(
+        (
+            part
+            for part in system_text.split("\n")
+            if "IMPORTANT SELF-ACTION LIMITS" in part
+        ),
+        None,
+    )
+    assert guard_block is not None
+    assert "Do NOT claim" in guard_block

@@ -90,16 +90,35 @@ _GITHUB_MODELS_MODEL_PREFIXES = {
     "llama-3.3-70b": "meta-llama/llama-3.3-70b",
     "deepseek-chat": "deepseek/deepseek-chat",
     "deepseek-coder": "deepseek/deepseek-coder",
+    "gpt-5 mini": "openai/gpt-5-mini",
+    "gpt-5mini": "openai/gpt-5-mini",
 }
 
 
 def _normalize_github_models_model_id(model: str) -> str:
-    normalized = model.strip().lower()
-    if "/" in normalized:
-        return model
+    if not model:
+        raise ValueError("GitHub Models: empty model ID")
+
+    original = model.strip()
+    if original.startswith("/"):
+        raise ValueError(f"GitHub Models: invalid model ID with leading slash: {model}")
+
+    normalized = original.lower()
+
+    if "/" in normalized and not normalized.startswith("/"):
+        return original
+
     if normalized in _GITHUB_MODELS_MODEL_PREFIXES:
         return _GITHUB_MODELS_MODEL_PREFIXES[normalized]
-    return model
+
+    for key, api_id in _GITHUB_MODELS_MODEL_PREFIXES.items():
+        if key in normalized or normalized in key:
+            return api_id
+
+    raise ValueError(
+        f"GitHub Models: cannot resolve model ID '{model}'. "
+        f"Use a known model name (e.g., 'gpt-4.1', 'gpt-5-mini') or full API ID (e.g., 'openai/gpt-4.1')."
+    )
 
 
 def execute_visible_model(

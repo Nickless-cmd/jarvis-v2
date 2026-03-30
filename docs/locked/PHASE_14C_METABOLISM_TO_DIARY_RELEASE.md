@@ -3,9 +3,9 @@
 ## Why This Phase Exists
 
 We now have:
-- Inner voice cluster in better tone
-- Diary synthesis as bounded runtime layer
-- Metabolism / release / consolidation / selective forgetting as separate runtime layers
+- Inner voice cluster in better tone (Phase 14b)
+- Diary synthesis as bounded runtime layer (Phase 14a)
+- Metabolism / release / consolidation / selective forgetting as separate runtime layers (Phase 9)
 
 The next natural design step is:
 - How diary can begin to register **release movement**
@@ -17,7 +17,7 @@ That is:
 - What appears to be releasing from active inner weight
 - WITHOUT claiming deletion
 - WITHOUT making release canonical truth
-- WITHOUT making diary a cleanup engine
+- WITHOUT making diary to cleanup engine
 
 ## Conceptual Distinctions
 

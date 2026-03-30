@@ -739,19 +739,24 @@ def _load_github_copilot_token(*, profile: str) -> str:
 
 
 def _post_github_copilot_chat_completion(*, payload: dict, access_token: str) -> dict:
-    root = "https://api.githubcopilot.com"
+    root = "https://models.github.ai"
     req = urllib_request.Request(
-        f"{root}/chat/completions",
+        f"{root}/inference/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
+            "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {access_token}",
-            "Copilot-Integration-Id": "cli",
+            "X-GitHub-Api-Version": "2022-11-28",
         },
         method="POST",
     )
-    with urllib_request.urlopen(req, timeout=60) as response:
-        return json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib_request.urlopen(req, timeout=60) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib_error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GitHub Copilot API error: HTTP {exc.code}: {body}")
 
 
 def _extract_github_copilot_text(data: dict) -> str:

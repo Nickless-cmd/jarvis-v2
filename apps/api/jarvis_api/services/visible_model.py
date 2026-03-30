@@ -71,6 +71,37 @@ class VisibleModelStreamCancelled(RuntimeError):
     pass
 
 
+_GITHUB_MODELS_MODEL_PREFIXES = {
+    "gpt-4.1": "openai/gpt-4.1",
+    "gpt-4o": "openai/gpt-4o",
+    "gpt-4o-mini": "openai/gpt-4o-mini",
+    "gpt-5": "openai/gpt-5",
+    "gpt-5-mini": "openai/gpt-5-mini",
+    "o1": "openai/o1",
+    "o1-mini": "openai/o1-mini",
+    "o3": "openai/o3",
+    "o3-mini": "openai/o3-mini",
+    "claude-3-5-sonnet": "anthropic/claude-3-5-sonnet",
+    "claude-3-5-haiku": "anthropic/claude-3-5-haiku",
+    "claude-4-opus": "anthropic/claude-4-opus",
+    "claude-4-sonnet": "anthropic/claude-4-sonnet",
+    "llama-3.1-70b": "meta-llama/llama-3.1-70b",
+    "llama-3.1-8b": "meta-llama/llama-3.1-8b",
+    "llama-3.3-70b": "meta-llama/llama-3.3-70b",
+    "deepseek-chat": "deepseek/deepseek-chat",
+    "deepseek-coder": "deepseek/deepseek-coder",
+}
+
+
+def _normalize_github_models_model_id(model: str) -> str:
+    normalized = model.strip().lower()
+    if "/" in normalized:
+        return model
+    if normalized in _GITHUB_MODELS_MODEL_PREFIXES:
+        return _GITHUB_MODELS_MODEL_PREFIXES[normalized]
+    return model
+
+
 def execute_visible_model(
     *, message: str, provider: str, model: str, session_id: str | None = None
 ) -> VisibleModelResult:
@@ -209,7 +240,13 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
         exchange_readiness = str(oauth_truth.get("exchange_readiness", ""))
 
         auth_ready = has_real_credentials and oauth_state == "real-stored"
-        auth_status = "ready" if auth_ready else f"not-ready-{exchange_readiness}"
+
+        if auth_ready:
+            auth_status = "ready-github-models"
+            provider_status = "ready"
+        else:
+            auth_status = f"not-ready-{exchange_readiness}"
+            provider_status = "auth-not-ready"
 
         return {
             "provider": provider,
@@ -218,9 +255,10 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "auth_ready": auth_ready,
             "auth_status": auth_status,
             "auth_profile": profile,
+            "auth_note": "requires-models-read-scope" if auth_ready else None,
             "provider_reachable": auth_ready,
             "live_verified": False,
-            "provider_status": "ready" if auth_ready else "auth-not-ready",
+            "provider_status": provider_status,
             "probe_cache": "not-run",
             "checked_at": None,
         }
@@ -380,8 +418,11 @@ def _execute_github_copilot_visible_model(
     settings = load_settings()
     profile = settings.visible_auth_profile or "default"
     access_token = _load_github_copilot_token(profile=profile)
+
+    normalized_model = _normalize_github_models_model_id(model)
+
     payload = {
-        "model": model,
+        "model": normalized_model,
         "messages": [{"role": "user", "content": message}],
         "stream": False,
     }

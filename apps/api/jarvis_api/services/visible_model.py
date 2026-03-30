@@ -9,8 +9,16 @@ from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
+from core.auth.copilot_oauth import get_copilot_oauth_truth
 from core.auth.profiles import get_provider_state, list_auth_profiles
-from apps.api.jarvis_api.services.prompt_contract import build_visible_chat_prompt_assembly
+from apps.api.jarvis_api.services.non_visible_lane_execution import (
+    _extract_github_copilot_text,
+    _load_github_copilot_token,
+    _post_github_copilot_chat_completion,
+)
+from apps.api.jarvis_api.services.prompt_contract import (
+    build_visible_chat_prompt_assembly,
+)
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
@@ -67,16 +75,29 @@ def execute_visible_model(
     *, message: str, provider: str, model: str, session_id: str | None = None
 ) -> VisibleModelResult:
     if provider == "openai":
-        return _execute_openai_model(message=message, model=model, session_id=session_id)
+        return _execute_openai_model(
+            message=message, model=model, session_id=session_id
+        )
     if provider == "ollama":
-        return _execute_ollama_model(message=message, model=model, session_id=session_id)
+        return _execute_ollama_model(
+            message=message, model=model, session_id=session_id
+        )
+    if provider == "github-copilot":
+        return _execute_github_copilot_visible_model(
+            message=message, model=model, session_id=session_id
+        )
     if provider == "phase1-runtime":
         return _execute_phase1_model(message=message, provider=provider, model=model)
     raise ValueError(f"Unsupported visible model provider: {provider}")
 
 
 def stream_visible_model(
-    *, message: str, provider: str, model: str, session_id: str | None = None, controller=None
+    *,
+    message: str,
+    provider: str,
+    model: str,
+    session_id: str | None = None,
+    controller=None,
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
     if provider == "openai":
         yield from _stream_openai_model(
@@ -179,6 +200,31 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "checked_at": str(probe["checked_at"]),
         }
 
+    if provider == "github-copilot":
+        profile = configured_profile or "default"
+        oauth_truth = get_copilot_oauth_truth(profile=profile)
+        oauth_state = str(oauth_truth.get("oauth_state", ""))
+        auth_material_kind = str(oauth_truth.get("auth_material_kind", ""))
+        has_real_credentials = bool(oauth_truth.get("has_real_credentials", False))
+        exchange_readiness = str(oauth_truth.get("exchange_readiness", ""))
+
+        auth_ready = has_real_credentials and oauth_state == "real-stored"
+        auth_status = "ready" if auth_ready else f"not-ready-{exchange_readiness}"
+
+        return {
+            "provider": provider,
+            "model": model,
+            "mode": "provider-backed",
+            "auth_ready": auth_ready,
+            "auth_status": auth_status,
+            "auth_profile": profile,
+            "provider_reachable": auth_ready,
+            "live_verified": False,
+            "provider_status": "ready" if auth_ready else "auth-not-ready",
+            "probe_cache": "not-run",
+            "checked_at": None,
+        }
+
     return {
         "provider": provider,
         "model": model,
@@ -197,7 +243,11 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
 def available_ollama_models_for_visible_target() -> dict[str, object]:
     visible_target = resolve_provider_router_target(lane="visible")
     local_target = resolve_provider_router_target(lane="local")
-    target = visible_target if str(visible_target.get("provider") or "").strip() == "ollama" else local_target
+    target = (
+        visible_target
+        if str(visible_target.get("provider") or "").strip() == "ollama"
+        else local_target
+    )
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
     checked_at = datetime.now(UTC).isoformat()
     req = urllib_request.Request(f"{base_url.rstrip('/')}/api/tags", method="GET")
@@ -208,8 +258,12 @@ def available_ollama_models_for_visible_target() -> dict[str, object]:
             {
                 "name": str(item.get("name") or "").strip(),
                 "family": str(item.get("details", {}).get("family") or "").strip(),
-                "parameter_size": str(item.get("details", {}).get("parameter_size") or "").strip(),
-                "quantization_level": str(item.get("details", {}).get("quantization_level") or "").strip(),
+                "parameter_size": str(
+                    item.get("details", {}).get("parameter_size") or ""
+                ).strip(),
+                "quantization_level": str(
+                    item.get("details", {}).get("quantization_level") or ""
+                ).strip(),
             }
             for item in data.get("models", [])
             if isinstance(item, dict) and str(item.get("name") or "").strip()
@@ -284,7 +338,9 @@ def _execute_openai_model(
     )
 
 
-def _execute_ollama_model(*, message: str, model: str, session_id: str | None = None) -> VisibleModelResult:
+def _execute_ollama_model(
+    *, message: str, model: str, session_id: str | None = None
+) -> VisibleModelResult:
     target = resolve_provider_router_target(lane="visible")
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
     prompt = _build_ollama_prompt(message, model=model, session_id=session_id)
@@ -312,6 +368,43 @@ def _execute_ollama_model(*, message: str, model: str, session_id: str | None = 
         text=text,
         input_tokens=prompt_eval_count,
         output_tokens=eval_count,
+        cost_usd=0.0,
+    )
+
+
+def _execute_github_copilot_visible_model(
+    *, message: str, model: str, session_id: str | None = None
+) -> VisibleModelResult:
+    from core.runtime.settings import load_settings
+
+    settings = load_settings()
+    profile = settings.visible_auth_profile or "default"
+    access_token = _load_github_copilot_token(profile=profile)
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": message}],
+        "stream": False,
+    }
+    data = _post_github_copilot_chat_completion(
+        payload=payload,
+        access_token=access_token,
+    )
+    text = _extract_github_copilot_text(data)
+    usage = data.get("usage", {})
+    input_tokens = int(
+        usage.get("prompt_tokens")
+        or usage.get("input_tokens")
+        or _estimate_tokens(message)
+    )
+    output_tokens = int(
+        usage.get("completion_tokens")
+        or usage.get("output_tokens")
+        or _estimate_tokens(text)
+    )
+    return VisibleModelResult(
+        text=text,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
         cost_usd=0.0,
     )
 
@@ -631,7 +724,9 @@ def _probe_openai_model(*, profile: str, model: str) -> dict[str, str | bool]:
     _READINESS_PROBE_CACHE[cache_key] = {
         **result,
         "checked_at": checked_at,
-        "expires_at": (now + timedelta(seconds=READINESS_PROBE_TTL_SECONDS)).isoformat(),
+        "expires_at": (
+            now + timedelta(seconds=READINESS_PROBE_TTL_SECONDS)
+        ).isoformat(),
     }
     return {
         **result,
@@ -744,7 +839,9 @@ def _visible_continuity_instruction() -> str | None:
             parts.append(f"error={error}")
         lines.append(" | ".join(parts))
 
-    lines.append("Use this only as short recent continuity context, not as transcript memory.")
+    lines.append(
+        "Use this only as short recent continuity context, not as transcript memory."
+    )
     return "\n".join(lines)
 
 
@@ -773,7 +870,9 @@ def _capability_continuity_instruction() -> str | None:
             parts.append(f"detail={detail}")
         lines.append(" | ".join(parts))
 
-    lines.append("Use this only as short recent capability continuity, not as tool history.")
+    lines.append(
+        "Use this only as short recent capability continuity, not as tool history."
+    )
     return "\n".join(lines)
 
 
@@ -805,9 +904,7 @@ def _visible_work_instruction() -> str | None:
     if selected_work_item.get("selection_source"):
         parts.append(f"source={selected_work_item['selection_source']}")
     if selected_work_item.get("selected_user_message_preview"):
-        parts.append(
-            f"preview={selected_work_item['selected_user_message_preview']}"
-        )
+        parts.append(f"preview={selected_work_item['selected_user_message_preview']}")
     elif selected_work_item.get("selected_work_preview"):
         parts.append(f"work_preview={selected_work_item['selected_work_preview']}")
 
@@ -1062,8 +1159,7 @@ def _capability_instruction() -> str | None:
     if not runnable:
         return None
     capability_lines = [
-        f'- {item["capability_id"]}: {item.get("name", "")}'
-        for item in runnable[:8]
+        f"- {item['capability_id']}: {item.get('name', '')}" for item in runnable[:8]
     ]
     return "\n".join(
         [
@@ -1086,16 +1182,17 @@ def _parse_utc(value: str) -> datetime:
     return datetime.fromisoformat(value)
 
 
-def _calculate_openai_cost_usd(*, model: str, input_tokens: int, output_tokens: int) -> float:
+def _calculate_openai_cost_usd(
+    *, model: str, input_tokens: int, output_tokens: int
+) -> float:
     pricing = OPENAI_TEXT_PRICING_PER_1M_TOKENS.get(model.strip().lower())
     if pricing is None:
         return 0.0
 
     input_rate, output_rate = pricing
-    total = (
-        Decimal(int(input_tokens)) * input_rate / Decimal(1_000_000)
-        + Decimal(int(output_tokens)) * output_rate / Decimal(1_000_000)
-    )
+    total = Decimal(int(input_tokens)) * input_rate / Decimal(1_000_000) + Decimal(
+        int(output_tokens)
+    ) * output_rate / Decimal(1_000_000)
     return float(total.quantize(Decimal("0.00000001")))
 
 

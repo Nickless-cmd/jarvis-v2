@@ -76,7 +76,9 @@ def _insert_self_narrative_signal(db, *, run_id: str) -> None:
     )
 
 
-def _insert_release_marker(db, *, run_id: str) -> None:
+def _insert_release_marker(
+    db, *, run_id: str, release_state: str = "release-leaning"
+) -> None:
     now = datetime.now(UTC).isoformat()
     db.upsert_runtime_release_marker_signal(
         signal_id=f"release-marker-{uuid4().hex}",
@@ -89,7 +91,7 @@ def _insert_release_marker(db, *, run_id: str) -> None:
         source_kind="runtime-observation",
         confidence="low",
         evidence_summary="test evidence",
-        support_summary="Derived from metabolism state.",
+        support_summary=f"Derived from metabolism state. | release-state={release_state} | release-direction=loosening",
         status_reason="Validation release marker",
         run_id=run_id,
         session_id="test-session",
@@ -228,3 +230,66 @@ def test_diary_synthesis_surface_and_mc_shapes_remain_bounded(
     }.issubset(surface["items"][0].keys())
     assert surface["summary"]["authority"] == "non-authoritative"
     assert surface["summary"]["layer_role"] == "runtime-support"
+
+
+def test_diary_synthesis_becomes_release_aware_from_release_marker(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.diary_synthesis_signal_tracking
+    db = isolated_runtime.db
+
+    _insert_release_marker(
+        db, run_id="diary-release-run-1", release_state="release-leaning"
+    )
+
+    result = tracking.track_diary_synthesis_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="diary-release-run-1",
+    )
+    surface = tracking.build_diary_synthesis_signal_surface(limit=8)
+
+    assert result["created"] == 1
+    assert surface["active"] is True
+    item = surface["items"][0]
+    assert item["signal_type"] == "diary-synthesis"
+    assert item["diary_state"] in {"releasing", "loosening"}
+    assert (
+        "loosening" in item["summary"].lower()
+        or "tightly held" in item["summary"].lower()
+    )
+    assert item["authority"] == "non-authoritative"
+    assert item["layer_role"] == "runtime-support"
+    assert (
+        "no" in item["status_reason"].lower()
+        or "without" in item["status_reason"].lower()
+        or "deletion" in item["status_reason"].lower()
+    )
+
+
+def test_diary_synthesis_reflective_release_not_deletion(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.diary_synthesis_signal_tracking
+    db = isolated_runtime.db
+
+    _insert_release_marker(
+        db, run_id="diary-release-run-2", release_state="release-ready"
+    )
+
+    result = tracking.track_diary_synthesis_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="diary-release-run-2",
+    )
+    surface = tracking.build_diary_synthesis_signal_surface(limit=8)
+
+    item = surface["items"][0]
+    summary_lower = item["summary"].lower()
+    assert "deleted" not in summary_lower
+    assert "forgotten" not in summary_lower
+    assert "gone" not in summary_lower
+    assert "i am" not in summary_lower
+    assert (
+        "release" not in summary_lower
+        or "appear" in summary_lower
+        or "seem" in summary_lower
+    )

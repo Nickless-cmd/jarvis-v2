@@ -301,6 +301,13 @@ def _diary_focus(*signals: dict[str, object | None]) -> str:
 
 def _diary_state(*signals: dict[str, object | None]) -> str:
     witness = signals[0] if signals else None
+    metabolism = signals[3] if len(signals) > 3 else None
+    if metabolism is not None:
+        release_state = _extract_release_state(metabolism)
+        if release_state in {"release-leaning", "release-ready"}:
+            return "releasing"
+        if release_state == "release-emerging":
+            return "loosening"
     if witness is not None:
         status = str(witness.get("status") or "").strip()
         if status == "carried":
@@ -311,6 +318,15 @@ def _diary_state(*signals: dict[str, object | None]) -> str:
     if chronicle is not None:
         return "synthesizing"
     return "observing"
+
+
+def _extract_release_state(metabolism: dict[str, object]) -> str:
+    support_summary = str(metabolism.get("support_summary") or "")
+    for segment in support_summary.split("|"):
+        segment = segment.strip()
+        if segment.startswith("release-state="):
+            return segment.split("=", 1)[-1].strip()
+    return "none"
 
 
 def _diary_weight(*signals: dict[str, object | None]) -> str:
@@ -334,6 +350,10 @@ def _diary_summary(
     metabolism: dict[str, object] | None,
     state: str,
 ) -> str:
+    if state == "releasing":
+        return "A thread appears to be loosening around this pattern."
+    if state == "loosening":
+        return "Something seems less tightly held now around this."
     if state == "settling":
         return "Something appears to be settling around this pattern."
     if state == "emerging":

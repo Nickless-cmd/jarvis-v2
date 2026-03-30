@@ -440,9 +440,14 @@ def _execute_github_copilot_visible_model(
 
     normalized_model = _normalize_github_models_model_id(model)
 
+    messages = _build_visible_chat_messages_for_github(
+        message=message,
+        session_id=session_id,
+    )
+
     payload = {
         "model": normalized_model,
-        "messages": [{"role": "user", "content": message}],
+        "messages": messages,
         "stream": False,
     }
     data = _post_github_copilot_chat_completion(
@@ -830,6 +835,25 @@ def _build_visible_input(message: str, *, session_id: str | None) -> list[dict]:
             "role": "user",
             "content": [{"type": "input_text", "text": message}],
         },
+    ]
+
+
+def _build_visible_chat_messages_for_github(
+    message: str, *, session_id: str | None
+) -> list[dict[str, str]]:
+    instruction = _visible_system_instruction_for_provider(
+        provider="github-copilot",
+        model="",
+        user_message=message,
+        session_id=session_id,
+    )
+    if not instruction:
+        return [
+            {"role": "user", "content": message},
+        ]
+    return [
+        {"role": "system", "content": instruction},
+        {"role": "user", "content": message},
     ]
 
 

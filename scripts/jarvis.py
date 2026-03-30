@@ -34,8 +34,10 @@ from core.cli.copilot_auth import (
     cmd_copilot_auth_status,
     cmd_intake_copilot_oauth_callback,
     cmd_launch_copilot_oauth_browser,
+    cmd_poll_copilot_token_exchange,
     cmd_reset_copilot_oauth_launch,
     cmd_set_copilot_auth_state,
+    cmd_start_copilot_device_flow,
     cmd_start_copilot_oauth_launch_intent,
 )
 from core.cli.provider_config import (
@@ -140,9 +142,11 @@ def cmd_config(_: argparse.Namespace) -> None:
     visible_execution, visible_execution_source, visible_execution_api_unavailable = (
         _visible_execution_truth()
     )
-    capability_invocation, capability_invocation_source, capability_invocation_api_unavailable = (
-        _capability_invocation_truth()
-    )
+    (
+        capability_invocation,
+        capability_invocation_source,
+        capability_invocation_api_unavailable,
+    ) = _capability_invocation_truth()
     print(
         json.dumps(
             {
@@ -321,7 +325,9 @@ def build_parser() -> argparse.ArgumentParser:
     configure_coding_lane.add_argument("--model", required=True)
     configure_coding_lane.add_argument("--auth-profile", default="codex")
     configure_coding_lane.add_argument("--api-key", default="")
-    configure_coding_lane.add_argument("--base-url", default="https://api.openai.com/v1")
+    configure_coding_lane.add_argument(
+        "--base-url", default="https://api.openai.com/v1"
+    )
     configure_coding_lane.set_defaults(func=cmd_configure_coding_lane)
 
     configure_copilot_coding_lane = sub.add_parser("configure-copilot-coding-lane")
@@ -360,9 +366,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     set_copilot_auth_state.set_defaults(func=cmd_set_copilot_auth_state)
 
-    start_copilot_oauth_launch_intent = sub.add_parser("start-copilot-oauth-launch-intent")
+    start_copilot_oauth_launch_intent = sub.add_parser(
+        "start-copilot-oauth-launch-intent"
+    )
     start_copilot_oauth_launch_intent.add_argument("--auth-profile", default="copilot")
-    start_copilot_oauth_launch_intent.set_defaults(func=cmd_start_copilot_oauth_launch_intent)
+    start_copilot_oauth_launch_intent.set_defaults(
+        func=cmd_start_copilot_oauth_launch_intent
+    )
 
     launch_copilot_oauth_browser = sub.add_parser("launch-copilot-oauth-browser")
     launch_copilot_oauth_browser.add_argument("--auth-profile", default="copilot")
@@ -376,6 +386,14 @@ def build_parser() -> argparse.ArgumentParser:
     intake_copilot_oauth_callback.add_argument("--auth-profile", default="copilot")
     intake_copilot_oauth_callback.add_argument("--callback", required=True)
     intake_copilot_oauth_callback.set_defaults(func=cmd_intake_copilot_oauth_callback)
+
+    start_copilot_device_flow = sub.add_parser("start-copilot-device-flow")
+    start_copilot_device_flow.add_argument("--auth-profile", default="copilot")
+    start_copilot_device_flow.set_defaults(func=cmd_start_copilot_device_flow)
+
+    poll_copilot_token_exchange = sub.add_parser("poll-copilot-token-exchange")
+    poll_copilot_token_exchange.add_argument("--auth-profile", default="copilot")
+    poll_copilot_token_exchange.set_defaults(func=cmd_poll_copilot_token_exchange)
 
     coding_lane_status = sub.add_parser("coding-lane-status")
     coding_lane_status.set_defaults(func=cmd_coding_lane_status)
@@ -433,45 +451,65 @@ def _visible_run_truth() -> tuple[dict, str, str | None]:
 def _visible_execution_truth() -> tuple[dict, str, str | None]:
     response, api_error = request_json("GET", "/mc/visible-execution")
     if response is not None:
-        return {
-            "authority": response.get("authority"),
-            "readiness": response.get("readiness"),
-            "visible_identity": response.get("visible_identity"),
-            "visible_work": response.get("visible_work"),
-            "visible_work_surface": response.get("visible_work_surface"),
-            "visible_selected_work_surface": response.get("visible_selected_work_surface"),
-            "visible_selected_work_item": response.get("visible_selected_work_item"),
-            "visible_session_continuity": response.get("visible_session_continuity"),
-            "visible_continuity": response.get("visible_continuity"),
-            "visible_capability_continuity": response.get("visible_capability_continuity"),
-        }, "api", None
-    return {
-        "authority": {
-            "visible_model_provider": load_settings().visible_model_provider,
-            "visible_model_name": load_settings().visible_model_name,
-            "visible_auth_profile": load_settings().visible_auth_profile,
+        return (
+            {
+                "authority": response.get("authority"),
+                "readiness": response.get("readiness"),
+                "visible_identity": response.get("visible_identity"),
+                "visible_work": response.get("visible_work"),
+                "visible_work_surface": response.get("visible_work_surface"),
+                "visible_selected_work_surface": response.get(
+                    "visible_selected_work_surface"
+                ),
+                "visible_selected_work_item": response.get(
+                    "visible_selected_work_item"
+                ),
+                "visible_session_continuity": response.get(
+                    "visible_session_continuity"
+                ),
+                "visible_continuity": response.get("visible_continuity"),
+                "visible_capability_continuity": response.get(
+                    "visible_capability_continuity"
+                ),
+            },
+            "api",
+            None,
+        )
+    return (
+        {
+            "authority": {
+                "visible_model_provider": load_settings().visible_model_provider,
+                "visible_model_name": load_settings().visible_model_name,
+                "visible_auth_profile": load_settings().visible_auth_profile,
+            },
+            "readiness": visible_execution_readiness(),
+            "visible_identity": {},
+            "visible_work": {},
+            "visible_work_surface": {},
+            "visible_selected_work_surface": {},
+            "visible_selected_work_item": {},
+            "visible_session_continuity": {},
+            "visible_continuity": {},
+            "visible_capability_continuity": {},
         },
-        "readiness": visible_execution_readiness(),
-        "visible_identity": {},
-        "visible_work": {},
-        "visible_work_surface": {},
-        "visible_selected_work_surface": {},
-        "visible_selected_work_item": {},
-        "visible_session_continuity": {},
-        "visible_continuity": {},
-        "visible_capability_continuity": {},
-    }, "local-fallback", api_error
+        "local-fallback",
+        api_error,
+    )
 
 
 def _capability_invocation_truth() -> tuple[dict, str, str | None]:
     response, api_error = request_json("GET", "/mc/visible-execution")
     if response is not None:
         return response.get("capability_invocation") or {}, "api", None
-    return {
-        **get_capability_invocation_truth(),
-        "persisted_recent_invocations": [],
-        "recent_approval_requests": [],
-    }, "local-fallback", api_error
+    return (
+        {
+            **get_capability_invocation_truth(),
+            "persisted_recent_invocations": [],
+            "recent_approval_requests": [],
+        },
+        "local-fallback",
+        api_error,
+    )
 
 
 def main() -> None:

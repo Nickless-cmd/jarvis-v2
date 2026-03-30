@@ -5,7 +5,9 @@ import json
 import webbrowser
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib import error as urllib_error
 from urllib import parse as urllib_parse
+from urllib import request as urllib_request
 from uuid import uuid4
 
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
@@ -23,6 +25,11 @@ from core.runtime.db import init_db
 
 _PROVIDER = "github-copilot"
 _CREATED_BY = "jarvis-cli"
+
+_GITHUB_OAUTH_DEVICE_CODE_URL = "https://github.com/login/device/code"
+_GITHUB_OAUTH_TOKEN_URL = "https://github.com/login/oauth/access_token"
+
+_GITHUB_COPILOT_CLIENT_ID = "Iv1.07b6a3c3c3d5ad3"
 
 
 def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
@@ -57,6 +64,310 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
             ensure_ascii=False,
         )
     )
+
+
+def cmd_start_copilot_device_flow(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+
+    device_code_response = _request_github_device_code()
+    device_code = str(device_code_response.get("device_code", ""))
+    user_code = str(device_code_response.get("user_code", ""))
+    verification_uri = str(device_code_response.get("verification_uri", ""))
+    verification_uri_complete = str(
+        device_code_response.get("verification_uri_complete", verification_uri)
+    )
+    expires_in = int(device_code_response.get("expires_in", 600))
+    interval = int(device_code_response.get("interval", 5))
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": _PROVIDER,
+                "auth_profile": args.auth_profile,
+                "action": "start-device-flow",
+                "user_code": user_code,
+                "verification_uri": verification_uri,
+                "verification_uri_complete": verification_uri_complete,
+                "expires_in_seconds": expires_in,
+                "poll_interval_seconds": interval,
+                "instruction": f"Visit {verification_uri_complete} and enter code: {user_code}",
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+    )
+
+    started_at = datetime.now(UTC).isoformat()
+    profile_state = save_provider_credentials(
+        profile=args.auth_profile,
+        provider=_PROVIDER,
+        credentials={
+            "kind": "github-copilot-oauth-device-flow",
+            "oauth_state": "device-flow-started",
+            "device_code": device_code,
+            "user_code": user_code,
+            "verification_uri": verification_uri,
+            "verification_uri_complete": verification_uri_complete,
+            "expires_in": expires_in,
+            "interval": interval,
+            "device_flow_started_at": started_at,
+            "device_authorization_completed": False,
+            "token_exchange_completed": False,
+            "real_oauth": False,
+            "created_by": _CREATED_BY,
+        },
+    )
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": _PROVIDER,
+                "auth_profile": args.auth_profile,
+                "requested_action": "start-device-flow",
+                "credentials_saved": True,
+                "coding_lane": coding_lane_execution_truth(),
+                "profile_state": (
+                    get_provider_state_view(
+                        profile=args.auth_profile,
+                        provider=_PROVIDER,
+                    )
+                    if profile_state
+                    else None
+                ),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def cmd_poll_copilot_token_exchange(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+
+    credentials = _load_provider_credentials_for_action(
+        profile=args.auth_profile,
+        action="poll-token",
+    )
+
+    device_code = str(credentials.get("device_code", ""))
+    if not device_code:
+        raise ValueError("No device_code found. Start device flow first.")
+
+    expires_in = int(credentials.get("expires_in", 600))
+    started_at_str = str(credentials.get("device_flow_started_at", ""))
+    if started_at_str:
+        try:
+            started_at = datetime.fromisoformat(started_at_str)
+            elapsed = (datetime.now(UTC) - started_at).total_seconds()
+            if elapsed > expires_in:
+                raise ValueError(
+                    f"Device code expired. Elapsed {elapsed}s > {expires_in}s. Start new flow."
+                )
+        except ValueError:
+            pass
+
+    interval = int(credentials.get("interval", 5))
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": _PROVIDER,
+                "auth_profile": args.auth_profile,
+                "action": "poll-token-exchange",
+                "polling": True,
+                "interval_seconds": interval,
+                "instruction": "Polling GitHub for authorization...",
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+    token_response = _poll_github_token_exchange(
+        device_code=device_code, interval=interval
+    )
+
+    if "error" in token_response:
+        error = str(token_response.get("error", "unknown"))
+        error_description = str(token_response.get("error_description", ""))
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "provider": _PROVIDER,
+                    "auth_profile": args.auth_profile,
+                    "action": "poll-token-exchange",
+                    "error": error,
+                    "error_description": error_description,
+                    "auth_status": f"poll-failed-{error}",
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        credentials.update(
+            {
+                "oauth_state": "device-flow-poll-failed",
+                "token_exchange_error": error,
+                "token_exchange_error_description": error_description,
+                "token_exchange_completed": False,
+                "real_oauth": False,
+            }
+        )
+        save_provider_credentials(
+            profile=args.auth_profile,
+            provider=_PROVIDER,
+            credentials=credentials,
+        )
+        return
+
+    access_token = str(token_response.get("access_token", ""))
+    token_type = str(token_response.get("token_type", "bearer"))
+    expires_in_token = token_response.get("expires_in")
+    refresh_token = str(token_response.get("refresh_token", ""))
+    refresh_token_expires_in = token_response.get("refresh_token_expires_in")
+
+    if not access_token:
+        raise RuntimeError("No access_token in token response")
+
+    completed_at = datetime.now(UTC).isoformat()
+    credentials.update(
+        {
+            "kind": "github-copilot-oauth-device-flow-complete",
+            "oauth_state": "real-stored",
+            "access_token": access_token,
+            "token_type": token_type,
+            "expires_in": expires_in_token,
+            "refresh_token": refresh_token,
+            "refresh_token_expires_in": refresh_token_expires_in,
+            "device_authorization_completed": True,
+            "token_exchange_completed": True,
+            "token_exchange_completed_at": completed_at,
+            "real_oauth": True,
+        }
+    )
+    profile_state = save_provider_credentials(
+        profile=args.auth_profile,
+        provider=_PROVIDER,
+        credentials=credentials,
+    )
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": _PROVIDER,
+                "auth_profile": args.auth_profile,
+                "action": "poll-token-exchange",
+                "success": True,
+                "token_received": True,
+                "token_type": token_type,
+                "expires_in": expires_in_token,
+                "has_refresh_token": bool(refresh_token),
+                "auth_status": "exchange-complete",
+                "coding_lane": coding_lane_execution_truth(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def _request_github_device_code() -> dict:
+    data = urllib_parse.urlencode(
+        {
+            "client_id": _GITHUB_COPILOT_CLIENT_ID,
+            "scope": "read:user user:email",
+        }
+    ).encode("utf-8")
+
+    req = urllib_request.Request(
+        _GITHUB_OAUTH_DEVICE_CODE_URL,
+        data=data,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib_request.urlopen(req, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib_error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"GitHub device code request failed: HTTP {exc.code}: {body}"
+        )
+    except Exception as exc:
+        raise RuntimeError(f"GitHub device code request failed: {exc}")
+
+
+def _poll_github_token_exchange(*, device_code: str, interval: int) -> dict:
+    data = urllib_parse.urlencode(
+        {
+            "client_id": _GITHUB_COPILOT_CLIENT_ID,
+            "device_code": device_code,
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+        }
+    ).encode("utf-8")
+
+    req = urllib_request.Request(
+        _GITHUB_OAUTH_TOKEN_URL,
+        data=data,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+
+    max_attempts = 120
+    for attempt in range(max_attempts):
+        try:
+            with urllib_request.urlopen(req, timeout=30) as response:
+                result = json.loads(response.read().decode("utf-8"))
+        except urllib_error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            if exc.code == 400:
+                error_data = json.loads(body)
+                error = str(error_data.get("error", ""))
+                if error == "authorization_pending":
+                    continue
+                if error == "slow_down":
+                    interval += 1
+                    continue
+                if error == "expired_token":
+                    return {
+                        "error": "expired_token",
+                        "error_description": "Device code expired",
+                    }
+                if error == "incorrect_device_code":
+                    return {
+                        "error": "incorrect_device_code",
+                        "error_description": "Device code mismatch",
+                    }
+                return error_data
+            raise RuntimeError(f"Token exchange HTTP error: {exc.code}: {body}")
+        except Exception as exc:
+            raise RuntimeError(f"Token exchange request failed: {exc}")
+
+        if "access_token" in result:
+            return result
+
+        import time
+
+        time.sleep(interval)
+
+    return {
+        "error": "timeout",
+        "error_description": f"Polling timed out after {max_attempts * interval}s",
+    }
 
 
 def cmd_set_copilot_auth_state(args: argparse.Namespace) -> None:

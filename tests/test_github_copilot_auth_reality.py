@@ -148,3 +148,92 @@ def test_copilot_can_be_set_as_visible_provider(isolated_runtime) -> None:
     summary = provider_router.provider_router_summary()
     assert summary["router"]["visible_primary"]["provider"] == "github-copilot"
     assert summary["router"]["visible_primary"]["model"] == "gpt-4.1"
+
+
+def test_copilot_device_flow_state_tracking(isolated_runtime) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+
+    auth_profiles.save_provider_credentials(
+        profile="copilot-device",
+        provider="github-copilot",
+        credentials={
+            "kind": "github-copilot-oauth-device-flow",
+            "oauth_state": "device-flow-started",
+            "device_code": "test-device-code-123",
+            "user_code": "ABCD-1234",
+            "verification_uri": "https://github.com/login/device",
+            "verification_uri_complete": "https://github.com/login/device/code=ABCD-1234",
+            "expires_in": 600,
+            "interval": 5,
+            "device_flow_started_at": "2024-01-01T00:00:00+00:00",
+            "device_authorization_completed": False,
+            "token_exchange_completed": False,
+            "real_oauth": False,
+            "created_by": "test",
+        },
+    )
+
+    credentials = auth_profiles.get_provider_credentials(
+        profile="copilot-device",
+        provider="github-copilot",
+    )
+
+    assert credentials is not None
+    assert credentials["oauth_state"] == "device-flow-started"
+    assert credentials["device_code"] == "test-device-code-123"
+    assert credentials["user_code"] == "ABCD-1234"
+    assert credentials["verification_uri"] == "https://github.com/login/device"
+    assert credentials["device_authorization_completed"] is False
+    assert credentials["token_exchange_completed"] is False
+
+    has_real = auth_profiles.provider_has_real_credentials(
+        profile="copilot-device",
+        provider="github-copilot",
+    )
+    assert has_real is False
+
+
+def test_copilot_device_flow_complete_becomes_ready(isolated_runtime) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+    provider_router = isolated_runtime.provider_router
+    lanes = isolated_runtime.non_visible_lane_execution
+
+    auth_profiles.save_provider_credentials(
+        profile="copilot-complete",
+        provider="github-copilot",
+        credentials={
+            "kind": "github-copilot-oauth-device-flow-complete",
+            "oauth_state": "real-stored",
+            "access_token": "ghu_real_token_abc123",
+            "token_type": "bearer",
+            "expires_in": 3600,
+            "refresh_token": "ghr_refresh_token",
+            "refresh_token_expires_in": 15811200,
+            "device_authorization_completed": True,
+            "token_exchange_completed": True,
+            "token_exchange_completed_at": "2024-01-01T00:01:00+00:00",
+            "real_oauth": True,
+            "created_by": "test",
+        },
+    )
+    provider_router.configure_provider_router_entry(
+        provider="github-copilot",
+        model="gpt-4.1",
+        auth_mode="oauth",
+        auth_profile="copilot-complete",
+        base_url="",
+        api_key="",
+        lane="coding",
+        set_visible=False,
+    )
+
+    has_real = auth_profiles.provider_has_real_credentials(
+        profile="copilot-complete",
+        provider="github-copilot",
+    )
+    assert has_real is True
+
+    truth = lanes.coding_lane_execution_truth()
+
+    assert truth["credentials_ready"] is True
+    assert truth["can_execute"] is True

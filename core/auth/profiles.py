@@ -142,15 +142,21 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
         if credentials.get("oauth_launch_mode"):
             view["oauth_launch_mode"] = str(credentials.get("oauth_launch_mode"))
         if credentials.get("oauth_launch_started_at"):
-            view["oauth_launch_started_at"] = str(credentials.get("oauth_launch_started_at"))
+            view["oauth_launch_started_at"] = str(
+                credentials.get("oauth_launch_started_at")
+            )
         if credentials.get("browser_launch_attempted_at"):
             view["browser_launch_attempted_at"] = str(
                 credentials.get("browser_launch_attempted_at")
             )
         if credentials.get("browser_launch_method"):
-            view["browser_launch_method"] = str(credentials.get("browser_launch_method"))
+            view["browser_launch_method"] = str(
+                credentials.get("browser_launch_method")
+            )
         if credentials.get("browser_launch_result"):
-            view["browser_launch_result"] = str(credentials.get("browser_launch_result"))
+            view["browser_launch_result"] = str(
+                credentials.get("browser_launch_result")
+            )
         if "browser_launched" in credentials:
             view["browser_launched"] = bool(credentials.get("browser_launched"))
         if credentials.get("oauth_callback_received_at"):
@@ -160,17 +166,21 @@ def get_provider_state_view(*, profile: str, provider: str) -> dict[str, Any] | 
         if credentials.get("oauth_callback_url"):
             view["oauth_callback_url"] = str(credentials.get("oauth_callback_url"))
         if "oauth_callback_has_code" in credentials:
-            view["oauth_callback_has_code"] = bool(credentials.get("oauth_callback_has_code"))
+            view["oauth_callback_has_code"] = bool(
+                credentials.get("oauth_callback_has_code")
+            )
         if "oauth_callback_has_state" in credentials:
-            view["oauth_callback_has_state"] = bool(credentials.get("oauth_callback_has_state"))
+            view["oauth_callback_has_state"] = bool(
+                credentials.get("oauth_callback_has_state")
+            )
         if credentials.get("oauth_callback_param_keys"):
-            view["oauth_callback_param_keys"] = list(credentials.get("oauth_callback_param_keys"))
+            view["oauth_callback_param_keys"] = list(
+                credentials.get("oauth_callback_param_keys")
+            )
     return view
 
 
-def get_provider_credentials(
-    *, profile: str, provider: str
-) -> dict[str, Any] | None:
+def get_provider_credentials(*, profile: str, provider: str) -> dict[str, Any] | None:
     state = get_provider_state(profile=profile, provider=provider)
     if state is None:
         return None
@@ -189,6 +199,9 @@ def provider_has_real_credentials(*, profile: str, provider: str) -> bool:
     if credentials.get("real_oauth") is False:
         return False
 
+    if credentials.get("real_oauth") is True:
+        return True
+
     if any(
         bool(credentials.get(flag))
         for flag in (
@@ -197,6 +210,7 @@ def provider_has_real_credentials(*, profile: str, provider: str) -> bool:
             "oauth_launch_stub",
             "oauth_launch_intent",
             "oauth_callback_stub",
+            "device_flow_started",
         )
     ):
         return False
@@ -267,6 +281,8 @@ def get_provider_oauth_state(*, profile: str, provider: str) -> str:
         "callback-received",
         "placeholder-stored",
         "real-stored",
+        "device-flow-started",
+        "device-flow-poll-failed",
     }:
         return oauth_state
 
@@ -398,8 +414,12 @@ def get_provider_callback_intent_consistency(*, profile: str, provider: str) -> 
         return "not-applicable"
 
     intent_id = str(credentials.get("oauth_intent_id") or "").strip()
-    launch_started_at_raw = str(credentials.get("oauth_launch_started_at") or "").strip()
-    callback_received_at_raw = str(credentials.get("oauth_callback_received_at") or "").strip()
+    launch_started_at_raw = str(
+        credentials.get("oauth_launch_started_at") or ""
+    ).strip()
+    callback_received_at_raw = str(
+        credentials.get("oauth_callback_received_at") or ""
+    ).strip()
     if not intent_id or not launch_started_at_raw:
         return "callback-without-intent"
 

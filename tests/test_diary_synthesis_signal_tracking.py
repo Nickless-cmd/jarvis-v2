@@ -253,9 +253,12 @@ def test_diary_synthesis_becomes_release_aware_from_release_marker(
     item = surface["items"][0]
     assert item["signal_type"] == "diary-synthesis"
     assert item["diary_state"] in {"releasing", "loosening"}
+    summary_lower = item["summary"].lower()
     assert (
-        "loosening" in item["summary"].lower()
-        or "tightly held" in item["summary"].lower()
+        "loosening" in summary_lower
+        or "tightly held" in summary_lower
+        or "easing" in summary_lower
+        or "release" in summary_lower
     )
     assert item["authority"] == "non-authoritative"
     assert item["layer_role"] == "runtime-support"
@@ -293,3 +296,105 @@ def test_diary_synthesis_reflective_release_not_deletion(
         or "appear" in summary_lower
         or "seem" in summary_lower
     )
+
+
+def test_diary_synthesis_uses_actual_signal_content(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+        _diary_summary,
+        _extract_release_semantics,
+    )
+    from datetime import datetime, UTC
+
+    metabolism_with_release = {
+        "canonical_key": "metabolism:release:work-pattern",
+        "title": "Work pattern release",
+        "support_summary": "release-direction=loosening | release-state=release-leaning",
+    }
+    summary = _diary_summary(
+        witness=None,
+        chronicle=None,
+        self_narrative=None,
+        metabolism=metabolism_with_release,
+        state="releasing",
+    )
+    summary_lower = summary.lower()
+    assert (
+        "work" in summary_lower
+        or "pattern" in summary_lower
+        or "this area" in summary_lower
+    )
+    assert "appear" in summary_lower
+    assert (
+        "easing" in summary_lower
+        or "loosen" in summary_lower
+        or "release" in summary_lower
+    )
+
+
+def test_diary_synthesis_release_vs_loosening_semantics(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+        _diary_summary,
+    )
+
+    metabolism_loosening = {
+        "canonical_key": "metabolism:test:pattern",
+        "title": "Test pattern",
+        "support_summary": "release-direction=loosening | release-state=release-leaning",
+    }
+    summary_releasing = _diary_summary(
+        witness=None,
+        chronicle=None,
+        self_narrative=None,
+        metabolism=metabolism_loosening,
+        state="releasing",
+    )
+
+    metabolism_fading = {
+        "canonical_key": "metabolism:test:pattern",
+        "title": "Test pattern",
+        "support_summary": "release-direction=fading | release-state=release-emerging",
+    }
+    summary_loosening = _diary_summary(
+        witness=None,
+        chronicle=None,
+        self_narrative=None,
+        metabolism=metabolism_fading,
+        state="loosening",
+    )
+
+    assert summary_releasing != summary_loosening
+    assert (
+        "easing" in summary_releasing.lower() or "release" in summary_releasing.lower()
+    )
+    assert (
+        "fading" in summary_loosening.lower()
+        or "less tightly" in summary_loosening.lower()
+    )
+
+
+def test_diary_synthesis_no_deletion_claims(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+        _diary_summary,
+    )
+
+    states_to_test = ["releasing", "loosening", "settling", "emerging"]
+    for state in states_to_test:
+        summary = _diary_summary(
+            witness={"canonical_key": "witness:test:pattern"},
+            chronicle={"canonical_key": "chronicle:test:pattern"},
+            self_narrative={"canonical_key": "self-narrative:test:pattern"},
+            metabolism={"canonical_key": "metabolism:test:pattern"},
+            state=state,
+        )
+        summary_lower = summary.lower()
+        assert "deleted" not in summary_lower
+        assert "forgotten" not in summary_lower
+        assert "gone" not in summary_lower
+        assert "i deleted" not in summary_lower
+        assert "i forgot" not in summary_lower

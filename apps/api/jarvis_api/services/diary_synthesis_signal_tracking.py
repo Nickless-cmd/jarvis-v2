@@ -350,19 +350,88 @@ def _diary_summary(
     metabolism: dict[str, object] | None,
     state: str,
 ) -> str:
+    focus = _extract_focus_from_signals(witness, chronicle, self_narrative, metabolism)
+    release_info = _extract_release_semantics(metabolism)
+
     if state == "releasing":
-        return "A thread appears to be loosening around this pattern."
+        direction = release_info.get("direction", "")
+        if direction == "loosening":
+            return (
+                f"Something around {focus} appears to be easing out of active weight."
+            )
+        if direction == "settling":
+            return f"A thread around {focus} appears to be releasing its hold."
+        return f"A pattern around {focus} appears to be releasing."
+
     if state == "loosening":
-        return "Something seems less tightly held now around this."
+        direction = release_info.get("direction", "")
+        if direction == "loosening":
+            return f"Something around {focus} seems less tightly held now."
+        if direction == "fading":
+            return f"A trace around {focus} appears to be fading from active view."
+        return f"Something around {focus} appears to be loosening its grip."
+
     if state == "settling":
-        return "Something appears to be settling around this pattern."
+        return f"Something around {focus} appears to be settling into place."
+
     if state == "emerging":
-        return "A pattern appears to be emerging around this."
+        return f"A pattern around {focus} appears to be taking shape."
+
     if state == "synthesizing":
-        return "Key moments appear to be shaping the direction."
+        return f"Key moments around {focus} appear to be shaping direction."
+
     if metabolism is not None:
-        return "Something appears to be loosening or releasing around this."
+        return f"Something around {focus} appears to be releasing or softening."
+
     return "I notice patterns appearing to carry forward."
+
+
+def _extract_focus_from_signals(
+    witness: dict[str, object] | None,
+    chronicle: dict[str, object] | None,
+    self_narrative: dict[str, object] | None,
+    metabolism: dict[str, object] | None,
+) -> str:
+    for sig in [metabolism, witness, chronicle, self_narrative]:
+        if sig is None:
+            continue
+        canonical_key = str(sig.get("canonical_key") or "").strip()
+        if canonical_key:
+            parts = canonical_key.split(":")
+            if len(parts) > 1:
+                focus = parts[-1].strip()
+                if focus and focus != "none":
+                    return focus[:64]
+        title = str(sig.get("title") or "").strip()
+        if title and "test" not in title.lower():
+            cleaned = title.replace("-", " ").replace("_", " ")
+            if len(cleaned) < 50:
+                return cleaned
+    return "this area"
+
+
+def _extract_release_semantics(
+    metabolism: dict[str, object] | None,
+) -> dict[str, str]:
+    if metabolism is None:
+        return {"direction": "", "state": "", "focus": ""}
+
+    support_summary = str(metabolism.get("support_summary") or "")
+    direction = ""
+    state = ""
+
+    for segment in support_summary.split("|"):
+        segment = segment.strip()
+        if segment.startswith("release-direction="):
+            direction = segment.split("=", 1)[-1].strip()
+        elif segment.startswith("release-state="):
+            state = segment.split("=", 1)[-1].strip()
+
+    return {
+        "direction": direction,
+        "state": state,
+        "focus": str(metabolism.get("title") or "").replace("-", " ")[:64],
+    }
 
 
 def _source_anchor_from_signals(

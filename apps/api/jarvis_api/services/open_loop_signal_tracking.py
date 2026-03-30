@@ -473,6 +473,14 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
         if readiness_candidate:
             candidates.append(readiness_candidate)
 
+    maturation_candidates = _extract_closure_maturation_candidates(
+        snapshots=snapshots,
+        existing_domain_keys=set(snapshots.keys()),
+    )
+    for mat_candidate in maturation_candidates:
+        if mat_candidate not in candidates:
+            candidates.append(mat_candidate)
+
     return candidates[:4]
 
 
@@ -542,6 +550,85 @@ def _materialize_from_creation_readiness(
         status_reason="The bounded thread emerged from strong aligned runtime signals, not from autonomous task creation.",
         source_items=source_items,
     )
+
+
+def _extract_closure_maturation_candidates(
+    snapshots: dict[str, dict[str, object]],
+    existing_domain_keys: set[str],
+) -> list[dict[str, object]]:
+    candidates: list[dict[str, object]] = []
+
+    existing_open_loops = list_runtime_open_loop_signals(limit=20)
+    open_loops = [
+        loop for loop in existing_open_loops if str(loop.get("status") or "") == "open"
+    ]
+
+    for loop in open_loops:
+        loop_domain_key = str(loop.get("canonical_key") or "")
+        if not loop_domain_key:
+            continue
+
+        parts = loop_domain_key.split(":")
+        domain_key_part = parts[-1] if parts else loop_domain_key
+
+        current_snapshot = snapshots.get(domain_key_part, {})
+
+        active_critic = current_snapshot.get("active_critic")
+        resolved_critic = current_snapshot.get("resolved_critic")
+        blocked_goal = current_snapshot.get("blocked_goal")
+        integrating_reflection = current_snapshot.get("integrating_reflection")
+        softening_recurrence = current_snapshot.get("softening_recurrence")
+        settled_reflection = current_snapshot.get("settled_reflection")
+
+        has_active_critic = active_critic is not None
+        has_blocked_goal = blocked_goal is not None
+        has_integrating = integrating_reflection is not None
+        has_softening_recurrence = softening_recurrence is not None
+        has_settled = settled_reflection is not None
+        has_resolved_critic = resolved_critic is not None
+
+        loop_title = str(loop.get("title") or "").replace("Open loop: ", "").strip()
+
+        if has_integrating or has_softening_recurrence:
+            if not has_active_critic and not has_blocked_goal:
+                candidates.append(
+                    _build_candidate(
+                        domain_key=loop_domain_key,
+                        signal_type="softening-loop",
+                        status="softening",
+                        title=f"Softening loop: {loop_title}",
+                        summary=f"A bounded loop around {loop_title.lower()} appears to be easing - acute pressure has reduced.",
+                        rationale="Bounded loop softening may occur when acute critic/blocked-goal pressure clears while integration or recurrence signals remain.",
+                        status_reason="The loop is softening based on reduced acute pressure in the runtime evidence.",
+                        source_items=[
+                            integrating_reflection,
+                            softening_recurrence,
+                            resolved_critic,
+                        ],
+                    )
+                )
+                continue
+
+        if has_settled and (has_softening_recurrence or has_resolved_critic):
+            if not has_active_critic and not has_blocked_goal:
+                candidates.append(
+                    _build_candidate(
+                        domain_key=loop_domain_key,
+                        signal_type="softening-loop",
+                        status="closed",
+                        title=f"Closed loop: {loop_title}",
+                        summary=f"A bounded loop around {loop_title.lower()} now appears closed by calmer runtime evidence.",
+                        rationale="Bounded loop closure may occur when settled reflection and resolved pressure clearly indicate completion without active opposition.",
+                        status_reason="The loop appears closed based on settled evidence and resolved pressure, not autonomous execution.",
+                        source_items=[
+                            settled_reflection,
+                            softening_recurrence,
+                            resolved_critic,
+                        ],
+                    )
+                )
+
+    return candidates
 
 
 def _build_governance_snapshots() -> dict[str, dict[str, object]]:

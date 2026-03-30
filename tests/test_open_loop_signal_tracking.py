@@ -694,3 +694,17 @@ def test_open_loop_materialization_guards_against_duplicates(
         existing_domain_keys={result_first.get("domain_key", "")},
     )
     assert result_duplicate is None
+
+
+def test_open_loop_closure_maturation_candidates(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+        _extract_closure_maturation_candidates,
+    )
+
+    candidates = _extract_closure_maturation_candidates(
+        snapshots={},
+        existing_domain_keys=set(),
+    )
+    assert isinstance(candidates, list)

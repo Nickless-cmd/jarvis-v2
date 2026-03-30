@@ -78,7 +78,9 @@ def refresh_runtime_open_loop_signal_statuses() -> dict[str, int]:
     for item in list_runtime_open_loop_signals(limit=40):
         if str(item.get("status") or "") not in {"open", "softening", "closed"}:
             continue
-        updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
+        updated_at = _parse_dt(
+            str(item.get("updated_at") or item.get("created_at") or "")
+        )
         if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
             continue
         refreshed_item = update_runtime_open_loop_signal_status(
@@ -107,14 +109,27 @@ def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, objec
     refresh_runtime_open_loop_signal_statuses()
     items = list_runtime_open_loop_signals(limit=max(limit, 1))
     snapshots = _build_governance_snapshots()
-    enriched_items = [_with_closure_governance(item, snapshots=snapshots) for item in items]
-    open_items = [item for item in enriched_items if str(item.get("status") or "") == "open"]
-    softening = [item for item in enriched_items if str(item.get("status") or "") == "softening"]
-    closed = [item for item in enriched_items if str(item.get("status") or "") == "closed"]
-    stale = [item for item in enriched_items if str(item.get("status") or "") == "stale"]
-    superseded = [item for item in enriched_items if str(item.get("status") or "") == "superseded"]
+    enriched_items = [
+        _with_closure_governance(item, snapshots=snapshots) for item in items
+    ]
+    open_items = [
+        item for item in enriched_items if str(item.get("status") or "") == "open"
+    ]
+    softening = [
+        item for item in enriched_items if str(item.get("status") or "") == "softening"
+    ]
+    closed = [
+        item for item in enriched_items if str(item.get("status") or "") == "closed"
+    ]
+    stale = [
+        item for item in enriched_items if str(item.get("status") or "") == "stale"
+    ]
+    superseded = [
+        item for item in enriched_items if str(item.get("status") or "") == "superseded"
+    ]
     ordered = [*open_items, *softening, *closed, *stale, *superseded]
     latest = next(iter(open_items or softening or closed or stale or superseded), None)
+    creation_readiness = get_open_loop_creation_readiness()
     return {
         "active": bool(open_items or softening or closed),
         "items": ordered,
@@ -124,11 +139,99 @@ def build_runtime_open_loop_signal_surface(*, limit: int = 8) -> dict[str, objec
             "closed_count": len(closed),
             "stale_count": len(stale),
             "superseded_count": len(superseded),
-            "ready_count": len([item for item in ordered if str(item.get("closure_confidence") or "") == "high"]),
+            "ready_count": len(
+                [
+                    item
+                    for item in ordered
+                    if str(item.get("closure_confidence") or "") == "high"
+                ]
+            ),
             "current_signal": str((latest or {}).get("title") or "No active open loop"),
             "current_status": str((latest or {}).get("status") or "none"),
-            "current_closure_confidence": str((latest or {}).get("closure_confidence") or "low"),
+            "current_closure_confidence": str(
+                (latest or {}).get("closure_confidence") or "low"
+            ),
+            "creation_readiness": creation_readiness,
         },
+    }
+
+
+def get_open_loop_creation_readiness() -> dict[str, object]:
+    from apps.api.jarvis_api.services.private_initiative_tension_signal_tracking import (
+        build_runtime_private_initiative_tension_signal_surface,
+    )
+    from apps.api.jarvis_api.services.autonomy_pressure_signal_tracking import (
+        build_runtime_autonomy_pressure_signal_surface,
+    )
+    from apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking import (
+        build_runtime_proactive_loop_lifecycle_surface,
+    )
+    from apps.api.jarvis_api.services.proactive_question_gate_tracking import (
+        build_runtime_proactive_question_gate_surface,
+    )
+
+    tension = build_runtime_private_initiative_tension_signal_surface(limit=8)
+    autonomy = build_runtime_autonomy_pressure_signal_surface(limit=8)
+    loops = build_runtime_proactive_loop_lifecycle_surface(limit=8)
+    question_gate = build_runtime_proactive_question_gate_surface(limit=8)
+
+    aligned_signals = []
+
+    active_tensions = [
+        item
+        for item in tension.get("items", [])
+        if str(item.get("status") or "") == "active"
+    ]
+    if active_tensions:
+        aligned_signals.append("initiative-tension")
+
+    autonomy_pressures = [
+        item
+        for item in autonomy.get("items", [])
+        if str(item.get("status") or "") == "active"
+    ]
+    if autonomy_pressures:
+        aligned_signals.append("autonomy-pressure")
+
+    active_loops = [
+        item
+        for item in loops.get("items", [])
+        if str(item.get("status") or "") == "active"
+    ]
+    if active_loops:
+        aligned_signals.append("proactive-loop")
+
+    question_gates = [
+        item
+        for item in question_gate.get("items", [])
+        if str(item.get("gate_state") or "") == "question-gated-candidate"
+    ]
+    if question_gates:
+        aligned_signals.append("question-gate")
+
+    alignment_count = len(aligned_signals)
+
+    if alignment_count >= 3:
+        readiness = "ready"
+        confidence = "high"
+    elif alignment_count == 2:
+        readiness = "partial"
+        confidence = "medium"
+    elif alignment_count == 1:
+        readiness = "emerging"
+        confidence = "low"
+    else:
+        readiness = "none"
+        confidence = "none"
+
+    return {
+        "readiness": readiness,
+        "confidence": confidence,
+        "aligned_signals": aligned_signals,
+        "alignment_count": alignment_count,
+        "threshold": 2,
+        "authority": "non-authoritative",
+        "layer_role": "runtime-support",
     }
 
 
@@ -223,9 +326,22 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
         softening_recurrence = snapshot.get("softening_recurrence")
         title_suffix = _domain_title(domain_key)
 
-        live_pressure = [item for item in [active_critic, blocked_goal, active_reflection, active_recurrence] if item]
+        live_pressure = [
+            item
+            for item in [
+                active_critic,
+                blocked_goal,
+                active_reflection,
+                active_recurrence,
+            ]
+            if item
+        ]
         if active_focus and live_pressure:
-            signal_type = "persistent-open-loop" if active_recurrence or (active_critic and blocked_goal) else "open-loop"
+            signal_type = (
+                "persistent-open-loop"
+                if active_recurrence or (active_critic and blocked_goal)
+                else "open-loop"
+            )
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
@@ -261,7 +377,12 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
             candidates=active_regulation,
             minimum_overlap=1,
         )
-        if active_focus and live_pressure_goal and live_pressure_tension and live_pressure_regulation:
+        if (
+            active_focus
+            and live_pressure_goal
+            and live_pressure_tension
+            and live_pressure_regulation
+        ):
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
@@ -291,7 +412,12 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
             )
             continue
 
-        if active_focus and (integrating_reflection or softening_recurrence) and not active_critic and not blocked_goal:
+        if (
+            active_focus
+            and (integrating_reflection or softening_recurrence)
+            and not active_critic
+            and not blocked_goal
+        ):
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
@@ -311,7 +437,13 @@ def _extract_open_loop_candidates() -> list[dict[str, object]]:
             )
             continue
 
-        if (active_focus or active_goal or completed_goal) and settled_reflection and (softening_recurrence or resolved_critic or completed_goal) and not active_critic and not blocked_goal:
+        if (
+            (active_focus or active_goal or completed_goal)
+            and settled_reflection
+            and (softening_recurrence or resolved_critic or completed_goal)
+            and not active_critic
+            and not blocked_goal
+        ):
             candidates.append(
                 _build_candidate(
                     domain_key=domain_key,
@@ -411,7 +543,9 @@ def _with_closure_governance(
     status = str(item.get("status") or "")
 
     closure_confidence = "low"
-    closure_reason = "No current closure evidence is strong enough to treat this loop as ready."
+    closure_reason = (
+        "No current closure evidence is strong enough to treat this loop as ready."
+    )
 
     if status == "closed":
         closure_confidence = "high"
@@ -431,7 +565,9 @@ def _with_closure_governance(
         closure_reason = "The loop is easing through integration or softening, but closure evidence is not yet strong."
     elif active_recurrence:
         closure_confidence = "low"
-        closure_reason = "The loop still shows active recurrence, so closure readiness remains low."
+        closure_reason = (
+            "The loop still shows active recurrence, so closure readiness remains low."
+        )
 
     enriched["closure_readiness"] = closure_confidence
     enriched["closure_confidence"] = closure_confidence
@@ -486,7 +622,9 @@ def _persist_open_loop_signals(
             )
         if persisted_item.get("was_created"):
             event_bus.publish(
-                "open_loop_signal.created" if persisted_item.get("status") != "closed" else "open_loop_signal.closed",
+                "open_loop_signal.created"
+                if persisted_item.get("status") != "closed"
+                else "open_loop_signal.closed",
                 {
                     "signal_id": persisted_item.get("signal_id"),
                     "signal_type": persisted_item.get("signal_type"),
@@ -496,7 +634,9 @@ def _persist_open_loop_signals(
             )
         elif persisted_item.get("was_updated"):
             event_bus.publish(
-                "open_loop_signal.updated" if persisted_item.get("status") != "closed" else "open_loop_signal.closed",
+                "open_loop_signal.updated"
+                if persisted_item.get("status") != "closed"
+                else "open_loop_signal.closed",
                 {
                     "signal_id": persisted_item.get("signal_id"),
                     "signal_type": persisted_item.get("signal_type"),
@@ -520,8 +660,12 @@ def _build_candidate(
     source_items: list[dict[str, object] | None],
 ) -> dict[str, object]:
     items = [item for item in source_items if item]
-    support_count = max([int(item.get("support_count") or 1) for item in items], default=1)
-    session_count = max([int(item.get("session_count") or 1) for item in items], default=1)
+    support_count = max(
+        [int(item.get("support_count") or 1) for item in items], default=1
+    )
+    session_count = max(
+        [int(item.get("session_count") or 1) for item in items], default=1
+    )
     confidence = "high" if len(items) >= 3 else "medium"
     return {
         "signal_type": signal_type,
@@ -533,8 +677,12 @@ def _build_candidate(
         "rationale": rationale,
         "source_kind": "derived-runtime-open-loop",
         "confidence": confidence,
-        "evidence_summary": _merge_fragments(*[str(item.get("evidence_summary") or "") for item in items]),
-        "support_summary": _merge_fragments(*[str(item.get("support_summary") or "") for item in items]),
+        "evidence_summary": _merge_fragments(
+            *[str(item.get("evidence_summary") or "") for item in items]
+        ),
+        "support_summary": _merge_fragments(
+            *[str(item.get("support_summary") or "") for item in items]
+        ),
         "support_count": support_count,
         "session_count": session_count,
         "status_reason": status_reason,
@@ -556,11 +704,17 @@ def _focus_domain_key(canonical_key: str) -> str:
 def _critic_domain_key(canonical_key: str) -> str:
     text = str(canonical_key or "")
     if text.startswith("reflective-critic:mismatch:development-focus:communication:"):
-        return text.removeprefix("reflective-critic:mismatch:development-focus:communication:")
+        return text.removeprefix(
+            "reflective-critic:mismatch:development-focus:communication:"
+        )
     if text.startswith("reflective-critic:mismatch:development-focus:user-directed:"):
-        return text.removeprefix("reflective-critic:mismatch:development-focus:user-directed:")
+        return text.removeprefix(
+            "reflective-critic:mismatch:development-focus:user-directed:"
+        )
     if text.startswith("reflective-critic:mismatch:development-focus:runtime:"):
-        parts = text.removeprefix("reflective-critic:mismatch:development-focus:runtime:").split(":")
+        parts = text.removeprefix(
+            "reflective-critic:mismatch:development-focus:runtime:"
+        ).split(":")
         return parts[0] if parts else ""
     return ""
 
@@ -637,14 +791,26 @@ def _thread_tokens(item: dict[str, object]) -> set[str]:
     tokens: set[str] = set()
     for fragment in fragments:
         normalized = str(fragment or "").lower()
-        for raw_token in normalized.replace(":", " ").replace("|", " ").replace("[", " ").replace("]", " ").split():
-            token = "".join(ch for ch in raw_token if ch.isalnum() or ch == "-").strip("-")
+        for raw_token in (
+            normalized.replace(":", " ")
+            .replace("|", " ")
+            .replace("[", " ")
+            .replace("]", " ")
+            .split()
+        ):
+            token = "".join(ch for ch in raw_token if ch.isalnum() or ch == "-").strip(
+                "-"
+            )
             if len(token) < 4:
                 continue
             if token in _THREAD_TOKEN_STOPWORDS:
                 continue
             tokens.add(token)
-            tokens.update(part for part in token.split("-") if len(part) >= 4 and part not in _THREAD_TOKEN_STOPWORDS)
+            tokens.update(
+                part
+                for part in token.split("-")
+                if len(part) >= 4 and part not in _THREAD_TOKEN_STOPWORDS
+            )
     return tokens
 
 

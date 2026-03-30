@@ -4,7 +4,9 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 
-def _insert_focus(db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0) -> None:
+def _insert_focus(
+    db, *, canonical_key: str, status: str = "active", minutes_ago: int = 0
+) -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_development_focus(
         focus_id=f"focus-{uuid4().hex}",
@@ -28,7 +30,9 @@ def _insert_focus(db, *, canonical_key: str, status: str = "active", minutes_ago
     )
 
 
-def _insert_critic(db, *, canonical_key: str, status: str, minutes_ago: int = 0) -> None:
+def _insert_critic(
+    db, *, canonical_key: str, status: str, minutes_ago: int = 0
+) -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     db.upsert_runtime_reflective_critic(
         critic_id=f"critic-{uuid4().hex}",
@@ -76,7 +80,9 @@ def _insert_goal(db, *, canonical_key: str, status: str, minutes_ago: int = 0) -
     )
 
 
-def _insert_reflection(db, *, canonical_key: str, status: str, signal_type: str, minutes_ago: int = 0) -> None:
+def _insert_reflection(
+    db, *, canonical_key: str, status: str, signal_type: str, minutes_ago: int = 0
+) -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     title = (
         "Persistent reflection tension: Danish concise calibration"
@@ -107,7 +113,9 @@ def _insert_reflection(db, *, canonical_key: str, status: str, signal_type: str,
     )
 
 
-def _insert_temporal_recurrence(db, *, canonical_key: str, status: str, signal_type: str, minutes_ago: int = 0) -> None:
+def _insert_temporal_recurrence(
+    db, *, canonical_key: str, status: str, signal_type: str, minutes_ago: int = 0
+) -> None:
     ts = datetime.now(UTC) - timedelta(minutes=minutes_ago)
     title = (
         "Recurring tension: Danish concise calibration"
@@ -228,7 +236,9 @@ def _insert_regulation(
     )
 
 
-def test_open_loop_surface_stays_empty_without_relevant_pressure(isolated_runtime) -> None:
+def test_open_loop_surface_stays_empty_without_relevant_pressure(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.open_loop_tracking
 
@@ -317,7 +327,9 @@ def test_open_loop_surface_does_not_turn_active_goal_into_loop_without_tension_a
     assert surface["summary"]["open_count"] == 0
 
 
-def test_open_loop_surface_forms_persistent_open_loop_for_clear_repeated_pressure(isolated_runtime) -> None:
+def test_open_loop_surface_forms_persistent_open_loop_for_clear_repeated_pressure(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.open_loop_tracking
 
@@ -361,10 +373,15 @@ def test_open_loop_surface_forms_persistent_open_loop_for_clear_repeated_pressur
     assert surface["items"][0]["closure_readiness"] == "low"
     assert surface["items"][0]["closure_confidence"] == "low"
     assert "blocked-goal pressure" in surface["items"][0]["closure_reason"]
-    assert surface["items"][0]["canonical_key"] == "open-loop:persistent-open-loop:danish-concise-calibration"
+    assert (
+        surface["items"][0]["canonical_key"]
+        == "open-loop:persistent-open-loop:danish-concise-calibration"
+    )
 
 
-def test_open_loop_surface_forms_softening_loop_for_easing_domain(isolated_runtime) -> None:
+def test_open_loop_surface_forms_softening_loop_for_easing_domain(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.open_loop_tracking
 
@@ -400,7 +417,9 @@ def test_open_loop_surface_forms_softening_loop_for_easing_domain(isolated_runti
     assert surface["items"][0]["status"] == "softening"
 
 
-def test_open_loop_surface_forms_closed_status_only_in_conservative_case(isolated_runtime) -> None:
+def test_open_loop_surface_forms_closed_status_only_in_conservative_case(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.open_loop_tracking
 
@@ -443,7 +462,9 @@ def test_open_loop_surface_forms_closed_status_only_in_conservative_case(isolate
     assert "conservatively closed" in surface["items"][0]["closure_reason"]
 
 
-def test_open_loop_surface_can_raise_closure_confidence_without_auto_closing_loop(isolated_runtime) -> None:
+def test_open_loop_surface_can_raise_closure_confidence_without_auto_closing_loop(
+    isolated_runtime,
+) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.open_loop_tracking
 
@@ -567,3 +588,38 @@ def test_open_loop_surface_and_mc_shapes_remain_bounded(isolated_runtime) -> Non
     assert runtime_shape["summary"]["current_status"] in {"open", "softening", "closed"}
     assert "current_closure_confidence" in mc_shape["summary"]
     assert "current_closure_confidence" in runtime_shape["summary"]
+
+
+def test_open_loop_creation_readiness_none_when_no_signals(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+        get_open_loop_creation_readiness,
+    )
+
+    readiness = get_open_loop_creation_readiness()
+
+    assert readiness["readiness"] in {"none", "emerging", "partial", "ready"}
+    assert readiness["confidence"] in {"none", "low", "medium", "high"}
+    assert readiness["alignment_count"] >= 0
+    assert readiness["threshold"] == 2
+    assert readiness["authority"] == "non-authoritative"
+    assert readiness["layer_role"] == "runtime-support"
+    assert isinstance(readiness["aligned_signals"], list)
+
+
+def test_open_loop_creation_readiness_surface_included(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+        build_runtime_open_loop_signal_surface,
+    )
+
+    surface = build_runtime_open_loop_signal_surface(limit=8)
+
+    assert "creation_readiness" in surface["summary"]
+    readiness = surface["summary"]["creation_readiness"]
+    assert "readiness" in readiness
+    assert "confidence" in readiness
+    assert "aligned_signals" in readiness
+    assert "alignment_count" in readiness

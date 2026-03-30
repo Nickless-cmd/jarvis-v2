@@ -29,7 +29,58 @@ _CREATED_BY = "jarvis-cli"
 _GITHUB_OAUTH_DEVICE_CODE_URL = "https://github.com/login/device/code"
 _GITHUB_OAUTH_TOKEN_URL = "https://github.com/login/oauth/access_token"
 
-_GITHUB_COPILOT_CLIENT_ID = "Iv1.07b6a3c3c3d5ad3"
+
+def _get_github_copilot_client_id() -> str:
+    from pathlib import Path
+    import json
+    from core.runtime.config import CONFIG_DIR
+
+    provider_auth_config = CONFIG_DIR / "provider_auth_config.json"
+    if provider_auth_config.exists():
+        try:
+            data = json.loads(provider_auth_config.read_text(encoding="utf-8"))
+            client_id = data.get("github_copilot", {}).get("client_id", "").strip()
+            if client_id:
+                return client_id
+        except Exception:
+            pass
+
+    env_client_id = str(
+        __import__("os").environ.get("JARVIS_GITHUB_COPILOT_CLIENT_ID", "")
+    ).strip()
+    if env_client_id:
+        return env_client_id
+
+    raise ValueError(
+        "GitHub Copilot client_id not configured. "
+        "Set either:\n"
+        "  1. JARVIS_GITHUB_COPILOT_CLIENT_ID environment variable, or\n"
+        '  2. {"github_copilot": {"client_id": "..."}} in config/provider_auth_config.json'
+    )
+
+
+def _save_github_copilot_client_id(client_id: str) -> None:
+    from pathlib import Path
+    import json
+    from datetime import UTC, datetime
+    from core.runtime.config import CONFIG_DIR
+
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    provider_auth_config = CONFIG_DIR / "provider_auth_config.json"
+
+    data = {}
+    if provider_auth_config.exists():
+        try:
+            data = json.loads(provider_auth_config.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    if "github_copilot" not in data:
+        data["github_copilot"] = {}
+    data["github_copilot"]["client_id"] = client_id
+    data["github_copilot"]["updated_at"] = datetime.now(UTC).isoformat()
+
+    provider_auth_config.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
 def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
@@ -59,6 +110,31 @@ def cmd_copilot_auth_status(args: argparse.Namespace) -> None:
                     if provider_state
                     else None
                 ),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def cmd_configure_copilot_client_id(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+
+    client_id = str(args.client_id or "").strip()
+    if not client_id:
+        raise ValueError("client_id is required")
+
+    _save_github_copilot_client_id(client_id)
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": _PROVIDER,
+                "action": "configure-client-id",
+                "client_id_configured": True,
+                "source": "cli-argument",
             },
             indent=2,
             ensure_ascii=False,
@@ -279,9 +355,10 @@ def cmd_poll_copilot_token_exchange(args: argparse.Namespace) -> None:
 
 
 def _request_github_device_code() -> dict:
+    client_id = _get_github_copilot_client_id()
     data = urllib_parse.urlencode(
         {
-            "client_id": _GITHUB_COPILOT_CLIENT_ID,
+            "client_id": client_id,
             "scope": "read:user user:email",
         }
     ).encode("utf-8")
@@ -309,9 +386,10 @@ def _request_github_device_code() -> dict:
 
 
 def _poll_github_token_exchange(*, device_code: str, interval: int) -> dict:
+    client_id = _get_github_copilot_client_id()
     data = urllib_parse.urlencode(
         {
-            "client_id": _GITHUB_COPILOT_CLIENT_ID,
+            "client_id": client_id,
             "device_code": device_code,
             "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
         }

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 
 def test_copilot_placeholder_state_is_not_credentials_ready(isolated_runtime) -> None:
     auth_profiles = isolated_runtime.auth_profiles
@@ -237,3 +239,12 @@ def test_copilot_device_flow_complete_becomes_ready(isolated_runtime) -> None:
 
     assert truth["credentials_ready"] is True
     assert truth["can_execute"] is True
+
+
+def test_copilot_client_id_from_env(isolated_runtime, monkeypatch) -> None:
+    from core.cli.copilot_auth import _get_github_copilot_client_id
+
+    monkeypatch.setenv("JARVIS_GITHUB_COPILOT_CLIENT_ID", "Iv1.testclientid123")
+
+    client_id = _get_github_copilot_client_id()
+    assert client_id == "Iv1.testclientid123"

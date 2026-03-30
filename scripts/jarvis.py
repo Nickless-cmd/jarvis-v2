@@ -31,6 +31,7 @@ from core.cli.capability_commands import (
     cmd_invoke_capability,
 )
 from core.cli.copilot_auth import (
+    cmd_configure_copilot_client_id,
     cmd_copilot_auth_status,
     cmd_intake_copilot_oauth_callback,
     cmd_launch_copilot_oauth_browser,
@@ -386,6 +387,10 @@ def build_parser() -> argparse.ArgumentParser:
     intake_copilot_oauth_callback.add_argument("--auth-profile", default="copilot")
     intake_copilot_oauth_callback.add_argument("--callback", required=True)
     intake_copilot_oauth_callback.set_defaults(func=cmd_intake_copilot_oauth_callback)
+
+    configure_copilot_client_id = sub.add_parser("configure-copilot-client-id")
+    configure_copilot_client_id.add_argument("--client-id", required=True)
+    configure_copilot_client_id.set_defaults(func=cmd_configure_copilot_client_id)
 
     start_copilot_device_flow = sub.add_parser("start-copilot-device-flow")
     start_copilot_device_flow.add_argument("--auth-profile", default="copilot")

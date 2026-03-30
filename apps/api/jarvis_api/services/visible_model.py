@@ -71,6 +71,10 @@ class VisibleModelStreamCancelled(RuntimeError):
     pass
 
 
+class VisibleModelRateLimited(RuntimeError):
+    pass
+
+
 _GITHUB_MODELS_MODEL_PREFIXES = {
     "gpt-4.1": "openai/gpt-4.1",
     "gpt-4o": "openai/gpt-4o",
@@ -433,6 +437,7 @@ def _execute_github_copilot_visible_model(
     *, message: str, model: str, session_id: str | None = None
 ) -> VisibleModelResult:
     from core.runtime.settings import load_settings
+    from urllib import error as urllib_error
 
     settings = load_settings()
     profile = settings.visible_auth_profile or "default"
@@ -450,10 +455,27 @@ def _execute_github_copilot_visible_model(
         "messages": messages,
         "stream": False,
     }
-    data = _post_github_copilot_chat_completion(
-        payload=payload,
-        access_token=access_token,
-    )
+    try:
+        data = _post_github_copilot_chat_completion(
+            payload=payload,
+            access_token=access_token,
+        )
+    except RuntimeError as exc:
+        error_msg = str(exc)
+        if "HTTP 429" in error_msg:
+            raise VisibleModelRateLimited(
+                "Backend is temporarily rate-limited. Please try again in a moment, or switch to a local lane."
+            )
+        if "HTTP" in error_msg:
+            code = (
+                error_msg.split("HTTP ")[1].split(":")[0]
+                if "HTTP " in error_msg
+                else "unknown"
+            )
+            raise VisibleModelRateLimited(
+                f"Backend returned HTTP {code}. This may be temporary. Please try again."
+            )
+        raise
     text = _extract_github_copilot_text(data)
     usage = data.get("usage", {})
     input_tokens = int(

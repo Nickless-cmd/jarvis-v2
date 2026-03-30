@@ -181,6 +181,7 @@ from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
 )
 from apps.api.jarvis_api.services.visible_model import (
     VisibleModelDelta,
+    VisibleModelRateLimited,
     VisibleModelStreamCancelled,
     VisibleModelStreamDone,
     stream_visible_model,
@@ -350,6 +351,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             )
             for cancelled_chunk in _cancel_visible_run(run):
                 yield cancelled_chunk
+            return
+        except VisibleModelRateLimited as exc:
+            bounded_message = (
+                str(exc) or "Backend is temporarily unavailable. Please try again."
+            )
+            _persist_session_assistant_message(run, bounded_message)
+            set_last_visible_run_outcome(
+                run,
+                status="failed",
+                error=str(exc) or "rate-limited",
+            )
+            for failure_chunk in _fail_visible_run(run, bounded_message):
+                yield failure_chunk
             return
         except Exception as exc:
             _persist_session_assistant_message(run, str(exc) or "visible-run-failed")

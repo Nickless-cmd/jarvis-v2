@@ -170,9 +170,10 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         callback_validation_state = str(oauth_truth["callback_validation_state"])
         exchange_readiness = str(oauth_truth["exchange_readiness"])
         callback_intent_consistency = str(oauth_truth["callback_intent_consistency"])
+        copilot_status = _github_copilot_status(auth_state=auth_state)
         return {
-            "status": _github_copilot_status(auth_state=auth_state),
-            "can_execute": False,
+            "status": copilot_status,
+            "can_execute": copilot_status == "ready" and credentials_ready,
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
             "auth_state": auth_state,
@@ -199,7 +200,9 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
         auth_status = "ready" if credentials_ready else "auth-not-ready"
         provider_ready = bool(probe["provider_ready"])
         return {
-            "status": str(probe["provider_status"]) if credentials_ready else "auth-not-ready",
+            "status": str(probe["provider_status"])
+            if credentials_ready
+            else "auth-not-ready",
             "can_execute": provider_ready,
             "auth_mode": auth_mode,
             "auth_profile": auth_profile,
@@ -350,7 +353,7 @@ def _github_copilot_auth_state(*, oauth_state: str) -> str:
 
 def _github_copilot_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
-        return "not-implemented"
+        return "ready"
     if auth_state == "oauth-callback-received":
         return "oauth-callback-received"
     if auth_state == "oauth-browser-launch-attempted":
@@ -374,9 +377,17 @@ def _github_copilot_status(*, auth_state: str) -> str:
 
 def _github_copilot_auth_status(*, auth_state: str, exchange_readiness: str) -> str:
     if auth_state == "oauth-stored":
-        return exchange_readiness if exchange_readiness != "not-applicable" else "exchange-complete"
+        return (
+            exchange_readiness
+            if exchange_readiness != "not-applicable"
+            else "exchange-complete"
+        )
     if auth_state == "oauth-callback-received":
-        return exchange_readiness if exchange_readiness != "not-applicable" else "exchange-ready"
+        return (
+            exchange_readiness
+            if exchange_readiness != "not-applicable"
+            else "exchange-ready"
+        )
     if auth_state == "oauth-browser-launch-attempted":
         return "oauth-browser-launch-attempted"
     if auth_state == "oauth-launch-intent-created":
@@ -398,7 +409,7 @@ def _github_copilot_auth_status(*, auth_state: str, exchange_readiness: str) -> 
 
 def _github_copilot_provider_status(*, auth_state: str) -> str:
     if auth_state == "oauth-stored":
-        return "not-implemented"
+        return "ready"
     if auth_state == "oauth-callback-received":
         return "oauth-callback-received"
     if auth_state == "oauth-browser-launch-attempted":
@@ -575,6 +586,27 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
         usage = data.get("usage", {})
         input_tokens = int(usage.get("input_tokens", input_tokens))
         output_tokens = int(usage.get("output_tokens", _estimate_tokens(text)))
+    elif provider == "github-copilot":
+        profile = str(target.get("auth_profile") or "").strip()
+        access_token = _load_github_copilot_token(profile=profile)
+        data = _post_github_copilot_chat_completion(
+            payload={
+                "model": model,
+                "messages": [{"role": "user", "content": message}],
+                "stream": False,
+            },
+            access_token=access_token,
+        )
+        text = _extract_github_copilot_text(data)
+        usage = data.get("usage", {})
+        input_tokens = int(
+            usage.get("prompt_tokens") or usage.get("input_tokens") or input_tokens
+        )
+        output_tokens = int(
+            usage.get("completion_tokens")
+            or usage.get("output_tokens")
+            or _estimate_tokens(text)
+        )
     elif provider == "openrouter":
         profile = str(target.get("auth_profile") or "").strip()
         api_key = _load_provider_api_key(provider=provider, profile=profile)
@@ -590,9 +622,7 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
         text = _extract_openrouter_text(data)
         usage = data.get("usage", {})
         input_tokens = int(
-            usage.get("prompt_tokens")
-            or usage.get("input_tokens")
-            or input_tokens
+            usage.get("prompt_tokens") or usage.get("input_tokens") or input_tokens
         )
         output_tokens = int(
             usage.get("completion_tokens")
@@ -692,6 +722,72 @@ def _extract_openrouter_text(data: dict) -> str:
         if text:
             return text
     raise RuntimeError("Cheap lane execution returned no OpenRouter text")
+
+
+def _load_github_copilot_token(*, profile: str) -> str:
+    state = get_provider_state(profile=profile, provider="github-copilot")
+    if state is None:
+        raise RuntimeError(f"github-copilot lane not ready: missing-profile")
+    credentials_path = Path(str(state.get("credentials_path", "")))
+    if not credentials_path.exists():
+        raise RuntimeError(f"github-copilot lane not ready: missing-credentials")
+    credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
+    token = str(credentials.get("access_token") or "")
+    if not token:
+        raise RuntimeError(f"github-copilot lane not ready: missing-access-token")
+    return token
+
+
+def _post_github_copilot_chat_completion(*, payload: dict, access_token: str) -> dict:
+    root = "https://api.githubcopilot.com"
+    req = urllib_request.Request(
+        f"{root}/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+            "Copilot-Integration-Id": "cli",
+        },
+        method="POST",
+    )
+    with urllib_request.urlopen(req, timeout=60) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _extract_github_copilot_text(data: dict) -> str:
+    choices = data.get("choices") or []
+    for item in choices:
+        if not isinstance(item, dict):
+            continue
+        message = item.get("message") or {}
+        text = str(message.get("content") or "").strip()
+        if text:
+            return text
+    raise RuntimeError("GitHub Copilot lane execution returned no text")
+
+
+def fetch_github_copilot_models(*, profile: str) -> list[str]:
+    access_token = _load_github_copilot_token(profile=profile)
+    root = "https://api.githubcopilot.com"
+    req = urllib_request.Request(
+        f"{root}/models",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Copilot-Integration-Id": "cli",
+        },
+        method="GET",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=15) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        models = data.get("data", [])
+        return [
+            str(item.get("id") or "").strip()
+            for item in models
+            if isinstance(item, dict) and item.get("id")
+        ]
+    except Exception:
+        return []
 
 
 def _estimate_tokens(text: str) -> int:

@@ -37,7 +37,7 @@ def test_copilot_placeholder_state_is_not_credentials_ready(isolated_runtime) ->
     assert truth["target"]["credentials_ready"] is False
 
 
-def test_copilot_real_token_material_surfaces_exchange_complete_but_not_executable(
+def test_copilot_real_token_material_is_now_executable(
     isolated_runtime,
 ) -> None:
     auth_profiles = isolated_runtime.auth_profiles
@@ -73,8 +73,9 @@ def test_copilot_real_token_material_surfaces_exchange_complete_but_not_executab
     assert truth["auth_material_kind"] == "real"
     assert truth["exchange_readiness"] == "exchange-complete"
     assert truth["auth_status"] == "exchange-complete"
-    assert truth["provider_status"] == "not-implemented"
-    assert truth["can_execute"] is False
+    assert truth["provider_status"] == "ready"
+    assert truth["can_execute"] is True
+    assert truth["status"] == "ready"
     assert truth["target"]["credentials_ready"] is True
 
 
@@ -114,3 +115,36 @@ def test_provider_router_summary_does_not_mark_copilot_scaffold_as_auth_ready(
 
     assert copilot_target["credentials_ready"] is False
     assert copilot_target["readiness_hint"] == "auth-required"
+
+
+def test_copilot_can_be_set_as_visible_provider(isolated_runtime) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+    provider_router = isolated_runtime.provider_router
+
+    auth_profiles.save_provider_credentials(
+        profile="copilot-visible",
+        provider="github-copilot",
+        credentials={
+            "access_token": "ghu_test_token",
+            "token_type": "bearer",
+            "oauth_state": "real-stored",
+            "token_exchange_completed": True,
+            "real_oauth": True,
+            "created_by": "test",
+        },
+    )
+    result = provider_router.configure_provider_router_entry(
+        provider="github-copilot",
+        model="gpt-4.1",
+        auth_mode="oauth",
+        auth_profile="copilot-visible",
+        base_url="",
+        api_key="",
+        lane="visible",
+        set_visible=True,
+    )
+
+    assert result["visible_updated"] is True
+    summary = provider_router.provider_router_summary()
+    assert summary["router"]["visible_primary"]["provider"] == "github-copilot"
+    assert summary["router"]["visible_primary"]["model"] == "gpt-4.1"

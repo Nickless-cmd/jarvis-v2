@@ -92,9 +92,9 @@ def configure_provider_router_entry(
     visible_updated = False
     if set_visible:
         settings = load_settings()
-        if provider_id not in {"phase1-runtime", "openai"}:
+        if provider_id not in {"phase1-runtime", "openai", "github-copilot"}:
             raise ValueError(
-                "set_visible currently supports only phase1-runtime or openai"
+                "set_visible currently supports only phase1-runtime, openai, or github-copilot"
             )
         update_visible_execution_settings(
             visible_model_provider=provider_id,
@@ -178,7 +178,9 @@ def main_agent_selection() -> dict[str, object]:
         "current_provider": current.get("provider"),
         "current_model": current.get("model"),
         "current_auth_profile": current.get("auth_profile"),
-        "available_configured_targets": _configured_main_agent_targets(registry=registry),
+        "available_configured_targets": _configured_main_agent_targets(
+            registry=registry
+        ),
         "confidence": "high",
     }
 
@@ -408,7 +410,9 @@ def _readiness_hint(*, provider: str, auth_mode: str, auth_profile: str) -> str:
     return "unknown"
 
 
-def _provider_entry(*, registry: dict[str, object], provider: str) -> dict[str, object] | None:
+def _provider_entry(
+    *, registry: dict[str, object], provider: str
+) -> dict[str, object] | None:
     for item in registry.get("providers") or []:
         if not bool(item.get("enabled", True)):
             continue

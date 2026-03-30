@@ -21,9 +21,10 @@ class RuntimeSettings:
     heartbeat_model_provider: str = ""
     heartbeat_model_name: str = ""
     heartbeat_auth_profile: str = ""
+    heartbeat_local_only: bool = False
     relevance_model_name: str = "llama3.1:8b"
 
-    def to_dict(self) -> dict[str, str | int]:
+    def to_dict(self) -> dict[str, str | int | bool]:
         return {
             "app_name": self.app_name,
             "environment": self.environment,
@@ -38,6 +39,7 @@ class RuntimeSettings:
             "heartbeat_model_provider": self.heartbeat_model_provider,
             "heartbeat_model_name": self.heartbeat_model_name,
             "heartbeat_auth_profile": self.heartbeat_auth_profile,
+            "heartbeat_local_only": self.heartbeat_local_only,
             "relevance_model_name": self.relevance_model_name,
         }
 
@@ -75,6 +77,9 @@ def load_settings() -> RuntimeSettings:
         ),
         heartbeat_auth_profile=str(
             data.get("heartbeat_auth_profile", defaults.heartbeat_auth_profile)
+        ),
+        heartbeat_local_only=bool(
+            data.get("heartbeat_local_only", defaults.heartbeat_local_only)
         ),
         relevance_model_name=str(
             data.get("relevance_model_name", defaults.relevance_model_name)

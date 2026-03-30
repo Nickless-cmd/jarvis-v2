@@ -118,7 +118,9 @@ def start_heartbeat_scheduler(*, name: str = "default") -> None:
         target=_heartbeat_scheduler_loop,
         kwargs={
             "name": name,
-            "startup_recovery_requested": bool(recovery.get("startup_recovery_requested")),
+            "startup_recovery_requested": bool(
+                recovery.get("startup_recovery_requested")
+            ),
         },
         name="jarvis-heartbeat-scheduler",
         daemon=True,
@@ -245,7 +247,9 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     }
 
 
-def run_heartbeat_tick(*, name: str = "default", trigger: str = "manual") -> HeartbeatExecutionResult:
+def run_heartbeat_tick(
+    *, name: str = "default", trigger: str = "manual"
+) -> HeartbeatExecutionResult:
     if not _HEARTBEAT_TICK_LOCK.acquire(blocking=False):
         return _heartbeat_busy_result(name=name, trigger=trigger)
     try:
@@ -254,7 +258,9 @@ def run_heartbeat_tick(*, name: str = "default", trigger: str = "manual") -> Hea
         _HEARTBEAT_TICK_LOCK.release()
 
 
-def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual") -> HeartbeatExecutionResult:
+def _run_heartbeat_tick_locked(
+    *, name: str = "default", trigger: str = "manual"
+) -> HeartbeatExecutionResult:
     now = datetime.now(UTC)
     workspace_dir = ensure_default_workspace(name=name)
     policy = load_heartbeat_policy(name=name)
@@ -268,8 +274,12 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
             "blocked_reason": "",
             "currently_ticking": True,
             "last_trigger_source": trigger,
-            "scheduler_active": bool(_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()),
-            "scheduler_health": "active" if (_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()) else str(persisted.get("scheduler_health") or "manual-only"),
+            "scheduler_active": bool(
+                _HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()
+            ),
+            "scheduler_health": "active"
+            if (_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive())
+            else str(persisted.get("scheduler_health") or "manual-only"),
             "updated_at": now.isoformat(),
         },
     )
@@ -346,7 +356,9 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
         )
 
     target = _select_heartbeat_target()
-    context = _build_heartbeat_context(policy=policy, merged_state=merged_before, trigger=trigger)
+    context = _build_heartbeat_context(
+        policy=policy, merged_state=merged_before, trigger=trigger
+    )
     _log_debug(
         "heartbeat context built",
         trigger=trigger,
@@ -357,7 +369,9 @@ def _run_heartbeat_tick_locked(*, name: str = "default", trigger: str = "manual"
         due_count=len(context.get("due_items") or []),
         liveness_state=(context.get("liveness") or {}).get("liveness_state"),
         liveness_score=(context.get("liveness") or {}).get("liveness_score"),
-        liveness_signal_count=(context.get("liveness") or {}).get("liveness_signal_count"),
+        liveness_signal_count=(context.get("liveness") or {}).get(
+            "liveness_signal_count"
+        ),
     )
     assembly = build_heartbeat_prompt_assembly(heartbeat_context=context, name=name)
     prompt = _heartbeat_prompt_text(assembly.text or "")
@@ -551,13 +565,18 @@ def load_heartbeat_policy(name: str = "default") -> dict[str, object]:
     heartbeat_path = workspace_dir / "HEARTBEAT.md"
     text = heartbeat_path.read_text(encoding="utf-8") if heartbeat_path.exists() else ""
     kv = _parse_heartbeat_key_values(text)
-    enabled = _parse_bool(kv.get("status"), default=True, truthy={"enabled", "true", "yes", "on"})
+    enabled = _parse_bool(
+        kv.get("status"), default=True, truthy={"enabled", "true", "yes", "on"}
+    )
     interval_minutes = _parse_int(kv.get("interval minutes"), default=180, minimum=15)
     allow_propose = _parse_bool(kv.get("allow propose"), default=True)
     allow_execute = _parse_bool(kv.get("allow execute"), default=False)
     allow_ping = _parse_bool(kv.get("allow ping"), default=False)
     ping_channel = str(kv.get("ping channel") or "none").strip() or "none"
-    budget_status = str(kv.get("budget") or "bounded-internal-only").strip() or "bounded-internal-only"
+    budget_status = (
+        str(kv.get("budget") or "bounded-internal-only").strip()
+        or "bounded-internal-only"
+    )
     kill_switch = str(kv.get("kill switch") or "enabled").strip() or "enabled"
     summary_lines = [
         f"interval={interval_minutes}m",
@@ -617,7 +636,9 @@ def _build_heartbeat_context(
             open_loops.append(
                 f"{workflow['label']} has {workflow['approved_count']} approved items awaiting apply"
             )
-    if candidate_counts.get("preference_update:applied", 0) or candidate_counts.get("memory_promotion:applied", 0):
+    if candidate_counts.get("preference_update:applied", 0) or candidate_counts.get(
+        "memory_promotion:applied", 0
+    ):
         open_loops.append("recent governed file writes exist for continuity review")
     if pending_file_writes:
         open_loops.append(
@@ -626,7 +647,9 @@ def _build_heartbeat_context(
     if continuity.get("active"):
         latest_preview = str(continuity.get("latest_text_preview") or "").strip()
         if latest_preview:
-            open_loops.append(f"latest visible continuity preview: {latest_preview[:140]}")
+            open_loops.append(
+                f"latest visible continuity preview: {latest_preview[:140]}"
+            )
     for item in recent_run_rows[:2]:
         status = str(item.get("status") or "unknown")
         if status in {"failed", "cancelled"}:
@@ -638,7 +661,9 @@ def _build_heartbeat_context(
         family = str(event.get("family") or "")
         if family == "heartbeat":
             continue
-        recent_events.append(f"{event.get('kind')}: {json.dumps(event.get('payload') or {}, ensure_ascii=False)[:120]}")
+        recent_events.append(
+            f"{event.get('kind')}: {json.dumps(event.get('payload') or {}, ensure_ascii=False)[:120]}"
+        )
         if len(recent_events) >= 3:
             break
 
@@ -681,7 +706,9 @@ def _build_heartbeat_liveness_signal(
     regulation = build_runtime_regulation_homeostasis_signal_surface(limit=6)
     witness = build_runtime_witness_signal_surface(limit=6)
     private_state = build_runtime_private_state_snapshot_surface(limit=6)
-    initiative_tension = build_runtime_private_initiative_tension_signal_surface(limit=6)
+    initiative_tension = build_runtime_private_initiative_tension_signal_surface(
+        limit=6
+    )
     chronicle_briefs = build_runtime_chronicle_consolidation_brief_surface(limit=6)
     meaning_significance = build_runtime_meaning_significance_signal_surface(limit=6)
     metabolism = build_runtime_metabolism_state_signal_surface(limit=6)
@@ -717,7 +744,11 @@ def _build_heartbeat_liveness_signal(
     open_summary = open_loops.get("summary") or {}
     open_items = open_loops.get("items") or []
     open_anchor = (
-        str((open_items[0] or {}).get("source_anchor") or (open_items[0] or {}).get("title") or "open-loop")
+        str(
+            (open_items[0] or {}).get("source_anchor")
+            or (open_items[0] or {}).get("title")
+            or "open-loop"
+        )
         if open_items
         else "open-loop"
     )
@@ -742,7 +773,11 @@ def _build_heartbeat_liveness_signal(
     tension_summary = initiative_tension.get("summary") or {}
     tension_items = initiative_tension.get("items") or []
     tension_anchor = (
-        str((tension_items[0] or {}).get("source_anchor") or (tension_items[0] or {}).get("title") or "initiative-tension")
+        str(
+            (tension_items[0] or {}).get("source_anchor")
+            or (tension_items[0] or {}).get("title")
+            or "initiative-tension"
+        )
         if tension_items
         else "initiative-tension"
     )
@@ -761,11 +796,18 @@ def _build_heartbeat_liveness_signal(
     private_items = private_state.get("items") or []
     current_pressure = str(private_summary.get("current_pressure") or "low")
     private_anchor = (
-        str((private_items[0] or {}).get("source_anchor") or (private_items[0] or {}).get("title") or "private-state")
+        str(
+            (private_items[0] or {}).get("source_anchor")
+            or (private_items[0] or {}).get("title")
+            or "private-state"
+        )
         if private_items
         else "private-state"
     )
-    if int(private_summary.get("active_count") or 0) > 0 and current_pressure in {"medium", "high"}:
+    if int(private_summary.get("active_count") or 0) > 0 and current_pressure in {
+        "medium",
+        "high",
+    }:
         add_signal(
             weight=3 if current_pressure == "high" else 2,
             reason="private state pressure is still present",
@@ -778,7 +820,11 @@ def _build_heartbeat_liveness_signal(
     relation_items = relation_continuity.get("items") or []
     current_weight = str(relation_summary.get("current_weight") or "low")
     relation_anchor = (
-        str((relation_items[0] or {}).get("source_anchor") or (relation_items[0] or {}).get("title") or "relation-continuity")
+        str(
+            (relation_items[0] or {}).get("source_anchor")
+            or (relation_items[0] or {}).get("title")
+            or "relation-continuity"
+        )
         if relation_items
         else "relation-continuity"
     )
@@ -793,7 +839,11 @@ def _build_heartbeat_liveness_signal(
     regulation_items = regulation.get("items") or []
     regulation_pressure = str(regulation_summary.get("current_pressure") or "low")
     regulation_anchor = (
-        str((regulation_items[0] or {}).get("source_anchor") or (regulation_items[0] or {}).get("title") or "regulation")
+        str(
+            (regulation_items[0] or {}).get("source_anchor")
+            or (regulation_items[0] or {}).get("title")
+            or "regulation"
+        )
         if regulation_items
         else "regulation"
     )
@@ -807,16 +857,20 @@ def _build_heartbeat_liveness_signal(
     witness_summary = witness.get("summary") or {}
     witness_items = witness.get("items") or []
     witness_anchor = (
-        str((witness_items[0] or {}).get("source_anchor") or (witness_items[0] or {}).get("title") or "witness")
+        str(
+            (witness_items[0] or {}).get("source_anchor")
+            or (witness_items[0] or {}).get("title")
+            or "witness"
+        )
         if witness_items
         else "witness"
     )
-    if (
-        int(witness_summary.get("carried_count") or 0) > 0
-        or str(witness_summary.get("current_persistence_state") or "none")
-        in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
-    ):
-        persistence_state = str(witness_summary.get("current_persistence_state") or "none")
+    if int(witness_summary.get("carried_count") or 0) > 0 or str(
+        witness_summary.get("current_persistence_state") or "none"
+    ) in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}:
+        persistence_state = str(
+            witness_summary.get("current_persistence_state") or "none"
+        )
         add_signal(
             weight=2 if persistence_state in {"carried-forward", "persistent"} else 1,
             reason="witness continuity is still being carried",
@@ -826,11 +880,17 @@ def _build_heartbeat_liveness_signal(
     chronicle_summary = chronicle_briefs.get("summary") or {}
     chronicle_items = chronicle_briefs.get("items") or []
     chronicle_anchor = (
-        str((chronicle_items[0] or {}).get("source_anchor") or (chronicle_items[0] or {}).get("title") or "chronicle-brief")
+        str(
+            (chronicle_items[0] or {}).get("source_anchor")
+            or (chronicle_items[0] or {}).get("title")
+            or "chronicle-brief"
+        )
         if chronicle_items
         else "chronicle-brief"
     )
-    if chronicle_briefs.get("active") and str(chronicle_summary.get("current_weight") or "low") in {"medium", "high"}:
+    if chronicle_briefs.get("active") and str(
+        chronicle_summary.get("current_weight") or "low"
+    ) in {"medium", "high"}:
         add_signal(
             weight=1,
             reason="chronicle continuity is still holding a brief thread",
@@ -841,7 +901,11 @@ def _build_heartbeat_liveness_signal(
     meaning_items = meaning_significance.get("items") or []
     meaning_weight = str(meaning_summary.get("current_weight") or "low")
     meaning_anchor = (
-        str((meaning_items[0] or {}).get("source_anchor") or (meaning_items[0] or {}).get("title") or "meaning-significance")
+        str(
+            (meaning_items[0] or {}).get("source_anchor")
+            or (meaning_items[0] or {}).get("title")
+            or "meaning-significance"
+        )
         if meaning_items
         else "meaning-significance"
     )
@@ -858,11 +922,17 @@ def _build_heartbeat_liveness_signal(
         and current_weight in {"medium", "high"}
         and meaning_weight in {"medium", "high"}
     )
-    witness_persistence = str(witness_summary.get("current_persistence_state") or "none")
-    witness_carried = (
-        int(witness_summary.get("carried_count") or 0) > 0
-        or witness_persistence in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+    witness_persistence = str(
+        witness_summary.get("current_persistence_state") or "none"
     )
+    witness_carried = int(
+        witness_summary.get("carried_count") or 0
+    ) > 0 or witness_persistence in {
+        "recurring",
+        "stabilizing-over-time",
+        "carried-forward",
+        "persistent",
+    }
     chronicle_held = chronicle_briefs.get("active") and str(
         chronicle_summary.get("current_weight") or "low"
     ) in {"medium", "high"}
@@ -871,7 +941,11 @@ def _build_heartbeat_liveness_signal(
         add_signal(
             weight=2 if current_weight == "high" or meaning_weight == "high" else 1,
             reason="relation and meaning continuity are cohering as one carried thread",
-            anchor=" | ".join(anchor for anchor in [relation_anchor, meaning_anchor] if str(anchor or "").strip()),
+            anchor=" | ".join(
+                anchor
+                for anchor in [relation_anchor, meaning_anchor]
+                if str(anchor or "").strip()
+            ),
             core=True,
             propose_gate=True,
         )
@@ -879,7 +953,11 @@ def _build_heartbeat_liveness_signal(
         add_signal(
             weight=2 if witness_persistence in {"carried-forward", "persistent"} else 1,
             reason="witnessed continuity is still being carried into chronicle",
-            anchor=" | ".join(anchor for anchor in [witness_anchor, chronicle_anchor] if str(anchor or "").strip()),
+            anchor=" | ".join(
+                anchor
+                for anchor in [witness_anchor, chronicle_anchor]
+                if str(anchor or "").strip()
+            ),
             core=True,
             propose_gate=True,
         )
@@ -888,7 +966,11 @@ def _build_heartbeat_liveness_signal(
     metabolism_items = metabolism.get("items") or []
     metabolism_state = str(metabolism_summary.get("current_state") or "none")
     metabolism_anchor = (
-        str((metabolism_items[0] or {}).get("source_anchor") or (metabolism_items[0] or {}).get("title") or "metabolism")
+        str(
+            (metabolism_items[0] or {}).get("source_anchor")
+            or (metabolism_items[0] or {}).get("title")
+            or "metabolism"
+        )
         if metabolism_items
         else "metabolism"
     )
@@ -918,29 +1000,49 @@ def _build_heartbeat_liveness_signal(
             "older open-loop continuity is still carrying a light pull",
             open_anchor,
         )
-    if silence_hours is not None and silence_hours >= 6 and current_weight in {"medium", "high"}:
+    if (
+        silence_hours is not None
+        and silence_hours >= 6
+        and current_weight in {"medium", "high"}
+    ):
         add_companion_reason(
             2 if silence_hours >= 24 and current_weight == "high" else 1,
             "relation continuity is holding bounded distance under silence",
             relation_anchor,
         )
     persistence_state = str(witness_summary.get("current_persistence_state") or "none")
-    if silence_hours is not None and silence_hours >= 6 and (
-        int(witness_summary.get("carried_count") or 0) > 0
-        or persistence_state in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+    if (
+        silence_hours is not None
+        and silence_hours >= 6
+        and (
+            int(witness_summary.get("carried_count") or 0) > 0
+            or persistence_state
+            in {"recurring", "stabilizing-over-time", "carried-forward", "persistent"}
+        )
     ):
         add_companion_reason(
-            2 if persistence_state in {"carried-forward", "persistent"} and silence_hours >= 24 else 1,
+            2
+            if persistence_state in {"carried-forward", "persistent"}
+            and silence_hours >= 24
+            else 1,
             "witness continuity is persisting without a recent outlet",
             witness_anchor,
         )
-    if silence_hours is not None and silence_hours >= 12 and str(chronicle_summary.get("current_weight") or "low") in {"medium", "high"}:
+    if (
+        silence_hours is not None
+        and silence_hours >= 12
+        and str(chronicle_summary.get("current_weight") or "low") in {"medium", "high"}
+    ):
         add_companion_reason(
             1,
             "chronicle continuity is still carrying a small longer-horizon brief",
             chronicle_anchor,
         )
-    if silence_hours is not None and silence_hours >= 12 and meaning_weight in {"medium", "high"}:
+    if (
+        silence_hours is not None
+        and silence_hours >= 12
+        and meaning_weight in {"medium", "high"}
+    ):
         add_companion_reason(
             1,
             "meaning significance is still softly carried under silence",
@@ -950,27 +1052,33 @@ def _build_heartbeat_liveness_signal(
     if companion_reasons:
         raw_companion_weight = sum(weight for weight, _, _ in companion_reasons)
         companion_pressure_weight = min(raw_companion_weight, 4)
-        strongest_companion = sorted(companion_reasons, key=lambda item: item[0], reverse=True)[0]
+        strongest_companion = sorted(
+            companion_reasons, key=lambda item: item[0], reverse=True
+        )[0]
         companion_pressure_reason = strongest_companion[1]
         companion_anchor = " | ".join(
-            [
-                anchor
-                for _, _, anchor in companion_reasons
-                if str(anchor or "").strip()
-            ][:3]
+            [anchor for _, _, anchor in companion_reasons if str(anchor or "").strip()][
+                :3
+            ]
         )
         if companion_pressure_weight >= 3:
             companion_pressure_state = "present"
         elif companion_pressure_weight >= 1:
             companion_pressure_state = "light"
-        if silence_hours is not None and silence_hours >= 24 and companion_pressure_weight >= 2:
+        if (
+            silence_hours is not None
+            and silence_hours >= 24
+            and companion_pressure_weight >= 2
+        ):
             idle_presence_state = "sustained"
         elif silence_hours is not None and silence_hours >= 6:
             idle_presence_state = "present"
         elif companion_pressure_weight > 0:
             idle_presence_state = "light"
         if companion_pressure_weight >= 4 or (
-            silence_hours is not None and silence_hours >= 24 and companion_pressure_weight >= 3
+            silence_hours is not None
+            and silence_hours >= 24
+            and companion_pressure_weight >= 3
         ):
             checkin_worthiness = "medium"
         elif companion_pressure_weight >= 2:
@@ -1041,11 +1149,7 @@ def _build_heartbeat_liveness_signal(
         else "bounded runtime pressure is present"
     )
     source_anchor = " | ".join(
-        [
-            anchor
-            for _, _, anchor, _ in sorted_reasons
-            if str(anchor or "").strip()
-        ][:3]
+        [anchor for _, _, anchor, _ in sorted_reasons if str(anchor or "").strip()][:3]
     )
 
     if score >= 8 and core_pressure_count >= 2 and propose_gate_count >= 1:
@@ -1167,6 +1271,8 @@ def _select_heartbeat_target() -> dict[str, str | bool]:
     heartbeat_auth_profile = str(
         getattr(settings, "heartbeat_auth_profile", "") or ""
     ).strip()
+    heartbeat_local_only = bool(getattr(settings, "heartbeat_local_only", False))
+
     if (
         heartbeat_provider
         and heartbeat_model
@@ -1181,7 +1287,25 @@ def _select_heartbeat_target() -> dict[str, str | bool]:
             "model_source": "runtime.settings.heartbeat_model",
             "resolution_status": "heartbeat-configured",
             "fallback_used": False,
+            "local_only": heartbeat_local_only,
         }
+
+    if heartbeat_local_only:
+        local_target = resolve_provider_router_target(lane="local")
+        provider = str(local_target.get("provider") or "").strip()
+        model = str(local_target.get("model") or "").strip()
+        if provider and model and provider in supported_providers:
+            return {
+                "lane": "local",
+                "provider": provider,
+                "model": model,
+                "auth_profile": str(local_target.get("auth_profile") or "").strip(),
+                "base_url": str(local_target.get("base_url") or "").strip(),
+                "model_source": "heartbeat-local-only-pinned",
+                "resolution_status": "local-only-pinned",
+                "fallback_used": False,
+                "local_only": True,
+            }
 
     runtime_selected_local = _runtime_selected_local_target(settings=settings)
     if runtime_selected_local is not None:
@@ -1202,7 +1326,10 @@ def _select_heartbeat_target() -> dict[str, str | bool]:
             "fallback_used": False,
         }
 
-    candidates = ["visible", str(settings.cheap_model_lane or "cheap").strip() or "cheap"]
+    candidates = [
+        "visible",
+        str(settings.cheap_model_lane or "cheap").strip() or "cheap",
+    ]
     for lane in candidates:
         target = resolve_provider_router_target(lane=lane)
         provider = str(target.get("provider") or "").strip()
@@ -1232,10 +1359,10 @@ def _select_heartbeat_target() -> dict[str, str | bool]:
     }
 
 
-def _runtime_selected_local_target(
-    *, settings
-) -> dict[str, str | bool] | None:
-    visible_provider = str(getattr(settings, "visible_model_provider", "") or "").strip()
+def _runtime_selected_local_target(*, settings) -> dict[str, str | bool] | None:
+    visible_provider = str(
+        getattr(settings, "visible_model_provider", "") or ""
+    ).strip()
     visible_model = str(getattr(settings, "visible_model_name", "") or "").strip()
     visible_auth_profile = str(
         getattr(settings, "visible_auth_profile", "") or ""
@@ -1271,7 +1398,11 @@ def _execute_heartbeat_model(
         liveness_threshold_state = str(
             (liveness or {}).get("liveness_threshold_state") or "quiet-threshold"
         )
-        summary = open_loops[0] if open_loops else (liveness_summary or "No current due work was detected.")
+        summary = (
+            open_loops[0]
+            if open_loops
+            else (liveness_summary or "No current due work was detected.")
+        )
         decision_type = (
             "execute"
             if bool(policy.get("allow_execute"))
@@ -1280,7 +1411,10 @@ def _execute_heartbeat_model(
                 if (
                     open_loops
                     or liveness_threshold_state == "propose-worthy-threshold"
-                    or (liveness_pressure == "high" and liveness_threshold_state == "alive-threshold")
+                    or (
+                        liveness_pressure == "high"
+                        and liveness_threshold_state == "alive-threshold"
+                    )
                 )
                 else "noop"
             )
@@ -1374,8 +1508,12 @@ def _execute_openai_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
     }
 
 
-def _execute_openrouter_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, object]:
-    api_key = _load_provider_api_key(provider="openrouter", profile=target["auth_profile"])
+def _execute_openrouter_prompt(
+    *, prompt: str, target: dict[str, str]
+) -> dict[str, object]:
+    api_key = _load_provider_api_key(
+        provider="openrouter", profile=target["auth_profile"]
+    )
     base_url = target["base_url"] or "https://openrouter.ai/api/v1"
     req = urllib_request.Request(
         f"{base_url.rstrip('/')}/chat/completions",
@@ -1664,11 +1802,16 @@ def _validate_heartbeat_decision(
             if str(pilot_result.get("delivery_state") or "") != "sent":
                 return {
                     "tick_id": tick_id,
-                    "blocked_reason": str(pilot_result.get("blocked_reason") or "webchat-delivery-blocked"),
+                    "blocked_reason": str(
+                        pilot_result.get("blocked_reason") or "webchat-delivery-blocked"
+                    ),
                     "ping_eligible": False,
                     "ping_result": str(pilot_result.get("delivery_state") or "blocked"),
                     "action_status": "blocked",
-                    "action_summary": str(pilot_result.get("summary") or "Tiny webchat execution pilot was blocked."),
+                    "action_summary": str(
+                        pilot_result.get("summary")
+                        or "Tiny webchat execution pilot was blocked."
+                    ),
                     "action_type": "webchat-proactive-question",
                     "action_artifact": str(item.get("pilot_id") or ""),
                 }
@@ -1678,7 +1821,10 @@ def _validate_heartbeat_decision(
                 "ping_eligible": True,
                 "ping_result": "sent-webchat",
                 "action_status": "sent",
-                "action_summary": str(pilot_result.get("summary") or "Tiny webchat execution pilot delivered one bounded proactive question."),
+                "action_summary": str(
+                    pilot_result.get("summary")
+                    or "Tiny webchat execution pilot delivered one bounded proactive question."
+                ),
                 "action_type": "webchat-proactive-question",
                 "action_artifact": str(item.get("pilot_id") or ""),
             }
@@ -1688,7 +1834,9 @@ def _validate_heartbeat_decision(
             "ping_eligible": True,
             "ping_result": "recorded-preview",
             "action_status": "recorded",
-            "action_summary": decision["ping_text"] or decision["summary"] or "Heartbeat ping preview recorded.",
+            "action_summary": decision["ping_text"]
+            or decision["summary"]
+            or "Heartbeat ping preview recorded.",
             "action_type": "",
             "action_artifact": "",
         }
@@ -1698,7 +1846,9 @@ def _validate_heartbeat_decision(
         "ping_eligible": False,
         "ping_result": "not-applicable",
         "action_status": "recorded",
-        "action_summary": decision["proposed_action"] or decision["summary"] or "Heartbeat outcome recorded.",
+        "action_summary": decision["proposed_action"]
+        or decision["summary"]
+        or "Heartbeat outcome recorded.",
         "action_type": "",
         "action_artifact": "",
     }
@@ -1725,14 +1875,16 @@ def _recover_bounded_heartbeat_liveness_decision(
     if (
         liveness_state == "quiet"
         or liveness_pressure not in {"medium", "high"}
-        or liveness_threshold_state not in {"propose-worthy-threshold", "alive-threshold"}
+        or liveness_threshold_state
+        not in {"propose-worthy-threshold", "alive-threshold"}
     ):
         return decision
 
     if _heartbeat_ping_candidate_ready(policy=policy):
         return {
             "decision_type": "ping",
-            "summary": liveness_summary or "Heartbeat appears to have bounded liveness pressure and is surfacing one bounded proactive question rather than a noop.",
+            "summary": liveness_summary
+            or "Heartbeat appears to have bounded liveness pressure and is surfacing one bounded proactive question rather than a noop.",
             "reason": (
                 f"bounded-liveness-ping-recovery: {liveness_reason or 'runtime liveness pressure is present'}"
             )[:240],
@@ -1743,11 +1895,13 @@ def _recover_bounded_heartbeat_liveness_decision(
 
     return {
         "decision_type": "propose",
-        "summary": liveness_summary or "Heartbeat appears to have bounded liveness pressure and is proposing a small check-in rather than a noop.",
+        "summary": liveness_summary
+        or "Heartbeat appears to have bounded liveness pressure and is proposing a small check-in rather than a noop.",
         "reason": (
             f"bounded-liveness-recovery: {liveness_reason or 'runtime liveness pressure is present'}"
         )[:240],
-        "proposed_action": liveness_summary or "Review bounded runtime liveness pressure before the thread goes cold.",
+        "proposed_action": liveness_summary
+        or "Review bounded runtime liveness pressure before the thread goes cold.",
         "ping_text": "",
         "execute_action": "",
     }
@@ -1941,7 +2095,9 @@ def _record_heartbeat_outcome(
         blocked_reason=blocked_reason,
         currently_ticking=currently_ticking,
         last_trigger_source=last_trigger_source,
-        scheduler_active=bool(_HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()),
+        scheduler_active=bool(
+            _HEARTBEAT_SCHEDULER_THREAD and _HEARTBEAT_SCHEDULER_THREAD.is_alive()
+        ),
         scheduler_started_at=str(persisted.get("scheduler_started_at") or ""),
         scheduler_stopped_at=str(persisted.get("scheduler_stopped_at") or ""),
         scheduler_health=(
@@ -1955,7 +2111,9 @@ def _record_heartbeat_outcome(
             else str(persisted.get("recovery_status") or "idle")
         ),
         last_recovery_at=(
-            finished_at if last_trigger_source == "startup-recovery" else str(persisted.get("last_recovery_at") or "")
+            finished_at
+            if last_trigger_source == "startup-recovery"
+            else str(persisted.get("last_recovery_at") or "")
         ),
         provider=provider,
         model=model,
@@ -2034,7 +2192,10 @@ def _merge_runtime_state(
         "scheduler_active": bool(persisted.get("scheduler_active")),
         "scheduler_started_at": str(persisted.get("scheduler_started_at") or ""),
         "scheduler_stopped_at": str(persisted.get("scheduler_stopped_at") or ""),
-        "scheduler_health": str(persisted.get("scheduler_health") or ("active" if bool(persisted.get("scheduler_active")) else "stopped")),
+        "scheduler_health": str(
+            persisted.get("scheduler_health")
+            or ("active" if bool(persisted.get("scheduler_active")) else "stopped")
+        ),
         "recovery_status": str(persisted.get("recovery_status") or ""),
         "last_recovery_at": str(persisted.get("last_recovery_at") or ""),
         "provider": str(persisted.get("provider") or ""),
@@ -2073,7 +2234,9 @@ def _tick_blocked_reason(merged_state: dict[str, object]) -> str:
     return ""
 
 
-def _compute_next_tick_at(*, interval_minutes: int, last_tick_at: str, enabled: bool) -> str:
+def _compute_next_tick_at(
+    *, interval_minutes: int, last_tick_at: str, enabled: bool
+) -> str:
     if not enabled:
         return ""
     parsed = _parse_dt(last_tick_at)
@@ -2081,7 +2244,9 @@ def _compute_next_tick_at(*, interval_minutes: int, last_tick_at: str, enabled: 
     return (base + timedelta(minutes=max(interval_minutes, 1))).isoformat()
 
 
-def _write_heartbeat_state_artifact(*, workspace_dir: Path, payload: dict[str, object]) -> None:
+def _write_heartbeat_state_artifact(
+    *, workspace_dir: Path, payload: dict[str, object]
+) -> None:
     state_path = workspace_dir / HEARTBEAT_STATE_REL_PATH
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(
@@ -2159,8 +2324,12 @@ def _persist_runtime_state(
         state_id=str(merged_input.get("state_id") or "default"),
         last_tick_id=str(merged_input.get("last_tick_id") or ""),
         last_tick_at=str(merged_input.get("last_tick_at") or ""),
-        next_tick_at=str(merged.get("next_tick_at") or merged_input.get("next_tick_at") or ""),
-        schedule_state=str(merged.get("schedule_state") or merged_input.get("schedule_state") or ""),
+        next_tick_at=str(
+            merged.get("next_tick_at") or merged_input.get("next_tick_at") or ""
+        ),
+        schedule_state=str(
+            merged.get("schedule_state") or merged_input.get("schedule_state") or ""
+        ),
         due=bool(merged.get("due")),
         last_decision_type=str(merged_input.get("last_decision_type") or ""),
         last_result=str(merged_input.get("last_result") or ""),
@@ -2280,11 +2449,17 @@ def _load_provider_api_key(*, provider: str, profile: str) -> str:
         raise RuntimeError(f"{provider} heartbeat execution not ready: missing-profile")
     credentials_path = Path(str(state.get("credentials_path", "")))
     if not credentials_path.exists():
-        raise RuntimeError(f"{provider} heartbeat execution not ready: missing-credentials")
+        raise RuntimeError(
+            f"{provider} heartbeat execution not ready: missing-credentials"
+        )
     credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
-    api_key = str(credentials.get("api_key") or credentials.get("access_token") or "").strip()
+    api_key = str(
+        credentials.get("api_key") or credentials.get("access_token") or ""
+    ).strip()
     if not api_key:
-        raise RuntimeError(f"{provider} heartbeat execution not ready: missing-credentials")
+        raise RuntimeError(
+            f"{provider} heartbeat execution not ready: missing-credentials"
+        )
     return api_key
 
 
@@ -2361,7 +2536,9 @@ def _heartbeat_scheduler_loop(*, name: str, startup_recovery_requested: bool) ->
     try:
         _poll_heartbeat_schedule_with_trigger(
             name=name,
-            due_trigger="startup-recovery" if startup_recovery_requested else "scheduled",
+            due_trigger="startup-recovery"
+            if startup_recovery_requested
+            else "scheduled",
         )
     except Exception as exc:
         event_bus.publish(
@@ -2369,7 +2546,9 @@ def _heartbeat_scheduler_loop(*, name: str, startup_recovery_requested: bool) ->
             {
                 "blocked_reason": "scheduler-error",
                 "detail": str(exc),
-                "trigger": "startup-recovery" if startup_recovery_requested else "scheduled",
+                "trigger": "startup-recovery"
+                if startup_recovery_requested
+                else "scheduled",
             },
         )
     while not _HEARTBEAT_SCHEDULER_STOP.wait(_HEARTBEAT_SCHEDULER_INTERVAL_SECONDS):
@@ -2397,8 +2576,12 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
     last_recovery_at = str(persisted.get("last_recovery_at") or "")
     currently_ticking = bool(persisted.get("currently_ticking"))
     if currently_ticking:
-        stale_started = _parse_dt(str(persisted.get("updated_at") or persisted.get("last_tick_at") or ""))
-        if stale_started is None or stale_started <= now - timedelta(minutes=_STALE_TICK_RECOVERY_WINDOW_MINUTES):
+        stale_started = _parse_dt(
+            str(persisted.get("updated_at") or persisted.get("last_tick_at") or "")
+        )
+        if stale_started is None or stale_started <= now - timedelta(
+            minutes=_STALE_TICK_RECOVERY_WINDOW_MINUTES
+        ):
             currently_ticking = False
             blocked_reason = "stale-ticking-state-cleared"
             recovery_status = "stale-ticking-state-cleared"

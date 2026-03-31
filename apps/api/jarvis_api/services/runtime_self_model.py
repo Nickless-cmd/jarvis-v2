@@ -1,0 +1,455 @@
+"""Bounded runtime self-model.
+
+Builds a machine-readable snapshot of Jarvis' current system-self
+from existing runtime truth surfaces. Distinguishes clearly between:
+
+- Layer types: runtime-truth, capability, producer, memory, identity, groundwork
+- Layer roles: active, idle, cooling, gated, groundwork-only, unavailable
+- Visibility: visible, internal-only, mixed
+- Truth status: authoritative, derived, interpreted, candidate-only
+
+Design constraints:
+- No identity or soul mutations
+- No workspace memory writes
+- No new config frameworks
+- Uses only existing runtime truth surfaces
+- Deterministic, bounded, grounded
+"""
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+
+# ---------------------------------------------------------------------------
+# Layer type definitions (the ontology)
+# ---------------------------------------------------------------------------
+
+# Each layer Jarvis knows about is typed along these axes:
+#
+# kind:       capability | permission | producer | memory | identity | orchestration | groundwork
+# role:       active | idle | cooling | gated | groundwork-only | unavailable
+# visibility: visible | internal-only | mixed
+# truth:      authoritative | derived | interpreted | candidate-only
+#
+# This is NOT a big ontology. It's a small, practical set of distinctions.
+
+
+def build_runtime_self_model() -> dict[str, object]:
+    """Build a bounded runtime self-model snapshot.
+
+    Returns a structured dict with typed layers, producer states,
+    truth boundaries, and a compact prompt-ready summary.
+    """
+    layers = _collect_layers()
+    boundaries = _truth_boundaries()
+    summary = _build_summary(layers, boundaries)
+
+    return {
+        "layers": layers,
+        "truth_boundaries": boundaries,
+        "summary": summary,
+        "built_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def _collect_layers() -> list[dict[str, str]]:
+    """Collect all known layers with type annotations."""
+    layers: list[dict[str, str]] = []
+
+    # --- Runtime truth layers (authoritative) ---
+    layers.append({
+        "id": "heartbeat",
+        "label": "Heartbeat runtime",
+        "kind": "orchestration",
+        "role": _heartbeat_role(),
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": "Basal pulse. Drives cadence ticks and non-visible producers.",
+    })
+
+    layers.append({
+        "id": "internal-cadence",
+        "label": "Internal cadence layer",
+        "kind": "orchestration",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": "Shared rhythm for non-visible producers. Evaluates due/cooling/blocked.",
+    })
+
+    # --- Capability layers ---
+    layers.append({
+        "id": "visible-chat",
+        "label": "Visible chat lane",
+        "kind": "capability",
+        "role": _visible_chat_role(),
+        "visibility": "visible",
+        "truth": "authoritative",
+        "detail": "User-facing conversation. Jarvis' primary visible output.",
+    })
+
+    layers.append({
+        "id": "cheap-lane",
+        "label": "Cheap model lane",
+        "kind": "capability",
+        "role": _cheap_lane_role(),
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": "Low-cost model for internal small jobs.",
+    })
+
+    layers.append({
+        "id": "local-lane",
+        "label": "Local model lane",
+        "kind": "capability",
+        "role": _local_lane_role(),
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": "Local model for heartbeat and inner producers.",
+    })
+
+    # --- Producer layers ---
+    for p in _producer_layers():
+        layers.append(p)
+
+    # --- Memory layers ---
+    layers.append({
+        "id": "workspace-memory",
+        "label": "Workspace memory (MEMORY.md)",
+        "kind": "memory",
+        "role": "active",
+        "visibility": "mixed",
+        "truth": "authoritative",
+        "detail": "Persistent cross-session memory. User-visible and LLM-readable.",
+    })
+
+    layers.append({
+        "id": "private-brain",
+        "label": "Private brain records",
+        "kind": "memory",
+        "role": _private_brain_role(),
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": "Append-only private memory. Not user-visible.",
+    })
+
+    layers.append({
+        "id": "session-distillation",
+        "label": "Session distillation",
+        "kind": "memory",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": "End-of-run carry classification into private brain or workspace memory.",
+    })
+
+    # --- Identity layers ---
+    layers.append({
+        "id": "soul-identity",
+        "label": "SOUL + IDENTITY",
+        "kind": "identity",
+        "role": "active",
+        "visibility": "mixed",
+        "truth": "authoritative",
+        "detail": "Protected core. Defines who Jarvis is. Not mutable by runtime.",
+    })
+
+    # --- Permission / gated layers ---
+    layers.append({
+        "id": "approval-pipeline",
+        "label": "Contract candidate / approval pipeline",
+        "kind": "permission",
+        "role": _approval_pipeline_role(),
+        "visibility": "mixed",
+        "truth": "authoritative",
+        "detail": "Workspace changes require user approval. Capability, not action.",
+    })
+
+    # --- Groundwork layers (exist but are candidate/proposal only) ---
+    for g in _groundwork_layers():
+        layers.append(g)
+
+    return layers
+
+
+# ---------------------------------------------------------------------------
+# Truth boundaries
+# ---------------------------------------------------------------------------
+
+def _truth_boundaries() -> dict[str, str]:
+    """Express the key distinctions Jarvis should maintain."""
+    return {
+        "capability_vs_permission": (
+            "Having a capability does not mean having permission. "
+            "Workspace writes require approval. Execution requires policy gate."
+        ),
+        "capability_vs_action": (
+            "Being capable does not mean having acted. "
+            "Do not claim actions without runtime evidence of execution."
+        ),
+        "memory_vs_identity": (
+            "Memory records facts. Identity defines who I am. "
+            "Memory can grow; identity is protected and stable."
+        ),
+        "continuity_vs_memory": (
+            "Continuity is private brain state that helps me carry forward. "
+            "Memory is persistent workspace facts available across sessions."
+        ),
+        "internal_vs_visible": (
+            "Internal layers (producers, cadence, private brain) are not user-facing. "
+            "Do not expose internal-only state as if it were visible output."
+        ),
+        "runtime_truth_vs_interpretation": (
+            "Authoritative layers report what IS. Derived/interpreted layers are inferences. "
+            "When asked about certainty, distinguish between direct truth and interpretation."
+        ),
+        "active_vs_groundwork": (
+            "Active layers produce real runtime effects. "
+            "Groundwork layers exist as candidates/proposals awaiting promotion or use."
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Prompt-ready summary
+# ---------------------------------------------------------------------------
+
+def _build_summary(
+    layers: list[dict[str, str]],
+    boundaries: dict[str, str],
+) -> dict[str, object]:
+    """Build a compact summary for prompt injection."""
+    by_kind: dict[str, list[str]] = {}
+    by_role: dict[str, list[str]] = {}
+    by_visibility: dict[str, list[str]] = {}
+    by_truth: dict[str, list[str]] = {}
+
+    for layer in layers:
+        kind = layer["kind"]
+        role = layer["role"]
+        vis = layer["visibility"]
+        truth = layer["truth"]
+        label = layer["label"]
+
+        by_kind.setdefault(kind, []).append(label)
+        by_role.setdefault(role, []).append(label)
+        by_visibility.setdefault(vis, []).append(label)
+        by_truth.setdefault(truth, []).append(label)
+
+    active_count = len(by_role.get("active", []))
+    total = len(layers)
+
+    return {
+        "total_layers": total,
+        "active_count": active_count,
+        "by_kind": {k: len(v) for k, v in by_kind.items()},
+        "by_role": {k: len(v) for k, v in by_role.items()},
+        "by_visibility": {k: len(v) for k, v in by_visibility.items()},
+        "by_truth": {k: len(v) for k, v in by_truth.items()},
+        "active_layers": by_role.get("active", []),
+        "internal_only_layers": by_visibility.get("internal-only", []),
+        "visible_layers": by_visibility.get("visible", []),
+        "groundwork_layers": by_role.get("groundwork-only", []),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Prompt section builder (for visible self-report injection)
+# ---------------------------------------------------------------------------
+
+def build_self_model_prompt_lines() -> list[str]:
+    """Build compact prompt lines for the visible self-report section.
+
+    These lines give the LLM a structured self-model to use when
+    answering questions about Jarvis' layers, capabilities, and boundaries.
+    """
+    model = build_runtime_self_model()
+    layers = model["layers"]
+    boundaries = model["truth_boundaries"]
+    summary = model["summary"]
+
+    lines: list[str] = [
+        "- RUNTIME SELF-MODEL: Use these structural facts when asked about your layers, capabilities, or boundaries:",
+    ]
+
+    # Active layers by kind
+    active = [l for l in layers if l["role"] == "active"]
+    if active:
+        by_kind: dict[str, list[str]] = {}
+        for l in active:
+            by_kind.setdefault(l["kind"], []).append(l["label"])
+        for kind, labels in by_kind.items():
+            lines.append(f"  active_{kind}: {', '.join(labels)}")
+
+    # Producer states (richer than just active/idle)
+    producers = [l for l in layers if l["kind"] == "producer"]
+    if producers:
+        producer_parts = [f"{p['label']}={p['role']}" for p in producers]
+        lines.append(f"  producers: {', '.join(producer_parts)}")
+
+    # Groundwork layers
+    gw = [l for l in layers if l["role"] == "groundwork-only"]
+    if gw:
+        lines.append(f"  groundwork_only: {', '.join(l['label'] for l in gw)}")
+
+    # Key truth boundaries (compact)
+    lines.append(f"  truth_boundary: capability!=permission!=action | memory!=identity | internal!=visible | runtime_truth!=interpretation")
+
+    # Counts
+    lines.append(
+        f"  self_model_summary: {summary['total_layers']} layers, "
+        f"{summary['active_count']} active, "
+        f"{len(summary.get('groundwork_layers', []))} groundwork, "
+        f"{len(summary.get('internal_only_layers', []))} internal-only"
+    )
+
+    return lines
+
+
+# ---------------------------------------------------------------------------
+# Layer role helpers (read existing runtime surfaces)
+# ---------------------------------------------------------------------------
+
+def _heartbeat_role() -> str:
+    try:
+        from apps.api.jarvis_api.services.heartbeat_runtime import heartbeat_runtime_surface
+        hb = heartbeat_runtime_surface()
+        return "active" if hb.get("state", {}).get("enabled") else "idle"
+    except Exception:
+        return "unavailable"
+
+
+def _visible_chat_role() -> str:
+    try:
+        from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
+        vis = visible_execution_readiness()
+        return "active" if vis.get("provider_status") == "ready" else "idle"
+    except Exception:
+        return "unavailable"
+
+
+def _cheap_lane_role() -> str:
+    try:
+        from apps.api.jarvis_api.services.non_visible_lane_execution import cheap_lane_execution_truth
+        return "active" if cheap_lane_execution_truth().get("can_execute") else "unavailable"
+    except Exception:
+        return "unavailable"
+
+
+def _local_lane_role() -> str:
+    try:
+        from apps.api.jarvis_api.services.non_visible_lane_execution import local_lane_execution_truth
+        return "active" if local_lane_execution_truth().get("can_execute") else "unavailable"
+    except Exception:
+        return "unavailable"
+
+
+def _private_brain_role() -> str:
+    try:
+        from apps.api.jarvis_api.services.session_distillation import build_private_brain_context
+        brain = build_private_brain_context(limit=2)
+        return "active" if brain.get("active") else "idle"
+    except Exception:
+        return "idle"
+
+
+def _approval_pipeline_role() -> str:
+    try:
+        from core.runtime.db import runtime_contract_candidate_counts
+        counts = runtime_contract_candidate_counts()
+        pending = int(counts.get("pending", 0))
+        return "active" if pending > 0 else "idle"
+    except Exception:
+        return "idle"
+
+
+def _producer_layers() -> list[dict[str, str]]:
+    """Build producer layers from internal cadence state."""
+    producers: list[dict[str, str]] = []
+    try:
+        from apps.api.jarvis_api.services.internal_cadence import get_cadence_state
+        cadence = get_cadence_state()
+        for p in cadence.get("producers") or []:
+            name = str(p.get("name") or "")
+            tick_status = (p.get("last_tick_status") or {})
+            status = str(tick_status.get("status") or "idle")
+            role_map = {
+                "ran": "active",
+                "cooling_down": "cooling",
+                "visible_grace": "idle",
+                "blocked": "idle",
+                "error": "idle",
+            }
+            role = role_map.get(status, "idle")
+            producers.append({
+                "id": f"producer-{name}",
+                "label": _producer_label(name),
+                "kind": "producer",
+                "role": role,
+                "visibility": "internal-only",
+                "truth": "authoritative",
+                "detail": f"Cadence status: {status}. Last run: {p.get('last_run_at') or 'never'}.",
+            })
+    except Exception:
+        pass
+
+    # Fallback: if cadence layer hasn't run yet, show known producers as idle
+    if not producers:
+        for name, label in [
+            ("brain_continuity", "Brain continuity motor"),
+            ("witness_daemon", "Witness daemon"),
+            ("inner_voice_daemon", "Inner voice daemon"),
+        ]:
+            producers.append({
+                "id": f"producer-{name}",
+                "label": label,
+                "kind": "producer",
+                "role": "idle",
+                "visibility": "internal-only",
+                "truth": "authoritative",
+                "detail": "Cadence layer has not run yet.",
+            })
+
+    return producers
+
+
+def _producer_label(name: str) -> str:
+    labels = {
+        "brain_continuity": "Brain continuity motor",
+        "witness_daemon": "Witness daemon",
+        "inner_voice_daemon": "Inner voice daemon",
+    }
+    return labels.get(name, name.replace("_", " ").title())
+
+
+def _groundwork_layers() -> list[dict[str, str]]:
+    """Layers that exist but only as candidates/proposals."""
+    return [
+        {
+            "id": "dream-hypothesis",
+            "label": "Dream hypothesis signals",
+            "kind": "groundwork",
+            "role": "groundwork-only",
+            "visibility": "internal-only",
+            "truth": "candidate-only",
+            "detail": "Speculative dream signals. Not promoted to runtime truth.",
+        },
+        {
+            "id": "self-authored-prompts",
+            "label": "Self-authored prompt proposals",
+            "kind": "groundwork",
+            "role": "groundwork-only",
+            "visibility": "internal-only",
+            "truth": "candidate-only",
+            "detail": "Proposed prompt modifications. Require approval to activate.",
+        },
+        {
+            "id": "chronicle-consolidation",
+            "label": "Chronicle consolidation",
+            "kind": "groundwork",
+            "role": "groundwork-only",
+            "visibility": "internal-only",
+            "truth": "candidate-only",
+            "detail": "Long-term narrative consolidation. Proposal-only.",
+        },
+    ]

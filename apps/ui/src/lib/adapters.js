@@ -1595,11 +1595,12 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
+      requestJson('/mc/self-deception-guard').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -2304,6 +2305,7 @@ export const backend = {
       },
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,
+      deceptionGuard: guardPayload?.trace || null,
     }
   },
 

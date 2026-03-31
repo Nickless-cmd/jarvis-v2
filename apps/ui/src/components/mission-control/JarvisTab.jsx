@@ -2203,6 +2203,52 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </div>
             </article>
             )}
+            {(() => {
+              const guard = data?.deceptionGuard
+              if (!guard || !guard.constraints || !guard.constraints.length) return null
+              const hasBlocks = guard.has_blocks
+              const hasReframes = guard.has_reframes
+              const isClean = !hasBlocks && !hasReframes
+              if (isClean) return null
+              const claimTypes = [...new Set(guard.constraints.filter(c => c.outcome !== 'allow').map(c => c.claim_type))].join(', ')
+              const blockCount = guard.constraints.filter(c => c.outcome.startsWith('block_')).length
+              const reframeCount = guard.constraints.filter(c => c.outcome.startsWith('reframe_')).length
+              return (
+                <article className="support-card" id="jarvis-guard" title="Self-deception guard — runtime truth constraint on user-facing stance">
+                  <div className="panel-header">
+                    <div>
+                      <h3>Self-Deception Guard</h3>
+                      <p className="muted">Runtime truth constraints on visible stance.</p>
+                    </div>
+                    <span className="mc-section-hint">Active</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px 12px' }}>
+                    <button
+                      className="mc-list-row"
+                      onClick={() => onOpenItem('Self-Deception Guard Trace', guard)}
+                    >
+                      <div>
+                        <strong>
+                          {blockCount > 0 && <span style={{ color: 'var(--danger, #ef4444)', marginRight: 6 }}>{blockCount} blocked</span>}
+                          {reframeCount > 0 && <span style={{ color: 'var(--warning, #e2a308)', marginRight: 6 }}>{reframeCount} reframed</span>}
+                        </strong>
+                        <span style={{ fontSize: '0.82em', opacity: 0.85 }}>
+                          claims: {claimTypes || 'none'}
+                          {guard.execution_evidence === false && ' · no execution evidence'}
+                        </span>
+                        <span style={{ fontSize: '0.78em', opacity: 0.7, display: 'block' }}>
+                          capability: {guard.capability_state || 'unknown'} · permission: {guard.permission_state || 'unknown'}
+                        </span>
+                      </div>
+                      <div className="mc-row-meta">
+                        <small>{hasBlocks ? 'guarding' : 'reframing'}</small>
+                        <ChevronRight size={14} />
+                      </div>
+                    </button>
+                  </div>
+                </article>
+              )
+            })()}
           </section>
         )
       })()}

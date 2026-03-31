@@ -2165,6 +2165,41 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                     <ChevronRight size={14} />
                   </div>
                 </button>
+                {(() => {
+                  const qi = conflict.quiet_initiative
+                  if (!qi || (!qi.active && qi.state === 'holding' && !qi.hold_count)) return null
+                  const isActive = qi.active
+                  const stateLabel = qi.state || 'none'
+                  const isDone = stateLabel === 'promoted' || stateLabel === 'expired' || stateLabel.startsWith('max-') || stateLabel.startsWith('policy-')
+                  return (
+                    <button
+                      className={`mc-list-row ${!isActive && isDone ? 'now-card-muted' : ''}`}
+                      onClick={() => onOpenItem('Quiet Initiative', qi)}
+                    >
+                      <div>
+                        <strong>
+                          quiet initiative: {stateLabel}
+                          {isActive && (
+                            <span style={{ marginLeft: 6, opacity: 0.8 }}>
+                              {qi.hold_count}/{qi.max_hold_count || 4}
+                            </span>
+                          )}
+                          {stateLabel === 'promoted' && (
+                            <span style={{ color: 'var(--success, #22c55e)', marginLeft: 6 }}>✓ promoted</span>
+                          )}
+                        </strong>
+                        <span style={{ fontSize: '0.82em', opacity: 0.85 }}>
+                          {qi.reason_code || 'no reason'}
+                          {qi.focus && ` · focus: ${qi.focus}`}
+                        </span>
+                      </div>
+                      <div className="mc-row-meta">
+                        <small>{isActive ? 'holding' : stateLabel}</small>
+                        <ChevronRight size={14} />
+                      </div>
+                    </button>
+                  )
+                })()}
               </div>
             </article>
             )}

@@ -194,6 +194,9 @@ from apps.api.jarvis_api.services.session_distillation import (
     build_private_brain_surface,
     build_session_distillation_surface,
 )
+from apps.api.jarvis_api.services.runtime_self_knowledge import (
+    build_runtime_self_knowledge_map,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -501,6 +504,7 @@ def mc_jarvis() -> dict:
     heartbeat = heartbeat_runtime_surface()
     private_brain = build_private_brain_surface()
     session_distillation = build_session_distillation_surface()
+    self_knowledge = build_runtime_self_knowledge_map()
 
     return {
         "summary": {
@@ -617,7 +621,13 @@ def mc_jarvis() -> dict:
             "private_brain": private_brain,
             "session_distillation": session_distillation,
         },
+        "self_knowledge": self_knowledge,
     }
+
+
+@router.get("/self-knowledge")
+def mc_self_knowledge() -> dict:
+    return build_runtime_self_knowledge_map()
 
 
 @router.get("/private-brain")

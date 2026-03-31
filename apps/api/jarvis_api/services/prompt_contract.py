@@ -488,6 +488,11 @@ def build_heartbeat_prompt_assembly(
         parts.append(brain_section)
         derived_inputs.append("bounded private brain continuity context")
 
+    self_knowledge = _heartbeat_self_knowledge_section()
+    if self_knowledge:
+        parts.append(self_knowledge)
+        derived_inputs.append("bounded runtime self-knowledge map")
+
     return PromptAssembly(
         mode="heartbeat",
         text="\n\n".join(part for part in parts if part).strip(),
@@ -1269,6 +1274,17 @@ def _heartbeat_liveness_summary(context: dict[str, object]) -> str | None:
             f"- summary={liveness.get('liveness_summary') or 'none'}",
         ]
     )
+
+
+def _heartbeat_self_knowledge_section() -> str | None:
+    """Build a compact self-knowledge section for the heartbeat prompt."""
+    try:
+        from apps.api.jarvis_api.services.runtime_self_knowledge import (
+            build_self_knowledge_prompt_section,
+        )
+        return build_self_knowledge_prompt_section()
+    except Exception:
+        return None
 
 
 def _heartbeat_private_brain_section(context: dict[str, object]) -> str | None:

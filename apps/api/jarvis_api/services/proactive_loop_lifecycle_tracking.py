@@ -188,10 +188,38 @@ def _extract_proactive_loop_lifecycle_candidates() -> list[dict[str, object]]:
         for item in open_loops.get("items", [])
         if str(item.get("status") or "") in {"open", "softening"}
     ]
-    if not open_items:
+
+    # --- Initiative-tension-driven path (no formal open loop required) ---
+    # When initiative tension is at least medium-intensity AND autonomy pressure
+    # exists, allow loop materialization from tension alone. This prevents the
+    # chain from being blocked when tension is real but no formal open loop has
+    # been created yet.
+    initiative_intensity = str(initiative.get("summary", {}).get("current_intensity") or "low")
+    initiative_active = int(initiative.get("summary", {}).get("active_count") or 0) > 0
+    tension_driven = (
+        not open_items
+        and initiative_active
+        and initiative_intensity in {"medium", "high"}
+        and "initiative-pressure" in autonomy_items
+    )
+
+    if not open_items and not tension_driven:
         return []
 
-    latest_loop = open_items[0]
+    if open_items:
+        latest_loop = open_items[0]
+    else:
+        # Synthesize a minimal open-loop-like dict from initiative tension
+        latest_loop = {
+            "title": str(initiative.get("summary", {}).get("current_signal") or "initiative tension thread"),
+            "status": "open",
+            "confidence": initiative_intensity,
+            "closure_readiness": "low",
+            "source_anchor": "initiative-tension-driven",
+            "support_count": 1,
+            "session_count": 1,
+        }
+
     focus = _best_loop_focus(
         latest_loop=latest_loop,
         attachment=attachment,

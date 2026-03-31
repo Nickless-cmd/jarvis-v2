@@ -1647,10 +1647,58 @@ def _runtime_self_report_instruction(
             "- For certainty questions, answer in degrees like grounded, partly grounded, uncertain, or guessing. Avoid binary certainty unless the runtime facts are unusually clear.",
             "- When asked what you are basing your answer on, cite these runtime facts briefly. If asked whether you are guessing, say yes whenever these runtime facts are absent, stale, or only low-confidence support.",
             "- IMPORTANT SELF-ACTION LIMITS: Do NOT claim you have created, closed, tested, or are managing loops unless the runtime facts above explicitly show loop lifecycle events. Do NOT claim 'I will try again', 'I am reconnecting', 'I will restart', 'I have established connection', 'I will create a test loop', or similar self-action language unless there is concrete runtime evidence. State observed runtime status only.",
+            *_self_deception_guard_lines(
+                question_gate=question_gate,
+                autonomy_pressure=autonomy,
+                open_loops=open_loops,
+            ),
             *_visible_self_knowledge_lines(),
             "Use only as subordinate support. Runtime and visible truth outrank it.",
         ]
     )
+
+
+def _self_deception_guard_lines(
+    *,
+    question_gate: dict[str, object] | None = None,
+    autonomy_pressure: dict[str, object] | None = None,
+    open_loops: dict[str, object] | None = None,
+) -> list[str]:
+    """Build self-deception guard constraint lines for the visible prompt."""
+    try:
+        from apps.api.jarvis_api.services.self_deception_guard import (
+            evaluate_self_deception_guard,
+            set_last_guard_trace,
+        )
+        from apps.api.jarvis_api.services.runtime_self_knowledge import (
+            build_runtime_self_knowledge_map,
+        )
+        from apps.api.jarvis_api.services.conflict_resolution import (
+            get_last_conflict_trace,
+            get_quiet_initiative,
+        )
+
+        capability_truth = None
+        try:
+            capability_truth = build_runtime_self_knowledge_map()
+        except Exception:
+            pass
+
+        conflict_trace = get_last_conflict_trace()
+        quiet_initiative = get_quiet_initiative()
+
+        trace = evaluate_self_deception_guard(
+            question_gate=question_gate,
+            autonomy_pressure=autonomy_pressure,
+            capability_truth=capability_truth,
+            conflict_trace=conflict_trace,
+            quiet_initiative=quiet_initiative,
+            open_loops=open_loops,
+        )
+        set_last_guard_trace(trace)
+        return trace.guard_lines()
+    except Exception:
+        return []
 
 
 def _visible_self_knowledge_lines() -> list[str]:

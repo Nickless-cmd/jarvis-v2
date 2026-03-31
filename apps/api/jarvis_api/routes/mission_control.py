@@ -197,6 +197,9 @@ from apps.api.jarvis_api.services.session_distillation import (
 from apps.api.jarvis_api.services.runtime_self_knowledge import (
     build_runtime_self_knowledge_map,
 )
+from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    build_cognitive_frame,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -505,6 +508,7 @@ def mc_jarvis() -> dict:
     private_brain = build_private_brain_surface()
     session_distillation = build_session_distillation_surface()
     self_knowledge = build_runtime_self_knowledge_map()
+    cognitive_frame = build_cognitive_frame()
 
     return {
         "summary": {
@@ -622,6 +626,60 @@ def mc_jarvis() -> dict:
             "session_distillation": session_distillation,
         },
         "self_knowledge": self_knowledge,
+        "cognitive_frame": cognitive_frame,
+    }
+
+
+@router.get("/cognitive-frame")
+def mc_cognitive_frame() -> dict:
+    return build_cognitive_frame()
+
+
+@router.get("/attention-budget")
+def mc_attention_budget() -> dict:
+    """Return attention budget traces for all prompt paths."""
+    from apps.api.jarvis_api.services.attention_budget import (
+        get_attention_budget,
+        build_micro_cognitive_frame,
+    )
+    profiles = {}
+    for profile_name in ("visible_compact", "visible_full", "heartbeat"):
+        budget = get_attention_budget(profile_name)
+        section_budgets = {
+            "cognitive_frame": budget.cognitive_frame,
+            "private_brain": budget.private_brain,
+            "self_knowledge": budget.self_knowledge,
+            "self_report": budget.self_report,
+            "support_signals": budget.support_signals,
+            "inner_visible_bridge": budget.inner_visible_bridge,
+            "continuity": budget.continuity,
+            "liveness": budget.liveness,
+            "capability_truth": budget.capability_truth,
+        }
+        profiles[profile_name] = {
+            "total_char_target": budget.total_char_target,
+            "sections": {
+                name: {
+                    "max_chars": sb.max_chars,
+                    "max_items": sb.max_items,
+                    "must_include": sb.must_include,
+                    "priority": sb.priority,
+                    "has_budget": sb.max_chars > 0,
+                }
+                for name, sb in sorted(section_budgets.items(), key=lambda x: x[1].priority)
+            },
+        }
+    micro_frame = build_micro_cognitive_frame()
+
+    # Live runtime traces from the last actual prompt assembly
+    from apps.api.jarvis_api.services.prompt_contract import get_last_attention_traces
+    live_traces = get_last_attention_traces()
+
+    return {
+        "profiles": profiles,
+        "micro_cognitive_frame": micro_frame,
+        "micro_frame_chars": len(micro_frame) if micro_frame else 0,
+        "live_traces": live_traces,
     }
 
 

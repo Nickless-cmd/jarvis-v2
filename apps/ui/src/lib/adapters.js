@@ -1595,9 +1595,10 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
+      requestJson('/mc/attention-budget').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -2300,6 +2301,7 @@ export const backend = {
         recentTicks: (heartbeat.recent_ticks || []).map(normalizeHeartbeatTick),
         recentEvents: (heartbeat.recent_events || []).map(normalizeEventItem),
       },
+      attentionTraces: attentionPayload?.live_traces || {},
     }
   },
 

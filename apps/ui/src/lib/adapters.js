@@ -2365,18 +2365,39 @@ export const backend = {
   },
 
   subscribeMissionControlEvents(onEvent) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
-    socket.onmessage = (message) => {
-      try {
-        const item = JSON.parse(message.data)
-        onEvent?.(normalizeEventItem(item))
-      } catch {
-        // no-op
+    let disposed = false
+    let socket = null
+    let retryDelay = 1000 // start at 1s, back off to 8s max
+
+    function connect() {
+      if (disposed) return
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
+      socket.onopen = () => { retryDelay = 1000 }
+      socket.onmessage = (message) => {
+        try {
+          const item = JSON.parse(message.data)
+          if (item && item.type === 'ping') return // ignore keepalive pings
+          onEvent?.(normalizeEventItem(item))
+        } catch {
+          // no-op
+        }
+      }
+      socket.onclose = () => {
+        if (disposed) return
+        setTimeout(connect, retryDelay)
+        retryDelay = Math.min(retryDelay * 2, 8000)
+      }
+      socket.onerror = () => {
+        // onclose will fire after onerror — reconnect handled there
       }
     }
+
+    connect()
+
     return () => {
-      socket.close()
+      disposed = true
+      if (socket) socket.close()
     }
   },
 

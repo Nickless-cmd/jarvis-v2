@@ -691,6 +691,14 @@ def mc_conflict_resolution() -> dict:
     return {"trace": trace, "active": trace is not None}
 
 
+@router.get("/self-deception-guard")
+def mc_self_deception_guard() -> dict:
+    """Return the last self-deception guard trace."""
+    from apps.api.jarvis_api.services.self_deception_guard import get_last_guard_trace
+    trace = get_last_guard_trace()
+    return {"trace": trace, "active": trace is not None}
+
+
 @router.get("/self-knowledge")
 def mc_self_knowledge() -> dict:
     return build_runtime_self_knowledge_map()

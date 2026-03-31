@@ -1702,7 +1702,23 @@ def _self_deception_guard_lines(
 
 
 def _visible_self_knowledge_lines() -> list[str]:
-    """Build compact self-knowledge lines for the visible self-report section."""
+    """Build compact self-knowledge lines for the visible self-report section.
+
+    Uses the runtime self-model for structured layer awareness, with
+    fallback to the older flat self-knowledge map.
+    """
+    # Primary: structured self-model with layer types and truth boundaries
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_self_model_prompt_lines,
+        )
+        lines = build_self_model_prompt_lines()
+        if lines:
+            return lines
+    except Exception:
+        pass
+
+    # Fallback: older flat self-knowledge map
     try:
         from apps.api.jarvis_api.services.runtime_self_knowledge import (
             build_runtime_self_knowledge_map,

@@ -974,6 +974,16 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         )
     except Exception:
         return
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            distill_session_carry,
+        )
+        distill_session_carry(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception:
+        return
 
 
 def _extract_capability_call(text: str) -> str | None:

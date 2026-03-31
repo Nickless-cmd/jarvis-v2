@@ -122,6 +122,12 @@ class AttentionTrace:
     total_char_target: int = 0
     total_chars_used: int = 0
     sections: list[SectionResult] = field(default_factory=list)
+    # Authority tracking
+    authority_mode: str = "budgeted"  # "budgeted" or "fallback_passthrough"
+    fallback_reason: str = ""  # machine-readable reason or empty
+    # Overshoot tracking (must-include sections can exceed total budget)
+    budget_overshoot: bool = False
+    overshoot_chars: int = 0
 
     @property
     def included_sections(self) -> list[str]:
@@ -138,9 +144,13 @@ class AttentionTrace:
     def summary(self) -> dict[str, object]:
         return {
             "profile": self.profile,
+            "authority_mode": self.authority_mode,
+            "fallback_reason": self.fallback_reason or None,
             "total_char_target": self.total_char_target,
             "total_chars_used": self.total_chars_used,
             "char_utilization": round(self.total_chars_used / max(self.total_char_target, 1), 2),
+            "budget_overshoot": self.budget_overshoot,
+            "overshoot_chars": self.overshoot_chars,
             "included": self.included_sections,
             "omitted": self.omitted_sections,
             "trimmed": self.trimmed_sections,
@@ -337,4 +347,7 @@ def select_sections_under_budget(
         total_chars += section_result.chars_used
 
     trace.total_chars_used = total_chars
+    if total_chars > budget.total_char_target:
+        trace.budget_overshoot = True
+        trace.overshoot_chars = total_chars - budget.total_char_target
     return result, trace

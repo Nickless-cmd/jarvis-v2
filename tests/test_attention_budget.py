@@ -362,3 +362,171 @@ def test_attention_trace_from_budget_selection_has_real_char_counts() -> None:
     summary = trace.summary()
     assert summary["total_chars_used"] == 150
     assert summary["char_utilization"] > 0
+
+
+# ---------------------------------------------------------------------------
+# Authority mode, overshoot, and live trace observability tests
+# ---------------------------------------------------------------------------
+
+
+def test_trace_authority_mode_is_budgeted_on_normal_selection() -> None:
+    """Normal budget selection must mark authority_mode as 'budgeted'."""
+    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+
+    sections = {
+        "capability_truth": "Cap truth",
+        "cognitive_frame": "Frame",
+        "self_report": None,
+        "private_brain": None,
+        "self_knowledge": None,
+        "support_signals": None,
+        "inner_visible_bridge": None,
+        "continuity": None,
+        "liveness": None,
+    }
+
+    _, trace = _run_budget_selection(profile="visible_compact", sections=sections)
+    summary = trace.summary()
+
+    assert summary["authority_mode"] == "budgeted"
+    assert summary["fallback_reason"] is None
+
+
+def test_trace_authority_mode_is_fallback_when_budget_fails(monkeypatch) -> None:
+    """When budget module fails, trace must show fallback_passthrough."""
+    from apps.api.jarvis_api.services import prompt_contract as pc
+
+    # Force an import error by temporarily breaking the budget import
+    original = pc._run_budget_selection
+
+    def _broken_budget(*, profile, sections):
+        # Simulate budget module failure by calling the except path
+        from apps.api.jarvis_api.services.attention_budget import (
+            AttentionTrace,
+            SectionResult,
+        )
+        trace = AttentionTrace(
+            profile=profile,
+            total_char_target=0,
+            authority_mode="fallback_passthrough",
+            fallback_reason="RuntimeError: test forced failure",
+        )
+        for name, content in sections.items():
+            trace.sections.append(SectionResult(
+                name=name,
+                included=content is not None and bool(content),
+                chars_used=len(content) if content else 0,
+                omission_reason="budget-fallback" if not content else "",
+            ))
+            trace.total_chars_used += len(content) if content else 0
+        pc._last_attention_traces[profile] = trace
+        return sections, trace
+
+    monkeypatch.setattr(pc, "_run_budget_selection", _broken_budget)
+    sections = {"capability_truth": "X", "cognitive_frame": None,
+                "self_report": None, "private_brain": None,
+                "self_knowledge": None, "support_signals": None,
+                "inner_visible_bridge": None, "continuity": None,
+                "liveness": None}
+
+    _, trace = _broken_budget(profile="visible_compact", sections=sections)
+    summary = trace.summary()
+
+    assert summary["authority_mode"] == "fallback_passthrough"
+    assert "test forced failure" in summary["fallback_reason"]
+
+
+def test_trace_budget_overshoot_detected() -> None:
+    """Must-include sections exceeding total budget must flag overshoot."""
+    # Create a tiny total budget that must-include sections will exceed
+    budget = AttentionBudget(
+        profile="test-overshoot",
+        total_char_target=20,
+        cognitive_frame=SectionBudget(max_chars=100, must_include=True, priority=1),
+        capability_truth=SectionBudget(max_chars=100, must_include=True, priority=2),
+        private_brain=SectionBudget(max_chars=0, priority=9),
+        self_knowledge=SectionBudget(max_chars=0, priority=9),
+        self_report=SectionBudget(max_chars=0, priority=9),
+        support_signals=SectionBudget(max_chars=0, priority=9),
+        inner_visible_bridge=SectionBudget(max_chars=0, priority=9),
+        continuity=SectionBudget(max_chars=0, priority=9),
+        liveness=SectionBudget(max_chars=0, priority=9),
+    )
+
+    sections = {
+        "cognitive_frame": "A" * 50,
+        "capability_truth": "B" * 50,
+        "private_brain": None,
+        "self_knowledge": None,
+        "self_report": None,
+        "support_signals": None,
+        "inner_visible_bridge": None,
+        "continuity": None,
+        "liveness": None,
+    }
+
+    _, trace = select_sections_under_budget(budget=budget, sections=sections)
+    summary = trace.summary()
+
+    assert summary["budget_overshoot"] is True
+    assert summary["overshoot_chars"] == 80  # 100 used vs 20 target
+
+
+def test_trace_no_overshoot_when_within_budget() -> None:
+    """No overshoot flag when within budget."""
+    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+
+    sections = {
+        "capability_truth": "X" * 10,
+        "cognitive_frame": "Y" * 10,
+        "self_report": None,
+        "private_brain": None,
+        "self_knowledge": None,
+        "support_signals": None,
+        "inner_visible_bridge": None,
+        "continuity": None,
+        "liveness": None,
+    }
+
+    _, trace = _run_budget_selection(profile="visible_full", sections=sections)
+    summary = trace.summary()
+
+    assert summary["budget_overshoot"] is False
+    assert summary["overshoot_chars"] == 0
+
+
+def test_live_attention_traces_populated_after_budget_selection() -> None:
+    """After _run_budget_selection, get_last_attention_traces must return traces."""
+    from apps.api.jarvis_api.services.prompt_contract import (
+        _run_budget_selection,
+        get_last_attention_traces,
+    )
+
+    sections = {
+        "capability_truth": "Cap truth content",
+        "cognitive_frame": "Frame content",
+        "self_report": None,
+        "private_brain": None,
+        "self_knowledge": None,
+        "support_signals": None,
+        "inner_visible_bridge": None,
+        "continuity": None,
+        "liveness": None,
+    }
+
+    _run_budget_selection(profile="visible_compact", sections=sections)
+    _run_budget_selection(profile="heartbeat", sections=sections)
+
+    traces = get_last_attention_traces()
+    assert "visible_compact" in traces
+    assert "heartbeat" in traces
+
+    vc = traces["visible_compact"]
+    assert vc["profile"] == "visible_compact"
+    assert vc["authority_mode"] == "budgeted"
+    assert "included" in vc
+    assert "section_details" in vc
+
+    hb = traces["heartbeat"]
+    assert hb["profile"] == "heartbeat"
+    assert hb["authority_mode"] == "budgeted"

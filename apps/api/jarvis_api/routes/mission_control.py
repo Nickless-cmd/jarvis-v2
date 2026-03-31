@@ -670,10 +670,16 @@ def mc_attention_budget() -> dict:
             },
         }
     micro_frame = build_micro_cognitive_frame()
+
+    # Live runtime traces from the last actual prompt assembly
+    from apps.api.jarvis_api.services.prompt_contract import get_last_attention_traces
+    live_traces = get_last_attention_traces()
+
     return {
         "profiles": profiles,
         "micro_cognitive_frame": micro_frame,
         "micro_frame_chars": len(micro_frame) if micro_frame else 0,
+        "live_traces": live_traces,
     }
 
 

@@ -1356,6 +1356,24 @@ def _micro_cognitive_frame_section() -> str | None:
         return None
 
 
+# Module-level store for latest attention traces (MC observability)
+_last_attention_traces: dict[str, object] = {}
+
+
+def get_last_attention_traces() -> dict[str, dict[str, object]]:
+    """Return the last attention trace summaries for each prompt path.
+
+    Used by Mission Control to expose the actual runtime selection truth.
+    """
+    result: dict[str, dict[str, object]] = {}
+    for profile, trace in _last_attention_traces.items():
+        try:
+            result[profile] = trace.summary()
+        except Exception:
+            result[profile] = {"profile": profile, "error": "trace-unavailable"}
+    return result
+
+
 def _run_budget_selection(
     *,
     profile: str,
@@ -1370,17 +1388,24 @@ def _run_budget_selection(
         from apps.api.jarvis_api.services.attention_budget import (
             get_attention_budget,
             select_sections_under_budget,
-            AttentionTrace,
         )
         budget = get_attention_budget(profile)
-        return select_sections_under_budget(budget=budget, sections=sections)
-    except Exception:
+        selected, trace = select_sections_under_budget(budget=budget, sections=sections)
+        trace.authority_mode = "budgeted"
+        _last_attention_traces[profile] = trace
+        return selected, trace
+    except Exception as exc:
         # Fallback: include everything as-is, no budget enforcement
         from apps.api.jarvis_api.services.attention_budget import (
             AttentionTrace,
             SectionResult,
         )
-        trace = AttentionTrace(profile=profile, total_char_target=0)
+        trace = AttentionTrace(
+            profile=profile,
+            total_char_target=0,
+            authority_mode="fallback_passthrough",
+            fallback_reason=f"{type(exc).__name__}: {exc}",
+        )
         for name, content in sections.items():
             trace.sections.append(SectionResult(
                 name=name,
@@ -1389,6 +1414,7 @@ def _run_budget_selection(
                 omission_reason="budget-fallback" if not content else "",
             ))
             trace.total_chars_used += len(content) if content else 0
+        _last_attention_traces[profile] = trace
         return sections, trace
 
 

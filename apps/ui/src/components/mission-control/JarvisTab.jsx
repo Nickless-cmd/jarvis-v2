@@ -1579,6 +1579,13 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             <strong>{diarySynthesisSignals?.summary?.current_confidence?.replace(/-/g, ' ') || privateStateSnapshots?.items?.[0]?.state_confidence || 'Medium'}</strong>
             <small>{diarySynthesisSignals?.summary?.active_count || 0} synthesis</small>
           </div>
+          {(worldModelSignals?.summary?.active_count || 0) > 0 ? (
+          <div className="now-card" title="Bounded runtime understanding — not hidden authority">
+            <span>World View</span>
+            <strong>{worldModelSignals?.summary?.current_signal?.replace(/^World-model signal: /i, '')?.slice(0, 48) || 'Active'}</strong>
+            <small>{worldModelSignals?.summary?.active_count} assumption{worldModelSignals?.summary?.active_count !== 1 ? 's' : ''}</small>
+          </div>
+          ) : null}
         </div>
       </section>
 
@@ -2429,14 +2436,25 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{summary?.continuity?.relation_pull || 'unknown'}</strong>
               <p>{carriedForward}</p>
             </div>
+            {(() => {
+              const wmActive = worldModelSignals?.summary?.active_count || summary?.continuity?.world_model_count || 0
+              const wmSignal = worldModelSignals?.summary?.current_signal || summary?.continuity?.current_world_model || ''
+              const wmUncertain = worldModelSignals?.summary?.uncertain_count || 0
+              const wmCorrected = worldModelSignals?.summary?.corrected_count || 0
+              const wmStale = worldModelSignals?.summary?.stale_count || 0
+              return (
             <div className="compact-metric">
               <span>World Model</span>
-              <strong>{worldModelSignals?.summary?.active_count || summary?.continuity?.world_model_count || 0}</strong>
-              <p>{worldModelSignals?.summary?.current_signal || summary?.continuity?.current_world_model || 'No active world-model signal'}</p>
+              <strong>{wmActive > 0 ? `${wmActive} active` : 'No assumptions'}</strong>
+              {wmSignal ? <p>{wmSignal}</p> : <p className="muted">No bounded situational assumptions yet</p>}
+              {(wmUncertain > 0 || wmCorrected > 0 || wmStale > 0) ? (
               <p>
-                {worldModelSignals?.summary?.uncertain_count || 0} uncertain · {worldModelSignals?.summary?.corrected_count || 0} corrected · {worldModelSignals?.summary?.stale_count || 0} stale
+                {wmUncertain > 0 ? `${wmUncertain} uncertain` : ''}{wmUncertain > 0 && (wmCorrected > 0 || wmStale > 0) ? ' · ' : ''}{wmCorrected > 0 ? `${wmCorrected} corrected` : ''}{wmCorrected > 0 && wmStale > 0 ? ' · ' : ''}{wmStale > 0 ? `${wmStale} stale` : ''}
               </p>
+              ) : null}
             </div>
+              )
+            })()}
             <div className="compact-metric">
               <span>Runtime Awareness</span>
               <strong>{(runtimeAwarenessSignals?.summary?.active_count || 0) + (runtimeAwarenessSignals?.summary?.constrained_count || 0) + (runtimeAwarenessSignals?.summary?.recovered_count || 0) || summary?.continuity?.runtime_awareness_count || 0}</strong>
@@ -2534,10 +2552,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 correctedCount: worldModelSignals?.summary?.corrected_count || 0,
               }, onOpenItem)}
               {worldModelSignals.items.length === 0 ? (
-                <div className="mc-empty-state">
-                  <strong>No active world-model signal</strong>
-                  <p className="muted">Jarvis has not accumulated a bounded situational assumption yet.</p>
-                </div>
+                <p className="muted" style={{ padding: '0.25rem 0' }}>No bounded situational assumptions yet.</p>
               ) : worldModelSignals.items.slice(0, 3).map((item) => worldModelSignalRow(item, onOpenItem))}
               {witnessSignals.items.length > 0 ? subsectionHeader('Witnessed Turns', 'Small Bounded Development Milestones') : null}
               {witnessSignals.items.slice(0, 3).map((item) => witnessSignalRow(item, onOpenItem))}

@@ -2073,13 +2073,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
         </article>
       </section>
 
-      {/* --- Attention Budget Traces --- */}
+      {/* --- Attention Budget Traces + Conflict Resolution --- */}
       {(() => {
         const traces = data?.attentionTraces || {}
         const traceEntries = Object.entries(traces).filter(([, t]) => t && t.profile)
-        if (!traceEntries.length) return null
+        const conflict = data?.conflictResolution
+        if (!traceEntries.length && !conflict) return null
         return (
           <section className="mc-section-grid">
+            {traceEntries.length > 0 && (
             <article className="support-card" id="jarvis-attention" title="Attention budget — authoritative prompt selection truth">
               <div className="panel-header">
                 <div>
@@ -2122,6 +2124,50 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 })}
               </div>
             </article>
+            )}
+            {conflict && (
+            <article className="support-card" id="jarvis-conflict" title="Conflict resolution — bounded heartbeat initiative arbitration">
+              <div className="panel-header">
+                <div>
+                  <h3>Conflict Resolution</h3>
+                  <p className="muted">Heartbeat initiative arbitration — what Jarvis chose and why.</p>
+                </div>
+                <span className="mc-section-hint">Runtime truth</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px 12px' }}>
+                <button
+                  className="mc-list-row"
+                  onClick={() => onOpenItem('Conflict Resolution Trace', conflict)}
+                >
+                  <div>
+                    <strong>
+                      {conflict.outcome || 'none'}
+                      {conflict.blocked_by && (
+                        <span style={{ color: 'var(--warning, #e2a308)', marginLeft: 6 }}>
+                          blocked: {conflict.blocked_by}
+                        </span>
+                      )}
+                    </strong>
+                    <span style={{ fontSize: '0.82em', opacity: 0.85 }}>
+                      {conflict.reason_code || 'no reason'}
+                      {(conflict.competing_factors || []).length > 0 && (
+                        ` · ${conflict.competing_factors.length} competing factors`
+                      )}
+                    </span>
+                    {conflict.dominant_factor && (
+                      <span style={{ fontSize: '0.78em', opacity: 0.7, display: 'block' }}>
+                        dominant: {conflict.dominant_factor}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mc-row-meta">
+                    <small>{conflict.outcome || 'none'}</small>
+                    <ChevronRight size={14} />
+                  </div>
+                </button>
+              </div>
+            </article>
+            )}
           </section>
         )
       })()}

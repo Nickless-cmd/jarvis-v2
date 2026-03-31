@@ -850,3 +850,141 @@ def _stronger_confidence(*values: str) -> str:
             strongest = normalized or strongest
             strongest_rank = rank
     return strongest if strongest in _CONFIDENCE_RANKS else "low"
+
+
+# ---------------------------------------------------------------------------
+# Bounded inner witness daemon light
+# ---------------------------------------------------------------------------
+
+_DAEMON_COOLDOWN_MINUTES = 10   # Min minutes between daemon runs
+_DAEMON_VISIBLE_GRACE_MINUTES = 3  # Don't run if visible activity this recent
+
+# Module-level daemon state (in-memory)
+_daemon_last_run_at: str = ""
+_daemon_last_result: dict[str, object] | None = None
+
+
+def run_witness_daemon(
+    *,
+    trigger: str = "heartbeat-idle",
+    last_visible_at: str = "",
+) -> dict[str, object]:
+    """Bounded inner witness daemon — produces witness signals without visible turn.
+
+    Called from heartbeat tick completion. Respects cadence, cooldown, and
+    recency constraints. Returns observable result dict.
+
+    Constraints:
+    - Max once per _DAEMON_COOLDOWN_MINUTES
+    - Not within _DAEMON_VISIBLE_GRACE_MINUTES of visible activity
+    - Only if candidate extraction finds grounded material
+    - Non-user-facing, non-canonical
+    """
+    global _daemon_last_run_at, _daemon_last_result
+    now = datetime.now(UTC)
+    now_iso = now.isoformat()
+
+    # Cadence gate: cooldown since last run
+    if _daemon_last_run_at:
+        last_run = _parse_dt(_daemon_last_run_at)
+        if last_run and (now - last_run) < timedelta(minutes=_DAEMON_COOLDOWN_MINUTES):
+            result = {
+                "daemon_ran": False,
+                "daemon_blocked_reason": "cooldown-active",
+                "daemon_cadence_state": "cooling-down",
+                "minutes_since_last": round((now - last_run).total_seconds() / 60, 1),
+                "cooldown_minutes": _DAEMON_COOLDOWN_MINUTES,
+                "trigger": trigger,
+            }
+            _daemon_last_result = result
+            return result
+
+    # Visible activity grace: don't run too close to visible turns
+    if last_visible_at:
+        last_visible = _parse_dt(last_visible_at)
+        if last_visible and (now - last_visible) < timedelta(minutes=_DAEMON_VISIBLE_GRACE_MINUTES):
+            result = {
+                "daemon_ran": False,
+                "daemon_blocked_reason": "visible-activity-too-recent",
+                "daemon_cadence_state": "grace-period",
+                "minutes_since_visible": round((now - last_visible).total_seconds() / 60, 1),
+                "grace_minutes": _DAEMON_VISIBLE_GRACE_MINUTES,
+                "trigger": trigger,
+            }
+            _daemon_last_result = result
+            return result
+
+    # Extract candidates using synthetic run_id
+    synthetic_run_id = f"witness-daemon-{uuid4().hex[:12]}"
+    candidates = _extract_witness_candidates(run_id=synthetic_run_id)
+
+    if not candidates:
+        result = {
+            "daemon_ran": True,
+            "daemon_blocked_reason": "",
+            "daemon_cadence_state": "ran-no-candidates",
+            "daemon_created_count": 0,
+            "trigger": trigger,
+            "daemon_source": "heartbeat-idle",
+        }
+        _daemon_last_run_at = now_iso
+        _daemon_last_result = result
+        event_bus.publish(
+            "witness_signal.daemon_ran",
+            {
+                "trigger": trigger,
+                "created_count": 0,
+                "cadence_state": "ran-no-candidates",
+            },
+        )
+        return result
+
+    # Persist witness signals with synthetic IDs
+    persisted = _persist_witness_signals(
+        signals=candidates,
+        session_id="",
+        run_id=synthetic_run_id,
+    )
+
+    created_count = len([p for p in persisted if p.get("was_created")])
+    updated_count = len([p for p in persisted if p.get("was_updated")])
+    signal_titles = [str(p.get("title") or "") for p in persisted if p.get("was_created")]
+
+    _daemon_last_run_at = now_iso
+
+    result = {
+        "daemon_ran": True,
+        "daemon_blocked_reason": "",
+        "daemon_cadence_state": "ran-produced",
+        "daemon_created_count": created_count,
+        "daemon_updated_count": updated_count,
+        "daemon_signal_titles": signal_titles[:4],
+        "daemon_source": "heartbeat-idle",
+        "trigger": trigger,
+        "run_id": synthetic_run_id,
+    }
+    _daemon_last_result = result
+
+    event_bus.publish(
+        "witness_signal.daemon_produced",
+        {
+            "trigger": trigger,
+            "created_count": created_count,
+            "updated_count": updated_count,
+            "signal_titles": signal_titles[:4],
+            "cadence_state": "ran-produced",
+            "run_id": synthetic_run_id,
+        },
+    )
+
+    return result
+
+
+def get_witness_daemon_state() -> dict[str, object]:
+    """Return current witness daemon state for MC observability."""
+    return {
+        "last_run_at": _daemon_last_run_at or None,
+        "last_result": _daemon_last_result,
+        "cooldown_minutes": _DAEMON_COOLDOWN_MINUTES,
+        "visible_grace_minutes": _DAEMON_VISIBLE_GRACE_MINUTES,
+    }

@@ -586,6 +586,42 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass  # continuity motor failure must not block heartbeat
 
+    # Run bounded inner witness daemon as side-effect of heartbeat
+    try:
+        from apps.api.jarvis_api.services.witness_signal_tracking import (
+            run_witness_daemon,
+        )
+        # Find last visible activity timestamp from recent events
+        last_visible_at = ""
+        try:
+            recent = event_bus.recent(limit=20)
+            for evt in recent:
+                if str(evt.get("kind") or "").startswith("runtime.visible_run"):
+                    last_visible_at = str(evt.get("created_at") or "")
+                    break
+        except Exception:
+            pass
+        run_witness_daemon(trigger="heartbeat-idle", last_visible_at=last_visible_at)
+    except Exception:
+        pass  # witness daemon failure must not block heartbeat
+
+    # Run bounded inner voice daemon as side-effect of heartbeat
+    try:
+        from apps.api.jarvis_api.services.inner_voice_daemon import (
+            run_inner_voice_daemon,
+        )
+        from apps.api.jarvis_api.services.witness_signal_tracking import (
+            get_witness_daemon_state,
+        )
+        witness_state = get_witness_daemon_state()
+        run_inner_voice_daemon(
+            trigger="heartbeat-idle",
+            last_visible_at=last_visible_at,
+            witness_daemon_last_run_at=str(witness_state.get("last_run_at") or ""),
+        )
+    except Exception:
+        pass  # inner voice daemon failure must not block heartbeat
+
     return HeartbeatExecutionResult(
         state=heartbeat_runtime_surface(name=name)["state"],
         tick=tick,

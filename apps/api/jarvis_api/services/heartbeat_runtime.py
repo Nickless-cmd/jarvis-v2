@@ -713,6 +713,16 @@ def _build_heartbeat_liveness_signal(
     meaning_significance = build_runtime_meaning_significance_signal_surface(limit=6)
     metabolism = build_runtime_metabolism_state_signal_surface(limit=6)
     release_markers = build_runtime_release_marker_signal_surface(limit=6)
+    # Lazy imports to avoid circular dependency chain:
+    # heartbeat_runtime → proactive_loop → autonomy_pressure → runtime_awareness → heartbeat_runtime
+    from apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking import (
+        build_runtime_proactive_loop_lifecycle_surface,
+    )
+    from apps.api.jarvis_api.services.proactive_question_gate_tracking import (
+        build_runtime_proactive_question_gate_surface,
+    )
+    proactive_loops = build_runtime_proactive_loop_lifecycle_surface(limit=6)
+    question_gates = build_runtime_proactive_question_gate_surface(limit=4)
     continuity = visible_session_continuity()
 
     reason_signals: list[tuple[int, str, str, bool]] = []
@@ -988,6 +998,40 @@ def _build_heartbeat_liveness_signal(
     elif release_state == "release-leaning":
         score -= 1
 
+    # --- Proactive readiness signals ---
+    proactive_summary = proactive_loops.get("summary") or {}
+    proactive_active = int(proactive_summary.get("active_count") or 0) > 0
+    proactive_state = str(proactive_summary.get("current_state") or "none")
+    proactive_kind = str(proactive_summary.get("current_kind") or "none")
+    proactive_anchor = str(proactive_summary.get("current_focus") or "proactive-loop")
+
+    gate_summary = question_gates.get("summary") or {}
+    gate_active = int(gate_summary.get("active_count") or 0) > 0
+    gate_state = str(gate_summary.get("current_state") or "none")
+
+    if gate_active and gate_state == "question-gated-candidate":
+        add_signal(
+            weight=2,
+            reason="proactive question thread is gated and question-capable",
+            anchor=proactive_anchor,
+            propose_gate=True,
+        )
+    elif proactive_active and proactive_state in {
+        "loop-question-worthy",
+        "loop-closure-worthy",
+    }:
+        add_signal(
+            weight=1,
+            reason=f"proactive {proactive_kind} is {proactive_state.replace('loop-', '')}",
+            anchor=proactive_anchor,
+        )
+    elif proactive_active:
+        add_signal(
+            weight=1,
+            reason=f"proactive {proactive_kind} is emerging",
+            anchor=proactive_anchor,
+        )
+
     silence_hours = _hours_since_iso(continuity.get("latest_finished_at"))
     companion_reasons: list[tuple[int, str, str]] = []
 
@@ -1121,6 +1165,7 @@ def _build_heartbeat_liveness_signal(
             "checkin_worthiness": checkin_worthiness,
             "liveness_debug_summary": (
                 "score=0 signals=0 core_pressure=0 propose_gates=0 "
+                f"proactive={proactive_state}/{gate_state} "
                 f"companion={companion_pressure_weight}/{companion_pressure_state} idle={idle_presence_state}"
             ),
             "source_anchor": "",
@@ -1195,6 +1240,7 @@ def _build_heartbeat_liveness_signal(
             "liveness_debug_summary": (
                 f"score={score} signals={len(reason_signals)} "
                 f"core_pressure={core_pressure_count} propose_gates={propose_gate_count} "
+                f"proactive={proactive_state}/{gate_state} "
                 f"companion={companion_pressure_weight}/{companion_pressure_state} idle={idle_presence_state}"
             ),
             "source_anchor": source_anchor,
@@ -1238,6 +1284,7 @@ def _build_heartbeat_liveness_signal(
         "liveness_debug_summary": (
             f"score={score} signals={len(reason_signals)} "
             f"core_pressure={core_pressure_count} propose_gates={propose_gate_count} "
+            f"proactive={proactive_state}/{gate_state} "
             f"companion={companion_pressure_weight}/{companion_pressure_state} idle={idle_presence_state}"
         ),
         "source_anchor": source_anchor,

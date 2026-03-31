@@ -33,6 +33,10 @@ def test_heartbeat_liveness_stays_quiet_without_runtime_substrate(
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_meaning_significance_signal_surface", lambda limit=6: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_metabolism_state_signal_surface", lambda limit=6: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_release_marker_signal_surface", lambda limit=6: _inactive_surface())
+    import apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking as _plt
+    import apps.api.jarvis_api.services.proactive_question_gate_tracking as _pqgt
+    monkeypatch.setattr(_plt, "build_runtime_proactive_loop_lifecycle_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(_pqgt, "build_runtime_proactive_question_gate_surface", lambda limit=4: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "visible_session_continuity", lambda: _inactive_continuity())
 
     signal = heartbeat_runtime._build_heartbeat_liveness_signal(
@@ -112,6 +116,10 @@ def test_heartbeat_liveness_forms_from_bounded_runtime_pressure(
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_meaning_significance_signal_surface", lambda limit=6: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_metabolism_state_signal_surface", lambda limit=6: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_release_marker_signal_surface", lambda limit=6: _inactive_surface())
+    import apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking as _plt
+    import apps.api.jarvis_api.services.proactive_question_gate_tracking as _pqgt
+    monkeypatch.setattr(_plt, "build_runtime_proactive_loop_lifecycle_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(_pqgt, "build_runtime_proactive_question_gate_surface", lambda limit=4: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "visible_session_continuity", lambda: _inactive_continuity())
 
     signal = heartbeat_runtime._build_heartbeat_liveness_signal(
@@ -164,6 +172,10 @@ def test_heartbeat_liveness_separates_watchful_presence_from_propose_worthy_pres
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_meaning_significance_signal_surface", lambda limit=6: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_metabolism_state_signal_surface", lambda limit=6: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_release_marker_signal_surface", lambda limit=6: _inactive_surface())
+    import apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking as _plt
+    import apps.api.jarvis_api.services.proactive_question_gate_tracking as _pqgt
+    monkeypatch.setattr(_plt, "build_runtime_proactive_loop_lifecycle_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(_pqgt, "build_runtime_proactive_question_gate_surface", lambda limit=4: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "visible_session_continuity", lambda: _inactive_continuity())
 
     signal = heartbeat_runtime._build_heartbeat_liveness_signal(
@@ -210,6 +222,10 @@ def test_heartbeat_liveness_adds_bounded_companion_pressure_under_silence(
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_meaning_significance_signal_surface", lambda limit=6: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_metabolism_state_signal_surface", lambda limit=6: _inactive_surface())
     monkeypatch.setattr(heartbeat_runtime, "build_runtime_release_marker_signal_surface", lambda limit=6: _inactive_surface())
+    import apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking as _plt
+    import apps.api.jarvis_api.services.proactive_question_gate_tracking as _pqgt
+    monkeypatch.setattr(_plt, "build_runtime_proactive_loop_lifecycle_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(_pqgt, "build_runtime_proactive_question_gate_surface", lambda limit=4: _inactive_surface())
     monkeypatch.setattr(
         heartbeat_runtime,
         "visible_session_continuity",
@@ -513,3 +529,115 @@ def test_heartbeat_runtime_surface_exposes_liveness_fields(
     assert state["checkin_worthiness"] == "low-present"
     assert state["planner_authority_state"] == "not-planner-authority"
     assert state["canonical_self_state"] == "not-canonical-self-truth"
+
+
+def test_heartbeat_liveness_includes_proactive_readiness_in_scoring(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """When a question-gated-candidate proactive thread exists, liveness should
+    include it as a propose_gate signal, raising the score and making the
+    heartbeat more accurately reflect proactive readiness."""
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "build_runtime_open_loop_signal_surface",
+        lambda limit=6: {
+            "active": True,
+            "items": [{"title": "Open loop: review style", "source_anchor": "open-loop anchor"}],
+            "summary": {"open_count": 1, "softening_count": 0},
+        },
+    )
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "build_runtime_private_initiative_tension_signal_surface",
+        lambda limit=6: {
+            "active": True,
+            "items": [{"title": "Initiative tension", "source_anchor": "tension anchor"}],
+            "summary": {"active_count": 1, "current_intensity": "medium"},
+        },
+    )
+    import apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking as _plt
+    import apps.api.jarvis_api.services.proactive_question_gate_tracking as _pqgt
+    monkeypatch.setattr(
+        _plt,
+        "build_runtime_proactive_loop_lifecycle_surface",
+        lambda limit=6: {
+            "active": True,
+            "items": [{"loop_kind": "question-loop", "loop_state": "loop-question-worthy", "loop_focus": "review style"}],
+            "summary": {"active_count": 1, "current_state": "loop-question-worthy", "current_kind": "question-loop", "current_focus": "review style"},
+        },
+    )
+    monkeypatch.setattr(
+        _pqgt,
+        "build_runtime_proactive_question_gate_surface",
+        lambda limit=4: {
+            "active": True,
+            "items": [{"gate_state": "question-gated-candidate"}],
+            "summary": {"active_count": 1, "current_state": "question-gated-candidate"},
+        },
+    )
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_private_state_snapshot_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_relation_continuity_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_regulation_homeostasis_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_witness_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_chronicle_consolidation_brief_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_meaning_significance_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_metabolism_state_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_release_marker_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "visible_session_continuity", lambda: _inactive_continuity())
+
+    signal = heartbeat_runtime._build_heartbeat_liveness_signal(
+        merged_state={"due": False},
+        trigger="surface",
+    )
+
+    assert signal["status"] == "active"
+    assert signal["liveness_score"] >= 7
+    assert signal["liveness_propose_gate_count"] >= 2
+    assert "proactive" in signal["liveness_debug_summary"]
+    assert "question-gated-candidate" in signal["liveness_debug_summary"]
+    assert signal["planner_authority_state"] == "not-planner-authority"
+
+
+def test_heartbeat_liveness_stays_conservative_with_emerging_proactive_loop(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """An emerging proactive loop (not question-worthy, no gate) should only
+    contribute weight=1 and NOT set propose_gate — keeping scoring conservative."""
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_open_loop_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_private_initiative_tension_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_private_state_snapshot_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_relation_continuity_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_regulation_homeostasis_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_witness_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_chronicle_consolidation_brief_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_meaning_significance_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_metabolism_state_signal_surface", lambda limit=6: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_release_marker_signal_surface", lambda limit=6: _inactive_surface())
+    import apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking as _plt
+    import apps.api.jarvis_api.services.proactive_question_gate_tracking as _pqgt
+    monkeypatch.setattr(
+        _plt,
+        "build_runtime_proactive_loop_lifecycle_surface",
+        lambda limit=6: {
+            "active": True,
+            "items": [{"loop_kind": "initiative-loop", "loop_state": "loop-emerging", "loop_focus": "test thread"}],
+            "summary": {"active_count": 1, "current_state": "loop-emerging", "current_kind": "initiative-loop", "current_focus": "test thread"},
+        },
+    )
+    monkeypatch.setattr(_pqgt, "build_runtime_proactive_question_gate_surface", lambda limit=4: _inactive_surface())
+    monkeypatch.setattr(heartbeat_runtime, "visible_session_continuity", lambda: _inactive_continuity())
+
+    signal = heartbeat_runtime._build_heartbeat_liveness_signal(
+        merged_state={"due": False},
+        trigger="surface",
+    )
+
+    assert signal["liveness_score"] == 1
+    assert signal["liveness_propose_gate_count"] == 0
+    assert signal["liveness_state"] == "quiet"

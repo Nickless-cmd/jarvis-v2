@@ -2230,28 +2230,28 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             </div>
               ) : null
             })()}
+            {(() => {
+              const uuActive = (userUnderstandingSignals?.summary?.active_count || 0) + (userUnderstandingSignals?.summary?.softening_count || 0)
+              const uuSignal = userUnderstandingSignals?.summary?.current_signal || ''
+              const umActive = (userMdUpdateProposals?.summary?.fresh_count || 0) + (userMdUpdateProposals?.summary?.active_count || 0) + (userMdUpdateProposals?.summary?.fading_count || 0)
+              const umProposal = userMdUpdateProposals?.summary?.current_proposal || ''
+              const hasAny = uuActive > 0 || umActive > 0
+              return hasAny ? (
             <div className="compact-metric">
-              <span>User Understanding</span>
-              <strong>{(userUnderstandingSignals?.summary?.active_count || 0) + (userUnderstandingSignals?.summary?.softening_count || 0)}</strong>
-              <p>{userUnderstandingSignals?.summary?.current_signal || 'No active user-understanding signal'}</p>
-              <p>
-                {userUnderstandingSignals?.summary?.active_count || 0} active · {userUnderstandingSignals?.summary?.softening_count || 0} softening
-              </p>
-              <p>
-                type {userUnderstandingSignals?.summary?.current_signal_type || 'none'} · signal {userUnderstandingSignals?.summary?.current_signal_confidence || 'low'}
-              </p>
+              <span>User Learning</span>
+              <strong>{uuActive > 0 ? `${uuActive} noticed` : ''}{uuActive > 0 && umActive > 0 ? ' · ' : ''}{umActive > 0 ? `${umActive} proposed` : ''}</strong>
+              {uuSignal ? <p>Noticed: {uuSignal.replace(/^User-understanding signal: /i, '').slice(0, 80)}</p> : null}
+              {umProposal ? <p>Proposal: {umProposal.replace(/^USER\.md update proposal: /i, '').slice(0, 80)}</p> : null}
+              <p className="muted">Bounded runtime observations — not applied preferences</p>
             </div>
+              ) : (
             <div className="compact-metric">
-              <span>USER.md Proposals</span>
-              <strong>{(userMdUpdateProposals?.summary?.fresh_count || 0) + (userMdUpdateProposals?.summary?.active_count || 0) + (userMdUpdateProposals?.summary?.fading_count || 0)}</strong>
-              <p>{userMdUpdateProposals?.summary?.current_proposal || 'No active USER.md update proposal'}</p>
-              <p>
-                {userMdUpdateProposals?.summary?.fresh_count || 0} fresh · {userMdUpdateProposals?.summary?.active_count || 0} active · {userMdUpdateProposals?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                type {userMdUpdateProposals?.summary?.current_proposal_type || 'none'} · proposal {userMdUpdateProposals?.summary?.current_proposal_confidence || 'low'}
-              </p>
+              <span>User Learning</span>
+              <strong>Listening</strong>
+              <p className="muted">No user preferences noticed yet</p>
             </div>
+              )
+            })()}
             <div className="compact-metric">
               <span>Lifecycle</span>
               <strong>

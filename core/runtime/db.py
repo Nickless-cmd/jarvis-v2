@@ -26069,3 +26069,237 @@ def _runtime_selfhood_proposal_from_row(row: sqlite3.Row) -> dict[str, object]:
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
+
+
+# ---------------------------------------------------------------------------
+# Private brain records — persistent private inner continuity
+# ---------------------------------------------------------------------------
+
+
+def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS private_brain_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            record_id TEXT NOT NULL UNIQUE,
+            record_type TEXT NOT NULL DEFAULT 'private-carry',
+            layer TEXT NOT NULL DEFAULT 'private_brain',
+            session_id TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            focus TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            source_signals TEXT NOT NULL DEFAULT '',
+            confidence TEXT NOT NULL DEFAULT 'medium',
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_private_brain_records_status
+        ON private_brain_records(status, id DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_private_brain_records_session
+        ON private_brain_records(session_id, id DESC)
+        """
+    )
+
+
+def insert_private_brain_record(
+    *,
+    record_id: str,
+    record_type: str,
+    layer: str,
+    session_id: str,
+    run_id: str,
+    focus: str,
+    summary: str,
+    detail: str,
+    source_signals: str,
+    confidence: str,
+    created_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO private_brain_records
+                (record_id, record_type, layer, session_id, run_id,
+                 focus, summary, detail, source_signals, confidence,
+                 status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+            """,
+            (
+                record_id, record_type, layer, session_id, run_id,
+                focus, summary, detail, source_signals, confidence,
+                created_at, created_at,
+            ),
+        )
+        conn.commit()
+    return get_private_brain_record(record_id) or {}
+
+
+def list_private_brain_records(
+    *,
+    limit: int = 20,
+    session_id: str | None = None,
+    status: str | None = None,
+) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        clauses = []
+        params: list[object] = []
+        if session_id:
+            clauses.append("session_id = ?")
+            params.append(session_id)
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = conn.execute(
+            f"SELECT * FROM private_brain_records {where} ORDER BY id DESC LIMIT ?",
+            (*params, limit),
+        ).fetchall()
+    return [_private_brain_record_from_row(row) for row in rows]
+
+
+def get_private_brain_record(record_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        row = conn.execute(
+            "SELECT * FROM private_brain_records WHERE record_id = ?",
+            (record_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _private_brain_record_from_row(row)
+
+
+def _private_brain_record_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "record_id": row["record_id"],
+        "record_type": row["record_type"],
+        "layer": row["layer"],
+        "session_id": row["session_id"],
+        "run_id": row["run_id"],
+        "focus": row["focus"],
+        "summary": row["summary"],
+        "detail": row["detail"],
+        "source_signals": row["source_signals"],
+        "confidence": row["confidence"],
+        "status": row["status"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Session distillation records
+# ---------------------------------------------------------------------------
+
+
+def _ensure_session_distillation_records_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS session_distillation_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            distillation_id TEXT NOT NULL UNIQUE,
+            session_id TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            private_brain_count INTEGER NOT NULL DEFAULT 0,
+            workspace_memory_count INTEGER NOT NULL DEFAULT 0,
+            discard_count INTEGER NOT NULL DEFAULT 0,
+            summary TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_session_distillation_records_session
+        ON session_distillation_records(session_id, id DESC)
+        """
+    )
+
+
+def insert_session_distillation_record(
+    *,
+    distillation_id: str,
+    session_id: str,
+    run_id: str,
+    private_brain_count: int,
+    workspace_memory_count: int,
+    discard_count: int,
+    summary: str,
+    detail: str,
+    created_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_session_distillation_records_table(conn)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO session_distillation_records
+                (distillation_id, session_id, run_id,
+                 private_brain_count, workspace_memory_count, discard_count,
+                 summary, detail, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                distillation_id, session_id, run_id,
+                private_brain_count, workspace_memory_count, discard_count,
+                summary, detail, created_at,
+            ),
+        )
+        conn.commit()
+    return get_session_distillation_record(distillation_id) or {}
+
+
+def list_session_distillation_records(
+    *, limit: int = 10, session_id: str | None = None,
+) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_session_distillation_records_table(conn)
+        if session_id:
+            rows = conn.execute(
+                "SELECT * FROM session_distillation_records WHERE session_id = ? ORDER BY id DESC LIMIT ?",
+                (session_id, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM session_distillation_records ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+    return [_session_distillation_record_from_row(row) for row in rows]
+
+
+def get_session_distillation_record(distillation_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_session_distillation_records_table(conn)
+        row = conn.execute(
+            "SELECT * FROM session_distillation_records WHERE distillation_id = ?",
+            (distillation_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _session_distillation_record_from_row(row)
+
+
+def _session_distillation_record_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "distillation_id": row["distillation_id"],
+        "session_id": row["session_id"],
+        "run_id": row["run_id"],
+        "private_brain_count": int(row["private_brain_count"]),
+        "workspace_memory_count": int(row["workspace_memory_count"]),
+        "discard_count": int(row["discard_count"]),
+        "summary": row["summary"],
+        "detail": row["detail"],
+        "created_at": row["created_at"],
+    }

@@ -69,6 +69,8 @@ ALLOWED_EVENT_FAMILIES = {
     "self-model",
     "inner-voice",
     "incident",
+    "private_brain",
+    "session_distillation",
 }
 
 

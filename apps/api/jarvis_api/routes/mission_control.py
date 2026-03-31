@@ -190,6 +190,10 @@ from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
 from apps.api.jarvis_api.services.open_loop_closure_proposal_tracking import (
     build_runtime_open_loop_closure_proposal_surface,
 )
+from apps.api.jarvis_api.services.session_distillation import (
+    build_private_brain_surface,
+    build_session_distillation_surface,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -495,6 +499,8 @@ def mc_jarvis() -> dict:
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
     heartbeat = heartbeat_runtime_surface()
+    private_brain = build_private_brain_surface()
+    session_distillation = build_session_distillation_surface()
 
     return {
         "summary": {
@@ -607,6 +613,18 @@ def mc_jarvis() -> dict:
             "runtime_awareness_signals": runtime_awareness_signals,
         },
         "heartbeat": heartbeat,
+        "brain": {
+            "private_brain": private_brain,
+            "session_distillation": session_distillation,
+        },
+    }
+
+
+@router.get("/private-brain")
+def mc_private_brain() -> dict:
+    return {
+        "private_brain": build_private_brain_surface(limit=30),
+        "session_distillation": build_session_distillation_surface(limit=10),
     }
 
 

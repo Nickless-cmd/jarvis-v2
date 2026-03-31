@@ -198,6 +198,7 @@ class PromptAssembly:
     conditional_files: list[str]
     derived_inputs: list[str]
     excluded_files: list[str]
+    attention_trace: dict[str, object] | None = None
 
 
 @dataclass(slots=True)
@@ -380,11 +381,21 @@ def build_visible_chat_prompt_assembly(
         parts.append(transcript)
         derived_inputs.append("recent transcript slice")
 
-    if not compact:
+    if compact:
+        micro_frame = _micro_cognitive_frame_section()
+        if micro_frame:
+            parts.append(micro_frame)
+            derived_inputs.append("micro cognitive frame (compact)")
+    else:
         cognitive_frame = _cognitive_frame_section()
         if cognitive_frame:
             parts.append(cognitive_frame)
             derived_inputs.append("bounded cognitive frame (mode, salience, affordances)")
+
+    attention_trace = _build_attention_trace(
+        profile="visible_compact" if compact else "visible_full",
+        sections_included=derived_inputs,
+    )
 
     return PromptAssembly(
         mode="visible_chat",
@@ -393,6 +404,7 @@ def build_visible_chat_prompt_assembly(
         conditional_files=conditional_files,
         derived_inputs=derived_inputs,
         excluded_files=excluded_files,
+        attention_trace=attention_trace,
     )
 
 
@@ -504,6 +516,11 @@ def build_heartbeat_prompt_assembly(
         parts.append(cognitive_frame)
         derived_inputs.append("bounded cognitive frame (mode, salience, affordances)")
 
+    attention_trace = _build_attention_trace(
+        profile="heartbeat",
+        sections_included=derived_inputs,
+    )
+
     return PromptAssembly(
         mode="heartbeat",
         text="\n\n".join(part for part in parts if part).strip(),
@@ -511,6 +528,7 @@ def build_heartbeat_prompt_assembly(
         conditional_files=conditional_files,
         derived_inputs=derived_inputs,
         excluded_files=excluded_files,
+        attention_trace=attention_trace,
     )
 
 
@@ -1296,6 +1314,57 @@ def _cognitive_frame_section() -> str | None:
         return build_cognitive_frame_prompt_section()
     except Exception:
         return None
+
+
+def _micro_cognitive_frame_section() -> str | None:
+    """Build a micro cognitive frame for compact visible prompts (~150 chars)."""
+    try:
+        from apps.api.jarvis_api.services.attention_budget import build_micro_cognitive_frame
+        return build_micro_cognitive_frame()
+    except Exception:
+        return None
+
+
+def _build_attention_trace(
+    *,
+    profile: str,
+    sections_included: list[str],
+) -> dict[str, object]:
+    """Build an attention / omission trace for observability."""
+    try:
+        from apps.api.jarvis_api.services.attention_budget import get_attention_budget
+        budget = get_attention_budget(profile)
+    except Exception:
+        return {"profile": profile, "error": "budget-unavailable"}
+
+    # Map of known section budget names to their budget objects
+    section_budgets = {
+        "cognitive_frame": budget.cognitive_frame,
+        "private_brain": budget.private_brain,
+        "self_knowledge": budget.self_knowledge,
+        "self_report": budget.self_report,
+        "support_signals": budget.support_signals,
+        "inner_visible_bridge": budget.inner_visible_bridge,
+        "continuity": budget.continuity,
+        "liveness": budget.liveness,
+        "capability_truth": budget.capability_truth,
+    }
+
+    included = []
+    omitted = []
+    for name, sb in sorted(section_budgets.items(), key=lambda x: x[1].priority):
+        if sb.max_chars > 0:
+            included.append({"name": name, "budget_chars": sb.max_chars, "priority": sb.priority})
+        else:
+            omitted.append({"name": name, "reason": f"zero-budget (priority={sb.priority})"})
+
+    return {
+        "profile": profile,
+        "total_char_target": budget.total_char_target,
+        "sections_with_budget": [s["name"] for s in included],
+        "sections_omitted_by_budget": [s["name"] for s in omitted],
+        "derived_inputs_count": len(sections_included),
+    }
 
 
 def _heartbeat_self_knowledge_section() -> str | None:

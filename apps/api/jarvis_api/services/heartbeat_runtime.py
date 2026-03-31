@@ -586,6 +586,15 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass  # continuity motor failure must not block heartbeat
 
+    # Run workspace-led inner voice daemon as bounded side-effect of heartbeat
+    try:
+        from apps.api.jarvis_api.services.inner_voice_daemon import (
+            run_inner_voice_daemon,
+        )
+        run_inner_voice_daemon(trigger="heartbeat", name=name)
+    except Exception:
+        pass  # inner voice daemon failure must not block heartbeat
+
     return HeartbeatExecutionResult(
         state=heartbeat_runtime_surface(name=name)["state"],
         tick=tick,

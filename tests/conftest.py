@@ -85,6 +85,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.memory_md_update_proposal_tracking",
         "apps.api.jarvis_api.services.selfhood_proposal_tracking",
         "apps.api.jarvis_api.services.open_loop_closure_proposal_tracking",
+        "apps.api.jarvis_api.services.inner_voice_daemon",
         "apps.api.jarvis_api.routes.mission_control",
     ]
     modules: dict[str, object] = {}
@@ -263,6 +264,9 @@ def isolated_runtime(
         ],
         open_loop_closure_proposal_tracking=modules[
             "apps.api.jarvis_api.services.open_loop_closure_proposal_tracking"
+        ],
+        inner_voice_daemon=modules[
+            "apps.api.jarvis_api.services.inner_voice_daemon"
         ],
         mission_control=modules["apps.api.jarvis_api.routes.mission_control"],
     )

@@ -1589,6 +1589,113 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
         </div>
       </section>
 
+      <section className="now-section">
+        <div className="now-header">
+          <h3>Runtime Lifecycle</h3>
+          <p className="muted">Bounded runtime flow — observe, understand, carry, gate, act</p>
+        </div>
+        <div className="now-grid">
+          {(() => {
+            const stateSignal = summary?.state_signal?.mood_tone || ''
+            const tensionSignal = privateInitiativeTensionSignals?.summary?.current_signal || ''
+            const tensionActive = (privateInitiativeTensionSignals?.summary?.active_count || 0) > 0
+            const observeActive = !!stateSignal || tensionActive
+            const observeLabel = tensionActive
+              ? (tensionSignal.replace(/^Private initiative tension support: /i, '').slice(0, 52) || stateSignal || 'Sensing')
+              : (stateSignal || 'Quiet')
+            return (
+          <div className={`now-card${observeActive ? '' : ' now-card-muted'}`}>
+            <span>Observe</span>
+            <strong>{observeLabel}</strong>
+            <small className="muted">{stateSignal ? `mood: ${stateSignal}` : 'no active state signal'}{tensionActive ? ' · tension active' : ''}</small>
+          </div>
+            )
+          })()}
+          {(() => {
+            const wmActive = (worldModelSignals?.summary?.active_count || 0) > 0
+            const wmSignal = worldModelSignals?.summary?.current_signal || ''
+            const uuActive = (userUnderstandingSignals?.summary?.active_count || 0) > 0
+            const uuSignal = userUnderstandingSignals?.summary?.current_signal || ''
+            const hasUnderstanding = wmActive || uuActive
+            const understandLabel = wmActive
+              ? (wmSignal.replace(/^World-model signal: /i, '').slice(0, 52) || 'World view active')
+              : uuActive
+                ? (uuSignal.replace(/^User-understanding signal: /i, '').slice(0, 52) || 'User insight active')
+                : 'Listening'
+            return (
+          <div className={`now-card${hasUnderstanding ? '' : ' now-card-muted'}`}>
+            <span>Understand</span>
+            <strong>{understandLabel}</strong>
+            <small className="muted">{wmActive ? `${worldModelSignals.summary.active_count} assumption${worldModelSignals.summary.active_count !== 1 ? 's' : ''}` : ''}{wmActive && uuActive ? ' · ' : ''}{uuActive ? `${userUnderstandingSignals.summary.active_count} user insight${userUnderstandingSignals.summary.active_count !== 1 ? 's' : ''}` : ''}{!wmActive && !uuActive ? 'no active understanding' : ''}</small>
+          </div>
+            )
+          })()}
+          {(() => {
+            const focusTitle = developmentFocuses?.summary?.current_focus || developmentFocuses?.items?.[0]?.title || ''
+            const loopCount = openLoopSignals?.summary?.active_count || openLoopSignals?.items?.length || 0
+            const goalSignal = goalSignals?.summary?.current_goal || ''
+            const hasCarry = !!focusTitle || loopCount > 0 || !!goalSignal
+            const carryLabel = focusTitle
+              ? focusTitle.slice(0, 52)
+              : goalSignal
+                ? goalSignal.slice(0, 52)
+                : loopCount > 0
+                  ? `${loopCount} open loop${loopCount !== 1 ? 's' : ''}`
+                  : 'Nothing carried'
+            return (
+          <div className={`now-card${hasCarry ? '' : ' now-card-muted'}`}>
+            <span>Carry</span>
+            <strong>{carryLabel}</strong>
+            <small className="muted">{loopCount > 0 ? `${loopCount} loop${loopCount !== 1 ? 's' : ''}` : ''}{loopCount > 0 && goalSignal ? ' · ' : ''}{goalSignal ? 'goal active' : ''}{!loopCount && !goalSignal && focusTitle ? 'focus active' : ''}{!loopCount && !goalSignal && !focusTitle ? 'no active threads' : ''}</small>
+          </div>
+            )
+          })()}
+          {(() => {
+            const pressureActive = (autonomyPressureSignals?.summary?.active_count || 0) > 0
+            const pressureType = autonomyPressureSignals?.summary?.current_type || ''
+            const loopState = proactiveLoopLifecycleSignals?.summary?.current_state || ''
+            const loopKind = proactiveLoopLifecycleSignals?.summary?.current_kind || ''
+            const gateState = proactiveQuestionGates?.summary?.current_state || ''
+            const gateActive = (proactiveQuestionGates?.summary?.active_count || 0) > 0
+            const hasGate = pressureActive || gateActive
+            const gateLabel = gateActive
+              ? (gateState === 'question-gated-candidate' ? 'Question ready' : 'Question gated')
+              : loopState
+                ? loopState.replace('loop-', '').replace(/-/g, ' ')
+                : pressureActive
+                  ? pressureType.replace(/-/g, ' ')
+                  : 'No pressure'
+            return (
+          <div className={`now-card${hasGate ? ' now-card-highlight' : ' now-card-muted'}`}>
+            <span>Gate</span>
+            <strong>{gateLabel}</strong>
+            <small className="muted">{pressureActive ? `${pressureType.replace(/-/g, ' ')}` : 'no pressure'}{loopKind ? ` · ${loopKind.replace(/-/g, ' ')}` : ''}{gateActive ? ` · ${gateState.replace(/-/g, ' ')}` : ''}</small>
+          </div>
+            )
+          })()}
+          {(() => {
+            const hbState = heartbeatState.liveness_state || heartbeatState.scheduleState || 'quiet'
+            const hbAction = heartbeatState.lastActionType || heartbeatState.lastDecisionType || ''
+            const pilotActive = (webchatExecutionPilot?.summary?.active_count || 0) > 0
+            const hbActive = hbState !== 'quiet' && hbState !== 'unknown'
+            const actLabel = pilotActive
+              ? 'Webchat pilot active'
+              : heartbeatState.currentlyTicking
+                ? 'Tick in progress'
+                : hbActive
+                  ? hbState.replace(/-/g, ' ')
+                  : 'Waiting'
+            return (
+          <div className={`now-card${hbActive || pilotActive ? '' : ' now-card-muted'}`}>
+            <span>Act</span>
+            <strong>{actLabel}</strong>
+            <small className="muted">{hbAction ? `last: ${hbAction.replace(/-/g, ' ')}` : 'bounded heartbeat'}{pilotActive ? ' · pilot ready' : ''}</small>
+          </div>
+            )
+          })()}
+        </div>
+      </section>
+
       <section className="mc-section-grid">
         <article className="support-card" id="jarvis-contract" title={sectionTitleWithMeta({
           source: '/mc/runtime-contract',

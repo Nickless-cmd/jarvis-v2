@@ -441,3 +441,90 @@ def test_open_loop_closure_proposal_surface_and_mc_shapes_remain_bounded(isolate
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
     assert runtime_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
+
+
+def test_softening_loop_produces_hold_open_proposal_even_without_medium_closure_confidence(isolated_runtime) -> None:
+    """A softening loop should produce a hold-open proposal even when closure_confidence
+    is still low, because the open→softening transition is itself maturation evidence."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.open_loop_closure_proposal_tracking
+
+    _insert_open_loop(
+        db,
+        status="softening",
+        signal_type="softening-loop",
+        canonical_key="open-loop:softening-loop:maturing-thread",
+    )
+
+    result = tracking.track_runtime_open_loop_closure_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_open_loop_closure_proposal_surface(limit=8)
+
+    assert result["created"] == 1
+    assert surface["active"] is True
+    item = surface["items"][0]
+    assert item["proposal_type"] == "hold-open"
+    assert item["domain"] == "maturing-thread"
+    assert "softening" in item["proposal_reason"].lower()
+
+
+def test_open_loop_without_softening_or_closure_evidence_produces_no_proposal(isolated_runtime) -> None:
+    """An open loop with low closure_confidence and no softening should NOT produce proposals."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.open_loop_closure_proposal_tracking
+
+    _insert_open_loop(
+        db,
+        status="open",
+        signal_type="persistent-open-loop",
+        canonical_key="open-loop:persistent-open-loop:still-active-thread",
+    )
+
+    result = tracking.track_runtime_open_loop_closure_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_open_loop_closure_proposal_surface(limit=8)
+
+    assert result["created"] == 0
+    assert surface["active"] is False
+
+
+def test_closure_proposal_reason_includes_loop_focus(isolated_runtime) -> None:
+    """Proposal reasons should reference the specific loop focus for grounded summaries."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.open_loop_closure_proposal_tracking
+
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_open_loop_signal(
+        signal_id=f"open-loop-{uuid4().hex}",
+        signal_type="softening-loop",
+        canonical_key="open-loop:softening-loop:danish-concise-calibration",
+        status="softening",
+        title="Open loop: Danish concise calibration",
+        summary="Softening loop",
+        rationale="Validation",
+        source_kind="derived-runtime-open-loop",
+        confidence="medium",
+        evidence_summary="evidence",
+        support_summary="support",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+    tracking.track_runtime_open_loop_closure_proposals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_open_loop_closure_proposal_surface(limit=8)
+
+    assert surface["active"] is True
+    item = surface["items"][0]
+    assert "Danish concise calibration" in item["proposal_reason"]

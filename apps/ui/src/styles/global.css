@@ -396,6 +396,12 @@ button { cursor: pointer; }
 .now-card small { font-size:11px; color:#6b7a8f; }
 .now-card-highlight { border-color:rgba(40,177,163,.2); background:rgba(40,177,163,.08); }
 .now-card-highlight strong { color:#49d2c3; }
+.now-card-muted { opacity:0.5; }
+.now-card-muted strong { color:#8ca0b6; }
+.mc-dormant-details { margin-top:6px; }
+.mc-dormant-summary { font-size:11px; color:#6b7a8f; cursor:pointer; padding:4px 0; }
+.mc-dormant-summary:hover { color:#8ca0b6; }
+.mc-dormant-details[open] .mc-dormant-summary { color:#8ca0b6; }
 .mc-section-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
 .mc-operations-grid { align-items:start; }
 .mc-clickable-card { width:100%; text-align:left; border:none; }

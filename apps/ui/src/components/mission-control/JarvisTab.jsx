@@ -1569,7 +1569,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             <strong>{privateStateSnapshots?.summary?.current_state?.replace(/-/g, ' ') || privateStateSnapshots?.items?.[0]?.state_tone || 'Stable'}</strong>
             <small>{privateStateSnapshots?.summary?.active_count || 0} state signal{privateStateSnapshots?.summary?.active_count !== 1 ? 's' : ''}</small>
           </div>
-          <div className="now-card now-card-highlight">
+          <div className={`now-card${recentShift?.label ? ' now-card-highlight' : ' now-card-muted'}`}>
             <span>Recent Shift</span>
             <strong>{recentShift?.label || 'No recent shifts'}</strong>
             <small>{recentShift?.time || ''}</small>
@@ -1646,8 +1646,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   ? `${openCount} open${softeningCount > 0 ? `, ${softeningCount} softening` : ''}`
                   : 'Nothing carried'
             const carryDetail = [
-              loopCount > 0 ? `${loopCount} loop${loopCount !== 1 ? 's' : ''}` : '',
-              softeningCount > 0 ? `${softeningCount} maturing` : '',
+              openCount > 0 ? `${openCount} open` : '',
+              softeningCount > 0 ? `${softeningCount} softening` : '',
               closureProposalCount > 0 ? `${closureProposalCount} closure proposal${closureProposalCount !== 1 ? 's' : ''}` : '',
               goalSignal ? 'goal active' : '',
               !loopCount && !goalSignal && focusTitle ? 'focus active' : '',
@@ -2330,6 +2330,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <span>Closure Proposals</span>
               <strong>{(openLoopClosureProposals?.summary?.fresh_count || 0) + (openLoopClosureProposals?.summary?.active_count || 0) + (openLoopClosureProposals?.summary?.fading_count || 0)}</strong>
               <p>{openLoopClosureProposals?.summary?.current_proposal || 'No active loop-closure proposal'}</p>
+              <p className="muted">Proposal only — not automatic closure</p>
             </div>
             ) : null}
             {((internalOppositionSignals?.summary?.active_count || 0) + (internalOppositionSignals?.summary?.softening_count || 0)) > 0 ? (

@@ -343,3 +343,108 @@ def test_proactive_loop_lifecycle_prefers_meaningful_open_loop_focus_over_none(
 
     item = next(item for item in surface["items"] if item["loop_kind"] == "question-loop")
     assert item["loop_focus"] == "Visible work"
+
+
+def _insert_initiative_tension(db, *, intensity: str = "medium") -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_private_initiative_tension_signal(
+        signal_id=f"initiative-tension-{uuid4().hex}",
+        signal_type="unresolved",
+        canonical_key="private-initiative-tension:unresolved:proactive-test-thread",
+        status="active",
+        title="Private initiative tension support: Proactive test thread",
+        summary="Bounded initiative tension is still carrying unresolved pressure.",
+        rationale="Validation initiative tension",
+        source_kind="runtime-derived-support",
+        confidence="medium",
+        evidence_summary="initiative tension evidence",
+        support_summary=f"tension-level={intensity} | source-anchor=initiative-tension-anchor",
+        support_count=2,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation initiative tension status",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
+def test_proactive_loop_materializes_from_initiative_tension_without_open_loops(
+    isolated_runtime,
+) -> None:
+    """When initiative tension is active with medium+ intensity and autonomy
+    pressure exists, a proactive loop should materialize even without formal
+    open loops."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.proactive_loop_lifecycle_tracking
+
+    # Insert initiative tension (medium intensity) + autonomy pressure, but NO open loop
+    _insert_initiative_tension(db, intensity="medium")
+    _insert_autonomy_pressure(
+        db,
+        pressure_type="initiative-pressure",
+        pressure_state="initiative-held",
+        weight="medium",
+    )
+
+    result = tracking.track_runtime_proactive_loop_lifecycle_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_proactive_loop_lifecycle_surface(limit=8)
+
+    assert result["created"] >= 1
+    assert surface["active"] is True
+    kinds = {item["loop_kind"] for item in surface["items"]}
+    assert "initiative-loop" in kinds
+    for item in surface["items"]:
+        assert item["authority"] == "non-authoritative"
+        assert item["planner_authority_state"] == "not-planner-authority"
+        assert item["proactive_execution_state"] == "not-proactive-execution"
+
+
+def test_proactive_loop_does_not_materialize_from_low_intensity_tension(
+    isolated_runtime,
+) -> None:
+    """Low-intensity initiative tension should NOT trigger tension-driven
+    materialization — the threshold requires medium or high."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.proactive_loop_lifecycle_tracking
+
+    # Insert initiative tension with LOW intensity (via focus-based, not unresolved)
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_private_initiative_tension_signal(
+        signal_id=f"initiative-tension-low-{uuid4().hex}",
+        signal_type="retention-pull",
+        canonical_key="private-initiative-tension:retention-pull:low-test",
+        status="active",
+        title="Private initiative tension support: Low intensity test",
+        summary="Bounded initiative tension is carrying low pressure.",
+        rationale="Validation",
+        source_kind="runtime-derived-support",
+        confidence="low",
+        evidence_summary="low initiative evidence",
+        support_summary="tension-level=low | source-anchor=low-anchor",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation",
+        run_id="test-run",
+        session_id="test-session",
+    )
+    _insert_autonomy_pressure(
+        db,
+        pressure_type="initiative-pressure",
+        pressure_state="initiative-held",
+        weight="medium",
+    )
+
+    result = tracking.track_runtime_proactive_loop_lifecycle_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_proactive_loop_lifecycle_surface(limit=8)
+
+    assert result["created"] == 0
+    assert surface["active"] is False

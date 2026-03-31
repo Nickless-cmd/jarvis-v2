@@ -270,6 +270,9 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
         str(loyalty.get("summary", {}).get("current_confidence") or "low"),
     )
     focus = _question_loop_focus(question_loop)
+    backing_loop_state = str(question_loop.get("loop_state") or "loop-emerging")
+    backing_loop_kind = str(question_loop.get("loop_kind") or "question-loop")
+    backing_loop_focus = str(question_loop.get("loop_focus") or focus)
 
     return [
         {
@@ -278,7 +281,8 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
             "status": status,
             "title": f"Proactive question gate: {focus[:96]}",
             "summary": (
-                "Bounded proactive-question gating is surfacing a runtime question candidate only. "
+                f"Bounded proactive-question gating for thread '{backing_loop_focus[:64]}' "
+                f"(state: {backing_loop_state}, kind: {backing_loop_kind}). "
                 "This is not send permission and not proactive execution."
             ),
             "rationale": (
@@ -304,6 +308,9 @@ def _extract_proactive_question_gate_candidates() -> list[dict[str, object]]:
                 f"question-gate-confidence={confidence}",
                 f"question-gate-continuity-mode={continuity['mode']}",
                 "send-permission-state=gated-candidate-only" if gate_state == "question-gated-candidate" else "send-permission-state=not-granted",
+                f"backing-loop-state={backing_loop_state}",
+                f"backing-loop-kind={backing_loop_kind}",
+                f"backing-loop-focus={backing_loop_focus[:96]}",
                 f"source-anchor={source_anchor}",
                 f"question-readiness={question_readiness}",
                 f"relation-weight={relation_weight}",

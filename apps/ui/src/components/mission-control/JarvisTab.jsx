@@ -2073,6 +2073,121 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
         </article>
       </section>
 
+      {/* --- Runtime Self-Model --- */}
+      {(() => {
+        const sm = data?.runtimeSelfModel
+        if (!sm || !sm.layers || !sm.layers.length) return null
+        const layers = sm.layers
+        const boundaries = sm.truth_boundaries || {}
+        const summary = sm.summary || {}
+
+        // Primary axis: visibility × role
+        const visible = layers.filter(l => l.visibility === 'visible' || l.visibility === 'mixed')
+        const internalOnly = layers.filter(l => l.visibility === 'internal-only' && l.role !== 'groundwork-only')
+        const groundwork = layers.filter(l => l.role === 'groundwork-only')
+
+        const roleIndicator = (role) => {
+          if (role === 'active') return { symbol: '\u25CF', color: 'var(--success, #22c55e)' }
+          if (role === 'cooling') return { symbol: '\u25CF', color: 'var(--warning, #e2a308)' }
+          if (role === 'idle') return { symbol: '\u25CB', color: 'var(--muted, #888)' }
+          if (role === 'gated') return { symbol: '\u25CB', color: 'var(--warning, #e2a308)' }
+          if (role === 'unavailable') return { symbol: '\u25CF', color: 'var(--danger, #ef4444)' }
+          return { symbol: '\u25CB', color: 'var(--muted, #888)' }
+        }
+
+        const layerPill = (layer) => {
+          const ri = roleIndicator(layer.role)
+          return (
+            <button
+              key={layer.id}
+              className="mc-list-row"
+              style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 5, width: 'auto', minWidth: 0 }}
+              onClick={() => onOpenItem(`Layer: ${layer.label}`, layer)}
+              title={`${layer.kind} · ${layer.role} · ${layer.truth}`}
+            >
+              <span style={{ color: ri.color, fontWeight: 600 }}>{ri.symbol}</span>
+              <span>{layer.label}</span>
+              {layer.role !== 'active' && <span style={{ opacity: 0.5, fontSize: '0.85em' }}>{layer.role}</span>}
+            </button>
+          )
+        }
+
+        return (
+          <section className="mc-section-grid">
+            <article className="support-card" id="jarvis-self-model" title="Runtime self-model — typed layer snapshot of Jarvis' current system-self">
+              <div className="panel-header">
+                <div>
+                  <h3>Runtime Self-Model</h3>
+                  <p className="muted">{visible.length} visible · {internalOnly.length} internal-only · {groundwork.length} groundwork</p>
+                </div>
+                <span className="mc-section-hint">Runtime truth</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px 12px' }}>
+
+                {visible.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Visible</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>{visible.map(layerPill)}</div>
+                  </div>
+                )}
+
+                {internalOnly.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Internal-only</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>{internalOnly.map(layerPill)}</div>
+                  </div>
+                )}
+
+                {groundwork.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Groundwork</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {groundwork.map(g => (
+                        <button
+                          key={g.id}
+                          className="mc-list-row now-card-muted"
+                          style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 5, width: 'auto', minWidth: 0 }}
+                          onClick={() => onOpenItem(`Groundwork: ${g.label}`, g)}
+                          title={g.detail || g.kind}
+                        >
+                          <span style={{ opacity: 0.4 }}>{'\u25CB'}</span>
+                          <span>{g.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ fontSize: '0.78em', opacity: 0.6, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {Object.entries(boundaries).map(([key, value]) => (
+                    <span key={key} title={value} style={{ cursor: 'help' }}>
+                      {key.replace(/_/g, ' ').replace(/vs/g, '\u2260')}
+                    </span>
+                  ))}
+                </div>
+
+                <button
+                  className="mc-list-row"
+                  onClick={() => onOpenItem('Runtime Self-Model (full)', sm)}
+                >
+                  <div>
+                    <strong>Full snapshot</strong>
+                    <span style={{ fontSize: '0.82em', opacity: 0.85 }}>
+                      {summary.total_layers || 0} layers · {Object.keys(boundaries).length} boundaries
+                    </span>
+                  </div>
+                  <div className="mc-row-meta">
+                    <small>{sm.built_at ? formatFreshness(sm.built_at) : 'unknown'}</small>
+                    <ChevronRight size={14} />
+                  </div>
+                </button>
+
+              </div>
+            </article>
+          </section>
+        )
+      })()}
+
       {/* --- Attention Budget Traces + Conflict Resolution --- */}
       {(() => {
         const traces = data?.attentionTraces || {}

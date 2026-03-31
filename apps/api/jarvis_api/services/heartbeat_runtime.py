@@ -412,6 +412,26 @@ def _run_heartbeat_tick_locked(
         liveness=context.get("liveness"),
     )
 
+    # --- Bounded conflict resolution ---
+    # Arbitrate between competing pressures before policy validation.
+    conflict_trace = _run_bounded_conflict_resolution(
+        decision=decision,
+        context=context,
+        policy=policy,
+    )
+    decision = _apply_conflict_resolution_to_decision(
+        decision=decision,
+        conflict_trace=conflict_trace,
+    )
+
+    # --- Execute bounded internal continuation if conflict chose it ---
+    internal_continuation = {"applied": False}
+    if conflict_trace and conflict_trace.outcome == "continue_internal":
+        internal_continuation = _execute_continue_internal(
+            conflict_trace=conflict_trace,
+            trigger=trigger,
+        )
+
     if execution_status == "success" and parse_status == "not-run":
         parse_status = "success"
 
@@ -429,6 +449,10 @@ def _run_heartbeat_tick_locked(
             "fallback_used": bool(target.get("fallback_used")),
             "execution_status": execution_status,
             "parse_status": parse_status,
+            "conflict_outcome": conflict_trace.outcome if conflict_trace else "none",
+            "conflict_reason": conflict_trace.reason_code if conflict_trace else "",
+            "internal_continuation_applied": internal_continuation.get("applied", False),
+            "internal_continuation_action": internal_continuation.get("action", ""),
         },
     )
     _log_debug(
@@ -2058,6 +2082,160 @@ def _recover_bounded_heartbeat_liveness_decision(
         "ping_text": "",
         "execute_action": "",
     }
+
+
+# ---------------------------------------------------------------------------
+# Bounded conflict resolution integration
+# ---------------------------------------------------------------------------
+
+
+def _run_bounded_conflict_resolution(
+    *,
+    decision: dict[str, str],
+    context: dict[str, object],
+    policy: dict[str, object],
+) -> "ConflictTrace":
+    """Run conflict resolution using existing runtime signals."""
+    try:
+        from apps.api.jarvis_api.services.conflict_resolution import (
+            resolve_heartbeat_initiative_conflict,
+            set_last_conflict_trace,
+            ConflictTrace,
+        )
+        # Lazy imports for surfaces (same pattern as liveness)
+        from apps.api.jarvis_api.services.proactive_question_gate_tracking import (
+            build_runtime_proactive_question_gate_surface,
+        )
+        from apps.api.jarvis_api.services.autonomy_pressure_signal_tracking import (
+            build_runtime_autonomy_pressure_signal_surface,
+        )
+
+        question_gate = build_runtime_proactive_question_gate_surface(limit=4)
+        autonomy_pressure = build_runtime_autonomy_pressure_signal_surface(limit=8)
+
+        # Get conductor mode if available
+        conductor_mode = "watch"
+        try:
+            from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+                build_cognitive_frame,
+            )
+            frame = build_cognitive_frame()
+            conductor_mode = frame.get("mode", {}).get("mode", "watch")
+        except Exception:
+            pass
+
+        open_loops = None
+        try:
+            open_loops = build_runtime_open_loop_signal_surface(limit=6)
+        except Exception:
+            pass
+
+        trace = resolve_heartbeat_initiative_conflict(
+            decision_type=decision.get("decision_type", "noop"),
+            liveness=context.get("liveness"),
+            question_gate=question_gate,
+            autonomy_pressure=autonomy_pressure,
+            open_loops=open_loops,
+            conductor_mode=conductor_mode,
+            policy_allow_propose=bool(policy.get("allow_propose")),
+            policy_allow_ping=bool(policy.get("allow_ping")),
+        )
+        set_last_conflict_trace(trace)
+
+        from apps.api.jarvis_api.services.conflict_resolution import get_quiet_initiative
+        qi = get_quiet_initiative()
+
+        event_bus.publish(
+            "heartbeat.conflict_resolved",
+            {
+                "outcome": trace.outcome,
+                "dominant_factor": trace.dominant_factor,
+                "reason_code": trace.reason_code,
+                "competing_factors_count": len(trace.competing_factors),
+                "blocked_by": trace.blocked_by,
+                "quiet_initiative_active": qi.get("active", False),
+                "quiet_initiative_state": qi.get("state", ""),
+                "quiet_initiative_hold_count": qi.get("hold_count", 0),
+            },
+        )
+        return trace
+    except Exception as exc:
+        _log_debug("conflict resolution failed", error=str(exc))
+        from apps.api.jarvis_api.services.conflict_resolution import ConflictTrace
+        return ConflictTrace(
+            outcome="ask_user",
+            dominant_factor="resolution-failed",
+            reason_code="exception-passthrough",
+            summary=f"Conflict resolution failed: {exc}",
+        )
+
+
+def _apply_conflict_resolution_to_decision(
+    *,
+    decision: dict[str, str],
+    conflict_trace: "ConflictTrace",
+) -> dict[str, str]:
+    """Apply conflict resolution to modify or preserve the decision."""
+    try:
+        from apps.api.jarvis_api.services.conflict_resolution import (
+            apply_conflict_resolution,
+        )
+        return apply_conflict_resolution(decision=decision, trace=conflict_trace)
+    except Exception:
+        return decision
+
+
+def _execute_continue_internal(
+    *,
+    conflict_trace: "ConflictTrace",
+    trigger: str,
+) -> dict[str, object]:
+    """Execute a bounded internal continuation when conflict chose continue_internal.
+
+    Runs the private brain continuity motor as a small internal action.
+    Returns an observable result dict.
+    """
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            run_private_brain_continuity,
+        )
+
+        result = run_private_brain_continuity(
+            trigger=f"conflict-internal:{trigger}",
+        )
+
+        action = result.get("action", "skipped")
+        applied = action in {"consolidated"}
+
+        event_bus.publish(
+            "heartbeat.internal_continuation",
+            {
+                "applied": applied,
+                "action": action,
+                "trigger": trigger,
+                "conflict_reason_code": conflict_trace.reason_code,
+                "conflict_dominant_factor": conflict_trace.dominant_factor,
+                "continuity_mode": result.get("continuity_mode", ""),
+                "brain_record_count": result.get("brain_record_count", 0),
+                "reason": result.get("reason", ""),
+            },
+        )
+
+        return {
+            "applied": applied,
+            "action": action,
+            "continuity_mode": result.get("continuity_mode", ""),
+            "brain_record_count": result.get("brain_record_count", 0),
+            "reason": result.get("reason", ""),
+            "record_id": result.get("record", {}).get("record_id", "") if applied else "",
+        }
+    except Exception as exc:
+        _log_debug("internal continuation failed", error=str(exc))
+        return {
+            "applied": False,
+            "action": "error",
+            "reason": str(exc),
+        }
 
 
 def _heartbeat_ping_candidate_ready(*, policy: dict[str, object]) -> bool:

@@ -713,6 +713,13 @@ def mc_inner_voice_daemon() -> dict:
     return get_inner_voice_daemon_state()
 
 
+@router.get("/internal-cadence")
+def mc_internal_cadence() -> dict:
+    """Return the current internal cadence layer state."""
+    from apps.api.jarvis_api.services.internal_cadence import get_cadence_state
+    return get_cadence_state()
+
+
 @router.get("/self-knowledge")
 def mc_self_knowledge() -> dict:
     return build_runtime_self_knowledge_map()

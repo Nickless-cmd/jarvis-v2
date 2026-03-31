@@ -553,6 +553,15 @@ def _run_heartbeat_tick_locked(
             },
         )
 
+    # Run private brain continuity motor as bounded side-effect of heartbeat
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            run_private_brain_continuity,
+        )
+        run_private_brain_continuity(trigger="heartbeat")
+    except Exception:
+        pass  # continuity motor failure must not block heartbeat
+
     return HeartbeatExecutionResult(
         state=heartbeat_runtime_surface(name=name)["state"],
         tick=tick,
@@ -683,6 +692,15 @@ def _build_heartbeat_context(
         trigger=trigger,
     )
 
+    # Private brain context for continuity-aware heartbeat
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            build_private_brain_context,
+        )
+        private_brain_context = build_private_brain_context()
+    except Exception:
+        private_brain_context = {"active": False, "record_count": 0, "excerpts": [], "continuity_summary": ""}
+
     return {
         "schedule_status": str(merged_state["schedule_status"]),
         "budget_status": str(policy["budget_status"]),
@@ -693,6 +711,7 @@ def _build_heartbeat_context(
         "allowed_capabilities": allowed_capabilities,
         "continuity_summary": continuity_summary,
         "liveness": liveness,
+        "private_brain": private_brain_context,
     }
 
 

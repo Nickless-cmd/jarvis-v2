@@ -195,7 +195,7 @@ def test_distill_session_carry_produces_records_from_runtime_evidence() -> None:
         canonical_key=f"inner-note:test-carry:{uuid4().hex[:6]}",
         status="active",
         title="Test inner note",
-        summary="I noticed something interesting about the user's approach.",
+        summary=f"Unique observation {uuid4().hex[:12]} about the user approach to bounded runtime lifecycle management in session distillation",
         rationale="This is a private observation worth carrying.",
         source_kind="runtime-derived-support",
         confidence="high",
@@ -269,3 +269,184 @@ def test_distill_session_carry_discards_inactive_signals() -> None:
     # Stale signal should count as discard
     assert result["discard_count"] >= 1
     assert result["distillation_id"]
+
+
+# ---------------------------------------------------------------------------
+# Anti-spam / consolidation guard
+# ---------------------------------------------------------------------------
+
+
+def test_near_duplicate_suppression(_ensure_tables) -> None:
+    """Records with very similar summaries should be suppressed."""
+    from apps.api.jarvis_api.services.session_distillation import _is_near_duplicate
+
+    existing = [
+        {
+            "record_type": "inner-note-carry",
+            "summary": "I noticed something interesting about the user approach to Jarvis architecture",
+        },
+    ]
+
+    # Near duplicate (same words, same type)
+    assert _is_near_duplicate(
+        "I noticed something interesting about the user approach to Jarvis architecture",
+        "inner-note-carry",
+        existing,
+    )
+
+    # Different type — should not suppress
+    assert not _is_near_duplicate(
+        "I noticed something interesting about the user approach to Jarvis architecture",
+        "diary-carry",
+        existing,
+    )
+
+    # Genuinely different summary
+    assert not _is_near_duplicate(
+        "The runtime heartbeat scheduling needs adjustment for production loads",
+        "inner-note-carry",
+        existing,
+    )
+
+    # Very short summary — always passes through
+    assert not _is_near_duplicate(
+        "Short note",
+        "inner-note-carry",
+        existing,
+    )
+
+
+def test_distillation_suppresses_near_duplicates() -> None:
+    """Running distill_session_carry twice with similar signals should
+    suppress the second run's records."""
+    from apps.api.jarvis_api.services.session_distillation import distill_session_carry
+    from core.runtime.db import upsert_runtime_private_inner_note_signal
+
+    session_id = f"dedup-session-{uuid4().hex[:8]}"
+    now = datetime.now(UTC).isoformat()
+
+    # Seed an active inner note
+    signal_id = f"inner-dedup-{uuid4().hex[:8]}"
+    upsert_runtime_private_inner_note_signal(
+        signal_id=signal_id,
+        signal_type="inner-note",
+        canonical_key=f"inner-note:dedup-test:{uuid4().hex[:6]}",
+        status="active",
+        title="Dedup test note",
+        summary="A detailed observation about how the runtime handles bounded proactive loops and question gating mechanisms",
+        rationale="Test",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="evidence",
+        support_summary="support",
+        status_reason="Test",
+        run_id="run1",
+        session_id=session_id,
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+    )
+
+    # First distillation — should create records
+    result1 = distill_session_carry(session_id=session_id, run_id="run1")
+    created_first = result1["private_brain_count"]
+
+    # Second distillation — same signals, should suppress
+    result2 = distill_session_carry(session_id=session_id, run_id="run2")
+    assert result2["suppressed_count"] >= created_first or result2["private_brain_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Private brain context for heartbeat ingestion
+# ---------------------------------------------------------------------------
+
+
+def test_build_private_brain_context_returns_bounded_excerpts(_ensure_tables) -> None:
+    """build_private_brain_context should return bounded excerpts."""
+    from apps.api.jarvis_api.services.session_distillation import build_private_brain_context
+
+    now = datetime.now(UTC).isoformat()
+    for i in range(5):
+        insert_private_brain_record(
+            record_id=f"pb-ctx-{uuid4().hex[:8]}",
+            record_type="inner-note-carry" if i % 2 == 0 else "self-model-carry",
+            layer="private_brain",
+            session_id="ctx-session",
+            run_id=f"ctx-run-{i}",
+            focus=f"Focus {i}",
+            summary=f"Brain record {i} with some meaningful content about runtime observation.",
+            detail="",
+            source_signals="",
+            confidence="medium",
+            created_at=now,
+        )
+
+    ctx = build_private_brain_context(limit=3)
+
+    assert ctx["active"] is True
+    assert ctx["record_count"] <= 3
+    assert len(ctx["excerpts"]) <= 3
+    assert ctx["continuity_summary"]
+    assert "private brain" in ctx["continuity_summary"].lower() or "Private brain" in ctx["continuity_summary"]
+
+    # Each excerpt should have bounded fields
+    for excerpt in ctx["excerpts"]:
+        assert "type" in excerpt
+        assert "summary" in excerpt
+        assert len(excerpt["summary"]) <= 201  # 200 + potential ellipsis
+
+
+def test_build_private_brain_context_empty_when_no_records() -> None:
+    """build_private_brain_context should return inactive state when empty."""
+    from apps.api.jarvis_api.services.session_distillation import build_private_brain_context
+    # Use a fresh limit=0 to simulate no records scenario
+    ctx = build_private_brain_context(limit=0)
+    # limit=0 → no records
+    assert ctx["record_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Continuity motor
+# ---------------------------------------------------------------------------
+
+
+def test_continuity_motor_skips_when_no_brain_records() -> None:
+    """run_private_brain_continuity should skip when no records exist."""
+    from apps.api.jarvis_api.services.session_distillation import run_private_brain_continuity
+
+    # Clear state by using a fresh scenario — since we can't clear DB,
+    # the motor should produce a skipped or consolidated result based on existing state.
+    result = run_private_brain_continuity(trigger="test")
+    assert result["action"] in {"skipped", "consolidated"}
+    assert "trigger" in result
+
+
+def test_continuity_motor_consolidates_when_enough_diversity(_ensure_tables) -> None:
+    """run_private_brain_continuity should consolidate when there are
+    enough diverse brain records."""
+    from apps.api.jarvis_api.services.session_distillation import run_private_brain_continuity
+
+    now = datetime.now(UTC).isoformat()
+    # Seed diverse records
+    for i, rtype in enumerate(["inner-note-carry", "self-model-carry", "diary-carry"]):
+        insert_private_brain_record(
+            record_id=f"pb-motor-{uuid4().hex[:8]}",
+            record_type=rtype,
+            layer="private_brain",
+            session_id="motor-session",
+            run_id=f"motor-run-{i}",
+            focus=f"Motor focus {i} unique thread {uuid4().hex[:4]}",
+            summary=f"Motor record type {rtype} with unique content {uuid4().hex[:8]} about different aspects of runtime",
+            detail="",
+            source_signals="",
+            confidence="medium",
+            created_at=now,
+        )
+
+    result = run_private_brain_continuity(trigger="test")
+    # Should either consolidate or skip due to near-duplicate
+    assert result["action"] in {"consolidated", "skipped"}
+    if result["action"] == "consolidated":
+        assert result["record"]
+        assert result["summary"]

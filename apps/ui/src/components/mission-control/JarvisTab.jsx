@@ -2077,36 +2077,39 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
       {(() => {
         const sm = data?.runtimeSelfModel
         if (!sm || !sm.layers || !sm.layers.length) return null
-        const layers = sm.layers || []
+        const layers = sm.layers
         const boundaries = sm.truth_boundaries || {}
         const summary = sm.summary || {}
 
-        // Group layers by role for display
-        const active = layers.filter(l => l.role === 'active')
-        const producers = layers.filter(l => l.kind === 'producer')
+        // Primary axis: visibility × role
+        const visible = layers.filter(l => l.visibility === 'visible' || l.visibility === 'mixed')
+        const internalOnly = layers.filter(l => l.visibility === 'internal-only' && l.role !== 'groundwork-only')
         const groundwork = layers.filter(l => l.role === 'groundwork-only')
-        const internalOnly = layers.filter(l => l.visibility === 'internal-only' && l.kind !== 'producer' && l.role !== 'groundwork-only')
 
-        // Group active by kind
-        const activeByKind = {}
-        active.forEach(l => {
-          const k = l.kind || 'other'
-          if (!activeByKind[k]) activeByKind[k] = []
-          activeByKind[k].push(l)
-        })
-
-        const roleColor = (role) => {
-          if (role === 'active') return 'var(--success, #22c55e)'
-          if (role === 'cooling') return 'var(--warning, #e2a308)'
-          if (role === 'idle') return 'var(--muted, #888)'
-          if (role === 'unavailable') return 'var(--danger, #ef4444)'
-          if (role === 'groundwork-only') return 'var(--muted, #888)'
-          return 'var(--muted, #888)'
+        const roleIndicator = (role) => {
+          if (role === 'active') return { symbol: '\u25CF', color: 'var(--success, #22c55e)' }
+          if (role === 'cooling') return { symbol: '\u25CF', color: 'var(--warning, #e2a308)' }
+          if (role === 'idle') return { symbol: '\u25CB', color: 'var(--muted, #888)' }
+          if (role === 'gated') return { symbol: '\u25CB', color: 'var(--warning, #e2a308)' }
+          if (role === 'unavailable') return { symbol: '\u25CF', color: 'var(--danger, #ef4444)' }
+          return { symbol: '\u25CB', color: 'var(--muted, #888)' }
         }
 
-        const kindLabel = (kind) => {
-          const labels = { capability: 'cap', permission: 'perm', producer: 'prod', memory: 'mem', identity: 'id', orchestration: 'orch', groundwork: 'gw' }
-          return labels[kind] || kind
+        const layerPill = (layer) => {
+          const ri = roleIndicator(layer.role)
+          return (
+            <button
+              key={layer.id}
+              className="mc-list-row"
+              style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 5, width: 'auto', minWidth: 0 }}
+              onClick={() => onOpenItem(`Layer: ${layer.label}`, layer)}
+              title={`${layer.kind} · ${layer.role} · ${layer.truth}`}
+            >
+              <span style={{ color: ri.color, fontWeight: 600 }}>{ri.symbol}</span>
+              <span>{layer.label}</span>
+              {layer.role !== 'active' && <span style={{ opacity: 0.5, fontSize: '0.85em' }}>{layer.role}</span>}
+            </button>
+          )
         }
 
         return (
@@ -2115,69 +2118,39 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <div className="panel-header">
                 <div>
                   <h3>Runtime Self-Model</h3>
-                  <p className="muted">{summary.total_layers || 0} layers · {summary.active_count || 0} active · {groundwork.length} groundwork</p>
+                  <p className="muted">{visible.length} visible · {internalOnly.length} internal-only · {groundwork.length} groundwork</p>
                 </div>
                 <span className="mc-section-hint">Runtime truth</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '0 12px 12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px 12px' }}>
 
-                {/* Active layers by kind */}
-                {Object.keys(activeByKind).length > 0 && (
+                {visible.length > 0 && (
                   <div>
-                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active layers</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {Object.entries(activeByKind).map(([kind, items]) =>
-                        items.map(layer => (
-                          <button
-                            key={layer.id}
-                            className="mc-list-row"
-                            style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 6, width: 'auto', minWidth: 0 }}
-                            onClick={() => onOpenItem(`Layer: ${layer.label}`, layer)}
-                          >
-                            <span style={{ color: roleColor(layer.role), fontWeight: 600 }}>●</span>
-                            <span>{layer.label}</span>
-                            <span style={{ opacity: 0.5, fontSize: '0.85em' }}>{kindLabel(kind)}</span>
-                          </button>
-                        ))
-                      )}
-                    </div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Visible</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>{visible.map(layerPill)}</div>
                   </div>
                 )}
 
-                {/* Producer states */}
-                {producers.length > 0 && (
+                {internalOnly.length > 0 && (
                   <div>
-                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Producers</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {producers.map(p => (
-                        <button
-                          key={p.id}
-                          className="mc-list-row"
-                          style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 6, width: 'auto', minWidth: 0 }}
-                          onClick={() => onOpenItem(`Producer: ${p.label}`, p)}
-                        >
-                          <span style={{ color: roleColor(p.role), fontWeight: 600 }}>●</span>
-                          <span>{p.label}</span>
-                          <span style={{ opacity: 0.5, fontSize: '0.85em' }}>{p.role}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Internal-only</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>{internalOnly.map(layerPill)}</div>
                   </div>
                 )}
 
-                {/* Groundwork layers */}
                 {groundwork.length > 0 && (
                   <div>
-                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Groundwork (candidate only)</div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Groundwork</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                       {groundwork.map(g => (
                         <button
                           key={g.id}
                           className="mc-list-row now-card-muted"
-                          style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 6, width: 'auto', minWidth: 0 }}
+                          style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 5, width: 'auto', minWidth: 0 }}
                           onClick={() => onOpenItem(`Groundwork: ${g.label}`, g)}
+                          title={g.detail || g.kind}
                         >
-                          <span style={{ opacity: 0.4 }}>○</span>
+                          <span style={{ opacity: 0.4 }}>{'\u25CB'}</span>
                           <span>{g.label}</span>
                         </button>
                       ))}
@@ -2185,34 +2158,22 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   </div>
                 )}
 
-                {/* Truth boundaries — compact */}
-                <div>
-                  <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Truth boundaries</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '0.78em', opacity: 0.75 }}>
-                    {Object.entries(boundaries).map(([key, value]) => (
-                      <button
-                        key={key}
-                        className="mc-list-row"
-                        style={{ display: 'inline-flex', padding: '2px 7px', borderRadius: 3, fontSize: '0.9em', width: 'auto', minWidth: 0 }}
-                        onClick={() => onOpenItem(`Truth Boundary: ${key}`, { boundary: key, description: value, ...sm })}
-                        title={value}
-                      >
-                        {key.replace(/_/g, ' ').replace(/vs/g, '≠')}
-                      </button>
-                    ))}
-                  </div>
+                <div style={{ fontSize: '0.78em', opacity: 0.6, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {Object.entries(boundaries).map(([key, value]) => (
+                    <span key={key} title={value} style={{ cursor: 'help' }}>
+                      {key.replace(/_/g, ' ').replace(/vs/g, '\u2260')}
+                    </span>
+                  ))}
                 </div>
 
-                {/* Full model drilldown */}
                 <button
                   className="mc-list-row"
-                  style={{ marginTop: 2 }}
                   onClick={() => onOpenItem('Runtime Self-Model (full)', sm)}
                 >
                   <div>
-                    <strong>Full self-model snapshot</strong>
+                    <strong>Full snapshot</strong>
                     <span style={{ fontSize: '0.82em', opacity: 0.85 }}>
-                      {summary.total_layers || 0} layers · {Object.keys(summary.by_kind || {}).length} kinds · {Object.keys(boundaries).length} boundaries
+                      {summary.total_layers || 0} layers · {Object.keys(boundaries).length} boundaries
                     </span>
                   </div>
                   <div className="mc-row-meta">

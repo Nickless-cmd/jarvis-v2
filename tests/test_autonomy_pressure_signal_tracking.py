@@ -478,3 +478,82 @@ def test_autonomy_question_pressure_forms_from_initiative_loop_continuity_withou
     assert question_pressure["autonomy_pressure_continuity_mode"] == "initiative-loop-continuity"
     assert question_pressure["autonomy_pressure_weight"] in {"medium", "high"}
     assert question_pressure["autonomy_pressure_state"] in {"question-emerging", "question-worthy"}
+
+
+def test_autonomy_question_pressure_forms_from_strong_initiative_with_open_loops_without_regulation_or_awareness(
+    isolated_runtime,
+) -> None:
+    """When initiative tension is medium+ and open loops exist, question-pressure
+    should form even without regulation or awareness — the 3-of-4 threshold
+    allows initiative intensity to substitute for the missing runtime support."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.autonomy_pressure_signal_tracking
+
+    _insert_open_loop(db)
+    _insert_initiative_tension(db, intensity="medium")
+
+    result = tracking.track_runtime_autonomy_pressure_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_autonomy_pressure_signal_surface(limit=8)
+    types = {item["autonomy_pressure_type"] for item in surface["items"]}
+
+    assert "initiative-pressure" in types
+    assert "question-pressure" in types
+    question_pressure = next(
+        item for item in surface["items"]
+        if item["autonomy_pressure_type"] == "question-pressure"
+    )
+    assert question_pressure["autonomy_pressure_continuity_mode"] == "initiative-loop-continuity"
+    assert question_pressure["autonomy_pressure_weight"] in {"medium", "high"}
+    assert question_pressure["authority"] == "non-authoritative"
+    assert question_pressure["planner_authority_state"] == "not-planner-authority"
+
+
+def _insert_low_initiative_tension(db) -> None:
+    """Insert initiative tension with retention-pull type, which produces
+    tension_level=low in _with_surface_view (unlike unresolved which gives medium)."""
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_private_initiative_tension_signal(
+        signal_id=f"initiative-low-{uuid4().hex}",
+        signal_type="retention-pull",
+        canonical_key="private-initiative-tension:retention-pull:low-test",
+        status="active",
+        title="Private initiative tension support: Low intensity test",
+        summary="Bounded initiative tension is carrying a light pull.",
+        rationale="Validation",
+        source_kind="runtime-derived-support",
+        confidence="low",
+        evidence_summary="low initiative evidence",
+        support_summary="tension-level=low | source-anchor=low-anchor",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation",
+        run_id="test-run",
+        session_id="test-session",
+    )
+
+
+def test_autonomy_question_pressure_does_not_form_from_low_initiative_without_runtime_support(
+    isolated_runtime,
+) -> None:
+    """Low-intensity initiative tension (retention-pull) with open loops but
+    without regulation or awareness should NOT produce question-pressure."""
+    db = isolated_runtime.db
+    tracking = isolated_runtime.autonomy_pressure_signal_tracking
+
+    _insert_open_loop(db)
+    _insert_low_initiative_tension(db)
+
+    result = tracking.track_runtime_autonomy_pressure_signals_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    surface = tracking.build_runtime_autonomy_pressure_signal_surface(limit=8)
+    types = {item["autonomy_pressure_type"] for item in surface["items"]}
+
+    assert "initiative-pressure" in types
+    assert "question-pressure" not in types

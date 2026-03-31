@@ -380,6 +380,12 @@ def build_visible_chat_prompt_assembly(
         parts.append(transcript)
         derived_inputs.append("recent transcript slice")
 
+    if not compact:
+        cognitive_frame = _cognitive_frame_section()
+        if cognitive_frame:
+            parts.append(cognitive_frame)
+            derived_inputs.append("bounded cognitive frame (mode, salience, affordances)")
+
     return PromptAssembly(
         mode="visible_chat",
         text="\n\n".join(part for part in parts if part).strip(),
@@ -492,6 +498,11 @@ def build_heartbeat_prompt_assembly(
     if self_knowledge:
         parts.append(self_knowledge)
         derived_inputs.append("bounded runtime self-knowledge map")
+
+    cognitive_frame = _cognitive_frame_section()
+    if cognitive_frame:
+        parts.append(cognitive_frame)
+        derived_inputs.append("bounded cognitive frame (mode, salience, affordances)")
 
     return PromptAssembly(
         mode="heartbeat",
@@ -1274,6 +1285,17 @@ def _heartbeat_liveness_summary(context: dict[str, object]) -> str | None:
             f"- summary={liveness.get('liveness_summary') or 'none'}",
         ]
     )
+
+
+def _cognitive_frame_section() -> str | None:
+    """Build a compact cognitive frame section for prompt inclusion."""
+    try:
+        from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+            build_cognitive_frame_prompt_section,
+        )
+        return build_cognitive_frame_prompt_section()
+    except Exception:
+        return None
 
 
 def _heartbeat_self_knowledge_section() -> str | None:

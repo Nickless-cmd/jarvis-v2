@@ -197,6 +197,9 @@ from apps.api.jarvis_api.services.session_distillation import (
 from apps.api.jarvis_api.services.runtime_self_knowledge import (
     build_runtime_self_knowledge_map,
 )
+from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    build_cognitive_frame,
+)
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -505,6 +508,7 @@ def mc_jarvis() -> dict:
     private_brain = build_private_brain_surface()
     session_distillation = build_session_distillation_surface()
     self_knowledge = build_runtime_self_knowledge_map()
+    cognitive_frame = build_cognitive_frame()
 
     return {
         "summary": {
@@ -622,7 +626,13 @@ def mc_jarvis() -> dict:
             "session_distillation": session_distillation,
         },
         "self_knowledge": self_knowledge,
+        "cognitive_frame": cognitive_frame,
     }
+
+
+@router.get("/cognitive-frame")
+def mc_cognitive_frame() -> dict:
+    return build_cognitive_frame()
 
 
 @router.get("/self-knowledge")

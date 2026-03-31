@@ -694,10 +694,34 @@ def _initiative_loop_question_support(
 
     open_count = int(open_summary.get("open_count") or 0)
     initiative_active = int(initiative_summary.get("active_count") or 0) > 0
+    initiative_intensity = str(initiative_summary.get("current_intensity") or "low")
     regulation_active = bool(regulation.get("active"))
     awareness_constrained = int(awareness_summary.get("constrained_count") or 0) > 0
     awareness_ready = int(awareness_summary.get("active_count") or 0) > 0 and not awareness_constrained
-    if open_count <= 0 or not initiative_active or not regulation_active or not awareness_ready:
+
+    # Core requirement: initiative tension must be active.
+    # Then we need open loops + at least one of regulation/awareness.
+    # Previously all four were required; now we accept 3-of-4 alignment
+    # when initiative intensity is at least medium.
+    has_runtime_support = regulation_active or awareness_ready
+    has_strong_initiative = initiative_active and initiative_intensity in {"medium", "high"}
+    if not initiative_active or (open_count <= 0 and not has_strong_initiative):
+        return {
+            "supported": False,
+            "mode": "insufficient-continuity",
+            "weight": "low",
+            "source_anchor": "",
+            "awareness_state": "not-ready",
+        }
+    if open_count <= 0 and not has_runtime_support:
+        return {
+            "supported": False,
+            "mode": "insufficient-continuity",
+            "weight": "low",
+            "source_anchor": "",
+            "awareness_state": "not-ready",
+        }
+    if open_count > 0 and not has_runtime_support and not has_strong_initiative:
         return {
             "supported": False,
             "mode": "insufficient-continuity",
@@ -721,7 +745,8 @@ def _initiative_loop_question_support(
         loyalty_summary.get("current_weight") or "low"
     ) in {"medium", "high"}
 
-    weight = "high" if (witness_carried or chronicle_carried or attachment_held or loyalty_held or open_count > 1) else "medium"
+    weight = "high" if (witness_carried or chronicle_carried or attachment_held or loyalty_held or open_count > 1 or initiative_intensity == "high") else "medium"
+    effective_awareness = "ready" if awareness_ready else ("regulated" if regulation_active else "tension-driven")
     return {
         "supported": True,
         "mode": "initiative-loop-continuity",
@@ -736,7 +761,7 @@ def _initiative_loop_question_support(
             _source_anchor(attachment, fallback="attachment-topology"),
             _source_anchor(loyalty, fallback="loyalty-gradient"),
         ),
-        "awareness_state": "ready",
+        "awareness_state": effective_awareness,
     }
 
 

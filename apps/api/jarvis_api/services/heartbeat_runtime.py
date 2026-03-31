@@ -577,21 +577,13 @@ def _run_heartbeat_tick_locked(
             },
         )
 
-    # Run private brain continuity motor as bounded side-effect of heartbeat
+    # Run non-visible inner producers through the internal cadence layer.
+    # Cadence layer evaluates due/cooling/blocked state for each producer
+    # and dispatches in priority order. Replaces loose stacked side-effects.
     try:
-        from apps.api.jarvis_api.services.session_distillation import (
-            run_private_brain_continuity,
+        from apps.api.jarvis_api.services.internal_cadence import (
+            run_cadence_tick_with_bootstrap,
         )
-        run_private_brain_continuity(trigger="heartbeat")
-    except Exception:
-        pass  # continuity motor failure must not block heartbeat
-
-    # Run bounded inner witness daemon as side-effect of heartbeat
-    try:
-        from apps.api.jarvis_api.services.witness_signal_tracking import (
-            run_witness_daemon,
-        )
-        # Find last visible activity timestamp from recent events
         last_visible_at = ""
         try:
             recent = event_bus.recent(limit=20)
@@ -601,26 +593,12 @@ def _run_heartbeat_tick_locked(
                     break
         except Exception:
             pass
-        run_witness_daemon(trigger="heartbeat-idle", last_visible_at=last_visible_at)
-    except Exception:
-        pass  # witness daemon failure must not block heartbeat
-
-    # Run bounded inner voice daemon as side-effect of heartbeat
-    try:
-        from apps.api.jarvis_api.services.inner_voice_daemon import (
-            run_inner_voice_daemon,
-        )
-        from apps.api.jarvis_api.services.witness_signal_tracking import (
-            get_witness_daemon_state,
-        )
-        witness_state = get_witness_daemon_state()
-        run_inner_voice_daemon(
-            trigger="heartbeat-idle",
-            last_visible_at=last_visible_at,
-            witness_daemon_last_run_at=str(witness_state.get("last_run_at") or ""),
+        run_cadence_tick_with_bootstrap(
+            trigger="heartbeat",
+            last_visible_at_iso=last_visible_at,
         )
     except Exception:
-        pass  # inner voice daemon failure must not block heartbeat
+        pass  # cadence layer failure must not block heartbeat
 
     return HeartbeatExecutionResult(
         state=heartbeat_runtime_surface(name=name)["state"],

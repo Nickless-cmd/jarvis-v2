@@ -277,9 +277,7 @@ def build_visible_chat_prompt_assembly(
     )
 
     capability_truth = _visible_capability_truth_instruction(compact=compact)
-    if capability_truth:
-        parts.append(capability_truth)
-        derived_inputs.append("runtime capability and safety truth")
+    # capability_truth is added via budget-controlled section below
 
     visible_rules = _visible_chat_rules_instruction(workspace_dir=workspace_dir)
     if visible_rules:
@@ -341,61 +339,93 @@ def build_visible_chat_prompt_assembly(
                 parts.append(section)
                 conditional_files.append(filename)
 
-    session_continuity = _visible_session_continuity_instruction()
-    if session_continuity and relevance.include_continuity:
-        parts.append(session_continuity)
-        derived_inputs.append("bounded session continuity")
+    # --- Budget-controlled runtime sections ---
+    # Workspace files (SOUL, IDENTITY, memory, rules, transcript) are
+    # assembled above outside budget control — they are foundational.
+    # Runtime-derived sections go through the attention budget selector.
 
-    runtime_self_report = _runtime_self_report_instruction(
+    budget_profile = "visible_compact" if compact else "visible_full"
+
+    continuity_content = (
+        _visible_session_continuity_instruction()
+        if relevance.include_continuity else None
+    )
+
+    self_report_content = _runtime_self_report_instruction(
         user_message=user_message,
         runtime_self_report_context=runtime_self_report_context or {},
     )
-    if runtime_self_report:
-        parts.append(runtime_self_report)
-        derived_inputs.append("grounded runtime self-report support")
 
-    support_sections = _visible_support_signal_sections(
+    support_raw = _visible_support_signal_sections(
         compact=compact,
         include=relevance.include_support_signals,
     )
-    if support_sections:
-        parts.extend(support_sections)
-        derived_inputs.append("bounded runtime support signals")
+    support_content = "\n\n".join(support_raw) if support_raw else None
 
-    inner_visible_prompt_bridge = _build_inner_visible_prompt_bridge_decision(
+    bridge_decision = _build_inner_visible_prompt_bridge_decision(
         user_message=user_message,
         mode="visible_chat",
         compact=compact,
         relevance=relevance,
     )
-    if inner_visible_prompt_bridge.included and inner_visible_prompt_bridge.line:
-        parts.append(inner_visible_prompt_bridge.line)
-        derived_inputs.append("bounded inner visible prompt bridge")
+    bridge_content = (
+        bridge_decision.line
+        if bridge_decision.included and bridge_decision.line else None
+    )
 
-    transcript = _recent_transcript_section(
+    if compact:
+        frame_content = _micro_cognitive_frame_section()
+    else:
+        frame_content = _cognitive_frame_section()
+
+    transcript_content = _recent_transcript_section(
         session_id,
         limit=6 if compact else 8,
         include=relevance.include_transcript,
     )
-    if transcript:
-        parts.append(transcript)
-        derived_inputs.append("recent transcript slice")
 
-    if compact:
-        micro_frame = _micro_cognitive_frame_section()
-        if micro_frame:
-            parts.append(micro_frame)
-            derived_inputs.append("micro cognitive frame (compact)")
-    else:
-        cognitive_frame = _cognitive_frame_section()
-        if cognitive_frame:
-            parts.append(cognitive_frame)
-            derived_inputs.append("bounded cognitive frame (mode, salience, affordances)")
+    raw_sections = {
+        "capability_truth": capability_truth,
+        "cognitive_frame": frame_content,
+        "self_report": self_report_content,
+        "inner_visible_bridge": bridge_content,
+        "support_signals": support_content,
+        "continuity": continuity_content,
+        # These are heartbeat-only; supply None so budget correctly omits them
+        "private_brain": None,
+        "self_knowledge": None,
+        "liveness": None,
+    }
 
-    attention_trace = _build_attention_trace(
-        profile="visible_compact" if compact else "visible_full",
-        sections_included=derived_inputs,
+    selected, attention_trace_obj = _run_budget_selection(
+        profile=budget_profile,
+        sections=raw_sections,
     )
+
+    # Assemble budget-selected sections in priority order
+    _section_labels = {
+        "capability_truth": "runtime capability and safety truth",
+        "cognitive_frame": (
+            "micro cognitive frame (compact)" if compact
+            else "bounded cognitive frame (mode, salience, affordances)"
+        ),
+        "self_report": "grounded runtime self-report support",
+        "inner_visible_bridge": "bounded inner visible prompt bridge",
+        "support_signals": "bounded runtime support signals",
+        "continuity": "bounded session continuity",
+    }
+    for sec_name in ("capability_truth", "cognitive_frame", "self_report",
+                      "inner_visible_bridge", "support_signals", "continuity"):
+        content = selected.get(sec_name)
+        if content:
+            parts.append(content)
+            label = _section_labels.get(sec_name, sec_name)
+            derived_inputs.append(label)
+
+    # Transcript is always outside budget (it's user conversation, not runtime)
+    if transcript_content:
+        parts.append(transcript_content)
+        derived_inputs.append("recent transcript slice")
 
     return PromptAssembly(
         mode="visible_chat",
@@ -404,7 +434,7 @@ def build_visible_chat_prompt_assembly(
         conditional_files=conditional_files,
         derived_inputs=derived_inputs,
         excluded_files=excluded_files,
-        attention_trace=attention_trace,
+        attention_trace=attention_trace_obj.summary(),
     )
 
 
@@ -481,45 +511,46 @@ def build_heartbeat_prompt_assembly(
             elif memory_selection.fallback_used:
                 derived_inputs.append("heuristic memory entry selection fallback")
 
+    # Due summary is always included (scheduling truth, not runtime-derived)
     due_summary = _heartbeat_due_summary(heartbeat_context or {})
     if due_summary:
         parts.append(due_summary)
         derived_inputs.append("due schedules and open-loop summary")
 
-    capability_truth = _heartbeat_capability_truth_instruction(heartbeat_context or {})
-    if capability_truth:
-        parts.append(capability_truth)
-        derived_inputs.append("compact capability truth")
+    # --- Budget-controlled runtime sections ---
+    hb_ctx = heartbeat_context or {}
+    raw_sections = {
+        "capability_truth": _heartbeat_capability_truth_instruction(hb_ctx),
+        "continuity": _heartbeat_continuity_summary(hb_ctx),
+        "liveness": _heartbeat_liveness_summary(hb_ctx),
+        "private_brain": _heartbeat_private_brain_section(hb_ctx),
+        "self_knowledge": _heartbeat_self_knowledge_section(),
+        "cognitive_frame": _cognitive_frame_section(),
+        # These are visible-only; supply None for correct budget omission
+        "self_report": None,
+        "support_signals": None,
+        "inner_visible_bridge": None,
+    }
 
-    continuity = _heartbeat_continuity_summary(heartbeat_context or {})
-    if continuity:
-        parts.append(continuity)
-        derived_inputs.append("optional compact continuity summary")
-
-    liveness = _heartbeat_liveness_summary(heartbeat_context or {})
-    if liveness:
-        parts.append(liveness)
-        derived_inputs.append("bounded heartbeat liveness support")
-
-    brain_section = _heartbeat_private_brain_section(heartbeat_context or {})
-    if brain_section:
-        parts.append(brain_section)
-        derived_inputs.append("bounded private brain continuity context")
-
-    self_knowledge = _heartbeat_self_knowledge_section()
-    if self_knowledge:
-        parts.append(self_knowledge)
-        derived_inputs.append("bounded runtime self-knowledge map")
-
-    cognitive_frame = _cognitive_frame_section()
-    if cognitive_frame:
-        parts.append(cognitive_frame)
-        derived_inputs.append("bounded cognitive frame (mode, salience, affordances)")
-
-    attention_trace = _build_attention_trace(
+    selected, attention_trace_obj = _run_budget_selection(
         profile="heartbeat",
-        sections_included=derived_inputs,
+        sections=raw_sections,
     )
+
+    _hb_labels = {
+        "capability_truth": "compact capability truth",
+        "continuity": "optional compact continuity summary",
+        "liveness": "bounded heartbeat liveness support",
+        "private_brain": "bounded private brain continuity context",
+        "self_knowledge": "bounded runtime self-knowledge map",
+        "cognitive_frame": "bounded cognitive frame (mode, salience, affordances)",
+    }
+    for sec_name in ("capability_truth", "cognitive_frame", "private_brain",
+                      "self_knowledge", "continuity", "liveness"):
+        content = selected.get(sec_name)
+        if content:
+            parts.append(content)
+            derived_inputs.append(_hb_labels.get(sec_name, sec_name))
 
     return PromptAssembly(
         mode="heartbeat",
@@ -528,7 +559,7 @@ def build_heartbeat_prompt_assembly(
         conditional_files=conditional_files,
         derived_inputs=derived_inputs,
         excluded_files=excluded_files,
-        attention_trace=attention_trace,
+        attention_trace=attention_trace_obj.summary(),
     )
 
 
@@ -1325,46 +1356,40 @@ def _micro_cognitive_frame_section() -> str | None:
         return None
 
 
-def _build_attention_trace(
+def _run_budget_selection(
     *,
     profile: str,
-    sections_included: list[str],
-) -> dict[str, object]:
-    """Build an attention / omission trace for observability."""
+    sections: dict[str, str | None],
+) -> tuple[dict[str, str | None], "AttentionTrace"]:
+    """Run budget-controlled section selection.
+
+    Returns (selected_sections, trace).
+    Falls back to passthrough if budget module is unavailable.
+    """
     try:
-        from apps.api.jarvis_api.services.attention_budget import get_attention_budget
+        from apps.api.jarvis_api.services.attention_budget import (
+            get_attention_budget,
+            select_sections_under_budget,
+            AttentionTrace,
+        )
         budget = get_attention_budget(profile)
+        return select_sections_under_budget(budget=budget, sections=sections)
     except Exception:
-        return {"profile": profile, "error": "budget-unavailable"}
-
-    # Map of known section budget names to their budget objects
-    section_budgets = {
-        "cognitive_frame": budget.cognitive_frame,
-        "private_brain": budget.private_brain,
-        "self_knowledge": budget.self_knowledge,
-        "self_report": budget.self_report,
-        "support_signals": budget.support_signals,
-        "inner_visible_bridge": budget.inner_visible_bridge,
-        "continuity": budget.continuity,
-        "liveness": budget.liveness,
-        "capability_truth": budget.capability_truth,
-    }
-
-    included = []
-    omitted = []
-    for name, sb in sorted(section_budgets.items(), key=lambda x: x[1].priority):
-        if sb.max_chars > 0:
-            included.append({"name": name, "budget_chars": sb.max_chars, "priority": sb.priority})
-        else:
-            omitted.append({"name": name, "reason": f"zero-budget (priority={sb.priority})"})
-
-    return {
-        "profile": profile,
-        "total_char_target": budget.total_char_target,
-        "sections_with_budget": [s["name"] for s in included],
-        "sections_omitted_by_budget": [s["name"] for s in omitted],
-        "derived_inputs_count": len(sections_included),
-    }
+        # Fallback: include everything as-is, no budget enforcement
+        from apps.api.jarvis_api.services.attention_budget import (
+            AttentionTrace,
+            SectionResult,
+        )
+        trace = AttentionTrace(profile=profile, total_char_target=0)
+        for name, content in sections.items():
+            trace.sections.append(SectionResult(
+                name=name,
+                included=content is not None and bool(content),
+                chars_used=len(content) if content else 0,
+                omission_reason="budget-fallback" if not content else "",
+            ))
+            trace.total_chars_used += len(content) if content else 0
+        return sections, trace
 
 
 def _heartbeat_self_knowledge_section() -> str | None:

@@ -245,3 +245,120 @@ def test_micro_cognitive_frame_returns_none_when_conductor_unavailable(monkeypat
     result = mod.build_micro_cognitive_frame()
     # Result can be None or a string — either is fine
     assert result is None or isinstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# Budget-authoritative prompt assembly integration tests
+# ---------------------------------------------------------------------------
+
+
+def test_run_budget_selection_omits_zero_budget_sections() -> None:
+    """_run_budget_selection must omit sections with zero budget."""
+    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+
+    sections = {
+        "capability_truth": "Capability truth content",
+        "cognitive_frame": "Frame content",
+        "self_report": "Self report content",
+        "private_brain": "Brain content",
+        "self_knowledge": "Knowledge content",
+        "support_signals": "Support content",
+        "inner_visible_bridge": "Bridge content",
+        "continuity": "Continuity content",
+        "liveness": "Liveness content",
+    }
+
+    # Visible compact excludes private_brain, self_knowledge, liveness
+    selected, trace = _run_budget_selection(profile="visible_compact", sections=sections)
+
+    assert selected["private_brain"] is None
+    assert selected["self_knowledge"] is None
+    assert selected["liveness"] is None
+    # Must-include sections remain
+    assert selected["capability_truth"] is not None
+    assert selected["cognitive_frame"] is not None
+
+    summary = trace.summary()
+    assert summary["profile"] == "visible_compact"
+    assert "private_brain" in summary["omitted"]
+    assert "capability_truth" in summary["included"]
+
+
+def test_run_budget_selection_heartbeat_includes_brain_and_knowledge() -> None:
+    """Heartbeat budget must include private brain and self-knowledge."""
+    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+
+    sections = {
+        "capability_truth": "Cap truth",
+        "cognitive_frame": "Frame",
+        "self_report": None,
+        "private_brain": "Brain carry content here",
+        "self_knowledge": "Self-knowledge map content",
+        "support_signals": None,
+        "inner_visible_bridge": None,
+        "continuity": "Continuity summary",
+        "liveness": "Liveness state",
+    }
+
+    selected, trace = _run_budget_selection(profile="heartbeat", sections=sections)
+
+    assert selected["private_brain"] is not None
+    assert selected["self_knowledge"] is not None
+    assert selected["capability_truth"] is not None
+    assert selected["cognitive_frame"] is not None
+    # Visible-only sections remain None
+    assert selected["self_report"] is None
+
+    summary = trace.summary()
+    assert summary["profile"] == "heartbeat"
+    assert "private_brain" in summary["included"]
+
+
+def test_run_budget_selection_trims_large_sections() -> None:
+    """Sections exceeding their budget must be trimmed."""
+    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+
+    # Cognitive frame budget for visible_compact is 180 chars
+    large_frame = "X" * 300
+    sections = {
+        "capability_truth": "Cap truth",
+        "cognitive_frame": large_frame,
+        "self_report": None,
+        "private_brain": None,
+        "self_knowledge": None,
+        "support_signals": None,
+        "inner_visible_bridge": None,
+        "continuity": None,
+        "liveness": None,
+    }
+
+    selected, trace = _run_budget_selection(profile="visible_compact", sections=sections)
+
+    assert selected["cognitive_frame"] is not None
+    assert len(selected["cognitive_frame"]) <= 180
+
+    summary = trace.summary()
+    assert "cognitive_frame" in summary["trimmed"]
+
+
+def test_attention_trace_from_budget_selection_has_real_char_counts() -> None:
+    """The trace from budget selection must have accurate char usage."""
+    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+
+    sections = {
+        "capability_truth": "A" * 50,
+        "cognitive_frame": "B" * 100,
+        "self_report": None,
+        "private_brain": None,
+        "self_knowledge": None,
+        "support_signals": None,
+        "inner_visible_bridge": None,
+        "continuity": None,
+        "liveness": None,
+    }
+
+    _, trace = _run_budget_selection(profile="visible_full", sections=sections)
+
+    summary = trace.summary()
+    assert summary["total_chars_used"] == 150
+    assert summary["char_utilization"] > 0

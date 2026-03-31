@@ -424,6 +424,14 @@ def _run_heartbeat_tick_locked(
         conflict_trace=conflict_trace,
     )
 
+    # --- Execute bounded internal continuation if conflict chose it ---
+    internal_continuation = {"applied": False}
+    if conflict_trace and conflict_trace.outcome == "continue_internal":
+        internal_continuation = _execute_continue_internal(
+            conflict_trace=conflict_trace,
+            trigger=trigger,
+        )
+
     if execution_status == "success" and parse_status == "not-run":
         parse_status = "success"
 
@@ -443,6 +451,8 @@ def _run_heartbeat_tick_locked(
             "parse_status": parse_status,
             "conflict_outcome": conflict_trace.outcome if conflict_trace else "none",
             "conflict_reason": conflict_trace.reason_code if conflict_trace else "",
+            "internal_continuation_applied": internal_continuation.get("applied", False),
+            "internal_continuation_action": internal_continuation.get("action", ""),
         },
     )
     _log_debug(
@@ -2167,6 +2177,59 @@ def _apply_conflict_resolution_to_decision(
         return apply_conflict_resolution(decision=decision, trace=conflict_trace)
     except Exception:
         return decision
+
+
+def _execute_continue_internal(
+    *,
+    conflict_trace: "ConflictTrace",
+    trigger: str,
+) -> dict[str, object]:
+    """Execute a bounded internal continuation when conflict chose continue_internal.
+
+    Runs the private brain continuity motor as a small internal action.
+    Returns an observable result dict.
+    """
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            run_private_brain_continuity,
+        )
+
+        result = run_private_brain_continuity(
+            trigger=f"conflict-internal:{trigger}",
+        )
+
+        action = result.get("action", "skipped")
+        applied = action in {"consolidated"}
+
+        event_bus.publish(
+            "heartbeat.internal_continuation",
+            {
+                "applied": applied,
+                "action": action,
+                "trigger": trigger,
+                "conflict_reason_code": conflict_trace.reason_code,
+                "conflict_dominant_factor": conflict_trace.dominant_factor,
+                "continuity_mode": result.get("continuity_mode", ""),
+                "brain_record_count": result.get("brain_record_count", 0),
+                "reason": result.get("reason", ""),
+            },
+        )
+
+        return {
+            "applied": applied,
+            "action": action,
+            "continuity_mode": result.get("continuity_mode", ""),
+            "brain_record_count": result.get("brain_record_count", 0),
+            "reason": result.get("reason", ""),
+            "record_id": result.get("record", {}).get("record_id", "") if applied else "",
+        }
+    except Exception as exc:
+        _log_debug("internal continuation failed", error=str(exc))
+        return {
+            "applied": False,
+            "action": "error",
+            "reason": str(exc),
+        }
 
 
 def _heartbeat_ping_candidate_ready(*, policy: dict[str, object]) -> bool:

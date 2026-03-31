@@ -283,3 +283,123 @@ def test_apply_defer_downgrades_to_noop() -> None:
     result = apply_conflict_resolution(decision=decision, trace=trace)
     assert result["decision_type"] == "noop"
     assert "conflict-deferred" in result["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Internal continuation execution tests
+# ---------------------------------------------------------------------------
+
+
+def test_execute_continue_internal_calls_brain_continuity(isolated_runtime) -> None:
+    """continue_internal must attempt private brain continuity motor."""
+    from apps.api.jarvis_api.services.heartbeat_runtime import (
+        _execute_continue_internal,
+    )
+
+    trace = ConflictTrace(
+        outcome="continue_internal",
+        reason_code="test-internal",
+        dominant_factor="test",
+    )
+
+    result = _execute_continue_internal(
+        conflict_trace=trace,
+        trigger="test",
+    )
+
+    # Without brain records, it should skip but still report
+    assert result["applied"] is False
+    assert result["action"] == "skipped"
+    assert result["reason"] in {
+        "no-active-brain-records",
+        "insufficient-diversity",
+        "near-duplicate-consolidation",
+    }
+
+
+def test_execute_continue_internal_with_brain_records(isolated_runtime) -> None:
+    """continue_internal with enough brain records should consolidate."""
+    from apps.api.jarvis_api.services.heartbeat_runtime import (
+        _execute_continue_internal,
+    )
+    from apps.api.jarvis_api.services.session_distillation import (
+        insert_private_brain_record,
+    )
+    from datetime import datetime, UTC
+
+    now = datetime.now(UTC).isoformat()
+    # Insert diverse brain records so continuity motor can consolidate
+    for i, rtype in enumerate(["carry", "reflection", "observation"]):
+        insert_private_brain_record(
+            record_id=f"test-brain-{i}",
+            record_type=rtype,
+            layer="private_brain",
+            session_id="test-session",
+            run_id="test-run",
+            focus=f"focus-{rtype}",
+            summary=f"Summary for {rtype} brain record number {i}.",
+            detail=f"Detail for {rtype}",
+            source_signals="test",
+            confidence="medium",
+            created_at=now,
+        )
+
+    trace = ConflictTrace(
+        outcome="continue_internal",
+        reason_code="test-internal-with-data",
+        dominant_factor="test",
+    )
+
+    result = _execute_continue_internal(
+        conflict_trace=trace,
+        trigger="test",
+    )
+
+    assert result["applied"] is True
+    assert result["action"] == "consolidated"
+    assert result["continuity_mode"] != ""
+    assert result["record_id"] != ""
+
+
+def test_stay_quiet_does_not_trigger_internal_continuation() -> None:
+    """stay_quiet should NOT be the same as continue_internal."""
+    trace_quiet = ConflictTrace(outcome="stay_quiet", reason_code="test-quiet")
+    trace_internal = ConflictTrace(outcome="continue_internal", reason_code="test-internal")
+
+    # stay_quiet and continue_internal both become noop in decision
+    decision = {"decision_type": "propose", "reason": "test", "summary": "test"}
+    result_quiet = apply_conflict_resolution(decision=decision, trace=trace_quiet)
+    result_internal = apply_conflict_resolution(decision=decision, trace=trace_internal)
+
+    # Both become noop
+    assert result_quiet["decision_type"] == "noop"
+    assert result_internal["decision_type"] == "noop"
+
+    # But they have different reason markers
+    assert "conflict-resolution" in result_quiet["reason"]
+    assert "conflict-internal" in result_internal["reason"]
+    assert result_quiet["reason"] != result_internal["reason"]
+
+
+def test_continue_internal_observability_fields() -> None:
+    """The internal continuation result must have all required observability fields."""
+    from apps.api.jarvis_api.services.heartbeat_runtime import (
+        _execute_continue_internal,
+    )
+
+    trace = ConflictTrace(
+        outcome="continue_internal",
+        reason_code="test-obs",
+        dominant_factor="test-factor",
+    )
+
+    result = _execute_continue_internal(
+        conflict_trace=trace,
+        trigger="test-obs",
+    )
+
+    # Must have all required fields regardless of whether it applied
+    assert "applied" in result
+    assert "action" in result
+    assert isinstance(result["applied"], bool)
+    assert isinstance(result["action"], str)

@@ -699,6 +699,20 @@ def mc_self_deception_guard() -> dict:
     return {"trace": trace, "active": trace is not None}
 
 
+@router.get("/witness-daemon")
+def mc_witness_daemon() -> dict:
+    """Return the current witness daemon state."""
+    from apps.api.jarvis_api.services.witness_signal_tracking import get_witness_daemon_state
+    return get_witness_daemon_state()
+
+
+@router.get("/inner-voice-daemon")
+def mc_inner_voice_daemon() -> dict:
+    """Return the current inner voice daemon state."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import get_inner_voice_daemon_state
+    return get_inner_voice_daemon_state()
+
+
 @router.get("/self-knowledge")
 def mc_self_knowledge() -> dict:
     return build_runtime_self_knowledge_map()

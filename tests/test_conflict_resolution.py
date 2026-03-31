@@ -1,12 +1,27 @@
 """Tests for bounded conflict resolution — heartbeat initiative arbitration."""
 from __future__ import annotations
 
+import pytest
+
+import apps.api.jarvis_api.services.conflict_resolution as cr_module
 from apps.api.jarvis_api.services.conflict_resolution import (
     ConflictTrace,
+    QuietInitiative,
     resolve_heartbeat_initiative_conflict,
     apply_conflict_resolution,
+    get_quiet_initiative,
     OUTCOMES,
+    _expire_quiet_initiative,
+    _MAX_HOLD_COUNT,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_quiet_initiative():
+    """Reset quiet initiative state between tests."""
+    cr_module._quiet_initiative = QuietInitiative()
+    yield
+    cr_module._quiet_initiative = QuietInitiative()
 
 
 # ---------------------------------------------------------------------------
@@ -403,3 +418,213 @@ def test_continue_internal_observability_fields() -> None:
     assert "action" in result
     assert isinstance(result["applied"], bool)
     assert isinstance(result["action"], str)
+
+
+# ---------------------------------------------------------------------------
+# Quiet initiative tests
+# ---------------------------------------------------------------------------
+
+
+def test_low_liveness_with_backing_starts_quiet_hold() -> None:
+    """A propose with low liveness but backing signals should start quiet hold.
+    Gate send_permission must not be 'not-granted' to avoid Rule 2 interception."""
+    trace = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=None,  # No gate — backing comes from autonomy + loops
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+    assert trace.outcome == "quiet_hold"
+    assert trace.reason_code == "quiet-hold-started"
+
+    qi = get_quiet_initiative()
+    assert qi["active"] is True
+    assert qi["state"] == "holding"
+    assert qi["hold_count"] == 1
+
+
+def test_low_liveness_without_backing_stays_quiet() -> None:
+    """A propose with low liveness and no backing should stay quiet, not hold."""
+    trace = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="quiet", pressure="low", score=2),
+        question_gate=None,
+        autonomy_pressure=None,
+        open_loops=None,
+        policy_allow_propose=True,
+    )
+    assert trace.outcome == "stay_quiet"
+    assert trace.reason_code == "liveness-below-threshold"
+
+    qi = get_quiet_initiative()
+    assert qi["active"] is False
+
+
+def test_quiet_hold_continues_across_ticks() -> None:
+    """Repeated resolves with same backing should continue the hold."""
+    # First tick — starts hold
+    resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+    assert get_quiet_initiative()["hold_count"] == 1
+
+    # Second tick — continues hold
+    trace2 = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+    assert trace2.outcome == "quiet_hold"
+    assert trace2.reason_code == "quiet-hold-continue"
+    assert get_quiet_initiative()["hold_count"] == 2
+
+
+def test_quiet_hold_promotes_when_liveness_improves() -> None:
+    """Quiet hold should promote to ask_user when liveness improves."""
+    # Start hold (no gate to avoid Rule 2)
+    resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+    assert get_quiet_initiative()["active"] is True
+
+    # Liveness improves — promote
+    trace2 = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="alive-pressure", pressure="medium", score=7),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+    assert trace2.outcome == "ask_user"
+    assert trace2.reason_code == "quiet-hold-promoted"
+    assert get_quiet_initiative()["state"] == "promoted"
+    assert get_quiet_initiative()["active"] is False
+
+
+def test_quiet_hold_expires_after_max_holds() -> None:
+    """Quiet hold should expire after _MAX_HOLD_COUNT holds."""
+    for _ in range(_MAX_HOLD_COUNT):
+        resolve_heartbeat_initiative_conflict(
+            decision_type="propose",
+            liveness=_liveness(state="watchful", pressure="low", score=3),
+            question_gate=None,
+            autonomy_pressure=_autonomy(current_state="initiative-held"),
+            open_loops=_loops(open_count=2),
+            policy_allow_propose=True,
+        )
+
+    # Next tick should expire
+    trace = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+    assert trace.outcome == "stay_quiet"
+    assert trace.reason_code == "quiet-hold-expired"
+    assert get_quiet_initiative()["state"] == "max-holds-reached"
+
+
+def test_quiet_hold_does_not_bypass_policy() -> None:
+    """Quiet hold cannot bypass policy gate."""
+    # Start a hold first (no gate to avoid Rule 2)
+    resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+    assert get_quiet_initiative()["active"] is True
+
+    # Policy now forbids — should defer and expire hold
+    trace = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="alive-pressure", pressure="medium", score=7),
+        question_gate=None,
+        autonomy_pressure=None,
+        open_loops=None,
+        policy_allow_propose=False,
+        policy_allow_ping=False,
+    )
+    assert trace.outcome == "defer"
+    assert trace.reason_code == "policy-blocked"
+    assert get_quiet_initiative()["state"] == "policy-blocked"
+
+
+def test_quiet_hold_does_not_bypass_question_gate() -> None:
+    """Quiet hold cannot bypass question gate send permission."""
+    # Start a hold
+    resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=_gate(active_count=1),
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=1),
+        policy_allow_propose=True,
+    )
+
+    # Gate active but send not granted — should go to continue_internal, not ask_user
+    trace = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="alive-pressure", pressure="medium", score=7),
+        question_gate=_gate(active_count=1, send_permission="not-granted"),
+        autonomy_pressure=_autonomy(current_state="question-worthy"),
+        open_loops=_loops(open_count=1),
+        policy_allow_propose=True,
+    )
+    assert trace.outcome == "continue_internal"
+    assert trace.reason_code == "gate-active-send-not-granted"
+
+
+def test_apply_quiet_hold_becomes_noop() -> None:
+    """quiet_hold outcome should become noop with conflict-quiet-hold reason."""
+    decision = {"decision_type": "propose", "reason": "test", "summary": "test"}
+    trace = ConflictTrace(outcome="quiet_hold", reason_code="test-hold")
+    result = apply_conflict_resolution(decision=decision, trace=trace)
+    assert result["decision_type"] == "noop"
+    assert "conflict-quiet-hold" in result["reason"]
+
+
+def test_quiet_initiative_trace_shows_in_conflict_trace() -> None:
+    """Conflict trace input_snapshot should show quiet_hold state."""
+    # Start a hold (no gate to avoid Rule 2)
+    resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+
+    # Next resolve should show quiet hold in input snapshot
+    trace2 = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="watchful", pressure="low", score=3),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=2),
+        policy_allow_propose=True,
+    )
+    assert trace2.input_snapshot["quiet_hold_active"] is True
+    assert trace2.input_snapshot["quiet_hold_count"] >= 1

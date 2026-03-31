@@ -2142,6 +2142,9 @@ def _run_bounded_conflict_resolution(
         )
         set_last_conflict_trace(trace)
 
+        from apps.api.jarvis_api.services.conflict_resolution import get_quiet_initiative
+        qi = get_quiet_initiative()
+
         event_bus.publish(
             "heartbeat.conflict_resolved",
             {
@@ -2150,6 +2153,9 @@ def _run_bounded_conflict_resolution(
                 "reason_code": trace.reason_code,
                 "competing_factors_count": len(trace.competing_factors),
                 "blocked_by": trace.blocked_by,
+                "quiet_initiative_active": qi.get("active", False),
+                "quiet_initiative_state": qi.get("state", ""),
+                "quiet_initiative_hold_count": qi.get("hold_count", 0),
             },
         )
         return trace

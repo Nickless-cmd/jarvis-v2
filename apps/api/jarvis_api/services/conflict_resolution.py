@@ -15,13 +15,14 @@ Design constraints:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, UTC
 
 
 # ---------------------------------------------------------------------------
 # Outcome types
 # ---------------------------------------------------------------------------
 
-OUTCOMES = frozenset({"ask_user", "stay_quiet", "continue_internal", "defer"})
+OUTCOMES = frozenset({"ask_user", "stay_quiet", "continue_internal", "defer", "quiet_hold"})
 
 
 @dataclass(slots=True)
@@ -49,6 +50,98 @@ class ConflictTrace:
 
 
 # ---------------------------------------------------------------------------
+# Quiet Initiative — bounded stille modning af user-facing impulser
+# ---------------------------------------------------------------------------
+
+_MAX_HOLD_COUNT = 4      # Max heartbeat ticks before expiry
+_PROMOTE_SCORE = 6       # Liveness score needed for quiet→ask_user promotion
+
+
+@dataclass(slots=True)
+class QuietInitiative:
+    """A quietly held user-facing initiative under maturation."""
+    active: bool = False
+    focus: str = ""               # What the initiative is about
+    reason_code: str = ""         # Why it was held quiet
+    dominant_factor: str = ""     # Original dominant factor
+    hold_count: int = 0           # How many ticks it has been held
+    created_at: str = ""
+    last_seen_at: str = ""
+    original_decision_type: str = ""   # propose / ping
+    state: str = "holding"        # holding / promoted / expired / released
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "active": self.active,
+            "focus": self.focus,
+            "reason_code": self.reason_code,
+            "dominant_factor": self.dominant_factor,
+            "hold_count": self.hold_count,
+            "max_hold_count": _MAX_HOLD_COUNT,
+            "created_at": self.created_at,
+            "last_seen_at": self.last_seen_at,
+            "original_decision_type": self.original_decision_type,
+            "state": self.state,
+        }
+
+
+# Module-level quiet initiative (in-memory, per-process)
+_quiet_initiative: QuietInitiative = QuietInitiative()
+
+
+def get_quiet_initiative() -> dict[str, object]:
+    """Return the current quiet initiative state for MC observability."""
+    return _quiet_initiative.to_dict()
+
+
+def _start_quiet_hold(
+    *,
+    focus: str,
+    reason_code: str,
+    dominant_factor: str,
+    decision_type: str,
+) -> None:
+    """Start or refresh a quiet hold on a user-facing initiative."""
+    global _quiet_initiative
+    now = datetime.now(UTC).isoformat()
+    if _quiet_initiative.active and _quiet_initiative.focus == focus:
+        # Same focus: increment hold count
+        _quiet_initiative.hold_count += 1
+        _quiet_initiative.last_seen_at = now
+    else:
+        # New initiative: replace
+        _quiet_initiative = QuietInitiative(
+            active=True,
+            focus=focus,
+            reason_code=reason_code,
+            dominant_factor=dominant_factor,
+            hold_count=1,
+            created_at=now,
+            last_seen_at=now,
+            original_decision_type=decision_type,
+            state="holding",
+        )
+
+
+def _expire_quiet_initiative(reason: str = "expired") -> None:
+    """Mark the current quiet initiative as expired/released."""
+    global _quiet_initiative
+    if _quiet_initiative.active:
+        _quiet_initiative.active = False
+        _quiet_initiative.state = reason
+        _quiet_initiative.last_seen_at = datetime.now(UTC).isoformat()
+
+
+def _promote_quiet_initiative() -> None:
+    """Mark the current quiet initiative as promoted to user-facing."""
+    global _quiet_initiative
+    if _quiet_initiative.active:
+        _quiet_initiative.active = False
+        _quiet_initiative.state = "promoted"
+        _quiet_initiative.last_seen_at = datetime.now(UTC).isoformat()
+
+
+# ---------------------------------------------------------------------------
 # Conflict resolver
 # ---------------------------------------------------------------------------
 
@@ -66,7 +159,7 @@ def resolve_heartbeat_initiative_conflict(
     """Resolve competing pressures into a single bounded initiative outcome.
 
     Called after liveness recovery, before policy validation.
-    Can downgrade propose/ping to stay_quiet or continue_internal
+    Can downgrade propose/ping to stay_quiet, continue_internal, or quiet_hold
     when competing pressures indicate it's not the right moment.
 
     Returns ConflictTrace with the resolution decision and full trace.
@@ -112,6 +205,8 @@ def resolve_heartbeat_initiative_conflict(
         factors.append(f"softening-loops:{softening_count}")
     if conductor_mode not in {"watch", ""}:
         factors.append(f"conductor-mode:{conductor_mode}")
+    if _quiet_initiative.active:
+        factors.append(f"quiet-hold:{_quiet_initiative.hold_count}/{_MAX_HOLD_COUNT}")
 
     trace.competing_factors = factors
     trace.input_snapshot["liveness_state"] = liveness_state
@@ -122,11 +217,20 @@ def resolve_heartbeat_initiative_conflict(
     trace.input_snapshot["ap_state"] = ap_state
     trace.input_snapshot["open_count"] = open_count
     trace.input_snapshot["softening_count"] = softening_count
+    trace.input_snapshot["quiet_hold_active"] = _quiet_initiative.active
+    trace.input_snapshot["quiet_hold_count"] = _quiet_initiative.hold_count
 
     # --- Resolution logic (deterministic, priority-ordered) ---
 
     # Rule 0: noop decisions pass through — no conflict to resolve
     if decision_type == "noop":
+        # Check quiet initiative expiry on noop
+        if _quiet_initiative.active:
+            _quiet_initiative.hold_count += 1
+            _quiet_initiative.last_seen_at = datetime.now(UTC).isoformat()
+            if _quiet_initiative.hold_count > _MAX_HOLD_COUNT:
+                _expire_quiet_initiative("expired-noop")
+
         # Even for noop, check if internal continuation is warranted
         if (
             open_count > 0
@@ -147,6 +251,7 @@ def resolve_heartbeat_initiative_conflict(
 
     # Rule 1: Policy gate — if propose/ping not allowed, defer
     if decision_type in {"propose", "ping"} and not policy_allow_propose and not policy_allow_ping:
+        _expire_quiet_initiative("policy-blocked")
         trace.outcome = "defer"
         trace.blocked_by = "policy-gate"
         trace.dominant_factor = "policy-not-allowed"
@@ -165,9 +270,62 @@ def resolve_heartbeat_initiative_conflict(
             trace.summary = "Question thread active but send not granted — continue internal."
             return trace
 
-    # Rule 3: Liveness too low for user-facing action
+    # Rule 2.5: Quiet initiative promotion check
+    # If we already have a quiet hold and conditions have improved, promote
+    if _quiet_initiative.active and decision_type in {"propose", "ping"}:
+        if liveness_score >= _PROMOTE_SCORE and liveness_pressure in {"medium", "high"}:
+            # Conditions improved enough — promote to ask_user
+            _promote_quiet_initiative()
+            trace.outcome = "ask_user"
+            trace.dominant_factor = f"quiet-hold-promoted(held={_quiet_initiative.hold_count})+liveness:{liveness_state}(score={liveness_score})"
+            trace.reason_code = "quiet-hold-promoted"
+            trace.summary = f"Quiet initiative promoted after {_quiet_initiative.hold_count} holds — conditions now sufficient."
+            return trace
+
+        # Still not ready — continue holding
+        if _quiet_initiative.hold_count >= _MAX_HOLD_COUNT:
+            _expire_quiet_initiative("max-holds-reached")
+            trace.outcome = "stay_quiet"
+            trace.dominant_factor = f"quiet-hold-expired(held={_MAX_HOLD_COUNT})"
+            trace.reason_code = "quiet-hold-expired"
+            trace.summary = f"Quiet initiative expired after {_MAX_HOLD_COUNT} holds without sufficient improvement."
+            return trace
+
+        # Continue the quiet hold
+        _quiet_initiative.hold_count += 1
+        _quiet_initiative.last_seen_at = datetime.now(UTC).isoformat()
+        trace.outcome = "quiet_hold"
+        trace.dominant_factor = f"quiet-hold-continuing(held={_quiet_initiative.hold_count}/{_MAX_HOLD_COUNT})"
+        trace.reason_code = "quiet-hold-continue"
+        trace.summary = f"Quiet initiative held ({_quiet_initiative.hold_count}/{_MAX_HOLD_COUNT}) — not yet ready for user-facing."
+        return trace
+
+    # Rule 3: Liveness too low for user-facing action — quiet hold candidate
     if decision_type in {"propose", "ping"} and liveness_state in {"quiet", "watchful"}:
         if liveness_score < 5:
+            # Has enough backing signal to be worth holding quietly?
+            has_backing = (open_count > 0 or gate_active or ap_state not in {"none", ""})
+            if has_backing and len(factors) >= 2:
+                # Start quiet hold instead of just dropping
+                focus = (
+                    gate_state if gate_active
+                    else ap_state if ap_state not in {"none", ""}
+                    else f"open-loops:{open_count}"
+                )
+                _start_quiet_hold(
+                    focus=focus,
+                    reason_code="liveness-below-but-backed",
+                    dominant_factor=f"liveness:{liveness_state}(score={liveness_score})",
+                    decision_type=decision_type,
+                )
+                trace.outcome = "quiet_hold"
+                trace.blocked_by = "liveness-insufficient"
+                trace.dominant_factor = f"liveness:{liveness_state}(score={liveness_score})"
+                trace.reason_code = "quiet-hold-started"
+                trace.summary = "Liveness too low but backing signal present — holding quietly."
+                return trace
+
+            # No backing signal — just drop
             trace.outcome = "stay_quiet"
             trace.blocked_by = "liveness-insufficient"
             trace.dominant_factor = f"liveness:{liveness_state}(score={liveness_score})"
@@ -187,6 +345,10 @@ def resolve_heartbeat_initiative_conflict(
 
     # Rule 5: Strong aligned pressure — allow ask_user
     if decision_type in {"propose", "ping"}:
+        # Release any quiet hold — we're going user-facing
+        if _quiet_initiative.active:
+            _promote_quiet_initiative()
+
         if (
             gate_active
             and gate_send_permission in {"gated-candidate-only", "granted"}
@@ -207,6 +369,8 @@ def resolve_heartbeat_initiative_conflict(
 
     # Rule 6: Medium pressure — allow but note competing factors
     if decision_type in {"propose", "ping"} and liveness_pressure == "medium":
+        if _quiet_initiative.active:
+            _promote_quiet_initiative()
         trace.outcome = "ask_user"
         trace.dominant_factor = f"liveness:{liveness_state}(medium)"
         trace.reason_code = "medium-pressure-allow"
@@ -215,6 +379,8 @@ def resolve_heartbeat_initiative_conflict(
 
     # Default: allow through as ask_user for propose/ping, stay_quiet for others
     if decision_type in {"propose", "ping"}:
+        if _quiet_initiative.active:
+            _promote_quiet_initiative()
         trace.outcome = "ask_user"
         trace.dominant_factor = "default-allow"
         trace.reason_code = "default-passthrough"
@@ -270,6 +436,14 @@ def apply_conflict_resolution(
             "summary": trace.summary,
         }
 
+    if trace.outcome == "quiet_hold":
+        return {
+            **decision,
+            "decision_type": "noop",
+            "reason": f"conflict-quiet-hold: {trace.reason_code} — {decision.get('reason', '')}",
+            "summary": trace.summary,
+        }
+
     # ask_user: allow the original decision through unchanged
     return decision
 
@@ -282,7 +456,9 @@ def get_last_conflict_trace() -> dict[str, object] | None:
     """Return the last conflict resolution trace for MC observability."""
     if _last_conflict_trace is None:
         return None
-    return _last_conflict_trace.to_dict()
+    result = _last_conflict_trace.to_dict()
+    result["quiet_initiative"] = get_quiet_initiative()
+    return result
 
 
 def set_last_conflict_trace(trace: ConflictTrace) -> None:

@@ -2062,17 +2062,13 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {privateInitiativeTensionSignals?.summary?.authority || 'non-authoritative'} · {privateInitiativeTensionSignals?.summary?.layer_role || 'runtime-support'}
               </p>
             </div>
+            {((privateInnerInterplaySignals?.summary?.active_count || 0) + (privateInnerInterplaySignals?.summary?.stale_count || 0)) > 0 ? (
             <div className="compact-metric">
               <span>Inner Interplay</span>
               <strong>{(privateInnerInterplaySignals?.summary?.active_count || 0) + (privateInnerInterplaySignals?.summary?.stale_count || 0)}</strong>
               <p>{privateInnerInterplaySignals?.summary?.current_signal || 'No bounded inner interplay support'}</p>
-              <p>
-                type {privateInnerInterplaySignals?.summary?.current_interplay_type || 'none'} · confidence {privateInnerInterplaySignals?.summary?.current_confidence || 'low'}
-              </p>
-              <p>
-                {privateInnerInterplaySignals?.summary?.authority || 'non-authoritative'} · {privateInnerInterplaySignals?.summary?.layer_role || 'runtime-support'}
-              </p>
             </div>
+            ) : null}
             <div className="compact-metric">
               <span>Private State</span>
               <strong>{(privateStateSnapshots?.summary?.active_count || 0) + (privateStateSnapshots?.summary?.stale_count || 0)}</strong>
@@ -2084,149 +2080,54 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {privateStateSnapshots?.summary?.authority || 'non-authoritative'} · {privateStateSnapshots?.summary?.layer_role || 'runtime-support'}
               </p>
             </div>
+            {((privateTemporalCuriosityStates?.summary?.active_count || 0) + (privateTemporalCuriosityStates?.summary?.stale_count || 0)) > 0 ? (
             <div className="compact-metric">
               <span>Temporal Curiosity</span>
               <strong>{(privateTemporalCuriosityStates?.summary?.active_count || 0) + (privateTemporalCuriosityStates?.summary?.stale_count || 0)}</strong>
               <p>{privateTemporalCuriosityStates?.summary?.current_state || 'No bounded temporal curiosity support'}</p>
+            </div>
+            ) : null}
+            {((innerVisibleSupportSignals?.summary?.active_count || 0) + (regulationHomeostasisSignals?.summary?.active_count || 0)) > 0 ? (
+            <div className="compact-metric">
+              <span>Internal Support</span>
+              <strong>{(innerVisibleSupportSignals?.summary?.active_count || 0) + (regulationHomeostasisSignals?.summary?.active_count || 0)}</strong>
               <p>
-                type {privateTemporalCuriosityStates?.summary?.current_curiosity_type || 'none'} · pull {privateTemporalCuriosityStates?.summary?.current_pull || 'low'}
-              </p>
-              <p>
-                {privateTemporalCuriosityStates?.summary?.authority || 'non-authoritative'} · {privateTemporalCuriosityStates?.summary?.layer_role || 'runtime-support'}
+                {innerVisibleSupportSignals?.summary?.active_count || 0} inner-visible · {regulationHomeostasisSignals?.summary?.active_count || 0} regulation
               </p>
             </div>
+            ) : null}
+            {((relationStateSignals?.summary?.active_count || 0) + (relationContinuitySignals?.summary?.active_count || 0)) > 0 ? (
             <div className="compact-metric">
-              <span>Inner Visible Support</span>
-              <strong>{(innerVisibleSupportSignals?.summary?.active_count || 0) + (innerVisibleSupportSignals?.summary?.stale_count || 0)}</strong>
-              <p>{innerVisibleSupportSignals?.summary?.current_signal || 'No bounded inner-visible support'}</p>
+              <span>Relation</span>
+              <strong>{(relationStateSignals?.summary?.active_count || 0) + (relationContinuitySignals?.summary?.active_count || 0)}</strong>
               <p>
-                tone {innerVisibleSupportSignals?.summary?.current_tone || 'none'} · watchfulness {innerVisibleSupportSignals?.summary?.current_watchfulness || 'low'}
-              </p>
-              <p>
-                {innerVisibleSupportSignals?.summary?.current_watchfulness_source || 'state-or-curiosity'} · {innerVisibleSupportSignals?.summary?.prompt_bridge_state || 'not-yet-bridged'}
+                {relationStateSignals?.summary?.active_count || 0} state · {relationContinuitySignals?.summary?.active_count || 0} continuity
               </p>
             </div>
+            ) : null}
+            {((chronicleConsolidationSignals?.summary?.active_count || 0) + (chronicleConsolidationBriefs?.summary?.active_count || 0) + (chronicleConsolidationProposals?.summary?.active_count || 0)) > 0 ? (
             <div className="compact-metric">
-              <span>Regulation Support</span>
-              <strong>{(regulationHomeostasisSignals?.summary?.active_count || 0) + (regulationHomeostasisSignals?.summary?.stale_count || 0)}</strong>
-              <p>{regulationHomeostasisSignals?.summary?.current_signal || 'No bounded regulation/homeostasis support'}</p>
+              <span>Chronicle</span>
+              <strong>{(chronicleConsolidationSignals?.summary?.active_count || 0) + (chronicleConsolidationBriefs?.summary?.active_count || 0) + (chronicleConsolidationProposals?.summary?.active_count || 0)}</strong>
               <p>
-                state {regulationHomeostasisSignals?.summary?.current_state || 'none'} · pacing {regulationHomeostasisSignals?.summary?.current_pacing || 'steady'}
-              </p>
-              <p>
-                {regulationHomeostasisSignals?.summary?.canonical_mood_state || 'not-canonical-mood-or-personality'} · {regulationHomeostasisSignals?.summary?.authority || 'non-authoritative'}
+                {chronicleConsolidationSignals?.summary?.active_count || 0} signals · {chronicleConsolidationBriefs?.summary?.active_count || 0} briefs · {chronicleConsolidationProposals?.summary?.active_count || 0} proposals
               </p>
             </div>
+            ) : null}
+            {((meaningSignificanceSignals?.summary?.active_count || 0) + (meaningSignificanceSignals?.summary?.softening_count || 0)) > 0 ? (
             <div className="compact-metric">
-              <span>Relation Support</span>
-              <strong>{(relationStateSignals?.summary?.active_count || 0) + (relationStateSignals?.summary?.stale_count || 0)}</strong>
-              <p>{relationStateSignals?.summary?.current_signal || 'No bounded relation-state support'}</p>
-              <p>
-                state {relationStateSignals?.summary?.current_state || 'none'} · alignment {relationStateSignals?.summary?.current_alignment || 'working-alignment'}
-              </p>
-              <p>
-                {relationStateSignals?.summary?.canonical_relation_state || 'not-canonical-relationship-truth'} · {relationStateSignals?.summary?.authority || 'non-authoritative'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Relation Continuity</span>
-              <strong>{(relationContinuitySignals?.summary?.active_count || 0) + (relationContinuitySignals?.summary?.softening_count || 0)}</strong>
-              <p>{relationContinuitySignals?.summary?.current_signal || 'No bounded relation continuity support'}</p>
-              <p>
-                state {relationContinuitySignals?.summary?.current_state || 'none'} · weight {relationContinuitySignals?.summary?.current_weight || 'low'}
-              </p>
-              <p>
-                {relationContinuitySignals?.summary?.canonical_relation_state || 'not-canonical-relationship-truth'} · {relationContinuitySignals?.summary?.authority || 'non-authoritative'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Executive Contradiction</span>
-              <strong>{(executiveContradictionSignals?.summary?.active_count || 0) + (executiveContradictionSignals?.summary?.softening_count || 0)}</strong>
-              <p>{executiveContradictionSignals?.summary?.current_signal || 'No bounded executive contradiction support'}</p>
-              <p>
-                type {executiveContradictionSignals?.summary?.current_control_type || 'none'} · pressure {executiveContradictionSignals?.summary?.current_pressure || 'low'}
-              </p>
-              <p>
-                {executiveContradictionSignals?.summary?.authority || 'non-authoritative'} · {executiveContradictionSignals?.summary?.execution_veto_state || 'not-authorized'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Temporal Promotion</span>
-              <strong>{(privateTemporalPromotionSignals?.summary?.active_count || 0) + (privateTemporalPromotionSignals?.summary?.stale_count || 0)}</strong>
-              <p>{privateTemporalPromotionSignals?.summary?.current_signal || 'No bounded temporal promotion support'}</p>
-              <p>
-                type {privateTemporalPromotionSignals?.summary?.current_promotion_type || 'none'} · pull {privateTemporalPromotionSignals?.summary?.current_pull || 'low'}
-              </p>
-              <p>
-                {privateTemporalPromotionSignals?.summary?.authority || 'non-authoritative'} · {privateTemporalPromotionSignals?.summary?.layer_role || 'runtime-support'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Chronicle Support</span>
-              <strong>{(chronicleConsolidationSignals?.summary?.active_count || 0) + (chronicleConsolidationSignals?.summary?.softening_count || 0)}</strong>
-              <p>{chronicleConsolidationSignals?.summary?.current_signal || 'No bounded chronicle/consolidation support'}</p>
-              <p>
-                type {chronicleConsolidationSignals?.summary?.current_chronicle_type || 'none'} · weight {chronicleConsolidationSignals?.summary?.current_weight || 'low'}
-              </p>
-              <p>
-                {chronicleConsolidationSignals?.summary?.authority || 'non-authoritative'} · {chronicleConsolidationSignals?.summary?.writeback_state || 'not-writing-to-canonical-files'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Chronicle Brief</span>
-              <strong>{(chronicleConsolidationBriefs?.summary?.active_count || 0) + (chronicleConsolidationBriefs?.summary?.softening_count || 0)}</strong>
-              <p>{chronicleConsolidationBriefs?.summary?.current_brief || 'No bounded chronicle/consolidation brief'}</p>
-              <p>
-                type {chronicleConsolidationBriefs?.summary?.current_brief_type || 'none'} · weight {chronicleConsolidationBriefs?.summary?.current_weight || 'low'}
-              </p>
-              <p>
-                {chronicleConsolidationBriefs?.summary?.authority || 'non-authoritative'} · {chronicleConsolidationBriefs?.summary?.writeback_state || 'not-writing-to-canonical-files'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Chronicle Proposal</span>
-              <strong>{(chronicleConsolidationProposals?.summary?.active_count || 0) + (chronicleConsolidationProposals?.summary?.softening_count || 0)}</strong>
-              <p>{chronicleConsolidationProposals?.summary?.current_proposal || 'No bounded chronicle/consolidation proposal'}</p>
-              <p>
-                type {chronicleConsolidationProposals?.summary?.current_proposal_type || 'none'} · weight {chronicleConsolidationProposals?.summary?.current_weight || 'low'}
-              </p>
-              <p>
-                {chronicleConsolidationProposals?.summary?.authority || 'non-authoritative'} · {chronicleConsolidationProposals?.summary?.writeback_state || 'not-writing-to-canonical-files'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Meaning Support</span>
+              <span>Meaning</span>
               <strong>{(meaningSignificanceSignals?.summary?.active_count || 0) + (meaningSignificanceSignals?.summary?.softening_count || 0)}</strong>
               <p>{meaningSignificanceSignals?.summary?.current_signal || 'No bounded meaning/significance support'}</p>
-              <p>
-                type {meaningSignificanceSignals?.summary?.current_type || 'none'} · weight {meaningSignificanceSignals?.summary?.current_weight || 'low'}
-              </p>
-              <p>
-                {meaningSignificanceSignals?.summary?.authority || 'non-authoritative'} · {meaningSignificanceSignals?.summary?.canonical_value_state || 'not-canonical-value-or-moral-truth'}
-              </p>
             </div>
+            ) : null}
+            {((selfNarrativeContinuitySignals?.summary?.active_count || 0) + (selfNarrativeContinuitySignals?.summary?.softening_count || 0)) > 0 ? (
             <div className="compact-metric">
-              <span>Temperament Support</span>
-              <strong>{(temperamentTendencySignals?.summary?.active_count || 0) + (temperamentTendencySignals?.summary?.softening_count || 0)}</strong>
-              <p>{temperamentTendencySignals?.summary?.current_signal || 'No bounded temperament support'}</p>
-              <p>
-                type {temperamentTendencySignals?.summary?.current_type || 'none'} · balance {temperamentTendencySignals?.summary?.current_balance || 'steady'}
-              </p>
-              <p>
-                {temperamentTendencySignals?.summary?.authority || 'non-authoritative'} · {temperamentTendencySignals?.summary?.canonical_personality_state || 'not-canonical-personality-truth'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Self-Narrative Support</span>
+              <span>Self-Narrative</span>
               <strong>{(selfNarrativeContinuitySignals?.summary?.active_count || 0) + (selfNarrativeContinuitySignals?.summary?.softening_count || 0)}</strong>
               <p>{selfNarrativeContinuitySignals?.summary?.current_signal || 'No bounded self-narrative continuity support'}</p>
-              <p>
-                state {selfNarrativeContinuitySignals?.summary?.current_state || 'none'} · direction {selfNarrativeContinuitySignals?.summary?.current_direction || 'steadying'}
-              </p>
-              <p>
-                {selfNarrativeContinuitySignals?.summary?.authority || 'non-authoritative'} · {selfNarrativeContinuitySignals?.summary?.canonical_identity_state || 'not-canonical-identity-truth'}
-              </p>
             </div>
+            ) : null}
             <div className="compact-metric">
               <span>Goal Signals</span>
               <strong>{(goalSignals?.summary?.active_count || 0) + (goalSignals?.summary?.blocked_count || 0) || summary?.development?.goal_count || 0}</strong>
@@ -2251,17 +2152,13 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {selfModelSignals?.summary?.uncertain_count || 0} uncertain · {selfModelSignals?.summary?.corrected_count || 0} corrected · {selfModelSignals?.summary?.superseded_count || 0} superseded
               </p>
             </div>
+            {((selfNarrativeSelfModelReviewBridge?.summary?.active_count || 0) + (selfNarrativeSelfModelReviewBridge?.summary?.softening_count || 0)) > 0 ? (
             <div className="compact-metric">
               <span>Self-Review Bridge</span>
               <strong>{(selfNarrativeSelfModelReviewBridge?.summary?.active_count || 0) + (selfNarrativeSelfModelReviewBridge?.summary?.softening_count || 0)}</strong>
               <p>{selfNarrativeSelfModelReviewBridge?.summary?.current_bridge || 'No bounded self-narrative review bridge'}</p>
-              <p>
-                proposal {selfNarrativeSelfModelReviewBridge?.summary?.proposal_input_ready_count || 0} · threshold {selfNarrativeSelfModelReviewBridge?.summary?.current_proposal_input_threshold_state || 'proposal-input-thresholds-not-met'}
-              </p>
-              <p>
-                {selfNarrativeSelfModelReviewBridge?.summary?.review_mode || 'read-only-review-support'} · {selfNarrativeSelfModelReviewBridge?.summary?.proposal_state || 'not-selfhood-proposal'}
-              </p>
             </div>
+            ) : null}
             <div className="compact-metric">
               <span>Reflection Signals</span>
               <strong>{(reflectionSignals?.summary?.active_count || 0) + (reflectionSignals?.summary?.integrating_count || 0) + (reflectionSignals?.summary?.settled_count || 0) || summary?.development?.reflection_signal_count || 0}</strong>
@@ -2270,14 +2167,13 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {reflectionSignals?.summary?.integrating_count || 0} integrating · {reflectionSignals?.summary?.settled_count || 0} settled · {reflectionSignals?.summary?.superseded_count || 0} superseded
               </p>
             </div>
+            {((temporalRecurrenceSignals?.summary?.active_count || 0) + (temporalRecurrenceSignals?.summary?.softening_count || 0)) > 0 ? (
             <div className="compact-metric">
               <span>Recurring Patterns</span>
               <strong>{(temporalRecurrenceSignals?.summary?.active_count || 0) + (temporalRecurrenceSignals?.summary?.softening_count || 0)}</strong>
               <p>{temporalRecurrenceSignals?.summary?.current_signal || 'No active temporal recurrence signal'}</p>
-              <p>
-                {temporalRecurrenceSignals?.summary?.softening_count || 0} softening · {temporalRecurrenceSignals?.summary?.stale_count || 0} stale · {temporalRecurrenceSignals?.summary?.superseded_count || 0} superseded
-              </p>
             </div>
+            ) : null}
             <div className="compact-metric">
               <span>Open Loops</span>
               <strong>{(openLoopSignals?.summary?.open_count || 0) + (openLoopSignals?.summary?.softening_count || 0) + (openLoopSignals?.summary?.closed_count || 0)}</strong>
@@ -2289,121 +2185,44 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {(openLoopSignals?.summary?.ready_count || 0)} high-readiness · current closure {openLoopSignals?.summary?.current_closure_confidence || 'low'}
               </p>
             </div>
+            {((openLoopClosureProposals?.summary?.fresh_count || 0) + (openLoopClosureProposals?.summary?.active_count || 0)) > 0 ? (
             <div className="compact-metric">
               <span>Closure Proposals</span>
               <strong>{(openLoopClosureProposals?.summary?.fresh_count || 0) + (openLoopClosureProposals?.summary?.active_count || 0) + (openLoopClosureProposals?.summary?.fading_count || 0)}</strong>
               <p>{openLoopClosureProposals?.summary?.current_proposal || 'No active loop-closure proposal'}</p>
-              <p>
-                {openLoopClosureProposals?.summary?.fresh_count || 0} fresh · {openLoopClosureProposals?.summary?.active_count || 0} active · {openLoopClosureProposals?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                type {openLoopClosureProposals?.summary?.current_proposal_type || 'none'} · closure {openLoopClosureProposals?.summary?.current_closure_confidence || 'low'}
-              </p>
             </div>
+            ) : null}
+            {((internalOppositionSignals?.summary?.active_count || 0) + (internalOppositionSignals?.summary?.softening_count || 0)) > 0 ? (
             <div className="compact-metric">
               <span>Internal Opposition</span>
               <strong>{(internalOppositionSignals?.summary?.active_count || 0) + (internalOppositionSignals?.summary?.softening_count || 0)}</strong>
               <p>{internalOppositionSignals?.summary?.current_signal || 'No active internal opposition signal'}</p>
-              <p>
-                {internalOppositionSignals?.summary?.softening_count || 0} softening · {internalOppositionSignals?.summary?.stale_count || 0} stale · {internalOppositionSignals?.summary?.superseded_count || 0} superseded
-              </p>
             </div>
+            ) : null}
+            {(() => {
+              const srTotal = (selfReviewSignals?.summary?.active_count || 0) + (selfReviewRecords?.summary?.active_count || selfReviewRecords?.summary?.fresh_count || 0) + (selfReviewRuns?.summary?.active_count || selfReviewRuns?.summary?.fresh_count || 0) + (selfReviewOutcomes?.summary?.active_count || selfReviewOutcomes?.summary?.fresh_count || 0) + (selfReviewCadenceSignals?.summary?.active_count || 0)
+              return srTotal > 0 ? (
             <div className="compact-metric">
-              <span>Self Review Need</span>
-              <strong>{(selfReviewSignals?.summary?.active_count || 0) + (selfReviewSignals?.summary?.softening_count || 0)}</strong>
-              <p>{selfReviewSignals?.summary?.current_signal || 'No active self-review signal'}</p>
+              <span>Self-Review</span>
+              <strong>{srTotal}</strong>
               <p>
-                {selfReviewSignals?.summary?.softening_count || 0} softening · {selfReviewSignals?.summary?.stale_count || 0} stale · {selfReviewSignals?.summary?.superseded_count || 0} superseded
+                {selfReviewSignals?.summary?.active_count || 0} need · {(selfReviewRecords?.summary?.fresh_count || 0) + (selfReviewRecords?.summary?.active_count || 0)} briefs · {(selfReviewRuns?.summary?.fresh_count || 0) + (selfReviewRuns?.summary?.active_count || 0)} runs · {(selfReviewOutcomes?.summary?.fresh_count || 0) + (selfReviewOutcomes?.summary?.active_count || 0)} outcomes
               </p>
             </div>
+              ) : null
+            })()}
+            {(() => {
+              const dreamTotal = (dreamHypothesisSignals?.summary?.active_count || 0) + (dreamAdoptionCandidates?.summary?.active_count || dreamAdoptionCandidates?.summary?.fresh_count || 0) + (dreamInfluenceProposals?.summary?.active_count || dreamInfluenceProposals?.summary?.fresh_count || 0)
+              return dreamTotal > 0 ? (
             <div className="compact-metric">
-              <span>Self Review Briefs</span>
-              <strong>{(selfReviewRecords?.summary?.fresh_count || 0) + (selfReviewRecords?.summary?.active_count || 0) + (selfReviewRecords?.summary?.fading_count || 0)}</strong>
-              <p>{selfReviewRecords?.summary?.current_record || 'No active self-review brief'}</p>
+              <span>Dreams</span>
+              <strong>{dreamTotal}</strong>
               <p>
-                {selfReviewRecords?.summary?.fresh_count || 0} fresh · {selfReviewRecords?.summary?.active_count || 0} active · {selfReviewRecords?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                current type {selfReviewRecords?.summary?.current_review_type || 'none'}
+                {dreamHypothesisSignals?.summary?.active_count || 0} hypotheses · {(dreamAdoptionCandidates?.summary?.fresh_count || 0) + (dreamAdoptionCandidates?.summary?.active_count || 0)} adoption · {(dreamInfluenceProposals?.summary?.fresh_count || 0) + (dreamInfluenceProposals?.summary?.active_count || 0)} influence
               </p>
             </div>
-            <div className="compact-metric">
-              <span>Self Review Runs</span>
-              <strong>{(selfReviewRuns?.summary?.fresh_count || 0) + (selfReviewRuns?.summary?.active_count || 0) + (selfReviewRuns?.summary?.fading_count || 0)}</strong>
-              <p>{selfReviewRuns?.summary?.current_run || 'No active self-review snapshot'}</p>
-              <p>
-                {selfReviewRuns?.summary?.fresh_count || 0} fresh · {selfReviewRuns?.summary?.active_count || 0} active · {selfReviewRuns?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                focus {selfReviewRuns?.summary?.current_review_focus || 'none'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Review Outcomes</span>
-              <strong>{(selfReviewOutcomes?.summary?.fresh_count || 0) + (selfReviewOutcomes?.summary?.active_count || 0) + (selfReviewOutcomes?.summary?.fading_count || 0)}</strong>
-              <p>{selfReviewOutcomes?.summary?.current_outcome || 'No active self-review outcome'}</p>
-              <p>
-                {selfReviewOutcomes?.summary?.fresh_count || 0} fresh · {selfReviewOutcomes?.summary?.active_count || 0} active · {selfReviewOutcomes?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                type {selfReviewOutcomes?.summary?.current_outcome_type || 'none'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Review Cadence</span>
-              <strong>{(selfReviewCadenceSignals?.summary?.active_count || 0) + (selfReviewCadenceSignals?.summary?.softening_count || 0)}</strong>
-              <p>{selfReviewCadenceSignals?.summary?.current_signal || 'No active self-review cadence signal'}</p>
-              <p>
-                {selfReviewCadenceSignals?.summary?.softening_count || 0} softening · {selfReviewCadenceSignals?.summary?.stale_count || 0} stale · {selfReviewCadenceSignals?.summary?.superseded_count || 0} superseded
-              </p>
-              <p>
-                state {selfReviewCadenceSignals?.summary?.current_cadence_state || 'none'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Dream Hypotheses</span>
-              <strong>{(dreamHypothesisSignals?.summary?.active_count || 0) + (dreamHypothesisSignals?.summary?.integrating_count || 0) + (dreamHypothesisSignals?.summary?.fading_count || 0)}</strong>
-              <p>{dreamHypothesisSignals?.summary?.current_signal || 'No active dream hypothesis signal'}</p>
-              <p>
-                {dreamHypothesisSignals?.summary?.integrating_count || 0} integrating · {dreamHypothesisSignals?.summary?.fading_count || 0} fading · {dreamHypothesisSignals?.summary?.stale_count || 0} stale
-              </p>
-              <p>
-                type {dreamHypothesisSignals?.summary?.current_hypothesis_type || 'none'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Dream Adoption</span>
-              <strong>{(dreamAdoptionCandidates?.summary?.fresh_count || 0) + (dreamAdoptionCandidates?.summary?.active_count || 0) + (dreamAdoptionCandidates?.summary?.fading_count || 0)}</strong>
-              <p>{dreamAdoptionCandidates?.summary?.current_candidate || 'No active dream adoption candidate'}</p>
-              <p>
-                {dreamAdoptionCandidates?.summary?.fresh_count || 0} fresh · {dreamAdoptionCandidates?.summary?.active_count || 0} active · {dreamAdoptionCandidates?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                type {dreamAdoptionCandidates?.summary?.current_candidate_type || 'none'} · adoption {dreamAdoptionCandidates?.summary?.current_adoption_confidence || 'low'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Dream Influence</span>
-              <strong>{(dreamInfluenceProposals?.summary?.fresh_count || 0) + (dreamInfluenceProposals?.summary?.active_count || 0) + (dreamInfluenceProposals?.summary?.fading_count || 0)}</strong>
-              <p>{dreamInfluenceProposals?.summary?.current_proposal || 'No active dream influence proposal'}</p>
-              <p>
-                {dreamInfluenceProposals?.summary?.fresh_count || 0} fresh · {dreamInfluenceProposals?.summary?.active_count || 0} active · {dreamInfluenceProposals?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                type {dreamInfluenceProposals?.summary?.current_proposal_type || 'none'} · influence {dreamInfluenceProposals?.summary?.current_influence_confidence || 'low'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Prompt Proposals</span>
-              <strong>{(selfAuthoredPromptProposals?.summary?.fresh_count || 0) + (selfAuthoredPromptProposals?.summary?.active_count || 0) + (selfAuthoredPromptProposals?.summary?.fading_count || 0)}</strong>
-              <p>{selfAuthoredPromptProposals?.summary?.current_proposal || 'No active self-authored prompt proposal'}</p>
-              <p>
-                {selfAuthoredPromptProposals?.summary?.fresh_count || 0} fresh · {selfAuthoredPromptProposals?.summary?.active_count || 0} active · {selfAuthoredPromptProposals?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                type {selfAuthoredPromptProposals?.summary?.current_proposal_type || 'none'} · proposal {selfAuthoredPromptProposals?.summary?.current_proposal_confidence || 'low'}
-              </p>
-            </div>
+              ) : null
+            })()}
             <div className="compact-metric">
               <span>User Understanding</span>
               <strong>{(userUnderstandingSignals?.summary?.active_count || 0) + (userUnderstandingSignals?.summary?.softening_count || 0)}</strong>
@@ -2424,17 +2243,6 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               </p>
               <p>
                 type {userMdUpdateProposals?.summary?.current_proposal_type || 'none'} · proposal {userMdUpdateProposals?.summary?.current_proposal_confidence || 'low'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Selfhood Proposals</span>
-              <strong>{(selfhoodProposals?.summary?.fresh_count || 0) + (selfhoodProposals?.summary?.active_count || 0) + (selfhoodProposals?.summary?.fading_count || 0)}</strong>
-              <p>{selfhoodProposals?.summary?.current_proposal || 'No active selfhood proposal'}</p>
-              <p>
-                {selfhoodProposals?.summary?.fresh_count || 0} fresh · {selfhoodProposals?.summary?.active_count || 0} active · {selfhoodProposals?.summary?.fading_count || 0} fading
-              </p>
-              <p>
-                target {selfhoodProposals?.summary?.current_selfhood_target || 'none'} · proposal {selfhoodProposals?.summary?.current_proposal_confidence || 'low'}
               </p>
             </div>
             <div className="compact-metric">
@@ -2459,33 +2267,36 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {detailRow(data?.development?.developmentState, 'Development State', onOpenItem)}
               {detailRow(data?.development?.privateInnerNoteSupport, 'Private Inner Note Support', onOpenItem)}
               {detailRow(data?.development?.privateInitiativeTensionSupport, 'Private Initiative Tension Support', onOpenItem)}
-              {detailRow(data?.development?.privateInnerInterplaySupport, 'Private Inner Interplay Support', onOpenItem)}
               {detailRow(data?.development?.privateStateSnapshot, 'Private State Snapshot', onOpenItem)}
               {detailRow(data?.development?.diarySynthesisSupport, 'Diary Synthesis', onOpenItem)}
-              {detailRow(data?.development?.privateTemporalCuriosityState, 'Private Temporal Curiosity State', onOpenItem)}
-              {detailRow(data?.development?.innerVisibleSupport, 'Inner Visible Support', onOpenItem)}
-              {detailRow(data?.development?.regulationHomeostasisSupport, 'Regulation/Homeostasis Support', onOpenItem)}
-              {detailRow(data?.development?.relationStateSupport, 'Relation State Support', onOpenItem)}
-              {detailRow(data?.development?.relationContinuitySupport, 'Relation Continuity Support', onOpenItem)}
-              {detailRow(data?.development?.meaningSignificanceSupport, 'Meaning/Significance Support', onOpenItem)}
-              {detailRow(data?.development?.temperamentTendencySupport, 'Temperament Support', onOpenItem)}
-              {detailRow(data?.development?.selfNarrativeContinuitySupport, 'Self-Narrative Continuity Support', onOpenItem)}
-              {detailRow(data?.development?.metabolismStateSupport, 'Metabolism Support', onOpenItem)}
-              {detailRow(data?.development?.consolidationTargetSupport, 'Consolidation Support', onOpenItem)}
-              {detailRow(data?.development?.selectiveForgettingCandidateSupport, 'Forgetting Candidate Support', onOpenItem)}
-              {detailRow(data?.development?.releaseMarkerSupport, 'Release Support', onOpenItem)}
-              {detailRow(data?.development?.attachmentTopologySupport, 'Attachment Support', onOpenItem)}
-              {detailRow(data?.development?.loyaltyGradientSupport, 'Loyalty Gradient Support', onOpenItem)}
               {detailRow(data?.development?.autonomyPressureSupport, 'Autonomy Pressure Support', onOpenItem)}
               {detailRow(data?.development?.proactiveLoopLifecycleSupport, 'Proactive Loop Support', onOpenItem)}
               {detailRow(data?.development?.proactiveQuestionGateSupport, 'Proactive Question Gate', onOpenItem)}
-              {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
-              {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
-              {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
               {detailRow(data?.development?.operationalPreference, 'Operational Preference', onOpenItem)}
               {detailRow(data?.development?.operationalAlignment, 'Preference Alignment', onOpenItem)}
               {detailRow(data?.development?.growthNote, 'Latest Growth Note', onOpenItem)}
               {detailRow(data?.development?.reflectiveSelection, 'Latest Reflective Selection', onOpenItem)}
+              <details className="mc-dormant-details">
+                <summary className="mc-dormant-summary">Readiness &amp; dormant support layers</summary>
+                {detailRow(data?.development?.privateInnerInterplaySupport, 'Private Inner Interplay Support', onOpenItem)}
+                {detailRow(data?.development?.privateTemporalCuriosityState, 'Private Temporal Curiosity State', onOpenItem)}
+                {detailRow(data?.development?.innerVisibleSupport, 'Inner Visible Support', onOpenItem)}
+                {detailRow(data?.development?.regulationHomeostasisSupport, 'Regulation/Homeostasis Support', onOpenItem)}
+                {detailRow(data?.development?.relationStateSupport, 'Relation State Support', onOpenItem)}
+                {detailRow(data?.development?.relationContinuitySupport, 'Relation Continuity Support', onOpenItem)}
+                {detailRow(data?.development?.meaningSignificanceSupport, 'Meaning/Significance Support', onOpenItem)}
+                {detailRow(data?.development?.selfNarrativeContinuitySupport, 'Self-Narrative Continuity Support', onOpenItem)}
+                {detailRow(data?.development?.selfNarrativeReviewBridgeSupport, 'Self-Narrative Review Bridge', onOpenItem)}
+                {detailRow(data?.development?.metabolismStateSupport, 'Metabolism Support', onOpenItem)}
+                {detailRow(data?.development?.consolidationTargetSupport, 'Consolidation Support', onOpenItem)}
+                {detailRow(data?.development?.selectiveForgettingCandidateSupport, 'Forgetting Candidate Support', onOpenItem)}
+                {detailRow(data?.development?.releaseMarkerSupport, 'Release Support', onOpenItem)}
+                {detailRow(data?.development?.temperamentTendencySupport, 'Temperament Support', onOpenItem)}
+                {detailRow(data?.development?.attachmentTopologySupport, 'Attachment Support', onOpenItem)}
+                {detailRow(data?.development?.loyaltyGradientSupport, 'Loyalty Gradient Support', onOpenItem)}
+                {detailRow(data?.development?.executiveContradictionSupport, 'Executive Contradiction Support', onOpenItem)}
+                {detailRow(data?.development?.privateTemporalPromotionSignal, 'Private Temporal Promotion Signal', onOpenItem)}
+              </details>
             </div>
 
             <div className="mc-inline-group">
@@ -2655,72 +2466,18 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {witnessSignals?.summary?.fresh_count || 0} fresh · {witnessSignals?.summary?.carried_count || 0} carried · {witnessSignals?.summary?.fading_count || 0} fading
               </p>
             </div>
+            {(() => {
+              const lifecycleTotal = (metabolismStateSignals?.summary?.active_count || 0) + (releaseMarkerSignals?.summary?.active_count || 0) + (consolidationTargetSignals?.summary?.active_count || 0) + (selectiveForgettingCandidates?.summary?.active_count || 0)
+              return lifecycleTotal > 0 ? (
             <div className="compact-metric">
-              <span>Metabolism</span>
-              <strong>{(metabolismStateSignals?.summary?.active_count || 0) + (metabolismStateSignals?.summary?.softening_count || 0)}</strong>
-              <p>{metabolismStateSignals?.summary?.current_signal || 'No bounded metabolism support'}</p>
+              <span>Lifecycle Health</span>
+              <strong>{lifecycleTotal}</strong>
               <p>
-                state {metabolismStateSignals?.summary?.current_state || 'none'} · direction {metabolismStateSignals?.summary?.current_direction || 'none'}
-              </p>
-              <p>
-                {metabolismStateSignals?.summary?.authority || 'non-authoritative'} · {metabolismStateSignals?.summary?.canonical_delete_state || 'not-canonical-deletion'}
+                {metabolismStateSignals?.summary?.active_count || 0} metabolism · {releaseMarkerSignals?.summary?.active_count || 0} release · {consolidationTargetSignals?.summary?.active_count || 0} consolidation · {selectiveForgettingCandidates?.summary?.active_count || 0} forgetting
               </p>
             </div>
-            <div className="compact-metric">
-              <span>Release Markers</span>
-              <strong>{(releaseMarkerSignals?.summary?.active_count || 0) + (releaseMarkerSignals?.summary?.softening_count || 0)}</strong>
-              <p>{releaseMarkerSignals?.summary?.current_signal || 'No bounded release support'}</p>
-              <p>
-                state {releaseMarkerSignals?.summary?.current_state || 'none'} · direction {releaseMarkerSignals?.summary?.current_direction || 'none'}
-              </p>
-              <p>
-                {releaseMarkerSignals?.summary?.authority || 'non-authoritative'} · {releaseMarkerSignals?.summary?.selective_forgetting_state || 'not-selective-forgetting-execution'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Consolidation Targets</span>
-              <strong>{(consolidationTargetSignals?.summary?.active_count || 0) + (consolidationTargetSignals?.summary?.softening_count || 0)}</strong>
-              <p>{consolidationTargetSignals?.summary?.current_signal || 'No bounded consolidation-target support'}</p>
-              <p>
-                state {consolidationTargetSignals?.summary?.current_state || 'none'} · focus {consolidationTargetSignals?.summary?.current_focus || 'none'}
-              </p>
-              <p>
-                {consolidationTargetSignals?.summary?.authority || 'non-authoritative'} · {consolidationTargetSignals?.summary?.writeback_state || 'not-writeback'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Forgetting Candidates</span>
-              <strong>{(selectiveForgettingCandidates?.summary?.active_count || 0) + (selectiveForgettingCandidates?.summary?.softening_count || 0)}</strong>
-              <p>{selectiveForgettingCandidates?.summary?.current_signal || 'No bounded selective-forgetting candidate'}</p>
-              <p>
-                state {selectiveForgettingCandidates?.summary?.current_state || 'none'} · reason {selectiveForgettingCandidates?.summary?.current_reason || 'none'}
-              </p>
-              <p>
-                {selectiveForgettingCandidates?.summary?.authority || 'non-authoritative'} · {selectiveForgettingCandidates?.summary?.selective_forgetting_state || 'not-selective-forgetting-execution'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Attachment Topology</span>
-              <strong>{(attachmentTopologySignals?.summary?.active_count || 0) + (attachmentTopologySignals?.summary?.softening_count || 0)}</strong>
-              <p>{attachmentTopologySignals?.summary?.current_signal || 'No bounded attachment-topology support'}</p>
-              <p>
-                state {attachmentTopologySignals?.summary?.current_state || 'none'} · focus {attachmentTopologySignals?.summary?.current_focus || 'none'}
-              </p>
-              <p>
-                {attachmentTopologySignals?.summary?.authority || 'non-authoritative'} · {attachmentTopologySignals?.summary?.planner_priority_state || 'not-planner-priority'}
-              </p>
-            </div>
-            <div className="compact-metric">
-              <span>Loyalty Gradient</span>
-              <strong>{(loyaltyGradientSignals?.summary?.active_count || 0) + (loyaltyGradientSignals?.summary?.softening_count || 0)}</strong>
-              <p>{loyaltyGradientSignals?.summary?.current_signal || 'No bounded loyalty-gradient support'}</p>
-              <p>
-                state {loyaltyGradientSignals?.summary?.current_state || 'none'} · rank {loyaltyGradientSignals?.summary?.current_rank || 0}
-              </p>
-              <p>
-                {loyaltyGradientSignals?.summary?.canonical_preference_state || 'not-canonical-preference-truth'} · {loyaltyGradientSignals?.summary?.workflow_bridge_state || 'not-workflow-bridge'}
-              </p>
-            </div>
+              ) : null
+            })()}
             <div className="compact-metric">
               <span>Autonomy Pressure</span>
               <strong>{(autonomyPressureSignals?.summary?.active_count || 0) + (autonomyPressureSignals?.summary?.softening_count || 0)}</strong>

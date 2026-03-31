@@ -683,6 +683,14 @@ def mc_attention_budget() -> dict:
     }
 
 
+@router.get("/conflict-resolution")
+def mc_conflict_resolution() -> dict:
+    """Return the last conflict resolution trace."""
+    from apps.api.jarvis_api.services.conflict_resolution import get_last_conflict_trace
+    trace = get_last_conflict_trace()
+    return {"trace": trace, "active": trace is not None}
+
+
 @router.get("/self-knowledge")
 def mc_self_knowledge() -> dict:
     return build_runtime_self_knowledge_map()

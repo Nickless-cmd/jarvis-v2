@@ -104,8 +104,8 @@ def run_inner_voice_daemon(
         )
         return result
 
-    # Compose the inner voice note
-    note = _compose_inner_voice_note(grounding)
+    # Render inner voice note via workspace prompt + LLM (with fallback)
+    note, render_mode = _render_inner_voice_note(grounding)
 
     # Persist as private brain record
     record = insert_private_brain_record(
@@ -133,6 +133,7 @@ def run_inner_voice_daemon(
         "record_id": record_id,
         "focus": note["focus"][:100],
         "mode": note["mode"],
+        "render_mode": render_mode,
         "grounding_sources": grounding["source_count"],
         "trigger": trigger,
     }
@@ -145,6 +146,7 @@ def run_inner_voice_daemon(
             "created": True,
             "record_id": record_id,
             "mode": note["mode"],
+            "render_mode": render_mode,
             "focus": note["focus"][:100],
             "grounding_sources": grounding["source_count"],
         },
@@ -270,18 +272,125 @@ def _gather_grounding() -> dict[str, object]:
 
 
 # ---------------------------------------------------------------------------
-# Note composition
+# Workspace-led rendering with LLM + deterministic fallback
 # ---------------------------------------------------------------------------
 
-def _compose_inner_voice_note(grounding: dict[str, object]) -> dict[str, object]:
-    """Compose a bounded inner voice note from grounding material.
+def _render_inner_voice_note(
+    grounding: dict[str, object],
+) -> tuple[dict[str, object], str]:
+    """Render inner voice note via workspace prompt + LLM, with fallback.
 
-    Deterministic: builds from available fragments without LLM.
+    Returns (note_dict, render_mode) where render_mode is
+    "llm-rendered" or "deterministic-fallback".
     """
+    # Try LLM rendering via workspace prompt
+    try:
+        note = _llm_render_inner_voice(grounding)
+        if note and note.get("focus") and note.get("summary"):
+            return note, "llm-rendered"
+    except Exception:
+        pass
+
+    # Deterministic fallback
+    return _deterministic_compose(grounding), "deterministic-fallback"
+
+
+def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] | None:
+    """Use workspace INNER_VOICE.md prompt + heartbeat model to render note."""
+    import json
+    from pathlib import Path
+
+    from core.identity.workspace_bootstrap import ensure_default_workspace
+
+    workspace_dir = ensure_default_workspace()
+    voice_file = workspace_dir / "INNER_VOICE.md"
+    if not voice_file.exists():
+        return None
+
+    voice_prompt = voice_file.read_text(encoding="utf-8", errors="replace").strip()
+    if not voice_prompt:
+        return None
+
+    # Build grounding context block
+    fragments = grounding.get("fragments") or {}
+    sources = grounding.get("sources") or []
+    context_lines = [
+        "RUNTIME GROUNDING (use only these facts):",
+        f"- Active grounding sources: {', '.join(sources)}",
+    ]
+    for key, value in fragments.items():
+        context_lines.append(f"- {key}: {value}")
+
+    full_prompt = f"{voice_prompt}\n\n{chr(10).join(context_lines)}"
+
+    # Use heartbeat model execution (cheap/local model)
+    from apps.api.jarvis_api.services.heartbeat_runtime import (
+        _resolve_heartbeat_target,
+        _execute_heartbeat_model,
+    )
+    from apps.api.jarvis_api.services.heartbeat_runtime import (
+        _load_heartbeat_policy,
+    )
+
+    policy = _load_heartbeat_policy()
+    target = _resolve_heartbeat_target(policy=policy)
+
+    result = _execute_heartbeat_model(
+        prompt=full_prompt,
+        target=target,
+        policy=policy,
+        open_loops=[],
+        liveness=None,
+    )
+
+    raw = str(result.get("text") or "").strip()
+    if not raw:
+        return None
+
+    # Parse JSON output
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        # Try to extract JSON from response
+        start = raw.find("{")
+        end = raw.rfind("}") + 1
+        if start >= 0 and end > start:
+            try:
+                parsed = json.loads(raw[start:end])
+            except json.JSONDecodeError:
+                return None
+        else:
+            return None
+
+    focus = str(parsed.get("focus") or "")[:200].strip()
+    note_text = str(parsed.get("note") or "")[:400].strip()
+    mode = str(parsed.get("mode") or "observing")[:40].strip()
+
+    if not focus or not note_text:
+        return None
+
+    # Validate mode
+    valid_modes = {"reflective-carry", "held-tension", "growth-oriented", "continuity-aware", "observing"}
+    if mode not in valid_modes:
+        mode = "observing"
+
+    source_count = grounding.get("source_count", 0)
+    confidence = "high" if source_count >= 4 else ("medium" if source_count >= 2 else "low")
+
+    return {
+        "mode": mode,
+        "focus": focus,
+        "summary": f"[inner-voice:{mode}] {note_text}",
+        "detail": f"Sources: {', '.join(sources)}. LLM-rendered from INNER_VOICE.md.",
+        "confidence": confidence,
+    }
+
+
+def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
+    """Deterministic fallback composition when LLM is unavailable."""
     fragments = grounding.get("fragments") or {}
     sources = grounding.get("sources") or []
 
-    # Determine voice mode based on dominant grounding
     if "witness" in sources and "private-brain" in sources:
         mode = "reflective-carry"
     elif "open-loops" in sources and "conflict-resolution" in sources:
@@ -293,45 +402,32 @@ def _compose_inner_voice_note(grounding: dict[str, object]) -> dict[str, object]
     else:
         mode = "observing"
 
-    # Build focus
-    focus_parts: list[str] = []
-    if fragments.get("brain_top_focus"):
-        focus_parts.append(fragments["brain_top_focus"])
-    elif fragments.get("dev_focus"):
-        focus_parts.append(fragments["dev_focus"])
-    elif fragments.get("open_loop_signal"):
-        focus_parts.append(fragments["open_loop_signal"])
-    elif fragments.get("witness_signal"):
-        focus_parts.append(fragments["witness_signal"])
-    focus = focus_parts[0] if focus_parts else "quiet inner observation"
+    focus = (
+        fragments.get("brain_top_focus")
+        or fragments.get("dev_focus")
+        or fragments.get("open_loop_signal")
+        or fragments.get("witness_signal")
+        or "quiet inner observation"
+    )
 
-    # Build summary
-    summary_parts: list[str] = [f"[inner-voice:{mode}]"]
+    parts: list[str] = [f"[inner-voice:{mode}]"]
     if fragments.get("brain_continuity"):
-        summary_parts.append(f"Carrying: {fragments['brain_continuity'][:80]}")
+        parts.append(f"Carrying: {fragments['brain_continuity'][:80]}")
     if fragments.get("witness_signal"):
-        summary_parts.append(f"Witnessed: {fragments['witness_signal'][:60]}")
+        parts.append(f"Witnessed: {fragments['witness_signal'][:60]}")
     if fragments.get("open_loop_signal"):
-        summary_parts.append(f"Holding: {fragments['open_loop_signal'][:60]}")
+        parts.append(f"Holding: {fragments['open_loop_signal'][:60]}")
     if fragments.get("conflict_outcome"):
-        summary_parts.append(f"Resolved: {fragments['conflict_outcome']}")
-    if fragments.get("conductor_mode"):
-        summary_parts.append(f"Mode: {fragments['conductor_mode']}")
+        parts.append(f"Resolved: {fragments['conflict_outcome']}")
 
-    summary = ". ".join(summary_parts)
-
-    # Build detail
-    detail = f"Sources: {', '.join(sources)}. Grounded inner voice fragment."
-
-    # Confidence from source count
     source_count = grounding.get("source_count", 0)
     confidence = "high" if source_count >= 4 else ("medium" if source_count >= 2 else "low")
 
     return {
         "mode": mode,
         "focus": focus,
-        "summary": summary,
-        "detail": detail,
+        "summary": ". ".join(parts),
+        "detail": f"Sources: {', '.join(sources)}. Deterministic fallback.",
         "confidence": confidence,
     }
 

@@ -184,6 +184,7 @@ def test_daemon_produces_voice_note_with_sufficient_grounding(isolated_runtime) 
     assert result["daemon_cadence_state"] == "ran-produced"
     assert result["record_id"] != ""
     assert result["mode"] in {"reflective-carry", "held-tension", "growth-oriented", "continuity-aware", "observing"}
+    assert result["render_mode"] in {"llm-rendered", "deterministic-fallback"}
 
 
 # ---------------------------------------------------------------------------
@@ -231,3 +232,112 @@ def test_daemon_state_observable(isolated_runtime) -> None:
 
 # Import needed for one test
 from core.runtime.db import insert_private_brain_record
+
+
+# ---------------------------------------------------------------------------
+# Workspace-led rendering tests
+# ---------------------------------------------------------------------------
+
+
+def test_deterministic_fallback_produces_valid_note(isolated_runtime) -> None:
+    """Deterministic fallback must produce a valid note structure."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["open-loops", "development-focus"],
+        "fragments": {
+            "open_loop_signal": "An open thread about testing",
+            "dev_focus": "Growth focus on daemon architecture",
+        },
+    }
+    note = _deterministic_compose(grounding)
+
+    assert note["mode"] in {"reflective-carry", "held-tension", "growth-oriented", "continuity-aware", "observing"}
+    assert note["focus"]
+    assert note["summary"]
+    assert note["confidence"] in {"low", "medium", "high"}
+    assert "Deterministic fallback" in note["detail"]
+
+
+def test_render_falls_back_when_no_workspace_file(isolated_runtime, tmp_path) -> None:
+    """When INNER_VOICE.md doesn't exist, render should use deterministic fallback."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _render_inner_voice_note
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["open-loops", "private-brain"],
+        "fragments": {
+            "open_loop_signal": "Test loop",
+            "brain_continuity": "Test carry",
+        },
+    }
+    note, render_mode = _render_inner_voice_note(grounding)
+
+    assert note["focus"]
+    assert note["summary"]
+    # In test environment without real model, should use fallback
+    assert render_mode in {"llm-rendered", "deterministic-fallback"}
+
+
+def test_workspace_inner_voice_template_exists() -> None:
+    """INNER_VOICE.md template must exist in workspace/templates/."""
+    from pathlib import Path
+    template = Path("workspace/templates/INNER_VOICE.md")
+    assert template.exists(), "INNER_VOICE.md template missing from workspace/templates/"
+    content = template.read_text()
+    assert "inner voice" in content.lower()
+    assert "JSON" in content or "json" in content
+
+
+def test_render_mode_is_observable_in_daemon_result(isolated_runtime) -> None:
+    """Daemon result must include render_mode showing llm vs fallback."""
+    db = isolated_runtime.db
+    now = datetime.now(UTC).isoformat()
+
+    db.upsert_runtime_open_loop_signal(
+        signal_id="loop-render-test",
+        signal_type="open-loop",
+        canonical_key="open-loop:render-test",
+        status="open",
+        title="Render test loop",
+        summary="Testing render mode observability",
+        rationale="Test",
+        source_kind="runtime-derived-support",
+        confidence="medium",
+        evidence_summary="test",
+        support_summary="test",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Test",
+        run_id="test",
+        session_id="test",
+    )
+    db.upsert_runtime_development_focus(
+        focus_id="focus-render-test",
+        focus_type="runtime-growth",
+        canonical_key="development-focus:render-test",
+        status="active",
+        title="Render test focus",
+        summary="Testing render mode",
+        rationale="Test",
+        source_kind="runtime-derived-support",
+        confidence="medium",
+        evidence_summary="test",
+        support_summary="test",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Test",
+        run_id="test",
+        session_id="test",
+    )
+
+    result = run_inner_voice_daemon(trigger="test-render-obs")
+    assert result["daemon_ran"] is True
+    assert result["inner_voice_created"] is True
+    assert "render_mode" in result
+    assert result["render_mode"] in {"llm-rendered", "deterministic-fallback"}

@@ -2073,6 +2073,59 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
         </article>
       </section>
 
+      {/* --- Attention Budget Traces --- */}
+      {(() => {
+        const traces = data?.attentionTraces || {}
+        const traceEntries = Object.entries(traces).filter(([, t]) => t && t.profile)
+        if (!traceEntries.length) return null
+        return (
+          <section className="mc-section-grid">
+            <article className="support-card" id="jarvis-attention" title="Attention budget — authoritative prompt selection truth">
+              <div className="panel-header">
+                <div>
+                  <h3>Attention Budget</h3>
+                  <p className="muted">Authoritative prompt selection — what context Jarvis actually used.</p>
+                </div>
+                <span className="mc-section-hint">Runtime truth</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px 12px' }}>
+                {traceEntries.map(([profileKey, trace]) => {
+                  const isFallback = trace.authority_mode === 'fallback_passthrough'
+                  const hasOvershoot = Boolean(trace.budget_overshoot)
+                  const included = trace.included || []
+                  const trimmed = trace.trimmed || []
+                  const omitted = trace.omitted || []
+                  const utilPct = Math.round((trace.char_utilization || 0) * 100)
+                  return (
+                    <button
+                      key={profileKey}
+                      className={`mc-list-row ${isFallback ? 'now-card-muted' : ''}`}
+                      onClick={() => onOpenItem(`Attention Trace: ${profileKey}`, trace)}
+                    >
+                      <div>
+                        <strong>
+                          {profileKey.replace(/_/g, ' ')}
+                          {isFallback && <span style={{ color: 'var(--warning, #e2a308)', marginLeft: 6 }}>⚠ fallback</span>}
+                          {hasOvershoot && <span style={{ color: 'var(--warning, #e2a308)', marginLeft: 6 }}>△ overshoot +{trace.overshoot_chars}ch</span>}
+                        </strong>
+                        <span style={{ fontSize: '0.82em', opacity: 0.85 }}>
+                          {included.length} included{trimmed.length > 0 && ` · ${trimmed.length} trimmed`}{omitted.length > 0 && ` · ${omitted.length} omitted`}
+                          {' · '}{utilPct}% of {trace.total_char_target || 0}ch budget
+                        </span>
+                      </div>
+                      <div className="mc-row-meta">
+                        <small>{trace.authority_mode || 'unknown'}</small>
+                        <ChevronRight size={14} />
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </article>
+          </section>
+        )
+      })()}
+
       <section className="mc-section-grid">
         <article className="support-card" id="jarvis-state" title={sectionTitleWithMeta({
           source: '/mc/jarvis::state',

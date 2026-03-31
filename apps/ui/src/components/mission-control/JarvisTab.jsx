@@ -1556,8 +1556,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           </div>
           <div className="now-card">
             <span>Open Loops</span>
-            <strong>{openLoopSignals?.summary?.active_count || openLoopSignals?.items?.length || 0} loop{openLoopSignals?.items?.length !== 1 ? 's' : ''} open</strong>
-            <small>{openLoopSignals?.summary?.unresolved_count || 0} unresolved</small>
+            <strong>{openLoopSignals?.summary?.open_count || 0} open{(openLoopSignals?.summary?.softening_count || 0) > 0 ? `, ${openLoopSignals.summary.softening_count} softening` : ''}</strong>
+            <small>{(openLoopSignals?.summary?.open_count || 0) + (openLoopSignals?.summary?.softening_count || 0) === 0 ? 'no active loops' : `${openLoopSignals?.summary?.unresolved_count || 0} unresolved`}</small>
           </div>
           <div className="now-card">
             <span>Pressure</span>
@@ -1632,21 +1632,32 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           })()}
           {(() => {
             const focusTitle = developmentFocuses?.summary?.current_focus || developmentFocuses?.items?.[0]?.title || ''
-            const loopCount = openLoopSignals?.summary?.active_count || openLoopSignals?.items?.length || 0
+            const openCount = openLoopSignals?.summary?.open_count || 0
+            const softeningCount = openLoopSignals?.summary?.softening_count || 0
+            const loopCount = openCount + softeningCount
             const goalSignal = goalSignals?.summary?.current_goal || ''
+            const closureProposalCount = (openLoopClosureProposals?.summary?.fresh_count || 0) + (openLoopClosureProposals?.summary?.active_count || 0)
             const hasCarry = !!focusTitle || loopCount > 0 || !!goalSignal
             const carryLabel = focusTitle
               ? focusTitle.slice(0, 52)
               : goalSignal
                 ? goalSignal.slice(0, 52)
                 : loopCount > 0
-                  ? `${loopCount} open loop${loopCount !== 1 ? 's' : ''}`
+                  ? `${openCount} open${softeningCount > 0 ? `, ${softeningCount} softening` : ''}`
                   : 'Nothing carried'
+            const carryDetail = [
+              loopCount > 0 ? `${loopCount} loop${loopCount !== 1 ? 's' : ''}` : '',
+              softeningCount > 0 ? `${softeningCount} maturing` : '',
+              closureProposalCount > 0 ? `${closureProposalCount} closure proposal${closureProposalCount !== 1 ? 's' : ''}` : '',
+              goalSignal ? 'goal active' : '',
+              !loopCount && !goalSignal && focusTitle ? 'focus active' : '',
+              !loopCount && !goalSignal && !focusTitle ? 'no active threads' : '',
+            ].filter(Boolean).join(' · ')
             return (
           <div className={`now-card${hasCarry ? '' : ' now-card-muted'}`}>
             <span>Carry</span>
             <strong>{carryLabel}</strong>
-            <small className="muted">{loopCount > 0 ? `${loopCount} loop${loopCount !== 1 ? 's' : ''}` : ''}{loopCount > 0 && goalSignal ? ' · ' : ''}{goalSignal ? 'goal active' : ''}{!loopCount && !goalSignal && focusTitle ? 'focus active' : ''}{!loopCount && !goalSignal && !focusTitle ? 'no active threads' : ''}</small>
+            <small className="muted">{carryDetail}</small>
           </div>
             )
           })()}
@@ -1659,17 +1670,26 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             const gateActive = (proactiveQuestionGates?.summary?.active_count || 0) > 0
             const hasGate = pressureActive || gateActive
             const gateLabel = gateActive
-              ? (gateState === 'question-gated-candidate' ? 'Question ready' : 'Question gated')
-              : loopState
-                ? loopState.replace('loop-', '').replace(/-/g, ' ')
-                : pressureActive
-                  ? pressureType.replace(/-/g, ' ')
-                  : 'No pressure'
+              ? (gateState === 'question-gated-candidate' ? 'Question capable' : 'Question held')
+              : loopState === 'loop-question-worthy'
+                ? 'Approaching question'
+                : loopState === 'loop-closure-worthy'
+                  ? 'Closure worthy'
+                  : loopState
+                    ? loopState.replace('loop-', '').replace(/-/g, ' ')
+                    : pressureActive
+                      ? pressureType.replace(/-/g, ' ')
+                      : 'No pressure'
+            const gateDetail = [
+              pressureActive ? pressureType.replace(/-/g, ' ') : 'no pressure',
+              loopKind ? loopKind.replace(/-/g, ' ') : '',
+              gateActive ? (gateState === 'question-gated-candidate' ? 'gated · proposal only' : 'gated · held') : '',
+            ].filter(Boolean).join(' · ')
             return (
           <div className={`now-card${hasGate ? ' now-card-highlight' : ' now-card-muted'}`}>
             <span>Gate</span>
             <strong>{gateLabel}</strong>
-            <small className="muted">{pressureActive ? `${pressureType.replace(/-/g, ' ')}` : 'no pressure'}{loopKind ? ` · ${loopKind.replace(/-/g, ' ')}` : ''}{gateActive ? ` · ${gateState.replace(/-/g, ' ')}` : ''}</small>
+            <small className="muted">{gateDetail}</small>
           </div>
             )
           })()}
@@ -1679,17 +1699,23 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             const pilotActive = (webchatExecutionPilot?.summary?.active_count || 0) > 0
             const hbActive = hbState !== 'quiet' && hbState !== 'unknown'
             const actLabel = pilotActive
-              ? 'Webchat pilot active'
+              ? 'Pilot ready'
               : heartbeatState.currentlyTicking
                 ? 'Tick in progress'
-                : hbActive
-                  ? hbState.replace(/-/g, ' ')
-                  : 'Waiting'
+                : hbState === 'propose-worthy'
+                  ? 'Propose worthy'
+                  : hbState === 'alive-pressure'
+                    ? 'Alive pressure'
+                    : hbState === 'watchful'
+                      ? 'Watchful'
+                      : hbActive
+                        ? hbState.replace(/-/g, ' ')
+                        : 'Waiting'
             return (
           <div className={`now-card${hbActive || pilotActive ? '' : ' now-card-muted'}`}>
             <span>Act</span>
             <strong>{actLabel}</strong>
-            <small className="muted">{hbAction ? `last: ${hbAction.replace(/-/g, ' ')}` : 'bounded heartbeat'}{pilotActive ? ' · pilot ready' : ''}</small>
+            <small className="muted">{hbAction ? `last: ${hbAction.replace(/-/g, ' ')}` : 'bounded heartbeat'}{pilotActive ? ' · webchat pilot' : ''}</small>
           </div>
             )
           })()}
@@ -2473,7 +2499,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {temporalRecurrenceSignals.items.slice(0, 3).map((item) => temporalRecurrenceSignalRow(item, onOpenItem))}
               {openLoopSignals.items.length > 0 ? subsectionHeader('Open Loops', 'What Remains Unresolved') : null}
               {openLoopSignals.items.slice(0, 3).map((item) => openLoopSignalRow(item, onOpenItem))}
-              {openLoopClosureProposals.items.length > 0 ? subsectionHeader('Loop Closure Proposals', 'What Looks Worth Considering For Closure') : null}
+              {openLoopClosureProposals.items.length > 0 ? subsectionHeader('Closure Proposals', 'Bounded Proposals Only — Not Automatic Closure') : null}
               {openLoopClosureProposals.items.slice(0, 3).map((item) => openLoopClosureProposalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}

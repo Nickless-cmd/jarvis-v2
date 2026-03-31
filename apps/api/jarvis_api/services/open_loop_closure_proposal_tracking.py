@@ -120,20 +120,30 @@ def _extract_open_loop_closure_proposal_candidates() -> list[dict[str, object]]:
         if loop_status not in {"open", "softening"}:
             continue
         closure_confidence = str(item.get("closure_confidence") or "low")
-        if closure_confidence not in {"medium", "high"}:
-            continue
         domain_key = _open_loop_domain_key(str(item.get("canonical_key") or ""))
         if not domain_key:
             continue
         snapshot = snapshots.get(domain_key) or {}
-        proposal_type = _build_proposal_type(item=item, snapshot=snapshot)
+
+        # Primary path: closure_confidence is already medium/high from maturation evidence
+        if closure_confidence in {"medium", "high"}:
+            proposal_type = _build_proposal_type(item=item, snapshot=snapshot)
+        # Secondary path: softening loops produce hold-open proposals even at low confidence,
+        # because the transition from open→softening is itself maturation evidence worth surfacing.
+        elif loop_status == "softening":
+            proposal_type = "hold-open"
+        else:
+            continue
+
         if not proposal_type:
             continue
+        loop_title = str(item.get("title") or "").replace("Open loop: ", "").strip()
         title_suffix = _domain_title(domain_key)
         proposal_reason = _build_proposal_reason(
             proposal_type=proposal_type,
             loop_status=loop_status,
             closure_confidence=closure_confidence,
+            loop_title=loop_title,
         )
         review_anchor = _build_review_anchor(snapshot=snapshot)
         source_items = [
@@ -343,14 +353,17 @@ def _proposal_status(*, proposal_type: str, loop_status: str) -> str:
     return "active"
 
 
-def _build_proposal_reason(*, proposal_type: str, loop_status: str, closure_confidence: str) -> str:
+def _build_proposal_reason(*, proposal_type: str, loop_status: str, closure_confidence: str, loop_title: str = "") -> str:
+    focus = f" '{loop_title}'" if loop_title else ""
     if proposal_type == "close-candidate":
-        return "This loop now looks like a bounded closure candidate under current runtime truth."
+        return f"Loop{focus} now looks like a bounded closure candidate — closure confidence is {closure_confidence} with settled maturation evidence."
     if proposal_type == "revisit-before-close":
-        return "This loop shows closure evidence, but it should be revisited once more before any closure move."
+        return f"Loop{focus} shows closure evidence, but should be revisited once more before any closure move."
+    if loop_status == "softening" and closure_confidence == "low":
+        return f"Loop{focus} is softening (pressure is falling), which is early maturation evidence. Closure confidence is still low — hold open and observe."
     if loop_status == "softening":
-        return f"This loop is softening, but current closure confidence is still only {closure_confidence}, so it should stay open."
-    return f"This loop still reads as better held open while closure confidence remains {closure_confidence}."
+        return f"Loop{focus} is softening with {closure_confidence} closure confidence. Not yet closure-ready, but maturation is visible."
+    return f"Loop{focus} reads as better held open while closure confidence remains {closure_confidence}."
 
 
 def _build_review_anchor(*, snapshot: dict[str, object]) -> str:

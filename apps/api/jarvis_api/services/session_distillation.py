@@ -407,6 +407,69 @@ def build_private_brain_context(*, limit: int = _BRAIN_CONTEXT_LIMIT) -> dict[st
 
 
 # ---------------------------------------------------------------------------
+# Continuity mode classification
+# ---------------------------------------------------------------------------
+
+# Modes for the continuity motor:
+# - reinforce: multiple records of the same thread → strengthen carry
+# - carry: diverse threads all active → maintain breadth
+# - settle: older records dominating → time to let threads rest
+# - release: mostly consolidation records → brain is already settled
+
+_CONSOLIDATION_TYPES = {"continuity-reinforce", "continuity-carry", "continuity-settle", "continuity-release", "continuity-consolidation"}
+
+
+def _classify_continuity_mode(
+    excerpts: list[dict[str, object]],
+    by_type: dict[str, int],
+) -> dict[str, str]:
+    """Classify the semantic intention of a continuity pass.
+
+    Returns a dict with 'mode' and 'reason' keys.
+    """
+    type_count = len(by_type)
+    total = sum(by_type.values())
+
+    # Count how many are consolidation-type records (already settled)
+    consolidation_count = sum(
+        count for t, count in by_type.items()
+        if t in _CONSOLIDATION_TYPES
+    )
+
+    if consolidation_count > total / 2:
+        return {
+            "mode": "release",
+            "reason": "Brain is mostly consolidation records — inner threads are settling",
+        }
+
+    # Check for focus concentration (same focus appearing in multiple excerpts)
+    focuses = [str(e.get("focus") or "").lower().strip() for e in excerpts if e.get("focus")]
+    focus_set = set(focuses)
+    if len(focuses) >= 3 and len(focus_set) <= 2:
+        return {
+            "mode": "reinforce",
+            "reason": f"Inner threads are concentrating around {len(focus_set)} focal point(s)",
+        }
+
+    if type_count >= 3:
+        return {
+            "mode": "carry",
+            "reason": f"Diverse inner threads ({type_count} types) are all still active",
+        }
+
+    if type_count >= 2 and total >= 3:
+        return {
+            "mode": "settle",
+            "reason": "Mixed inner threads are stabilizing with moderate activity",
+        }
+
+    return {
+        "mode": "carry",
+        "reason": "Inner continuity is being maintained across active threads",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Private brain continuity motor
 # ---------------------------------------------------------------------------
 
@@ -469,18 +532,25 @@ def run_private_brain_continuity(
             "brain_record_count": total,
         }
 
+    # Classify continuity intention semantically
+    continuity_mode = _classify_continuity_mode(excerpts, by_type)
+
     # Build a consolidation summary from excerpts
     focus_parts = [e["focus"] for e in excerpts[:3] if e.get("focus")]
     summary_parts = [e["summary"] for e in excerpts[:3] if e.get("summary")]
     consolidated_focus = " + ".join(focus_parts[:3]) if focus_parts else "private continuity"
+
+    mode_label = continuity_mode["mode"]
+    mode_reason = continuity_mode["reason"]
     consolidated_summary = (
-        f"Consolidation across {total} brain records ({type_count} types). "
-        f"Key threads: {'; '.join(s[:60] for s in summary_parts[:3])}"
+        f"[{mode_label}] {mode_reason}. "
+        f"Across {total} records ({type_count} types): "
+        f"{'; '.join(s[:50] for s in summary_parts[:3])}"
     )
 
     # Anti-spam: check if we already have a very similar consolidation
     recent_records = list_private_brain_records(limit=_DUPLICATE_SUMMARY_WINDOW)
-    if _is_near_duplicate(consolidated_summary, "continuity-consolidation", recent_records):
+    if _is_near_duplicate(consolidated_summary, f"continuity-{mode_label}", recent_records):
         event_bus.publish(
             "private_brain.continuity_skipped",
             {
@@ -499,8 +569,8 @@ def run_private_brain_continuity(
 
     # Create the consolidation record
     record = insert_private_brain_record(
-        record_id=f"pb-consolidation-{uuid4().hex[:12]}",
-        record_type="continuity-consolidation",
+        record_id=f"pb-{mode_label[:8]}-{uuid4().hex[:12]}",
+        record_type=f"continuity-{mode_label}",
         layer="private_brain",
         session_id="",  # continuity motor runs between sessions
         run_id="",
@@ -517,6 +587,8 @@ def run_private_brain_continuity(
         {
             "trigger": trigger,
             "record_id": record.get("record_id", ""),
+            "continuity_mode": mode_label,
+            "continuity_reason": mode_reason,
             "record_count_input": total,
             "type_count_input": type_count,
             "summary": consolidated_summary[:200],
@@ -525,6 +597,8 @@ def run_private_brain_continuity(
 
     return {
         "action": "consolidated",
+        "continuity_mode": mode_label,
+        "continuity_reason": mode_reason,
         "trigger": trigger,
         "brain_record_count": total,
         "record": record,

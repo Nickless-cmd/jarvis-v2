@@ -1165,6 +1165,25 @@ def _build_heartbeat_liveness_signal(
             anchor="heartbeat-cadence",
         )
 
+    # Private brain carry signal — adds liveness weight when inner
+    # continuity threads are actively being carried
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            build_private_brain_context,
+        )
+        _brain = build_private_brain_context(limit=4)
+        _brain_count = int(_brain.get("record_count") or 0)
+        if _brain.get("active") and _brain_count >= 2:
+            _brain_types = len(_brain.get("by_type") or {})
+            _brain_weight = 2 if _brain_types >= 2 else 1
+            add_signal(
+                weight=_brain_weight,
+                reason=f"private brain carries {_brain_count} active inner threads ({_brain_types} types)",
+                anchor="private-brain-carry",
+            )
+    except Exception:
+        pass
+
     if score <= 0:
         signal = {
             "liveness_state": "quiet",

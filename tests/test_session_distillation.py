@@ -450,3 +450,98 @@ def test_continuity_motor_consolidates_when_enough_diversity(_ensure_tables) -> 
     if result["action"] == "consolidated":
         assert result["record"]
         assert result["summary"]
+        assert result["continuity_mode"] in {"reinforce", "carry", "settle", "release"}
+        assert result["continuity_reason"]
+
+
+# ---------------------------------------------------------------------------
+# Continuity mode classification
+# ---------------------------------------------------------------------------
+
+
+def test_classify_continuity_mode_reinforce() -> None:
+    """When excerpts share few focuses, mode should be 'reinforce'."""
+    from apps.api.jarvis_api.services.session_distillation import _classify_continuity_mode
+
+    excerpts = [
+        {"focus": "runtime architecture", "type": "inner-note-carry"},
+        {"focus": "runtime architecture", "type": "self-model-carry"},
+        {"focus": "runtime architecture", "type": "diary-carry"},
+    ]
+    by_type = {"inner-note-carry": 1, "self-model-carry": 1, "diary-carry": 1}
+
+    result = _classify_continuity_mode(excerpts, by_type)
+    assert result["mode"] == "reinforce"
+
+
+def test_classify_continuity_mode_carry() -> None:
+    """When there are 3+ diverse types, mode should be 'carry'."""
+    from apps.api.jarvis_api.services.session_distillation import _classify_continuity_mode
+
+    excerpts = [
+        {"focus": "focus A", "type": "inner-note-carry"},
+        {"focus": "focus B", "type": "self-model-carry"},
+        {"focus": "focus C", "type": "diary-carry"},
+    ]
+    by_type = {"inner-note-carry": 1, "self-model-carry": 1, "diary-carry": 1}
+
+    result = _classify_continuity_mode(excerpts, by_type)
+    assert result["mode"] == "carry"
+
+
+def test_classify_continuity_mode_release() -> None:
+    """When most records are consolidation types, mode should be 'release'."""
+    from apps.api.jarvis_api.services.session_distillation import _classify_continuity_mode
+
+    excerpts = [
+        {"focus": "settled thread", "type": "continuity-carry"},
+        {"focus": "settled thread 2", "type": "continuity-settle"},
+    ]
+    by_type = {"continuity-carry": 2, "continuity-settle": 1}
+
+    result = _classify_continuity_mode(excerpts, by_type)
+    assert result["mode"] == "release"
+
+
+# ---------------------------------------------------------------------------
+# Heartbeat prompt brain section
+# ---------------------------------------------------------------------------
+
+
+def test_heartbeat_prompt_includes_private_brain_section() -> None:
+    """When private brain context is active, the heartbeat prompt assembly
+    should include a private brain continuity section."""
+    from apps.api.jarvis_api.services.prompt_contract import (
+        _heartbeat_private_brain_section,
+    )
+
+    context_with_brain = {
+        "private_brain": {
+            "active": True,
+            "record_count": 2,
+            "excerpts": [
+                {"type": "inner-note-carry", "focus": "runtime observation", "summary": "Noticed something important about the bounded lifecycle."},
+                {"type": "self-model-carry", "focus": "growth direction", "summary": "Self-model is shifting toward more proactive engagement."},
+            ],
+            "continuity_summary": "Private brain carries 2 active records (1 inner-note-carry, 1 self-model-carry).",
+        },
+    }
+
+    section = _heartbeat_private_brain_section(context_with_brain)
+    assert section is not None
+    assert "Private brain continuity" in section
+    assert "inner-note-carry" in section
+    assert "not canonical" in section.lower() or "not workspace" in section.lower()
+
+
+def test_heartbeat_prompt_skips_brain_when_empty() -> None:
+    """When private brain context is inactive, no section should be produced."""
+    from apps.api.jarvis_api.services.prompt_contract import (
+        _heartbeat_private_brain_section,
+    )
+
+    section = _heartbeat_private_brain_section({"private_brain": {"active": False}})
+    assert section is None
+
+    section = _heartbeat_private_brain_section({})
+    assert section is None

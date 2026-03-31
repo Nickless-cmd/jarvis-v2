@@ -483,6 +483,11 @@ def build_heartbeat_prompt_assembly(
         parts.append(liveness)
         derived_inputs.append("bounded heartbeat liveness support")
 
+    brain_section = _heartbeat_private_brain_section(heartbeat_context or {})
+    if brain_section:
+        parts.append(brain_section)
+        derived_inputs.append("bounded private brain continuity context")
+
     return PromptAssembly(
         mode="heartbeat",
         text="\n\n".join(part for part in parts if part).strip(),
@@ -1264,6 +1269,40 @@ def _heartbeat_liveness_summary(context: dict[str, object]) -> str | None:
             f"- summary={liveness.get('liveness_summary') or 'none'}",
         ]
     )
+
+
+def _heartbeat_private_brain_section(context: dict[str, object]) -> str | None:
+    """Build a bounded private brain excerpt for the heartbeat prompt.
+
+    Includes at most 4 compact excerpts from the private brain, plus a
+    one-line continuity summary.  This gives the heartbeat model bounded
+    awareness of Jarvis' inner continuity without dumping the full brain.
+    """
+    brain = context.get("private_brain") or {}
+    if not brain.get("active"):
+        return None
+
+    excerpts = brain.get("excerpts") or []
+    if not excerpts:
+        return None
+
+    lines = ["Private brain continuity (bounded inner carry — not canonical truth):"]
+    continuity_summary = str(brain.get("continuity_summary") or "").strip()
+    if continuity_summary:
+        lines.append(f"- {continuity_summary[:160]}")
+
+    for excerpt in excerpts[:4]:
+        focus = str(excerpt.get("focus") or "").strip()
+        summary = str(excerpt.get("summary") or "").strip()
+        record_type = str(excerpt.get("type") or "").strip()
+        if not summary:
+            continue
+        label = f"[{record_type}]" if record_type else ""
+        focus_prefix = f"{focus}: " if focus else ""
+        lines.append(f"- {label} {focus_prefix}{summary[:120]}")
+
+    lines.append("(This is private inner carry — not workspace memory, not canonical identity.)")
+    return "\n".join(lines)
 
 
 def _visible_session_continuity_instruction() -> str | None:

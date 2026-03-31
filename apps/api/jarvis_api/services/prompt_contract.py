@@ -483,6 +483,16 @@ def build_heartbeat_prompt_assembly(
         parts.append(liveness)
         derived_inputs.append("bounded heartbeat liveness support")
 
+    brain_section = _heartbeat_private_brain_section(heartbeat_context or {})
+    if brain_section:
+        parts.append(brain_section)
+        derived_inputs.append("bounded private brain continuity context")
+
+    self_knowledge = _heartbeat_self_knowledge_section()
+    if self_knowledge:
+        parts.append(self_knowledge)
+        derived_inputs.append("bounded runtime self-knowledge map")
+
     return PromptAssembly(
         mode="heartbeat",
         text="\n\n".join(part for part in parts if part).strip(),
@@ -1266,6 +1276,51 @@ def _heartbeat_liveness_summary(context: dict[str, object]) -> str | None:
     )
 
 
+def _heartbeat_self_knowledge_section() -> str | None:
+    """Build a compact self-knowledge section for the heartbeat prompt."""
+    try:
+        from apps.api.jarvis_api.services.runtime_self_knowledge import (
+            build_self_knowledge_prompt_section,
+        )
+        return build_self_knowledge_prompt_section()
+    except Exception:
+        return None
+
+
+def _heartbeat_private_brain_section(context: dict[str, object]) -> str | None:
+    """Build a bounded private brain excerpt for the heartbeat prompt.
+
+    Includes at most 4 compact excerpts from the private brain, plus a
+    one-line continuity summary.  This gives the heartbeat model bounded
+    awareness of Jarvis' inner continuity without dumping the full brain.
+    """
+    brain = context.get("private_brain") or {}
+    if not brain.get("active"):
+        return None
+
+    excerpts = brain.get("excerpts") or []
+    if not excerpts:
+        return None
+
+    lines = ["Private brain continuity (bounded inner carry — not canonical truth):"]
+    continuity_summary = str(brain.get("continuity_summary") or "").strip()
+    if continuity_summary:
+        lines.append(f"- {continuity_summary[:160]}")
+
+    for excerpt in excerpts[:4]:
+        focus = str(excerpt.get("focus") or "").strip()
+        summary = str(excerpt.get("summary") or "").strip()
+        record_type = str(excerpt.get("type") or "").strip()
+        if not summary:
+            continue
+        label = f"[{record_type}]" if record_type else ""
+        focus_prefix = f"{focus}: " if focus else ""
+        lines.append(f"- {label} {focus_prefix}{summary[:120]}")
+
+    lines.append("(This is private inner carry — not workspace memory, not canonical identity.)")
+    return "\n".join(lines)
+
+
 def _visible_session_continuity_instruction() -> str | None:
     continuity = visible_session_continuity()
     if not continuity["active"]:
@@ -1450,9 +1505,41 @@ def _runtime_self_report_instruction(
             "- For certainty questions, answer in degrees like grounded, partly grounded, uncertain, or guessing. Avoid binary certainty unless the runtime facts are unusually clear.",
             "- When asked what you are basing your answer on, cite these runtime facts briefly. If asked whether you are guessing, say yes whenever these runtime facts are absent, stale, or only low-confidence support.",
             "- IMPORTANT SELF-ACTION LIMITS: Do NOT claim you have created, closed, tested, or are managing loops unless the runtime facts above explicitly show loop lifecycle events. Do NOT claim 'I will try again', 'I am reconnecting', 'I will restart', 'I have established connection', 'I will create a test loop', or similar self-action language unless there is concrete runtime evidence. State observed runtime status only.",
+            *_visible_self_knowledge_lines(),
             "Use only as subordinate support. Runtime and visible truth outrank it.",
         ]
     )
+
+
+def _visible_self_knowledge_lines() -> list[str]:
+    """Build compact self-knowledge lines for the visible self-report section."""
+    try:
+        from apps.api.jarvis_api.services.runtime_self_knowledge import (
+            build_runtime_self_knowledge_map,
+        )
+        knowledge = build_runtime_self_knowledge_map()
+    except Exception:
+        return []
+
+    lines: list[str] = []
+    active = knowledge["active_capabilities"]["items"]
+    gated = knowledge["approval_gated"]["items"]
+    inner = knowledge["passive_inner_forces"]["items"]
+
+    if active:
+        cap_names = [item["label"] for item in active[:4]]
+        lines.append(f"- self_knowledge_active: {', '.join(cap_names)}")
+    if gated:
+        gated_names = [item["label"] for item in gated[:2]]
+        lines.append(f"- self_knowledge_gated: {', '.join(gated_names)}")
+    if inner:
+        inner_names = [f"{item['label']} ({item['status']})" for item in inner[:3]]
+        lines.append(f"- self_knowledge_inner_forces: {', '.join(inner_names)}")
+
+    if lines:
+        lines.insert(0, "- SELF-KNOWLEDGE: When asked what you can do, what affects you, or what is gated — use these runtime facts:")
+
+    return lines
 
 
 def _runtime_self_report_query_profile(user_message: str) -> dict[str, bool]:

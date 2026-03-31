@@ -1505,9 +1505,41 @@ def _runtime_self_report_instruction(
             "- For certainty questions, answer in degrees like grounded, partly grounded, uncertain, or guessing. Avoid binary certainty unless the runtime facts are unusually clear.",
             "- When asked what you are basing your answer on, cite these runtime facts briefly. If asked whether you are guessing, say yes whenever these runtime facts are absent, stale, or only low-confidence support.",
             "- IMPORTANT SELF-ACTION LIMITS: Do NOT claim you have created, closed, tested, or are managing loops unless the runtime facts above explicitly show loop lifecycle events. Do NOT claim 'I will try again', 'I am reconnecting', 'I will restart', 'I have established connection', 'I will create a test loop', or similar self-action language unless there is concrete runtime evidence. State observed runtime status only.",
+            *_visible_self_knowledge_lines(),
             "Use only as subordinate support. Runtime and visible truth outrank it.",
         ]
     )
+
+
+def _visible_self_knowledge_lines() -> list[str]:
+    """Build compact self-knowledge lines for the visible self-report section."""
+    try:
+        from apps.api.jarvis_api.services.runtime_self_knowledge import (
+            build_runtime_self_knowledge_map,
+        )
+        knowledge = build_runtime_self_knowledge_map()
+    except Exception:
+        return []
+
+    lines: list[str] = []
+    active = knowledge["active_capabilities"]["items"]
+    gated = knowledge["approval_gated"]["items"]
+    inner = knowledge["passive_inner_forces"]["items"]
+
+    if active:
+        cap_names = [item["label"] for item in active[:4]]
+        lines.append(f"- self_knowledge_active: {', '.join(cap_names)}")
+    if gated:
+        gated_names = [item["label"] for item in gated[:2]]
+        lines.append(f"- self_knowledge_gated: {', '.join(gated_names)}")
+    if inner:
+        inner_names = [f"{item['label']} ({item['status']})" for item in inner[:3]]
+        lines.append(f"- self_knowledge_inner_forces: {', '.join(inner_names)}")
+
+    if lines:
+        lines.insert(0, "- SELF-KNOWLEDGE: When asked what you can do, what affects you, or what is gated — use these runtime facts:")
+
+    return lines
 
 
 def _runtime_self_report_query_profile(user_message: str) -> dict[str, bool]:

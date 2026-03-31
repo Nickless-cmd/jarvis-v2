@@ -701,6 +701,22 @@ def _build_heartbeat_context(
     except Exception:
         private_brain_context = {"active": False, "record_count": 0, "excerpts": [], "continuity_summary": ""}
 
+    # Self-knowledge for influence trace
+    try:
+        from apps.api.jarvis_api.services.runtime_self_knowledge import (
+            build_runtime_self_knowledge_map,
+        )
+        self_knowledge_summary = build_runtime_self_knowledge_map().get("summary", {})
+    except Exception:
+        self_knowledge_summary = {}
+
+    # Build bounded influence trace — shows what cognitive inputs were available
+    influence_trace = _build_influence_trace(
+        private_brain=private_brain_context,
+        liveness=liveness,
+        self_knowledge_summary=self_knowledge_summary,
+    )
+
     return {
         "schedule_status": str(merged_state["schedule_status"]),
         "budget_status": str(policy["budget_status"]),
@@ -712,6 +728,58 @@ def _build_heartbeat_context(
         "continuity_summary": continuity_summary,
         "liveness": liveness,
         "private_brain": private_brain_context,
+        "influence_trace": influence_trace,
+    }
+
+
+def _build_influence_trace(
+    *,
+    private_brain: dict[str, object],
+    liveness: dict[str, object],
+    self_knowledge_summary: dict[str, object],
+) -> dict[str, object]:
+    """Build a bounded trace of what cognitive inputs were available to heartbeat.
+
+    This is observability — not causal proof, but an honest record of what
+    was present in the cognitive context.
+    """
+    inputs_present: list[str] = []
+    inputs_absent: list[str] = []
+
+    # Private brain
+    brain_count = int(private_brain.get("record_count") or 0)
+    if private_brain.get("active") and brain_count > 0:
+        inputs_present.append(f"private-brain-carry ({brain_count} records)")
+    else:
+        inputs_absent.append("private-brain-carry")
+
+    # Liveness
+    liveness_state = str(liveness.get("liveness_state") or "quiet")
+    liveness_score = int(liveness.get("liveness_score") or 0)
+    if liveness_state != "quiet":
+        inputs_present.append(f"liveness-pressure ({liveness_state}, score={liveness_score})")
+    else:
+        inputs_absent.append("liveness-pressure")
+
+    # Self-knowledge
+    active_count = int(self_knowledge_summary.get("active_count") or 0)
+    inner_count = int(self_knowledge_summary.get("inner_force_count") or 0)
+    if active_count > 0 or inner_count > 0:
+        inputs_present.append(f"self-knowledge ({active_count} active, {inner_count} inner forces)")
+    else:
+        inputs_absent.append("self-knowledge")
+
+    return {
+        "inputs_present": inputs_present,
+        "inputs_absent": inputs_absent,
+        "summary": (
+            f"Cognitive inputs: {', '.join(inputs_present)}"
+            if inputs_present
+            else "No bounded cognitive inputs were active."
+        ),
+        "brain_record_count": brain_count,
+        "liveness_state": liveness_state,
+        "liveness_score": liveness_score,
     }
 
 

@@ -26169,6 +26169,28 @@ def list_private_brain_records(
     return [_private_brain_record_from_row(row) for row in rows]
 
 
+def update_private_brain_record_status(
+    record_id: str,
+    *,
+    status: str,
+    updated_at: str,
+) -> dict[str, object] | None:
+    """Transition a private brain record to a new lifecycle status.
+
+    Valid statuses: active, settling, fading, released.
+    This is a non-destructive lifecycle transition — the record remains
+    in the DB with its new status.
+    """
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        conn.execute(
+            "UPDATE private_brain_records SET status = ?, updated_at = ? WHERE record_id = ?",
+            (status, updated_at, record_id),
+        )
+        conn.commit()
+    return get_private_brain_record(record_id)
+
+
 def get_private_brain_record(record_id: str) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_private_brain_records_table(conn)

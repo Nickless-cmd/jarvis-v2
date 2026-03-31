@@ -29,6 +29,7 @@ from core.runtime.db import (
     insert_session_distillation_record,
     list_private_brain_records,
     list_session_distillation_records,
+    update_private_brain_record_status,
 )
 
 # ---------------------------------------------------------------------------
@@ -595,6 +596,9 @@ def run_private_brain_continuity(
         },
     )
 
+    # Run lifecycle pass after consolidation
+    lifecycle = run_private_brain_lifecycle()
+
     return {
         "action": "consolidated",
         "continuity_mode": mode_label,
@@ -603,6 +607,116 @@ def run_private_brain_continuity(
         "brain_record_count": total,
         "record": record,
         "summary": consolidated_summary,
+        "lifecycle": lifecycle,
+    }
+
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Private brain lifecycle
+# ---------------------------------------------------------------------------
+
+# Lifecycle: active → settling → fading → released
+# Transition rules:
+# - Records older than _SETTLE_AFTER_RUNS continuity motor invocations → settling
+# - settling records older than _FADE_AFTER_RUNS → fading
+# - fading records → released (soft-expired, kept in DB)
+# - consolidation records (continuity-*) settle faster
+
+_SETTLE_THRESHOLD = 6   # records seen N+ times by continuity → settling
+_FADE_THRESHOLD = 3     # settling records survive N more continuity passes → fading
+_RELEASE_THRESHOLD = 2  # fading records survive N more → released
+
+_FAST_SETTLE_TYPES = {"continuity-reinforce", "continuity-carry", "continuity-settle", "continuity-release", "continuity-consolidation"}
+
+
+def run_private_brain_lifecycle() -> dict[str, object]:
+    """Run a bounded lifecycle pass over private brain records.
+
+    Transitions records through: active → settling → fading → released.
+    Uses a simple age-based model: records that have been present across
+    many continuity motor invocations gradually settle and fade.
+
+    Returns a summary of transitions made.
+    """
+    now = datetime.now(UTC).isoformat()
+    # Get ALL non-released records for lifecycle evaluation
+    active_records = list_private_brain_records(limit=50, status="active")
+    settling_records = list_private_brain_records(limit=50, status="settling")
+    fading_records = list_private_brain_records(limit=50, status="fading")
+
+    transitions: dict[str, int] = {"settled": 0, "faded": 0, "released": 0}
+
+    # Active → settling: records that have been around for a while
+    # Use record age relative to total active count as proxy
+    if len(active_records) > _SETTLE_THRESHOLD:
+        # Settle the oldest records beyond the threshold
+        to_settle = active_records[_SETTLE_THRESHOLD:]
+        for record in to_settle:
+            rtype = str(record.get("record_type") or "")
+            # Consolidation records settle faster
+            if rtype in _FAST_SETTLE_TYPES or len(active_records) > _SETTLE_THRESHOLD + 2:
+                update_private_brain_record_status(
+                    str(record["record_id"]),
+                    status="settling",
+                    updated_at=now,
+                )
+                transitions["settled"] += 1
+
+    # Settling → fading: if we have many settling records
+    if len(settling_records) > _FADE_THRESHOLD:
+        to_fade = settling_records[_FADE_THRESHOLD:]
+        for record in to_fade:
+            update_private_brain_record_status(
+                str(record["record_id"]),
+                status="fading",
+                updated_at=now,
+            )
+            transitions["faded"] += 1
+
+    # Fading → released
+    if len(fading_records) > _RELEASE_THRESHOLD:
+        to_release = fading_records[_RELEASE_THRESHOLD:]
+        for record in to_release:
+            update_private_brain_record_status(
+                str(record["record_id"]),
+                status="released",
+                updated_at=now,
+            )
+            transitions["released"] += 1
+
+    total_transitions = sum(transitions.values())
+    if total_transitions > 0:
+        event_bus.publish(
+            "private_brain.lifecycle_completed",
+            {
+                "settled": transitions["settled"],
+                "faded": transitions["faded"],
+                "released": transitions["released"],
+                "active_remaining": max(0, len(active_records) - transitions["settled"]),
+                "settling_remaining": max(0, len(settling_records) - transitions["faded"] + transitions["settled"]),
+                "summary": f"Lifecycle: {transitions['settled']} settled, {transitions['faded']} faded, {transitions['released']} released.",
+            },
+        )
+    else:
+        event_bus.publish(
+            "private_brain.lifecycle_skipped",
+            {
+                "active_count": len(active_records),
+                "settling_count": len(settling_records),
+                "fading_count": len(fading_records),
+                "summary": "No lifecycle transitions needed.",
+            },
+        )
+
+    return {
+        "transitions": transitions,
+        "total_transitions": total_transitions,
+        "counts": {
+            "active": len(active_records),
+            "settling": len(settling_records),
+            "fading": len(fading_records),
+        },
     }
 
 

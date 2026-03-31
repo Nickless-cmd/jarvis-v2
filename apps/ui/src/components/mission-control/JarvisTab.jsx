@@ -2073,6 +2073,160 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
         </article>
       </section>
 
+      {/* --- Runtime Self-Model --- */}
+      {(() => {
+        const sm = data?.runtimeSelfModel
+        if (!sm || !sm.layers || !sm.layers.length) return null
+        const layers = sm.layers || []
+        const boundaries = sm.truth_boundaries || {}
+        const summary = sm.summary || {}
+
+        // Group layers by role for display
+        const active = layers.filter(l => l.role === 'active')
+        const producers = layers.filter(l => l.kind === 'producer')
+        const groundwork = layers.filter(l => l.role === 'groundwork-only')
+        const internalOnly = layers.filter(l => l.visibility === 'internal-only' && l.kind !== 'producer' && l.role !== 'groundwork-only')
+
+        // Group active by kind
+        const activeByKind = {}
+        active.forEach(l => {
+          const k = l.kind || 'other'
+          if (!activeByKind[k]) activeByKind[k] = []
+          activeByKind[k].push(l)
+        })
+
+        const roleColor = (role) => {
+          if (role === 'active') return 'var(--success, #22c55e)'
+          if (role === 'cooling') return 'var(--warning, #e2a308)'
+          if (role === 'idle') return 'var(--muted, #888)'
+          if (role === 'unavailable') return 'var(--danger, #ef4444)'
+          if (role === 'groundwork-only') return 'var(--muted, #888)'
+          return 'var(--muted, #888)'
+        }
+
+        const kindLabel = (kind) => {
+          const labels = { capability: 'cap', permission: 'perm', producer: 'prod', memory: 'mem', identity: 'id', orchestration: 'orch', groundwork: 'gw' }
+          return labels[kind] || kind
+        }
+
+        return (
+          <section className="mc-section-grid">
+            <article className="support-card" id="jarvis-self-model" title="Runtime self-model — typed layer snapshot of Jarvis' current system-self">
+              <div className="panel-header">
+                <div>
+                  <h3>Runtime Self-Model</h3>
+                  <p className="muted">{summary.total_layers || 0} layers · {summary.active_count || 0} active · {groundwork.length} groundwork</p>
+                </div>
+                <span className="mc-section-hint">Runtime truth</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '0 12px 12px' }}>
+
+                {/* Active layers by kind */}
+                {Object.keys(activeByKind).length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active layers</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {Object.entries(activeByKind).map(([kind, items]) =>
+                        items.map(layer => (
+                          <button
+                            key={layer.id}
+                            className="mc-list-row"
+                            style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 6, width: 'auto', minWidth: 0 }}
+                            onClick={() => onOpenItem(`Layer: ${layer.label}`, layer)}
+                          >
+                            <span style={{ color: roleColor(layer.role), fontWeight: 600 }}>●</span>
+                            <span>{layer.label}</span>
+                            <span style={{ opacity: 0.5, fontSize: '0.85em' }}>{kindLabel(kind)}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Producer states */}
+                {producers.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Producers</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {producers.map(p => (
+                        <button
+                          key={p.id}
+                          className="mc-list-row"
+                          style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 6, width: 'auto', minWidth: 0 }}
+                          onClick={() => onOpenItem(`Producer: ${p.label}`, p)}
+                        >
+                          <span style={{ color: roleColor(p.role), fontWeight: 600 }}>●</span>
+                          <span>{p.label}</span>
+                          <span style={{ opacity: 0.5, fontSize: '0.85em' }}>{p.role}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Groundwork layers */}
+                {groundwork.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Groundwork (candidate only)</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {groundwork.map(g => (
+                        <button
+                          key={g.id}
+                          className="mc-list-row now-card-muted"
+                          style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 6, width: 'auto', minWidth: 0 }}
+                          onClick={() => onOpenItem(`Groundwork: ${g.label}`, g)}
+                        >
+                          <span style={{ opacity: 0.4 }}>○</span>
+                          <span>{g.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Truth boundaries — compact */}
+                <div>
+                  <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Truth boundaries</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '0.78em', opacity: 0.75 }}>
+                    {Object.entries(boundaries).map(([key, value]) => (
+                      <button
+                        key={key}
+                        className="mc-list-row"
+                        style={{ display: 'inline-flex', padding: '2px 7px', borderRadius: 3, fontSize: '0.9em', width: 'auto', minWidth: 0 }}
+                        onClick={() => onOpenItem(`Truth Boundary: ${key}`, { boundary: key, description: value, ...sm })}
+                        title={value}
+                      >
+                        {key.replace(/_/g, ' ').replace(/vs/g, '≠')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Full model drilldown */}
+                <button
+                  className="mc-list-row"
+                  style={{ marginTop: 2 }}
+                  onClick={() => onOpenItem('Runtime Self-Model (full)', sm)}
+                >
+                  <div>
+                    <strong>Full self-model snapshot</strong>
+                    <span style={{ fontSize: '0.82em', opacity: 0.85 }}>
+                      {summary.total_layers || 0} layers · {Object.keys(summary.by_kind || {}).length} kinds · {Object.keys(boundaries).length} boundaries
+                    </span>
+                  </div>
+                  <div className="mc-row-meta">
+                    <small>{sm.built_at ? formatFreshness(sm.built_at) : 'unknown'}</small>
+                    <ChevronRight size={14} />
+                  </div>
+                </button>
+
+              </div>
+            </article>
+          </section>
+        )
+      })()}
+
       {/* --- Attention Budget Traces + Conflict Resolution --- */}
       {(() => {
         const traces = data?.attentionTraces || {}

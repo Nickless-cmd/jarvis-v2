@@ -245,3 +245,161 @@ def test_open_loop_with_low_confidence_does_not_produce_closure_proposal(
 
     assert result["created"] == 0
     assert surface["active"] is False
+
+
+# ---------------------------------------------------------------------------
+# Chain test 5: full proactive chain → question gate via real DB
+# ---------------------------------------------------------------------------
+
+
+def _insert_relation_continuity(db) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_relation_continuity_signal(
+        signal_id=f"relation-{uuid4().hex}",
+        signal_type="relation-continuity",
+        canonical_key="relation-continuity:carried-thread:smoke-thread",
+        status="active",
+        title="Relation continuity: Smoke thread",
+        summary="Relation continuity is still holding weight.",
+        rationale="Smoke test relation continuity",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="relation continuity evidence",
+        support_summary="continuity-weight=high | source-anchor=relation-anchor",
+        support_count=2,
+        session_count=2,
+        created_at=now,
+        updated_at=now,
+        status_reason="Smoke test",
+        run_id="smoke-run",
+        session_id="smoke-session",
+    )
+
+
+def _insert_meaning(db) -> None:
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_meaning_significance_signal(
+        signal_id=f"meaning-{uuid4().hex}",
+        signal_type="developmental-significance",
+        canonical_key="meaning-significance:developmental-significance:smoke-thread",
+        status="active",
+        title="Meaning significance: Smoke thread",
+        summary="Meaning significance is still carried.",
+        rationale="Smoke test meaning",
+        source_kind="runtime-derived-support",
+        confidence="high",
+        evidence_summary="meaning evidence",
+        support_summary="meaning-weight=high | source-anchor=meaning-anchor",
+        support_count=2,
+        session_count=2,
+        created_at=now,
+        updated_at=now,
+        status_reason="Smoke test",
+        run_id="smoke-run",
+        session_id="smoke-session",
+    )
+
+
+def test_full_proactive_chain_produces_question_gate_via_real_db(
+    isolated_runtime,
+) -> None:
+    """The full alive-core proactive chain:
+    initiative tension + open loop + regulation + awareness + relation + meaning
+    → autonomy pressure (question-pressure)
+    → proactive loop (question-loop)
+    → question gate (with backing thread info)
+    All via real DB, no monkeypatching."""
+    db = isolated_runtime.db
+    autonomy = isolated_runtime.autonomy_pressure_signal_tracking
+    proactive = isolated_runtime.proactive_loop_lifecycle_tracking
+    gate = isolated_runtime.proactive_question_gate_tracking
+
+    # Seed the full substrate
+    _insert_initiative_tension(db)
+    _insert_open_loop(db)
+    _insert_regulation(db)
+    _insert_runtime_awareness(db)
+    _insert_relation_continuity(db)
+    _insert_meaning(db)
+
+    # Step 1: autonomy pressure must produce question-pressure
+    autonomy.track_runtime_autonomy_pressure_signals_for_visible_turn(
+        session_id="smoke-session", run_id="smoke-run",
+    )
+    ap_surface = autonomy.build_runtime_autonomy_pressure_signal_surface(limit=8)
+    ap_types = {item["autonomy_pressure_type"] for item in ap_surface["items"]}
+    assert "question-pressure" in ap_types
+
+    # Step 2: proactive loop must produce question-loop
+    proactive.track_runtime_proactive_loop_lifecycle_signals_for_visible_turn(
+        session_id="smoke-session", run_id="smoke-run",
+    )
+    pl_surface = proactive.build_runtime_proactive_loop_lifecycle_surface(limit=8)
+    pl_kinds = {item["loop_kind"] for item in pl_surface["items"]}
+    assert "question-loop" in pl_kinds
+
+    # Step 3: question gate must materialize
+    gate.track_runtime_proactive_question_gates_for_visible_turn(
+        session_id="smoke-session", run_id="smoke-run",
+    )
+    gate_surface = gate.build_runtime_proactive_question_gate_surface(limit=4)
+
+    assert gate_surface["active"] is True
+    gate_item = gate_surface["items"][0]
+
+    # Bounded invariants
+    assert gate_item["authority"] == "non-authoritative"
+    assert gate_item["planner_authority_state"] == "not-planner-authority"
+    assert gate_item["proactive_execution_state"] == "not-proactive-execution"
+    assert gate_item["send_permission_state"] in {"gated-candidate-only", "not-granted"}
+
+    # Gate is grounded in backing thread
+    assert gate_item["question_gate_state"] in {"question-gated-candidate", "question-gated-hold"}
+    assert gate_item["question_gate_weight"] in {"medium", "high"}
+
+
+def test_question_gate_surface_is_heartbeat_readable(
+    isolated_runtime,
+) -> None:
+    """The question gate surface shape must be readable by heartbeat
+    liveness scoring — specifically summary.active_count and
+    summary.current_state must be present and well-formed."""
+    db = isolated_runtime.db
+    autonomy = isolated_runtime.autonomy_pressure_signal_tracking
+    proactive = isolated_runtime.proactive_loop_lifecycle_tracking
+    gate = isolated_runtime.proactive_question_gate_tracking
+
+    _insert_initiative_tension(db)
+    _insert_open_loop(db)
+    _insert_regulation(db)
+    _insert_runtime_awareness(db)
+    _insert_relation_continuity(db)
+    _insert_meaning(db)
+
+    # Build the chain
+    autonomy.track_runtime_autonomy_pressure_signals_for_visible_turn(
+        session_id="smoke-session", run_id="smoke-run",
+    )
+    proactive.track_runtime_proactive_loop_lifecycle_signals_for_visible_turn(
+        session_id="smoke-session", run_id="smoke-run",
+    )
+    gate.track_runtime_proactive_question_gates_for_visible_turn(
+        session_id="smoke-session", run_id="smoke-run",
+    )
+
+    # Verify heartbeat-readable shape
+    gate_surface = gate.build_runtime_proactive_question_gate_surface(limit=4)
+    summary = gate_surface.get("summary", {})
+
+    # These are the exact keys heartbeat liveness reads
+    assert isinstance(summary.get("active_count"), int)
+    assert summary["active_count"] >= 1
+    assert summary.get("current_state") in {"question-gated-candidate", "question-gated-hold"}
+
+    # Proactive loop surface shape heartbeat also reads
+    pl_surface = proactive.build_runtime_proactive_loop_lifecycle_surface(limit=6)
+    pl_summary = pl_surface.get("summary", {})
+    assert isinstance(pl_summary.get("active_count"), int)
+    assert pl_summary["active_count"] >= 1
+    assert pl_summary.get("current_state") is not None
+    assert pl_summary.get("current_kind") is not None

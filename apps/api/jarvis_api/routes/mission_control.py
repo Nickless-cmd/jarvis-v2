@@ -725,6 +725,13 @@ def mc_self_knowledge() -> dict:
     return build_runtime_self_knowledge_map()
 
 
+@router.get("/runtime-self-model")
+def mc_runtime_self_model() -> dict:
+    """Return the current runtime self-model snapshot."""
+    from apps.api.jarvis_api.services.runtime_self_model import build_runtime_self_model
+    return build_runtime_self_model()
+
+
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
     return {

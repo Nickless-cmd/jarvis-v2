@@ -77,6 +77,28 @@ def _collect_layers() -> list[dict[str, str]]:
         "detail": "Shared rhythm for non-visible producers. Evaluates due/cooling/blocked.",
     })
 
+    try:
+        from apps.api.jarvis_api.services.emergent_signal_tracking import (
+            build_runtime_emergent_signal_surface,
+        )
+
+        emergent = build_runtime_emergent_signal_surface(limit=3)
+        emergent_summary = emergent.get("summary") or {}
+        layers.append({
+            "id": "emergent-inner-signals",
+            "label": "Emergent inner signals",
+            "kind": "groundwork",
+            "role": "groundwork-only",
+            "visibility": "internal-only",
+            "truth": "candidate-only",
+            "detail": (
+                f"Candidate-only internal signals. Active={int(emergent_summary.get('active_count') or 0)}; "
+                f"current={str(emergent_summary.get('current_signal') or 'none')}."
+            ),
+        })
+    except Exception:
+        pass
+
     # --- Capability layers ---
     layers.append({
         "id": "visible-chat",
@@ -399,6 +421,7 @@ def _producer_layers() -> list[dict[str, str]]:
             ("brain_continuity", "Brain continuity motor"),
             ("witness_daemon", "Witness daemon"),
             ("inner_voice_daemon", "Inner voice daemon"),
+            ("emergent_signal_daemon", "Emergent signal daemon"),
         ]:
             producers.append({
                 "id": f"producer-{name}",
@@ -418,6 +441,7 @@ def _producer_label(name: str) -> str:
         "brain_continuity": "Brain continuity motor",
         "witness_daemon": "Witness daemon",
         "inner_voice_daemon": "Inner voice daemon",
+        "emergent_signal_daemon": "Emergent signal daemon",
     }
     return labels.get(name, name.replace("_", " ").title())
 

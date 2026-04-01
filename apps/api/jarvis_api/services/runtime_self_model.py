@@ -50,6 +50,7 @@ def build_runtime_self_model() -> dict[str, object]:
         "affective_meta_state": _affective_meta_state_surface(),
         "epistemic_runtime_state": _epistemic_runtime_state_surface(),
         "subagent_ecology": _subagent_ecology_surface(),
+        "council_runtime": _council_runtime_surface(),
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
         "dream_articulation": _dream_articulation_surface(),
@@ -144,6 +145,22 @@ def _collect_layers() -> list[dict[str, str]]:
             f"blocked={int(ecology_summary.get('blocked_count') or 0)}; "
             f"last={ecology_summary.get('last_active_role_name') or 'none'}; "
             f"tool_access={subagent_ecology.get('tool_access') or 'none'}."
+        ),
+    })
+
+    council_runtime = _council_runtime_surface()
+    layers.append({
+        "id": "council-runtime-light",
+        "label": "Council / swarm light",
+        "kind": "orchestration",
+        "role": "active" if str(council_runtime.get("council_state") or "quiet") not in {"quiet", "held"} else "idle",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"state={council_runtime.get('council_state') or 'quiet'}; "
+            f"recommendation={council_runtime.get('recommendation') or 'none'}; "
+            f"divergence={council_runtime.get('divergence_level') or 'low'}; "
+            f"tool_access={council_runtime.get('tool_access') or 'none'}."
         ),
     })
 
@@ -428,6 +445,7 @@ def build_self_model_prompt_lines() -> list[str]:
     epistemic = model.get("epistemic_runtime_state") or {}
     subagent_ecology = model.get("subagent_ecology") or {}
     ecology_summary = subagent_ecology.get("summary") or {}
+    council_runtime = model.get("council_runtime") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -487,6 +505,13 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | blocked={ecology_summary.get('blocked_count') or 0}"
         f" | last={ecology_summary.get('last_active_role_name') or 'none'}"
         f" | tool_access={subagent_ecology.get('tool_access') or 'none'}"
+    )
+    lines.append(
+        "  council_runtime: "
+        f"{council_runtime.get('council_state') or 'quiet'}"
+        f" | recommend={council_runtime.get('recommendation') or 'none'}"
+        f" | divergence={council_runtime.get('divergence_level') or 'low'}"
+        f" | tool_access={council_runtime.get('tool_access') or 'none'}"
     )
     lines.append(
         "  loop_runtime: "
@@ -624,6 +649,25 @@ def _subagent_ecology_surface() -> dict[str, object]:
                 "last_active_role_status": "none",
                 "last_activation_reason": "unavailable",
             },
+            "tool_access": "none",
+        }
+
+
+def _council_runtime_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.council_runtime import (
+            build_council_runtime_surface,
+        )
+        return build_council_runtime_surface()
+    except Exception:
+        return {
+            "council_state": "quiet",
+            "participating_roles": [],
+            "role_positions": [],
+            "divergence_level": "low",
+            "recommendation": "hold",
+            "recommendation_reason": "unavailable",
+            "confidence": "low",
             "tool_access": "none",
         }
 

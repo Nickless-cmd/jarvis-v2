@@ -1271,6 +1271,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     adaptive_planner = context.get("adaptive_planner") or {}
     adaptive_reasoning = context.get("adaptive_reasoning") or {}
     guided_learning = context.get("guided_learning") or {}
+    adaptive_learning = context.get("adaptive_learning") or {}
     loop_runtime = context.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
@@ -1308,6 +1309,12 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | focus={guided_learning.get('learning_focus') or 'reasoning'}"
                 f" | posture={guided_learning.get('learning_posture') or 'gentle'}"
                 f" | pressure={guided_learning.get('learning_pressure') or 'low'}"
+            ),
+            (
+                f"- adaptive_learning={adaptive_learning.get('learning_engine_mode') or 'retain'}"
+                f" | target={adaptive_learning.get('reinforcement_target') or 'reasoning'}"
+                f" | retention={adaptive_learning.get('retention_bias') or 'light'}"
+                f" | maturation={adaptive_learning.get('maturation_state') or 'early'}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"
@@ -1528,6 +1535,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
         guided_learning = build_guided_learning_prompt_section()
         if guided_learning:
             parts.append(guided_learning)
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.adaptive_learning_runtime import (
+            build_adaptive_learning_prompt_section,
+        )
+        adaptive_learning = build_adaptive_learning_prompt_section()
+        if adaptive_learning:
+            parts.append(adaptive_learning)
     except Exception:
         pass
     try:

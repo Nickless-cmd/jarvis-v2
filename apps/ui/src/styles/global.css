@@ -487,6 +487,9 @@ button { cursor: pointer; }
   font-size:11px; font-weight:500; text-transform:capitalize;
 }
 .mc-status-pill.status-active { background:rgba(40,177,163,.15); color:#49d2c3; }
+.mc-status-pill.status-idle { background:rgba(140,160,182,.1); color:#8ca0b6; }
+.mc-status-pill.status-cooling { background:rgba(104,163,255,.12); color:#93b8ff; }
+.mc-status-pill.status-blocked { background:rgba(243,92,92,.15); color:#f35c5c; }
 .mc-status-pill.status-completed { background:rgba(40,177,163,.15); color:#49d2c3; }
 .mc-status-pill.status-corrected { background:rgba(243,92,92,.12); color:#f35c5c; }
 .mc-status-pill.status-approved { background:rgba(40,177,163,.12); color:#49d2c3; }

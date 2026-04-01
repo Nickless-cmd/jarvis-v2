@@ -705,6 +705,56 @@ function normalizeEpistemicRuntimeState(item = {}) {
   }
 }
 
+function normalizeSubagentEcology(item = {}) {
+  const summary = item.summary || {}
+  const freshness = item.freshness || {}
+  const seamUsage = item.seam_usage || {}
+
+  return {
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    internalOnly: item.internal_only !== false,
+    toolAccess: item.tool_access || 'none',
+    boundary: item.boundary || 'not-memory-not-identity-not-action-not-tool-execution',
+    kind: item.kind || 'subagent-ecology-light',
+    summaryText: item.summary_text || 'No internal helper roles currently active.',
+    source: item.source || '/mc/subagent-ecology',
+    roles: (item.roles || []).map((role) => ({
+      roleName: role.role_name || '',
+      roleKind: role.role_kind || 'internal-role',
+      currentStatus: role.current_status || 'idle',
+      lastActivationAt: role.last_activation_at || '',
+      activationReason: role.activation_reason || '',
+      internalOnly: role.internal_only !== false,
+      toolAccess: role.tool_access || 'none',
+      influenceScope: role.influence_scope || 'bounded',
+    })),
+    summary: {
+      roleCount: Number(summary.role_count || 0),
+      activeCount: Number(summary.active_count || 0),
+      idleCount: Number(summary.idle_count || 0),
+      coolingCount: Number(summary.cooling_count || 0),
+      blockedCount: Number(summary.blocked_count || 0),
+      lastActiveRoleName: summary.last_active_role_name || 'none',
+      lastActiveRoleStatus: summary.last_active_role_status || 'none',
+      lastActivationReason: summary.last_activation_reason || 'none',
+    },
+    sourceContributors: (item.source_contributors || []).map((sourceInput) => ({
+      source: sourceInput.source || '',
+      signal: sourceInput.signal || '',
+    })),
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    builtAt: freshness.built_at || '',
+    freshnessState: freshness.state || 'unknown',
+    createdAt: freshness.built_at || '',
+  }
+}
+
 function normalizeInternalCadence(item = {}) {
   return {
     lastTickAt: item.last_tick_at || '',
@@ -2025,7 +2075,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, epistemicPayload, internalCadencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, epistemicPayload, subagentEcologyPayload, internalCadencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -2039,6 +2089,7 @@ export const backend = {
       requestJson('/mc/prompt-evolution').catch(() => null),
       requestJson('/mc/affective-meta-state').catch(() => null),
       requestJson('/mc/epistemic-runtime-state').catch(() => null),
+      requestJson('/mc/subagent-ecology').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
     ])
     const state = payload?.state || {}
@@ -2084,6 +2135,12 @@ export const backend = {
       heartbeat?.epistemic_runtime_state ||
       development?.epistemic_runtime_state ||
       selfModelPayload?.epistemic_runtime_state ||
+      null
+    const subagentEcologySource =
+      subagentEcologyPayload ||
+      heartbeat?.subagent_ecology ||
+      development?.subagent_ecology ||
+      selfModelPayload?.subagent_ecology ||
       null
 
     return {
@@ -2732,6 +2789,7 @@ export const backend = {
         promptEvolution: normalizePromptEvolution(development.prompt_evolution || promptEvolutionSource || {}),
         affectiveMetaState: normalizeAffectiveMetaState(development.affective_meta_state || affectiveMetaSource || {}),
         epistemicRuntimeState: normalizeEpistemicRuntimeState(development.epistemic_runtime_state || epistemicSource || {}),
+        subagentEcology: normalizeSubagentEcology(development.subagent_ecology || subagentEcologySource || {}),
         userUnderstandingSignals: {
           active: Boolean(development.user_understanding_signals?.active),
           summary: development.user_understanding_signals?.summary || {},
@@ -2807,6 +2865,7 @@ export const backend = {
         promptEvolution: normalizePromptEvolution(heartbeat.prompt_evolution || promptEvolutionSource || {}),
         affectiveMetaState: normalizeAffectiveMetaState(heartbeat.affective_meta_state || affectiveMetaSource || {}),
         epistemicRuntimeState: normalizeEpistemicRuntimeState(heartbeat.epistemic_runtime_state || epistemicSource || {}),
+        subagentEcology: normalizeSubagentEcology(heartbeat.subagent_ecology || subagentEcologySource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
@@ -2815,6 +2874,7 @@ export const backend = {
       promptEvolution: normalizePromptEvolution(promptEvolutionSource || {}),
       affectiveMetaState: normalizeAffectiveMetaState(affectiveMetaSource || {}),
       epistemicRuntimeState: normalizeEpistemicRuntimeState(epistemicSource || {}),
+      subagentEcology: normalizeSubagentEcology(subagentEcologySource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

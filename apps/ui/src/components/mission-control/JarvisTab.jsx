@@ -112,6 +112,35 @@ function epistemicRuntimeBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function subagentEcologyUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function subagentEcologyBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  if (item?.toolAccess) parts.push(`tool ${humanizeToken(item.toolAccess)}`)
+  return parts.join(' / ')
+}
+
+function subagentEcologyCountSummary(item) {
+  const summary = item?.summary || {}
+  return [
+    ['active', summary.activeCount || 0],
+    ['cooling', summary.coolingCount || 0],
+    ['blocked', summary.blockedCount || 0],
+    ['idle', summary.idleCount || 0],
+  ]
+    .filter(([, count]) => count > 0)
+    .map(([label, count]) => `${count} ${label}`)
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -442,6 +471,76 @@ function epistemicRuntimeStateRow(item, onOpen) {
         <StatusPill status={item.wrongnessState} />
         {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function subagentEcologyRow(item, onOpen) {
+  const summary = item?.summary || {}
+  if (!item || !(item.roles || []).length) return null
+  const detailText = [
+    item.summaryText,
+    summary.lastActiveRoleName && summary.lastActiveRoleName !== 'none'
+      ? `last ${humanizeToken(summary.lastActiveRoleName)}`
+      : '',
+    summary.lastActivationReason && summary.lastActivationReason !== 'none'
+      ? humanizeToken(summary.lastActivationReason)
+      : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Subagent Ecology', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'subagent ecology detail',
+      })}
+    >
+      <div>
+        <strong>Subagent Ecology</strong>
+        <span>{detailText || 'Inspect bounded internal helper-role ecology'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={summary.lastActiveRoleStatus || 'idle'} />
+        <small>{`${summary.activeCount || 0} active`}</small>
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function subagentRoleRow(item, onOpen) {
+  if (!item?.roleName) return null
+  const detailText = [
+    humanizeToken(item.roleKind),
+    item.activationReason ? humanizeToken(item.activationReason) : '',
+    item.influenceScope ? `${humanizeToken(item.influenceScope)} influence` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.roleName}
+      onClick={() => onOpen(humanizeToken(item.roleName) || 'Subagent Role', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.lastActivationAt,
+        mode: 'subagent role detail',
+      })}
+    >
+      <div>
+        <strong>{humanizeToken(item.roleName) || 'Subagent Role'}</strong>
+        <span>{detailText || 'Inspect bounded internal role detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.currentStatus || 'idle'} />
+        {item.toolAccess ? <small>{`tool ${humanizeToken(item.toolAccess)}`}</small> : null}
+        {item.lastActivationAt ? <small>{formatFreshness(item.lastActivationAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -1922,6 +2021,13 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   )
   const epistemicRuntimeUsage = epistemicRuntimeUsageSummary(epistemicRuntimeState)
   const epistemicRuntimeBoundary = epistemicRuntimeBoundarySummary(epistemicRuntimeState)
+  const subagentEcology = data?.subagentEcology || heartbeat?.subagentEcology || data?.development?.subagentEcology || data?.runtimeSelfModel?.subagent_ecology || {}
+  const subagentEcologySummary = subagentEcology?.summary || {}
+  const hasSubagentEcology = Boolean(subagentEcologySummary.roleCount || (subagentEcology?.roles || []).length)
+  const subagentEcologyUsage = subagentEcologyUsageSummary(subagentEcology)
+  const subagentEcologyBoundary = subagentEcologyBoundarySummary(subagentEcology)
+  const subagentEcologyCounts = subagentEcologyCountSummary(subagentEcology)
+  const visibleSubagentRoles = (subagentEcology?.roles || []).slice(0, 3)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2153,6 +2259,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <small className="muted">
             {`regret ${humanizeToken(epistemicRuntimeState.regretSignal) || 'none'} · counterfactual ${humanizeToken(epistemicRuntimeState.counterfactualMode) || 'none'}`}
             {epistemicRuntimeState.createdAt ? ` · ${formatFreshness(epistemicRuntimeState.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {hasSubagentEcology ? (
+        <article className="mc-stat tone-green" title={sectionTitleWithMeta({
+          source: subagentEcology.source || '/mc/subagent-ecology',
+          fetchedAt: subagentEcology.createdAt || data?.fetchedAt,
+          mode: 'subagent ecology snapshot',
+        })}>
+          <span>Subagent Ecology</span>
+          <strong>{humanizeToken(subagentEcologySummary.lastActiveRoleName) || 'idle ecology'}</strong>
+          <small className="muted">
+            {(subagentEcologyCounts.join(' · ') || `${subagentEcologySummary.roleCount || 0} roles`) +
+              (subagentEcology.createdAt ? ` · ${formatFreshness(subagentEcology.createdAt)}` : '')}
           </small>
         </article>
         ) : null}
@@ -2742,6 +2862,29 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {epistemicRuntimeBoundary ? <p>{epistemicRuntimeBoundary}</p> : null}
             </div>
             ) : null}
+            {hasSubagentEcology ? (
+            <div className="compact-metric" title="Derived internal-only runtime ecology of bounded helper roles with no tool execution">
+              <span>Subagent Ecology</span>
+              <strong>{humanizeToken(subagentEcologySummary.lastActiveRoleName) || 'idle ecology'}</strong>
+              <p>{subagentEcology.summaryText || 'No internal helper roles currently active.'}</p>
+              <p>
+                {subagentEcologyCounts.join(' · ') || `${subagentEcologySummary.roleCount || 0} roles`}
+              </p>
+              <p>
+                {`last ${humanizeToken(subagentEcologySummary.lastActiveRoleStatus) || 'idle'} · ${humanizeToken(subagentEcologySummary.lastActivationReason) || 'no recent activation'}`}
+              </p>
+              <p>
+                {subagentEcology.createdAt
+                  ? `${formatFreshness(subagentEcology.createdAt)} · ${humanizeToken(subagentEcology.freshnessState) || 'unknown'}`
+                  : humanizeToken(subagentEcology.freshnessState) || 'unknown'}
+              </p>
+              <p>
+                {`internal only · tool ${humanizeToken(subagentEcology.toolAccess) || 'none'} · ${humanizeToken((visibleSubagentRoles[0] || {}).influenceScope || 'bounded')} influence`}
+              </p>
+              {subagentEcologyUsage ? <p>{`used by ${subagentEcologyUsage}`}</p> : null}
+              {subagentEcologyBoundary ? <p>{subagentEcologyBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2767,6 +2910,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {promptEvolutionRow(promptEvolution, onOpenItem)}
                 {affectiveMetaStateRow(affectiveMetaState, onOpenItem)}
                 {epistemicRuntimeStateRow(epistemicRuntimeState, onOpenItem)}
+                {subagentEcologyRow(subagentEcology, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,
@@ -2786,6 +2930,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   summary: `${cadenceProducerLabel(promptEvolutionCadence)}${cadenceProducerReason(promptEvolutionCadence) ? ` · ${cadenceProducerReason(promptEvolutionCadence)}` : ''}`,
                 }, 'Prompt Evolution Cadence', onOpenItem) : null}
                 {visibleLoopRuntimeItems.map((item) => loopRuntimeItemRow(item, onOpenItem))}
+                {visibleSubagentRoles.map((item) => subagentRoleRow({
+                  ...item,
+                  source: subagentEcology.source || '/mc/subagent-ecology',
+                }, onOpenItem))}
                 {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>
             </div>

@@ -223,6 +223,15 @@ button { cursor: pointer; }
 }
 .thinking-dot:nth-child(2) { animation-delay: .12s; }
 .thinking-dot:nth-child(3) { animation-delay: .24s; }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.streaming-cursor {
+  display: inline-block; width: 2px; height: 14px;
+  background: #5ab8a0; margin-left: 3px; vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
 .composer-shell {
   padding:6px 12px 8px; position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
   background: linear-gradient(180deg, transparent, rgba(13,17,23,.72) 20%, rgba(13,17,23,.94));

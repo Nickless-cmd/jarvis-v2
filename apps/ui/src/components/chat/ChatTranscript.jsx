@@ -34,8 +34,13 @@ export function ChatTranscript({ messages }) {
               <strong>{message.role === 'assistant' ? 'Jarvis' : 'You'}</strong>
               <span>{message.ts}</span>
             </div>
-            {message.content ? <p>{message.content}</p> : null}
-            {message.pending ? (
+            {message.content ? (
+              <p>
+                {message.content}
+                {message.pending && <span className="streaming-cursor" />}
+              </p>
+            ) : null}
+            {message.pending && !message.content ? (
               <div className="thinking-indicator">
                 <span className="thinking-dot" />
                 <span className="thinking-dot" />

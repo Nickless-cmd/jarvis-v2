@@ -866,6 +866,39 @@ function normalizeAdaptiveReasoning(item = {}) {
   }
 }
 
+function normalizeGuidedLearning(item = {}) {
+  const freshness = item.freshness || {}
+  const seamUsage = item.seam_usage || {}
+
+  return {
+    learningMode: item.learning_mode || 'reinforce',
+    learningFocus: item.learning_focus || 'reasoning',
+    learningPosture: item.learning_posture || 'gentle',
+    nextLearningBias: item.next_learning_bias || 'keep-current-shape',
+    learningPressure: item.learning_pressure || 'low',
+    confidence: item.confidence || 'low',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    boundary: item.boundary || 'not-memory-not-identity-not-action',
+    kind: item.kind || 'guided-learning-runtime-state',
+    summary: item.summary || 'No bounded guided learning state recorded yet.',
+    source: item.source || '/mc/guided-learning',
+    sourceContributors: (item.source_contributors || []).map((sourceInput) => ({
+      source: sourceInput.source || '',
+      signal: sourceInput.signal || '',
+    })),
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    builtAt: freshness.built_at || '',
+    freshnessState: freshness.state || 'unknown',
+    createdAt: freshness.built_at || '',
+  }
+}
+
 function normalizeInternalCadence(item = {}) {
   return {
     lastTickAt: item.last_tick_at || '',
@@ -2186,7 +2219,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, epistemicPayload, subagentEcologyPayload, councilRuntimePayload, adaptivePlannerPayload, adaptiveReasoningPayload, internalCadencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, epistemicPayload, subagentEcologyPayload, councilRuntimePayload, adaptivePlannerPayload, adaptiveReasoningPayload, guidedLearningPayload, internalCadencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -2204,6 +2237,7 @@ export const backend = {
       requestJson('/mc/council-runtime').catch(() => null),
       requestJson('/mc/adaptive-planner').catch(() => null),
       requestJson('/mc/adaptive-reasoning').catch(() => null),
+      requestJson('/mc/guided-learning').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
     ])
     const state = payload?.state || {}
@@ -2273,6 +2307,12 @@ export const backend = {
       heartbeat?.adaptive_reasoning ||
       development?.adaptive_reasoning ||
       selfModelPayload?.adaptive_reasoning ||
+      null
+    const guidedLearningSource =
+      guidedLearningPayload ||
+      heartbeat?.guided_learning ||
+      development?.guided_learning ||
+      selfModelPayload?.guided_learning ||
       null
 
     return {
@@ -2925,6 +2965,7 @@ export const backend = {
         councilRuntime: normalizeCouncilRuntime(development.council_runtime || councilRuntimeSource || {}),
         adaptivePlanner: normalizeAdaptivePlanner(development.adaptive_planner || adaptivePlannerSource || {}),
         adaptiveReasoning: normalizeAdaptiveReasoning(development.adaptive_reasoning || adaptiveReasoningSource || {}),
+        guidedLearning: normalizeGuidedLearning(development.guided_learning || guidedLearningSource || {}),
         userUnderstandingSignals: {
           active: Boolean(development.user_understanding_signals?.active),
           summary: development.user_understanding_signals?.summary || {},
@@ -3004,6 +3045,7 @@ export const backend = {
         councilRuntime: normalizeCouncilRuntime(heartbeat.council_runtime || councilRuntimeSource || {}),
         adaptivePlanner: normalizeAdaptivePlanner(heartbeat.adaptive_planner || adaptivePlannerSource || {}),
         adaptiveReasoning: normalizeAdaptiveReasoning(heartbeat.adaptive_reasoning || adaptiveReasoningSource || {}),
+        guidedLearning: normalizeGuidedLearning(heartbeat.guided_learning || guidedLearningSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
@@ -3016,6 +3058,7 @@ export const backend = {
       councilRuntime: normalizeCouncilRuntime(councilRuntimeSource || {}),
       adaptivePlanner: normalizeAdaptivePlanner(adaptivePlannerSource || {}),
       adaptiveReasoning: normalizeAdaptiveReasoning(adaptiveReasoningSource || {}),
+      guidedLearning: normalizeGuidedLearning(guidedLearningSource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

@@ -194,6 +194,22 @@ function adaptiveReasoningBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function guidedLearningUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function guidedLearningBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -723,6 +739,39 @@ function adaptiveReasoningRow(item, onOpen) {
       </div>
       <div className="mc-row-meta">
         <StatusPill status={item.reasoningMode || 'direct'} />
+        {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function guidedLearningRow(item, onOpen) {
+  if (!item || !item.learningMode) return null
+  const detailText = [
+    item.summary,
+    item.learningFocus ? `focus ${humanizeToken(item.learningFocus)}` : '',
+    item.learningPosture ? `posture ${humanizeToken(item.learningPosture)}` : '',
+    item.nextLearningBias ? `bias ${humanizeToken(item.nextLearningBias)}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Guided Learning State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'guided learning runtime detail',
+      })}
+    >
+      <div>
+        <strong>Guided Learning</strong>
+        <span>{detailText || 'Inspect bounded guided learning runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.learningMode || 'reinforce'} />
         {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
@@ -2230,6 +2279,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const hasAdaptiveReasoning = Boolean(adaptiveReasoning?.reasoningMode)
   const adaptiveReasoningUsage = adaptiveReasoningUsageSummary(adaptiveReasoning)
   const adaptiveReasoningBoundary = adaptiveReasoningBoundarySummary(adaptiveReasoning)
+  const guidedLearning = data?.guidedLearning || heartbeat?.guidedLearning || data?.development?.guidedLearning || data?.runtimeSelfModel?.guided_learning || {}
+  const hasGuidedLearning = Boolean(guidedLearning?.learningMode)
+  const guidedLearningUsage = guidedLearningUsageSummary(guidedLearning)
+  const guidedLearningBoundary = guidedLearningBoundarySummary(guidedLearning)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2514,6 +2567,19 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <strong>{humanizeToken(adaptiveReasoning.reasoningMode) || 'direct'}</strong>
           <small className="muted">
             {`posture ${humanizeToken(adaptiveReasoning.reasoningPosture) || 'balanced'} · certainty ${humanizeToken(adaptiveReasoning.certaintyStyle) || 'cautious'}${adaptiveReasoning.createdAt ? ` · ${formatFreshness(adaptiveReasoning.createdAt)}` : ''}`}
+          </small>
+        </article>
+        ) : null}
+        {hasGuidedLearning ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: guidedLearning.source || '/mc/guided-learning',
+          fetchedAt: guidedLearning.createdAt || data?.fetchedAt,
+          mode: 'guided learning runtime snapshot',
+        })}>
+          <span>Guided Learning</span>
+          <strong>{humanizeToken(guidedLearning.learningMode) || 'reinforce'}</strong>
+          <small className="muted">
+            {`focus ${humanizeToken(guidedLearning.learningFocus) || 'reasoning'} · pressure ${humanizeToken(guidedLearning.learningPressure) || 'low'}${guidedLearning.createdAt ? ` · ${formatFreshness(guidedLearning.createdAt)}` : ''}`}
           </small>
         </article>
         ) : null}
@@ -3198,6 +3264,29 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {adaptiveReasoningBoundary ? <p>{adaptiveReasoningBoundary}</p> : null}
             </div>
             ) : null}
+            {hasGuidedLearning ? (
+            <div className="compact-metric" title="Derived internal-only guided learning runtime for bounded shifts in current learning direction">
+              <span>Guided Learning</span>
+              <strong>{humanizeToken(guidedLearning.learningMode) || 'reinforce'}</strong>
+              <p>{guidedLearning.summary || 'No bounded guided learning state recorded yet.'}</p>
+              <p>
+                {`focus ${humanizeToken(guidedLearning.learningFocus) || 'reasoning'} · posture ${humanizeToken(guidedLearning.learningPosture) || 'gentle'}`}
+              </p>
+              <p>
+                {`bias ${humanizeToken(guidedLearning.nextLearningBias) || 'keep current shape'} · pressure ${humanizeToken(guidedLearning.learningPressure) || 'low'} · confidence ${humanizeToken(guidedLearning.confidence) || 'low'}`}
+              </p>
+              <p>
+                {guidedLearning.createdAt
+                  ? `${formatFreshness(guidedLearning.createdAt)} · ${humanizeToken(guidedLearning.freshnessState) || 'unknown'}`
+                  : humanizeToken(guidedLearning.freshnessState) || 'unknown'}
+              </p>
+              <p>
+                {`internal only · ${humanizeToken(guidedLearning.authority) || 'derived runtime truth'}`}
+              </p>
+              {guidedLearningUsage ? <p>{`used by ${guidedLearningUsage}`}</p> : null}
+              {guidedLearningBoundary ? <p>{guidedLearningBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -3227,6 +3316,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {councilRuntimeRow(councilRuntime, onOpenItem)}
                 {adaptivePlannerRow(adaptivePlanner, onOpenItem)}
                 {adaptiveReasoningRow(adaptiveReasoning, onOpenItem)}
+                {guidedLearningRow(guidedLearning, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,

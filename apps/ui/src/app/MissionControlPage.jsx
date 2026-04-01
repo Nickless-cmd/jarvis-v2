@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { JarvisTab } from '../components/mission-control/JarvisTab'
 import { ContinuityTab } from '../components/mission-control/ContinuityTab'
+import { DevelopmentTab } from '../components/mission-control/DevelopmentTab'
 import { LivingMindTab } from '../components/mission-control/LivingMindTab'
 import { SelfReviewTab } from '../components/mission-control/SelfReviewTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
@@ -45,7 +46,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     }
   }, [sections.observability, eventFamilyFilter])
 
-  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' || activeTab === 'self-review' || activeTab === 'continuity' ? sections.jarvis : null) || null
+  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' || activeTab === 'self-review' || activeTab === 'continuity' || activeTab === 'development' ? sections.jarvis : null) || null
   const freshnessLabel = formatFreshness(activeSectionData?.fetchedAt)
   const updateModeLabel = mcUpdateModeLabel(activeTab)
 
@@ -150,6 +151,10 @@ export function MissionControlPage({ selection, onSelectionChange }) {
 
       {activeTab === 'continuity' ? (
         <ContinuityTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
+      ) : null}
+
+      {activeTab === 'development' ? (
+        <DevelopmentTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
       ) : null}
 
       <DetailDrawer

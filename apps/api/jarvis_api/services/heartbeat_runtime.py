@@ -58,6 +58,9 @@ from apps.api.jarvis_api.services.adaptive_planner_runtime import (
 from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
     build_adaptive_reasoning_runtime_surface,
 )
+from apps.api.jarvis_api.services.guided_learning_runtime import (
+    build_guided_learning_runtime_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -259,6 +262,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     council_runtime = build_council_runtime_surface()
     adaptive_planner = build_adaptive_planner_runtime_surface()
     adaptive_reasoning = build_adaptive_reasoning_runtime_surface()
+    guided_learning = build_guided_learning_runtime_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -291,6 +295,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "council_runtime": council_runtime,
             "adaptive_planner": adaptive_planner,
             "adaptive_reasoning": adaptive_reasoning,
+            "guided_learning": guided_learning,
         },
     )
     return {
@@ -309,6 +314,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "council_runtime": council_runtime,
         "adaptive_planner": adaptive_planner,
         "adaptive_reasoning": adaptive_reasoning,
+        "guided_learning": guided_learning,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -823,6 +829,7 @@ def _build_heartbeat_context(
     council_runtime = build_council_runtime_surface()
     adaptive_planner = build_adaptive_planner_runtime_surface()
     adaptive_reasoning = build_adaptive_reasoning_runtime_surface()
+    guided_learning = build_guided_learning_runtime_surface()
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -838,6 +845,7 @@ def _build_heartbeat_context(
         council_runtime=council_runtime,
         adaptive_planner=adaptive_planner,
         adaptive_reasoning=adaptive_reasoning,
+        guided_learning=guided_learning,
     )
 
     return {
@@ -860,6 +868,7 @@ def _build_heartbeat_context(
         "council_runtime": council_runtime,
         "adaptive_planner": adaptive_planner,
         "adaptive_reasoning": adaptive_reasoning,
+        "guided_learning": guided_learning,
         "influence_trace": influence_trace,
     }
 
@@ -878,6 +887,7 @@ def _build_influence_trace(
     council_runtime: dict[str, object],
     adaptive_planner: dict[str, object],
     adaptive_reasoning: dict[str, object],
+    guided_learning: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -994,6 +1004,16 @@ def _build_influence_trace(
     else:
         inputs_absent.append("adaptive-reasoning")
 
+    learning_mode = str(guided_learning.get("learning_mode") or "reinforce")
+    learning_focus = str(guided_learning.get("learning_focus") or "reasoning")
+    learning_pressure = str(guided_learning.get("learning_pressure") or "low")
+    if learning_mode != "reinforce" or learning_pressure != "low":
+        inputs_present.append(
+            f"guided-learning ({learning_mode}, focus={learning_focus}, pressure={learning_pressure})"
+        )
+    else:
+        inputs_absent.append("guided-learning")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -1026,6 +1046,9 @@ def _build_influence_trace(
         "adaptive_reasoning_mode": reasoning_mode,
         "adaptive_reasoning_posture": reasoning_posture,
         "adaptive_certainty_style": certainty_style,
+        "guided_learning_mode": learning_mode,
+        "guided_learning_focus": learning_focus,
+        "guided_learning_pressure": learning_pressure,
     }
 
 

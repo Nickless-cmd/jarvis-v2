@@ -53,6 +53,7 @@ def build_runtime_self_model() -> dict[str, object]:
         "council_runtime": _council_runtime_surface(),
         "adaptive_planner": _adaptive_planner_surface(),
         "adaptive_reasoning": _adaptive_reasoning_surface(),
+        "guided_learning": _guided_learning_surface(),
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
         "dream_articulation": _dream_articulation_surface(),
@@ -195,6 +196,22 @@ def _collect_layers() -> list[dict[str, str]]:
             f"posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}; "
             f"certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}; "
             f"constraint={adaptive_reasoning.get('constraint_bias') or 'light'}."
+        ),
+    })
+
+    guided_learning = _guided_learning_surface()
+    layers.append({
+        "id": "guided-learning-light",
+        "label": "Guided learning light",
+        "kind": "orchestration",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"mode={guided_learning.get('learning_mode') or 'reinforce'}; "
+            f"focus={guided_learning.get('learning_focus') or 'reasoning'}; "
+            f"posture={guided_learning.get('learning_posture') or 'gentle'}; "
+            f"pressure={guided_learning.get('learning_pressure') or 'low'}."
         ),
     })
 
@@ -482,6 +499,7 @@ def build_self_model_prompt_lines() -> list[str]:
     council_runtime = model.get("council_runtime") or {}
     adaptive_planner = model.get("adaptive_planner") or {}
     adaptive_reasoning = model.get("adaptive_reasoning") or {}
+    guided_learning = model.get("guided_learning") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -562,6 +580,13 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}"
         f" | certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}"
         f" | constraint={adaptive_reasoning.get('constraint_bias') or 'light'}"
+    )
+    lines.append(
+        "  guided_learning: "
+        f"{guided_learning.get('learning_mode') or 'reinforce'}"
+        f" | focus={guided_learning.get('learning_focus') or 'reasoning'}"
+        f" | posture={guided_learning.get('learning_posture') or 'gentle'}"
+        f" | pressure={guided_learning.get('learning_pressure') or 'low'}"
     )
     lines.append(
         "  loop_runtime: "
@@ -752,6 +777,23 @@ def _adaptive_reasoning_surface() -> dict[str, object]:
             "certainty_style": "crisp",
             "exploration_bias": "limited",
             "constraint_bias": "light",
+            "confidence": "low",
+        }
+
+
+def _guided_learning_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.guided_learning_runtime import (
+            build_guided_learning_runtime_surface,
+        )
+        return build_guided_learning_runtime_surface()
+    except Exception:
+        return {
+            "learning_mode": "reinforce",
+            "learning_focus": "reasoning",
+            "learning_posture": "gentle",
+            "next_learning_bias": "keep-current-shape",
+            "learning_pressure": "low",
             "confidence": "low",
         }
 

@@ -49,6 +49,9 @@ from apps.api.jarvis_api.services.adaptive_planner_runtime import (
 from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
     build_adaptive_reasoning_runtime_surface,
 )
+from apps.api.jarvis_api.services.guided_learning_runtime import (
+    build_guided_learning_runtime_surface,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -845,6 +848,12 @@ def mc_adaptive_reasoning() -> dict:
     return build_adaptive_reasoning_runtime_surface()
 
 
+@router.get("/guided-learning")
+def mc_guided_learning() -> dict:
+    """Return the current bounded guided learning runtime state."""
+    return build_guided_learning_runtime_surface()
+
+
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
     return {
@@ -923,6 +932,7 @@ def mc_runtime() -> dict:
         "runtime_council_runtime": build_council_runtime_surface(),
         "runtime_adaptive_planner": build_adaptive_planner_runtime_surface(),
         "runtime_adaptive_reasoning": build_adaptive_reasoning_runtime_surface(),
+        "runtime_guided_learning": build_guided_learning_runtime_surface(),
         "runtime_loop_state": build_loop_runtime_surface(),
         "runtime_idle_consolidation": build_idle_consolidation_surface(),
         "runtime_dream_articulation": build_dream_articulation_surface(),

@@ -48,6 +48,7 @@ def build_runtime_self_model() -> dict[str, object]:
         "layers": layers,
         "embodied_state": _embodied_state_surface(),
         "affective_meta_state": _affective_meta_state_surface(),
+        "epistemic_runtime_state": _epistemic_runtime_state_surface(),
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
         "dream_articulation": _dream_articulation_surface(),
@@ -110,6 +111,21 @@ def _collect_layers() -> list[dict[str, str]]:
             f"state={affective_meta.get('state') or 'unknown'}; "
             f"bearing={affective_meta.get('bearing') or 'unknown'}; "
             f"monitoring={affective_meta.get('monitoring_mode') or 'unknown'}."
+        ),
+    })
+
+    epistemic_state = _epistemic_runtime_state_surface()
+    layers.append({
+        "id": "epistemic-wrongness-light",
+        "label": "Epistemic wrongness / counterfactual light",
+        "kind": "orchestration",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"wrongness={epistemic_state.get('wrongness_state') or 'clear'}; "
+            f"regret={epistemic_state.get('regret_signal') or 'none'}; "
+            f"counterfactual={epistemic_state.get('counterfactual_mode') or 'none'}."
         ),
     })
 
@@ -391,6 +407,7 @@ def build_self_model_prompt_lines() -> list[str]:
     summary = model["summary"]
     embodied = model.get("embodied_state") or {}
     affective_meta = model.get("affective_meta_state") or {}
+    epistemic = model.get("epistemic_runtime_state") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -437,6 +454,12 @@ def build_self_model_prompt_lines() -> list[str]:
         f"{affective_meta.get('state') or 'unknown'}"
         f" | bearing={affective_meta.get('bearing') or 'unknown'}"
         f" | monitoring={affective_meta.get('monitoring_mode') or 'unknown'}"
+    )
+    lines.append(
+        "  epistemic_runtime_state: "
+        f"{epistemic.get('wrongness_state') or 'clear'}"
+        f" | regret={epistemic.get('regret_signal') or 'none'}"
+        f" | counterfactual={epistemic.get('counterfactual_mode') or 'none'}"
     )
     lines.append(
         "  loop_runtime: "
@@ -537,6 +560,21 @@ def _idle_consolidation_surface() -> dict[str, object]:
                 "source_input_count": 0,
                 "latest_record_id": "",
             },
+        }
+
+
+def _epistemic_runtime_state_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.epistemic_runtime_state import (
+            build_epistemic_runtime_state_surface,
+        )
+        return build_epistemic_runtime_state_surface()
+    except Exception:
+        return {
+            "wrongness_state": "clear",
+            "regret_signal": "none",
+            "counterfactual_mode": "none",
+            "confidence": "low",
         }
 
 

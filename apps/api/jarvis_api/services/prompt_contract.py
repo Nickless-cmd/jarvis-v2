@@ -1267,6 +1267,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     kill_switch = str(context.get("kill_switch") or "enabled")
     embodied = context.get("embodied_state") or {}
     affective = context.get("affective_meta_state") or {}
+    epistemic = context.get("epistemic_runtime_state") or {}
     loop_runtime = context.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
@@ -1281,6 +1282,11 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f"- affective_meta_state={affective.get('state') or 'unknown'}"
                 f" | affective_bearing={affective.get('bearing') or 'unknown'}"
                 f" | affective_monitoring={affective.get('monitoring_mode') or 'unknown'}"
+            ),
+            (
+                f"- epistemic_state={epistemic.get('wrongness_state') or 'clear'}"
+                f" | regret={epistemic.get('regret_signal') or 'none'}"
+                f" | counterfactual={epistemic.get('counterfactual_mode') or 'none'}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"
@@ -1465,6 +1471,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
         affective = build_affective_meta_prompt_section()
         if affective:
             parts.append(affective)
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.epistemic_runtime_state import (
+            build_epistemic_runtime_prompt_section,
+        )
+        epistemic = build_epistemic_runtime_prompt_section()
+        if epistemic:
+            parts.append(epistemic)
     except Exception:
         pass
     try:

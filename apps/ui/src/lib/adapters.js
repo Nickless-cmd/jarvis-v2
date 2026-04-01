@@ -331,6 +331,170 @@ function normalizeHeartbeatState(item = {}) {
   }
 }
 
+function normalizeEmbodiedState(item = {}) {
+  const freshness = item.freshness || {}
+  const facts = item.facts || {}
+  const seamUsage = item.seam_usage || {}
+
+  const normalizeFact = (fact = {}) => ({
+    bucket: fact.bucket || 'unavailable',
+    source: fact.source || 'unknown',
+    load1m: Number(fact.load_1m || 0),
+    cpuCount: Number(fact.cpu_count || 0),
+    loadPerCpu: Number(fact.load_per_cpu || 0),
+    pressureRatio: Number(fact.pressure_ratio || 0),
+    totalBytes: Number(fact.total_bytes || 0),
+    availableBytes: Number(fact.available_bytes || 0),
+    usedRatio: Number(fact.used_ratio || 0),
+    freeBytes: Number(fact.free_bytes || 0),
+    celsius: Number(fact.celsius || 0),
+  })
+
+  return {
+    state: item.state || 'unknown',
+    primaryState: item.primary_state || item.state || 'unknown',
+    strainLevel: item.strain_level || 'unknown',
+    recoveryState: item.recovery_state || 'steady',
+    stability: item.stability || 'unknown',
+    authority: item.authority || 'authoritative',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'embodied-runtime-state',
+    summary: item.summary || 'No embodied host/body state recorded yet.',
+    source: item.source || '/mc/embodied-state',
+    builtAt: freshness.built_at || '',
+    sampledAt: freshness.sampled_at || '',
+    ageSeconds: Number(freshness.age_seconds || 0),
+    freshnessState: freshness.state || 'unknown',
+    facts: {
+      cpu: normalizeFact(facts.cpu || {}),
+      memory: normalizeFact(facts.memory || {}),
+      disk: normalizeFact(facts.disk || {}),
+      thermal: normalizeFact(facts.thermal || {}),
+    },
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    createdAt: freshness.built_at || freshness.sampled_at || '',
+  }
+}
+
+function normalizeLoopRuntime(item = {}) {
+  const summary = item.summary || {}
+  const freshness = item.freshness || {}
+  const seamUsage = item.seam_usage || {}
+
+  return {
+    active: Boolean(item.active),
+    authority: item.authority || 'authoritative',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'loop-runtime-state',
+    source: item.source || '/mc/loop-runtime',
+    summary: {
+      activeCount: Number(summary.active_count || 0),
+      standbyCount: Number(summary.standby_count || 0),
+      resumedCount: Number(summary.resumed_count || 0),
+      closedCount: Number(summary.closed_count || 0),
+      currentLoop: summary.current_loop || 'No active runtime loop',
+      currentStatus: summary.current_status || 'none',
+      currentKind: summary.current_kind || 'none',
+      currentReason: summary.current_reason || 'none',
+      loopCount: Number(summary.loop_count || 0),
+    },
+    freshnessState: freshness.state || 'unknown',
+    builtAt: freshness.built_at || '',
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    items: (item.items || []).map((loopItem) => ({
+      loopId: loopItem.loop_id || '',
+      title: loopItem.title || 'Runtime loop',
+      runtimeStatus: loopItem.runtime_status || 'unknown',
+      loopKind: loopItem.loop_kind || 'runtime-loop',
+      sourceType: loopItem.source_type || '',
+      sourceStatus: loopItem.source_status || '',
+      canonicalKey: loopItem.canonical_key || '',
+      reasonCode: loopItem.reason_code || '',
+      summary: loopItem.summary || 'Inspect loop runtime detail',
+      updatedAt: loopItem.updated_at || '',
+      boundary: loopItem.boundary || 'not-memory-not-identity-not-action',
+      source: item.source || '/mc/loop-runtime',
+    })),
+    createdAt: freshness.built_at || '',
+  }
+}
+
+function normalizeIdleConsolidation(item = {}) {
+  const summary = item.summary || {}
+  const cadence = item.cadence || {}
+  const lastResult = item.last_result || {}
+  const latestArtifact = item.latest_artifact || {}
+
+  return {
+    active: Boolean(item.active),
+    authority: item.authority || 'authoritative',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'sleep-consolidation-light',
+    boundary: item.boundary || 'not-memory-not-identity-not-action',
+    source: item.source || '/mc/idle-consolidation',
+    lastRunAt: item.last_run_at || '',
+    builtAt: item.built_at || '',
+    cadence: {
+      cooldownMinutes: Number(cadence.cooldown_minutes || 0),
+      visibleGraceMinutes: Number(cadence.visible_grace_minutes || 0),
+      adjacentProducerGraceMinutes: Number(cadence.adjacent_producer_grace_minutes || 0),
+      minSourceInputs: Number(cadence.min_source_inputs || 0),
+    },
+    summary: {
+      lastState: summary.last_state || 'idle',
+      lastReason: summary.last_reason || 'no-run-yet',
+      lastOutputKind: summary.last_output_kind || 'private-brain-sleep-consolidation',
+      sourceInputCount: Number(summary.source_input_count || 0),
+      latestRecordId: summary.latest_record_id || '',
+      latestSummary: summary.latest_summary || 'No idle consolidation artifact recorded yet.',
+    },
+    lastResult: {
+      producer: lastResult.producer || '',
+      daemonRan: Boolean(lastResult.daemon_ran),
+      consolidationCreated: Boolean(lastResult.consolidation_created),
+      consolidationState: lastResult.consolidation_state || 'idle',
+      cadenceState: lastResult.cadence_state || '',
+      reason: lastResult.reason || 'no-run-yet',
+      elapsedMinutes: Number(lastResult.elapsed_minutes || 0),
+      outputKind: lastResult.output_kind || '',
+      trigger: lastResult.trigger || '',
+      recordId: lastResult.record_id || '',
+      recordSummary: lastResult.record_summary || '',
+      boundary: lastResult.boundary || item.boundary || 'not-memory-not-identity-not-action',
+      sourceInputs: (lastResult.source_inputs || []).map((sourceInput) => ({
+        source: sourceInput.source || '',
+        signal: sourceInput.signal || '',
+      })),
+    },
+    latestArtifact: {
+      recordId: latestArtifact.record_id || '',
+      recordType: latestArtifact.record_type || '',
+      layer: latestArtifact.layer || '',
+      sessionId: latestArtifact.session_id || '',
+      runId: latestArtifact.run_id || '',
+      focus: latestArtifact.focus || '',
+      summary: latestArtifact.summary || '',
+      detail: latestArtifact.detail || '',
+      sourceSignals: latestArtifact.source_signals || '',
+      confidence: latestArtifact.confidence || '',
+      status: latestArtifact.status || '',
+      createdAt: latestArtifact.created_at || '',
+      updatedAt: latestArtifact.updated_at || '',
+    },
+    createdAt: item.last_run_at || item.built_at || '',
+  }
+}
+
 function normalizeHeartbeatPolicy(item = {}) {
   return {
     workspace: item.workspace || '',
@@ -744,6 +908,35 @@ function normalizeOpenLoopSignal(item = {}) {
     sessionCount: Number(item.session_count || 0),
     mergeCount: Number(item.merge_count || 0),
     source: item.source || '/mc/jarvis::open-loop-signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
+function normalizeEmergentSignal(item = {}) {
+  return {
+    signalId: item.id || '',
+    canonicalKey: item.canonical_key || '',
+    signalFamily: item.signal_family || '',
+    status: item.signal_status || 'candidate',
+    lifecycleState: item.lifecycle_state || 'none',
+    interpretationState: item.interpretation_state || 'none',
+    title: item.short_summary || 'Emergent inner signal',
+    summary: item.short_summary || 'Emergent inner signal detail',
+    salience: Number(item.salience || 0),
+    intensity: item.intensity || 'low',
+    sourceHints: Array.isArray(item.source_hints) ? item.source_hints : [],
+    provenance: item.provenance || {},
+    influencedLayer: item.influenced_layer || '',
+    adoptedBy: item.adopted_by || '',
+    truth: item.truth || 'candidate-only',
+    visibility: item.visibility || 'internal-only',
+    identityBoundary: item.identity_boundary || 'not-canonical-identity-truth',
+    memoryBoundary: item.memory_boundary || 'not-workspace-memory',
+    actionBoundary: item.action_boundary || 'not-action',
+    expiryState: item.expiry_state || 'live',
+    authoritative: Boolean(item.authoritative),
+    source: item.source || '/mc/runtime.emergent_signal',
     createdAt: item.created_at || '',
     updatedAt: item.updated_at || '',
   }
@@ -1595,12 +1788,16 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
+      requestJson('/mc/runtime-self-model').catch(() => null),
+      requestJson('/mc/embodied-state').catch(() => null),
+      requestJson('/mc/loop-runtime').catch(() => null),
+      requestJson('/mc/idle-consolidation').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -1608,6 +1805,21 @@ export const backend = {
     const continuity = payload?.continuity || {}
     const heartbeat = payload?.heartbeat || {}
     const contract = contractPayload || {}
+    const embodiedStateSource =
+      embodiedPayload ||
+      heartbeat?.embodied_state ||
+      selfModelPayload?.embodied_state ||
+      null
+    const loopRuntimeSource =
+      loopRuntimePayload ||
+      heartbeat?.loop_runtime ||
+      selfModelPayload?.loop_runtime ||
+      null
+    const idleConsolidationSource =
+      idleConsolidationPayload ||
+      heartbeat?.idle_consolidation ||
+      selfModelPayload?.idle_consolidation ||
+      null
 
     return {
       fetchedAt: new Date().toISOString(),
@@ -1770,6 +1982,10 @@ export const backend = {
         proactiveQuestionGateSupport: normalizeJarvisItem((development.proactive_question_gates?.items || [])[0] || {}, {
           source: ((development.proactive_question_gates?.items || [])[0] || {}).source || '/mc/runtime.proactive_question_gate',
           summary: ((development.proactive_question_gates?.items || [])[0] || {}).question_gate_summary || 'No bounded proactive-question gate support',
+        }),
+        emergentSignalSupport: normalizeJarvisItem((development.emergent_signals?.items || [])[0] || {}, {
+          source: ((development.emergent_signals?.items || [])[0] || {}).source || '/mc/runtime.emergent_signal',
+          summary: ((development.emergent_signals?.items || [])[0] || {}).short_summary || 'No active emergent inner signal',
         }),
         webchatExecutionPilotSupport: normalizeJarvisItem((development.webchat_execution_pilot?.items || [])[0] || {}, {
           source: ((development.webchat_execution_pilot?.items || [])[0] || {}).source || '/mc/runtime.execution_pilot',
@@ -2263,6 +2479,20 @@ export const backend = {
           summary: development.selfhood_proposals?.summary || {},
           items: (development.selfhood_proposals?.items || []).map(normalizeSelfhoodProposal),
         },
+        emergentSignals: {
+          active: Boolean(development.emergent_signals?.active),
+          authority: development.emergent_signals?.authority || 'candidate-only',
+          layerRole: development.emergent_signals?.layer_role || 'runtime-support',
+          visibility: development.emergent_signals?.visibility || 'internal-only',
+          identityBoundary: development.emergent_signals?.identity_boundary || 'not-canonical-identity-truth',
+          memoryBoundary: development.emergent_signals?.memory_boundary || 'not-workspace-memory',
+          actionBoundary: development.emergent_signals?.action_boundary || 'not-action',
+          lastDaemonRunAt: development.emergent_signals?.last_daemon_run_at || '',
+          lastDaemonResult: development.emergent_signals?.last_daemon_result || null,
+          summary: development.emergent_signals?.summary || {},
+          items: (development.emergent_signals?.items || []).map((item) => normalizeEmergentSignal(item)),
+          recentReleased: (development.emergent_signals?.recent_released || []).map((item) => normalizeEmergentSignal(item)),
+        },
       },
       continuity: {
         visibleSession: normalizeJarvisItem(continuity.visible_session || {}, {
@@ -2302,10 +2532,17 @@ export const backend = {
         policy: normalizeHeartbeatPolicy(heartbeat.policy || {}),
         recentTicks: (heartbeat.recent_ticks || []).map(normalizeHeartbeatTick),
         recentEvents: (heartbeat.recent_events || []).map(normalizeEventItem),
+        embodiedState: normalizeEmbodiedState(heartbeat.embodied_state || embodiedStateSource || {}),
+        loopRuntime: normalizeLoopRuntime(heartbeat.loop_runtime || loopRuntimeSource || {}),
+        idleConsolidation: normalizeIdleConsolidation(heartbeat.idle_consolidation || idleConsolidationSource || {}),
       },
+      embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
+      loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
+      idleConsolidation: normalizeIdleConsolidation(idleConsolidationSource || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,
       deceptionGuard: guardPayload?.trace || null,
+      runtimeSelfModel: selfModelPayload || null,
     }
   },
 

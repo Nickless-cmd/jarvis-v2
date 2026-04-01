@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Activity, Eye, Bot, Brain, MoreHorizontal } from 'lucide-react'
+import { Activity, Eye, Bot, Brain, Shield, MoreHorizontal } from 'lucide-react'
 
 const PRIMARY_TABS = [
   { id: 'overview', label: 'Overview', icon: Activity },
   { id: 'operations', label: 'Operations', icon: Bot },
   { id: 'observability', label: 'Observability', icon: Eye },
   { id: 'living-mind', label: 'Living Mind', icon: Brain },
+  { id: 'self-review', label: 'Self-Review', icon: Shield },
 ]
 
 const MORE_TABS = [

@@ -19,6 +19,9 @@ from apps.api.jarvis_api.services.prompt_contract import (
 from apps.api.jarvis_api.services.embodied_state import (
     build_embodied_state_surface,
 )
+from apps.api.jarvis_api.services.affective_meta_state import (
+    build_affective_meta_state_surface,
+)
 from apps.api.jarvis_api.services.loop_runtime import (
     build_loop_runtime_surface,
 )
@@ -767,6 +770,12 @@ def mc_embodied_state() -> dict:
     return build_embodied_state_surface()
 
 
+@router.get("/affective-meta-state")
+def mc_affective_meta_state() -> dict:
+    """Return the current bounded affective/meta runtime state."""
+    return build_affective_meta_state_surface()
+
+
 @router.get("/loop-runtime")
 def mc_loop_runtime() -> dict:
     """Return the current bounded loop runtime state."""
@@ -863,6 +872,7 @@ def mc_runtime() -> dict:
         "settings": settings.to_dict(),
         "heartbeat_runtime": heartbeat_runtime_surface(),
         "runtime_embodied_state": build_embodied_state_surface(),
+        "runtime_affective_meta_state": build_affective_meta_state_surface(),
         "runtime_loop_state": build_loop_runtime_surface(),
         "runtime_idle_consolidation": build_idle_consolidation_surface(),
         "runtime_dream_articulation": build_dream_articulation_surface(),

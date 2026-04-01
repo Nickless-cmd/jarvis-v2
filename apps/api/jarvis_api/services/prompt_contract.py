@@ -1266,6 +1266,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     budget = str(context.get("budget_status") or "runtime-governed")
     kill_switch = str(context.get("kill_switch") or "enabled")
     embodied = context.get("embodied_state") or {}
+    affective = context.get("affective_meta_state") or {}
     loop_runtime = context.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
@@ -1275,6 +1276,11 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
             (
                 f"- embodied_state={embodied.get('state') or 'unknown'}"
                 f" | embodied_strain={embodied.get('strain_level') or 'unknown'}"
+            ),
+            (
+                f"- affective_meta_state={affective.get('state') or 'unknown'}"
+                f" | affective_bearing={affective.get('bearing') or 'unknown'}"
+                f" | affective_monitoring={affective.get('monitoring_mode') or 'unknown'}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"
@@ -1450,6 +1456,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
         embodied = build_embodied_state_prompt_section()
         if embodied:
             parts.append(embodied)
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.affective_meta_state import (
+            build_affective_meta_prompt_section,
+        )
+        affective = build_affective_meta_prompt_section()
+        if affective:
+            parts.append(affective)
     except Exception:
         pass
     try:

@@ -34,6 +34,31 @@ function embodiedUsageSummary(item) {
   return labels.join(' · ')
 }
 
+function loopRuntimeCounts(item) {
+  const summary = item?.summary || {}
+  return [
+    ['active', summary.activeCount || 0],
+    ['standby', summary.standbyCount || 0],
+    ['resumed', summary.resumedCount || 0],
+    ['closed', summary.closedCount || 0],
+  ]
+}
+
+function loopRuntimeCountSummary(item) {
+  return loopRuntimeCounts(item)
+    .filter(([, count]) => count > 0)
+    .map(([label, count]) => `${count} ${label}`)
+}
+
+function loopRuntimeUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
 function detailRow(item, label, onOpen) {
   if (!item || !Object.keys(item).length) {
     return (
@@ -95,6 +120,75 @@ function embodiedStateRow(item, onOpen) {
         {item.strainLevel ? <small>{`strain ${humanizeToken(item.strainLevel)}`}</small> : null}
         {item.recoveryState && item.recoveryState !== 'steady' ? <small>{`recovery ${humanizeToken(item.recoveryState)}`}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function loopRuntimeRow(item, onOpen) {
+  const summary = item?.summary || {}
+  if (!item || !summary.loopCount) return null
+  const countLine = loopRuntimeCountSummary(item).join(' · ')
+  const usageLine = loopRuntimeUsageSummary(item)
+  const detailText = [
+    summary.currentLoop && summary.currentLoop !== 'No active runtime loop'
+      ? `${summary.currentLoop} (${humanizeToken(summary.currentStatus) || 'unknown'})`
+      : '',
+    countLine,
+    usageLine ? `used by ${usageLine}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Loop Runtime', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'loop runtime detail',
+      })}
+    >
+      <div>
+        <strong>Loop Runtime</strong>
+        <span>{detailText || 'Inspect bounded loop runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={summary.currentStatus || 'none'} />
+        {summary.currentKind && summary.currentKind !== 'none' ? <small>{humanizeToken(summary.currentKind)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function loopRuntimeItemRow(item, onOpen) {
+  if (!item?.loopId) return null
+  const detailText = [
+    item.summary,
+    item.loopKind ? humanizeToken(item.loopKind) : '',
+    item.reasonCode ? humanizeToken(item.reasonCode) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.loopId}
+      onClick={() => onOpen(item.title || 'Runtime Loop', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt,
+        mode: 'loop item detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Runtime Loop'}</strong>
+        <span>{detailText || 'Inspect loop runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.runtimeStatus || 'unknown'} />
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -1527,6 +1621,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const hasEmbodiedState = Boolean(embodiedState?.state && embodiedState.state !== 'unknown')
   const embodiedBuckets = embodiedBucketSummary(embodiedState)
   const embodiedUsage = embodiedUsageSummary(embodiedState)
+  const loopRuntime = data?.loopRuntime || heartbeat?.loopRuntime || data?.runtimeSelfModel?.loop_runtime || {}
+  const loopRuntimeSummary = loopRuntime?.summary || {}
+  const hasLoopRuntime = Boolean(loopRuntimeSummary.loopCount || loopRuntime?.active)
+  const loopRuntimeCounts = loopRuntimeCountSummary(loopRuntime)
+  const loopRuntimeUsage = loopRuntimeUsageSummary(loopRuntime)
+  const visibleLoopRuntimeItems = (loopRuntime?.items || []).slice(0, 3)
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
@@ -1667,6 +1767,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               ? ` · recovery ${humanizeToken(embodiedState.recoveryState)}`
               : ''}
             {embodiedState.createdAt ? ` · ${formatFreshness(embodiedState.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {hasLoopRuntime ? (
+        <article className="mc-stat tone-green" title={sectionTitleWithMeta({
+          source: loopRuntime.source || '/mc/loop-runtime',
+          fetchedAt: loopRuntime.createdAt || data?.fetchedAt,
+          mode: 'loop runtime snapshot',
+        })}>
+          <span>Loop Runtime</span>
+          <strong>{humanizeToken(loopRuntimeSummary.currentStatus) || 'unknown'}</strong>
+          <small className="muted">
+            {loopRuntimeCounts.join(' · ') || 'No active runtime loops'}
+            {loopRuntime.createdAt ? ` · ${formatFreshness(loopRuntime.createdAt)}` : ''}
           </small>
         </article>
         ) : null}
@@ -2135,6 +2249,21 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {embodiedUsage ? <p>{`used by ${embodiedUsage}`}</p> : null}
             </div>
             ) : null}
+            {hasLoopRuntime ? (
+            <div className="compact-metric" title="Authoritative internal-only loop runtime state for bounded open and proactive loops">
+              <span>Loop Runtime</span>
+              <strong>{humanizeToken(loopRuntimeSummary.currentStatus) || 'unknown'}</strong>
+              <p>{loopRuntimeSummary.currentLoop || 'No active runtime loop'}</p>
+              <p>{loopRuntimeCounts.join(' · ') || 'No loop runtime counts available.'}</p>
+              <p>
+                {`kind ${humanizeToken(loopRuntimeSummary.currentKind) || 'none'} · reason ${humanizeToken(loopRuntimeSummary.currentReason) || 'none'}`}
+              </p>
+              <p>
+                {loopRuntime.createdAt ? `${formatFreshness(loopRuntime.createdAt)} · ${humanizeToken(loopRuntime.freshnessState)}` : humanizeToken(loopRuntime.freshnessState) || 'unknown'}
+              </p>
+              {loopRuntimeUsage ? <p>{`used by ${loopRuntimeUsage}`}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2154,6 +2283,8 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   summary: heartbeatPolicy.summary || 'Inspect HEARTBEAT.md-derived policy.',
                 }, 'Heartbeat Policy', onOpenItem)}
                 {embodiedStateRow(embodiedState, onOpenItem)}
+                {loopRuntimeRow(loopRuntime, onOpenItem)}
+                {visibleLoopRuntimeItems.map((item) => loopRuntimeItemRow(item, onOpenItem))}
                 {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>
             </div>

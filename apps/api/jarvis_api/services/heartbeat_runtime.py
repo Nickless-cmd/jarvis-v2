@@ -49,6 +49,9 @@ from apps.api.jarvis_api.services.prompt_evolution_runtime import (
 from apps.api.jarvis_api.services.subagent_ecology import (
     build_subagent_ecology_surface,
 )
+from apps.api.jarvis_api.services.council_runtime import (
+    build_council_runtime_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -247,6 +250,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     dream_articulation = build_dream_articulation_surface()
     prompt_evolution = build_prompt_evolution_runtime_surface()
     subagent_ecology = build_subagent_ecology_surface()
+    council_runtime = build_council_runtime_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -276,6 +280,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "dream_articulation": dream_articulation,
             "prompt_evolution": prompt_evolution,
             "subagent_ecology": subagent_ecology,
+            "council_runtime": council_runtime,
         },
     )
     return {
@@ -291,6 +296,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "dream_articulation": dream_articulation,
         "prompt_evolution": prompt_evolution,
         "subagent_ecology": subagent_ecology,
+        "council_runtime": council_runtime,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -802,6 +808,7 @@ def _build_heartbeat_context(
     loop_runtime = build_loop_runtime_surface()
     prompt_evolution = build_prompt_evolution_runtime_surface()
     subagent_ecology = build_subagent_ecology_surface()
+    council_runtime = build_council_runtime_surface()
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -814,6 +821,7 @@ def _build_heartbeat_context(
         loop_runtime=loop_runtime,
         prompt_evolution=prompt_evolution,
         subagent_ecology=subagent_ecology,
+        council_runtime=council_runtime,
     )
 
     return {
@@ -833,6 +841,7 @@ def _build_heartbeat_context(
         "loop_runtime": loop_runtime,
         "prompt_evolution": prompt_evolution,
         "subagent_ecology": subagent_ecology,
+        "council_runtime": council_runtime,
         "influence_trace": influence_trace,
     }
 
@@ -848,6 +857,7 @@ def _build_influence_trace(
     loop_runtime: dict[str, object],
     prompt_evolution: dict[str, object],
     subagent_ecology: dict[str, object],
+    council_runtime: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -934,6 +944,16 @@ def _build_influence_trace(
     else:
         inputs_absent.append("subagent-ecology")
 
+    council_state = str(council_runtime.get("council_state") or "quiet")
+    council_recommendation = str(council_runtime.get("recommendation") or "none")
+    council_divergence = str(council_runtime.get("divergence_level") or "low")
+    if council_state not in {"quiet", "held"} or council_recommendation not in {"none", "hold"}:
+        inputs_present.append(
+            f"council-runtime ({council_state}, recommend={council_recommendation}, divergence={council_divergence})"
+        )
+    else:
+        inputs_absent.append("council-runtime")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -957,6 +977,9 @@ def _build_influence_trace(
         "prompt_evolution_type": latest_prompt_type or "none",
         "subagent_ecology_active_count": ecology_active,
         "subagent_ecology_last_role": str(ecology_summary.get("last_active_role_name") or "none"),
+        "council_state": council_state,
+        "council_recommendation": council_recommendation,
+        "council_divergence_level": council_divergence,
     }
 
 

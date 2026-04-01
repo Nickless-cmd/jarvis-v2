@@ -1500,6 +1500,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
             parts.append(subagent_ecology)
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.council_runtime import (
+            build_council_runtime_prompt_section,
+        )
+        council_runtime = build_council_runtime_prompt_section()
+        if council_runtime:
+            parts.append(council_runtime)
+    except Exception:
+        pass
     if not parts:
         return None
     return "\n".join(parts)

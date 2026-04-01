@@ -52,6 +52,7 @@ def build_runtime_self_model() -> dict[str, object]:
         "subagent_ecology": _subagent_ecology_surface(),
         "council_runtime": _council_runtime_surface(),
         "adaptive_planner": _adaptive_planner_surface(),
+        "adaptive_reasoning": _adaptive_reasoning_surface(),
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
         "dream_articulation": _dream_articulation_surface(),
@@ -178,6 +179,22 @@ def _collect_layers() -> list[dict[str, str]]:
             f"horizon={adaptive_planner.get('plan_horizon') or 'near'}; "
             f"risk={adaptive_planner.get('risk_posture') or 'balanced'}; "
             f"bias={adaptive_planner.get('next_planning_bias') or 'stepwise-progress'}."
+        ),
+    })
+
+    adaptive_reasoning = _adaptive_reasoning_surface()
+    layers.append({
+        "id": "adaptive-reasoning-light",
+        "label": "Adaptive reasoning light",
+        "kind": "orchestration",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"mode={adaptive_reasoning.get('reasoning_mode') or 'direct'}; "
+            f"posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}; "
+            f"certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}; "
+            f"constraint={adaptive_reasoning.get('constraint_bias') or 'light'}."
         ),
     })
 
@@ -464,6 +481,7 @@ def build_self_model_prompt_lines() -> list[str]:
     ecology_summary = subagent_ecology.get("summary") or {}
     council_runtime = model.get("council_runtime") or {}
     adaptive_planner = model.get("adaptive_planner") or {}
+    adaptive_reasoning = model.get("adaptive_reasoning") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -537,6 +555,13 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | horizon={adaptive_planner.get('plan_horizon') or 'near'}"
         f" | posture={adaptive_planner.get('planning_posture') or 'staged'}"
         f" | risk={adaptive_planner.get('risk_posture') or 'balanced'}"
+    )
+    lines.append(
+        "  adaptive_reasoning: "
+        f"{adaptive_reasoning.get('reasoning_mode') or 'direct'}"
+        f" | posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}"
+        f" | certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}"
+        f" | constraint={adaptive_reasoning.get('constraint_bias') or 'light'}"
     )
     lines.append(
         "  loop_runtime: "
@@ -710,6 +735,23 @@ def _adaptive_planner_surface() -> dict[str, object]:
             "planning_posture": "staged",
             "risk_posture": "balanced",
             "next_planning_bias": "stepwise-progress",
+            "confidence": "low",
+        }
+
+
+def _adaptive_reasoning_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
+            build_adaptive_reasoning_runtime_surface,
+        )
+        return build_adaptive_reasoning_runtime_surface()
+    except Exception:
+        return {
+            "reasoning_mode": "direct",
+            "reasoning_posture": "balanced",
+            "certainty_style": "crisp",
+            "exploration_bias": "limited",
+            "constraint_bias": "light",
             "confidence": "low",
         }
 

@@ -73,6 +73,13 @@ function dreamArticulationBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function promptEvolutionBoundarySummary(item) {
+  const parts = []
+  if (item?.proposalMode) parts.push(humanizeToken(item.proposalMode))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -297,6 +304,45 @@ function dreamArticulationRow(item, onOpen) {
         {item.truth ? <small>{humanizeToken(item.truth)}</small> : null}
         {item.visibility ? <small>{humanizeToken(item.visibility)}</small> : null}
         {summary.lastOutputKind ? <small>{humanizeToken(summary.lastOutputKind)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function promptEvolutionRow(item, onOpen) {
+  const summary = item?.summary || {}
+  const lastResult = item?.lastResult || {}
+  const latestProposal = item?.latestProposal || {}
+  if (!item || (!item.active && !item.lastRunAt && !summary.latestProposalId)) return null
+  const detailText = [
+    latestProposal.summary || lastResult.proposalSummary || summary.latestSummary,
+    summary.latestTargetAsset && summary.latestTargetAsset !== 'none'
+      ? `target ${summary.latestTargetAsset}`
+      : '',
+    summary.sourceInputCount ? `${summary.sourceInputCount} source input${summary.sourceInputCount === 1 ? '' : 's'}` : '',
+    lastResult.reason ? humanizeToken(lastResult.reason) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Prompt Evolution', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'prompt evolution detail',
+      })}
+    >
+      <div>
+        <strong>Prompt Evolution</strong>
+        <span>{detailText || 'Inspect bounded prompt evolution detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={summary.lastState || 'idle'} />
+        {summary.latestTargetAsset && summary.latestTargetAsset !== 'none' ? <small>{summary.latestTargetAsset}</small> : null}
+        {item.proposalMode ? <small>{humanizeToken(item.proposalMode)}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
@@ -1756,9 +1802,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
     dreamArticulationSummary?.latestSignalId,
   )
   const dreamArticulationBoundary = dreamArticulationBoundarySummary(dreamArticulation)
+  const promptEvolution = data?.promptEvolution || heartbeat?.promptEvolution || data?.development?.promptEvolution || data?.runtimeSelfModel?.prompt_evolution || {}
+  const promptEvolutionSummary = promptEvolution?.summary || {}
+  const promptEvolutionLastResult = promptEvolution?.lastResult || {}
+  const promptEvolutionLatestProposal = promptEvolution?.latestProposal || {}
+  const hasPromptEvolution = Boolean(
+    promptEvolution?.active ||
+    promptEvolution?.lastRunAt ||
+    promptEvolutionSummary?.latestProposalId,
+  )
+  const promptEvolutionBoundary = promptEvolutionBoundarySummary(promptEvolution)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
+  const promptEvolutionCadence = cadenceProducer(internalCadence, 'prompt_evolution_runtime')
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
@@ -1942,6 +1999,22 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <small className="muted">
             {humanizeToken(dreamArticulationSummary.lastReason || dreamCadence?.lastTickStatus?.reason) || 'no run yet'}
             {(dreamArticulation.createdAt || internalCadence.lastTickAt) ? ` · ${formatFreshness(dreamArticulation.createdAt || internalCadence.lastTickAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {(hasPromptEvolution || promptEvolutionCadence) ? (
+        <article className="mc-stat tone-amber" title={sectionTitleWithMeta({
+          source: promptEvolution.source || internalCadence.source || '/mc/prompt-evolution',
+          fetchedAt: promptEvolution.createdAt || internalCadence.lastTickAt || data?.fetchedAt,
+          mode: 'prompt evolution snapshot',
+        })}>
+          <span>Prompt Evolution</span>
+          <strong>{humanizeToken(promptEvolutionSummary.lastState || cadenceProducerLabel(promptEvolutionCadence, 'idle')) || 'idle'}</strong>
+          <small className="muted">
+            {(promptEvolutionSummary.latestTargetAsset && promptEvolutionSummary.latestTargetAsset !== 'none'
+              ? `${promptEvolutionSummary.latestTargetAsset} · `
+              : '') + (humanizeToken(promptEvolutionSummary.lastReason || promptEvolutionCadence?.lastTickStatus?.reason) || 'no run yet')}
+            {(promptEvolution.createdAt || internalCadence.lastTickAt) ? ` · ${formatFreshness(promptEvolution.createdAt || internalCadence.lastTickAt)}` : ''}
           </small>
         </article>
         ) : null}
@@ -2470,6 +2543,30 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {dreamArticulationBoundary ? <p>{dreamArticulationBoundary}</p> : null}
             </div>
             ) : null}
+            {(hasPromptEvolution || promptEvolutionCadence) ? (
+            <div className="compact-metric" title="Authoritative internal-only proposal runtime process for bounded prompt evolution">
+              <span>Prompt Evolution</span>
+              <strong>{humanizeToken(promptEvolutionSummary.lastState || cadenceProducerLabel(promptEvolutionCadence, 'idle')) || 'idle'}</strong>
+              <p>{promptEvolutionLatestProposal.summary || promptEvolutionLastResult.proposalSummary || promptEvolutionSummary.latestSummary || 'No runtime prompt proposal recorded yet.'}</p>
+              <p>
+                {`result ${humanizeToken(promptEvolutionLastResult.reason || promptEvolutionSummary.lastReason || promptEvolutionCadence?.lastTickStatus?.reason) || 'no run yet'} · inputs ${promptEvolutionSummary.sourceInputCount || promptEvolutionLastResult.sourceInputs?.length || 0}`}
+              </p>
+              {promptEvolutionCadence ? (
+              <p>
+                {`cadence ${cadenceProducerLabel(promptEvolutionCadence)}${cadenceProducerReason(promptEvolutionCadence) ? ` · ${cadenceProducerReason(promptEvolutionCadence)}` : ''}`}
+              </p>
+              ) : null}
+              <p>
+                {`proposal ${humanizeToken(promptEvolutionLastResult.proposalType || promptEvolutionLatestProposal.proposalType || 'self-authored-prompt-proposal')}${promptEvolutionSummary.latestTargetAsset && promptEvolutionSummary.latestTargetAsset !== 'none' ? ` · ${promptEvolutionSummary.latestTargetAsset}` : ''}`}
+              </p>
+              <p>
+                {(promptEvolution.createdAt || internalCadence.lastTickAt)
+                  ? `${formatFreshness(promptEvolution.createdAt || internalCadence.lastTickAt)} · proposal only · internal only`
+                  : 'proposal only · internal only'}
+              </p>
+              {promptEvolutionBoundary ? <p>{promptEvolutionBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2492,6 +2589,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {loopRuntimeRow(loopRuntime, onOpenItem)}
                 {idleConsolidationRow(idleConsolidation, onOpenItem)}
                 {dreamArticulationRow(dreamArticulation, onOpenItem)}
+                {promptEvolutionRow(promptEvolution, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,
@@ -2504,6 +2602,12 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   source: internalCadence.source || '/mc/internal-cadence',
                   summary: `${cadenceProducerLabel(dreamCadence)}${cadenceProducerReason(dreamCadence) ? ` · ${cadenceProducerReason(dreamCadence)}` : ''}`,
                 }, 'Dream Articulation Cadence', onOpenItem) : null}
+                {promptEvolutionCadence ? detailRow({
+                  ...promptEvolutionCadence,
+                  createdAt: promptEvolutionCadence.lastRunAt || internalCadence.lastTickAt,
+                  source: internalCadence.source || '/mc/internal-cadence',
+                  summary: `${cadenceProducerLabel(promptEvolutionCadence)}${cadenceProducerReason(promptEvolutionCadence) ? ` · ${cadenceProducerReason(promptEvolutionCadence)}` : ''}`,
+                }, 'Prompt Evolution Cadence', onOpenItem) : null}
                 {visibleLoopRuntimeItems.map((item) => loopRuntimeItemRow(item, onOpenItem))}
                 {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>

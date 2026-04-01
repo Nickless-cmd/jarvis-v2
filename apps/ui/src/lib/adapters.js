@@ -565,6 +565,84 @@ function normalizeDreamArticulation(item = {}) {
   }
 }
 
+function normalizePromptEvolution(item = {}) {
+  const summary = item.summary || {}
+  const cadence = item.cadence || {}
+  const lastResult = item.last_result || {}
+  const latestProposal = item.latest_proposal || {}
+
+  return {
+    active: Boolean(item.active),
+    authority: item.authority || 'authoritative-runtime-observability',
+    visibility: item.visibility || 'internal-only',
+    truth: item.truth || 'candidate-only',
+    proposalMode: item.proposal_mode || 'proposal-only',
+    kind: item.kind || 'runtime-prompt-evolution-light',
+    boundary: item.boundary || 'not-memory-not-identity-not-action-not-applied-prompt',
+    source: item.source || '/mc/prompt-evolution',
+    lastRunAt: item.last_run_at || '',
+    builtAt: item.built_at || '',
+    cadence: {
+      cooldownMinutes: Number(cadence.cooldown_minutes || 0),
+      visibleGraceMinutes: Number(cadence.visible_grace_minutes || 0),
+      adjacentProducerGraceMinutes: Number(cadence.adjacent_producer_grace_minutes || 0),
+      minSourceInputs: Number(cadence.min_source_inputs || 0),
+    },
+    summary: {
+      lastState: summary.last_state || 'idle',
+      lastReason: summary.last_reason || 'no-run-yet',
+      lastOutputKind: summary.last_output_kind || 'self-authored-prompt-proposal',
+      sourceInputCount: Number(summary.source_input_count || 0),
+      latestProposalId: summary.latest_proposal_id || '',
+      latestSummary: summary.latest_summary || 'No runtime prompt proposal recorded yet.',
+      latestTargetAsset: summary.latest_target_asset || 'none',
+      latestPromptTarget: summary.latest_prompt_target || 'none',
+      proposalTruth: summary.proposal_truth || item.proposal_mode || 'proposal-only',
+    },
+    lastResult: {
+      producer: lastResult.producer || '',
+      daemonRan: Boolean(lastResult.daemon_ran),
+      proposalCreated: Boolean(lastResult.proposal_created),
+      proposalState: lastResult.proposal_state || 'idle',
+      cadenceState: lastResult.cadence_state || '',
+      reason: lastResult.reason || 'no-run-yet',
+      elapsedMinutes: Number(lastResult.elapsed_minutes || 0),
+      outputKind: lastResult.output_kind || '',
+      trigger: lastResult.trigger || '',
+      proposalId: lastResult.proposal_id || '',
+      proposalType: lastResult.proposal_type || '',
+      proposalSummary: lastResult.proposal_summary || '',
+      targetAsset: lastResult.target_asset || '',
+      proposalTruth: lastResult.proposal_truth || item.proposal_mode || 'proposal-only',
+      proposalVisibility: lastResult.proposal_visibility || item.visibility || 'internal-only',
+      boundary: lastResult.boundary || item.boundary || 'not-memory-not-identity-not-action-not-applied-prompt',
+      sourceInputs: (lastResult.source_inputs || []).map((sourceInput) => ({
+        source: sourceInput.source || '',
+        signal: sourceInput.signal || '',
+      })),
+    },
+    latestProposal: {
+      proposalId: latestProposal.proposal_id || '',
+      proposalType: latestProposal.proposal_type || '',
+      canonicalKey: latestProposal.canonical_key || '',
+      status: latestProposal.status || '',
+      title: latestProposal.title || '',
+      summary: latestProposal.summary || '',
+      rationale: latestProposal.rationale || '',
+      sourceKind: latestProposal.source_kind || '',
+      confidence: latestProposal.confidence || '',
+      evidenceSummary: latestProposal.evidence_summary || '',
+      supportSummary: latestProposal.support_summary || '',
+      statusReason: latestProposal.status_reason || '',
+      supportCount: Number(latestProposal.support_count || 0),
+      sessionCount: Number(latestProposal.session_count || 0),
+      createdAt: latestProposal.created_at || '',
+      updatedAt: latestProposal.updated_at || '',
+    },
+    createdAt: item.last_run_at || item.built_at || '',
+  }
+}
+
 function normalizeInternalCadence(item = {}) {
   return {
     lastTickAt: item.last_tick_at || '',
@@ -1885,7 +1963,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, internalCadencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, internalCadencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -1896,6 +1974,7 @@ export const backend = {
       requestJson('/mc/loop-runtime').catch(() => null),
       requestJson('/mc/idle-consolidation').catch(() => null),
       requestJson('/mc/dream-articulation').catch(() => null),
+      requestJson('/mc/prompt-evolution').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
     ])
     const state = payload?.state || {}
@@ -1923,6 +2002,12 @@ export const backend = {
       dreamArticulationPayload ||
       heartbeat?.dream_articulation ||
       selfModelPayload?.dream_articulation ||
+      null
+    const promptEvolutionSource =
+      promptEvolutionPayload ||
+      heartbeat?.prompt_evolution ||
+      development?.prompt_evolution ||
+      selfModelPayload?.prompt_evolution ||
       null
 
     return {
@@ -2568,6 +2653,7 @@ export const backend = {
           summary: development.self_authored_prompt_proposals?.summary || {},
           items: (development.self_authored_prompt_proposals?.items || []).map(normalizeSelfAuthoredPromptProposal),
         },
+        promptEvolution: normalizePromptEvolution(development.prompt_evolution || promptEvolutionSource || {}),
         userUnderstandingSignals: {
           active: Boolean(development.user_understanding_signals?.active),
           summary: development.user_understanding_signals?.summary || {},
@@ -2640,11 +2726,13 @@ export const backend = {
         loopRuntime: normalizeLoopRuntime(heartbeat.loop_runtime || loopRuntimeSource || {}),
         idleConsolidation: normalizeIdleConsolidation(heartbeat.idle_consolidation || idleConsolidationSource || {}),
         dreamArticulation: normalizeDreamArticulation(heartbeat.dream_articulation || dreamArticulationSource || {}),
+        promptEvolution: normalizePromptEvolution(heartbeat.prompt_evolution || promptEvolutionSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
       idleConsolidation: normalizeIdleConsolidation(idleConsolidationSource || {}),
       dreamArticulation: normalizeDreamArticulation(dreamArticulationSource || {}),
+      promptEvolution: normalizePromptEvolution(promptEvolutionSource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

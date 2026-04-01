@@ -722,3 +722,16 @@ button { cursor: pointer; }
 }
 .feature-status-card.active .feature-status-card-label { color: #e4e6ed; }
 .feature-status-card-meta { font-size: 9px; color: #4e5262; }
+
+/* ─── MC: Tables ─── */
+.mc-table { width: 100%; border-collapse: collapse; }
+.mc-table th {
+  font-size: 9px; color: #4e5262; text-align: left;
+  padding: 4px 8px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.mc-table td { padding: 7px 8px; font-size: 11px; color: #e4e6ed; }
+.mc-table tr { transition: background 0.1s; }
+.mc-table tbody tr:hover { background: #272b35; }
+.mc-table-empty { color: #4e5262; font-style: italic; }
+
+.mc-cost-cards { display: flex; gap: 10px; margin-bottom: 16px; }

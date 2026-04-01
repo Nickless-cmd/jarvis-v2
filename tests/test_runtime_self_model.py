@@ -27,6 +27,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "subagent_ecology" in model
     assert "council_runtime" in model
     assert "adaptive_planner" in model
+    assert "adaptive_reasoning" in model
     assert "loop_runtime" in model
     assert "idle_consolidation" in model
     assert "dream_articulation" in model
@@ -209,6 +210,7 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "subagent_ecology:" in joined
     assert "council_runtime:" in joined
     assert "adaptive_planner:" in joined
+    assert "adaptive_reasoning:" in joined
     assert "loop_runtime:" in joined
     assert "idle_consolidation:" in joined
     assert "dream_articulation:" in joined
@@ -254,6 +256,7 @@ def test_mc_runtime_self_model_endpoint(isolated_runtime) -> None:
     assert "subagent_ecology" in response
     assert "council_runtime" in response
     assert "adaptive_planner" in response
+    assert "adaptive_reasoning" in response
     assert "loop_runtime" in response
     assert "idle_consolidation" in response
     assert "dream_articulation" in response

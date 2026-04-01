@@ -55,6 +55,9 @@ from apps.api.jarvis_api.services.council_runtime import (
 from apps.api.jarvis_api.services.adaptive_planner_runtime import (
     build_adaptive_planner_runtime_surface,
 )
+from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
+    build_adaptive_reasoning_runtime_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -255,6 +258,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     subagent_ecology = build_subagent_ecology_surface()
     council_runtime = build_council_runtime_surface()
     adaptive_planner = build_adaptive_planner_runtime_surface()
+    adaptive_reasoning = build_adaptive_reasoning_runtime_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -286,6 +290,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "subagent_ecology": subagent_ecology,
             "council_runtime": council_runtime,
             "adaptive_planner": adaptive_planner,
+            "adaptive_reasoning": adaptive_reasoning,
         },
     )
     return {
@@ -303,6 +308,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "subagent_ecology": subagent_ecology,
         "council_runtime": council_runtime,
         "adaptive_planner": adaptive_planner,
+        "adaptive_reasoning": adaptive_reasoning,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -816,6 +822,7 @@ def _build_heartbeat_context(
     subagent_ecology = build_subagent_ecology_surface()
     council_runtime = build_council_runtime_surface()
     adaptive_planner = build_adaptive_planner_runtime_surface()
+    adaptive_reasoning = build_adaptive_reasoning_runtime_surface()
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -830,6 +837,7 @@ def _build_heartbeat_context(
         subagent_ecology=subagent_ecology,
         council_runtime=council_runtime,
         adaptive_planner=adaptive_planner,
+        adaptive_reasoning=adaptive_reasoning,
     )
 
     return {
@@ -851,6 +859,7 @@ def _build_heartbeat_context(
         "subagent_ecology": subagent_ecology,
         "council_runtime": council_runtime,
         "adaptive_planner": adaptive_planner,
+        "adaptive_reasoning": adaptive_reasoning,
         "influence_trace": influence_trace,
     }
 
@@ -868,6 +877,7 @@ def _build_influence_trace(
     subagent_ecology: dict[str, object],
     council_runtime: dict[str, object],
     adaptive_planner: dict[str, object],
+    adaptive_reasoning: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -974,6 +984,16 @@ def _build_influence_trace(
     else:
         inputs_absent.append("adaptive-planner")
 
+    reasoning_mode = str(adaptive_reasoning.get("reasoning_mode") or "direct")
+    reasoning_posture = str(adaptive_reasoning.get("reasoning_posture") or "balanced")
+    certainty_style = str(adaptive_reasoning.get("certainty_style") or "crisp")
+    if reasoning_mode not in {"direct"} or certainty_style != "crisp":
+        inputs_present.append(
+            f"adaptive-reasoning ({reasoning_mode}, posture={reasoning_posture}, certainty={certainty_style})"
+        )
+    else:
+        inputs_absent.append("adaptive-reasoning")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -1003,6 +1023,9 @@ def _build_influence_trace(
         "adaptive_planner_mode": planner_mode,
         "adaptive_plan_horizon": plan_horizon,
         "adaptive_risk_posture": risk_posture,
+        "adaptive_reasoning_mode": reasoning_mode,
+        "adaptive_reasoning_posture": reasoning_posture,
+        "adaptive_certainty_style": certainty_style,
     }
 
 

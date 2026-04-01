@@ -1269,6 +1269,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     affective = context.get("affective_meta_state") or {}
     epistemic = context.get("epistemic_runtime_state") or {}
     adaptive_planner = context.get("adaptive_planner") or {}
+    adaptive_reasoning = context.get("adaptive_reasoning") or {}
     loop_runtime = context.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
@@ -1294,6 +1295,12 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | horizon={adaptive_planner.get('plan_horizon') or 'near'}"
                 f" | posture={adaptive_planner.get('planning_posture') or 'staged'}"
                 f" | risk={adaptive_planner.get('risk_posture') or 'balanced'}"
+            ),
+            (
+                f"- adaptive_reasoning={adaptive_reasoning.get('reasoning_mode') or 'direct'}"
+                f" | posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}"
+                f" | certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}"
+                f" | constraint={adaptive_reasoning.get('constraint_bias') or 'light'}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"
@@ -1496,6 +1503,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
         adaptive_planner = build_adaptive_planner_prompt_section()
         if adaptive_planner:
             parts.append(adaptive_planner)
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
+            build_adaptive_reasoning_prompt_section,
+        )
+        adaptive_reasoning = build_adaptive_reasoning_prompt_section()
+        if adaptive_reasoning:
+            parts.append(adaptive_reasoning)
     except Exception:
         pass
     try:

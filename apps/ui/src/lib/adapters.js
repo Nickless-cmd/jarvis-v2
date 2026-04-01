@@ -381,6 +381,54 @@ function normalizeEmbodiedState(item = {}) {
   }
 }
 
+function normalizeLoopRuntime(item = {}) {
+  const summary = item.summary || {}
+  const freshness = item.freshness || {}
+  const seamUsage = item.seam_usage || {}
+
+  return {
+    active: Boolean(item.active),
+    authority: item.authority || 'authoritative',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'loop-runtime-state',
+    source: item.source || '/mc/loop-runtime',
+    summary: {
+      activeCount: Number(summary.active_count || 0),
+      standbyCount: Number(summary.standby_count || 0),
+      resumedCount: Number(summary.resumed_count || 0),
+      closedCount: Number(summary.closed_count || 0),
+      currentLoop: summary.current_loop || 'No active runtime loop',
+      currentStatus: summary.current_status || 'none',
+      currentKind: summary.current_kind || 'none',
+      currentReason: summary.current_reason || 'none',
+      loopCount: Number(summary.loop_count || 0),
+    },
+    freshnessState: freshness.state || 'unknown',
+    builtAt: freshness.built_at || '',
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    items: (item.items || []).map((loopItem) => ({
+      loopId: loopItem.loop_id || '',
+      title: loopItem.title || 'Runtime loop',
+      runtimeStatus: loopItem.runtime_status || 'unknown',
+      loopKind: loopItem.loop_kind || 'runtime-loop',
+      sourceType: loopItem.source_type || '',
+      sourceStatus: loopItem.source_status || '',
+      canonicalKey: loopItem.canonical_key || '',
+      reasonCode: loopItem.reason_code || '',
+      summary: loopItem.summary || 'Inspect loop runtime detail',
+      updatedAt: loopItem.updated_at || '',
+      boundary: loopItem.boundary || 'not-memory-not-identity-not-action',
+      source: item.source || '/mc/loop-runtime',
+    })),
+    createdAt: freshness.built_at || '',
+  }
+}
+
 function normalizeHeartbeatPolicy(item = {}) {
   return {
     workspace: item.workspace || '',
@@ -1674,7 +1722,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -1682,6 +1730,7 @@ export const backend = {
       requestJson('/mc/self-deception-guard').catch(() => null),
       requestJson('/mc/runtime-self-model').catch(() => null),
       requestJson('/mc/embodied-state').catch(() => null),
+      requestJson('/mc/loop-runtime').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -1693,6 +1742,11 @@ export const backend = {
       embodiedPayload ||
       heartbeat?.embodied_state ||
       selfModelPayload?.embodied_state ||
+      null
+    const loopRuntimeSource =
+      loopRuntimePayload ||
+      heartbeat?.loop_runtime ||
+      selfModelPayload?.loop_runtime ||
       null
 
     return {
@@ -2407,8 +2461,10 @@ export const backend = {
         recentTicks: (heartbeat.recent_ticks || []).map(normalizeHeartbeatTick),
         recentEvents: (heartbeat.recent_events || []).map(normalizeEventItem),
         embodiedState: normalizeEmbodiedState(heartbeat.embodied_state || embodiedStateSource || {}),
+        loopRuntime: normalizeLoopRuntime(heartbeat.loop_runtime || loopRuntimeSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
+      loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,
       deceptionGuard: guardPayload?.trace || null,

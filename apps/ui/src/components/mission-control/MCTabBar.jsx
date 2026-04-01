@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Activity, Eye, Bot, Brain, DollarSign, Layers, Shield, TrendingUp, MoreHorizontal } from 'lucide-react'
+import { Activity, Eye, Bot, Brain, DollarSign, Layers, Shield, TrendingUp, Database, Package, Lock, FlaskConical } from 'lucide-react'
 
 const PRIMARY_TABS = [
   { id: 'overview', label: 'Overview', icon: Activity },
@@ -10,26 +9,13 @@ const PRIMARY_TABS = [
   { id: 'continuity', label: 'Continuity', icon: Layers },
   { id: 'cost', label: 'Cost', icon: DollarSign },
   { id: 'development', label: 'Development', icon: TrendingUp },
-]
-
-const MORE_TABS = [
-  { id: 'policy', label: 'Policy' },
-  { id: 'memory', label: 'Memory' },
-  { id: 'mind', label: 'Mind' },
-  { id: 'council', label: 'Council' },
-  { id: 'hardening', label: 'Hardening' },
-  { id: 'lab', label: 'Lab' },
-  { id: 'debug', label: 'Debug' },
-  { id: 'workspace', label: 'Workspace' },
-  { id: 'self', label: 'Self' },
+  { id: 'memory', label: 'Memory', icon: Database },
+  { id: 'skills', label: 'Skills', icon: Package },
+  { id: 'hardening', label: 'Hardening', icon: Lock },
+  { id: 'lab', label: 'Lab', icon: FlaskConical },
 ]
 
 export function MCTabBar({ activeTab, onChange }) {
-  const [moreOpen, setMoreOpen] = useState(false)
-
-  const activePrimaryTab = PRIMARY_TABS.find(t => t.id === activeTab)
-  const isMoreTab = !PRIMARY_TABS.find(t => t.id === activeTab)
-  
   return (
     <>
       <nav className="mc-tabbar">
@@ -47,31 +33,6 @@ export function MCTabBar({ activeTab, onChange }) {
             </button>
           )
         })}
-        <div className="mc-tab-more-wrapper">
-          <button
-            className={`mc-tab mc-tab-more ${moreOpen ? 'active' : ''} ${isMoreTab ? 'active' : ''}`}
-            onClick={() => setMoreOpen(!moreOpen)}
-          >
-            <MoreHorizontal size={12} />
-            More
-          </button>
-          {moreOpen && (
-            <div className="mc-tab-more-dropdown">
-              {MORE_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  className={activeTab === tab.id ? 'mc-tab-more-item active' : 'mc-tab-more-item'}
-                  onClick={() => {
-                    onChange(tab.id)
-                    setMoreOpen(false)
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </nav>
     </>
   )

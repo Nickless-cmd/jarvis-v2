@@ -4,12 +4,16 @@ import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { CostTab } from '../components/mission-control/CostTab'
 import { ContinuityTab } from '../components/mission-control/ContinuityTab'
 import { DevelopmentTab } from '../components/mission-control/DevelopmentTab'
+import { HardeningTab } from '../components/mission-control/HardeningTab'
+import { LabTab } from '../components/mission-control/LabTab'
 import { LivingMindTab } from '../components/mission-control/LivingMindTab'
+import { MemoryTab } from '../components/mission-control/MemoryTab'
 import { SelfReviewTab } from '../components/mission-control/SelfReviewTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
 import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
 import { OperationsTab } from '../components/mission-control/OperationsTab'
 import { OverviewTab } from '../components/mission-control/OverviewTab'
+import { SkillsTab } from '../components/mission-control/SkillsTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
 
@@ -158,6 +162,11 @@ export function MissionControlPage({ selection, onSelectionChange }) {
       {activeTab === 'development' ? (
         <DevelopmentTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
       ) : null}
+
+      {activeTab === 'memory' ? <MemoryTab /> : null}
+      {activeTab === 'skills' ? <SkillsTab /> : null}
+      {activeTab === 'hardening' ? <HardeningTab /> : null}
+      {activeTab === 'lab' ? <LabTab /> : null}
 
       <DetailDrawer
         drawer={drawer}

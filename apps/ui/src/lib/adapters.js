@@ -755,6 +755,51 @@ function normalizeSubagentEcology(item = {}) {
   }
 }
 
+function normalizeCouncilRuntime(item = {}) {
+  const freshness = item.freshness || {}
+  const seamUsage = item.seam_usage || {}
+
+  return {
+    councilState: item.council_state || 'quiet',
+    participatingRoles: item.participating_roles || [],
+    rolePositions: (item.role_positions || []).map((role) => ({
+      roleName: role.role_name || '',
+      roleKind: role.role_kind || 'internal-role',
+      status: role.status || 'idle',
+      position: role.position || 'hold',
+      activationReason: role.activation_reason || '',
+      toolAccess: role.tool_access || 'none',
+      internalOnly: role.internal_only !== false,
+    })),
+    divergenceLevel: item.divergence_level || 'low',
+    recommendation: item.recommendation || 'hold',
+    recommendationReason: item.recommendation_reason || '',
+    confidence: item.confidence || 'low',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    internalOnly: item.internal_only !== false,
+    toolAccess: item.tool_access || 'none',
+    influenceScope: item.influence_scope || 'bounded',
+    boundary: item.boundary || 'not-memory-not-identity-not-action-not-tool-execution',
+    kind: item.kind || 'council-runtime-light',
+    summary: item.summary || 'No bounded council runtime state recorded yet.',
+    source: item.source || '/mc/council-runtime',
+    sourceContributors: (item.source_contributors || []).map((sourceInput) => ({
+      source: sourceInput.source || '',
+      signal: sourceInput.signal || '',
+    })),
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    builtAt: freshness.built_at || item.last_council_at || '',
+    freshnessState: freshness.state || 'unknown',
+    createdAt: freshness.built_at || item.last_council_at || '',
+  }
+}
+
 function normalizeInternalCadence(item = {}) {
   return {
     lastTickAt: item.last_tick_at || '',
@@ -2075,7 +2120,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, epistemicPayload, subagentEcologyPayload, internalCadencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, epistemicPayload, subagentEcologyPayload, councilRuntimePayload, internalCadencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -2090,6 +2135,7 @@ export const backend = {
       requestJson('/mc/affective-meta-state').catch(() => null),
       requestJson('/mc/epistemic-runtime-state').catch(() => null),
       requestJson('/mc/subagent-ecology').catch(() => null),
+      requestJson('/mc/council-runtime').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
     ])
     const state = payload?.state || {}
@@ -2141,6 +2187,12 @@ export const backend = {
       heartbeat?.subagent_ecology ||
       development?.subagent_ecology ||
       selfModelPayload?.subagent_ecology ||
+      null
+    const councilRuntimeSource =
+      councilRuntimePayload ||
+      heartbeat?.council_runtime ||
+      development?.council_runtime ||
+      selfModelPayload?.council_runtime ||
       null
 
     return {
@@ -2790,6 +2842,7 @@ export const backend = {
         affectiveMetaState: normalizeAffectiveMetaState(development.affective_meta_state || affectiveMetaSource || {}),
         epistemicRuntimeState: normalizeEpistemicRuntimeState(development.epistemic_runtime_state || epistemicSource || {}),
         subagentEcology: normalizeSubagentEcology(development.subagent_ecology || subagentEcologySource || {}),
+        councilRuntime: normalizeCouncilRuntime(development.council_runtime || councilRuntimeSource || {}),
         userUnderstandingSignals: {
           active: Boolean(development.user_understanding_signals?.active),
           summary: development.user_understanding_signals?.summary || {},
@@ -2866,6 +2919,7 @@ export const backend = {
         affectiveMetaState: normalizeAffectiveMetaState(heartbeat.affective_meta_state || affectiveMetaSource || {}),
         epistemicRuntimeState: normalizeEpistemicRuntimeState(heartbeat.epistemic_runtime_state || epistemicSource || {}),
         subagentEcology: normalizeSubagentEcology(heartbeat.subagent_ecology || subagentEcologySource || {}),
+        councilRuntime: normalizeCouncilRuntime(heartbeat.council_runtime || councilRuntimeSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
@@ -2875,6 +2929,7 @@ export const backend = {
       affectiveMetaState: normalizeAffectiveMetaState(affectiveMetaSource || {}),
       epistemicRuntimeState: normalizeEpistemicRuntimeState(epistemicSource || {}),
       subagentEcology: normalizeSubagentEcology(subagentEcologySource || {}),
+      councilRuntime: normalizeCouncilRuntime(councilRuntimeSource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

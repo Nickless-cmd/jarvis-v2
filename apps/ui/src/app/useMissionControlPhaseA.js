@@ -105,6 +105,11 @@ export function useMissionControlPhaseA({ active, selection }) {
     setData((current) => ({ ...current, jarvis }))
   }, [])
 
+  const isJarvisTab = useCallback(
+    (tabId) => ['living-mind', 'self-review', 'continuity', 'development'].includes(tabId),
+    []
+  )
+
   const refreshAll = useCallback(async ({ background = false } = {}) => {
     if (background) {
       setIsRefreshing(true)
@@ -112,18 +117,35 @@ export function useMissionControlPhaseA({ active, selection }) {
       setIsLoading(true)
     }
     try {
-      const next = await backend.getMissionControlPhaseB({ selection })
-      setData({
-        overview: applySelectionToOverview(next.overview),
-        operations: next.operations,
-        observability: next.observability,
-        jarvis: next.jarvis,
-      })
+      if (background && isJarvisTab(activeTab)) {
+        const next = await backend.getMissionControlPhaseB({ selection })
+        setData({
+          overview: applySelectionToOverview(next.overview),
+          operations: next.operations,
+          observability: next.observability,
+          jarvis: next.jarvis,
+        })
+        return
+      }
+
+      const overview = await backend.getMissionControlOverview({ selection })
+      setData((current) => ({
+        overview: applySelectionToOverview(overview),
+        operations: current.operations,
+        observability: current.observability,
+        jarvis: current.jarvis,
+      }))
+
+      void Promise.allSettled([
+        refreshOperations(),
+        refreshObservability(),
+        refreshJarvis(),
+      ])
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }, [selection, applySelectionToOverview])
+  }, [selection, applySelectionToOverview, activeTab, isJarvisTab, refreshJarvis])
 
   const refreshTab = useCallback(async (tabId, { background = true } = {}) => {
     if (background) setIsRefreshing(true)
@@ -166,6 +188,21 @@ export function useMissionControlPhaseA({ active, selection }) {
     if (!active) return
     refreshAll()
   }, [active, refreshAll])
+
+  useEffect(() => {
+    if (!active) return
+    if (activeTab === 'operations' && !data.operations) {
+      refreshOperations()
+      return
+    }
+    if (activeTab === 'observability' && !data.observability) {
+      refreshObservability()
+      return
+    }
+    if (isJarvisTab(activeTab) && !data.jarvis) {
+      refreshJarvis()
+    }
+  }, [active, activeTab, data.jarvis, data.observability, data.operations, isJarvisTab, refreshJarvis, refreshObservability, refreshOperations])
 
   useEffect(() => {
     if (!active) return

@@ -197,7 +197,11 @@ def _select_affordances(
 # ---------------------------------------------------------------------------
 
 
-def build_cognitive_frame() -> dict[str, object]:
+def build_cognitive_frame(
+    *,
+    self_knowledge: dict[str, object] | None = None,
+    heartbeat_state: dict[str, object] | None = None,
+) -> dict[str, object]:
     """Build the current bounded cognitive frame.
 
     This is the central mental state assembly that reads from all
@@ -205,12 +209,14 @@ def build_cognitive_frame() -> dict[str, object]:
     """
     # --- Gather inputs ---
     brain_context = _safe_brain_context()
-    self_knowledge = _safe_self_knowledge()
+    self_knowledge = self_knowledge or _safe_self_knowledge(
+        heartbeat_state=heartbeat_state
+    )
     loop_surface = _safe_open_loops()
     gate_surface = _safe_question_gates()
     tension_surface = _safe_initiative_tension()
     visible_status = _safe_visible_status()
-    liveness = _safe_liveness_snapshot()
+    liveness = _safe_liveness_snapshot(heartbeat_state=heartbeat_state)
 
     # --- Extract summaries ---
     brain_excerpts = brain_context.get("excerpts") or []
@@ -391,10 +397,12 @@ def _safe_brain_context() -> dict[str, object]:
         return {"active": False, "record_count": 0, "excerpts": [], "by_type": {}}
 
 
-def _safe_self_knowledge() -> dict[str, object]:
+def _safe_self_knowledge(
+    *, heartbeat_state: dict[str, object] | None = None
+) -> dict[str, object]:
     try:
         from apps.api.jarvis_api.services.runtime_self_knowledge import build_runtime_self_knowledge_map
-        return build_runtime_self_knowledge_map()
+        return build_runtime_self_knowledge_map(heartbeat_state=heartbeat_state)
     except Exception:
         return {"active_capabilities": {"items": []}, "approval_gated": {"items": []},
                 "passive_inner_forces": {"items": []}, "structural_constraints": {"items": []},
@@ -433,9 +441,16 @@ def _safe_visible_status() -> dict[str, object]:
         return {"provider_status": "unknown"}
 
 
-def _safe_liveness_snapshot() -> dict[str, object]:
+def _safe_liveness_snapshot(
+    *, heartbeat_state: dict[str, object] | None = None
+) -> dict[str, object]:
     """Get a lightweight liveness snapshot without triggering full liveness build."""
     try:
+        if heartbeat_state is not None:
+            return {
+                "liveness_state": str(heartbeat_state.get("liveness_state") or "quiet"),
+                "liveness_score": int(heartbeat_state.get("liveness_score") or 0),
+            }
         from apps.api.jarvis_api.services.heartbeat_runtime import heartbeat_runtime_surface
         surface = heartbeat_runtime_surface()
         state = surface.get("state") or {}

@@ -551,8 +551,14 @@ def mc_jarvis() -> dict:
     heartbeat = heartbeat_runtime_surface()
     private_brain = build_private_brain_surface()
     session_distillation = build_session_distillation_surface()
-    self_knowledge = build_runtime_self_knowledge_map()
-    cognitive_frame = build_cognitive_frame()
+    heartbeat_state = heartbeat.get("state") or {}
+    self_knowledge = build_runtime_self_knowledge_map(
+        heartbeat_state=heartbeat_state
+    )
+    cognitive_frame = build_cognitive_frame(
+        self_knowledge=self_knowledge,
+        heartbeat_state=heartbeat_state,
+    )
 
     return {
         "summary": {
@@ -931,22 +937,33 @@ def mc_apply_runtime_contract_candidate(candidate_id: str) -> dict:
 @router.get("/runtime")
 def mc_runtime() -> dict:
     settings = load_settings()
+    heartbeat = heartbeat_runtime_surface()
     return {
         "settings": settings.to_dict(),
-        "heartbeat_runtime": heartbeat_runtime_surface(),
-        "runtime_embodied_state": build_embodied_state_surface(),
-        "runtime_affective_meta_state": build_affective_meta_state_surface(),
-        "runtime_epistemic_state": build_epistemic_runtime_state_surface(),
-        "runtime_subagent_ecology": build_subagent_ecology_surface(),
-        "runtime_council_runtime": build_council_runtime_surface(),
-        "runtime_adaptive_planner": build_adaptive_planner_runtime_surface(),
-        "runtime_adaptive_reasoning": build_adaptive_reasoning_runtime_surface(),
+        "heartbeat_runtime": heartbeat,
+        "runtime_embodied_state": heartbeat.get("embodied_state")
+        or build_embodied_state_surface(),
+        "runtime_affective_meta_state": heartbeat.get("affective_meta_state")
+        or build_affective_meta_state_surface(),
+        "runtime_epistemic_state": heartbeat.get("epistemic_runtime_state")
+        or build_epistemic_runtime_state_surface(),
+        "runtime_subagent_ecology": heartbeat.get("subagent_ecology")
+        or build_subagent_ecology_surface(),
+        "runtime_council_runtime": heartbeat.get("council_runtime")
+        or build_council_runtime_surface(),
+        "runtime_adaptive_planner": heartbeat.get("adaptive_planner")
+        or build_adaptive_planner_runtime_surface(),
+        "runtime_adaptive_reasoning": heartbeat.get("adaptive_reasoning")
+        or build_adaptive_reasoning_runtime_surface(),
         "runtime_guided_learning": build_guided_learning_runtime_surface(),
         "runtime_adaptive_learning": build_adaptive_learning_runtime_surface(),
-        "runtime_loop_state": build_loop_runtime_surface(),
-        "runtime_idle_consolidation": build_idle_consolidation_surface(),
-        "runtime_dream_articulation": build_dream_articulation_surface(),
-        "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
+        "runtime_loop_state": heartbeat.get("loop_runtime") or build_loop_runtime_surface(),
+        "runtime_idle_consolidation": heartbeat.get("idle_consolidation")
+        or build_idle_consolidation_surface(),
+        "runtime_dream_articulation": heartbeat.get("dream_articulation")
+        or build_dream_articulation_surface(),
+        "runtime_prompt_evolution": heartbeat.get("prompt_evolution")
+        or build_prompt_evolution_runtime_surface(),
         "visible_execution": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
         "visible_session_continuity": visible_session_continuity_summary(),

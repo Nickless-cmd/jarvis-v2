@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { JarvisTab } from '../components/mission-control/JarvisTab'
 import { LivingMindTab } from '../components/mission-control/LivingMindTab'
+import { SelfReviewTab } from '../components/mission-control/SelfReviewTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
 import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
 import { OperationsTab } from '../components/mission-control/OperationsTab'
@@ -43,7 +44,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     }
   }, [sections.observability, eventFamilyFilter])
 
-  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' ? sections.jarvis : null) || null
+  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' || activeTab === 'self-review' ? sections.jarvis : null) || null
   const freshnessLabel = formatFreshness(activeSectionData?.fetchedAt)
   const updateModeLabel = mcUpdateModeLabel(activeTab)
 
@@ -140,6 +141,10 @@ export function MissionControlPage({ selection, onSelectionChange }) {
           onHeartbeatTick={actOnHeartbeatTick}
           heartbeatBusy={isRefreshing}
         />
+      ) : null}
+
+      {activeTab === 'self-review' ? (
+        <SelfReviewTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
       ) : null}
 
       <DetailDrawer

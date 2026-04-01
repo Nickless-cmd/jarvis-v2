@@ -735,3 +735,16 @@ button { cursor: pointer; }
 .mc-table-empty { color: #4e5262; font-style: italic; }
 
 .mc-cost-cards { display: flex; gap: 10px; margin-bottom: 16px; }
+
+/* ─── MC: Filter Bar ─── */
+.mc-filter-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+.mc-search-input {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; background: #1c1f25;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 7px;
+}
+.mc-search-input input {
+  background: transparent; border: none; outline: none;
+  color: #e4e6ed; font-size: 12px; font-family: 'DM Sans', sans-serif; flex: 1;
+}
+.mc-search-input svg { color: #4e5262; flex-shrink: 0; }

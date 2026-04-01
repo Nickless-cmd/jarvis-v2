@@ -673,6 +673,38 @@ function normalizeAffectiveMetaState(item = {}) {
   }
 }
 
+function normalizeEpistemicRuntimeState(item = {}) {
+  const freshness = item.freshness || {}
+  const seamUsage = item.seam_usage || {}
+
+  return {
+    wrongnessState: item.wrongness_state || 'clear',
+    regretSignal: item.regret_signal || 'none',
+    counterfactualMode: item.counterfactual_mode || 'none',
+    counterfactualHint: item.counterfactual_hint || 'none',
+    confidence: item.confidence || 'low',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    boundary: item.boundary || 'not-memory-not-identity-not-action',
+    kind: item.kind || 'epistemic-runtime-state',
+    summary: item.summary || 'No epistemic runtime state recorded yet.',
+    source: item.source || '/mc/epistemic-runtime-state',
+    sourceContributors: (item.source_contributors || []).map((sourceInput) => ({
+      source: sourceInput.source || '',
+      signal: sourceInput.signal || '',
+    })),
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    builtAt: freshness.built_at || '',
+    freshnessState: freshness.state || 'unknown',
+    createdAt: freshness.built_at || '',
+  }
+}
+
 function normalizeInternalCadence(item = {}) {
   return {
     lastTickAt: item.last_tick_at || '',
@@ -1993,7 +2025,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, internalCadencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, epistemicPayload, internalCadencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -2006,6 +2038,7 @@ export const backend = {
       requestJson('/mc/dream-articulation').catch(() => null),
       requestJson('/mc/prompt-evolution').catch(() => null),
       requestJson('/mc/affective-meta-state').catch(() => null),
+      requestJson('/mc/epistemic-runtime-state').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
     ])
     const state = payload?.state || {}
@@ -2045,6 +2078,12 @@ export const backend = {
       heartbeat?.affective_meta_state ||
       development?.affective_meta_state ||
       selfModelPayload?.affective_meta_state ||
+      null
+    const epistemicSource =
+      epistemicPayload ||
+      heartbeat?.epistemic_runtime_state ||
+      development?.epistemic_runtime_state ||
+      selfModelPayload?.epistemic_runtime_state ||
       null
 
     return {
@@ -2692,6 +2731,7 @@ export const backend = {
         },
         promptEvolution: normalizePromptEvolution(development.prompt_evolution || promptEvolutionSource || {}),
         affectiveMetaState: normalizeAffectiveMetaState(development.affective_meta_state || affectiveMetaSource || {}),
+        epistemicRuntimeState: normalizeEpistemicRuntimeState(development.epistemic_runtime_state || epistemicSource || {}),
         userUnderstandingSignals: {
           active: Boolean(development.user_understanding_signals?.active),
           summary: development.user_understanding_signals?.summary || {},
@@ -2766,6 +2806,7 @@ export const backend = {
         dreamArticulation: normalizeDreamArticulation(heartbeat.dream_articulation || dreamArticulationSource || {}),
         promptEvolution: normalizePromptEvolution(heartbeat.prompt_evolution || promptEvolutionSource || {}),
         affectiveMetaState: normalizeAffectiveMetaState(heartbeat.affective_meta_state || affectiveMetaSource || {}),
+        epistemicRuntimeState: normalizeEpistemicRuntimeState(heartbeat.epistemic_runtime_state || epistemicSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
@@ -2773,6 +2814,7 @@ export const backend = {
       dreamArticulation: normalizeDreamArticulation(dreamArticulationSource || {}),
       promptEvolution: normalizePromptEvolution(promptEvolutionSource || {}),
       affectiveMetaState: normalizeAffectiveMetaState(affectiveMetaSource || {}),
+      epistemicRuntimeState: normalizeEpistemicRuntimeState(epistemicSource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

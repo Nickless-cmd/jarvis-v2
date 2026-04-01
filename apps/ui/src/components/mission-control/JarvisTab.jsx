@@ -178,6 +178,22 @@ function adaptivePlannerBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function adaptiveReasoningUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function adaptiveReasoningBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -674,6 +690,39 @@ function adaptivePlannerRow(item, onOpen) {
       </div>
       <div className="mc-row-meta">
         <StatusPill status={item.plannerMode || 'incremental'} />
+        {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function adaptiveReasoningRow(item, onOpen) {
+  if (!item || !item.reasoningMode) return null
+  const detailText = [
+    item.summary,
+    item.reasoningPosture ? `posture ${humanizeToken(item.reasoningPosture)}` : '',
+    item.certaintyStyle ? `certainty ${humanizeToken(item.certaintyStyle)}` : '',
+    item.constraintBias ? `constraint ${humanizeToken(item.constraintBias)}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Adaptive Reasoning State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'adaptive reasoning runtime detail',
+      })}
+    >
+      <div>
+        <strong>Adaptive Reasoning</strong>
+        <span>{detailText || 'Inspect bounded adaptive reasoning runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.reasoningMode || 'direct'} />
         {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
@@ -2177,6 +2226,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const hasAdaptivePlanner = Boolean(adaptivePlanner?.plannerMode)
   const adaptivePlannerUsage = adaptivePlannerUsageSummary(adaptivePlanner)
   const adaptivePlannerBoundary = adaptivePlannerBoundarySummary(adaptivePlanner)
+  const adaptiveReasoning = data?.adaptiveReasoning || heartbeat?.adaptiveReasoning || data?.development?.adaptiveReasoning || data?.runtimeSelfModel?.adaptive_reasoning || {}
+  const hasAdaptiveReasoning = Boolean(adaptiveReasoning?.reasoningMode)
+  const adaptiveReasoningUsage = adaptiveReasoningUsageSummary(adaptiveReasoning)
+  const adaptiveReasoningBoundary = adaptiveReasoningBoundarySummary(adaptiveReasoning)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2448,6 +2501,19 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <strong>{humanizeToken(adaptivePlanner.plannerMode) || 'incremental'}</strong>
           <small className="muted">
             {`horizon ${humanizeToken(adaptivePlanner.planHorizon) || 'near'} · risk ${humanizeToken(adaptivePlanner.riskPosture) || 'balanced'}${adaptivePlanner.createdAt ? ` · ${formatFreshness(adaptivePlanner.createdAt)}` : ''}`}
+          </small>
+        </article>
+        ) : null}
+        {hasAdaptiveReasoning ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: adaptiveReasoning.source || '/mc/adaptive-reasoning',
+          fetchedAt: adaptiveReasoning.createdAt || data?.fetchedAt,
+          mode: 'adaptive reasoning runtime snapshot',
+        })}>
+          <span>Adaptive Reasoning</span>
+          <strong>{humanizeToken(adaptiveReasoning.reasoningMode) || 'direct'}</strong>
+          <small className="muted">
+            {`posture ${humanizeToken(adaptiveReasoning.reasoningPosture) || 'balanced'} · certainty ${humanizeToken(adaptiveReasoning.certaintyStyle) || 'cautious'}${adaptiveReasoning.createdAt ? ` · ${formatFreshness(adaptiveReasoning.createdAt)}` : ''}`}
           </small>
         </article>
         ) : null}
@@ -3109,6 +3175,29 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {adaptivePlannerBoundary ? <p>{adaptivePlannerBoundary}</p> : null}
             </div>
             ) : null}
+            {hasAdaptiveReasoning ? (
+            <div className="compact-metric" title="Derived internal-only adaptive reasoning runtime for bounded shifts in reasoning mode and posture">
+              <span>Adaptive Reasoning</span>
+              <strong>{humanizeToken(adaptiveReasoning.reasoningMode) || 'direct'}</strong>
+              <p>{adaptiveReasoning.summary || 'No bounded adaptive reasoning state recorded yet.'}</p>
+              <p>
+                {`posture ${humanizeToken(adaptiveReasoning.reasoningPosture) || 'balanced'} · certainty ${humanizeToken(adaptiveReasoning.certaintyStyle) || 'cautious'}`}
+              </p>
+              <p>
+                {`explore ${humanizeToken(adaptiveReasoning.explorationBias) || 'minimal'} · constrain ${humanizeToken(adaptiveReasoning.constraintBias) || 'moderate'} · confidence ${humanizeToken(adaptiveReasoning.confidence) || 'low'}`}
+              </p>
+              <p>
+                {adaptiveReasoning.createdAt
+                  ? `${formatFreshness(adaptiveReasoning.createdAt)} · ${humanizeToken(adaptiveReasoning.freshnessState) || 'unknown'}`
+                  : humanizeToken(adaptiveReasoning.freshnessState) || 'unknown'}
+              </p>
+              <p>
+                {`internal only · ${humanizeToken(adaptiveReasoning.authority) || 'derived runtime truth'}`}
+              </p>
+              {adaptiveReasoningUsage ? <p>{`used by ${adaptiveReasoningUsage}`}</p> : null}
+              {adaptiveReasoningBoundary ? <p>{adaptiveReasoningBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -3137,6 +3226,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {subagentEcologyRow(subagentEcology, onOpenItem)}
                 {councilRuntimeRow(councilRuntime, onOpenItem)}
                 {adaptivePlannerRow(adaptivePlanner, onOpenItem)}
+                {adaptiveReasoningRow(adaptiveReasoning, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,

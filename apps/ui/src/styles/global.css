@@ -531,6 +531,10 @@ button { cursor: pointer; }
 .mc-status-pill.status-incremental { background:rgba(104,163,255,.12); color:#93b8ff; }
 .mc-status-pill.status-forward-push { background:rgba(40,177,163,.15); color:#49d2c3; }
 .mc-status-pill.status-reflective-planning { background:rgba(104,163,255,.12); color:#93b8ff; }
+.mc-status-pill.status-direct { background:rgba(40,177,163,.15); color:#49d2c3; }
+.mc-status-pill.status-careful { background:rgba(243,179,92,.15); color:#f3b45c; }
+.mc-status-pill.status-exploratory { background:rgba(104,163,255,.12); color:#93b8ff; }
+.mc-status-pill.status-constrained { background:rgba(243,92,92,.18); color:#f35c5c; }
 .mc-status-pill.status-disabled { background:rgba(140,160,182,.12); color:#8ca0b6; }
 .mc-status-pill.status-default { background:rgba(140,160,182,.1); color:#8ca0b6; }
 .mc-status-pill.status-approval-gated { background:rgba(104,163,255,.15); color:#68a3ff; }

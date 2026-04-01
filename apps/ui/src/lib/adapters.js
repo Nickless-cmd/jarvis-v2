@@ -643,6 +643,36 @@ function normalizePromptEvolution(item = {}) {
   }
 }
 
+function normalizeAffectiveMetaState(item = {}) {
+  const freshness = item.freshness || {}
+  const seamUsage = item.seam_usage || {}
+
+  return {
+    state: item.state || 'unknown',
+    bearing: item.bearing || 'unknown',
+    monitoringMode: item.monitoring_mode || 'unknown',
+    reflectiveLoad: item.reflective_load || 'low',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'affective-meta-runtime-state',
+    summary: item.summary || 'No affective/meta runtime orientation recorded yet.',
+    source: item.source || '/mc/affective-meta-state',
+    sourceContributors: (item.source_contributors || []).map((sourceInput) => ({
+      source: sourceInput.source || '',
+      signal: sourceInput.signal || '',
+    })),
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    builtAt: freshness.built_at || '',
+    freshnessState: freshness.state || 'unknown',
+    createdAt: freshness.built_at || '',
+  }
+}
+
 function normalizeInternalCadence(item = {}) {
   return {
     lastTickAt: item.last_tick_at || '',
@@ -1963,7 +1993,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, internalCadencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, internalCadencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -1975,6 +2005,7 @@ export const backend = {
       requestJson('/mc/idle-consolidation').catch(() => null),
       requestJson('/mc/dream-articulation').catch(() => null),
       requestJson('/mc/prompt-evolution').catch(() => null),
+      requestJson('/mc/affective-meta-state').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
     ])
     const state = payload?.state || {}
@@ -2008,6 +2039,12 @@ export const backend = {
       heartbeat?.prompt_evolution ||
       development?.prompt_evolution ||
       selfModelPayload?.prompt_evolution ||
+      null
+    const affectiveMetaSource =
+      affectiveMetaPayload ||
+      heartbeat?.affective_meta_state ||
+      development?.affective_meta_state ||
+      selfModelPayload?.affective_meta_state ||
       null
 
     return {
@@ -2654,6 +2691,7 @@ export const backend = {
           items: (development.self_authored_prompt_proposals?.items || []).map(normalizeSelfAuthoredPromptProposal),
         },
         promptEvolution: normalizePromptEvolution(development.prompt_evolution || promptEvolutionSource || {}),
+        affectiveMetaState: normalizeAffectiveMetaState(development.affective_meta_state || affectiveMetaSource || {}),
         userUnderstandingSignals: {
           active: Boolean(development.user_understanding_signals?.active),
           summary: development.user_understanding_signals?.summary || {},
@@ -2727,12 +2765,14 @@ export const backend = {
         idleConsolidation: normalizeIdleConsolidation(heartbeat.idle_consolidation || idleConsolidationSource || {}),
         dreamArticulation: normalizeDreamArticulation(heartbeat.dream_articulation || dreamArticulationSource || {}),
         promptEvolution: normalizePromptEvolution(heartbeat.prompt_evolution || promptEvolutionSource || {}),
+        affectiveMetaState: normalizeAffectiveMetaState(heartbeat.affective_meta_state || affectiveMetaSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
       idleConsolidation: normalizeIdleConsolidation(idleConsolidationSource || {}),
       dreamArticulation: normalizeDreamArticulation(dreamArticulationSource || {}),
       promptEvolution: normalizePromptEvolution(promptEvolutionSource || {}),
+      affectiveMetaState: normalizeAffectiveMetaState(affectiveMetaSource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

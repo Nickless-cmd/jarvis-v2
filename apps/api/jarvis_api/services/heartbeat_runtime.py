@@ -28,6 +28,9 @@ from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
 from apps.api.jarvis_api.services.meaning_significance_signal_tracking import (
     build_runtime_meaning_significance_signal_surface,
 )
+from apps.api.jarvis_api.services.loop_runtime import (
+    build_loop_runtime_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -755,6 +758,7 @@ def _build_heartbeat_context(
         self_knowledge_summary = {}
 
     embodied_state = build_embodied_state_surface()
+    loop_runtime = build_loop_runtime_surface()
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -762,6 +766,7 @@ def _build_heartbeat_context(
         liveness=liveness,
         self_knowledge_summary=self_knowledge_summary,
         embodied_state=embodied_state,
+        loop_runtime=loop_runtime,
     )
 
     return {
@@ -776,6 +781,7 @@ def _build_heartbeat_context(
         "liveness": liveness,
         "private_brain": private_brain_context,
         "embodied_state": embodied_state,
+        "loop_runtime": loop_runtime,
         "influence_trace": influence_trace,
     }
 
@@ -786,6 +792,7 @@ def _build_influence_trace(
     liveness: dict[str, object],
     self_knowledge_summary: dict[str, object],
     embodied_state: dict[str, object],
+    loop_runtime: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -825,6 +832,17 @@ def _build_influence_trace(
     else:
         inputs_absent.append("embodied-host-state")
 
+    loop_summary = loop_runtime.get("summary") or {}
+    active_loops = int(loop_summary.get("active_count") or 0)
+    resumed_loops = int(loop_summary.get("resumed_count") or 0)
+    standby_loops = int(loop_summary.get("standby_count") or 0)
+    if active_loops > 0 or resumed_loops > 0 or standby_loops > 0:
+        inputs_present.append(
+            f"loop-runtime ({active_loops} active, {standby_loops} standby, {resumed_loops} resumed)"
+        )
+    else:
+        inputs_absent.append("loop-runtime")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -838,6 +856,8 @@ def _build_influence_trace(
         "liveness_score": liveness_score,
         "embodied_state": body_state,
         "embodied_strain_level": strain_level,
+        "loop_runtime_status": str(loop_summary.get("current_status") or "none"),
+        "loop_runtime_count": int(loop_summary.get("loop_count") or 0),
     }
 
 

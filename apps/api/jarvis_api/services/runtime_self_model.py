@@ -47,6 +47,7 @@ def build_runtime_self_model() -> dict[str, object]:
     return {
         "layers": layers,
         "embodied_state": _embodied_state_surface(),
+        "loop_runtime": _loop_runtime_surface(),
         "truth_boundaries": boundaries,
         "summary": summary,
         "built_at": datetime.now(UTC).isoformat(),
@@ -90,6 +91,23 @@ def _collect_layers() -> list[dict[str, str]]:
             f"Host/body state={embodied.get('state') or 'unknown'}; "
             f"strain={embodied.get('strain_level') or 'unknown'}; "
             f"freshness={((embodied.get('freshness') or {}).get('state') or 'unknown')}."
+        ),
+    })
+
+    loop_runtime = _loop_runtime_surface()
+    loop_summary = loop_runtime.get("summary") or {}
+    layers.append({
+        "id": "loop-runtime-light",
+        "label": "Loop runtime light",
+        "kind": "orchestration",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": (
+            f"active={int(loop_summary.get('active_count') or 0)}; "
+            f"standby={int(loop_summary.get('standby_count') or 0)}; "
+            f"resumed={int(loop_summary.get('resumed_count') or 0)}; "
+            f"closed={int(loop_summary.get('closed_count') or 0)}."
         ),
     })
 
@@ -306,6 +324,8 @@ def build_self_model_prompt_lines() -> list[str]:
     boundaries = model["truth_boundaries"]
     summary = model["summary"]
     embodied = model.get("embodied_state") or {}
+    loop_runtime = model.get("loop_runtime") or {}
+    loop_summary = loop_runtime.get("summary") or {}
 
     lines: list[str] = [
         "- RUNTIME SELF-MODEL: Use these structural facts when asked about your layers, capabilities, or boundaries:",
@@ -339,6 +359,13 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | strain={embodied.get('strain_level') or 'unknown'}"
         f" | recovery={embodied.get('recovery_state') or 'steady'}"
     )
+    lines.append(
+        "  loop_runtime: "
+        f"{loop_summary.get('current_status') or 'none'}"
+        f" | active={loop_summary.get('active_count') or 0}"
+        f" | standby={loop_summary.get('standby_count') or 0}"
+        f" | resumed={loop_summary.get('resumed_count') or 0}"
+    )
 
     # Counts
     lines.append(
@@ -363,6 +390,24 @@ def _embodied_state_surface() -> dict[str, object]:
             "strain_level": "unknown",
             "recovery_state": "steady",
             "freshness": {"state": "unknown"},
+        }
+
+
+def _loop_runtime_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.loop_runtime import (
+            build_loop_runtime_surface,
+        )
+        return build_loop_runtime_surface()
+    except Exception:
+        return {
+            "summary": {
+                "current_status": "none",
+                "active_count": 0,
+                "standby_count": 0,
+                "resumed_count": 0,
+                "closed_count": 0,
+            }
         }
 
 

@@ -22,6 +22,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
 
     assert "layers" in model
     assert "embodied_state" in model
+    assert "loop_runtime" in model
     assert "truth_boundaries" in model
     assert "summary" in model
     assert "built_at" in model
@@ -195,6 +196,7 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "truth_boundary" in joined
     assert "self_model_summary" in joined
     assert "embodied_state:" in joined
+    assert "loop_runtime:" in joined
 
 
 def test_prompt_lines_distinguish_kinds(isolated_runtime) -> None:
@@ -231,6 +233,7 @@ def test_mc_runtime_self_model_endpoint(isolated_runtime) -> None:
     assert isinstance(response, dict)
     assert "layers" in response
     assert "embodied_state" in response
+    assert "loop_runtime" in response
     assert "truth_boundaries" in response
     assert "summary" in response
 

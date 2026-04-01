@@ -23,6 +23,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "layers" in model
     assert "embodied_state" in model
     assert "affective_meta_state" in model
+    assert "epistemic_runtime_state" in model
     assert "loop_runtime" in model
     assert "idle_consolidation" in model
     assert "dream_articulation" in model
@@ -201,6 +202,7 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "self_model_summary" in joined
     assert "embodied_state:" in joined
     assert "affective_meta_state:" in joined
+    assert "epistemic_runtime_state:" in joined
     assert "loop_runtime:" in joined
     assert "idle_consolidation:" in joined
     assert "dream_articulation:" in joined
@@ -242,6 +244,7 @@ def test_mc_runtime_self_model_endpoint(isolated_runtime) -> None:
     assert "layers" in response
     assert "embodied_state" in response
     assert "affective_meta_state" in response
+    assert "epistemic_runtime_state" in response
     assert "loop_runtime" in response
     assert "idle_consolidation" in response
     assert "dream_articulation" in response

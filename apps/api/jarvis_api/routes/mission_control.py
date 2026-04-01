@@ -22,6 +22,9 @@ from apps.api.jarvis_api.services.embodied_state import (
 from apps.api.jarvis_api.services.affective_meta_state import (
     build_affective_meta_state_surface,
 )
+from apps.api.jarvis_api.services.epistemic_runtime_state import (
+    build_epistemic_runtime_state_surface,
+)
 from apps.api.jarvis_api.services.loop_runtime import (
     build_loop_runtime_surface,
 )
@@ -776,6 +779,12 @@ def mc_affective_meta_state() -> dict:
     return build_affective_meta_state_surface()
 
 
+@router.get("/epistemic-runtime-state")
+def mc_epistemic_runtime_state() -> dict:
+    """Return the current bounded epistemic runtime state."""
+    return build_epistemic_runtime_state_surface()
+
+
 @router.get("/loop-runtime")
 def mc_loop_runtime() -> dict:
     """Return the current bounded loop runtime state."""
@@ -873,6 +882,7 @@ def mc_runtime() -> dict:
         "heartbeat_runtime": heartbeat_runtime_surface(),
         "runtime_embodied_state": build_embodied_state_surface(),
         "runtime_affective_meta_state": build_affective_meta_state_surface(),
+        "runtime_epistemic_state": build_epistemic_runtime_state_surface(),
         "runtime_loop_state": build_loop_runtime_surface(),
         "runtime_idle_consolidation": build_idle_consolidation_surface(),
         "runtime_dream_articulation": build_dream_articulation_surface(),

@@ -25,6 +25,9 @@ from apps.api.jarvis_api.services.embodied_state import (
 from apps.api.jarvis_api.services.affective_meta_state import (
     build_affective_meta_state_surface,
 )
+from apps.api.jarvis_api.services.epistemic_runtime_state import (
+    build_epistemic_runtime_state_surface,
+)
 from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
     build_runtime_metabolism_state_signal_surface,
 )
@@ -235,6 +238,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     now = datetime.now(UTC)
     embodied_state = build_embodied_state_surface()
     affective_meta_state = build_affective_meta_state_surface()
+    epistemic_runtime_state = build_epistemic_runtime_state_surface()
     loop_runtime = build_loop_runtime_surface()
     idle_consolidation = build_idle_consolidation_surface()
     dream_articulation = build_dream_articulation_surface()
@@ -262,6 +266,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "recent_ticks": recent_ticks,
             "embodied_state": embodied_state,
             "affective_meta_state": affective_meta_state,
+            "epistemic_runtime_state": epistemic_runtime_state,
             "loop_runtime": loop_runtime,
             "idle_consolidation": idle_consolidation,
             "dream_articulation": dream_articulation,
@@ -275,6 +280,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "recent_events": recent_events,
         "embodied_state": embodied_state,
         "affective_meta_state": affective_meta_state,
+        "epistemic_runtime_state": epistemic_runtime_state,
         "loop_runtime": loop_runtime,
         "idle_consolidation": idle_consolidation,
         "dream_articulation": dream_articulation,
@@ -786,6 +792,7 @@ def _build_heartbeat_context(
 
     embodied_state = build_embodied_state_surface()
     affective_meta_state = build_affective_meta_state_surface()
+    epistemic_runtime_state = build_epistemic_runtime_state_surface()
     loop_runtime = build_loop_runtime_surface()
     prompt_evolution = build_prompt_evolution_runtime_surface()
 
@@ -796,6 +803,7 @@ def _build_heartbeat_context(
         self_knowledge_summary=self_knowledge_summary,
         embodied_state=embodied_state,
         affective_meta_state=affective_meta_state,
+        epistemic_runtime_state=epistemic_runtime_state,
         loop_runtime=loop_runtime,
         prompt_evolution=prompt_evolution,
     )
@@ -813,6 +821,7 @@ def _build_heartbeat_context(
         "private_brain": private_brain_context,
         "embodied_state": embodied_state,
         "affective_meta_state": affective_meta_state,
+        "epistemic_runtime_state": epistemic_runtime_state,
         "loop_runtime": loop_runtime,
         "prompt_evolution": prompt_evolution,
         "influence_trace": influence_trace,
@@ -826,6 +835,7 @@ def _build_influence_trace(
     self_knowledge_summary: dict[str, object],
     embodied_state: dict[str, object],
     affective_meta_state: dict[str, object],
+    epistemic_runtime_state: dict[str, object],
     loop_runtime: dict[str, object],
     prompt_evolution: dict[str, object],
 ) -> dict[str, object]:
@@ -874,6 +884,16 @@ def _build_influence_trace(
     else:
         inputs_absent.append("affective-meta-state")
 
+    wrongness_state = str(epistemic_runtime_state.get("wrongness_state") or "clear")
+    regret_signal = str(epistemic_runtime_state.get("regret_signal") or "none")
+    counterfactual_mode = str(epistemic_runtime_state.get("counterfactual_mode") or "none")
+    if wrongness_state != "clear" or regret_signal != "none" or counterfactual_mode != "none":
+        inputs_present.append(
+            f"epistemic-state ({wrongness_state}, regret={regret_signal}, counterfactual={counterfactual_mode})"
+        )
+    else:
+        inputs_absent.append("epistemic-state")
+
     loop_summary = loop_runtime.get("summary") or {}
     active_loops = int(loop_summary.get("active_count") or 0)
     resumed_loops = int(loop_summary.get("resumed_count") or 0)
@@ -907,6 +927,9 @@ def _build_influence_trace(
         "embodied_strain_level": strain_level,
         "affective_state": affective_state,
         "affective_bearing": affective_bearing,
+        "epistemic_wrongness_state": wrongness_state,
+        "epistemic_regret_signal": regret_signal,
+        "epistemic_counterfactual_mode": counterfactual_mode,
         "loop_runtime_status": str(loop_summary.get("current_status") or "none"),
         "loop_runtime_count": int(loop_summary.get("loop_count") or 0),
         "prompt_evolution_type": latest_prompt_type or "none",

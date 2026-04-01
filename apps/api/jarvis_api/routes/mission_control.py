@@ -37,6 +37,9 @@ from apps.api.jarvis_api.services.self_model_signal_tracking import (
 from apps.api.jarvis_api.services.goal_signal_tracking import (
     build_runtime_goal_signal_surface,
 )
+from apps.api.jarvis_api.services.emergent_signal_tracking import (
+    build_runtime_emergent_signal_surface,
+)
 from apps.api.jarvis_api.services.world_model_signal_tracking import (
     build_runtime_world_model_signal_surface,
 )
@@ -504,6 +507,7 @@ def mc_jarvis() -> dict:
     selfhood_proposals = build_runtime_selfhood_proposal_surface()
     world_model_signals = build_runtime_world_model_signal_surface()
     runtime_awareness_signals = build_runtime_awareness_signal_surface()
+    emergent_signals = build_runtime_emergent_signal_surface(limit=8)
     heartbeat = heartbeat_runtime_surface()
     private_brain = build_private_brain_surface()
     session_distillation = build_session_distillation_surface()
@@ -535,6 +539,7 @@ def mc_jarvis() -> dict:
                 world_model_signals,
                 runtime_awareness_signals,
             ),
+            "emergent": _jarvis_emergent_summary(emergent_signals),
             "heartbeat": _jarvis_heartbeat_summary(heartbeat),
         },
         "state": {
@@ -609,6 +614,7 @@ def mc_jarvis() -> dict:
             "user_md_update_proposals": user_md_update_proposals,
             "memory_md_update_proposals": memory_md_update_proposals,
             "selfhood_proposals": selfhood_proposals,
+            "emergent_signals": emergent_signals,
         },
         "continuity": {
             "visible_session": visible_session,
@@ -718,6 +724,12 @@ def mc_internal_cadence() -> dict:
     """Return the current internal cadence layer state."""
     from apps.api.jarvis_api.services.internal_cadence import get_cadence_state
     return get_cadence_state()
+
+
+@router.get("/emergent-signals")
+def mc_emergent_signals() -> dict:
+    """Return current bounded emergent inner signals."""
+    return build_runtime_emergent_signal_surface(limit=8)
 
 
 @router.get("/self-knowledge")
@@ -892,6 +904,7 @@ def mc_runtime() -> dict:
         "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),
         "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
         "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
+        "runtime_emergent_signals": build_runtime_emergent_signal_surface(),
         "runtime_relevance_decisions": build_runtime_relevance_decision_surface(),
         "runtime_memory_selections": build_runtime_memory_selection_surface(),
         "runtime_inner_visible_prompt_bridges": build_runtime_inner_visible_prompt_bridge_surface(),
@@ -1698,6 +1711,22 @@ def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
         ),
         "next_tick_at": str(state.get("next_tick_at") or ""),
         "trigger": str(state.get("last_trigger_source") or "none"),
+    }
+
+
+def _jarvis_emergent_summary(emergent_signals: dict) -> dict[str, object]:
+    summary = emergent_signals.get("summary") or {}
+    return {
+        "active_count": int(summary.get("active_count") or 0),
+        "current_signal": str(
+            summary.get("current_signal") or "No active emergent inner signal"
+        ),
+        "current_status": str(summary.get("current_status") or "none"),
+        "current_lifecycle_state": str(
+            summary.get("current_lifecycle_state") or "none"
+        ),
+        "authority": "candidate-only",
+        "visibility": "internal-only",
     }
 
 

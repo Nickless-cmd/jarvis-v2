@@ -59,6 +59,13 @@ function loopRuntimeUsageSummary(item) {
   return labels.join(' · ')
 }
 
+function idleConsolidationBoundarySummary(item) {
+  return String(item?.boundary || '')
+    .split('-')
+    .filter((token) => token && token !== 'not')
+    .join(' / ')
+}
+
 function detailRow(item, label, onOpen) {
   if (!item || !Object.keys(item).length) {
     return (
@@ -189,6 +196,40 @@ function loopRuntimeItemRow(item, onOpen) {
       <div className="mc-row-meta">
         <StatusPill status={item.runtimeStatus || 'unknown'} />
         {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function idleConsolidationRow(item, onOpen) {
+  const summary = item?.summary || {}
+  const lastResult = item?.lastResult || {}
+  if (!item || (!item.active && !item.lastRunAt && !summary.latestRecordId)) return null
+  const detailText = [
+    summary.latestSummary,
+    summary.sourceInputCount ? `${summary.sourceInputCount} source input${summary.sourceInputCount === 1 ? '' : 's'}` : '',
+    lastResult.reason ? humanizeToken(lastResult.reason) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Idle Consolidation', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'idle consolidation detail',
+      })}
+    >
+      <div>
+        <strong>Idle Consolidation</strong>
+        <span>{detailText || 'Inspect bounded idle consolidation detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={summary.lastState || 'idle'} />
+        {summary.lastOutputKind ? <small>{humanizeToken(summary.lastOutputKind)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -1627,6 +1668,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const loopRuntimeCounts = loopRuntimeCountSummary(loopRuntime)
   const loopRuntimeUsage = loopRuntimeUsageSummary(loopRuntime)
   const visibleLoopRuntimeItems = (loopRuntime?.items || []).slice(0, 3)
+  const idleConsolidation = data?.idleConsolidation || heartbeat?.idleConsolidation || data?.runtimeSelfModel?.idle_consolidation || {}
+  const idleConsolidationSummary = idleConsolidation?.summary || {}
+  const idleConsolidationLastResult = idleConsolidation?.lastResult || {}
+  const hasIdleConsolidation = Boolean(
+    idleConsolidation?.active ||
+    idleConsolidation?.lastRunAt ||
+    idleConsolidationSummary?.latestRecordId,
+  )
+  const idleConsolidationBoundary = idleConsolidationBoundarySummary(idleConsolidation)
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
@@ -1781,6 +1831,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <small className="muted">
             {loopRuntimeCounts.join(' · ') || 'No active runtime loops'}
             {loopRuntime.createdAt ? ` · ${formatFreshness(loopRuntime.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {hasIdleConsolidation ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: idleConsolidation.source || '/mc/idle-consolidation',
+          fetchedAt: idleConsolidation.createdAt || data?.fetchedAt,
+          mode: 'idle consolidation snapshot',
+        })}>
+          <span>Idle Consolidation</span>
+          <strong>{humanizeToken(idleConsolidationSummary.lastState) || 'idle'}</strong>
+          <small className="muted">
+            {humanizeToken(idleConsolidationSummary.lastReason) || 'no run yet'}
+            {idleConsolidation.createdAt ? ` · ${formatFreshness(idleConsolidation.createdAt)}` : ''}
           </small>
         </article>
         ) : null}
@@ -2264,6 +2328,23 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {loopRuntimeUsage ? <p>{`used by ${loopRuntimeUsage}`}</p> : null}
             </div>
             ) : null}
+            {hasIdleConsolidation ? (
+            <div className="compact-metric" title="Authoritative internal-only metabolisk runtime process for bounded idle consolidation">
+              <span>Idle Consolidation</span>
+              <strong>{humanizeToken(idleConsolidationSummary.lastState) || 'idle'}</strong>
+              <p>{idleConsolidationLastResult.recordSummary || idleConsolidationSummary.latestSummary || 'No idle consolidation artifact recorded yet.'}</p>
+              <p>
+                {`result ${humanizeToken(idleConsolidationLastResult.reason || idleConsolidationSummary.lastReason) || 'no run yet'} · inputs ${idleConsolidationSummary.sourceInputCount || 0}`}
+              </p>
+              <p>
+                {`output ${humanizeToken(idleConsolidationSummary.lastOutputKind) || 'private brain sleep consolidation'}${idleConsolidationSummary.latestRecordId ? ` · ${idleConsolidationSummary.latestRecordId}` : ''}`}
+              </p>
+              <p>
+                {idleConsolidation.createdAt ? `${formatFreshness(idleConsolidation.createdAt)} · internal only` : 'internal only'}
+              </p>
+              {idleConsolidationBoundary ? <p>{idleConsolidationBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2284,6 +2365,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 }, 'Heartbeat Policy', onOpenItem)}
                 {embodiedStateRow(embodiedState, onOpenItem)}
                 {loopRuntimeRow(loopRuntime, onOpenItem)}
+                {idleConsolidationRow(idleConsolidation, onOpenItem)}
                 {visibleLoopRuntimeItems.map((item) => loopRuntimeItemRow(item, onOpenItem))}
                 {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>

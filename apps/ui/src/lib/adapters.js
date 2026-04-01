@@ -429,6 +429,72 @@ function normalizeLoopRuntime(item = {}) {
   }
 }
 
+function normalizeIdleConsolidation(item = {}) {
+  const summary = item.summary || {}
+  const cadence = item.cadence || {}
+  const lastResult = item.last_result || {}
+  const latestArtifact = item.latest_artifact || {}
+
+  return {
+    active: Boolean(item.active),
+    authority: item.authority || 'authoritative',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'sleep-consolidation-light',
+    boundary: item.boundary || 'not-memory-not-identity-not-action',
+    source: item.source || '/mc/idle-consolidation',
+    lastRunAt: item.last_run_at || '',
+    builtAt: item.built_at || '',
+    cadence: {
+      cooldownMinutes: Number(cadence.cooldown_minutes || 0),
+      visibleGraceMinutes: Number(cadence.visible_grace_minutes || 0),
+      adjacentProducerGraceMinutes: Number(cadence.adjacent_producer_grace_minutes || 0),
+      minSourceInputs: Number(cadence.min_source_inputs || 0),
+    },
+    summary: {
+      lastState: summary.last_state || 'idle',
+      lastReason: summary.last_reason || 'no-run-yet',
+      lastOutputKind: summary.last_output_kind || 'private-brain-sleep-consolidation',
+      sourceInputCount: Number(summary.source_input_count || 0),
+      latestRecordId: summary.latest_record_id || '',
+      latestSummary: summary.latest_summary || 'No idle consolidation artifact recorded yet.',
+    },
+    lastResult: {
+      producer: lastResult.producer || '',
+      daemonRan: Boolean(lastResult.daemon_ran),
+      consolidationCreated: Boolean(lastResult.consolidation_created),
+      consolidationState: lastResult.consolidation_state || 'idle',
+      cadenceState: lastResult.cadence_state || '',
+      reason: lastResult.reason || 'no-run-yet',
+      elapsedMinutes: Number(lastResult.elapsed_minutes || 0),
+      outputKind: lastResult.output_kind || '',
+      trigger: lastResult.trigger || '',
+      recordId: lastResult.record_id || '',
+      recordSummary: lastResult.record_summary || '',
+      boundary: lastResult.boundary || item.boundary || 'not-memory-not-identity-not-action',
+      sourceInputs: (lastResult.source_inputs || []).map((sourceInput) => ({
+        source: sourceInput.source || '',
+        signal: sourceInput.signal || '',
+      })),
+    },
+    latestArtifact: {
+      recordId: latestArtifact.record_id || '',
+      recordType: latestArtifact.record_type || '',
+      layer: latestArtifact.layer || '',
+      sessionId: latestArtifact.session_id || '',
+      runId: latestArtifact.run_id || '',
+      focus: latestArtifact.focus || '',
+      summary: latestArtifact.summary || '',
+      detail: latestArtifact.detail || '',
+      sourceSignals: latestArtifact.source_signals || '',
+      confidence: latestArtifact.confidence || '',
+      status: latestArtifact.status || '',
+      createdAt: latestArtifact.created_at || '',
+      updatedAt: latestArtifact.updated_at || '',
+    },
+    createdAt: item.last_run_at || item.built_at || '',
+  }
+}
+
 function normalizeHeartbeatPolicy(item = {}) {
   return {
     workspace: item.workspace || '',
@@ -1722,7 +1788,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -1731,6 +1797,7 @@ export const backend = {
       requestJson('/mc/runtime-self-model').catch(() => null),
       requestJson('/mc/embodied-state').catch(() => null),
       requestJson('/mc/loop-runtime').catch(() => null),
+      requestJson('/mc/idle-consolidation').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -1747,6 +1814,11 @@ export const backend = {
       loopRuntimePayload ||
       heartbeat?.loop_runtime ||
       selfModelPayload?.loop_runtime ||
+      null
+    const idleConsolidationSource =
+      idleConsolidationPayload ||
+      heartbeat?.idle_consolidation ||
+      selfModelPayload?.idle_consolidation ||
       null
 
     return {
@@ -2462,9 +2534,11 @@ export const backend = {
         recentEvents: (heartbeat.recent_events || []).map(normalizeEventItem),
         embodiedState: normalizeEmbodiedState(heartbeat.embodied_state || embodiedStateSource || {}),
         loopRuntime: normalizeLoopRuntime(heartbeat.loop_runtime || loopRuntimeSource || {}),
+        idleConsolidation: normalizeIdleConsolidation(heartbeat.idle_consolidation || idleConsolidationSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
+      idleConsolidation: normalizeIdleConsolidation(idleConsolidationSource || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,
       deceptionGuard: guardPayload?.trace || null,

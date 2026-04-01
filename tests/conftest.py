@@ -81,6 +81,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.chronicle_consolidation_signal_tracking",
         "apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking",
         "apps.api.jarvis_api.services.chronicle_consolidation_proposal_tracking",
+        "apps.api.jarvis_api.services.emergent_signal_tracking",
         "apps.api.jarvis_api.services.user_md_update_proposal_tracking",
         "apps.api.jarvis_api.services.memory_md_update_proposal_tracking",
         "apps.api.jarvis_api.services.selfhood_proposal_tracking",
@@ -253,6 +254,9 @@ def isolated_runtime(
         ],
         chronicle_consolidation_proposal_tracking=modules[
             "apps.api.jarvis_api.services.chronicle_consolidation_proposal_tracking"
+        ],
+        emergent_signal_tracking=modules[
+            "apps.api.jarvis_api.services.emergent_signal_tracking"
         ],
         user_md_update_proposal_tracking=modules[
             "apps.api.jarvis_api.services.user_md_update_proposal_tracking"

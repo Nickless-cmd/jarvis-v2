@@ -350,6 +350,26 @@ def _ensure_producers_registered() -> None:
         depends_on=["witness_daemon"],
     ))
 
+    # Emergent inner signal daemon
+    def _run_emergent_signals(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from apps.api.jarvis_api.services.emergent_signal_tracking import (
+            run_emergent_signal_daemon,
+        )
+
+        return run_emergent_signal_daemon(
+            trigger=trigger,
+            last_visible_at=last_visible_at,
+        )
+
+    register_producer(ProducerSpec(
+        name="emergent_signal_daemon",
+        cooldown_minutes=10,
+        visible_grace_minutes=5,
+        run_fn=_run_emergent_signals,
+        priority=12,
+        depends_on=["witness_daemon"],
+    ))
+
 
 def run_cadence_tick_with_bootstrap(
     *,

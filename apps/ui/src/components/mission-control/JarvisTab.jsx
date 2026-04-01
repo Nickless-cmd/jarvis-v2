@@ -510,6 +510,51 @@ function openLoopSignalRow(item, onOpen) {
   )
 }
 
+function emergentSignalRow(item, onOpen) {
+  const lifecycleLabel = item.lifecycleState === 'strengthening'
+    ? 'Strengthening grounded candidate'
+    : item.lifecycleState === 'fading'
+      ? 'Fading bounded thread'
+      : item.lifecycleState === 'released'
+        ? 'Released bounded thread'
+        : item.lifecycleState === 'candidate'
+          ? 'Candidate inner signal'
+          : (item.lifecycleState || 'Inner signal').replace(/-/g, ' ')
+  const sourceHintLabel = (item.sourceHints || []).slice(0, 2).join(' + ')
+  const detailText = [
+    lifecycleLabel,
+    sourceHintLabel ? `from ${sourceHintLabel}` : '',
+    item.influencedLayer ? `layer ${item.influencedLayer.replace(/-/g, ' ')}` : '',
+    `${item.truth || 'candidate-only'} · ${item.visibility || 'internal-only'}`,
+  ].filter(Boolean).join(' · ')
+  const salienceLabel = item.salience > 0 ? `${Math.round(item.salience * 100)}%` : ''
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.canonicalKey || item.title}
+      onClick={() => onOpen(item.title || 'Emergent Inner Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'emergent inner signal detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Emergent Inner Signal'}</strong>
+        <span>{detailText || 'Inspect bounded emergent inner-signal detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'candidate'} />
+        {item.lifecycleState ? <small>{item.lifecycleState.replace(/-/g, ' ')}</small> : null}
+        {item.intensity ? <small>{item.intensity}</small> : null}
+        {salienceLabel ? <small>{salienceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function openLoopClosureProposalRow(item, onOpen) {
   const sourceLabel = item.sourceKind ? item.sourceKind.replace(/-/g, ' ') : ''
   const lifecycleLabel = item.status === 'active'
@@ -1467,6 +1512,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const chronicleConsolidationProposals = data?.development?.chronicleConsolidationProposals || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
+  const emergentSignals = data?.development?.emergentSignals || { items: [], recentReleased: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -2497,6 +2543,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {privateInitiativeTensionSignals?.summary?.authority || 'non-authoritative'} · {privateInitiativeTensionSignals?.summary?.layer_role || 'runtime-support'}
               </p>
             </div>
+            <div className="compact-metric" title="Internal-only candidate layer with bounded lifecycle; never identity or action authority">
+              <span>Emergent Signals</span>
+              <strong>{emergentSignals?.summary?.active_count || 0}</strong>
+              <p>{emergentSignals?.summary?.current_signal || 'No active emergent inner signal'}</p>
+              <p>
+                {emergentSignals?.summary?.candidate_count || 0} candidate · {emergentSignals?.summary?.emergent_count || 0} emergent · {emergentSignals?.summary?.fading_count || 0} fading
+              </p>
+              <p>
+                {emergentSignals?.summary?.current_lifecycle_state || 'none'} · {emergentSignals?.summary?.authority || 'candidate-only'} · {emergentSignals?.summary?.visibility || 'internal-only'}
+              </p>
+            </div>
             {((privateInnerInterplaySignals?.summary?.active_count || 0) + (privateInnerInterplaySignals?.summary?.stale_count || 0)) > 0 ? (
             <div className="compact-metric">
               <span>Inner Interplay</span>
@@ -2797,6 +2854,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {openLoopSignals.items.slice(0, 3).map((item) => openLoopSignalRow(item, onOpenItem))}
               {openLoopClosureProposals.items.length > 0 ? subsectionHeader('Closure Proposals', 'Bounded Proposals Only — Not Automatic Closure') : null}
               {openLoopClosureProposals.items.slice(0, 3).map((item) => openLoopClosureProposalRow(item, onOpenItem))}
+              {subsectionHeader('Emergent Signals', 'Internal-Only Candidate Threads With Bounded Lifecycle')}
+              {emergentSignals.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active emergent inner signal</strong>
+                  <p className="muted">Unknown is allowed, but silence is not: this bounded layer is currently quiet and remains candidate-only when active.</p>
+                </div>
+              ) : emergentSignals.items.slice(0, 3).map((item) => emergentSignalRow(item, onOpenItem))}
+              {emergentSignals.recentReleased.length > 0 ? subsectionHeader('Recently Released', 'Signals That Faded Out Without Authority') : null}
+              {emergentSignals.recentReleased.slice(0, 2).map((item) => emergentSignalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
               {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0 || dreamHypothesisSignals.items.length > 0 || dreamAdoptionCandidates.items.length > 0 || dreamInfluenceProposals.items.length > 0 || selfAuthoredPromptProposals.items.length > 0 || userUnderstandingSignals.items.length > 0 || userMdUpdateProposals.items.length > 0 || selfhoodProposals.items.length > 0) ? (

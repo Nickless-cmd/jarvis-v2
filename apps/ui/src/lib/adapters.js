@@ -749,6 +749,35 @@ function normalizeOpenLoopSignal(item = {}) {
   }
 }
 
+function normalizeEmergentSignal(item = {}) {
+  return {
+    signalId: item.id || '',
+    canonicalKey: item.canonical_key || '',
+    signalFamily: item.signal_family || '',
+    status: item.signal_status || 'candidate',
+    lifecycleState: item.lifecycle_state || 'none',
+    interpretationState: item.interpretation_state || 'none',
+    title: item.short_summary || 'Emergent inner signal',
+    summary: item.short_summary || 'Emergent inner signal detail',
+    salience: Number(item.salience || 0),
+    intensity: item.intensity || 'low',
+    sourceHints: Array.isArray(item.source_hints) ? item.source_hints : [],
+    provenance: item.provenance || {},
+    influencedLayer: item.influenced_layer || '',
+    adoptedBy: item.adopted_by || '',
+    truth: item.truth || 'candidate-only',
+    visibility: item.visibility || 'internal-only',
+    identityBoundary: item.identity_boundary || 'not-canonical-identity-truth',
+    memoryBoundary: item.memory_boundary || 'not-workspace-memory',
+    actionBoundary: item.action_boundary || 'not-action',
+    expiryState: item.expiry_state || 'live',
+    authoritative: Boolean(item.authoritative),
+    source: item.source || '/mc/runtime.emergent_signal',
+    createdAt: item.created_at || '',
+    updatedAt: item.updated_at || '',
+  }
+}
+
 function normalizeOpenLoopClosureProposal(item = {}) {
   return {
     proposalId: item.proposal_id || '',
@@ -1772,6 +1801,10 @@ export const backend = {
           source: ((development.proactive_question_gates?.items || [])[0] || {}).source || '/mc/runtime.proactive_question_gate',
           summary: ((development.proactive_question_gates?.items || [])[0] || {}).question_gate_summary || 'No bounded proactive-question gate support',
         }),
+        emergentSignalSupport: normalizeJarvisItem((development.emergent_signals?.items || [])[0] || {}, {
+          source: ((development.emergent_signals?.items || [])[0] || {}).source || '/mc/runtime.emergent_signal',
+          summary: ((development.emergent_signals?.items || [])[0] || {}).short_summary || 'No active emergent inner signal',
+        }),
         webchatExecutionPilotSupport: normalizeJarvisItem((development.webchat_execution_pilot?.items || [])[0] || {}, {
           source: ((development.webchat_execution_pilot?.items || [])[0] || {}).source || '/mc/runtime.execution_pilot',
           summary: ((development.webchat_execution_pilot?.items || [])[0] || {}).execution_summary || 'No tiny governed webchat execution pilot',
@@ -2263,6 +2296,20 @@ export const backend = {
           active: Boolean(development.selfhood_proposals?.active),
           summary: development.selfhood_proposals?.summary || {},
           items: (development.selfhood_proposals?.items || []).map(normalizeSelfhoodProposal),
+        },
+        emergentSignals: {
+          active: Boolean(development.emergent_signals?.active),
+          authority: development.emergent_signals?.authority || 'candidate-only',
+          layerRole: development.emergent_signals?.layer_role || 'runtime-support',
+          visibility: development.emergent_signals?.visibility || 'internal-only',
+          identityBoundary: development.emergent_signals?.identity_boundary || 'not-canonical-identity-truth',
+          memoryBoundary: development.emergent_signals?.memory_boundary || 'not-workspace-memory',
+          actionBoundary: development.emergent_signals?.action_boundary || 'not-action',
+          lastDaemonRunAt: development.emergent_signals?.last_daemon_run_at || '',
+          lastDaemonResult: development.emergent_signals?.last_daemon_result || null,
+          summary: development.emergent_signals?.summary || {},
+          items: (development.emergent_signals?.items || []).map((item) => normalizeEmergentSignal(item)),
+          recentReleased: (development.emergent_signals?.recent_released || []).map((item) => normalizeEmergentSignal(item)),
         },
       },
       continuity: {

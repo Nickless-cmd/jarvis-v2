@@ -310,6 +310,21 @@ def _ensure_producers_registered() -> None:
         priority=1,  # runs first — others may depend on its output
     ))
 
+    def _run_sleep_consolidation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from apps.api.jarvis_api.services.idle_consolidation import (
+            run_idle_consolidation,
+        )
+        return run_idle_consolidation(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="sleep_consolidation",
+        cooldown_minutes=25,
+        visible_grace_minutes=12,
+        run_fn=_run_sleep_consolidation,
+        priority=3,
+        depends_on=["brain_continuity"],
+    ))
+
     # Witness daemon
     def _run_witness(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from apps.api.jarvis_api.services.witness_signal_tracking import (

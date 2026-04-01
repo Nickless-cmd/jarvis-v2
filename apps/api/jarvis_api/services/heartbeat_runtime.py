@@ -31,6 +31,9 @@ from apps.api.jarvis_api.services.meaning_significance_signal_tracking import (
 from apps.api.jarvis_api.services.loop_runtime import (
     build_loop_runtime_surface,
 )
+from apps.api.jarvis_api.services.idle_consolidation import (
+    build_idle_consolidation_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -222,6 +225,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     now = datetime.now(UTC)
     embodied_state = build_embodied_state_surface()
+    idle_consolidation = build_idle_consolidation_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -244,6 +248,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "policy": policy,
             "recent_ticks": recent_ticks,
             "embodied_state": embodied_state,
+            "idle_consolidation": idle_consolidation,
         },
     )
     return {
@@ -252,6 +257,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "recent_ticks": recent_ticks,
         "recent_events": recent_events,
         "embodied_state": embodied_state,
+        "idle_consolidation": idle_consolidation,
         "source": "/mc/jarvis::heartbeat",
     }
 

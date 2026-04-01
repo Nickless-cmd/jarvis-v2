@@ -21,12 +21,14 @@ Design constraints:
 from __future__ import annotations
 
 
-def build_runtime_self_knowledge_map() -> dict[str, object]:
+def build_runtime_self_knowledge_map(
+    *, heartbeat_state: dict[str, object] | None = None
+) -> dict[str, object]:
     """Build a bounded self-knowledge map from existing runtime surfaces.
 
     Returns a dict with five categories and a compact prompt-ready summary.
     """
-    active = _build_active_capabilities()
+    active = _build_active_capabilities(heartbeat_state=heartbeat_state)
     gated = _build_approval_gated()
     inner = _build_passive_inner_forces()
     constraints = _build_structural_constraints()
@@ -65,7 +67,9 @@ def build_runtime_self_knowledge_map() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 
 
-def _build_active_capabilities() -> dict[str, object]:
+def _build_active_capabilities(
+    *, heartbeat_state: dict[str, object] | None = None
+) -> dict[str, object]:
     """Things Jarvis can actively use right now."""
     items: list[dict[str, str]] = []
 
@@ -86,9 +90,13 @@ def _build_active_capabilities() -> dict[str, object]:
 
     # Heartbeat
     try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import heartbeat_runtime_surface
-        hb = heartbeat_runtime_surface()
-        hb_state = hb.get("state", {})
+        hb_state = heartbeat_state or {}
+        if not hb_state:
+            from apps.api.jarvis_api.services.heartbeat_runtime import (
+                heartbeat_runtime_surface,
+            )
+
+            hb_state = heartbeat_runtime_surface().get("state", {})
         enabled = bool(hb_state.get("enabled"))
         items.append({
             "id": "heartbeat-runtime",

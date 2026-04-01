@@ -822,7 +822,9 @@ def _build_heartbeat_context(
         from apps.api.jarvis_api.services.runtime_self_knowledge import (
             build_runtime_self_knowledge_map,
         )
-        self_knowledge_summary = build_runtime_self_knowledge_map().get("summary", {})
+        self_knowledge_summary = build_runtime_self_knowledge_map(
+            heartbeat_state=merged_state
+        ).get("summary", {})
     except Exception:
         self_knowledge_summary = {}
 

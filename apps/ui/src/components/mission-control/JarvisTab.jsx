@@ -7,6 +7,33 @@ function StatusPill({ status }) {
   return <span className={`mc-status-pill status-${normalizedStatus}`}>{status}</span>
 }
 
+function humanizeToken(value) {
+  return String(value || '')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+}
+
+function embodiedBucketSummary(item) {
+  if (!item?.facts) return []
+  return [
+    ['cpu', item.facts.cpu?.bucket],
+    ['memory', item.facts.memory?.bucket],
+    ['disk', item.facts.disk?.bucket],
+    ['thermal', item.facts.thermal?.bucket],
+  ]
+    .filter(([, bucket]) => bucket)
+    .map(([label, bucket]) => `${label} ${humanizeToken(bucket)}`)
+}
+
+function embodiedUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
 function detailRow(item, label, onOpen) {
   if (!item || !Object.keys(item).length) {
     return (
@@ -33,6 +60,41 @@ function detailRow(item, label, onOpen) {
       </div>
       <div className="mc-row-meta">
         <small>{item.createdAt || 'current'}</small>
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function embodiedStateRow(item, onOpen) {
+  if (!item || item.state === 'unknown') return null
+  const bucketLine = embodiedBucketSummary(item).join(' · ')
+  const usageLine = embodiedUsageSummary(item)
+  const detailText = [
+    item.summary,
+    bucketLine,
+    usageLine ? `used by ${usageLine}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Embodied State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'embodied runtime detail',
+      })}
+    >
+      <div>
+        <strong>Embodied State</strong>
+        <span>{detailText || 'Inspect embodied runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.state} />
+        {item.strainLevel ? <small>{`strain ${humanizeToken(item.strainLevel)}`}</small> : null}
+        {item.recoveryState && item.recoveryState !== 'steady' ? <small>{`recovery ${humanizeToken(item.recoveryState)}`}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -1461,6 +1523,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const heartbeatPolicy = heartbeat?.policy || {}
   const heartbeatTicks = heartbeat?.recentTicks || []
   const heartbeatEvents = heartbeat?.recentEvents || []
+  const embodiedState = data?.embodiedState || heartbeat?.embodiedState || {}
+  const hasEmbodiedState = Boolean(embodiedState?.state && embodiedState.state !== 'unknown')
+  const embodiedBuckets = embodiedBucketSummary(embodiedState)
+  const embodiedUsage = embodiedUsageSummary(embodiedState)
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
@@ -1587,6 +1653,23 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               : (summary?.heartbeat?.result || heartbeatState.summary || 'No heartbeat result yet')}
           </small>
         </article>
+        {hasEmbodiedState ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: embodiedState.source || '/mc/embodied-state',
+          fetchedAt: embodiedState.createdAt || data?.fetchedAt,
+          mode: 'embodied runtime snapshot',
+        })}>
+          <span>Embodied State</span>
+          <strong>{humanizeToken(embodiedState.state) || 'unknown'}</strong>
+          <small className="muted">
+            {`strain ${humanizeToken(embodiedState.strainLevel) || 'unknown'}`}
+            {embodiedState.recoveryState && embodiedState.recoveryState !== 'steady'
+              ? ` · recovery ${humanizeToken(embodiedState.recoveryState)}`
+              : ''}
+            {embodiedState.createdAt ? ` · ${formatFreshness(embodiedState.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
       </section>
 
       <section className="now-section">
@@ -2037,6 +2120,21 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{heartbeatState.recoveryStatus || 'idle'}</strong>
               <p>{heartbeatState.lastRecoveryAt || 'No recovery activity recorded.'}</p>
             </div>
+            {hasEmbodiedState ? (
+            <div className="compact-metric" title="Authoritative internal-only host/body runtime state grounded in bounded host facts">
+              <span>Embodied State</span>
+              <strong>{humanizeToken(embodiedState.state) || 'unknown'}</strong>
+              <p>{embodiedState.summary || 'No embodied host/body state recorded yet.'}</p>
+              <p>{embodiedBuckets.join(' · ') || 'No source buckets available.'}</p>
+              <p>
+                {`strain ${humanizeToken(embodiedState.strainLevel) || 'unknown'} · recovery ${humanizeToken(embodiedState.recoveryState) || 'steady'}`}
+              </p>
+              <p>
+                {embodiedState.createdAt ? `${formatFreshness(embodiedState.createdAt)} · ${humanizeToken(embodiedState.freshnessState)}` : humanizeToken(embodiedState.freshnessState) || 'unknown'}
+              </p>
+              {embodiedUsage ? <p>{`used by ${embodiedUsage}`}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2055,6 +2153,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   createdAt: heartbeatState.updatedAt || data?.fetchedAt,
                   summary: heartbeatPolicy.summary || 'Inspect HEARTBEAT.md-derived policy.',
                 }, 'Heartbeat Policy', onOpenItem)}
+                {embodiedStateRow(embodiedState, onOpenItem)}
                 {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>
             </div>

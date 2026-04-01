@@ -331,6 +331,56 @@ function normalizeHeartbeatState(item = {}) {
   }
 }
 
+function normalizeEmbodiedState(item = {}) {
+  const freshness = item.freshness || {}
+  const facts = item.facts || {}
+  const seamUsage = item.seam_usage || {}
+
+  const normalizeFact = (fact = {}) => ({
+    bucket: fact.bucket || 'unavailable',
+    source: fact.source || 'unknown',
+    load1m: Number(fact.load_1m || 0),
+    cpuCount: Number(fact.cpu_count || 0),
+    loadPerCpu: Number(fact.load_per_cpu || 0),
+    pressureRatio: Number(fact.pressure_ratio || 0),
+    totalBytes: Number(fact.total_bytes || 0),
+    availableBytes: Number(fact.available_bytes || 0),
+    usedRatio: Number(fact.used_ratio || 0),
+    freeBytes: Number(fact.free_bytes || 0),
+    celsius: Number(fact.celsius || 0),
+  })
+
+  return {
+    state: item.state || 'unknown',
+    primaryState: item.primary_state || item.state || 'unknown',
+    strainLevel: item.strain_level || 'unknown',
+    recoveryState: item.recovery_state || 'steady',
+    stability: item.stability || 'unknown',
+    authority: item.authority || 'authoritative',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'embodied-runtime-state',
+    summary: item.summary || 'No embodied host/body state recorded yet.',
+    source: item.source || '/mc/embodied-state',
+    builtAt: freshness.built_at || '',
+    sampledAt: freshness.sampled_at || '',
+    ageSeconds: Number(freshness.age_seconds || 0),
+    freshnessState: freshness.state || 'unknown',
+    facts: {
+      cpu: normalizeFact(facts.cpu || {}),
+      memory: normalizeFact(facts.memory || {}),
+      disk: normalizeFact(facts.disk || {}),
+      thermal: normalizeFact(facts.thermal || {}),
+    },
+    seamUsage: {
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    createdAt: freshness.built_at || freshness.sampled_at || '',
+  }
+}
+
 function normalizeHeartbeatPolicy(item = {}) {
   return {
     workspace: item.workspace || '',
@@ -1624,13 +1674,14 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
       requestJson('/mc/runtime-self-model').catch(() => null),
+      requestJson('/mc/embodied-state').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -1638,6 +1689,11 @@ export const backend = {
     const continuity = payload?.continuity || {}
     const heartbeat = payload?.heartbeat || {}
     const contract = contractPayload || {}
+    const embodiedStateSource =
+      embodiedPayload ||
+      heartbeat?.embodied_state ||
+      selfModelPayload?.embodied_state ||
+      null
 
     return {
       fetchedAt: new Date().toISOString(),
@@ -2350,7 +2406,9 @@ export const backend = {
         policy: normalizeHeartbeatPolicy(heartbeat.policy || {}),
         recentTicks: (heartbeat.recent_ticks || []).map(normalizeHeartbeatTick),
         recentEvents: (heartbeat.recent_events || []).map(normalizeEventItem),
+        embodiedState: normalizeEmbodiedState(heartbeat.embodied_state || embodiedStateSource || {}),
       },
+      embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,
       deceptionGuard: guardPayload?.trace || null,

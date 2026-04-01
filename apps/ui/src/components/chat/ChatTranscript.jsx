@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { Bot, User } from 'lucide-react'
+import { WorkingIndicator } from './WorkingIndicator'
 
-export function ChatTranscript({ messages }) {
+export function ChatTranscript({ messages, workingSteps }) {
   const transcriptRef = useRef(null)
 
   useEffect(() => {
@@ -51,6 +52,9 @@ export function ChatTranscript({ messages }) {
           </div>
         </article>
       ))}
+      {workingSteps && workingSteps.length > 0 && (
+        <WorkingIndicator steps={workingSteps} />
+      )}
     </section>
   )
 }

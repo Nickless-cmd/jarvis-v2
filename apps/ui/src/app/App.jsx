@@ -20,6 +20,7 @@ export function App() {
     error,
     isRefreshing,
     isStreaming,
+    workingSteps,
   } = useUnifiedShell()
 
   if (!shell) return <div className="boot-screen">Loading unified shell…</div>
@@ -49,6 +50,7 @@ export function App() {
           onSend={handleSend}
           isRefreshing={isRefreshing}
           isStreaming={isStreaming}
+          workingSteps={workingSteps}
         />
       ) : (
         <MissionControlPage

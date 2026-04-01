@@ -141,6 +141,27 @@ function subagentEcologyCountSummary(item) {
     .map(([label, count]) => `${count} ${label}`)
 }
 
+function councilRuntimeUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function councilRuntimeBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  if (item?.toolAccess) parts.push(`tool ${humanizeToken(item.toolAccess)}`)
+  return parts.join(' / ')
+}
+
+function councilRuntimeRoleSummary(item) {
+  return (item?.participatingRoles || []).map((role) => humanizeToken(role)).filter(Boolean)
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -541,6 +562,71 @@ function subagentRoleRow(item, onOpen) {
         <StatusPill status={item.currentStatus || 'idle'} />
         {item.toolAccess ? <small>{`tool ${humanizeToken(item.toolAccess)}`}</small> : null}
         {item.lastActivationAt ? <small>{formatFreshness(item.lastActivationAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function councilRuntimeRow(item, onOpen) {
+  if (!item || !(item.participatingRoles || []).length) return null
+  const detailText = [
+    item.summary,
+    item.recommendation ? `recommend ${humanizeToken(item.recommendation)}` : '',
+    item.recommendationReason ? humanizeToken(item.recommendationReason) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Council Runtime', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'council runtime detail',
+      })}
+    >
+      <div>
+        <strong>Council Runtime</strong>
+        <span>{detailText || 'Inspect bounded internal council runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.councilState || 'quiet'} />
+        {item.divergenceLevel ? <small>{`${humanizeToken(item.divergenceLevel)} divergence`}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function councilRolePositionRow(item, onOpen) {
+  if (!item?.roleName) return null
+  const detailText = [
+    item.roleKind ? humanizeToken(item.roleKind) : '',
+    item.position ? `${humanizeToken(item.position)} position` : '',
+    item.activationReason ? humanizeToken(item.activationReason) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={`${item.roleName}-${item.position}`}
+      onClick={() => onOpen(`${humanizeToken(item.roleName) || 'Council Role'} Position`, item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'council role position detail',
+      })}
+    >
+      <div>
+        <strong>{humanizeToken(item.roleName) || 'Council Role'}</strong>
+        <span>{detailText || 'Inspect bounded council role position detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'idle'} />
+        {item.position ? <small>{humanizeToken(item.position)}</small> : null}
+        {item.toolAccess ? <small>{`tool ${humanizeToken(item.toolAccess)}`}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -2028,6 +2114,16 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const subagentEcologyBoundary = subagentEcologyBoundarySummary(subagentEcology)
   const subagentEcologyCounts = subagentEcologyCountSummary(subagentEcology)
   const visibleSubagentRoles = (subagentEcology?.roles || []).slice(0, 3)
+  const councilRuntime = data?.councilRuntime || heartbeat?.councilRuntime || data?.development?.councilRuntime || data?.runtimeSelfModel?.council_runtime || {}
+  const hasCouncilRuntime = Boolean((councilRuntime?.participatingRoles || []).length || councilRuntime?.recommendation || councilRuntime?.councilState)
+  const councilRuntimeUsage = councilRuntimeUsageSummary(councilRuntime)
+  const councilRuntimeBoundary = councilRuntimeBoundarySummary(councilRuntime)
+  const councilRuntimeRoles = councilRuntimeRoleSummary(councilRuntime)
+  const visibleCouncilRolePositions = (councilRuntime?.rolePositions || []).slice(0, 3).map((item) => ({
+    ...item,
+    source: councilRuntime.source || '/mc/council-runtime',
+    createdAt: councilRuntime.createdAt,
+  }))
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2273,6 +2369,19 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <small className="muted">
             {(subagentEcologyCounts.join(' · ') || `${subagentEcologySummary.roleCount || 0} roles`) +
               (subagentEcology.createdAt ? ` · ${formatFreshness(subagentEcology.createdAt)}` : '')}
+          </small>
+        </article>
+        ) : null}
+        {hasCouncilRuntime ? (
+        <article className="mc-stat tone-amber" title={sectionTitleWithMeta({
+          source: councilRuntime.source || '/mc/council-runtime',
+          fetchedAt: councilRuntime.createdAt || data?.fetchedAt,
+          mode: 'council runtime snapshot',
+        })}>
+          <span>Council Runtime</span>
+          <strong>{humanizeToken(councilRuntime.recommendation || councilRuntime.councilState) || 'quiet council'}</strong>
+          <small className="muted">
+            {`${councilRuntimeRoles.join(' · ') || 'no roles'} · ${humanizeToken(councilRuntime.divergenceLevel) || 'low'} divergence${councilRuntime.createdAt ? ` · ${formatFreshness(councilRuntime.createdAt)}` : ''}`}
           </small>
         </article>
         ) : null}
@@ -2885,6 +2994,32 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {subagentEcologyBoundary ? <p>{subagentEcologyBoundary}</p> : null}
             </div>
             ) : null}
+            {hasCouncilRuntime ? (
+            <div className="compact-metric" title="Derived internal-only council runtime for bounded recommendation across helper-role perspectives">
+              <span>Council Runtime</span>
+              <strong>{humanizeToken(councilRuntime.councilState) || 'quiet'}</strong>
+              <p>{councilRuntime.summary || 'No bounded council runtime state recorded yet.'}</p>
+              <p>
+                {`roles ${councilRuntimeRoles.join(' · ') || 'none'} · divergence ${humanizeToken(councilRuntime.divergenceLevel) || 'low'}`}
+              </p>
+              <p>
+                {`recommend ${humanizeToken(councilRuntime.recommendation) || 'hold'} · confidence ${humanizeToken(councilRuntime.confidence) || 'low'}`}
+              </p>
+              {councilRuntime.recommendationReason ? (
+              <p>{humanizeToken(councilRuntime.recommendationReason)}</p>
+              ) : null}
+              <p>
+                {councilRuntime.createdAt
+                  ? `${formatFreshness(councilRuntime.createdAt)} · ${humanizeToken(councilRuntime.freshnessState) || 'unknown'}`
+                  : humanizeToken(councilRuntime.freshnessState) || 'unknown'}
+              </p>
+              <p>
+                {`internal only · tool ${humanizeToken(councilRuntime.toolAccess) || 'none'} · ${humanizeToken(councilRuntime.influenceScope) || 'bounded'} influence`}
+              </p>
+              {councilRuntimeUsage ? <p>{`used by ${councilRuntimeUsage}`}</p> : null}
+              {councilRuntimeBoundary ? <p>{councilRuntimeBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2911,6 +3046,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {affectiveMetaStateRow(affectiveMetaState, onOpenItem)}
                 {epistemicRuntimeStateRow(epistemicRuntimeState, onOpenItem)}
                 {subagentEcologyRow(subagentEcology, onOpenItem)}
+                {councilRuntimeRow(councilRuntime, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,
@@ -2934,6 +3070,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   ...item,
                   source: subagentEcology.source || '/mc/subagent-ecology',
                 }, onOpenItem))}
+                {visibleCouncilRolePositions.map((item) => councilRolePositionRow(item, onOpenItem))}
                 {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>
             </div>

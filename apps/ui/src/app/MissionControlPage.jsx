@@ -1,7 +1,6 @@
 import { Activity, RefreshCcw, Radio, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
-import { JarvisTab } from '../components/mission-control/JarvisTab'
 import { ContinuityTab } from '../components/mission-control/ContinuityTab'
 import { DevelopmentTab } from '../components/mission-control/DevelopmentTab'
 import { LivingMindTab } from '../components/mission-control/LivingMindTab'

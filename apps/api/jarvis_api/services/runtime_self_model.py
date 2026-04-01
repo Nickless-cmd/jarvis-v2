@@ -51,6 +51,7 @@ def build_runtime_self_model() -> dict[str, object]:
         "epistemic_runtime_state": _epistemic_runtime_state_surface(),
         "subagent_ecology": _subagent_ecology_surface(),
         "council_runtime": _council_runtime_surface(),
+        "adaptive_planner": _adaptive_planner_surface(),
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
         "dream_articulation": _dream_articulation_surface(),
@@ -161,6 +162,22 @@ def _collect_layers() -> list[dict[str, str]]:
             f"recommendation={council_runtime.get('recommendation') or 'none'}; "
             f"divergence={council_runtime.get('divergence_level') or 'low'}; "
             f"tool_access={council_runtime.get('tool_access') or 'none'}."
+        ),
+    })
+
+    adaptive_planner = _adaptive_planner_surface()
+    layers.append({
+        "id": "adaptive-planner-light",
+        "label": "Adaptive planner light",
+        "kind": "orchestration",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"mode={adaptive_planner.get('planner_mode') or 'incremental'}; "
+            f"horizon={adaptive_planner.get('plan_horizon') or 'near'}; "
+            f"risk={adaptive_planner.get('risk_posture') or 'balanced'}; "
+            f"bias={adaptive_planner.get('next_planning_bias') or 'stepwise-progress'}."
         ),
     })
 
@@ -446,6 +463,7 @@ def build_self_model_prompt_lines() -> list[str]:
     subagent_ecology = model.get("subagent_ecology") or {}
     ecology_summary = subagent_ecology.get("summary") or {}
     council_runtime = model.get("council_runtime") or {}
+    adaptive_planner = model.get("adaptive_planner") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -512,6 +530,13 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | recommend={council_runtime.get('recommendation') or 'none'}"
         f" | divergence={council_runtime.get('divergence_level') or 'low'}"
         f" | tool_access={council_runtime.get('tool_access') or 'none'}"
+    )
+    lines.append(
+        "  adaptive_planner: "
+        f"{adaptive_planner.get('planner_mode') or 'incremental'}"
+        f" | horizon={adaptive_planner.get('plan_horizon') or 'near'}"
+        f" | posture={adaptive_planner.get('planning_posture') or 'staged'}"
+        f" | risk={adaptive_planner.get('risk_posture') or 'balanced'}"
     )
     lines.append(
         "  loop_runtime: "
@@ -669,6 +694,23 @@ def _council_runtime_surface() -> dict[str, object]:
             "recommendation_reason": "unavailable",
             "confidence": "low",
             "tool_access": "none",
+        }
+
+
+def _adaptive_planner_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.adaptive_planner_runtime import (
+            build_adaptive_planner_runtime_surface,
+        )
+        return build_adaptive_planner_runtime_surface()
+    except Exception:
+        return {
+            "planner_mode": "incremental",
+            "plan_horizon": "near",
+            "planning_posture": "staged",
+            "risk_posture": "balanced",
+            "next_planning_bias": "stepwise-progress",
+            "confidence": "low",
         }
 
 

@@ -400,6 +400,21 @@ def _ensure_producers_registered() -> None:
         depends_on=["sleep_consolidation"],
     ))
 
+    def _run_prompt_evolution_runtime(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from apps.api.jarvis_api.services.prompt_evolution_runtime import (
+            run_prompt_evolution_runtime,
+        )
+        return run_prompt_evolution_runtime(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="prompt_evolution_runtime",
+        cooldown_minutes=45,
+        visible_grace_minutes=16,
+        run_fn=_run_prompt_evolution_runtime,
+        priority=18,
+        depends_on=["dream_articulation"],
+    ))
+
 def run_cadence_tick_with_bootstrap(
     *,
     trigger: str = "heartbeat",

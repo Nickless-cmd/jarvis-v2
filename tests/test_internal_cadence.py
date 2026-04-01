@@ -292,7 +292,7 @@ def test_bootstrap_registers_known_producers(isolated_runtime) -> None:
     cadence._producers.clear()
 
     result = cadence.run_cadence_tick_with_bootstrap(trigger="test")
-    assert result["producer_count"] == 6
+    assert result["producer_count"] == 7
 
     state = cadence.get_cadence_state()
     names = [p["name"] for p in state["producers"]]
@@ -302,6 +302,7 @@ def test_bootstrap_registers_known_producers(isolated_runtime) -> None:
     assert "inner_voice_daemon" in names
     assert "emergent_signal_daemon" in names
     assert "dream_articulation" in names
+    assert "prompt_evolution_runtime" in names
 
     # Verify priority ordering
     priorities = {p["name"]: p["priority"] for p in state["producers"]}
@@ -310,6 +311,7 @@ def test_bootstrap_registers_known_producers(isolated_runtime) -> None:
     assert priorities["witness_daemon"] < priorities["inner_voice_daemon"]
     assert priorities["inner_voice_daemon"] < priorities["emergent_signal_daemon"]
     assert priorities["emergent_signal_daemon"] < priorities["dream_articulation"]
+    assert priorities["dream_articulation"] < priorities["prompt_evolution_runtime"]
 
 
 # ---------------------------------------------------------------------------

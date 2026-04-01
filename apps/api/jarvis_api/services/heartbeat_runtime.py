@@ -37,6 +37,9 @@ from apps.api.jarvis_api.services.idle_consolidation import (
 from apps.api.jarvis_api.services.dream_articulation import (
     build_dream_articulation_surface,
 )
+from apps.api.jarvis_api.services.prompt_evolution_runtime import (
+    build_prompt_evolution_runtime_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -228,8 +231,10 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     now = datetime.now(UTC)
     embodied_state = build_embodied_state_surface()
+    loop_runtime = build_loop_runtime_surface()
     idle_consolidation = build_idle_consolidation_surface()
     dream_articulation = build_dream_articulation_surface()
+    prompt_evolution = build_prompt_evolution_runtime_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -252,8 +257,10 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "policy": policy,
             "recent_ticks": recent_ticks,
             "embodied_state": embodied_state,
+            "loop_runtime": loop_runtime,
             "idle_consolidation": idle_consolidation,
             "dream_articulation": dream_articulation,
+            "prompt_evolution": prompt_evolution,
         },
     )
     return {
@@ -262,8 +269,10 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "recent_ticks": recent_ticks,
         "recent_events": recent_events,
         "embodied_state": embodied_state,
+        "loop_runtime": loop_runtime,
         "idle_consolidation": idle_consolidation,
         "dream_articulation": dream_articulation,
+        "prompt_evolution": prompt_evolution,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -771,6 +780,7 @@ def _build_heartbeat_context(
 
     embodied_state = build_embodied_state_surface()
     loop_runtime = build_loop_runtime_surface()
+    prompt_evolution = build_prompt_evolution_runtime_surface()
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -779,6 +789,7 @@ def _build_heartbeat_context(
         self_knowledge_summary=self_knowledge_summary,
         embodied_state=embodied_state,
         loop_runtime=loop_runtime,
+        prompt_evolution=prompt_evolution,
     )
 
     return {
@@ -794,6 +805,7 @@ def _build_heartbeat_context(
         "private_brain": private_brain_context,
         "embodied_state": embodied_state,
         "loop_runtime": loop_runtime,
+        "prompt_evolution": prompt_evolution,
         "influence_trace": influence_trace,
     }
 
@@ -805,6 +817,7 @@ def _build_influence_trace(
     self_knowledge_summary: dict[str, object],
     embodied_state: dict[str, object],
     loop_runtime: dict[str, object],
+    prompt_evolution: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -855,6 +868,13 @@ def _build_influence_trace(
     else:
         inputs_absent.append("loop-runtime")
 
+    latest_prompt = prompt_evolution.get("latest_proposal") or {}
+    latest_prompt_type = str(latest_prompt.get("proposal_type") or "")
+    if latest_prompt_type:
+        inputs_present.append(f"prompt-evolution ({latest_prompt_type})")
+    else:
+        inputs_absent.append("prompt-evolution")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -870,6 +890,7 @@ def _build_influence_trace(
         "embodied_strain_level": strain_level,
         "loop_runtime_status": str(loop_summary.get("current_status") or "none"),
         "loop_runtime_count": int(loop_summary.get("loop_count") or 0),
+        "prompt_evolution_type": latest_prompt_type or "none",
     }
 
 

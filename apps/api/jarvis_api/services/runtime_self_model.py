@@ -50,6 +50,7 @@ def build_runtime_self_model() -> dict[str, object]:
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
         "dream_articulation": _dream_articulation_surface(),
+        "prompt_evolution": _prompt_evolution_surface(),
         "truth_boundaries": boundaries,
         "summary": summary,
         "built_at": datetime.now(UTC).isoformat(),
@@ -142,6 +143,22 @@ def _collect_layers() -> list[dict[str, str]]:
             f"state={dream_summary.get('last_state') or 'idle'}; "
             f"reason={dream_summary.get('last_reason') or 'no-run-yet'}; "
             f"latest={dream_summary.get('latest_signal_id') or 'none'}."
+        ),
+    })
+
+    prompt_evolution = _prompt_evolution_surface()
+    prompt_evolution_summary = prompt_evolution.get("summary") or {}
+    layers.append({
+        "id": "runtime-prompt-evolution-light",
+        "label": "Runtime prompt evolution light",
+        "kind": "groundwork",
+        "role": "groundwork-only",
+        "visibility": "internal-only",
+        "truth": "candidate-only",
+        "detail": (
+            f"state={prompt_evolution_summary.get('last_state') or 'idle'}; "
+            f"target={prompt_evolution_summary.get('latest_target_asset') or 'none'}; "
+            f"latest={prompt_evolution_summary.get('latest_proposal_id') or 'none'}."
         ),
     })
     try:
@@ -363,6 +380,8 @@ def build_self_model_prompt_lines() -> list[str]:
     consolidation_summary = consolidation.get("summary") or {}
     dream = model.get("dream_articulation") or {}
     dream_summary = dream.get("summary") or {}
+    prompt_evolution = model.get("prompt_evolution") or {}
+    prompt_evolution_summary = prompt_evolution.get("summary") or {}
 
     lines: list[str] = [
         "- RUNTIME SELF-MODEL: Use these structural facts when asked about your layers, capabilities, or boundaries:",
@@ -414,6 +433,12 @@ def build_self_model_prompt_lines() -> list[str]:
         f"{dream_summary.get('last_state') or 'idle'}"
         f" | reason={dream_summary.get('last_reason') or 'no-run-yet'}"
         f" | candidate_only={dream_summary.get('candidate_truth') or 'candidate-only'}"
+    )
+    lines.append(
+        "  prompt_evolution: "
+        f"{prompt_evolution_summary.get('last_state') or 'idle'}"
+        f" | target={prompt_evolution_summary.get('latest_target_asset') or 'none'}"
+        f" | proposal_only={prompt_evolution_summary.get('proposal_truth') or 'proposal-only'}"
     )
 
     # Counts
@@ -492,6 +517,25 @@ def _dream_articulation_surface() -> dict[str, object]:
                 "last_reason": "unavailable",
                 "latest_signal_id": "",
                 "candidate_truth": "candidate-only",
+            },
+        }
+
+
+def _prompt_evolution_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.prompt_evolution_runtime import (
+            build_prompt_evolution_runtime_surface,
+        )
+        return build_prompt_evolution_runtime_surface()
+    except Exception:
+        return {
+            "active": False,
+            "summary": {
+                "last_state": "idle",
+                "last_reason": "unavailable",
+                "latest_proposal_id": "",
+                "latest_target_asset": "none",
+                "proposal_truth": "proposal-only",
             },
         }
 
@@ -592,6 +636,7 @@ def _producer_layers() -> list[dict[str, str]]:
             ("inner_voice_daemon", "Inner voice daemon"),
             ("emergent_signal_daemon", "Emergent signal daemon"),
             ("dream_articulation", "Dream articulation"),
+            ("prompt_evolution_runtime", "Runtime prompt evolution"),
         ]:
             producers.append({
                 "id": f"producer-{name}",
@@ -614,6 +659,7 @@ def _producer_label(name: str) -> str:
         "inner_voice_daemon": "Inner voice daemon",
         "emergent_signal_daemon": "Emergent signal daemon",
         "dream_articulation": "Dream articulation",
+        "prompt_evolution_runtime": "Runtime prompt evolution",
     }
     return labels.get(name, name.replace("_", " ").title())
 
@@ -637,7 +683,10 @@ def _groundwork_layers() -> list[dict[str, str]]:
             "role": "groundwork-only",
             "visibility": "internal-only",
             "truth": "candidate-only",
-            "detail": "Proposed prompt modifications. Require approval to activate.",
+            "detail": (
+                "Proposed prompt modifications. Workspace-led and proposal-only. "
+                "Require approval to activate."
+            ),
         },
         {
             "id": "chronicle-consolidation",

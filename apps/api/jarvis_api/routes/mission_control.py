@@ -28,6 +28,9 @@ from apps.api.jarvis_api.services.idle_consolidation import (
 from apps.api.jarvis_api.services.dream_articulation import (
     build_dream_articulation_surface,
 )
+from apps.api.jarvis_api.services.prompt_evolution_runtime import (
+    build_prompt_evolution_runtime_surface,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -459,6 +462,7 @@ def mc_jarvis() -> dict:
     self_authored_prompt_proposals = (
         build_runtime_self_authored_prompt_proposal_surface()
     )
+    prompt_evolution = build_prompt_evolution_runtime_surface()
     user_understanding_signals = build_runtime_user_understanding_signal_surface()
     remembered_fact_signals = build_runtime_remembered_fact_signal_surface()
     private_inner_note_signals = build_runtime_private_inner_note_signal_surface()
@@ -593,6 +597,7 @@ def mc_jarvis() -> dict:
             "dream_adoption_candidates": dream_adoption_candidates,
             "dream_influence_proposals": dream_influence_proposals,
             "self_authored_prompt_proposals": self_authored_prompt_proposals,
+            "prompt_evolution": prompt_evolution,
             "user_understanding_signals": user_understanding_signals,
             "private_inner_note_signals": private_inner_note_signals,
             "private_initiative_tension_signals": private_initiative_tension_signals,
@@ -780,6 +785,12 @@ def mc_dream_articulation() -> dict:
     return build_dream_articulation_surface()
 
 
+@router.get("/prompt-evolution")
+def mc_prompt_evolution() -> dict:
+    """Return the current bounded runtime prompt evolution state."""
+    return build_prompt_evolution_runtime_surface()
+
+
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
     return {
@@ -855,6 +866,7 @@ def mc_runtime() -> dict:
         "runtime_loop_state": build_loop_runtime_surface(),
         "runtime_idle_consolidation": build_idle_consolidation_surface(),
         "runtime_dream_articulation": build_dream_articulation_surface(),
+        "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
         "visible_execution": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
         "visible_session_continuity": visible_session_continuity_summary(),

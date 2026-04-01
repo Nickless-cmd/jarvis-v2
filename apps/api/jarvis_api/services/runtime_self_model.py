@@ -46,6 +46,7 @@ def build_runtime_self_model() -> dict[str, object]:
 
     return {
         "layers": layers,
+        "embodied_state": _embodied_state_surface(),
         "truth_boundaries": boundaries,
         "summary": summary,
         "built_at": datetime.now(UTC).isoformat(),
@@ -75,6 +76,21 @@ def _collect_layers() -> list[dict[str, str]]:
         "visibility": "internal-only",
         "truth": "authoritative",
         "detail": "Shared rhythm for non-visible producers. Evaluates due/cooling/blocked.",
+    })
+
+    embodied = _embodied_state_surface()
+    layers.append({
+        "id": "embodied-host-awareness",
+        "label": "Embodied host awareness",
+        "kind": "orchestration",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": (
+            f"Host/body state={embodied.get('state') or 'unknown'}; "
+            f"strain={embodied.get('strain_level') or 'unknown'}; "
+            f"freshness={((embodied.get('freshness') or {}).get('state') or 'unknown')}."
+        ),
     })
 
     try:
@@ -289,6 +305,7 @@ def build_self_model_prompt_lines() -> list[str]:
     layers = model["layers"]
     boundaries = model["truth_boundaries"]
     summary = model["summary"]
+    embodied = model.get("embodied_state") or {}
 
     lines: list[str] = [
         "- RUNTIME SELF-MODEL: Use these structural facts when asked about your layers, capabilities, or boundaries:",
@@ -316,6 +333,12 @@ def build_self_model_prompt_lines() -> list[str]:
 
     # Key truth boundaries (compact)
     lines.append(f"  truth_boundary: capability!=permission!=action | memory!=identity | internal!=visible | runtime_truth!=interpretation")
+    lines.append(
+        "  embodied_state: "
+        f"{embodied.get('state') or 'unknown'}"
+        f" | strain={embodied.get('strain_level') or 'unknown'}"
+        f" | recovery={embodied.get('recovery_state') or 'steady'}"
+    )
 
     # Counts
     lines.append(
@@ -326,6 +349,21 @@ def build_self_model_prompt_lines() -> list[str]:
     )
 
     return lines
+
+
+def _embodied_state_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.embodied_state import (
+            build_embodied_state_surface,
+        )
+        return build_embodied_state_surface()
+    except Exception:
+        return {
+            "state": "unknown",
+            "strain_level": "unknown",
+            "recovery_state": "steady",
+            "freshness": {"state": "unknown"},
+        }
 
 
 # ---------------------------------------------------------------------------

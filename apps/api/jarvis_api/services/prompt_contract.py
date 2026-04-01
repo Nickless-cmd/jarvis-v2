@@ -1265,10 +1265,15 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     schedule = str(context.get("schedule_status") or "not-configured")
     budget = str(context.get("budget_status") or "runtime-governed")
     kill_switch = str(context.get("kill_switch") or "enabled")
+    embodied = context.get("embodied_state") or {}
     return "\n".join(
         [
             "Heartbeat runtime truth:",
             f"- schedule={schedule} | budget={budget} | kill_switch={kill_switch}",
+            (
+                f"- embodied_state={embodied.get('state') or 'unknown'}"
+                f" | embodied_strain={embodied.get('strain_level') or 'unknown'}"
+            ),
             "- Heartbeat may only propose or act within runtime-approved scope.",
         ]
     )
@@ -1420,13 +1425,28 @@ def _run_budget_selection(
 
 def _heartbeat_self_knowledge_section() -> str | None:
     """Build a compact self-knowledge section for the heartbeat prompt."""
+    parts: list[str] = []
     try:
         from apps.api.jarvis_api.services.runtime_self_knowledge import (
             build_self_knowledge_prompt_section,
         )
-        return build_self_knowledge_prompt_section()
+        knowledge = build_self_knowledge_prompt_section()
+        if knowledge:
+            parts.append(knowledge)
     except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.embodied_state import (
+            build_embodied_state_prompt_section,
+        )
+        embodied = build_embodied_state_prompt_section()
+        if embodied:
+            parts.append(embodied)
+    except Exception:
+        pass
+    if not parts:
         return None
+    return "\n".join(parts)
 
 
 def _heartbeat_private_brain_section(context: dict[str, object]) -> str | None:

@@ -87,6 +87,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.selfhood_proposal_tracking",
         "apps.api.jarvis_api.services.open_loop_closure_proposal_tracking",
         "apps.api.jarvis_api.services.internal_cadence",
+        "apps.api.jarvis_api.services.embodied_state",
         "apps.api.jarvis_api.services.runtime_self_model",
         "apps.api.jarvis_api.routes.mission_control",
     ]
@@ -272,6 +273,9 @@ def isolated_runtime(
         ],
         internal_cadence=modules[
             "apps.api.jarvis_api.services.internal_cadence"
+        ],
+        embodied_state=modules[
+            "apps.api.jarvis_api.services.embodied_state"
         ],
         runtime_self_model=modules[
             "apps.api.jarvis_api.services.runtime_self_model"

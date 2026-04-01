@@ -19,6 +19,9 @@ from apps.api.jarvis_api.services.candidate_tracking import (
 from apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking import (
     build_runtime_chronicle_consolidation_brief_surface,
 )
+from apps.api.jarvis_api.services.embodied_state import (
+    build_embodied_state_surface,
+)
 from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
     build_runtime_metabolism_state_signal_surface,
 )
@@ -215,6 +218,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     policy = load_heartbeat_policy(name=name)
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     now = datetime.now(UTC)
+    embodied_state = build_embodied_state_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -236,6 +240,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "state": merged,
             "policy": policy,
             "recent_ticks": recent_ticks,
+            "embodied_state": embodied_state,
         },
     )
     return {
@@ -243,6 +248,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "policy": policy,
         "recent_ticks": recent_ticks,
         "recent_events": recent_events,
+        "embodied_state": embodied_state,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -748,11 +754,14 @@ def _build_heartbeat_context(
     except Exception:
         self_knowledge_summary = {}
 
+    embodied_state = build_embodied_state_surface()
+
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
         private_brain=private_brain_context,
         liveness=liveness,
         self_knowledge_summary=self_knowledge_summary,
+        embodied_state=embodied_state,
     )
 
     return {
@@ -766,6 +775,7 @@ def _build_heartbeat_context(
         "continuity_summary": continuity_summary,
         "liveness": liveness,
         "private_brain": private_brain_context,
+        "embodied_state": embodied_state,
         "influence_trace": influence_trace,
     }
 
@@ -775,6 +785,7 @@ def _build_influence_trace(
     private_brain: dict[str, object],
     liveness: dict[str, object],
     self_knowledge_summary: dict[str, object],
+    embodied_state: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -807,6 +818,13 @@ def _build_influence_trace(
     else:
         inputs_absent.append("self-knowledge")
 
+    body_state = str(embodied_state.get("state") or "steady")
+    strain_level = str(embodied_state.get("strain_level") or "low")
+    if body_state in {"loaded", "recovering", "strained", "degraded"}:
+        inputs_present.append(f"embodied-host-state ({body_state}, strain={strain_level})")
+    else:
+        inputs_absent.append("embodied-host-state")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -818,6 +836,8 @@ def _build_influence_trace(
         "brain_record_count": brain_count,
         "liveness_state": liveness_state,
         "liveness_score": liveness_score,
+        "embodied_state": body_state,
+        "embodied_strain_level": strain_level,
     }
 
 

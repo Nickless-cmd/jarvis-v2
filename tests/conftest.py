@@ -89,6 +89,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.internal_cadence",
         "apps.api.jarvis_api.services.embodied_state",
         "apps.api.jarvis_api.services.loop_runtime",
+        "apps.api.jarvis_api.services.idle_consolidation",
         "apps.api.jarvis_api.services.runtime_self_model",
         "apps.api.jarvis_api.routes.mission_control",
     ]
@@ -280,6 +281,9 @@ def isolated_runtime(
         ],
         loop_runtime=modules[
             "apps.api.jarvis_api.services.loop_runtime"
+        ],
+        idle_consolidation=modules[
+            "apps.api.jarvis_api.services.idle_consolidation"
         ],
         runtime_self_model=modules[
             "apps.api.jarvis_api.services.runtime_self_model"

@@ -7,6 +7,65 @@ function StatusPill({ status }) {
   return <span className={`mc-status-pill status-${normalizedStatus}`}>{status}</span>
 }
 
+function humanizeToken(value) {
+  return String(value || '')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+}
+
+function embodiedBucketSummary(item) {
+  if (!item?.facts) return []
+  return [
+    ['cpu', item.facts.cpu?.bucket],
+    ['memory', item.facts.memory?.bucket],
+    ['disk', item.facts.disk?.bucket],
+    ['thermal', item.facts.thermal?.bucket],
+  ]
+    .filter(([, bucket]) => bucket)
+    .map(([label, bucket]) => `${label} ${humanizeToken(bucket)}`)
+}
+
+function embodiedUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function loopRuntimeCounts(item) {
+  const summary = item?.summary || {}
+  return [
+    ['active', summary.activeCount || 0],
+    ['standby', summary.standbyCount || 0],
+    ['resumed', summary.resumedCount || 0],
+    ['closed', summary.closedCount || 0],
+  ]
+}
+
+function loopRuntimeCountSummary(item) {
+  return loopRuntimeCounts(item)
+    .filter(([, count]) => count > 0)
+    .map(([label, count]) => `${count} ${label}`)
+}
+
+function loopRuntimeUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function idleConsolidationBoundarySummary(item) {
+  return String(item?.boundary || '')
+    .split('-')
+    .filter((token) => token && token !== 'not')
+    .join(' / ')
+}
+
 function detailRow(item, label, onOpen) {
   if (!item || !Object.keys(item).length) {
     return (
@@ -33,6 +92,144 @@ function detailRow(item, label, onOpen) {
       </div>
       <div className="mc-row-meta">
         <small>{item.createdAt || 'current'}</small>
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function embodiedStateRow(item, onOpen) {
+  if (!item || item.state === 'unknown') return null
+  const bucketLine = embodiedBucketSummary(item).join(' · ')
+  const usageLine = embodiedUsageSummary(item)
+  const detailText = [
+    item.summary,
+    bucketLine,
+    usageLine ? `used by ${usageLine}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Embodied State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'embodied runtime detail',
+      })}
+    >
+      <div>
+        <strong>Embodied State</strong>
+        <span>{detailText || 'Inspect embodied runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.state} />
+        {item.strainLevel ? <small>{`strain ${humanizeToken(item.strainLevel)}`}</small> : null}
+        {item.recoveryState && item.recoveryState !== 'steady' ? <small>{`recovery ${humanizeToken(item.recoveryState)}`}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function loopRuntimeRow(item, onOpen) {
+  const summary = item?.summary || {}
+  if (!item || !summary.loopCount) return null
+  const countLine = loopRuntimeCountSummary(item).join(' · ')
+  const usageLine = loopRuntimeUsageSummary(item)
+  const detailText = [
+    summary.currentLoop && summary.currentLoop !== 'No active runtime loop'
+      ? `${summary.currentLoop} (${humanizeToken(summary.currentStatus) || 'unknown'})`
+      : '',
+    countLine,
+    usageLine ? `used by ${usageLine}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Loop Runtime', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'loop runtime detail',
+      })}
+    >
+      <div>
+        <strong>Loop Runtime</strong>
+        <span>{detailText || 'Inspect bounded loop runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={summary.currentStatus || 'none'} />
+        {summary.currentKind && summary.currentKind !== 'none' ? <small>{humanizeToken(summary.currentKind)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function loopRuntimeItemRow(item, onOpen) {
+  if (!item?.loopId) return null
+  const detailText = [
+    item.summary,
+    item.loopKind ? humanizeToken(item.loopKind) : '',
+    item.reasonCode ? humanizeToken(item.reasonCode) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.loopId}
+      onClick={() => onOpen(item.title || 'Runtime Loop', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt,
+        mode: 'loop item detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Runtime Loop'}</strong>
+        <span>{detailText || 'Inspect loop runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.runtimeStatus || 'unknown'} />
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function idleConsolidationRow(item, onOpen) {
+  const summary = item?.summary || {}
+  const lastResult = item?.lastResult || {}
+  if (!item || (!item.active && !item.lastRunAt && !summary.latestRecordId)) return null
+  const detailText = [
+    summary.latestSummary,
+    summary.sourceInputCount ? `${summary.sourceInputCount} source input${summary.sourceInputCount === 1 ? '' : 's'}` : '',
+    lastResult.reason ? humanizeToken(lastResult.reason) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Idle Consolidation', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'idle consolidation detail',
+      })}
+    >
+      <div>
+        <strong>Idle Consolidation</strong>
+        <span>{detailText || 'Inspect bounded idle consolidation detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={summary.lastState || 'idle'} />
+        {summary.lastOutputKind ? <small>{humanizeToken(summary.lastOutputKind)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -503,6 +700,51 @@ function openLoopSignalRow(item, onOpen) {
         {item.closureReadiness ? <small>{`closure ${item.closureReadiness}`}</small> : null}
         {item.confidence ? <small>{item.confidence}</small> : null}
         {sourceLabel ? <small>{sourceLabel}</small> : null}
+        {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function emergentSignalRow(item, onOpen) {
+  const lifecycleLabel = item.lifecycleState === 'strengthening'
+    ? 'Strengthening grounded candidate'
+    : item.lifecycleState === 'fading'
+      ? 'Fading bounded thread'
+      : item.lifecycleState === 'released'
+        ? 'Released bounded thread'
+        : item.lifecycleState === 'candidate'
+          ? 'Candidate inner signal'
+          : (item.lifecycleState || 'Inner signal').replace(/-/g, ' ')
+  const sourceHintLabel = (item.sourceHints || []).slice(0, 2).join(' + ')
+  const detailText = [
+    lifecycleLabel,
+    sourceHintLabel ? `from ${sourceHintLabel}` : '',
+    item.influencedLayer ? `layer ${item.influencedLayer.replace(/-/g, ' ')}` : '',
+    `${item.truth || 'candidate-only'} · ${item.visibility || 'internal-only'}`,
+  ].filter(Boolean).join(' · ')
+  const salienceLabel = item.salience > 0 ? `${Math.round(item.salience * 100)}%` : ''
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      key={item.signalId || item.canonicalKey || item.title}
+      onClick={() => onOpen(item.title || 'Emergent Inner Signal', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.updatedAt || item.createdAt,
+        mode: 'emergent inner signal detail',
+      })}
+    >
+      <div>
+        <strong>{item.title || 'Emergent Inner Signal'}</strong>
+        <span>{detailText || 'Inspect bounded emergent inner-signal detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.status || 'candidate'} />
+        {item.lifecycleState ? <small>{item.lifecycleState.replace(/-/g, ' ')}</small> : null}
+        {item.intensity ? <small>{item.intensity}</small> : null}
+        {salienceLabel ? <small>{salienceLabel}</small> : null}
         {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
@@ -1416,6 +1658,25 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const heartbeatPolicy = heartbeat?.policy || {}
   const heartbeatTicks = heartbeat?.recentTicks || []
   const heartbeatEvents = heartbeat?.recentEvents || []
+  const embodiedState = data?.embodiedState || heartbeat?.embodiedState || {}
+  const hasEmbodiedState = Boolean(embodiedState?.state && embodiedState.state !== 'unknown')
+  const embodiedBuckets = embodiedBucketSummary(embodiedState)
+  const embodiedUsage = embodiedUsageSummary(embodiedState)
+  const loopRuntime = data?.loopRuntime || heartbeat?.loopRuntime || data?.runtimeSelfModel?.loop_runtime || {}
+  const loopRuntimeSummary = loopRuntime?.summary || {}
+  const hasLoopRuntime = Boolean(loopRuntimeSummary.loopCount || loopRuntime?.active)
+  const loopRuntimeCounts = loopRuntimeCountSummary(loopRuntime)
+  const loopRuntimeUsage = loopRuntimeUsageSummary(loopRuntime)
+  const visibleLoopRuntimeItems = (loopRuntime?.items || []).slice(0, 3)
+  const idleConsolidation = data?.idleConsolidation || heartbeat?.idleConsolidation || data?.runtimeSelfModel?.idle_consolidation || {}
+  const idleConsolidationSummary = idleConsolidation?.summary || {}
+  const idleConsolidationLastResult = idleConsolidation?.lastResult || {}
+  const hasIdleConsolidation = Boolean(
+    idleConsolidation?.active ||
+    idleConsolidation?.lastRunAt ||
+    idleConsolidationSummary?.latestRecordId,
+  )
+  const idleConsolidationBoundary = idleConsolidationBoundarySummary(idleConsolidation)
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
@@ -1467,6 +1728,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const chronicleConsolidationProposals = data?.development?.chronicleConsolidationProposals || { items: [], summary: {} }
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
+  const emergentSignals = data?.development?.emergentSignals || { items: [], recentReleased: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
@@ -1541,6 +1803,51 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               : (summary?.heartbeat?.result || heartbeatState.summary || 'No heartbeat result yet')}
           </small>
         </article>
+        {hasEmbodiedState ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: embodiedState.source || '/mc/embodied-state',
+          fetchedAt: embodiedState.createdAt || data?.fetchedAt,
+          mode: 'embodied runtime snapshot',
+        })}>
+          <span>Embodied State</span>
+          <strong>{humanizeToken(embodiedState.state) || 'unknown'}</strong>
+          <small className="muted">
+            {`strain ${humanizeToken(embodiedState.strainLevel) || 'unknown'}`}
+            {embodiedState.recoveryState && embodiedState.recoveryState !== 'steady'
+              ? ` · recovery ${humanizeToken(embodiedState.recoveryState)}`
+              : ''}
+            {embodiedState.createdAt ? ` · ${formatFreshness(embodiedState.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {hasLoopRuntime ? (
+        <article className="mc-stat tone-green" title={sectionTitleWithMeta({
+          source: loopRuntime.source || '/mc/loop-runtime',
+          fetchedAt: loopRuntime.createdAt || data?.fetchedAt,
+          mode: 'loop runtime snapshot',
+        })}>
+          <span>Loop Runtime</span>
+          <strong>{humanizeToken(loopRuntimeSummary.currentStatus) || 'unknown'}</strong>
+          <small className="muted">
+            {loopRuntimeCounts.join(' · ') || 'No active runtime loops'}
+            {loopRuntime.createdAt ? ` · ${formatFreshness(loopRuntime.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {hasIdleConsolidation ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: idleConsolidation.source || '/mc/idle-consolidation',
+          fetchedAt: idleConsolidation.createdAt || data?.fetchedAt,
+          mode: 'idle consolidation snapshot',
+        })}>
+          <span>Idle Consolidation</span>
+          <strong>{humanizeToken(idleConsolidationSummary.lastState) || 'idle'}</strong>
+          <small className="muted">
+            {humanizeToken(idleConsolidationSummary.lastReason) || 'no run yet'}
+            {idleConsolidation.createdAt ? ` · ${formatFreshness(idleConsolidation.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
       </section>
 
       <section className="now-section">
@@ -1991,6 +2298,53 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <strong>{heartbeatState.recoveryStatus || 'idle'}</strong>
               <p>{heartbeatState.lastRecoveryAt || 'No recovery activity recorded.'}</p>
             </div>
+            {hasEmbodiedState ? (
+            <div className="compact-metric" title="Authoritative internal-only host/body runtime state grounded in bounded host facts">
+              <span>Embodied State</span>
+              <strong>{humanizeToken(embodiedState.state) || 'unknown'}</strong>
+              <p>{embodiedState.summary || 'No embodied host/body state recorded yet.'}</p>
+              <p>{embodiedBuckets.join(' · ') || 'No source buckets available.'}</p>
+              <p>
+                {`strain ${humanizeToken(embodiedState.strainLevel) || 'unknown'} · recovery ${humanizeToken(embodiedState.recoveryState) || 'steady'}`}
+              </p>
+              <p>
+                {embodiedState.createdAt ? `${formatFreshness(embodiedState.createdAt)} · ${humanizeToken(embodiedState.freshnessState)}` : humanizeToken(embodiedState.freshnessState) || 'unknown'}
+              </p>
+              {embodiedUsage ? <p>{`used by ${embodiedUsage}`}</p> : null}
+            </div>
+            ) : null}
+            {hasLoopRuntime ? (
+            <div className="compact-metric" title="Authoritative internal-only loop runtime state for bounded open and proactive loops">
+              <span>Loop Runtime</span>
+              <strong>{humanizeToken(loopRuntimeSummary.currentStatus) || 'unknown'}</strong>
+              <p>{loopRuntimeSummary.currentLoop || 'No active runtime loop'}</p>
+              <p>{loopRuntimeCounts.join(' · ') || 'No loop runtime counts available.'}</p>
+              <p>
+                {`kind ${humanizeToken(loopRuntimeSummary.currentKind) || 'none'} · reason ${humanizeToken(loopRuntimeSummary.currentReason) || 'none'}`}
+              </p>
+              <p>
+                {loopRuntime.createdAt ? `${formatFreshness(loopRuntime.createdAt)} · ${humanizeToken(loopRuntime.freshnessState)}` : humanizeToken(loopRuntime.freshnessState) || 'unknown'}
+              </p>
+              {loopRuntimeUsage ? <p>{`used by ${loopRuntimeUsage}`}</p> : null}
+            </div>
+            ) : null}
+            {hasIdleConsolidation ? (
+            <div className="compact-metric" title="Authoritative internal-only metabolisk runtime process for bounded idle consolidation">
+              <span>Idle Consolidation</span>
+              <strong>{humanizeToken(idleConsolidationSummary.lastState) || 'idle'}</strong>
+              <p>{idleConsolidationLastResult.recordSummary || idleConsolidationSummary.latestSummary || 'No idle consolidation artifact recorded yet.'}</p>
+              <p>
+                {`result ${humanizeToken(idleConsolidationLastResult.reason || idleConsolidationSummary.lastReason) || 'no run yet'} · inputs ${idleConsolidationSummary.sourceInputCount || 0}`}
+              </p>
+              <p>
+                {`output ${humanizeToken(idleConsolidationSummary.lastOutputKind) || 'private brain sleep consolidation'}${idleConsolidationSummary.latestRecordId ? ` · ${idleConsolidationSummary.latestRecordId}` : ''}`}
+              </p>
+              <p>
+                {idleConsolidation.createdAt ? `${formatFreshness(idleConsolidation.createdAt)} · internal only` : 'internal only'}
+              </p>
+              {idleConsolidationBoundary ? <p>{idleConsolidationBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2009,6 +2363,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                   createdAt: heartbeatState.updatedAt || data?.fetchedAt,
                   summary: heartbeatPolicy.summary || 'Inspect HEARTBEAT.md-derived policy.',
                 }, 'Heartbeat Policy', onOpenItem)}
+                {embodiedStateRow(embodiedState, onOpenItem)}
+                {loopRuntimeRow(loopRuntime, onOpenItem)}
+                {idleConsolidationRow(idleConsolidation, onOpenItem)}
+                {visibleLoopRuntimeItems.map((item) => loopRuntimeItemRow(item, onOpenItem))}
                 {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>
             </div>
@@ -2072,6 +2430,121 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           </div>
         </article>
       </section>
+
+      {/* --- Runtime Self-Model --- */}
+      {(() => {
+        const sm = data?.runtimeSelfModel
+        if (!sm || !sm.layers || !sm.layers.length) return null
+        const layers = sm.layers
+        const boundaries = sm.truth_boundaries || {}
+        const summary = sm.summary || {}
+
+        // Primary axis: visibility × role
+        const visible = layers.filter(l => l.visibility === 'visible' || l.visibility === 'mixed')
+        const internalOnly = layers.filter(l => l.visibility === 'internal-only' && l.role !== 'groundwork-only')
+        const groundwork = layers.filter(l => l.role === 'groundwork-only')
+
+        const roleIndicator = (role) => {
+          if (role === 'active') return { symbol: '\u25CF', color: 'var(--success, #22c55e)' }
+          if (role === 'cooling') return { symbol: '\u25CF', color: 'var(--warning, #e2a308)' }
+          if (role === 'idle') return { symbol: '\u25CB', color: 'var(--muted, #888)' }
+          if (role === 'gated') return { symbol: '\u25CB', color: 'var(--warning, #e2a308)' }
+          if (role === 'unavailable') return { symbol: '\u25CF', color: 'var(--danger, #ef4444)' }
+          return { symbol: '\u25CB', color: 'var(--muted, #888)' }
+        }
+
+        const layerPill = (layer) => {
+          const ri = roleIndicator(layer.role)
+          return (
+            <button
+              key={layer.id}
+              className="mc-list-row"
+              style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 5, width: 'auto', minWidth: 0 }}
+              onClick={() => onOpenItem(`Layer: ${layer.label}`, layer)}
+              title={`${layer.kind} · ${layer.role} · ${layer.truth}`}
+            >
+              <span style={{ color: ri.color, fontWeight: 600 }}>{ri.symbol}</span>
+              <span>{layer.label}</span>
+              {layer.role !== 'active' && <span style={{ opacity: 0.5, fontSize: '0.85em' }}>{layer.role}</span>}
+            </button>
+          )
+        }
+
+        return (
+          <section className="mc-section-grid">
+            <article className="support-card" id="jarvis-self-model" title="Runtime self-model — typed layer snapshot of Jarvis' current system-self">
+              <div className="panel-header">
+                <div>
+                  <h3>Runtime Self-Model</h3>
+                  <p className="muted">{visible.length} visible · {internalOnly.length} internal-only · {groundwork.length} groundwork</p>
+                </div>
+                <span className="mc-section-hint">Runtime truth</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 12px 12px' }}>
+
+                {visible.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Visible</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>{visible.map(layerPill)}</div>
+                  </div>
+                )}
+
+                {internalOnly.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Internal-only</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>{internalOnly.map(layerPill)}</div>
+                  </div>
+                )}
+
+                {groundwork.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.78em', opacity: 0.6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Groundwork</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {groundwork.map(g => (
+                        <button
+                          key={g.id}
+                          className="mc-list-row now-card-muted"
+                          style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: 4, fontSize: '0.82em', gap: 5, width: 'auto', minWidth: 0 }}
+                          onClick={() => onOpenItem(`Groundwork: ${g.label}`, g)}
+                          title={g.detail || g.kind}
+                        >
+                          <span style={{ opacity: 0.4 }}>{'\u25CB'}</span>
+                          <span>{g.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ fontSize: '0.78em', opacity: 0.6, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {Object.entries(boundaries).map(([key, value]) => (
+                    <span key={key} title={value} style={{ cursor: 'help' }}>
+                      {key.replace(/_/g, ' ').replace(/vs/g, '\u2260')}
+                    </span>
+                  ))}
+                </div>
+
+                <button
+                  className="mc-list-row"
+                  onClick={() => onOpenItem('Runtime Self-Model (full)', sm)}
+                >
+                  <div>
+                    <strong>Full snapshot</strong>
+                    <span style={{ fontSize: '0.82em', opacity: 0.85 }}>
+                      {summary.total_layers || 0} layers · {Object.keys(boundaries).length} boundaries
+                    </span>
+                  </div>
+                  <div className="mc-row-meta">
+                    <small>{sm.built_at ? formatFreshness(sm.built_at) : 'unknown'}</small>
+                    <ChevronRight size={14} />
+                  </div>
+                </button>
+
+              </div>
+            </article>
+          </section>
+        )
+      })()}
 
       {/* --- Attention Budget Traces + Conflict Resolution --- */}
       {(() => {
@@ -2382,6 +2855,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {privateInitiativeTensionSignals?.summary?.authority || 'non-authoritative'} · {privateInitiativeTensionSignals?.summary?.layer_role || 'runtime-support'}
               </p>
             </div>
+            <div className="compact-metric" title="Internal-only candidate layer with bounded lifecycle; never identity or action authority">
+              <span>Emergent Signals</span>
+              <strong>{emergentSignals?.summary?.active_count || 0}</strong>
+              <p>{emergentSignals?.summary?.current_signal || 'No active emergent inner signal'}</p>
+              <p>
+                {emergentSignals?.summary?.candidate_count || 0} candidate · {emergentSignals?.summary?.emergent_count || 0} emergent · {emergentSignals?.summary?.fading_count || 0} fading
+              </p>
+              <p>
+                {emergentSignals?.summary?.current_lifecycle_state || 'none'} · {emergentSignals?.summary?.authority || 'candidate-only'} · {emergentSignals?.summary?.visibility || 'internal-only'}
+              </p>
+            </div>
             {((privateInnerInterplaySignals?.summary?.active_count || 0) + (privateInnerInterplaySignals?.summary?.stale_count || 0)) > 0 ? (
             <div className="compact-metric">
               <span>Inner Interplay</span>
@@ -2682,6 +3166,15 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {openLoopSignals.items.slice(0, 3).map((item) => openLoopSignalRow(item, onOpenItem))}
               {openLoopClosureProposals.items.length > 0 ? subsectionHeader('Closure Proposals', 'Bounded Proposals Only — Not Automatic Closure') : null}
               {openLoopClosureProposals.items.slice(0, 3).map((item) => openLoopClosureProposalRow(item, onOpenItem))}
+              {subsectionHeader('Emergent Signals', 'Internal-Only Candidate Threads With Bounded Lifecycle')}
+              {emergentSignals.items.length === 0 ? (
+                <div className="mc-empty-state">
+                  <strong>No active emergent inner signal</strong>
+                  <p className="muted">Unknown is allowed, but silence is not: this bounded layer is currently quiet and remains candidate-only when active.</p>
+                </div>
+              ) : emergentSignals.items.slice(0, 3).map((item) => emergentSignalRow(item, onOpenItem))}
+              {emergentSignals.recentReleased.length > 0 ? subsectionHeader('Recently Released', 'Signals That Faded Out Without Authority') : null}
+              {emergentSignals.recentReleased.slice(0, 2).map((item) => emergentSignalRow(item, onOpenItem))}
               {internalOppositionSignals.items.length > 0 ? subsectionHeader('Internal Opposition', 'What Should Be Challenged Internally') : null}
               {internalOppositionSignals.items.slice(0, 3).map((item) => internalOppositionSignalRow(item, onOpenItem))}
               {(selfReviewSignals.items.length > 0 || selfReviewRecords.items.length > 0 || selfReviewRuns.items.length > 0 || selfReviewOutcomes.items.length > 0 || selfReviewCadenceSignals.items.length > 0 || dreamHypothesisSignals.items.length > 0 || dreamAdoptionCandidates.items.length > 0 || dreamInfluenceProposals.items.length > 0 || selfAuthoredPromptProposals.items.length > 0 || userUnderstandingSignals.items.length > 0 || userMdUpdateProposals.items.length > 0 || selfhoodProposals.items.length > 0) ? (

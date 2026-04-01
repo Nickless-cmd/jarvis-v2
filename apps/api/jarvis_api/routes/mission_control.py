@@ -16,6 +16,18 @@ from apps.api.jarvis_api.services.prompt_contract import (
     build_runtime_memory_selection_surface,
     build_runtime_relevance_decision_surface,
 )
+from apps.api.jarvis_api.services.embodied_state import (
+    build_embodied_state_surface,
+)
+from apps.api.jarvis_api.services.loop_runtime import (
+    build_loop_runtime_surface,
+)
+from apps.api.jarvis_api.services.idle_consolidation import (
+    build_idle_consolidation_surface,
+)
+from apps.api.jarvis_api.services.dream_articulation import (
+    build_dream_articulation_surface,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -744,6 +756,30 @@ def mc_runtime_self_model() -> dict:
     return build_runtime_self_model()
 
 
+@router.get("/embodied-state")
+def mc_embodied_state() -> dict:
+    """Return the current bounded embodied host/body state."""
+    return build_embodied_state_surface()
+
+
+@router.get("/loop-runtime")
+def mc_loop_runtime() -> dict:
+    """Return the current bounded loop runtime state."""
+    return build_loop_runtime_surface()
+
+
+@router.get("/idle-consolidation")
+def mc_idle_consolidation() -> dict:
+    """Return the current bounded sleep / idle consolidation state."""
+    return build_idle_consolidation_surface()
+
+
+@router.get("/dream-articulation")
+def mc_dream_articulation() -> dict:
+    """Return the current bounded dream articulation state."""
+    return build_dream_articulation_surface()
+
+
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
     return {
@@ -815,6 +851,10 @@ def mc_runtime() -> dict:
     return {
         "settings": settings.to_dict(),
         "heartbeat_runtime": heartbeat_runtime_surface(),
+        "runtime_embodied_state": build_embodied_state_surface(),
+        "runtime_loop_state": build_loop_runtime_surface(),
+        "runtime_idle_consolidation": build_idle_consolidation_surface(),
+        "runtime_dream_articulation": build_dream_articulation_surface(),
         "visible_execution": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
         "visible_session_continuity": visible_session_continuity_summary(),
@@ -1695,6 +1735,7 @@ def _jarvis_continuity_summary(
 
 def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
     state = heartbeat.get("state") or {}
+    embodied = heartbeat.get("embodied_state") or {}
     return {
         "enabled": "enabled" if state.get("enabled") else "disabled",
         "status": str(
@@ -1711,6 +1752,23 @@ def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
         ),
         "next_tick_at": str(state.get("next_tick_at") or ""),
         "trigger": str(state.get("last_trigger_source") or "none"),
+        "embodied_state": str(embodied.get("state") or "unknown"),
+    }
+
+
+def _jarvis_emergent_summary(emergent_signals: dict) -> dict[str, object]:
+    summary = emergent_signals.get("summary") or {}
+    return {
+        "active_count": int(summary.get("active_count") or 0),
+        "current_signal": str(
+            summary.get("current_signal") or "No active emergent inner signal"
+        ),
+        "current_status": str(summary.get("current_status") or "none"),
+        "current_lifecycle_state": str(
+            summary.get("current_lifecycle_state") or "none"
+        ),
+        "authority": "candidate-only",
+        "visibility": "internal-only",
     }
 
 

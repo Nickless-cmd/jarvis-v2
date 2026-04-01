@@ -24,6 +24,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "embodied_state" in model
     assert "loop_runtime" in model
     assert "idle_consolidation" in model
+    assert "dream_articulation" in model
     assert "truth_boundaries" in model
     assert "summary" in model
     assert "built_at" in model
@@ -199,6 +200,7 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "embodied_state:" in joined
     assert "loop_runtime:" in joined
     assert "idle_consolidation:" in joined
+    assert "dream_articulation:" in joined
 
 
 def test_prompt_lines_distinguish_kinds(isolated_runtime) -> None:
@@ -237,6 +239,7 @@ def test_mc_runtime_self_model_endpoint(isolated_runtime) -> None:
     assert "embodied_state" in response
     assert "loop_runtime" in response
     assert "idle_consolidation" in response
+    assert "dream_articulation" in response
     assert "truth_boundaries" in response
     assert "summary" in response
 
@@ -257,6 +260,7 @@ def test_producer_layers_present(isolated_runtime) -> None:
     assert "producer-sleep_consolidation" in names or any("sleep" in n for n in names)
     assert "producer-witness_daemon" in names or any("witness" in n for n in names)
     assert "producer-inner_voice_daemon" in names or any("voice" in n for n in names)
+    assert "producer-dream_articulation" in names or any("dream" in n for n in names)
 
 
 # ---------------------------------------------------------------------------

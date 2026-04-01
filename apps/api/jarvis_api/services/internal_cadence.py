@@ -385,6 +385,21 @@ def _ensure_producers_registered() -> None:
         depends_on=["witness_daemon"],
     ))
 
+    def _run_dream_articulation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from apps.api.jarvis_api.services.dream_articulation import (
+            run_dream_articulation,
+        )
+        return run_dream_articulation(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="dream_articulation",
+        cooldown_minutes=35,
+        visible_grace_minutes=14,
+        run_fn=_run_dream_articulation,
+        priority=15,
+        depends_on=["sleep_consolidation"],
+    ))
+
 
 def run_cadence_tick_with_bootstrap(
     *,

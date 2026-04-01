@@ -25,6 +25,9 @@ from apps.api.jarvis_api.services.loop_runtime import (
 from apps.api.jarvis_api.services.idle_consolidation import (
     build_idle_consolidation_surface,
 )
+from apps.api.jarvis_api.services.dream_articulation import (
+    build_dream_articulation_surface,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -771,6 +774,12 @@ def mc_idle_consolidation() -> dict:
     return build_idle_consolidation_surface()
 
 
+@router.get("/dream-articulation")
+def mc_dream_articulation() -> dict:
+    """Return the current bounded dream articulation state."""
+    return build_dream_articulation_surface()
+
+
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
     return {
@@ -845,6 +854,7 @@ def mc_runtime() -> dict:
         "runtime_embodied_state": build_embodied_state_surface(),
         "runtime_loop_state": build_loop_runtime_surface(),
         "runtime_idle_consolidation": build_idle_consolidation_surface(),
+        "runtime_dream_articulation": build_dream_articulation_surface(),
         "visible_execution": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
         "visible_session_continuity": visible_session_continuity_summary(),

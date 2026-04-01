@@ -49,6 +49,7 @@ def build_runtime_self_model() -> dict[str, object]:
         "embodied_state": _embodied_state_surface(),
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
+        "dream_articulation": _dream_articulation_surface(),
         "truth_boundaries": boundaries,
         "summary": summary,
         "built_at": datetime.now(UTC).isoformat(),
@@ -125,6 +126,22 @@ def _collect_layers() -> list[dict[str, str]]:
             f"state={consolidation_summary.get('last_state') or 'idle'}; "
             f"reason={consolidation_summary.get('last_reason') or 'no-run-yet'}; "
             f"latest={consolidation_summary.get('latest_record_id') or 'none'}."
+        ),
+    })
+
+    dream = _dream_articulation_surface()
+    dream_summary = dream.get("summary") or {}
+    layers.append({
+        "id": "dream-articulation-light",
+        "label": "Dream articulation light",
+        "kind": "groundwork",
+        "role": "groundwork-only",
+        "visibility": "internal-only",
+        "truth": "candidate-only",
+        "detail": (
+            f"state={dream_summary.get('last_state') or 'idle'}; "
+            f"reason={dream_summary.get('last_reason') or 'no-run-yet'}; "
+            f"latest={dream_summary.get('latest_signal_id') or 'none'}."
         ),
     })
 
@@ -345,6 +362,8 @@ def build_self_model_prompt_lines() -> list[str]:
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
     consolidation_summary = consolidation.get("summary") or {}
+    dream = model.get("dream_articulation") or {}
+    dream_summary = dream.get("summary") or {}
 
     lines: list[str] = [
         "- RUNTIME SELF-MODEL: Use these structural facts when asked about your layers, capabilities, or boundaries:",
@@ -390,6 +409,12 @@ def build_self_model_prompt_lines() -> list[str]:
         f"{consolidation_summary.get('last_state') or 'idle'}"
         f" | reason={consolidation_summary.get('last_reason') or 'no-run-yet'}"
         f" | inputs={consolidation_summary.get('source_input_count') or 0}"
+    )
+    lines.append(
+        "  dream_articulation: "
+        f"{dream_summary.get('last_state') or 'idle'}"
+        f" | reason={dream_summary.get('last_reason') or 'no-run-yet'}"
+        f" | candidate_only={dream_summary.get('candidate_truth') or 'candidate-only'}"
     )
 
     # Counts
@@ -450,6 +475,24 @@ def _idle_consolidation_surface() -> dict[str, object]:
                 "last_reason": "unavailable",
                 "source_input_count": 0,
                 "latest_record_id": "",
+            },
+        }
+
+
+def _dream_articulation_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.dream_articulation import (
+            build_dream_articulation_surface,
+        )
+        return build_dream_articulation_surface()
+    except Exception:
+        return {
+            "active": False,
+            "summary": {
+                "last_state": "idle",
+                "last_reason": "unavailable",
+                "latest_signal_id": "",
+                "candidate_truth": "candidate-only",
             },
         }
 
@@ -549,6 +592,7 @@ def _producer_layers() -> list[dict[str, str]]:
             ("witness_daemon", "Witness daemon"),
             ("inner_voice_daemon", "Inner voice daemon"),
             ("emergent_signal_daemon", "Emergent signal daemon"),
+            ("dream_articulation", "Dream articulation"),
         ]:
             producers.append({
                 "id": f"producer-{name}",
@@ -570,6 +614,7 @@ def _producer_label(name: str) -> str:
         "witness_daemon": "Witness daemon",
         "inner_voice_daemon": "Inner voice daemon",
         "emergent_signal_daemon": "Emergent signal daemon",
+        "dream_articulation": "Dream articulation",
     }
     return labels.get(name, name.replace("_", " ").title())
 

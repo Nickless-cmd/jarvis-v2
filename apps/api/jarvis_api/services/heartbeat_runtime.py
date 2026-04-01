@@ -34,6 +34,9 @@ from apps.api.jarvis_api.services.loop_runtime import (
 from apps.api.jarvis_api.services.idle_consolidation import (
     build_idle_consolidation_surface,
 )
+from apps.api.jarvis_api.services.dream_articulation import (
+    build_dream_articulation_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -226,6 +229,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     now = datetime.now(UTC)
     embodied_state = build_embodied_state_surface()
     idle_consolidation = build_idle_consolidation_surface()
+    dream_articulation = build_dream_articulation_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -249,6 +253,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "recent_ticks": recent_ticks,
             "embodied_state": embodied_state,
             "idle_consolidation": idle_consolidation,
+            "dream_articulation": dream_articulation,
         },
     )
     return {
@@ -258,6 +263,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "recent_events": recent_events,
         "embodied_state": embodied_state,
         "idle_consolidation": idle_consolidation,
+        "dream_articulation": dream_articulation,
         "source": "/mc/jarvis::heartbeat",
     }
 

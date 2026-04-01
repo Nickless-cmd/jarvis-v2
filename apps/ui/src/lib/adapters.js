@@ -495,6 +495,103 @@ function normalizeIdleConsolidation(item = {}) {
   }
 }
 
+function normalizeDreamArticulation(item = {}) {
+  const summary = item.summary || {}
+  const cadence = item.cadence || {}
+  const lastResult = item.last_result || {}
+  const latestArtifact = item.latest_artifact || {}
+
+  return {
+    active: Boolean(item.active),
+    authority: item.authority || 'authoritative-runtime-observability',
+    visibility: item.visibility || 'internal-only',
+    truth: item.truth || 'candidate-only',
+    kind: item.kind || 'dream-articulation-light',
+    boundary: item.boundary || 'not-memory-not-identity-not-action',
+    source: item.source || '/mc/dream-articulation',
+    lastRunAt: item.last_run_at || '',
+    builtAt: item.built_at || '',
+    cadence: {
+      cooldownMinutes: Number(cadence.cooldown_minutes || 0),
+      visibleGraceMinutes: Number(cadence.visible_grace_minutes || 0),
+      adjacentProducerGraceMinutes: Number(cadence.adjacent_producer_grace_minutes || 0),
+      minSourceInputs: Number(cadence.min_source_inputs || 0),
+    },
+    summary: {
+      lastState: summary.last_state || 'idle',
+      lastReason: summary.last_reason || 'no-run-yet',
+      lastOutputKind: summary.last_output_kind || 'runtime-dream-hypothesis',
+      sourceInputCount: Number(summary.source_input_count || 0),
+      latestSignalId: summary.latest_signal_id || '',
+      latestSummary: summary.latest_summary || 'No dream articulation candidate recorded yet.',
+      candidateTruth: summary.candidate_truth || item.truth || 'candidate-only',
+    },
+    lastResult: {
+      producer: lastResult.producer || '',
+      daemonRan: Boolean(lastResult.daemon_ran),
+      candidateCreated: Boolean(lastResult.candidate_created),
+      candidateState: lastResult.candidate_state || 'idle',
+      cadenceState: lastResult.cadence_state || '',
+      reason: lastResult.reason || 'no-run-yet',
+      elapsedMinutes: Number(lastResult.elapsed_minutes || 0),
+      outputKind: lastResult.output_kind || '',
+      trigger: lastResult.trigger || '',
+      signalId: lastResult.signal_id || '',
+      signalSummary: lastResult.signal_summary || '',
+      signalType: lastResult.signal_type || '',
+      candidateTruth: lastResult.candidate_truth || item.truth || 'candidate-only',
+      candidateVisibility: lastResult.candidate_visibility || item.visibility || 'internal-only',
+      boundary: lastResult.boundary || item.boundary || 'not-memory-not-identity-not-action',
+      sourceInputs: (lastResult.source_inputs || []).map((sourceInput) => ({
+        source: sourceInput.source || '',
+        signal: sourceInput.signal || '',
+      })),
+    },
+    latestArtifact: {
+      signalId: latestArtifact.signal_id || '',
+      signalType: latestArtifact.signal_type || '',
+      canonicalKey: latestArtifact.canonical_key || '',
+      title: latestArtifact.title || '',
+      summary: latestArtifact.summary || '',
+      rationale: latestArtifact.rationale || '',
+      confidence: latestArtifact.confidence || '',
+      supportCount: Number(latestArtifact.support_count || 0),
+      sourceKind: latestArtifact.source_kind || '',
+      status: latestArtifact.status || '',
+      createdAt: latestArtifact.created_at || '',
+      updatedAt: latestArtifact.updated_at || '',
+    },
+    createdAt: item.last_run_at || item.built_at || '',
+  }
+}
+
+function normalizeInternalCadence(item = {}) {
+  return {
+    lastTickAt: item.last_tick_at || '',
+    producerCount: Number(item.producer_count || 0),
+    lastTickSummary: {
+      ran: item.last_tick_summary?.ran || [],
+      coolingDown: item.last_tick_summary?.cooling_down || [],
+      visibleGrace: item.last_tick_summary?.visible_grace || [],
+      blocked: item.last_tick_summary?.blocked || [],
+      errors: item.last_tick_summary?.errors || [],
+    },
+    producers: (item.producers || []).map((producer) => ({
+      name: producer.name || '',
+      cooldownMinutes: Number(producer.cooldown_minutes || 0),
+      visibleGraceMinutes: Number(producer.visible_grace_minutes || 0),
+      priority: Number(producer.priority || 0),
+      dependsOn: producer.depends_on || [],
+      lastRunAt: producer.last_run_at || '',
+      lastTickStatus: {
+        status: producer.last_tick_status?.status || 'unknown',
+        reason: producer.last_tick_status?.reason || '',
+      },
+    })),
+    source: '/mc/internal-cadence',
+  }
+}
+
 function normalizeHeartbeatPolicy(item = {}) {
   return {
     workspace: item.workspace || '',
@@ -1788,7 +1885,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, internalCadencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -1798,6 +1895,8 @@ export const backend = {
       requestJson('/mc/embodied-state').catch(() => null),
       requestJson('/mc/loop-runtime').catch(() => null),
       requestJson('/mc/idle-consolidation').catch(() => null),
+      requestJson('/mc/dream-articulation').catch(() => null),
+      requestJson('/mc/internal-cadence').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -1819,6 +1918,11 @@ export const backend = {
       idleConsolidationPayload ||
       heartbeat?.idle_consolidation ||
       selfModelPayload?.idle_consolidation ||
+      null
+    const dreamArticulationSource =
+      dreamArticulationPayload ||
+      heartbeat?.dream_articulation ||
+      selfModelPayload?.dream_articulation ||
       null
 
     return {
@@ -2535,10 +2639,13 @@ export const backend = {
         embodiedState: normalizeEmbodiedState(heartbeat.embodied_state || embodiedStateSource || {}),
         loopRuntime: normalizeLoopRuntime(heartbeat.loop_runtime || loopRuntimeSource || {}),
         idleConsolidation: normalizeIdleConsolidation(heartbeat.idle_consolidation || idleConsolidationSource || {}),
+        dreamArticulation: normalizeDreamArticulation(heartbeat.dream_articulation || dreamArticulationSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
       idleConsolidation: normalizeIdleConsolidation(idleConsolidationSource || {}),
+      dreamArticulation: normalizeDreamArticulation(dreamArticulationSource || {}),
+      internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,
       deceptionGuard: guardPayload?.trace || null,

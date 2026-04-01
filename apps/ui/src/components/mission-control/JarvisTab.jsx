@@ -66,6 +66,30 @@ function idleConsolidationBoundarySummary(item) {
     .join(' / ')
 }
 
+function cadenceProducer(item, name) {
+  return (item?.producers || []).find((producer) => producer.name === name) || null
+}
+
+function cadenceProducerLabel(item, fallback = 'idle') {
+  const status = item?.lastTickStatus?.status || ''
+  return humanizeToken(status || fallback) || fallback
+}
+
+function cadenceProducerReason(item) {
+  return humanizeToken(item?.lastTickStatus?.reason || '')
+}
+
+function metabolicHeartbeatSummary(summary = {}) {
+  const parts = []
+  if (summary.idle_consolidation) {
+    parts.push(`sleep ${humanizeToken(summary.idle_consolidation)}`)
+  }
+  if (summary.dream_articulation) {
+    parts.push(`dream ${humanizeToken(summary.dream_articulation)}`)
+  }
+  return parts.join(' · ')
+}
+
 function detailRow(item, label, onOpen) {
   if (!item || !Object.keys(item).length) {
     return (
@@ -225,6 +249,40 @@ function idleConsolidationRow(item, onOpen) {
       <div>
         <strong>Idle Consolidation</strong>
         <span>{detailText || 'Inspect bounded idle consolidation detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={summary.lastState || 'idle'} />
+        {summary.lastOutputKind ? <small>{humanizeToken(summary.lastOutputKind)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function dreamArticulationRow(item, onOpen) {
+  const summary = item?.summary || {}
+  const lastResult = item?.lastResult || {}
+  if (!item || (!item.active && !item.lastRunAt && !summary.latestSignalId)) return null
+  const detailText = [
+    lastResult.signalSummary || summary.latestSummary,
+    summary.sourceInputCount ? `${summary.sourceInputCount} source input${summary.sourceInputCount === 1 ? '' : 's'}` : '',
+    lastResult.reason ? humanizeToken(lastResult.reason) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Dream Articulation', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'dream articulation detail',
+      })}
+    >
+      <div>
+        <strong>Dream Articulation</strong>
+        <span>{detailText || 'Inspect bounded dream articulation detail'}</span>
       </div>
       <div className="mc-row-meta">
         <StatusPill status={summary.lastState || 'idle'} />
@@ -1658,6 +1716,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const heartbeatPolicy = heartbeat?.policy || {}
   const heartbeatTicks = heartbeat?.recentTicks || []
   const heartbeatEvents = heartbeat?.recentEvents || []
+  const heartbeatMetabolicSummary = metabolicHeartbeatSummary(summary?.heartbeat || {})
   const embodiedState = data?.embodiedState || heartbeat?.embodiedState || {}
   const hasEmbodiedState = Boolean(embodiedState?.state && embodiedState.state !== 'unknown')
   const embodiedBuckets = embodiedBucketSummary(embodiedState)
@@ -1677,6 +1736,17 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
     idleConsolidationSummary?.latestRecordId,
   )
   const idleConsolidationBoundary = idleConsolidationBoundarySummary(idleConsolidation)
+  const dreamArticulation = data?.dreamArticulation || heartbeat?.dreamArticulation || data?.runtimeSelfModel?.dream_articulation || {}
+  const dreamArticulationSummary = dreamArticulation?.summary || {}
+  const dreamArticulationLastResult = dreamArticulation?.lastResult || {}
+  const hasDreamArticulation = Boolean(
+    dreamArticulation?.active ||
+    dreamArticulation?.lastRunAt ||
+    dreamArticulationSummary?.latestSignalId,
+  )
+  const internalCadence = data?.internalCadence || {}
+  const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
+  const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
   const developmentFocuses = data?.development?.developmentFocuses || { items: [], summary: {} }
   const reflectiveCritics = data?.development?.reflectiveCritics || { items: [], summary: {} }
   const selfModelSignals = data?.development?.selfModelSignals || { items: [], summary: {} }
@@ -1802,6 +1872,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               ? 'Tick in progress'
               : (summary?.heartbeat?.result || heartbeatState.summary || 'No heartbeat result yet')}
           </small>
+          {heartbeatMetabolicSummary ? <small className="muted">{heartbeatMetabolicSummary}</small> : null}
         </article>
         {hasEmbodiedState ? (
         <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
@@ -1845,6 +1916,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <small className="muted">
             {humanizeToken(idleConsolidationSummary.lastReason) || 'no run yet'}
             {idleConsolidation.createdAt ? ` · ${formatFreshness(idleConsolidation.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {(hasDreamArticulation || dreamCadence) ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: dreamArticulation.source || internalCadence.source || '/mc/dream-articulation',
+          fetchedAt: dreamArticulation.createdAt || internalCadence.lastTickAt || data?.fetchedAt,
+          mode: 'dream articulation snapshot',
+        })}>
+          <span>Dream Articulation</span>
+          <strong>{humanizeToken(dreamArticulationSummary.lastState || cadenceProducerLabel(dreamCadence, 'idle')) || 'idle'}</strong>
+          <small className="muted">
+            {humanizeToken(dreamArticulationSummary.lastReason || dreamCadence?.lastTickStatus?.reason) || 'no run yet'}
+            {(dreamArticulation.createdAt || internalCadence.lastTickAt) ? ` · ${formatFreshness(dreamArticulation.createdAt || internalCadence.lastTickAt)}` : ''}
           </small>
         </article>
         ) : null}
@@ -2297,6 +2382,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <span>Recovery</span>
               <strong>{heartbeatState.recoveryStatus || 'idle'}</strong>
               <p>{heartbeatState.lastRecoveryAt || 'No recovery activity recorded.'}</p>
+              {heartbeatMetabolicSummary ? <p>{heartbeatMetabolicSummary}</p> : null}
             </div>
             {hasEmbodiedState ? (
             <div className="compact-metric" title="Authoritative internal-only host/body runtime state grounded in bounded host facts">
@@ -2336,6 +2422,11 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>
                 {`result ${humanizeToken(idleConsolidationLastResult.reason || idleConsolidationSummary.lastReason) || 'no run yet'} · inputs ${idleConsolidationSummary.sourceInputCount || 0}`}
               </p>
+              {sleepCadence ? (
+              <p>
+                {`cadence ${cadenceProducerLabel(sleepCadence)}${cadenceProducerReason(sleepCadence) ? ` · ${cadenceProducerReason(sleepCadence)}` : ''}`}
+              </p>
+              ) : null}
               <p>
                 {`output ${humanizeToken(idleConsolidationSummary.lastOutputKind) || 'private brain sleep consolidation'}${idleConsolidationSummary.latestRecordId ? ` · ${idleConsolidationSummary.latestRecordId}` : ''}`}
               </p>
@@ -2343,6 +2434,27 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {idleConsolidation.createdAt ? `${formatFreshness(idleConsolidation.createdAt)} · internal only` : 'internal only'}
               </p>
               {idleConsolidationBoundary ? <p>{idleConsolidationBoundary}</p> : null}
+            </div>
+            ) : null}
+            {(hasDreamArticulation || dreamCadence) ? (
+            <div className="compact-metric" title="Authoritative internal-only candidate runtime process for bounded dream articulation">
+              <span>Dream Articulation</span>
+              <strong>{humanizeToken(dreamArticulationSummary.lastState || cadenceProducerLabel(dreamCadence, 'idle')) || 'idle'}</strong>
+              <p>{dreamArticulationLastResult.signalSummary || dreamArticulationSummary.latestSummary || 'No dream articulation candidate recorded yet.'}</p>
+              <p>
+                {`result ${humanizeToken(dreamArticulationLastResult.reason || dreamArticulationSummary.lastReason || dreamCadence?.lastTickStatus?.reason) || 'no run yet'} · inputs ${dreamArticulationSummary.sourceInputCount || dreamArticulationLastResult.sourceInputs?.length || 0}`}
+              </p>
+              {dreamCadence ? (
+              <p>
+                {`cadence ${cadenceProducerLabel(dreamCadence)}${cadenceProducerReason(dreamCadence) ? ` · ${cadenceProducerReason(dreamCadence)}` : ''}`}
+              </p>
+              ) : null}
+              <p>
+                {`output ${humanizeToken(dreamArticulationSummary.lastOutputKind) || 'runtime dream hypothesis'}${dreamArticulationSummary.latestSignalId ? ` · ${dreamArticulationSummary.latestSignalId}` : ''}`}
+              </p>
+              <p>
+                {(dreamArticulation.createdAt || internalCadence.lastTickAt) ? `${formatFreshness(dreamArticulation.createdAt || internalCadence.lastTickAt)} · candidate only · internal only` : 'candidate only · internal only'}
+              </p>
             </div>
             ) : null}
           </div>
@@ -2366,6 +2478,19 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {embodiedStateRow(embodiedState, onOpenItem)}
                 {loopRuntimeRow(loopRuntime, onOpenItem)}
                 {idleConsolidationRow(idleConsolidation, onOpenItem)}
+                {dreamArticulationRow(dreamArticulation, onOpenItem)}
+                {sleepCadence ? detailRow({
+                  ...sleepCadence,
+                  createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,
+                  source: internalCadence.source || '/mc/internal-cadence',
+                  summary: `${cadenceProducerLabel(sleepCadence)}${cadenceProducerReason(sleepCadence) ? ` · ${cadenceProducerReason(sleepCadence)}` : ''}`,
+                }, 'Sleep Consolidation Cadence', onOpenItem) : null}
+                {dreamCadence ? detailRow({
+                  ...dreamCadence,
+                  createdAt: dreamCadence.lastRunAt || internalCadence.lastTickAt,
+                  source: internalCadence.source || '/mc/internal-cadence',
+                  summary: `${cadenceProducerLabel(dreamCadence)}${cadenceProducerReason(dreamCadence) ? ` · ${cadenceProducerReason(dreamCadence)}` : ''}`,
+                }, 'Dream Articulation Cadence', onOpenItem) : null}
                 {visibleLoopRuntimeItems.map((item) => loopRuntimeItemRow(item, onOpenItem))}
                 {detailRow(data?.development?.webchatExecutionPilotSupport, 'Webchat Execution Pilot', onOpenItem)}
               </div>

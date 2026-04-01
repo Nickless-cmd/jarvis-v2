@@ -1736,6 +1736,12 @@ def _jarvis_continuity_summary(
 def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
     state = heartbeat.get("state") or {}
     embodied = heartbeat.get("embodied_state") or {}
+    idle_consolidation = heartbeat.get("idle_consolidation") or {}
+    idle_summary = idle_consolidation.get("summary") or {}
+    idle_last_result = idle_consolidation.get("last_result") or {}
+    dream_articulation = heartbeat.get("dream_articulation") or {}
+    dream_summary = dream_articulation.get("summary") or {}
+    dream_last_result = dream_articulation.get("last_result") or {}
     return {
         "enabled": "enabled" if state.get("enabled") else "disabled",
         "status": str(
@@ -1753,6 +1759,26 @@ def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
         "next_tick_at": str(state.get("next_tick_at") or ""),
         "trigger": str(state.get("last_trigger_source") or "none"),
         "embodied_state": str(embodied.get("state") or "unknown"),
+        "idle_consolidation": str(
+            idle_summary.get("last_state")
+            or idle_last_result.get("consolidation_state")
+            or "idle"
+        ),
+        "idle_consolidation_reason": str(
+            idle_last_result.get("reason")
+            or idle_summary.get("last_reason")
+            or "no-run-yet"
+        ),
+        "dream_articulation": str(
+            dream_summary.get("last_state")
+            or dream_last_result.get("candidate_state")
+            or "idle"
+        ),
+        "dream_articulation_reason": str(
+            dream_last_result.get("reason")
+            or dream_summary.get("last_reason")
+            or "no-run-yet"
+        ),
     }
 
 

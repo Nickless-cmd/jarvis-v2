@@ -1,15 +1,11 @@
 import { useState } from 'react'
-import { ChevronDown, Activity, FolderKanban, ListChecks, Cable, Eye, Rocket, DollarSign, Bot, MoreHorizontal } from 'lucide-react'
+import { Activity, Eye, Bot, MoreHorizontal } from 'lucide-react'
 
 const PRIMARY_TABS = [
   { id: 'overview', label: 'Overview', icon: Activity },
-  { id: 'runs', label: 'Runs', icon: FolderKanban },
-  { id: 'approvals', label: 'Approvals', icon: ListChecks },
-  { id: 'sessions', label: 'Channels', icon: Cable },
+  { id: 'operations', label: 'Operations', icon: Bot },
   { id: 'observability', label: 'Observability', icon: Eye },
-  { id: 'incident', label: 'Incident', icon: Rocket },
-  { id: 'cost', label: 'Cost', icon: DollarSign },
-  { id: 'agents', label: 'Agents', icon: Bot },
+  { id: 'jarvis', label: 'Jarvis', icon: Bot },
 ]
 
 const MORE_TABS = [

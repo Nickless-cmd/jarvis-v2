@@ -92,6 +92,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.epistemic_runtime_state",
         "apps.api.jarvis_api.services.subagent_ecology",
         "apps.api.jarvis_api.services.council_runtime",
+        "apps.api.jarvis_api.services.adaptive_planner_runtime",
         "apps.api.jarvis_api.services.loop_runtime",
         "apps.api.jarvis_api.services.idle_consolidation",
         "apps.api.jarvis_api.services.dream_articulation",
@@ -296,6 +297,9 @@ def isolated_runtime(
         ],
         council_runtime=modules[
             "apps.api.jarvis_api.services.council_runtime"
+        ],
+        adaptive_planner_runtime=modules[
+            "apps.api.jarvis_api.services.adaptive_planner_runtime"
         ],
         loop_runtime=modules[
             "apps.api.jarvis_api.services.loop_runtime"

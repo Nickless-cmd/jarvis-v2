@@ -52,6 +52,9 @@ from apps.api.jarvis_api.services.subagent_ecology import (
 from apps.api.jarvis_api.services.council_runtime import (
     build_council_runtime_surface,
 )
+from apps.api.jarvis_api.services.adaptive_planner_runtime import (
+    build_adaptive_planner_runtime_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -251,6 +254,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     prompt_evolution = build_prompt_evolution_runtime_surface()
     subagent_ecology = build_subagent_ecology_surface()
     council_runtime = build_council_runtime_surface()
+    adaptive_planner = build_adaptive_planner_runtime_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -281,6 +285,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "prompt_evolution": prompt_evolution,
             "subagent_ecology": subagent_ecology,
             "council_runtime": council_runtime,
+            "adaptive_planner": adaptive_planner,
         },
     )
     return {
@@ -297,6 +302,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "prompt_evolution": prompt_evolution,
         "subagent_ecology": subagent_ecology,
         "council_runtime": council_runtime,
+        "adaptive_planner": adaptive_planner,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -809,6 +815,7 @@ def _build_heartbeat_context(
     prompt_evolution = build_prompt_evolution_runtime_surface()
     subagent_ecology = build_subagent_ecology_surface()
     council_runtime = build_council_runtime_surface()
+    adaptive_planner = build_adaptive_planner_runtime_surface()
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -822,6 +829,7 @@ def _build_heartbeat_context(
         prompt_evolution=prompt_evolution,
         subagent_ecology=subagent_ecology,
         council_runtime=council_runtime,
+        adaptive_planner=adaptive_planner,
     )
 
     return {
@@ -842,6 +850,7 @@ def _build_heartbeat_context(
         "prompt_evolution": prompt_evolution,
         "subagent_ecology": subagent_ecology,
         "council_runtime": council_runtime,
+        "adaptive_planner": adaptive_planner,
         "influence_trace": influence_trace,
     }
 
@@ -858,6 +867,7 @@ def _build_influence_trace(
     prompt_evolution: dict[str, object],
     subagent_ecology: dict[str, object],
     council_runtime: dict[str, object],
+    adaptive_planner: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -954,6 +964,16 @@ def _build_influence_trace(
     else:
         inputs_absent.append("council-runtime")
 
+    planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
+    plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
+    risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")
+    if planner_mode not in {"incremental"} or risk_posture != "balanced":
+        inputs_present.append(
+            f"adaptive-planner ({planner_mode}, horizon={plan_horizon}, risk={risk_posture})"
+        )
+    else:
+        inputs_absent.append("adaptive-planner")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -980,6 +1000,9 @@ def _build_influence_trace(
         "council_state": council_state,
         "council_recommendation": council_recommendation,
         "council_divergence_level": council_divergence,
+        "adaptive_planner_mode": planner_mode,
+        "adaptive_plan_horizon": plan_horizon,
+        "adaptive_risk_posture": risk_posture,
     }
 
 

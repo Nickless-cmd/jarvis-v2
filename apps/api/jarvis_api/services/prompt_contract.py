@@ -1268,6 +1268,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     embodied = context.get("embodied_state") or {}
     affective = context.get("affective_meta_state") or {}
     epistemic = context.get("epistemic_runtime_state") or {}
+    adaptive_planner = context.get("adaptive_planner") or {}
     loop_runtime = context.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
@@ -1287,6 +1288,12 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f"- epistemic_state={epistemic.get('wrongness_state') or 'clear'}"
                 f" | regret={epistemic.get('regret_signal') or 'none'}"
                 f" | counterfactual={epistemic.get('counterfactual_mode') or 'none'}"
+            ),
+            (
+                f"- adaptive_planner={adaptive_planner.get('planner_mode') or 'incremental'}"
+                f" | horizon={adaptive_planner.get('plan_horizon') or 'near'}"
+                f" | posture={adaptive_planner.get('planning_posture') or 'staged'}"
+                f" | risk={adaptive_planner.get('risk_posture') or 'balanced'}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"
@@ -1480,6 +1487,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
         epistemic = build_epistemic_runtime_prompt_section()
         if epistemic:
             parts.append(epistemic)
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.adaptive_planner_runtime import (
+            build_adaptive_planner_prompt_section,
+        )
+        adaptive_planner = build_adaptive_planner_prompt_section()
+        if adaptive_planner:
+            parts.append(adaptive_planner)
     except Exception:
         pass
     try:

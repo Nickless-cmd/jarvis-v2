@@ -91,6 +91,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.loop_runtime",
         "apps.api.jarvis_api.services.idle_consolidation",
         "apps.api.jarvis_api.services.dream_articulation",
+        "apps.api.jarvis_api.services.prompt_evolution_runtime",
         "apps.api.jarvis_api.services.runtime_self_model",
         "apps.api.jarvis_api.routes.mission_control",
     ]
@@ -288,6 +289,9 @@ def isolated_runtime(
         ],
         dream_articulation=modules[
             "apps.api.jarvis_api.services.dream_articulation"
+        ],
+        prompt_evolution_runtime=modules[
+            "apps.api.jarvis_api.services.prompt_evolution_runtime"
         ],
         runtime_self_model=modules[
             "apps.api.jarvis_api.services.runtime_self_model"

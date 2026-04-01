@@ -49,6 +49,7 @@ def build_runtime_self_model() -> dict[str, object]:
         "embodied_state": _embodied_state_surface(),
         "affective_meta_state": _affective_meta_state_surface(),
         "epistemic_runtime_state": _epistemic_runtime_state_surface(),
+        "subagent_ecology": _subagent_ecology_surface(),
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
         "dream_articulation": _dream_articulation_surface(),
@@ -126,6 +127,23 @@ def _collect_layers() -> list[dict[str, str]]:
             f"wrongness={epistemic_state.get('wrongness_state') or 'clear'}; "
             f"regret={epistemic_state.get('regret_signal') or 'none'}; "
             f"counterfactual={epistemic_state.get('counterfactual_mode') or 'none'}."
+        ),
+    })
+
+    subagent_ecology = _subagent_ecology_surface()
+    ecology_summary = subagent_ecology.get("summary") or {}
+    layers.append({
+        "id": "subagent-ecology-light",
+        "label": "Subagent ecology light",
+        "kind": "orchestration",
+        "role": "active" if int(ecology_summary.get("active_count") or 0) > 0 else "idle",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"active={int(ecology_summary.get('active_count') or 0)}; "
+            f"blocked={int(ecology_summary.get('blocked_count') or 0)}; "
+            f"last={ecology_summary.get('last_active_role_name') or 'none'}; "
+            f"tool_access={subagent_ecology.get('tool_access') or 'none'}."
         ),
     })
 
@@ -408,6 +426,8 @@ def build_self_model_prompt_lines() -> list[str]:
     embodied = model.get("embodied_state") or {}
     affective_meta = model.get("affective_meta_state") or {}
     epistemic = model.get("epistemic_runtime_state") or {}
+    subagent_ecology = model.get("subagent_ecology") or {}
+    ecology_summary = subagent_ecology.get("summary") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -460,6 +480,13 @@ def build_self_model_prompt_lines() -> list[str]:
         f"{epistemic.get('wrongness_state') or 'clear'}"
         f" | regret={epistemic.get('regret_signal') or 'none'}"
         f" | counterfactual={epistemic.get('counterfactual_mode') or 'none'}"
+    )
+    lines.append(
+        "  subagent_ecology: "
+        f"active={ecology_summary.get('active_count') or 0}"
+        f" | blocked={ecology_summary.get('blocked_count') or 0}"
+        f" | last={ecology_summary.get('last_active_role_name') or 'none'}"
+        f" | tool_access={subagent_ecology.get('tool_access') or 'none'}"
     )
     lines.append(
         "  loop_runtime: "
@@ -575,6 +602,29 @@ def _epistemic_runtime_state_surface() -> dict[str, object]:
             "regret_signal": "none",
             "counterfactual_mode": "none",
             "confidence": "low",
+        }
+
+
+def _subagent_ecology_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.subagent_ecology import (
+            build_subagent_ecology_surface,
+        )
+        return build_subagent_ecology_surface()
+    except Exception:
+        return {
+            "roles": [],
+            "summary": {
+                "role_count": 0,
+                "active_count": 0,
+                "idle_count": 0,
+                "cooling_count": 0,
+                "blocked_count": 0,
+                "last_active_role_name": "none",
+                "last_active_role_status": "none",
+                "last_activation_reason": "unavailable",
+            },
+            "tool_access": "none",
         }
 
 

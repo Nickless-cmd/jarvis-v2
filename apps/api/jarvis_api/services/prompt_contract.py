@@ -1491,6 +1491,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
             parts.append(loop_runtime)
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.subagent_ecology import (
+            build_subagent_ecology_prompt_section,
+        )
+        subagent_ecology = build_subagent_ecology_prompt_section()
+        if subagent_ecology:
+            parts.append(subagent_ecology)
+    except Exception:
+        pass
     if not parts:
         return None
     return "\n".join(parts)

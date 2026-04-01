@@ -90,6 +90,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.embodied_state",
         "apps.api.jarvis_api.services.affective_meta_state",
         "apps.api.jarvis_api.services.epistemic_runtime_state",
+        "apps.api.jarvis_api.services.subagent_ecology",
         "apps.api.jarvis_api.services.loop_runtime",
         "apps.api.jarvis_api.services.idle_consolidation",
         "apps.api.jarvis_api.services.dream_articulation",
@@ -288,6 +289,9 @@ def isolated_runtime(
         ],
         epistemic_runtime_state=modules[
             "apps.api.jarvis_api.services.epistemic_runtime_state"
+        ],
+        subagent_ecology=modules[
+            "apps.api.jarvis_api.services.subagent_ecology"
         ],
         loop_runtime=modules[
             "apps.api.jarvis_api.services.loop_runtime"

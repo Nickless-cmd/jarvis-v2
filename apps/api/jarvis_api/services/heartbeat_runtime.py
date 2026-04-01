@@ -46,6 +46,9 @@ from apps.api.jarvis_api.services.dream_articulation import (
 from apps.api.jarvis_api.services.prompt_evolution_runtime import (
     build_prompt_evolution_runtime_surface,
 )
+from apps.api.jarvis_api.services.subagent_ecology import (
+    build_subagent_ecology_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -243,6 +246,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     idle_consolidation = build_idle_consolidation_surface()
     dream_articulation = build_dream_articulation_surface()
     prompt_evolution = build_prompt_evolution_runtime_surface()
+    subagent_ecology = build_subagent_ecology_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -271,6 +275,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "idle_consolidation": idle_consolidation,
             "dream_articulation": dream_articulation,
             "prompt_evolution": prompt_evolution,
+            "subagent_ecology": subagent_ecology,
         },
     )
     return {
@@ -285,6 +290,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "idle_consolidation": idle_consolidation,
         "dream_articulation": dream_articulation,
         "prompt_evolution": prompt_evolution,
+        "subagent_ecology": subagent_ecology,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -795,6 +801,7 @@ def _build_heartbeat_context(
     epistemic_runtime_state = build_epistemic_runtime_state_surface()
     loop_runtime = build_loop_runtime_surface()
     prompt_evolution = build_prompt_evolution_runtime_surface()
+    subagent_ecology = build_subagent_ecology_surface()
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -806,6 +813,7 @@ def _build_heartbeat_context(
         epistemic_runtime_state=epistemic_runtime_state,
         loop_runtime=loop_runtime,
         prompt_evolution=prompt_evolution,
+        subagent_ecology=subagent_ecology,
     )
 
     return {
@@ -824,6 +832,7 @@ def _build_heartbeat_context(
         "epistemic_runtime_state": epistemic_runtime_state,
         "loop_runtime": loop_runtime,
         "prompt_evolution": prompt_evolution,
+        "subagent_ecology": subagent_ecology,
         "influence_trace": influence_trace,
     }
 
@@ -838,6 +847,7 @@ def _build_influence_trace(
     epistemic_runtime_state: dict[str, object],
     loop_runtime: dict[str, object],
     prompt_evolution: dict[str, object],
+    subagent_ecology: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -912,6 +922,18 @@ def _build_influence_trace(
     else:
         inputs_absent.append("prompt-evolution")
 
+    ecology_summary = subagent_ecology.get("summary") or {}
+    ecology_active = int(ecology_summary.get("active_count") or 0)
+    ecology_blocked = int(ecology_summary.get("blocked_count") or 0)
+    if ecology_active > 0 or ecology_blocked > 0:
+        inputs_present.append(
+            "subagent-ecology "
+            f"({ecology_active} active, {ecology_blocked} blocked, "
+            f"last={str(ecology_summary.get('last_active_role_name') or 'none')})"
+        )
+    else:
+        inputs_absent.append("subagent-ecology")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -933,6 +955,8 @@ def _build_influence_trace(
         "loop_runtime_status": str(loop_summary.get("current_status") or "none"),
         "loop_runtime_count": int(loop_summary.get("loop_count") or 0),
         "prompt_evolution_type": latest_prompt_type or "none",
+        "subagent_ecology_active_count": ecology_active,
+        "subagent_ecology_last_role": str(ecology_summary.get("last_active_role_name") or "none"),
     }
 
 

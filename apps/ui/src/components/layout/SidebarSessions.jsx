@@ -1,16 +1,23 @@
-import { Clock3, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
+
+function relativeTime(dateStr) {
+  if (!dateStr) return ''
+  const delta = Date.now() - new Date(dateStr).getTime()
+  if (isNaN(delta) || delta < 0) return ''
+  const sec = Math.floor(delta / 1000)
+  if (sec < 60) return 'lige nu'
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m siden`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}t siden`
+  return `${Math.floor(hr / 24)}d siden`
+}
 
 export function SidebarSessions({ sessions, activeSessionId, onSelect, onCreate }) {
   return (
     <section className="sidebar-sessions">
       <div className="sidebar-sessions-head">
-        <div>
-          <div className="sidebar-mini-label">Recent</div>
-          <h2>Chats</h2>
-        </div>
-        <button className="icon-btn sidebar-plus-btn" onClick={onCreate} title="New chat">
-          <Plus size={14} />
-        </button>
+        <span className="sidebar-mini-label mono">Seneste</span>
       </div>
 
       <div className="session-list">
@@ -21,21 +28,14 @@ export function SidebarSessions({ sessions, activeSessionId, onSelect, onCreate 
             onClick={() => onSelect(session.id)}
             title={session.title}
           >
-            <div className="session-item-copy">
-              <strong>{session.title}</strong>
-              <span>{session.lastMessage || session.last_message || 'No messages yet'}</span>
-            </div>
-            <small className="session-item-meta">
-              <Clock3 size={11} />
-              {session.updated_at ? 'saved' : 'recent'}
-            </small>
+            <div className="session-item-title">{session.title}</div>
+            <div className="session-item-time mono">{relativeTime(session.updated_at)}</div>
           </button>
         ))}
 
         {!sessions.length ? (
           <div className="sidebar-empty-state">
-            <strong>No chats yet</strong>
-            <span>Create a session to start a persisted thread.</span>
+            <span>Ingen chats endnu</span>
           </div>
         ) : null}
       </div>

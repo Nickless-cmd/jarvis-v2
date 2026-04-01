@@ -2,14 +2,13 @@ import { Activity, RefreshCcw, Radio, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { JarvisTab } from '../components/mission-control/JarvisTab'
+import { LivingMindTab } from '../components/mission-control/LivingMindTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
 import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
 import { OperationsTab } from '../components/mission-control/OperationsTab'
 import { OverviewTab } from '../components/mission-control/OverviewTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
-
-const DEFAULT_JARVIS_SUB_TAB = 'jarvis-core'
 
 export function MissionControlPage({ selection, onSelectionChange }) {
   const {
@@ -34,7 +33,6 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     actOnDevelopmentFocus,
   } = useMissionControlPhaseA({ active: true, selection })
   const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
-  const [activeJarvisSubTab, setActiveJarvisSubTab] = useState(DEFAULT_JARVIS_SUB_TAB)
 
   const filteredObservability = useMemo(() => {
     if (!sections.observability) return sections.observability
@@ -45,7 +43,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     }
   }, [sections.observability, eventFamilyFilter])
 
-  const activeSectionData = sections[activeTab] || null
+  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' ? sections.jarvis : null) || null
   const freshnessLabel = formatFreshness(activeSectionData?.fetchedAt)
   const updateModeLabel = mcUpdateModeLabel(activeTab)
 
@@ -83,11 +81,9 @@ export function MissionControlPage({ selection, onSelectionChange }) {
         </div>
       </section>
 
-      <MCTabBar 
-        activeTab={activeTab} 
+      <MCTabBar
+        activeTab={activeTab}
         onChange={setActiveTab}
-        activeJarvisSubTab={activeJarvisSubTab}
-        onJarvisSubTabChange={setActiveJarvisSubTab}
       />
 
       {activeTab === 'overview' ? (
@@ -137,13 +133,12 @@ export function MissionControlPage({ selection, onSelectionChange }) {
         </div>
       ) : null}
 
-      {activeTab === 'jarvis' ? (
-        <JarvisTab
+      {activeTab === 'living-mind' ? (
+        <LivingMindTab
           data={sections.jarvis}
           onOpenItem={openJarvisDetail}
           onHeartbeatTick={actOnHeartbeatTick}
           heartbeatBusy={isRefreshing}
-          subTab={activeJarvisSubTab}
         />
       ) : null}
 

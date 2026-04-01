@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Activity, Eye, Bot, MoreHorizontal } from 'lucide-react'
+import { Activity, Eye, Bot, Brain, MoreHorizontal } from 'lucide-react'
 
 const PRIMARY_TABS = [
   { id: 'overview', label: 'Overview', icon: Activity },
   { id: 'operations', label: 'Operations', icon: Bot },
   { id: 'observability', label: 'Observability', icon: Eye },
-  { id: 'jarvis', label: 'Jarvis', icon: Bot },
+  { id: 'living-mind', label: 'Living Mind', icon: Brain },
 ]
 
 const MORE_TABS = [
@@ -20,17 +20,9 @@ const MORE_TABS = [
   { id: 'self', label: 'Self' },
 ]
 
-const JARVIS_SUB_TABS = [
-  { id: 'jarvis-core', label: 'Core', parent: 'jarvis' },
-  { id: 'jarvis-identity', label: 'Identity', parent: 'jarvis' },
-  { id: 'jarvis-continuity', label: 'Continuity', parent: 'jarvis' },
-  { id: 'jarvis-selfreview', label: 'Self-Review', parent: 'jarvis' },
-]
-
-export function MCTabBar({ activeTab, onChange, activeJarvisSubTab, onJarvisSubTabChange }) {
+export function MCTabBar({ activeTab, onChange }) {
   const [moreOpen, setMoreOpen] = useState(false)
-  const isJarvisActive = activeTab === 'jarvis'
-  
+
   const activePrimaryTab = PRIMARY_TABS.find(t => t.id === activeTab)
   const isMoreTab = !PRIMARY_TABS.find(t => t.id === activeTab)
   
@@ -77,19 +69,6 @@ export function MCTabBar({ activeTab, onChange, activeJarvisSubTab, onJarvisSubT
           )}
         </div>
       </nav>
-      {isJarvisActive && (
-        <nav className="mc-sub-tabbar">
-          {JARVIS_SUB_TABS.map((tab) => (
-            <button
-              className={tab.id === activeJarvisSubTab ? 'mc-sub-tab active' : 'mc-sub-tab'}
-              key={tab.id}
-              onClick={() => onJarvisSubTabChange(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      )}
     </>
   )
 }

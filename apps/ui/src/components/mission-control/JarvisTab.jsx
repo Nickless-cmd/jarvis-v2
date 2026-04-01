@@ -162,6 +162,22 @@ function councilRuntimeRoleSummary(item) {
   return (item?.participatingRoles || []).map((role) => humanizeToken(role)).filter(Boolean)
 }
 
+function adaptivePlannerUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function adaptivePlannerBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -627,6 +643,39 @@ function councilRolePositionRow(item, onOpen) {
         <StatusPill status={item.status || 'idle'} />
         {item.position ? <small>{humanizeToken(item.position)}</small> : null}
         {item.toolAccess ? <small>{`tool ${humanizeToken(item.toolAccess)}`}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function adaptivePlannerRow(item, onOpen) {
+  if (!item || !item.plannerMode) return null
+  const detailText = [
+    item.summary,
+    item.planHorizon ? `horizon ${humanizeToken(item.planHorizon)}` : '',
+    item.riskPosture ? `risk ${humanizeToken(item.riskPosture)}` : '',
+    item.nextPlanningBias ? `bias ${humanizeToken(item.nextPlanningBias)}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Adaptive Planner State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'adaptive planner runtime detail',
+      })}
+    >
+      <div>
+        <strong>Adaptive Planner</strong>
+        <span>{detailText || 'Inspect bounded adaptive planner runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.plannerMode || 'incremental'} />
+        {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -2124,6 +2173,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
     source: councilRuntime.source || '/mc/council-runtime',
     createdAt: councilRuntime.createdAt,
   }))
+  const adaptivePlanner = data?.adaptivePlanner || heartbeat?.adaptivePlanner || data?.development?.adaptivePlanner || data?.runtimeSelfModel?.adaptive_planner || {}
+  const hasAdaptivePlanner = Boolean(adaptivePlanner?.plannerMode)
+  const adaptivePlannerUsage = adaptivePlannerUsageSummary(adaptivePlanner)
+  const adaptivePlannerBoundary = adaptivePlannerBoundarySummary(adaptivePlanner)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2382,6 +2435,19 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <strong>{humanizeToken(councilRuntime.recommendation || councilRuntime.councilState) || 'quiet council'}</strong>
           <small className="muted">
             {`${councilRuntimeRoles.join(' · ') || 'no roles'} · ${humanizeToken(councilRuntime.divergenceLevel) || 'low'} divergence${councilRuntime.createdAt ? ` · ${formatFreshness(councilRuntime.createdAt)}` : ''}`}
+          </small>
+        </article>
+        ) : null}
+        {hasAdaptivePlanner ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: adaptivePlanner.source || '/mc/adaptive-planner',
+          fetchedAt: adaptivePlanner.createdAt || data?.fetchedAt,
+          mode: 'adaptive planner runtime snapshot',
+        })}>
+          <span>Adaptive Planner</span>
+          <strong>{humanizeToken(adaptivePlanner.plannerMode) || 'incremental'}</strong>
+          <small className="muted">
+            {`horizon ${humanizeToken(adaptivePlanner.planHorizon) || 'near'} · risk ${humanizeToken(adaptivePlanner.riskPosture) || 'balanced'}${adaptivePlanner.createdAt ? ` · ${formatFreshness(adaptivePlanner.createdAt)}` : ''}`}
           </small>
         </article>
         ) : null}
@@ -3020,6 +3086,29 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {councilRuntimeBoundary ? <p>{councilRuntimeBoundary}</p> : null}
             </div>
             ) : null}
+            {hasAdaptivePlanner ? (
+            <div className="compact-metric" title="Derived internal-only adaptive planner runtime for bounded planning posture and horizon">
+              <span>Adaptive Planner</span>
+              <strong>{humanizeToken(adaptivePlanner.plannerMode) || 'incremental'}</strong>
+              <p>{adaptivePlanner.summary || 'No bounded adaptive planner state recorded yet.'}</p>
+              <p>
+                {`horizon ${humanizeToken(adaptivePlanner.planHorizon) || 'near'} · posture ${humanizeToken(adaptivePlanner.planningPosture) || 'staged'}`}
+              </p>
+              <p>
+                {`risk ${humanizeToken(adaptivePlanner.riskPosture) || 'balanced'} · bias ${humanizeToken(adaptivePlanner.nextPlanningBias) || 'stepwise progress'} · confidence ${humanizeToken(adaptivePlanner.confidence) || 'low'}`}
+              </p>
+              <p>
+                {adaptivePlanner.createdAt
+                  ? `${formatFreshness(adaptivePlanner.createdAt)} · ${humanizeToken(adaptivePlanner.freshnessState) || 'unknown'}`
+                  : humanizeToken(adaptivePlanner.freshnessState) || 'unknown'}
+              </p>
+              <p>
+                {`internal only · ${humanizeToken(adaptivePlanner.authority) || 'derived runtime truth'}`}
+              </p>
+              {adaptivePlannerUsage ? <p>{`used by ${adaptivePlannerUsage}`}</p> : null}
+              {adaptivePlannerBoundary ? <p>{adaptivePlannerBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -3047,6 +3136,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {epistemicRuntimeStateRow(epistemicRuntimeState, onOpenItem)}
                 {subagentEcologyRow(subagentEcology, onOpenItem)}
                 {councilRuntimeRow(councilRuntime, onOpenItem)}
+                {adaptivePlannerRow(adaptivePlanner, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,

@@ -210,6 +210,23 @@ function guidedLearningBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function adaptiveLearningUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  if (usage.guidedLearningEnrichment) labels.push('guided-learning')
+  return labels.join(' · ')
+}
+
+function adaptiveLearningBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -772,6 +789,39 @@ function guidedLearningRow(item, onOpen) {
       </div>
       <div className="mc-row-meta">
         <StatusPill status={item.learningMode || 'reinforce'} />
+        {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function adaptiveLearningRow(item, onOpen) {
+  if (!item || !item.learningEngineMode) return null
+  const detailText = [
+    item.summary,
+    item.reinforcementTarget ? `target ${humanizeToken(item.reinforcementTarget)}` : '',
+    item.retentionBias ? `retain ${humanizeToken(item.retentionBias)}` : '',
+    item.maturationState ? `maturation ${humanizeToken(item.maturationState)}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Adaptive Learning State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'adaptive learning runtime detail',
+      })}
+    >
+      <div>
+        <strong>Adaptive Learning</strong>
+        <span>{detailText || 'Inspect bounded adaptive learning runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.learningEngineMode || 'retain'} />
         {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
@@ -2283,6 +2333,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const hasGuidedLearning = Boolean(guidedLearning?.learningMode)
   const guidedLearningUsage = guidedLearningUsageSummary(guidedLearning)
   const guidedLearningBoundary = guidedLearningBoundarySummary(guidedLearning)
+  const adaptiveLearning = data?.adaptiveLearning || heartbeat?.adaptiveLearning || data?.development?.adaptiveLearning || data?.runtimeSelfModel?.adaptive_learning || {}
+  const hasAdaptiveLearning = Boolean(adaptiveLearning?.learningEngineMode)
+  const adaptiveLearningUsage = adaptiveLearningUsageSummary(adaptiveLearning)
+  const adaptiveLearningBoundary = adaptiveLearningBoundarySummary(adaptiveLearning)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2580,6 +2634,19 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <strong>{humanizeToken(guidedLearning.learningMode) || 'reinforce'}</strong>
           <small className="muted">
             {`focus ${humanizeToken(guidedLearning.learningFocus) || 'reasoning'} · pressure ${humanizeToken(guidedLearning.learningPressure) || 'low'}${guidedLearning.createdAt ? ` · ${formatFreshness(guidedLearning.createdAt)}` : ''}`}
+          </small>
+        </article>
+        ) : null}
+        {hasAdaptiveLearning ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: adaptiveLearning.source || '/mc/adaptive-learning',
+          fetchedAt: adaptiveLearning.createdAt || data?.fetchedAt,
+          mode: 'adaptive learning runtime snapshot',
+        })}>
+          <span>Adaptive Learning</span>
+          <strong>{humanizeToken(adaptiveLearning.learningEngineMode) || 'retain'}</strong>
+          <small className="muted">
+            {`target ${humanizeToken(adaptiveLearning.reinforcementTarget) || 'reasoning'} · maturation ${humanizeToken(adaptiveLearning.maturationState) || 'early'}${adaptiveLearning.createdAt ? ` · ${formatFreshness(adaptiveLearning.createdAt)}` : ''}`}
           </small>
         </article>
         ) : null}
@@ -3287,6 +3354,29 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {guidedLearningBoundary ? <p>{guidedLearningBoundary}</p> : null}
             </div>
             ) : null}
+            {hasAdaptiveLearning ? (
+            <div className="compact-metric" title="Derived internal-only adaptive learning runtime for bounded reinforcement, attenuation, and maturation">
+              <span>Adaptive Learning</span>
+              <strong>{humanizeToken(adaptiveLearning.learningEngineMode) || 'retain'}</strong>
+              <p>{adaptiveLearning.summary || 'No bounded adaptive learning state recorded yet.'}</p>
+              <p>
+                {`target ${humanizeToken(adaptiveLearning.reinforcementTarget) || 'reasoning'} · retention ${humanizeToken(adaptiveLearning.retentionBias) || 'light'}`}
+              </p>
+              <p>
+                {`attenuation ${humanizeToken(adaptiveLearning.attenuationBias) || 'none'} · maturation ${humanizeToken(adaptiveLearning.maturationState) || 'early'} · confidence ${humanizeToken(adaptiveLearning.confidence) || 'low'}`}
+              </p>
+              <p>
+                {adaptiveLearning.createdAt
+                  ? `${formatFreshness(adaptiveLearning.createdAt)} · ${humanizeToken(adaptiveLearning.freshnessState) || 'unknown'}`
+                  : humanizeToken(adaptiveLearning.freshnessState) || 'unknown'}
+              </p>
+              <p>
+                {`internal only · ${humanizeToken(adaptiveLearning.authority) || 'derived runtime truth'}`}
+              </p>
+              {adaptiveLearningUsage ? <p>{`used by ${adaptiveLearningUsage}`}</p> : null}
+              {adaptiveLearningBoundary ? <p>{adaptiveLearningBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -3317,6 +3407,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {adaptivePlannerRow(adaptivePlanner, onOpenItem)}
                 {adaptiveReasoningRow(adaptiveReasoning, onOpenItem)}
                 {guidedLearningRow(guidedLearning, onOpenItem)}
+                {adaptiveLearningRow(adaptiveLearning, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,

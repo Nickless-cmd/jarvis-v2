@@ -2,6 +2,7 @@ import { Activity, RefreshCcw, Radio, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { JarvisTab } from '../components/mission-control/JarvisTab'
+import { ContinuityTab } from '../components/mission-control/ContinuityTab'
 import { LivingMindTab } from '../components/mission-control/LivingMindTab'
 import { SelfReviewTab } from '../components/mission-control/SelfReviewTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
@@ -44,7 +45,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     }
   }, [sections.observability, eventFamilyFilter])
 
-  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' || activeTab === 'self-review' ? sections.jarvis : null) || null
+  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' || activeTab === 'self-review' || activeTab === 'continuity' ? sections.jarvis : null) || null
   const freshnessLabel = formatFreshness(activeSectionData?.fetchedAt)
   const updateModeLabel = mcUpdateModeLabel(activeTab)
 
@@ -145,6 +146,10 @@ export function MissionControlPage({ selection, onSelectionChange }) {
 
       {activeTab === 'self-review' ? (
         <SelfReviewTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
+      ) : null}
+
+      {activeTab === 'continuity' ? (
+        <ContinuityTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
       ) : null}
 
       <DetailDrawer

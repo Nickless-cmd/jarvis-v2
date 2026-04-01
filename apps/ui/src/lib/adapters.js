@@ -3240,6 +3240,14 @@ export const backend = {
     return readSseStream(response, { onRun, onDelta, onDone, onFailed, onWorkingStep })
   },
 
+  async getSystemHealth() {
+    try {
+      return await requestJson('/mc/system/health')
+    } catch {
+      return { cpu_pct: 0, ram_pct: 0, disk_free_mb: 0 }
+    }
+  },
+
   async getCostSummary() {
     try {
       const data = await requestJson('/mc/cost/summary')

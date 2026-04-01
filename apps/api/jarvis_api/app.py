@@ -12,6 +12,7 @@ from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.mission_control import router as mc_router
+from apps.api.jarvis_api.routes.system_health import router as system_health_router
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.bootstrap import ensure_runtime_dirs
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(mc_router)
     app.include_router(live_router)
+    app.include_router(system_health_router, prefix="/mc")
 
     @app.on_event("startup")
     async def on_startup() -> None:

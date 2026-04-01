@@ -80,6 +80,22 @@ function promptEvolutionBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function affectiveMetaUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function affectiveMetaBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -343,6 +359,39 @@ function promptEvolutionRow(item, onOpen) {
         <StatusPill status={summary.lastState || 'idle'} />
         {summary.latestTargetAsset && summary.latestTargetAsset !== 'none' ? <small>{summary.latestTargetAsset}</small> : null}
         {item.proposalMode ? <small>{humanizeToken(item.proposalMode)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function affectiveMetaStateRow(item, onOpen) {
+  if (!item || !item.state || item.state === 'unknown') return null
+  const detailText = [
+    item.summary,
+    item.bearing ? `bearing ${humanizeToken(item.bearing)}` : '',
+    item.monitoringMode ? `mode ${humanizeToken(item.monitoringMode)}` : '',
+    item.reflectiveLoad ? `load ${humanizeToken(item.reflectiveLoad)}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Affective Meta State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'affective/meta runtime detail',
+      })}
+    >
+      <div>
+        <strong>Affective Meta State</strong>
+        <span>{detailText || 'Inspect affective/meta runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.state} />
+        {item.bearing ? <small>{humanizeToken(item.bearing)}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
@@ -1812,6 +1861,10 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
     promptEvolutionSummary?.latestProposalId,
   )
   const promptEvolutionBoundary = promptEvolutionBoundarySummary(promptEvolution)
+  const affectiveMetaState = data?.affectiveMetaState || heartbeat?.affectiveMetaState || data?.development?.affectiveMetaState || data?.runtimeSelfModel?.affective_meta_state || {}
+  const hasAffectiveMetaState = Boolean(affectiveMetaState?.state && affectiveMetaState.state !== 'unknown')
+  const affectiveMetaUsage = affectiveMetaUsageSummary(affectiveMetaState)
+  const affectiveMetaBoundary = affectiveMetaBoundarySummary(affectiveMetaState)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2015,6 +2068,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               ? `${promptEvolutionSummary.latestTargetAsset} · `
               : '') + (humanizeToken(promptEvolutionSummary.lastReason || promptEvolutionCadence?.lastTickStatus?.reason) || 'no run yet')}
             {(promptEvolution.createdAt || internalCadence.lastTickAt) ? ` · ${formatFreshness(promptEvolution.createdAt || internalCadence.lastTickAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {hasAffectiveMetaState ? (
+        <article className="mc-stat tone-green" title={sectionTitleWithMeta({
+          source: affectiveMetaState.source || '/mc/affective-meta-state',
+          fetchedAt: affectiveMetaState.createdAt || data?.fetchedAt,
+          mode: 'affective/meta runtime snapshot',
+        })}>
+          <span>Affective Meta</span>
+          <strong>{humanizeToken(affectiveMetaState.state) || 'unknown'}</strong>
+          <small className="muted">
+            {`bearing ${humanizeToken(affectiveMetaState.bearing) || 'unknown'} · mode ${humanizeToken(affectiveMetaState.monitoringMode) || 'unknown'}`}
+            {affectiveMetaState.createdAt ? ` · ${formatFreshness(affectiveMetaState.createdAt)}` : ''}
           </small>
         </article>
         ) : null}
@@ -2567,6 +2634,23 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {promptEvolutionBoundary ? <p>{promptEvolutionBoundary}</p> : null}
             </div>
             ) : null}
+            {hasAffectiveMetaState ? (
+            <div className="compact-metric" title="Derived internal-only runtime orientation state for bounded affective/meta bearing">
+              <span>Affective Meta</span>
+              <strong>{humanizeToken(affectiveMetaState.state) || 'unknown'}</strong>
+              <p>{affectiveMetaState.summary || 'No affective/meta runtime orientation recorded yet.'}</p>
+              <p>
+                {`bearing ${humanizeToken(affectiveMetaState.bearing) || 'unknown'} · mode ${humanizeToken(affectiveMetaState.monitoringMode) || 'unknown'} · load ${humanizeToken(affectiveMetaState.reflectiveLoad) || 'low'}`}
+              </p>
+              <p>
+                {affectiveMetaState.createdAt
+                  ? `${formatFreshness(affectiveMetaState.createdAt)} · ${humanizeToken(affectiveMetaState.freshnessState) || 'unknown'}`
+                  : humanizeToken(affectiveMetaState.freshnessState) || 'unknown'}
+              </p>
+              {affectiveMetaUsage ? <p>{`used by ${affectiveMetaUsage}`}</p> : null}
+              {affectiveMetaBoundary ? <p>{affectiveMetaBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2590,6 +2674,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {idleConsolidationRow(idleConsolidation, onOpenItem)}
                 {dreamArticulationRow(dreamArticulation, onOpenItem)}
                 {promptEvolutionRow(promptEvolution, onOpenItem)}
+                {affectiveMetaStateRow(affectiveMetaState, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,

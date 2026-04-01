@@ -2552,11 +2552,14 @@ def _merge_runtime_state(
     now: datetime,
 ) -> dict[str, object]:
     last_tick_at = str(persisted.get("last_tick_at") or "")
-    next_tick_at = str(persisted.get("next_tick_at") or "") or _compute_next_tick_at(
-        interval_minutes=int(policy["interval_minutes"]),
-        last_tick_at=last_tick_at,
-        enabled=bool(policy["enabled"]),
-    )
+    if last_tick_at:
+        next_tick_at = _compute_next_tick_at(
+            interval_minutes=int(policy["interval_minutes"]),
+            last_tick_at=last_tick_at,
+            enabled=bool(policy["enabled"]),
+        )
+    else:
+        next_tick_at = str(persisted.get("next_tick_at") or "")
     due = False
     if policy["enabled"] and policy["kill_switch"] == "enabled":
         if not next_tick_at:

@@ -19,6 +19,9 @@ from apps.api.jarvis_api.services.prompt_contract import (
 from apps.api.jarvis_api.services.embodied_state import (
     build_embodied_state_surface,
 )
+from apps.api.jarvis_api.services.loop_runtime import (
+    build_loop_runtime_surface,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -753,6 +756,12 @@ def mc_embodied_state() -> dict:
     return build_embodied_state_surface()
 
 
+@router.get("/loop-runtime")
+def mc_loop_runtime() -> dict:
+    """Return the current bounded loop runtime state."""
+    return build_loop_runtime_surface()
+
+
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
     return {
@@ -825,6 +834,7 @@ def mc_runtime() -> dict:
         "settings": settings.to_dict(),
         "heartbeat_runtime": heartbeat_runtime_surface(),
         "runtime_embodied_state": build_embodied_state_surface(),
+        "runtime_loop_state": build_loop_runtime_surface(),
         "visible_execution": visible_execution_readiness(),
         "visible_identity": load_visible_identity_summary(),
         "visible_session_continuity": visible_session_continuity_summary(),

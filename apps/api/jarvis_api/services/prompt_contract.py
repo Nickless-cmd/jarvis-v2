@@ -1266,6 +1266,8 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     budget = str(context.get("budget_status") or "runtime-governed")
     kill_switch = str(context.get("kill_switch") or "enabled")
     embodied = context.get("embodied_state") or {}
+    loop_runtime = context.get("loop_runtime") or {}
+    loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
         [
             "Heartbeat runtime truth:",
@@ -1273,6 +1275,12 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
             (
                 f"- embodied_state={embodied.get('state') or 'unknown'}"
                 f" | embodied_strain={embodied.get('strain_level') or 'unknown'}"
+            ),
+            (
+                f"- loop_runtime={loop_summary.get('current_status') or 'none'}"
+                f" | active_loops={loop_summary.get('active_count') or 0}"
+                f" | standby_loops={loop_summary.get('standby_count') or 0}"
+                f" | resumed_loops={loop_summary.get('resumed_count') or 0}"
             ),
             "- Heartbeat may only propose or act within runtime-approved scope.",
         ]
@@ -1442,6 +1450,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
         embodied = build_embodied_state_prompt_section()
         if embodied:
             parts.append(embodied)
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.loop_runtime import (
+            build_loop_runtime_prompt_section,
+        )
+        loop_runtime = build_loop_runtime_prompt_section()
+        if loop_runtime:
+            parts.append(loop_runtime)
     except Exception:
         pass
     if not parts:

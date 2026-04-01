@@ -37,6 +37,9 @@ from apps.api.jarvis_api.services.dream_articulation import (
 from apps.api.jarvis_api.services.prompt_evolution_runtime import (
     build_prompt_evolution_runtime_surface,
 )
+from apps.api.jarvis_api.services.subagent_ecology import (
+    build_subagent_ecology_surface,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -809,6 +812,12 @@ def mc_prompt_evolution() -> dict:
     return build_prompt_evolution_runtime_surface()
 
 
+@router.get("/subagent-ecology")
+def mc_subagent_ecology() -> dict:
+    """Return the current bounded internal subagent ecology state."""
+    return build_subagent_ecology_surface()
+
+
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
     return {
@@ -883,6 +892,7 @@ def mc_runtime() -> dict:
         "runtime_embodied_state": build_embodied_state_surface(),
         "runtime_affective_meta_state": build_affective_meta_state_surface(),
         "runtime_epistemic_state": build_epistemic_runtime_state_surface(),
+        "runtime_subagent_ecology": build_subagent_ecology_surface(),
         "runtime_loop_state": build_loop_runtime_surface(),
         "runtime_idle_consolidation": build_idle_consolidation_surface(),
         "runtime_dream_articulation": build_dream_articulation_surface(),

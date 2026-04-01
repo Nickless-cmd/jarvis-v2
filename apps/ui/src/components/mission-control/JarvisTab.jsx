@@ -66,6 +66,13 @@ function idleConsolidationBoundarySummary(item) {
     .join(' / ')
 }
 
+function dreamArticulationBoundarySummary(item) {
+  const parts = []
+  if (item?.truth) parts.push(humanizeToken(item.truth))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -263,9 +270,10 @@ function idleConsolidationRow(item, onOpen) {
 function dreamArticulationRow(item, onOpen) {
   const summary = item?.summary || {}
   const lastResult = item?.lastResult || {}
+  const latestArtifact = item?.latestArtifact || {}
   if (!item || (!item.active && !item.lastRunAt && !summary.latestSignalId)) return null
   const detailText = [
-    lastResult.signalSummary || summary.latestSummary,
+    latestArtifact.title || lastResult.signalSummary || summary.latestSummary,
     summary.sourceInputCount ? `${summary.sourceInputCount} source input${summary.sourceInputCount === 1 ? '' : 's'}` : '',
     lastResult.reason ? humanizeToken(lastResult.reason) : '',
   ].filter(Boolean).join(' · ')
@@ -286,6 +294,8 @@ function dreamArticulationRow(item, onOpen) {
       </div>
       <div className="mc-row-meta">
         <StatusPill status={summary.lastState || 'idle'} />
+        {item.truth ? <small>{humanizeToken(item.truth)}</small> : null}
+        {item.visibility ? <small>{humanizeToken(item.visibility)}</small> : null}
         {summary.lastOutputKind ? <small>{humanizeToken(summary.lastOutputKind)}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
@@ -1739,11 +1749,13 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const dreamArticulation = data?.dreamArticulation || heartbeat?.dreamArticulation || data?.runtimeSelfModel?.dream_articulation || {}
   const dreamArticulationSummary = dreamArticulation?.summary || {}
   const dreamArticulationLastResult = dreamArticulation?.lastResult || {}
+  const dreamArticulationLatestArtifact = dreamArticulation?.latestArtifact || {}
   const hasDreamArticulation = Boolean(
     dreamArticulation?.active ||
     dreamArticulation?.lastRunAt ||
     dreamArticulationSummary?.latestSignalId,
   )
+  const dreamArticulationBoundary = dreamArticulationBoundarySummary(dreamArticulation)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2440,7 +2452,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
             <div className="compact-metric" title="Authoritative internal-only candidate runtime process for bounded dream articulation">
               <span>Dream Articulation</span>
               <strong>{humanizeToken(dreamArticulationSummary.lastState || cadenceProducerLabel(dreamCadence, 'idle')) || 'idle'}</strong>
-              <p>{dreamArticulationLastResult.signalSummary || dreamArticulationSummary.latestSummary || 'No dream articulation candidate recorded yet.'}</p>
+              <p>{dreamArticulationLatestArtifact.title || dreamArticulationLastResult.signalSummary || dreamArticulationSummary.latestSummary || 'No dream articulation candidate recorded yet.'}</p>
               <p>
                 {`result ${humanizeToken(dreamArticulationLastResult.reason || dreamArticulationSummary.lastReason || dreamCadence?.lastTickStatus?.reason) || 'no run yet'} · inputs ${dreamArticulationSummary.sourceInputCount || dreamArticulationLastResult.sourceInputs?.length || 0}`}
               </p>
@@ -2455,6 +2467,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               <p>
                 {(dreamArticulation.createdAt || internalCadence.lastTickAt) ? `${formatFreshness(dreamArticulation.createdAt || internalCadence.lastTickAt)} · candidate only · internal only` : 'candidate only · internal only'}
               </p>
+              {dreamArticulationBoundary ? <p>{dreamArticulationBoundary}</p> : null}
             </div>
             ) : null}
           </div>

@@ -633,3 +633,37 @@ button { cursor: pointer; }
   .now-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .mc-overview-grid, .mc-panels-grid { grid-template-columns: 1fr; }
 }
+
+/* ─── SHARED: MetricCard ─── */
+.metric-card {
+  padding: 14px 16px;
+  background: #1c1f25;
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 10px;
+  flex: 1;
+  min-width: 120px;
+}
+.metric-card-alert { border-color: rgba(212,150,58,0.25); }
+.metric-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px; color: #4e5262;
+}
+.metric-card-label {
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.metric-card-value {
+  font-size: 26px; font-weight: 300; color: #e4e6ed; letter-spacing: -0.02em;
+}
+.metric-card-sub { font-size: 9px; color: #4e5262; margin-top: 4px; }
+
+/* ─── SHARED: SectionTitle ─── */
+.section-title {
+  font-size: 9px; color: #4e5262; letter-spacing: 0.12em;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+
+/* ─── SHARED: Chip ─── */
+.chip {
+  display: inline-flex; font-size: 9px; padding: 2px 7px;
+  border-radius: 10px; letter-spacing: 0.06em; white-space: nowrap;
+}

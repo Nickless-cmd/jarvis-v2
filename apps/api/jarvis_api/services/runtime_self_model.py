@@ -47,6 +47,7 @@ def build_runtime_self_model() -> dict[str, object]:
     return {
         "layers": layers,
         "embodied_state": _embodied_state_surface(),
+        "affective_meta_state": _affective_meta_state_surface(),
         "loop_runtime": _loop_runtime_surface(),
         "idle_consolidation": _idle_consolidation_surface(),
         "dream_articulation": _dream_articulation_surface(),
@@ -94,6 +95,21 @@ def _collect_layers() -> list[dict[str, str]]:
             f"Host/body state={embodied.get('state') or 'unknown'}; "
             f"strain={embodied.get('strain_level') or 'unknown'}; "
             f"freshness={((embodied.get('freshness') or {}).get('state') or 'unknown')}."
+        ),
+    })
+
+    affective_meta = _affective_meta_state_surface()
+    layers.append({
+        "id": "affective-meta-light",
+        "label": "Affective / meta bundle light",
+        "kind": "orchestration",
+        "role": "active",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"state={affective_meta.get('state') or 'unknown'}; "
+            f"bearing={affective_meta.get('bearing') or 'unknown'}; "
+            f"monitoring={affective_meta.get('monitoring_mode') or 'unknown'}."
         ),
     })
 
@@ -374,6 +390,7 @@ def build_self_model_prompt_lines() -> list[str]:
     boundaries = model["truth_boundaries"]
     summary = model["summary"]
     embodied = model.get("embodied_state") or {}
+    affective_meta = model.get("affective_meta_state") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -414,6 +431,12 @@ def build_self_model_prompt_lines() -> list[str]:
         f"{embodied.get('state') or 'unknown'}"
         f" | strain={embodied.get('strain_level') or 'unknown'}"
         f" | recovery={embodied.get('recovery_state') or 'steady'}"
+    )
+    lines.append(
+        "  affective_meta_state: "
+        f"{affective_meta.get('state') or 'unknown'}"
+        f" | bearing={affective_meta.get('bearing') or 'unknown'}"
+        f" | monitoring={affective_meta.get('monitoring_mode') or 'unknown'}"
     )
     lines.append(
         "  loop_runtime: "
@@ -482,6 +505,20 @@ def _loop_runtime_surface() -> dict[str, object]:
                 "resumed_count": 0,
                 "closed_count": 0,
             }
+        }
+
+
+def _affective_meta_state_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.affective_meta_state import (
+            build_affective_meta_state_surface,
+        )
+        return build_affective_meta_state_surface()
+    except Exception:
+        return {
+            "state": "unknown",
+            "bearing": "unknown",
+            "monitoring_mode": "steady-check",
         }
 
 

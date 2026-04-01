@@ -22,6 +22,9 @@ from apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking import 
 from apps.api.jarvis_api.services.embodied_state import (
     build_embodied_state_surface,
 )
+from apps.api.jarvis_api.services.affective_meta_state import (
+    build_affective_meta_state_surface,
+)
 from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
     build_runtime_metabolism_state_signal_surface,
 )
@@ -231,6 +234,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     now = datetime.now(UTC)
     embodied_state = build_embodied_state_surface()
+    affective_meta_state = build_affective_meta_state_surface()
     loop_runtime = build_loop_runtime_surface()
     idle_consolidation = build_idle_consolidation_surface()
     dream_articulation = build_dream_articulation_surface()
@@ -257,6 +261,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
             "policy": policy,
             "recent_ticks": recent_ticks,
             "embodied_state": embodied_state,
+            "affective_meta_state": affective_meta_state,
             "loop_runtime": loop_runtime,
             "idle_consolidation": idle_consolidation,
             "dream_articulation": dream_articulation,
@@ -269,6 +274,7 @@ def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
         "recent_ticks": recent_ticks,
         "recent_events": recent_events,
         "embodied_state": embodied_state,
+        "affective_meta_state": affective_meta_state,
         "loop_runtime": loop_runtime,
         "idle_consolidation": idle_consolidation,
         "dream_articulation": dream_articulation,
@@ -779,6 +785,7 @@ def _build_heartbeat_context(
         self_knowledge_summary = {}
 
     embodied_state = build_embodied_state_surface()
+    affective_meta_state = build_affective_meta_state_surface()
     loop_runtime = build_loop_runtime_surface()
     prompt_evolution = build_prompt_evolution_runtime_surface()
 
@@ -788,6 +795,7 @@ def _build_heartbeat_context(
         liveness=liveness,
         self_knowledge_summary=self_knowledge_summary,
         embodied_state=embodied_state,
+        affective_meta_state=affective_meta_state,
         loop_runtime=loop_runtime,
         prompt_evolution=prompt_evolution,
     )
@@ -804,6 +812,7 @@ def _build_heartbeat_context(
         "liveness": liveness,
         "private_brain": private_brain_context,
         "embodied_state": embodied_state,
+        "affective_meta_state": affective_meta_state,
         "loop_runtime": loop_runtime,
         "prompt_evolution": prompt_evolution,
         "influence_trace": influence_trace,
@@ -816,6 +825,7 @@ def _build_influence_trace(
     liveness: dict[str, object],
     self_knowledge_summary: dict[str, object],
     embodied_state: dict[str, object],
+    affective_meta_state: dict[str, object],
     loop_runtime: dict[str, object],
     prompt_evolution: dict[str, object],
 ) -> dict[str, object]:
@@ -857,6 +867,13 @@ def _build_influence_trace(
     else:
         inputs_absent.append("embodied-host-state")
 
+    affective_state = str(affective_meta_state.get("state") or "settled")
+    affective_bearing = str(affective_meta_state.get("bearing") or "even")
+    if affective_state not in {"settled", "unknown"}:
+        inputs_present.append(f"affective-meta-state ({affective_state}, bearing={affective_bearing})")
+    else:
+        inputs_absent.append("affective-meta-state")
+
     loop_summary = loop_runtime.get("summary") or {}
     active_loops = int(loop_summary.get("active_count") or 0)
     resumed_loops = int(loop_summary.get("resumed_count") or 0)
@@ -888,6 +905,8 @@ def _build_influence_trace(
         "liveness_score": liveness_score,
         "embodied_state": body_state,
         "embodied_strain_level": strain_level,
+        "affective_state": affective_state,
+        "affective_bearing": affective_bearing,
         "loop_runtime_status": str(loop_summary.get("current_status") or "none"),
         "loop_runtime_count": int(loop_summary.get("loop_count") or 0),
         "prompt_evolution_type": latest_prompt_type or "none",

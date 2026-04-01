@@ -75,6 +75,7 @@ def run_prompt_evolution_runtime(
         emergent_surface=inputs["emergent_surface"],
         embodied_state=inputs["embodied_state"],
         loop_runtime=inputs["loop_runtime"],
+        adaptive_learning=inputs["adaptive_learning"],
         now=now,
     )
 
@@ -145,6 +146,7 @@ def run_prompt_evolution_runtime(
         "proposal_type": str(persisted.get("proposal_type") or ""),
         "proposal_summary": str(persisted.get("summary") or ""),
         "target_asset": str(artifact.get("target_asset") or ""),
+        "learning_influence": dict(artifact.get("learning_influence") or {}),
         "proposal_visibility": "internal-only",
         "proposal_truth": "proposal-only",
         "boundary": "not-memory-not-identity-not-action-not-applied-prompt",
@@ -175,6 +177,7 @@ def build_prompt_evolution_from_inputs(
     emergent_surface: dict[str, object] | None,
     embodied_state: dict[str, object] | None,
     loop_runtime: dict[str, object] | None,
+    adaptive_learning: dict[str, object] | None,
     now: datetime | None = None,
 ) -> dict[str, object]:
     built_at = (now or datetime.now(UTC)).isoformat()
@@ -230,6 +233,18 @@ def build_prompt_evolution_from_inputs(
             )[:120],
         })
 
+    learning = adaptive_learning or {}
+    learning_mode = str(learning.get("learning_engine_mode") or "")
+    if learning_mode:
+        source_inputs.append({
+            "source": "adaptive-learning",
+            "signal": (
+                f"{learning_mode}"
+                f" / target={learning.get('reinforcement_target') or 'reasoning'}"
+                f" / retention={learning.get('retention_bias') or 'light'}"
+            )[:120],
+        })
+
     loops = loop_runtime or {}
     loop_summary = loops.get("summary") or {}
     if int(loop_summary.get("loop_count") or 0) > 0:
@@ -256,6 +271,7 @@ def build_prompt_evolution_from_inputs(
         self_model_surface=self_model,
         embodied_state=body,
         loop_runtime=loops,
+        adaptive_learning=learning,
     )
     target_asset = _target_asset_from_proposal_type(proposal_type)
     prompt_target = _prompt_target_from_proposal_type(proposal_type)
@@ -264,7 +280,12 @@ def build_prompt_evolution_from_inputs(
         self_model_surface=self_model,
         loop_runtime=loops,
     )
-    rationale = _build_rationale(proposal_type=proposal_type, target_asset=target_asset)
+    learning_influence = _build_learning_influence(learning)
+    rationale = _build_rationale(
+        proposal_type=proposal_type,
+        target_asset=target_asset,
+        learning_influence=learning_influence,
+    )
     proposal_state = _proposal_state_from_type(proposal_type)
     artifact = {
         "proposal_type": proposal_type,
@@ -272,7 +293,10 @@ def build_prompt_evolution_from_inputs(
         "title": f"Runtime prompt evolution: {target_asset}",
         "summary": (
             f"Bounded {proposal_type} proposal for {target_asset}. "
-            f"Prompt target={prompt_target}. Proposal-only; not applied."
+            f"Prompt target={prompt_target}. "
+            f"Adaptive learning={learning_influence.get('learning_engine_mode') or 'none'}"
+            f" toward {learning_influence.get('reinforcement_target') or 'none'}. "
+            f"Proposal-only; not applied."
         ),
         "rationale": rationale,
         "confidence": _confidence_from_inputs(
@@ -287,12 +311,19 @@ def build_prompt_evolution_from_inputs(
                 f"prompt_target={prompt_target}",
                 f"proposal_state={proposal_state}",
                 f"source_inputs={len(source_inputs)}",
+                f"learning_mode={learning_influence.get('learning_engine_mode') or 'none'}",
+                f"reinforcement_target={learning_influence.get('reinforcement_target') or 'none'}",
+                f"retention_bias={learning_influence.get('retention_bias') or 'light'}",
             ]
         ),
         "support_count": len(source_inputs),
-        "status_reason": "A bounded runtime pattern now warrants a proposal-only prompt evolution candidate.",
+        "status_reason": (
+            "Adaptive learning and bounded runtime patterns now warrant a "
+            "proposal-only prompt evolution candidate."
+        ),
         "target_asset": target_asset,
         "prompt_target": prompt_target,
+        "learning_influence": learning_influence,
     }
 
     return {
@@ -310,6 +341,7 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
     latest_type = str((latest or {}).get("proposal_type") or "")
     target_asset = _target_asset_from_proposal_type(latest_type) if latest else ""
     prompt_target = _prompt_target_from_proposal_type(latest_type) if latest else ""
+    learning_influence = dict((_last_result or {}).get("learning_influence") or _learning_influence_from_latest(latest))
     return {
         "active": bool(latest or _last_result),
         "authority": "authoritative-runtime-observability",
@@ -321,6 +353,7 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
         "last_run_at": _last_run_at or None,
         "last_result": _last_result,
         "latest_proposal": latest,
+        "learning_influence": learning_influence,
         "cadence": {
             "cooldown_minutes": _PROMPT_EVOLUTION_COOLDOWN_MINUTES,
             "visible_grace_minutes": _PROMPT_EVOLUTION_VISIBLE_GRACE_MINUTES,
@@ -336,6 +369,9 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
             "latest_summary": str((latest or {}).get("summary") or "No runtime prompt proposal recorded yet."),
             "latest_target_asset": target_asset or "none",
             "latest_prompt_target": prompt_target or "none",
+            "latest_learning_mode": str(learning_influence.get("learning_engine_mode") or "none"),
+            "latest_reinforcement_target": str(learning_influence.get("reinforcement_target") or "none"),
+            "latest_retention_bias": str(learning_influence.get("retention_bias") or "light"),
             "proposal_truth": "proposal-only",
         },
         "source": "/mc/prompt-evolution",
@@ -344,6 +380,9 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
 
 
 def _load_runtime_inputs() -> dict[str, object]:
+    from apps.api.jarvis_api.services.adaptive_learning_runtime import (
+        build_adaptive_learning_runtime_surface,
+    )
     from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_surface
     from apps.api.jarvis_api.services.embodied_state import build_embodied_state_surface
     from apps.api.jarvis_api.services.emergent_signal_tracking import (
@@ -362,6 +401,7 @@ def _load_runtime_inputs() -> dict[str, object]:
         "emergent_surface": build_runtime_emergent_signal_surface(limit=4),
         "embodied_state": build_embodied_state_surface(),
         "loop_runtime": build_loop_runtime_surface(),
+        "adaptive_learning": build_adaptive_learning_runtime_surface(),
     }
 
 
@@ -402,7 +442,20 @@ def _choose_proposal_type(
     self_model_surface: dict[str, object],
     embodied_state: dict[str, object],
     loop_runtime: dict[str, object],
+    adaptive_learning: dict[str, object],
 ) -> str:
+    learning_mode = str(adaptive_learning.get("learning_engine_mode") or "retain")
+    reinforcement_target = str(adaptive_learning.get("reinforcement_target") or "reasoning")
+    attenuation_bias = str(adaptive_learning.get("attenuation_bias") or "none")
+    retention_bias = str(adaptive_learning.get("retention_bias") or "light")
+
+    if learning_mode in {"rebalance", "attenuate"} or attenuation_bias in {"soften", "release"}:
+        return "world-caution-nudge"
+    if reinforcement_target == "prompt-shape":
+        return "focus-nudge"
+    if reinforcement_target in {"reasoning", "self-knowledge"} and retention_bias in {"hold", "warm"}:
+        return "communication-nudge"
+
     latest_dream = dream_articulation.get("latest_artifact") or {}
     latest_dream_type = str(latest_dream.get("signal_type") or "").lower()
     if "tension" in latest_dream_type or str(embodied_state.get("state") or "") in {"strained", "degraded"}:
@@ -469,14 +522,41 @@ def _build_anchor(
     return "runtime-thread"
 
 
-def _build_rationale(*, proposal_type: str, target_asset: str) -> str:
+def _build_rationale(
+    *,
+    proposal_type: str,
+    target_asset: str,
+    learning_influence: dict[str, str],
+) -> str:
+    learning_clause = (
+        f" Adaptive learning currently points toward "
+        f"{learning_influence.get('learning_engine_mode') or 'retain'}"
+        f" around {learning_influence.get('reinforcement_target') or 'reasoning'}"
+        f" with {learning_influence.get('retention_bias') or 'light'} retention."
+    )
     if proposal_type == "communication-nudge":
-        return f"Recent runtime material suggests a small communication-framing adjustment candidate for {target_asset}, not an applied prompt change."
+        return (
+            f"Recent runtime material suggests a small communication-framing adjustment "
+            f"candidate for {target_asset}, not an applied prompt change."
+            f"{learning_clause}"
+        )
     if proposal_type == "focus-nudge":
-        return f"Recent runtime material suggests a small direction-framing adjustment candidate for {target_asset}, not a policy rewrite."
+        return (
+            f"Recent runtime material suggests a small direction-framing adjustment "
+            f"candidate for {target_asset}, not a policy rewrite."
+            f"{learning_clause}"
+        )
     if proposal_type == "challenge-nudge":
-        return f"Recent runtime material suggests a small challenge-posture adjustment candidate for {target_asset}, while remaining proposal-only."
-    return f"Recent runtime material suggests a small world-caution adjustment candidate for {target_asset}, while remaining proposal-only."
+        return (
+            f"Recent runtime material suggests a small challenge-posture adjustment "
+            f"candidate for {target_asset}, while remaining proposal-only."
+            f"{learning_clause}"
+        )
+    return (
+        f"Recent runtime material suggests a small world-caution adjustment "
+        f"candidate for {target_asset}, while remaining proposal-only."
+        f"{learning_clause}"
+    )
 
 
 def _proposal_state_from_type(proposal_type: str) -> str:
@@ -500,6 +580,39 @@ def _confidence_from_inputs(
     if source_input_count >= 5:
         return "medium"
     return "low"
+
+
+def _build_learning_influence(adaptive_learning: dict[str, object]) -> dict[str, str]:
+    return {
+        "learning_engine_mode": str(adaptive_learning.get("learning_engine_mode") or "none"),
+        "reinforcement_target": str(adaptive_learning.get("reinforcement_target") or "none"),
+        "retention_bias": str(adaptive_learning.get("retention_bias") or "light"),
+        "attenuation_bias": str(adaptive_learning.get("attenuation_bias") or "none"),
+        "maturation_state": str(adaptive_learning.get("maturation_state") or "early"),
+    }
+
+
+def _learning_influence_from_latest(latest: dict[str, object] | None) -> dict[str, str]:
+    if not latest:
+        return {}
+    support_summary = str(latest.get("support_summary") or "")
+    parsed: dict[str, str] = {}
+    for chunk in support_summary.split(" | "):
+        if "=" not in chunk:
+            continue
+        key, value = chunk.split("=", 1)
+        key = key.strip()
+        if key in {"learning_mode", "reinforcement_target", "retention_bias"}:
+            parsed[key] = value.strip()
+    if not parsed:
+        return {}
+    return {
+        "learning_engine_mode": parsed.get("learning_mode", "none"),
+        "reinforcement_target": parsed.get("reinforcement_target", "none"),
+        "retention_bias": parsed.get("retention_bias", "light"),
+        "attenuation_bias": "none",
+        "maturation_state": "early",
+    }
 
 
 def _blocked(

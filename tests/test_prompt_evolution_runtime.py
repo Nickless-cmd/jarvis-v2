@@ -27,6 +27,13 @@ def test_prompt_evolution_builds_bounded_proposal_from_runtime_inputs() -> None:
         emergent_surface={"active": True, "summary": {"current_signal": "Current signal: carried direction still alive"}},
         embodied_state={"state": "steady", "strain_level": "low", "recovery_state": "steady"},
         loop_runtime={"summary": {"loop_count": 1, "current_loop": "carried thread", "current_status": "active"}},
+        adaptive_learning={
+            "learning_engine_mode": "reinforce",
+            "reinforcement_target": "prompt-shape",
+            "retention_bias": "warm",
+            "attenuation_bias": "none",
+            "maturation_state": "forming",
+        },
         now=datetime.now(UTC),
     )
 
@@ -36,7 +43,62 @@ def test_prompt_evolution_builds_bounded_proposal_from_runtime_inputs() -> None:
     assert artifact["proposal_type"] == "focus-nudge"
     assert artifact["target_asset"] == "HEARTBEAT.md"
     assert artifact["prompt_target"] == "direction-framing"
+    assert artifact["learning_influence"]["learning_engine_mode"] == "reinforce"
+    assert any(item["source"] == "adaptive-learning" for item in plan["source_inputs"])
     assert artifact["canonical_key"].startswith("runtime-prompt-evolution:focus-nudge:")
+
+
+def test_prompt_evolution_learning_changes_proposal_direction() -> None:
+    from apps.api.jarvis_api.services import prompt_evolution_runtime as runtime_mod
+
+    base_inputs = {
+        "dream_articulation": {
+            "latest_artifact": {
+                "canonical_key": "dream-hypothesis:articulated-dream-fragment:carried-thread",
+                "signal_type": "articulated-dream-fragment",
+                "summary": "A carried thread keeps pressing toward the same direction.",
+            },
+            "summary": {"latest_summary": "A carried thread keeps pressing toward the same direction."},
+        },
+        "self_model_surface": {
+            "items": [{"canonical_key": "self-model:improving:carried-thread"}],
+            "summary": {
+                "active_count": 1,
+                "uncertain_count": 0,
+                "current_signal": "Self model: improvement edge",
+            },
+        },
+        "inner_voice_state": {"last_result": {"inner_voice_created": True, "focus": "Keep the line plain and grounded."}},
+        "emergent_surface": {"active": True, "summary": {"current_signal": "Current signal: carried direction still alive"}},
+        "embodied_state": {"state": "steady", "strain_level": "low", "recovery_state": "steady"},
+        "loop_runtime": {"summary": {"loop_count": 1, "current_loop": "carried thread", "current_status": "active"}},
+        "now": datetime.now(UTC),
+    }
+
+    reinforce_plan = runtime_mod.build_prompt_evolution_from_inputs(
+        adaptive_learning={
+            "learning_engine_mode": "reinforce",
+            "reinforcement_target": "prompt-shape",
+            "retention_bias": "warm",
+            "attenuation_bias": "none",
+            "maturation_state": "forming",
+        },
+        **base_inputs,
+    )
+    rebalance_plan = runtime_mod.build_prompt_evolution_from_inputs(
+        adaptive_learning={
+            "learning_engine_mode": "rebalance",
+            "reinforcement_target": "restraint",
+            "retention_bias": "hold",
+            "attenuation_bias": "soften",
+            "maturation_state": "stabilizing",
+        },
+        **base_inputs,
+    )
+
+    assert (reinforce_plan["artifact"] or {})["proposal_type"] == "focus-nudge"
+    assert (rebalance_plan["artifact"] or {})["proposal_type"] == "world-caution-nudge"
+    assert "Adaptive learning currently points toward rebalance" in str((rebalance_plan["artifact"] or {})["rationale"])
 
 
 def test_prompt_evolution_respects_cooldown(isolated_runtime) -> None:
@@ -91,6 +153,13 @@ def test_prompt_evolution_creates_internal_only_runtime_proposal(isolated_runtim
             "emergent_surface": {"active": True, "summary": {"current_signal": "World line still feels unstable"}},
             "embodied_state": {"state": "strained", "strain_level": "high", "recovery_state": "steady"},
             "loop_runtime": {"summary": {"loop_count": 1, "current_loop": "world thread", "current_status": "standby"}},
+            "adaptive_learning": {
+                "learning_engine_mode": "rebalance",
+                "reinforcement_target": "restraint",
+                "retention_bias": "hold",
+                "attenuation_bias": "soften",
+                "maturation_state": "stabilizing",
+            },
         },
     )
     monkeypatch.setattr(runtime_mod, "_adjacent_producer_block", lambda **kwargs: None)
@@ -103,10 +172,13 @@ def test_prompt_evolution_creates_internal_only_runtime_proposal(isolated_runtim
     assert result["proposal_truth"] == "proposal-only"
     assert result["target_asset"] == "HEARTBEAT.md"
     assert result["proposal_type"] == "world-caution-nudge"
+    assert result["learning_influence"]["learning_engine_mode"] == "rebalance"
     assert surface["summary"]["latest_target_asset"] == "HEARTBEAT.md"
+    assert surface["summary"]["latest_learning_mode"] == "rebalance"
     assert surface["summary"]["proposal_truth"] == "proposal-only"
     assert latest["source_kind"] == "internal-runtime-prompt-evolution"
     assert latest["status"] == "fresh"
+    assert "learning_mode=rebalance" in str(latest["support_summary"])
 
 
 def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_runtime, monkeypatch) -> None:
@@ -125,6 +197,12 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
             "proposal_type": "communication-nudge",
             "summary": "Bounded communication nudge for INNER_VOICE.md.",
             "source_kind": "internal-runtime-prompt-evolution",
+            "support_summary": "learning_mode=retain | reinforcement_target=reasoning | retention_bias=hold",
+        },
+        "learning_influence": {
+            "learning_engine_mode": "retain",
+            "reinforcement_target": "reasoning",
+            "retention_bias": "hold",
         },
         "cadence": {"cooldown_minutes": 45},
         "summary": {
@@ -132,6 +210,7 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
             "last_reason": "grounded-runtime-prompt-proposal",
             "latest_proposal_id": "runtime-prompt-evolution-1",
             "latest_target_asset": "INNER_VOICE.md",
+            "latest_learning_mode": "retain",
             "proposal_truth": "proposal-only",
         },
         "source": "/mc/prompt-evolution",
@@ -151,6 +230,7 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
     self_model = isolated_runtime.runtime_self_model.build_runtime_self_model()
 
     assert endpoint["summary"]["latest_target_asset"] == "INNER_VOICE.md"
+    assert endpoint["summary"]["latest_learning_mode"] == "retain"
     assert runtime["runtime_prompt_evolution"]["summary"]["last_state"] == "forming"
     assert runtime["runtime_prompt_evolution"]["boundary"] == "not-memory-not-identity-not-action-not-applied-prompt"
     assert self_model["prompt_evolution"]["summary"]["proposal_truth"] == "proposal-only"

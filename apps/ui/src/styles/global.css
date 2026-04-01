@@ -698,3 +698,27 @@ button { cursor: pointer; }
 .working-step.current { color: #5ab8a0; }
 .working-step.current .mono { font-size: 10px; }
 .working-step-detail { font-size: 9px; color: #4e5262; margin-top: 2px; }
+
+/* ─── MC: Feature Status Grid ─── */
+.feature-status-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px;
+  margin-bottom: 16px;
+}
+.feature-status-card {
+  padding: 12px;
+  background: #1c1f25;
+  border: 1px solid rgba(255,255,255,0.04);
+  border-left: 3px solid #2d303d;
+  border-radius: 8px;
+}
+.feature-status-card.active { border-left-color: #3d8f7c; border-color: rgba(255,255,255,0.08); }
+.feature-status-card-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+}
+.feature-status-card-header svg { color: #4e5262; }
+.feature-status-card.active .feature-status-card-header svg { color: #5ab8a0; }
+.feature-status-card-label {
+  font-size: 11px; font-weight: 500; color: #8b909e;
+}
+.feature-status-card.active .feature-status-card-label { color: #e4e6ed; }
+.feature-status-card-meta { font-size: 9px; color: #4e5262; }

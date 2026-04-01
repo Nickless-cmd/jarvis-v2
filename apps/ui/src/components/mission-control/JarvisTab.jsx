@@ -96,6 +96,22 @@ function affectiveMetaBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function epistemicRuntimeUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function epistemicRuntimeBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -392,6 +408,39 @@ function affectiveMetaStateRow(item, onOpen) {
       <div className="mc-row-meta">
         <StatusPill status={item.state} />
         {item.bearing ? <small>{humanizeToken(item.bearing)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function epistemicRuntimeStateRow(item, onOpen) {
+  if (!item || !item.wrongnessState || item.wrongnessState === 'clear') return null
+  const detailText = [
+    item.summary,
+    item.regretSignal && item.regretSignal !== 'none' ? `regret ${humanizeToken(item.regretSignal)}` : '',
+    item.counterfactualMode && item.counterfactualMode !== 'none' ? `counterfactual ${humanizeToken(item.counterfactualMode)}` : '',
+    item.counterfactualHint && item.counterfactualHint !== 'none' ? humanizeToken(item.counterfactualHint) : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Epistemic Runtime State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'epistemic runtime detail',
+      })}
+    >
+      <div>
+        <strong>Epistemic Runtime State</strong>
+        <span>{detailText || 'Inspect epistemic runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.wrongnessState} />
+        {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
         {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
@@ -1865,6 +1914,14 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
   const hasAffectiveMetaState = Boolean(affectiveMetaState?.state && affectiveMetaState.state !== 'unknown')
   const affectiveMetaUsage = affectiveMetaUsageSummary(affectiveMetaState)
   const affectiveMetaBoundary = affectiveMetaBoundarySummary(affectiveMetaState)
+  const epistemicRuntimeState = data?.epistemicRuntimeState || heartbeat?.epistemicRuntimeState || data?.development?.epistemicRuntimeState || data?.runtimeSelfModel?.epistemic_runtime_state || {}
+  const hasEpistemicRuntimeState = Boolean(
+    (epistemicRuntimeState?.wrongnessState && epistemicRuntimeState.wrongnessState !== 'clear') ||
+    (epistemicRuntimeState?.regretSignal && epistemicRuntimeState.regretSignal !== 'none') ||
+    (epistemicRuntimeState?.counterfactualMode && epistemicRuntimeState.counterfactualMode !== 'none'),
+  )
+  const epistemicRuntimeUsage = epistemicRuntimeUsageSummary(epistemicRuntimeState)
+  const epistemicRuntimeBoundary = epistemicRuntimeBoundarySummary(epistemicRuntimeState)
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -2082,6 +2139,20 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
           <small className="muted">
             {`bearing ${humanizeToken(affectiveMetaState.bearing) || 'unknown'} · mode ${humanizeToken(affectiveMetaState.monitoringMode) || 'unknown'}`}
             {affectiveMetaState.createdAt ? ` · ${formatFreshness(affectiveMetaState.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
+        {hasEpistemicRuntimeState ? (
+        <article className="mc-stat tone-amber" title={sectionTitleWithMeta({
+          source: epistemicRuntimeState.source || '/mc/epistemic-runtime-state',
+          fetchedAt: epistemicRuntimeState.createdAt || data?.fetchedAt,
+          mode: 'epistemic runtime snapshot',
+        })}>
+          <span>Epistemic State</span>
+          <strong>{humanizeToken(epistemicRuntimeState.wrongnessState) || 'clear'}</strong>
+          <small className="muted">
+            {`regret ${humanizeToken(epistemicRuntimeState.regretSignal) || 'none'} · counterfactual ${humanizeToken(epistemicRuntimeState.counterfactualMode) || 'none'}`}
+            {epistemicRuntimeState.createdAt ? ` · ${formatFreshness(epistemicRuntimeState.createdAt)}` : ''}
           </small>
         </article>
         ) : null}
@@ -2651,6 +2722,26 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
               {affectiveMetaBoundary ? <p>{affectiveMetaBoundary}</p> : null}
             </div>
             ) : null}
+            {hasEpistemicRuntimeState ? (
+            <div className="compact-metric" title="Derived internal-only runtime epistemic corrective state for bounded wrongness, regret, and counterfactual sense">
+              <span>Epistemic State</span>
+              <strong>{humanizeToken(epistemicRuntimeState.wrongnessState) || 'clear'}</strong>
+              <p>{epistemicRuntimeState.summary || 'No epistemic runtime state recorded yet.'}</p>
+              <p>
+                {`regret ${humanizeToken(epistemicRuntimeState.regretSignal) || 'none'} · counterfactual ${humanizeToken(epistemicRuntimeState.counterfactualMode) || 'none'} · confidence ${humanizeToken(epistemicRuntimeState.confidence) || 'low'}`}
+              </p>
+              {epistemicRuntimeState.counterfactualHint && epistemicRuntimeState.counterfactualHint !== 'none' ? (
+              <p>{`hint ${humanizeToken(epistemicRuntimeState.counterfactualHint)}`}</p>
+              ) : null}
+              <p>
+                {epistemicRuntimeState.createdAt
+                  ? `${formatFreshness(epistemicRuntimeState.createdAt)} · ${humanizeToken(epistemicRuntimeState.freshnessState) || 'unknown'}`
+                  : humanizeToken(epistemicRuntimeState.freshnessState) || 'unknown'}
+              </p>
+              {epistemicRuntimeUsage ? <p>{`used by ${epistemicRuntimeUsage}`}</p> : null}
+              {epistemicRuntimeBoundary ? <p>{epistemicRuntimeBoundary}</p> : null}
+            </div>
+            ) : null}
           </div>
           <div className="mc-contract-grid">
             <div className="mc-contract-column">
@@ -2675,6 +2766,7 @@ export function JarvisTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy = f
                 {dreamArticulationRow(dreamArticulation, onOpenItem)}
                 {promptEvolutionRow(promptEvolution, onOpenItem)}
                 {affectiveMetaStateRow(affectiveMetaState, onOpenItem)}
+                {epistemicRuntimeStateRow(epistemicRuntimeState, onOpenItem)}
                 {sleepCadence ? detailRow({
                   ...sleepCadence,
                   createdAt: sleepCadence.lastRunAt || internalCadence.lastTickAt,

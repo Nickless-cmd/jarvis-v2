@@ -13,6 +13,7 @@ export function ChatPage({
   onSend,
   isRefreshing,
   isStreaming,
+  workingSteps,
 }) {
   const [draft, setDraft] = useState('')
   const hero = useMemo(() => ({
@@ -33,7 +34,7 @@ export function ChatPage({
 
         {error ? <div className="inline-error">{error}</div> : null}
 
-        <ChatTranscript messages={activeSession?.messages || []} />
+        <ChatTranscript messages={activeSession?.messages || []} workingSteps={workingSteps} />
 
         <Composer
           value={draft}

@@ -2042,6 +2042,7 @@ async function readSseStream(response, handlers = {}) {
         assistantText += payload.delta
         handlers.onDelta?.(payload.delta, assistantText)
       }
+      if (eventName === 'working_step') handlers.onWorkingStep?.(payload)
       if (eventName === 'failed') {
         failure = payload.error || 'Chat failed'
         handlers.onFailed?.(failure)
@@ -3227,7 +3228,7 @@ export const backend = {
     return data.session
   },
 
-  async streamMessage({ sessionId, content, onRun, onDelta, onDone, onFailed }) {
+  async streamMessage({ sessionId, content, onRun, onDelta, onDone, onFailed, onWorkingStep }) {
     const response = await fetch('/chat/stream', {
       method: 'POST',
       headers: JSON_HEADERS,
@@ -3236,6 +3237,6 @@ export const backend = {
     if (!response.ok) {
       throw new Error(`/chat/stream: ${response.status} ${response.statusText}`)
     }
-    return readSseStream(response, { onRun, onDelta, onDone, onFailed })
+    return readSseStream(response, { onRun, onDelta, onDone, onFailed, onWorkingStep })
   },
 }

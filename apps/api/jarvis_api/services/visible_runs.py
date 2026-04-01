@@ -290,6 +290,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             "status": "started",
         },
     )
+    yield _sse(
+        "working_step",
+        {
+            "type": "working_step",
+            "run_id": run.run_id,
+            "action": "thinking",
+            "detail": f"Preparing response via {run.provider}/{run.model}",
+            "step": 0,
+            "status": "running",
+        },
+    )
 
     result = None
     visible_output_text = ""
@@ -506,6 +517,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         )
         _persist_session_assistant_message(run, visible_output_text)
         _track_runtime_candidates(run, visible_output_text)
+        yield _sse(
+            "working_step",
+            {
+                "type": "working_step",
+                "run_id": run.run_id,
+                "action": "thinking",
+                "detail": "Generation complete",
+                "step": 0,
+                "status": "done",
+            },
+        )
         yield _sse(
             "done",
             {

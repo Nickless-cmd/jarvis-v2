@@ -27,6 +27,7 @@ export function useUnifiedShell() {
   const [error, setError] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [workingSteps, setWorkingSteps] = useState([])
   const liveSubscriptionStartedAtRef = useRef(Date.now())
 
   async function refreshShell() {
@@ -163,6 +164,16 @@ export function useUnifiedShell() {
       const assistantMessage = await backend.streamMessage({
         sessionId,
         content,
+        onWorkingStep: (step) => {
+          setWorkingSteps((prev) => {
+            if (step.status === 'done') {
+              return prev.map((s) =>
+                s.step === step.step ? { ...s, status: 'done' } : s
+              )
+            }
+            return [...prev.filter((s) => s.step !== step.step), step]
+          })
+        },
         onDelta: (_delta, fullText) => {
           setActiveSession((current) =>
             current
@@ -201,6 +212,7 @@ export function useUnifiedShell() {
       setError(failure)
     } finally {
       setIsStreaming(false)
+      setWorkingSteps([])
     }
   }
 
@@ -255,5 +267,6 @@ export function useUnifiedShell() {
     error,
     isRefreshing,
     isStreaming,
+    workingSteps,
   }
 }

@@ -3239,4 +3239,13 @@ export const backend = {
     }
     return readSseStream(response, { onRun, onDelta, onDone, onFailed, onWorkingStep })
   },
+
+  async getCostSummary() {
+    try {
+      const data = await requestJson('/mc/cost/summary')
+      return data
+    } catch {
+      return { cost_24h_usd: 0, tokens_24h: 0, unknown_pricing_24h: 0, providers: [] }
+    }
+  },
 }

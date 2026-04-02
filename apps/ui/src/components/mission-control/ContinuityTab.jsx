@@ -13,6 +13,47 @@ function humanizeToken(value) {
     .trim()
 }
 
+function selfSystemCodeAwarenessRow(item, onOpen) {
+  if (!item || (!item.codeAwarenessState && !item.repoStatus)) return null
+
+  const detailText = [
+    item.concernHint,
+    [
+      item.repoObservation?.branchName && item.repoObservation.branchName !== 'none' ? `branch ${item.repoObservation.branchName}` : '',
+      item.repoStatus ? `repo ${humanizeToken(item.repoStatus)}` : '',
+      item.localChangeState ? `changes ${humanizeToken(item.localChangeState)}` : '',
+      item.upstreamAwareness ? `upstream ${humanizeToken(item.upstreamAwareness)}` : '',
+    ].filter(Boolean).join(' · '),
+  ].filter(Boolean)[0] || 'Inspect bounded self system/code awareness'
+
+  return (
+    <button
+      className="mc-list-row"
+      onClick={() => onOpen('Self System / Code Awareness', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'self system / code awareness detail',
+      })}
+    >
+      <div>
+        <strong>Self System / Code Awareness</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.concernState || 'notice'} />
+        {item.codeAwarenessState ? <small>{humanizeToken(item.codeAwarenessState)}</small> : null}
+        {item.repoStatus ? <small>{humanizeToken(item.repoStatus)}</small> : null}
+        {item.localChangeState ? <small>{humanizeToken(item.localChangeState)}</small> : null}
+        {item.upstreamAwareness ? <small>{humanizeToken(item.upstreamAwareness)}</small> : null}
+        {item.actionRequiresApproval ? <small>approval required</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function worldModelContextRow({ summary, currentSignal, uncertainCount, correctedCount }, onOpen) {
   const detailText = [
     uncertainCount ? `${uncertainCount} uncertain` : '',
@@ -226,6 +267,13 @@ export function ContinuityTab({ data, onOpenItem }) {
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
   const runtimeAwarenessHistory = runtimeAwarenessSignals?.recentHistory || []
+  const heartbeat = data?.heartbeat || {}
+  const selfSystemCodeAwareness =
+    data?.continuity?.selfSystemCodeAwareness ||
+    data?.selfSystemCodeAwareness ||
+    heartbeat?.selfSystemCodeAwareness ||
+    data?.runtimeSelfModel?.self_system_code_awareness ||
+    {}
   const reflectionSignals = data?.development?.reflectionSignals || { items: [], summary: {} }
   const reflectionHistory = reflectionSignals?.recentHistory || []
 
@@ -260,6 +308,18 @@ export function ContinuityTab({ data, onOpenItem }) {
           </div>
         </article>
       </section>
+
+      {(selfSystemCodeAwareness?.codeAwarenessState || selfSystemCodeAwareness?.repoStatus) && (
+        <section className="support-card">
+          <div className="panel-header">
+            <div><h3>Self System / Code Awareness</h3><p className="muted">Read-only awareness of repo state, local changes, and approval boundary.</p></div>
+            <span className="mc-section-hint">Read-only</span>
+          </div>
+          <div className="mc-list">
+            {selfSystemCodeAwarenessRow(selfSystemCodeAwareness, onOpenItem)}
+          </div>
+        </section>
+      )}
 
       {/* World-Model Signals */}
       <section className="support-card">

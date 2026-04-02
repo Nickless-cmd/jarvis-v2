@@ -1121,6 +1121,60 @@ function normalizeAdaptiveLearning(item = {}) {
   }
 }
 
+function normalizeSelfSystemCodeAwareness(item = {}) {
+  const repoObservation = item.repo_observation || {}
+  const hostContext = item.host_context || {}
+  const seamUsage = item.seam_usage || []
+
+  return {
+    systemAwarenessState: item.system_awareness_state || 'host-limited',
+    codeAwarenessState: item.code_awareness_state || 'repo-unavailable',
+    repoStatus: item.repo_status || 'not-git',
+    localChangeState: item.local_change_state || 'unknown',
+    upstreamAwareness: item.upstream_awareness || 'unknown',
+    concernState: item.concern_state || 'notice',
+    concernHint: item.concern_hint || 'No bounded system/code concern recorded yet.',
+    actionRequiresApproval: item.action_requires_approval !== false,
+    confidence: item.confidence || 'low',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    truth: item.truth || 'read-only-observation',
+    kind: item.kind || 'self-system-code-awareness-light',
+    observationMode: item.observation_mode || 'read-only',
+    approvalBoundary: item.approval_boundary || 'Observation is read-only and any repo/system action would require approval.',
+    sourceContributors: (item.source_contributors || []).map((source) => ({ source: String(source || ''), signal: '' })),
+    source: item.source || '/mc/self-system-code-awareness',
+    seamUsage: {
+      heartbeatGrounding: Array.isArray(seamUsage) ? seamUsage.includes('heartbeat-grounding') : Boolean(seamUsage.heartbeat_grounding),
+      promptContractRuntimeTruth: Array.isArray(seamUsage) ? seamUsage.includes('prompt-contract-runtime-truth') : Boolean(seamUsage.prompt_contract_runtime_truth),
+      runtimeSelfModel: Array.isArray(seamUsage) ? seamUsage.includes('runtime-self-model') : Boolean(seamUsage.runtime_self_model),
+      missionControlRuntime: Array.isArray(seamUsage) ? seamUsage.includes('mission-control-runtime') : Boolean(seamUsage.mission_control_runtime),
+    },
+    repoObservation: {
+      branchName: repoObservation.branch_name || 'none',
+      upstreamRef: repoObservation.upstream_ref || '',
+      aheadCount: Number(repoObservation.ahead_count || 0),
+      behindCount: Number(repoObservation.behind_count || 0),
+      dirtyWorkingTree: Boolean(repoObservation.dirty_working_tree),
+      untrackedPresent: Boolean(repoObservation.untracked_present),
+      modifiedPresent: Boolean(repoObservation.modified_present),
+      recentLocalChangesPresent: Boolean(repoObservation.recent_local_changes_present),
+      repoRootDetected: Boolean(repoObservation.repo_root_detected),
+      approvalRequiredCapabilityCount: Number(repoObservation.approval_required_capability_count || 0),
+    },
+    hostContext: {
+      hostname: hostContext.hostname || '',
+      platform: hostContext.platform || 'unknown',
+      cwd: hostContext.cwd || '',
+      workspaceRoot: hostContext.workspace_root || '',
+      repoRoot: hostContext.repo_root || '',
+      gitPresent: Boolean(hostContext.git_present),
+    },
+    builtAt: item.built_at || '',
+    createdAt: item.built_at || '',
+  }
+}
+
 function normalizeInternalCadence(item = {}) {
   return {
     lastTickAt: item.last_tick_at || '',
@@ -2447,7 +2501,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -2456,6 +2510,7 @@ export const backend = {
       requestJson('/mc/runtime-self-model').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
       requestJson('/mc/dream-influence').catch(() => null),
+      requestJson('/mc/self-system-code-awareness').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -2528,6 +2583,12 @@ export const backend = {
       heartbeat?.adaptive_learning ||
       development?.adaptive_learning ||
       selfModelPayload?.adaptive_learning ||
+      null
+    const selfSystemCodeAwarenessSource =
+      selfSystemCodeAwarenessPayload ||
+      heartbeat?.self_system_code_awareness ||
+      continuity?.self_system_code_awareness ||
+      selfModelPayload?.self_system_code_awareness ||
       null
 
     return {
@@ -3245,6 +3306,7 @@ export const backend = {
           items: (continuity.runtime_awareness_signals?.items || []).map(normalizeRuntimeAwarenessSignal),
           recentHistory: (continuity.runtime_awareness_signals?.recent_history || []).map(normalizeRuntimeAwarenessHistoryItem),
         },
+        selfSystemCodeAwareness: normalizeSelfSystemCodeAwareness(selfSystemCodeAwarenessSource || {}),
       },
       heartbeat: {
         state: normalizeHeartbeatState(heartbeat.state || {}),
@@ -3265,6 +3327,7 @@ export const backend = {
         dreamInfluence: normalizeDreamInfluence(heartbeat.dream_influence || dreamInfluenceSource || {}),
         guidedLearning: normalizeGuidedLearning(heartbeat.guided_learning || guidedLearningSource || {}),
         adaptiveLearning: normalizeAdaptiveLearning(heartbeat.adaptive_learning || adaptiveLearningSource || {}),
+        selfSystemCodeAwareness: normalizeSelfSystemCodeAwareness(heartbeat.self_system_code_awareness || selfSystemCodeAwarenessSource || {}),
       },
       embodiedState: normalizeEmbodiedState(embodiedStateSource || {}),
       loopRuntime: normalizeLoopRuntime(loopRuntimeSource || {}),
@@ -3280,6 +3343,7 @@ export const backend = {
       dreamInfluence: normalizeDreamInfluence(dreamInfluenceSource || {}),
       guidedLearning: normalizeGuidedLearning(guidedLearningSource || {}),
       adaptiveLearning: normalizeAdaptiveLearning(adaptiveLearningSource || {}),
+      selfSystemCodeAwareness: normalizeSelfSystemCodeAwareness(selfSystemCodeAwarenessSource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

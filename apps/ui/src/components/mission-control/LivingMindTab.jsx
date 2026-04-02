@@ -230,6 +230,23 @@ function adaptiveReasoningBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function dreamInfluenceUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.guidedLearningEnrichment) labels.push('guided-learning')
+  if (usage.heartbeatContext || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function dreamInfluenceBoundarySummary(item) {
+  const parts = []
+  if (item?.authority) parts.push(humanizeToken(item.authority))
+  if (item?.visibility) parts.push(humanizeToken(item.visibility))
+  return parts.join(' / ')
+}
+
 function guidedLearningUsageSummary(item) {
   const usage = item?.seamUsage || {}
   const labels = []
@@ -770,6 +787,44 @@ function adaptiveReasoningRow(item, onOpen) {
   )
 }
 
+function dreamInfluenceRow(item, onOpen) {
+  if (!item || !item.influenceState || item.influenceState === 'quiet') return null
+  const usageLine = dreamInfluenceUsageSummary(item)
+  const boundaryLine = dreamInfluenceBoundarySummary(item)
+  const detailText = [
+    item.summary,
+    item.influenceTarget ? `target ${humanizeToken(item.influenceTarget)}` : '',
+    item.influenceMode ? `mode ${humanizeToken(item.influenceMode)}` : '',
+    item.influenceHint ? item.influenceHint : '',
+    usageLine ? `used by ${usageLine}` : '',
+    boundaryLine || '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Dream Influence State', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'dream influence runtime detail',
+      })}
+    >
+      <div>
+        <strong>Dream Influence</strong>
+        <span>{detailText || 'Inspect bounded dream influence runtime detail'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.influenceState || 'quiet'} />
+        {item.influenceStrength ? <small>{humanizeToken(item.influenceStrength)}</small> : null}
+        {item.confidence ? <small>{humanizeToken(item.confidence)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function guidedLearningRow(item, onOpen) {
   if (!item || !item.learningMode) return null
   const detailText = [
@@ -899,6 +954,11 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasAdaptivePlanner = Boolean(adaptivePlanner?.plannerMode)
   const adaptiveReasoning = data?.adaptiveReasoning || heartbeat?.adaptiveReasoning || data?.development?.adaptiveReasoning || data?.runtimeSelfModel?.adaptive_reasoning || {}
   const hasAdaptiveReasoning = Boolean(adaptiveReasoning?.reasoningMode)
+  const dreamInfluence = data?.dreamInfluence || heartbeat?.dreamInfluence || data?.runtimeSelfModel?.dream_influence || {}
+  const hasDreamInfluence = Boolean(
+    (dreamInfluence?.influenceState && dreamInfluence.influenceState !== 'quiet') ||
+    (dreamInfluence?.influenceTarget && dreamInfluence.influenceTarget !== 'none'),
+  )
   const guidedLearning = data?.guidedLearning || heartbeat?.guidedLearning || data?.development?.guidedLearning || data?.runtimeSelfModel?.guided_learning || {}
   const hasGuidedLearning = Boolean(guidedLearning?.learningMode)
   const adaptiveLearning = data?.adaptiveLearning || heartbeat?.adaptiveLearning || data?.development?.adaptiveLearning || data?.runtimeSelfModel?.adaptive_learning || {}
@@ -921,6 +981,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'council', label: 'Council Runtime', icon: Users, active: hasCouncilRuntime, status: councilRuntime.councilState, statusLabel: councilRuntime.councilState || 'quiet' },
     { id: 'planner', label: 'Adaptive Planner', icon: Map, active: hasAdaptivePlanner, status: adaptivePlanner.plannerMode, statusLabel: adaptivePlanner.plannerMode || 'incremental' },
     { id: 'reasoning', label: 'Adaptive Reasoning', icon: Lightbulb, active: hasAdaptiveReasoning, status: adaptiveReasoning.reasoningMode, statusLabel: adaptiveReasoning.reasoningMode || 'direct' },
+    { id: 'dream-influence', label: 'Dream Influence', icon: Sparkles, active: hasDreamInfluence, status: dreamInfluence.influenceState, statusLabel: dreamInfluence.influenceState || 'quiet' },
     { id: 'guided', label: 'Guided Learning', icon: GraduationCap, active: hasGuidedLearning, status: guidedLearning.learningMode, statusLabel: guidedLearning.learningMode || 'reinforce' },
     { id: 'adaptive', label: 'Adaptive Learning', icon: TrendingUp, active: hasAdaptiveLearning, status: adaptiveLearning.learningEngineMode, statusLabel: adaptiveLearning.learningEngineMode || 'retain' },
   ]
@@ -1113,6 +1174,19 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           </small>
         </article>
         ) : null}
+        {hasDreamInfluence ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: dreamInfluence.source || '/mc/dream-influence',
+          fetchedAt: dreamInfluence.createdAt || data?.fetchedAt,
+          mode: 'dream influence runtime snapshot',
+        })}>
+          <span>Dream Influence</span>
+          <strong>{humanizeToken(dreamInfluence.influenceState) || 'quiet'}</strong>
+          <small className="muted">
+            {`target ${humanizeToken(dreamInfluence.influenceTarget) || 'none'} · mode ${humanizeToken(dreamInfluence.influenceMode) || 'stabilize'} · strength ${humanizeToken(dreamInfluence.influenceStrength) || 'none'}${dreamInfluence.createdAt ? ` · ${formatFreshness(dreamInfluence.createdAt)}` : ''}`}
+          </small>
+        </article>
+        ) : null}
         {hasGuidedLearning ? (
         <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
           source: guidedLearning.source || '/mc/guided-learning',
@@ -1220,6 +1294,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
                 {councilRuntimeRow(councilRuntime, onOpenItem)}
                 {adaptivePlannerRow(adaptivePlanner, onOpenItem)}
                 {adaptiveReasoningRow(adaptiveReasoning, onOpenItem)}
+                {dreamInfluenceRow(dreamInfluence, onOpenItem)}
                 {guidedLearningRow(guidedLearning, onOpenItem)}
                 {adaptiveLearningRow(adaptiveLearning, onOpenItem)}
                 {sleepCadence ? detailRow({

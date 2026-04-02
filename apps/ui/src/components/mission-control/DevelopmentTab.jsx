@@ -831,6 +831,7 @@ function selfAuthoredPromptProposalRow(item, onOpen) {
           ? 'Superseded prompt proposal'
           : 'Fresh prompt proposal'
   const detailText = [
+    item.candidateFragment,
     item.proposalReason,
     item.proposedNudge,
     lifecycleLabel,
@@ -853,8 +854,48 @@ function selfAuthoredPromptProposalRow(item, onOpen) {
       <div className="mc-row-meta">
         <StatusPill status={item.status || 'fresh'} />
         {item.proposalConfidence ? <small>{`proposal ${item.proposalConfidence}`}</small> : null}
+        {item.fragmentTruth ? <small>{item.fragmentTruth}</small> : null}
         {sourceLabel ? <small>{sourceLabel}</small> : null}
         {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
+function promptEvolutionFragmentRow(item, onOpen) {
+  if (!item || !item.candidateFragment) return null
+  const detailText = [
+    item.candidateFragment,
+    item.summary?.latestSummary,
+    item.lastResult?.proposalSummary,
+  ].filter(Boolean)[0] || 'Inspect bounded self-authored prompt fragment'
+  const grounding = [
+    item.fragmentGrounding?.adaptiveLearning && `learning ${item.fragmentGrounding.adaptiveLearning}`,
+    item.fragmentGrounding?.guidedLearning && `guided ${item.fragmentGrounding.guidedLearning}`,
+    item.fragmentGrounding?.adaptiveReasoning && `reasoning ${item.fragmentGrounding.adaptiveReasoning}`,
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Runtime Prompt Evolution Fragment', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.lastRunAt || item.builtAt,
+        mode: 'prompt evolution self-authorship',
+      })}
+    >
+      <div>
+        <strong>{item.latestProposal?.proposalType || item.lastResult?.proposalType || 'Prompt evolution fragment'}</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.summary?.lastState || item.lastResult?.proposalState || 'forming'} />
+        {item.summary?.latestTargetAsset ? <small>{item.summary.latestTargetAsset}</small> : null}
+        {grounding ? <small>{grounding}</small> : null}
+        <small>{`${item.fragmentTruth || 'proposal-only'} · ${item.fragmentVisibility || 'internal-only'}`}</small>
+        {item.lastRunAt || item.builtAt ? <small>{formatFreshness(item.lastRunAt || item.builtAt)}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -1008,6 +1049,7 @@ export function DevelopmentTab({ data, onOpenItem }) {
   const dreamAdoptionCandidates = data?.development?.dreamAdoptionCandidates || { items: [], summary: {} }
   const dreamInfluenceProposals = data?.development?.dreamInfluenceProposals || { items: [], summary: {} }
   const selfAuthoredPromptProposals = data?.development?.selfAuthoredPromptProposals || { items: [], summary: {} }
+  const promptEvolution = data?.development?.promptEvolution || {}
   const userMdUpdateProposals = data?.development?.userMdUpdateProposals || { items: [], summary: {} }
   const userUnderstandingSignals = data?.development?.userUnderstandingSignals || { items: [], summary: {} }
   const selfhoodProposals = data?.development?.selfhoodProposals || { items: [], summary: {} }
@@ -1440,6 +1482,8 @@ export function DevelopmentTab({ data, onOpenItem }) {
             {dreamAdoptionCandidates.items.slice(0, 3).map((item) => dreamAdoptionCandidateRow(item, onOpenItem))}
             {dreamInfluenceProposals.items.length > 0 ? subsectionHeader('Dream Influence', 'Bounded Dream Influence Proposals') : null}
             {dreamInfluenceProposals.items.slice(0, 3).map((item) => dreamInfluenceProposalRow(item, onOpenItem))}
+            {promptEvolution?.candidateFragment ? subsectionHeader('Prompt Evolution', 'Proposal-Only Self-Authored Fragments') : null}
+            {promptEvolution?.candidateFragment ? promptEvolutionFragmentRow(promptEvolution, onOpenItem) : null}
             {selfAuthoredPromptProposals.items.length > 0 ? subsectionHeader('Prompt Proposals', 'Self-Authored Prompt Nudges') : null}
             {selfAuthoredPromptProposals.items.slice(0, 3).map((item) => selfAuthoredPromptProposalRow(item, onOpenItem))}
             {userUnderstandingSignals.items.length > 0 ? subsectionHeader('User Insight', 'Bounded User-Understanding Signals') : null}

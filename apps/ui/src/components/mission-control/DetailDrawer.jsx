@@ -20,6 +20,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
               {drawer.kind === 'event' ? 'Event payload and context' : null}
               {drawer.kind === 'approval' ? 'Approval queue item and actions' : null}
               {drawer.kind === 'session' ? 'Session transcript preview' : null}
+              {drawer.kind === 'tool-intent' ? 'Bounded tool intent and read-only execution detail' : null}
               {drawer.kind === 'jarvis' ? 'Jarvis state and continuity detail' : null}
               {drawer.kind === 'contract-candidate' ? 'Governed USER/MEMORY workflow item' : null}
               {drawer.kind === 'development-focus' ? 'Development focus detail and actions' : null}
@@ -70,6 +71,54 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
               <strong>Payload</strong>
               <pre>{renderJson(drawer.item.payload)}</pre>
             </article>
+          </div>
+        ) : null}
+
+        {drawer.kind === 'tool-intent' ? (
+          <div className="mc-drawer-body">
+            <div className="mc-keyval-grid">
+              <div><span>Intent</span><strong>{drawer.item.intentType || 'inspect-repo-status'}</strong></div>
+              <div><span>State</span><strong>{drawer.item.intentState || 'idle'}</strong></div>
+              <div><span>Approval</span><strong>{drawer.item.approvalState || 'none'}</strong></div>
+              <div><span>Execution</span><strong>{drawer.item.executionState || 'not-executed'}</strong></div>
+              <div><span>Mode</span><strong>{drawer.item.executionMode || 'read-only'}</strong></div>
+              <div><span>Target</span><strong>{drawer.item.executionTarget || drawer.item.intentTarget || 'workspace'}</strong></div>
+              <div><span>Mutation</span><strong>{drawer.item.mutationPermitted ? 'permitted' : 'blocked'}</strong></div>
+              <div><span>Urgency</span><strong>{drawer.item.urgency || 'low'}</strong></div>
+            </div>
+            <div className="mc-inline-meta">
+              {drawer.item.approvalSource ? <span className="mc-meta-pill">approval source {drawer.item.approvalSource}</span> : null}
+              {drawer.item.approvalScope ? <span className="mc-meta-pill">scope {drawer.item.approvalScope}</span> : null}
+              {drawer.item.executionConfidence ? <span className="mc-meta-pill">confidence {drawer.item.executionConfidence}</span> : null}
+              {drawer.item.executionFinishedAt ? <span className="mc-meta-pill">finished {formatFreshness(drawer.item.executionFinishedAt)}</span> : null}
+              {!drawer.item.executionFinishedAt && drawer.item.approvalResolvedAt ? <span className="mc-meta-pill">resolved {formatFreshness(drawer.item.approvalResolvedAt)}</span> : null}
+            </div>
+            <article className="mc-code-card">
+              <strong>Read-only result</strong>
+              <p>{drawer.item.executionSummary || 'No bounded repo inspection has been executed.'}</p>
+            </article>
+            {drawer.item.boundary ? (
+              <article className="mc-code-card">
+                <strong>Approval and execution boundary</strong>
+                <p>{drawer.item.boundary}</p>
+              </article>
+            ) : null}
+            {drawer.item.intentReason ? (
+              <article className="mc-code-card">
+                <strong>Why this intent exists</strong>
+                <p>{drawer.item.intentReason}</p>
+              </article>
+            ) : null}
+            {drawer.item.executionExcerpt?.length ? (
+              <article className="mc-code-card">
+                <strong>Observed excerpt</strong>
+                <div className="mc-drawer-list">
+                  {drawer.item.executionExcerpt.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
+              </article>
+            ) : null}
           </div>
         ) : null}
 

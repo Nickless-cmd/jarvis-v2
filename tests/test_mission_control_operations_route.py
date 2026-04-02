@@ -15,6 +15,8 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "approval_state": "pending",
                 "approval_source": "none",
                 "execution_state": "not-executed",
+                "execution_mode": "read-only",
+                "mutation_permitted": False,
             },
         },
     )
@@ -56,6 +58,8 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_active"] is True
     assert payload["summary"]["tool_intent_approval_state"] == "pending"
     assert payload["summary"]["tool_intent_execution_state"] == "not-executed"
+    assert payload["summary"]["tool_intent_execution_mode"] == "read-only"
+    assert payload["summary"]["tool_intent_mutation_permitted"] is False
 
 
 def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
@@ -92,6 +96,10 @@ def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
 
     assert payload["tool_intent"]["approval_state"] == "approved"
     assert payload["tool_intent"]["approval_source"] == "mc"
-    assert payload["tool_intent"]["execution_state"] == "not-executed"
+    assert payload["tool_intent"]["execution_state"] == "blocked-unavailable"
+    assert payload["tool_intent"]["execution_mode"] == "read-only"
+    assert payload["tool_intent"]["mutation_permitted"] is False
     assert payload["summary"]["tool_intent_approval_state"] == "approved"
-    assert payload["summary"]["tool_intent_execution_state"] == "not-executed"
+    assert payload["summary"]["tool_intent_execution_state"] == "blocked-unavailable"
+    assert payload["summary"]["tool_intent_execution_mode"] == "read-only"
+    assert payload["summary"]["tool_intent_mutation_permitted"] is False

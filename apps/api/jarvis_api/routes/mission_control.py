@@ -34,6 +34,9 @@ from apps.api.jarvis_api.services.idle_consolidation import (
 from apps.api.jarvis_api.services.dream_articulation import (
     build_dream_articulation_surface,
 )
+from apps.api.jarvis_api.services.dream_influence_runtime import (
+    build_dream_influence_runtime_surface,
+)
 from apps.api.jarvis_api.services.prompt_evolution_runtime import (
     build_prompt_evolution_runtime_surface,
 )
@@ -864,6 +867,12 @@ def mc_prompt_evolution() -> dict:
     return build_prompt_evolution_runtime_surface()
 
 
+@router.get("/dream-influence")
+def mc_dream_influence() -> dict:
+    """Return the current bounded dream influence runtime state."""
+    return build_dream_influence_runtime_surface()
+
+
 @router.get("/subagent-ecology")
 def mc_subagent_ecology() -> dict:
     """Return the current bounded internal subagent ecology state."""
@@ -985,6 +994,7 @@ def mc_runtime() -> dict:
             "runtime_loop_state": build_loop_runtime_surface(),
             "runtime_idle_consolidation": build_idle_consolidation_surface(),
             "runtime_dream_articulation": build_dream_articulation_surface(),
+            "runtime_dream_influence": build_dream_influence_runtime_surface(),
             "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
             "visible_execution": visible_execution_readiness(),
             "visible_identity": load_visible_identity_summary(),

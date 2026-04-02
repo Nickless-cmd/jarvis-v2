@@ -56,6 +56,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "council_runtime": _council_runtime_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
+            "dream_influence": _dream_influence_surface(),
             "guided_learning": _guided_learning_surface(),
             "adaptive_learning": _adaptive_learning_surface(),
             "loop_runtime": _loop_runtime_surface(),
@@ -200,6 +201,22 @@ def _collect_layers() -> list[dict[str, str]]:
             f"posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}; "
             f"certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}; "
             f"constraint={adaptive_reasoning.get('constraint_bias') or 'light'}."
+        ),
+    })
+
+    dream_influence = _dream_influence_surface()
+    layers.append({
+        "id": "dream-influence-light",
+        "label": "Dream influence light",
+        "kind": "orchestration",
+        "role": "active" if str(dream_influence.get("influence_state") or "quiet") != "quiet" else "idle",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"state={dream_influence.get('influence_state') or 'quiet'}; "
+            f"target={dream_influence.get('influence_target') or 'none'}; "
+            f"mode={dream_influence.get('influence_mode') or 'stabilize'}; "
+            f"strength={dream_influence.get('influence_strength') or 'none'}."
         ),
     })
 
@@ -522,6 +539,7 @@ def build_self_model_prompt_lines() -> list[str]:
     council_runtime = model.get("council_runtime") or {}
     adaptive_planner = model.get("adaptive_planner") or {}
     adaptive_reasoning = model.get("adaptive_reasoning") or {}
+    dream_influence = model.get("dream_influence") or {}
     guided_learning = model.get("guided_learning") or {}
     adaptive_learning = model.get("adaptive_learning") or {}
     loop_runtime = model.get("loop_runtime") or {}
@@ -604,6 +622,13 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}"
         f" | certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}"
         f" | constraint={adaptive_reasoning.get('constraint_bias') or 'light'}"
+    )
+    lines.append(
+        "  dream_influence: "
+        f"{dream_influence.get('influence_state') or 'quiet'}"
+        f" | target={dream_influence.get('influence_target') or 'none'}"
+        f" | mode={dream_influence.get('influence_mode') or 'stabilize'}"
+        f" | strength={dream_influence.get('influence_strength') or 'none'}"
     )
     lines.append(
         "  guided_learning: "
@@ -828,6 +853,23 @@ def _guided_learning_surface() -> dict[str, object]:
             "learning_posture": "gentle",
             "next_learning_bias": "keep-current-shape",
             "learning_pressure": "low",
+            "confidence": "low",
+        }
+
+
+def _dream_influence_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.dream_influence_runtime import (
+            build_dream_influence_runtime_surface,
+        )
+        return build_dream_influence_runtime_surface()
+    except Exception:
+        return {
+            "influence_state": "quiet",
+            "influence_target": "none",
+            "influence_mode": "stabilize",
+            "influence_strength": "none",
+            "influence_hint": "no-bounded-dream-pull",
             "confidence": "low",
         }
 

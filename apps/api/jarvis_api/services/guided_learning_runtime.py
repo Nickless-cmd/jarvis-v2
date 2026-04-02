@@ -21,6 +21,7 @@ def _build_guided_learning_runtime_surface_uncached() -> dict[str, object]:
         epistemic_runtime_state=_safe_epistemic_runtime_state(),
         prompt_evolution=_safe_prompt_evolution(),
         dream_articulation=_safe_dream_articulation(),
+        dream_influence=_safe_dream_influence(),
         loop_runtime=_safe_loop_runtime(),
         council_runtime=_safe_council_runtime(),
     )
@@ -33,6 +34,7 @@ def build_guided_learning_runtime_from_sources(
     epistemic_runtime_state: dict[str, object] | None,
     prompt_evolution: dict[str, object] | None,
     dream_articulation: dict[str, object] | None,
+    dream_influence: dict[str, object] | None,
     loop_runtime: dict[str, object] | None,
     council_runtime: dict[str, object] | None,
 ) -> dict[str, object]:
@@ -43,11 +45,13 @@ def build_guided_learning_runtime_from_sources(
     epistemic = epistemic_runtime_state or {}
     prompt_evolution_surface = prompt_evolution or {}
     dream = dream_articulation or {}
+    dream_influence_surface = dream_influence or {}
     loops = loop_runtime or {}
     council = council_runtime or {}
 
     prompt_summary = prompt_evolution_surface.get("summary") or {}
     dream_summary = dream.get("summary") or {}
+    influence_summary = dream_influence_surface
     loop_summary = loops.get("summary") or {}
 
     learning_focus = _derive_learning_focus(
@@ -56,6 +60,7 @@ def build_guided_learning_runtime_from_sources(
         epistemic=epistemic,
         prompt_summary=prompt_summary,
         dream_summary=dream_summary,
+        dream_influence=influence_summary,
         loop_summary=loop_summary,
         council=council,
     )
@@ -66,12 +71,14 @@ def build_guided_learning_runtime_from_sources(
         epistemic=epistemic,
         prompt_summary=prompt_summary,
         dream_summary=dream_summary,
+        dream_influence=influence_summary,
         council=council,
     )
     learning_posture = _derive_learning_posture(
         learning_mode=learning_mode,
         council=council,
         reasoning=reasoning,
+        dream_influence=dream_influence_surface,
     )
     next_learning_bias = _derive_next_learning_bias(
         learning_mode=learning_mode,
@@ -80,6 +87,7 @@ def build_guided_learning_runtime_from_sources(
         reasoning=reasoning,
         epistemic=epistemic,
         prompt_summary=prompt_summary,
+        dream_influence=dream_influence_surface,
     )
     learning_pressure = _derive_learning_pressure(
         learning_mode=learning_mode,
@@ -88,6 +96,7 @@ def build_guided_learning_runtime_from_sources(
         council=council,
         prompt_summary=prompt_summary,
         dream_summary=dream_summary,
+        dream_influence=dream_influence_surface,
     )
     confidence = _derive_confidence(
         learning_mode=learning_mode,
@@ -114,6 +123,7 @@ def build_guided_learning_runtime_from_sources(
             epistemic=epistemic,
             prompt_summary=prompt_summary,
             dream_summary=dream_summary,
+            dream_influence=dream_influence_surface,
             loop_summary=loop_summary,
             council=council,
         )[:7],
@@ -126,6 +136,7 @@ def build_guided_learning_runtime_from_sources(
             "mission_control_runtime_truth": True,
             "heartbeat_context": True,
             "heartbeat_prompt_grounding": True,
+            "dream_influence_enrichment": True,
         },
         "authority": "derived-runtime-truth",
         "visibility": "internal-only",
@@ -168,6 +179,7 @@ def _derive_learning_focus(
     epistemic: dict[str, object],
     prompt_summary: dict[str, object],
     dream_summary: dict[str, object],
+    dream_influence: dict[str, object],
     loop_summary: dict[str, object],
     council: dict[str, object],
 ) -> str:
@@ -177,9 +189,13 @@ def _derive_learning_focus(
     planner_mode = str(planner.get("planner_mode") or "incremental")
     reasoning_mode = str(reasoning.get("reasoning_mode") or "direct")
     council_recommendation = str(council.get("recommendation") or "hold")
+    influence_state = str(dream_influence.get("influence_state") or "quiet")
+    influence_target = str(dream_influence.get("influence_target") or "none")
 
     if latest_target_asset not in {"", "none"}:
         return "prompting"
+    if influence_state in {"present", "active"} and influence_target == "learning":
+        return "self-knowledge"
     if wrongness_state == "strained" or council_recommendation == "bounded-check":
         return "restraint"
     if counterfactual_mode == "missed-timing" or str(loop_summary.get("current_status") or "none") == "standby":
@@ -201,6 +217,7 @@ def _derive_learning_mode(
     epistemic: dict[str, object],
     prompt_summary: dict[str, object],
     dream_summary: dict[str, object],
+    dream_influence: dict[str, object],
     council: dict[str, object],
 ) -> str:
     wrongness_state = str(epistemic.get("wrongness_state") or "clear")
@@ -209,11 +226,15 @@ def _derive_learning_mode(
     council_recommendation = str(council.get("recommendation") or "hold")
     prompt_state = str(prompt_summary.get("last_state") or "idle")
     dream_state = str(dream_summary.get("last_state") or "idle")
+    influence_state = str(dream_influence.get("influence_state") or "quiet")
+    influence_mode = str(dream_influence.get("influence_mode") or "stabilize")
 
     if wrongness_state == "strained" or planner_mode == "hold":
         return "stabilize"
     if wrongness_state in {"uneasy", "off"} or reasoning_mode in {"careful", "constrained"} or council_recommendation == "bounded-check":
         return "clarify"
+    if influence_state in {"present", "active"} and influence_mode == "explore":
+        return "explore"
     if reasoning_mode == "exploratory" or council_recommendation == "observe-more" or dream_state in {"forming", "pressing"}:
         return "explore"
     if prompt_state in {"forming", "pressing"} or learning_focus in {"planning", "prompting", "timing"}:
@@ -226,9 +247,12 @@ def _derive_learning_posture(
     learning_mode: str,
     council: dict[str, object],
     reasoning: dict[str, object],
+    dream_influence: dict[str, object],
 ) -> str:
     if learning_mode == "stabilize":
         return "watchful"
+    if str(dream_influence.get("influence_state") or "quiet") in {"present", "active"}:
+        return "watchful" if str(dream_influence.get("influence_mode") or "stabilize") in {"soften", "caution"} else "active"
     if learning_mode in {"practice", "explore"}:
         return "active"
     if str(council.get("divergence_level") or "low") == "high" or str(reasoning.get("reasoning_posture") or "balanced") == "guarded":
@@ -244,15 +268,20 @@ def _derive_next_learning_bias(
     reasoning: dict[str, object],
     epistemic: dict[str, object],
     prompt_summary: dict[str, object],
+    dream_influence: dict[str, object],
 ) -> str:
     if learning_mode == "stabilize":
         return "tighten-bounds"
+    if learning_focus == "prompting" and str(prompt_summary.get("latest_target_asset") or "none") != "none":
+        return "rehearse-framing"
+    if str(dream_influence.get("influence_state") or "quiet") in {"present", "active"}:
+        target = str(dream_influence.get("influence_target") or "learning")
+        mode = str(dream_influence.get("influence_mode") or "stabilize")
+        return f"follow-dream-{mode}-{target}"
     if learning_focus == "restraint":
         return "exercise-restraint"
     if learning_focus == "timing":
         return "check-timing"
-    if learning_focus == "prompting" and str(prompt_summary.get("latest_target_asset") or "none") != "none":
-        return "rehearse-framing"
     if learning_focus == "planning" and str(planner.get("planner_mode") or "incremental") != "incremental":
         return "rehearse-next-step"
     if learning_focus == "reasoning" and str(reasoning.get("certainty_style") or "crisp") != "crisp":
@@ -270,6 +299,7 @@ def _derive_learning_pressure(
     council: dict[str, object],
     prompt_summary: dict[str, object],
     dream_summary: dict[str, object],
+    dream_influence: dict[str, object],
 ) -> str:
     if (
         learning_mode == "stabilize"
@@ -278,6 +308,7 @@ def _derive_learning_pressure(
         or str(council.get("recommendation") or "hold") == "bounded-check"
         or str(prompt_summary.get("last_state") or "idle") == "pressing"
         or str(dream_summary.get("last_state") or "idle") == "pressing"
+        or str(dream_influence.get("influence_strength") or "none") == "medium"
     ):
         return "high"
     if learning_mode in {"clarify", "practice", "explore"}:
@@ -311,6 +342,7 @@ def _source_contributors(
     epistemic: dict[str, object],
     prompt_summary: dict[str, object],
     dream_summary: dict[str, object],
+    dream_influence: dict[str, object],
     loop_summary: dict[str, object],
     council: dict[str, object],
 ) -> list[dict[str, str]]:
@@ -376,6 +408,17 @@ def _source_contributors(
                 ),
             }
         )
+    if str(dream_influence.get("influence_state") or "quiet") != "quiet":
+        contributors.append(
+            {
+                "source": "dream-influence",
+                "signal": (
+                    f"{str(dream_influence.get('influence_state') or 'quiet')}"
+                    f" / target={str(dream_influence.get('influence_target') or 'none')}"
+                    f" / mode={str(dream_influence.get('influence_mode') or 'stabilize')}"
+                ),
+            }
+        )
     return contributors
 
 
@@ -430,6 +473,14 @@ def _safe_dream_articulation() -> dict[str, object] | None:
     try:
         from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_surface
         return build_dream_articulation_surface()
+    except Exception:
+        return None
+
+
+def _safe_dream_influence() -> dict[str, object] | None:
+    try:
+        from apps.api.jarvis_api.services.dream_influence_runtime import build_dream_influence_runtime_surface
+        return build_dream_influence_runtime_surface()
     except Exception:
         return None
 

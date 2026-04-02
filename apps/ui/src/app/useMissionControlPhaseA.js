@@ -2,10 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { backend } from '../lib/adapters'
 
 const TAB_REFRESH_MS = {
-  overview: 30000,
-  operations: 20000,
-  observability: 60000,
-  jarvis: 30000,
+  overview: 60000,
+  operations: 60000,
+  observability: 90000,
+  jarvis: 180000,
+}
+
+const EVENT_REFRESH_MIN_MS = {
+  overview: 10000,
+  operations: 15000,
+  observability: 20000,
+  jarvis: 60000,
 }
 
 const RUN_RELATED_FAMILIES = new Set(['runtime'])
@@ -71,6 +78,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   const refreshQueue = useRef(new Set())
   const refreshTimer = useRef(null)
   const inflightRefreshes = useRef(new Map())
+  const lastEventRefreshAt = useRef(new Map())
 
   const applySelectionToOverview = useCallback((overview) => {
     if (!overview) return overview
@@ -186,7 +194,12 @@ export function useMissionControlPhaseA({ active, selection }) {
     tabs.forEach((tab) => refreshQueue.current.add(tab))
     if (refreshTimer.current) return
     refreshTimer.current = window.setTimeout(async () => {
-      const pending = Array.from(refreshQueue.current)
+      const now = Date.now()
+      const pending = Array.from(refreshQueue.current).filter((tab) => {
+        const minInterval = EVENT_REFRESH_MIN_MS[tab] || 0
+        const lastRun = lastEventRefreshAt.current.get(tab) || 0
+        return now - lastRun >= minInterval
+      })
       refreshQueue.current.clear()
       refreshTimer.current = null
       if (pending.length === 0) return
@@ -201,6 +214,10 @@ export function useMissionControlPhaseA({ active, selection }) {
             return Promise.resolve()
           })
         )
+        const completedAt = Date.now()
+        pending.forEach((tab) => {
+          lastEventRefreshAt.current.set(tab, completedAt)
+        })
       } finally {
         setIsRefreshing(false)
       }

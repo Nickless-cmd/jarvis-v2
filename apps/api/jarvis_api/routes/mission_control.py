@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import copy
+import threading
+import time
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException
@@ -352,6 +355,25 @@ CAPABILITY_INVOCATION_EVENT_KINDS = (
     "runtime.capability_invocation_completed",
 )
 
+_MC_ROUTE_CACHE_LOCK = threading.Lock()
+_MC_ROUTE_CACHE: dict[str, tuple[float, object]] = {}
+
+
+def _get_cached_mc_payload(cache_key: str, ttl_seconds: float) -> object | None:
+    now = time.monotonic()
+    with _MC_ROUTE_CACHE_LOCK:
+        cached = _MC_ROUTE_CACHE.get(cache_key)
+        if not cached or cached[0] <= now:
+            return None
+        return copy.deepcopy(cached[1])
+
+
+def _store_cached_mc_payload(cache_key: str, ttl_seconds: float, payload: object) -> object:
+    expires_at = time.monotonic() + ttl_seconds
+    with _MC_ROUTE_CACHE_LOCK:
+        _MC_ROUTE_CACHE[cache_key] = (expires_at, copy.deepcopy(payload))
+    return payload
+
 
 @router.get("/overview")
 def mc_overview() -> dict:
@@ -461,13 +483,18 @@ def mc_approvals(limit: int = 20) -> dict:
 
 @router.get("/operations")
 def mc_operations(limit: int = 20) -> dict:
+    cache_key = f"operations:{limit}"
+    cached = _get_cached_mc_payload(cache_key, 3.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+
     runs = mc_runs(limit=limit)
     approvals = mc_approvals(limit=limit)
     with runtime_surface_cache():
         runtime = mc_runtime()
     tool_intent = dict(runtime.get("runtime_tool_intent") or {})
     sessions = {"items": list_chat_sessions()}
-    return {
+    payload = {
         "runtime": runtime,
         "tool_intent": tool_intent,
         "runs": runs,
@@ -521,10 +548,15 @@ def mc_operations(limit: int = 20) -> dict:
             ),
         },
     }
+    return _store_cached_mc_payload(cache_key, 3.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/jarvis")
 def mc_jarvis() -> dict:
+    cached = _get_cached_mc_payload("jarvis", 5.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+
     with runtime_surface_cache():
         visible_identity = load_visible_identity_summary()
         visible_session = visible_session_continuity_summary()
@@ -641,7 +673,7 @@ def mc_jarvis() -> dict:
             heartbeat_state=heartbeat_state,
         )
 
-        return {
+        payload = {
         "summary": {
             "visible_identity": _jarvis_identity_summary(visible_identity),
             "state_signal": _jarvis_state_signal(
@@ -762,6 +794,7 @@ def mc_jarvis() -> dict:
         "self_knowledge": self_knowledge,
         "cognitive_frame": cognitive_frame,
         }
+        return _store_cached_mc_payload("jarvis", 5.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/cognitive-frame")
@@ -773,6 +806,10 @@ def mc_cognitive_frame() -> dict:
 @router.get("/attention-budget")
 def mc_attention_budget() -> dict:
     """Return attention budget traces for all prompt paths."""
+    cached = _get_cached_mc_payload("attention-budget", 10.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+
     from apps.api.jarvis_api.services.attention_budget import (
         get_attention_budget,
         build_micro_cognitive_frame,
@@ -811,12 +848,13 @@ def mc_attention_budget() -> dict:
     from apps.api.jarvis_api.services.prompt_contract import get_last_attention_traces
     live_traces = get_last_attention_traces()
 
-    return {
+    payload = {
         "profiles": profiles,
         "micro_cognitive_frame": micro_frame,
         "micro_frame_chars": len(micro_frame) if micro_frame else 0,
         "live_traces": live_traces,
     }
+    return _store_cached_mc_payload("attention-budget", 10.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/conflict-resolution")
@@ -871,9 +909,14 @@ def mc_self_knowledge() -> dict:
 @router.get("/runtime-self-model")
 def mc_runtime_self_model() -> dict:
     """Return the current runtime self-model snapshot."""
+    cached = _get_cached_mc_payload("runtime-self-model", 10.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+
     from apps.api.jarvis_api.services.runtime_self_model import build_runtime_self_model
     with runtime_surface_cache():
-        return build_runtime_self_model()
+        payload = build_runtime_self_model()
+    return _store_cached_mc_payload("runtime-self-model", 10.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/embodied-state")
@@ -921,7 +964,11 @@ def mc_prompt_evolution() -> dict:
 @router.get("/dream-influence")
 def mc_dream_influence() -> dict:
     """Return the current bounded dream influence runtime state."""
-    return build_dream_influence_runtime_surface()
+    cached = _get_cached_mc_payload("dream-influence", 10.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+    payload = build_dream_influence_runtime_surface()
+    return _store_cached_mc_payload("dream-influence", 10.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/subagent-ecology")
@@ -945,19 +992,31 @@ def mc_adaptive_planner() -> dict:
 @router.get("/adaptive-reasoning")
 def mc_adaptive_reasoning() -> dict:
     """Return the current bounded adaptive reasoning runtime state."""
-    return build_adaptive_reasoning_runtime_surface()
+    cached = _get_cached_mc_payload("adaptive-reasoning", 10.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+    payload = build_adaptive_reasoning_runtime_surface()
+    return _store_cached_mc_payload("adaptive-reasoning", 10.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/guided-learning")
 def mc_guided_learning() -> dict:
     """Return the current bounded guided learning runtime state."""
-    return build_guided_learning_runtime_surface()
+    cached = _get_cached_mc_payload("guided-learning", 10.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+    payload = build_guided_learning_runtime_surface()
+    return _store_cached_mc_payload("guided-learning", 10.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/adaptive-learning")
 def mc_adaptive_learning() -> dict:
     """Return the current bounded adaptive learning runtime state."""
-    return build_adaptive_learning_runtime_surface()
+    cached = _get_cached_mc_payload("adaptive-learning", 10.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+    payload = build_adaptive_learning_runtime_surface()
+    return _store_cached_mc_payload("adaptive-learning", 10.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/self-system-code-awareness")
@@ -1081,10 +1140,14 @@ def mc_apply_runtime_contract_candidate(candidate_id: str) -> dict:
 
 @router.get("/runtime")
 def mc_runtime() -> dict:
+    cached = _get_cached_mc_payload("runtime", 3.0)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+
     with runtime_surface_cache():
         settings = load_settings()
         heartbeat = heartbeat_runtime_surface()
-        return {
+        payload = {
             "settings": settings.to_dict(),
             "heartbeat_runtime": heartbeat,
             "runtime_embodied_state": build_embodied_state_surface(),
@@ -1207,6 +1270,7 @@ def mc_runtime() -> dict:
             "workspaces_dir": _path_state(WORKSPACES_DIR),
         },
     }
+    return _store_cached_mc_payload("runtime", 3.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/visible-execution")

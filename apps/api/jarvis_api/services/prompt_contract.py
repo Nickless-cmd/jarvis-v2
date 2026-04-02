@@ -1274,6 +1274,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     guided_learning = context.get("guided_learning") or {}
     adaptive_learning = context.get("adaptive_learning") or {}
     self_system_code_awareness = context.get("self_system_code_awareness") or {}
+    tool_intent = context.get("tool_intent") or {}
     loop_runtime = context.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
@@ -1331,6 +1332,13 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | upstream={self_system_code_awareness.get('upstream_awareness') or 'unknown'}"
                 f" | concern={self_system_code_awareness.get('concern_state') or 'stable'}"
                 f" | approval_required={self_system_code_awareness.get('action_requires_approval', True)}"
+            ),
+            (
+                f"- tool_intent={tool_intent.get('intent_state') or 'idle'}"
+                f" | type={tool_intent.get('intent_type') or 'inspect-repo-status'}"
+                f" | target={tool_intent.get('intent_target') or 'workspace'}"
+                f" | urgency={tool_intent.get('urgency') or 'low'}"
+                f" | approval_required={tool_intent.get('approval_required', True)}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"

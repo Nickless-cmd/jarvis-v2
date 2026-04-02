@@ -3,14 +3,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from apps.api.jarvis_api.services.runtime_surface_cache import (
-    get_cached_runtime_surface,
+    get_timed_runtime_surface,
     peek_cached_runtime_surface,
 )
 
 
 def build_guided_learning_runtime_surface() -> dict[str, object]:
-    return get_cached_runtime_surface(
+    return get_timed_runtime_surface(
         "guided_learning_runtime_surface",
+        30.0,
         _build_guided_learning_runtime_surface_uncached,
     )
 

@@ -1178,6 +1178,25 @@ function normalizeSelfSystemCodeAwareness(item = {}) {
 }
 
 function normalizeToolIntent(item = {}) {
+  const mutationTargetFiles = Array.isArray(item.mutation_target_files)
+    ? item.mutation_target_files.filter(Boolean)
+    : []
+  const mutationTargetPaths = Array.isArray(item.mutation_target_paths)
+    ? item.mutation_target_paths.filter(Boolean)
+    : []
+  const hasMutationIntentSurface = [
+    'mutation_intent_state',
+    'mutation_intent_classification',
+    'mutation_near',
+    'mutation_target_files',
+    'mutation_target_paths',
+    'mutation_repo_scope',
+    'mutation_system_scope',
+    'mutation_sudo_required',
+    'mutation_critical',
+    'mutation_execution_permitted',
+  ].some((key) => Object.prototype.hasOwnProperty.call(item, key))
+
   return {
     intentState: item.intent_state || 'idle',
     intentType: item.intent_type || 'inspect-repo-status',
@@ -1210,6 +1229,21 @@ function normalizeToolIntent(item = {}) {
     executionOperation: item.execution_operation || item.intent_type || 'inspect-repo-status',
     executionExcerpt: Array.isArray(item.execution_excerpt) ? item.execution_excerpt : [],
     mutationPermitted: Boolean(item.mutation_permitted),
+    hasMutationIntentSurface,
+    mutationIntentState: item.mutation_intent_state || 'idle',
+    mutationIntentClassification: item.mutation_intent_classification || 'none',
+    mutationNear: Boolean(item.mutation_near),
+    mutationProposalOnly: Boolean(item.mutation_proposal_only),
+    mutationExecutionState: item.mutation_execution_state || 'not-executed',
+    mutationExecutionPermitted: Boolean(item.mutation_execution_permitted),
+    mutationSummary: item.mutation_summary || '',
+    mutationTargetFiles,
+    mutationTargetPaths,
+    mutationRepoScope: item.mutation_repo_scope || '',
+    mutationSystemScope: item.mutation_system_scope || '',
+    mutationSudoRequired: Boolean(item.mutation_sudo_required),
+    mutationCritical: Boolean(item.mutation_critical),
+    mutationBoundary: item.mutation_boundary || '',
     boundary: item.boundary || 'Intent is proposal-only and approval-gated; no action has been performed.',
     sourceContributors: (item.source_contributors || []).map((source) => ({ source: String(source || ''), signal: '' })),
     source: item.source || '/mc/tool-intent',

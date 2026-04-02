@@ -14,6 +14,7 @@ export function ChatPage({
   isRefreshing,
   isStreaming,
   workingSteps,
+  jarvisSurface,
 }) {
   const [draft, setDraft] = useState('')
   const hero = useMemo(() => ({
@@ -25,11 +26,11 @@ export function ChatPage({
     <div className="chat-shell-grid">
       <main className="chat-stage">
         <ChatHeader
-          session={{ title: hero.title, subtitle: hero.subtitle }}
+          session={{ title: hero.title }}
           selection={selection}
-          onSelectionChange={onSelectionChange}
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
+          isStreaming={isStreaming}
         />
 
         {error ? <div className="inline-error">{error}</div> : null}
@@ -52,6 +53,7 @@ export function ChatPage({
         session={activeSession}
         selection={selection}
         isStreaming={isStreaming}
+        jarvisSurface={jarvisSurface}
       />
     </div>
   )

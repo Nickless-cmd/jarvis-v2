@@ -23,6 +23,54 @@ async function requestJson(path, options = {}) {
   return response.json()
 }
 
+const missionControlEventListeners = new Set()
+let missionControlSocket = null
+let missionControlReconnectTimer = null
+let missionControlRetryDelay = 1000
+
+function scheduleMissionControlReconnect() {
+  if (missionControlReconnectTimer || missionControlEventListeners.size === 0) return
+  missionControlReconnectTimer = window.setTimeout(() => {
+    missionControlReconnectTimer = null
+    ensureMissionControlSocket()
+  }, missionControlRetryDelay)
+  missionControlRetryDelay = Math.min(missionControlRetryDelay * 2, 8000)
+}
+
+function ensureMissionControlSocket() {
+  if (missionControlSocket || missionControlEventListeners.size === 0) return
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
+  missionControlSocket = socket
+
+  socket.onopen = () => {
+    missionControlRetryDelay = 1000
+  }
+
+  socket.onmessage = (message) => {
+    try {
+      const item = JSON.parse(message.data)
+      if (item && item.type === 'ping') return
+      const normalized = normalizeEventItem(item)
+      missionControlEventListeners.forEach((listener) => {
+        listener?.(normalized)
+      })
+    } catch {
+      // no-op
+    }
+  }
+
+  socket.onclose = () => {
+    if (missionControlSocket === socket) missionControlSocket = null
+    if (missionControlEventListeners.size === 0) return
+    scheduleMissionControlReconnect()
+  }
+
+  socket.onerror = () => {
+    // onclose will fire after onerror — reconnect handled there
+  }
+}
+
 function nowLabel() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
@@ -2086,6 +2134,42 @@ export const backend = {
     return normalizeSelection(updated)
   },
 
+  async getJarvisSurface() {
+    const payload = await requestJson('/mc/jarvis')
+    const state = payload?.state || {}
+    const memory = payload?.memory || {}
+    const heartbeat = payload?.heartbeat || {}
+    const development = payload?.development || {}
+    const privateState = state.private_state?.current || {}
+    const innerVoice = state.protected_inner_voice?.current || {}
+    const affectiveRaw =
+      heartbeat?.affective_meta_state ||
+      development?.affective_meta_state ||
+      {}
+    const retainedMemory = memory.retained_projection?.current || memory.retained_projection || {}
+
+    return {
+      affectiveMetaState: {
+        confidenceLevel: privateState.confidence || affectiveRaw.confidence || 0,
+        curiosityLevel: affectiveRaw.curiosity || 0,
+        frustrationLevel: privateState.frustration || affectiveRaw.frustration || 0,
+        fatigueLevel: affectiveRaw.fatigue || affectiveRaw.reflective_load_pct || 0,
+        state: affectiveRaw.state || 'unknown',
+        bearing: affectiveRaw.bearing || 'unknown',
+      },
+      skills: (payload?.skills || []),
+      summary: {
+        retained_memory: {
+          kind: retainedMemory.kind || retainedMemory.retained_kind || 'unknown',
+          focus: retainedMemory.retained_focus || retainedMemory.retained_value || 'none',
+        },
+      },
+      protectedVoice: {
+        preview: innerVoice.current_pull || innerVoice.summary || null,
+      },
+    }
+  },
+
   async getMissionControlOverview({ selection } = {}) {
     const [overview, approvals, sessions, events] = await Promise.all([
       requestJson('/mc/overview'),
@@ -2254,26 +2338,13 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, embodiedPayload, loopRuntimePayload, idleConsolidationPayload, dreamArticulationPayload, promptEvolutionPayload, affectiveMetaPayload, epistemicPayload, subagentEcologyPayload, councilRuntimePayload, adaptivePlannerPayload, adaptiveReasoningPayload, guidedLearningPayload, adaptiveLearningPayload, internalCadencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
       requestJson('/mc/runtime-self-model').catch(() => null),
-      requestJson('/mc/embodied-state').catch(() => null),
-      requestJson('/mc/loop-runtime').catch(() => null),
-      requestJson('/mc/idle-consolidation').catch(() => null),
-      requestJson('/mc/dream-articulation').catch(() => null),
-      requestJson('/mc/prompt-evolution').catch(() => null),
-      requestJson('/mc/affective-meta-state').catch(() => null),
-      requestJson('/mc/epistemic-runtime-state').catch(() => null),
-      requestJson('/mc/subagent-ecology').catch(() => null),
-      requestJson('/mc/council-runtime').catch(() => null),
-      requestJson('/mc/adaptive-planner').catch(() => null),
-      requestJson('/mc/adaptive-reasoning').catch(() => null),
-      requestJson('/mc/guided-learning').catch(() => null),
-      requestJson('/mc/adaptive-learning').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
     ])
     const state = payload?.state || {}
@@ -2283,75 +2354,62 @@ export const backend = {
     const heartbeat = payload?.heartbeat || {}
     const contract = contractPayload || {}
     const embodiedStateSource =
-      embodiedPayload ||
       heartbeat?.embodied_state ||
       selfModelPayload?.embodied_state ||
       null
     const loopRuntimeSource =
-      loopRuntimePayload ||
       heartbeat?.loop_runtime ||
       selfModelPayload?.loop_runtime ||
       null
     const idleConsolidationSource =
-      idleConsolidationPayload ||
       heartbeat?.idle_consolidation ||
       selfModelPayload?.idle_consolidation ||
       null
     const dreamArticulationSource =
-      dreamArticulationPayload ||
       heartbeat?.dream_articulation ||
       selfModelPayload?.dream_articulation ||
       null
     const promptEvolutionSource =
-      promptEvolutionPayload ||
       heartbeat?.prompt_evolution ||
       development?.prompt_evolution ||
       selfModelPayload?.prompt_evolution ||
       null
     const affectiveMetaSource =
-      affectiveMetaPayload ||
       heartbeat?.affective_meta_state ||
       development?.affective_meta_state ||
       selfModelPayload?.affective_meta_state ||
       null
     const epistemicSource =
-      epistemicPayload ||
       heartbeat?.epistemic_runtime_state ||
       development?.epistemic_runtime_state ||
       selfModelPayload?.epistemic_runtime_state ||
       null
     const subagentEcologySource =
-      subagentEcologyPayload ||
       heartbeat?.subagent_ecology ||
       development?.subagent_ecology ||
       selfModelPayload?.subagent_ecology ||
       null
     const councilRuntimeSource =
-      councilRuntimePayload ||
       heartbeat?.council_runtime ||
       development?.council_runtime ||
       selfModelPayload?.council_runtime ||
       null
     const adaptivePlannerSource =
-      adaptivePlannerPayload ||
       heartbeat?.adaptive_planner ||
       development?.adaptive_planner ||
       selfModelPayload?.adaptive_planner ||
       null
     const adaptiveReasoningSource =
-      adaptiveReasoningPayload ||
       heartbeat?.adaptive_reasoning ||
       development?.adaptive_reasoning ||
       selfModelPayload?.adaptive_reasoning ||
       null
     const guidedLearningSource =
-      guidedLearningPayload ||
       heartbeat?.guided_learning ||
       development?.guided_learning ||
       selfModelPayload?.guided_learning ||
       null
     const adaptiveLearningSource =
-      adaptiveLearningPayload ||
       heartbeat?.adaptive_learning ||
       development?.adaptive_learning ||
       selfModelPayload?.adaptive_learning ||
@@ -3174,39 +3232,21 @@ export const backend = {
   },
 
   subscribeMissionControlEvents(onEvent) {
-    let disposed = false
-    let socket = null
-    let retryDelay = 1000 // start at 1s, back off to 8s max
-
-    function connect() {
-      if (disposed) return
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
-      socket.onopen = () => { retryDelay = 1000 }
-      socket.onmessage = (message) => {
-        try {
-          const item = JSON.parse(message.data)
-          if (item && item.type === 'ping') return // ignore keepalive pings
-          onEvent?.(normalizeEventItem(item))
-        } catch {
-          // no-op
-        }
-      }
-      socket.onclose = () => {
-        if (disposed) return
-        setTimeout(connect, retryDelay)
-        retryDelay = Math.min(retryDelay * 2, 8000)
-      }
-      socket.onerror = () => {
-        // onclose will fire after onerror — reconnect handled there
-      }
-    }
-
-    connect()
+    missionControlEventListeners.add(onEvent)
+    ensureMissionControlSocket()
 
     return () => {
-      disposed = true
-      if (socket) socket.close()
+      missionControlEventListeners.delete(onEvent)
+      if (missionControlEventListeners.size > 0) return
+      if (missionControlReconnectTimer) {
+        window.clearTimeout(missionControlReconnectTimer)
+        missionControlReconnectTimer = null
+      }
+      missionControlRetryDelay = 1000
+      if (missionControlSocket) {
+        missionControlSocket.close()
+        missionControlSocket = null
+      }
     }
   },
 

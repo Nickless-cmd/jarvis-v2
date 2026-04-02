@@ -29,6 +29,7 @@ export function useUnifiedShell() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [workingSteps, setWorkingSteps] = useState([])
   const [systemHealth, setSystemHealth] = useState({ cpu_pct: 0, ram_pct: 0, disk_free_mb: 0 })
+  const [jarvisSurface, setJarvisSurface] = useState(null)
   const liveSubscriptionStartedAtRef = useRef(Date.now())
 
   async function refreshShell() {
@@ -98,7 +99,18 @@ export function useUnifiedShell() {
     }
     pollHealth()
     const healthInterval = setInterval(pollHealth, 10000)
-    return () => clearInterval(healthInterval)
+    async function fetchJarvisSurface() {
+      try {
+        const data = await backend.getJarvisSurface()
+        setJarvisSurface(data)
+      } catch { /* silent */ }
+    }
+    fetchJarvisSurface()
+    const jarvisInterval = setInterval(fetchJarvisSurface, 30000)
+    return () => {
+      clearInterval(healthInterval)
+      clearInterval(jarvisInterval)
+    }
   }, [])
 
   useEffect(() => {
@@ -279,5 +291,6 @@ export function useUnifiedShell() {
     isStreaming,
     workingSteps,
     systemHealth,
+    jarvisSurface,
   }
 }

@@ -1,80 +1,82 @@
-import { Activity, Clock3, Cpu, RadioTower, Sparkles } from 'lucide-react'
+import { Smile, Frown, Lightbulb, Battery } from 'lucide-react'
 
-function messageCount(session) {
-  return Array.isArray(session?.messages) ? session.messages.length : 0
+function PanelSection({ title, children }) {
+  return (
+    <div className="rail-panel-section">
+      <div className="rail-panel-title mono">{title}</div>
+      {children}
+    </div>
+  )
 }
 
-function firstUserPrompt(session) {
-  const firstUser = Array.isArray(session?.messages)
-    ? session.messages.find((message) => message.role === 'user')
-    : null
-  const text = String(firstUser?.content || '').trim()
-  if (!text) return 'No user prompt yet.'
-  return text.length > 120 ? `${text.slice(0, 120)}…` : text
-}
+export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface }) {
+  const affective = jarvisSurface?.affectiveMetaState || {}
+  const summary = jarvisSurface?.summary || {}
+  const memorySummary = summary?.retained_memory || {}
 
-export function ChatSupportRail({ session, selection, isStreaming }) {
-  const items = [
-    {
-      icon: Cpu,
-      label: 'Provider',
-      value: selection.currentProvider || 'unknown',
-    },
-    {
-      icon: RadioTower,
-      label: 'Model',
-      value: selection.currentModel || 'unknown',
-    },
-    {
-      icon: Activity,
-      label: 'Status',
-      value: isStreaming ? 'Generating' : 'Idle',
-    },
-    {
-      icon: Clock3,
-      label: 'Messages',
-      value: String(messageCount(session)),
-    },
+  const emotions = [
+    { label: 'CONF', value: affective.confidenceLevel || 0, color: '#4caf82', icon: Smile },
+    { label: 'CURIO', value: affective.curiosityLevel || 0, color: '#d4963a', icon: Lightbulb },
+    { label: 'FRUS', value: affective.frustrationLevel || 0, color: '#c05050', icon: Frown },
+    { label: 'FATIGUE', value: affective.fatigueLevel || 0, color: '#4a80c0', icon: Battery },
   ]
+
+  const innerVoice = jarvisSurface?.protectedVoice?.preview || 'ingen tanker endnu...'
 
   return (
     <aside className="chat-support-rail">
-      <section className="support-card support-card-system">
-        <div className="support-card-header">
-          <span className="support-card-kicker">Operator</span>
-          <strong>Runtime</strong>
-        </div>
-        <div className="support-status-banner">
-          <span className={isStreaming ? 'status-dot live' : 'status-dot'} />
-          <div>
-            <strong>{isStreaming ? 'Generation active' : 'Ready for input'}</strong>
-            <span>{selection.currentProvider || 'unknown'} · {selection.currentModel || 'unknown'}</span>
-          </div>
-        </div>
-        <div className="support-stat-list">
-          {items.map(({ icon: Icon, label, value }) => (
-            <div className="support-stat-row" key={label}>
-              <div className="support-stat-label">
-                <Icon size={12} />
-                <span>{label}</span>
+      <PanelSection title="Emotional State">
+        <div className="emotion-grid">
+          {emotions.map(({ label, value, color, icon: Icon }) => {
+            const pct = typeof value === 'number' && value <= 1 ? value * 100 : Number(value) || 0
+            return (
+              <div key={label} className="emotion-card">
+                <div className="emotion-card-header">
+                  <Icon size={9} color={color} />
+                  <span className="mono">{label}</span>
+                </div>
+                <div className="emotion-card-value mono">{pct.toFixed(0)}%</div>
+                <div className="progress-bar">
+                  <div className="progress-bar-fill" style={{ width: `${pct}%`, background: color }} />
+                </div>
               </div>
-              <strong>{value}</strong>
+            )
+          })}
+        </div>
+      </PanelSection>
+
+      <PanelSection title="Skills">
+        <div className="rail-skill-list">
+          {(jarvisSurface?.skills || []).slice(0, 6).map(sk => (
+            <div key={sk.name || sk} className="rail-skill-item">
+              <div className={`rail-skill-dot ${sk.status === 'active' || sk.status === 'registered' ? 'active' : ''}`} />
+              <span className="mono">{sk.name || sk}</span>
+              <span className="rail-skill-uses mono">{sk.uses || 0}</span>
             </div>
           ))}
+          {!(jarvisSurface?.skills || []).length && (
+            <span className="rail-empty mono">no skills loaded</span>
+          )}
         </div>
-      </section>
+      </PanelSection>
 
-      <section className="support-card support-card-focus">
-        <div className="support-card-header">
-          <span className="support-card-kicker">Session</span>
-          <strong>Current focus</strong>
+      <PanelSection title="Memory">
+        {[
+          { label: 'Kind', value: memorySummary.kind || 'unknown', color: '#5ab8a0' },
+          { label: 'Focus', value: memorySummary.focus || 'none', color: '#8b909e' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="rail-memory-row">
+            <span>{label}</span>
+            <span className="mono" style={{ color }}>{value}</span>
+          </div>
+        ))}
+      </PanelSection>
+
+      <PanelSection title="Inner Voice">
+        <div className="rail-inner-voice">
+          <span>{innerVoice}</span>
         </div>
-        <p>{firstUserPrompt(session)}</p>
-        <div className="support-note">
-          <Sparkles size={12} />
-          <span>{isStreaming ? 'Streaming active. Jarvis is responding now.' : 'Chat stays primary. Mission Control remains separate.'}</span>
-        </div>
-      </section>
+      </PanelSection>
     </aside>
   )
 }

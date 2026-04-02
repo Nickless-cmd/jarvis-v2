@@ -250,29 +250,59 @@ button { cursor: pointer; }
   color:#8ca0b6; font-size:10px; text-transform:uppercase; letter-spacing:.12em;
 }
 .support-card-header strong { font-size:13px; }
-.support-status-banner {
-  display:flex; align-items:flex-start; gap:10px; padding:10px 11px; margin-bottom:10px;
-  border-radius:10px; background: rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.04);
+/* --- Chat Support Rail: Panel Sections --- */
+.rail-panel-section {
+  padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.04);
 }
-.status-dot {
-  width:8px; height:8px; border-radius:999px; background:#6d7f94; margin-top:4px; flex:0 0 auto;
+.rail-panel-title {
+  font-size: 9px; color: #4e5262; letter-spacing: 0.12em;
+  text-transform: uppercase; margin-bottom: 10px;
 }
-.status-dot.live { background:#5ab8a0; box-shadow:0 0 10px rgba(73,210,195,.6); }
-.support-status-banner strong { display:block; font-size:12px; margin-bottom:3px; }
-.support-status-banner span { color:#8ca0b6; font-size:11px; line-height:1.4; }
-.support-stat-list { display:flex; flex-direction:column; gap:6px; }
-.support-stat-row {
-  display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 8px;
-  border-radius:8px; background: transparent; border:1px solid rgba(255,255,255,.03);
+
+/* Emotion grid (2x2) */
+.emotion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.emotion-card {
+  padding: 8px; background: #1c1f25;
+  border: 1px solid rgba(255,255,255,0.04); border-radius: 8px;
 }
-.support-stat-label { display:flex; align-items:center; gap:6px; color:#8ca0b6; font-size:11px; }
-.support-stat-row strong {
-  color:#e4e6ed; font-size:11px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+.emotion-card-header {
+  display: flex; align-items: center; gap: 4px; margin-bottom: 4px;
 }
-.support-card-focus p { margin:0; color:#dbe4ef; font-size:13px; line-height:1.55; min-height:4.7em; }
-.support-note {
-  display:flex; align-items:flex-start; gap:7px; margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.06);
-  color:#8ca0b6; font-size:11px; line-height:1.5;
+.emotion-card-header .mono { font-size: 8px; color: #4e5262; letter-spacing: 0.08em; }
+.emotion-card-value { font-size: 14px; color: #e4e6ed; margin-bottom: 4px; }
+.emotion-card .progress-bar { height: 2px; }
+
+/* Skills list */
+.rail-skill-list { display: flex; flex-direction: column; gap: 1px; }
+.rail-skill-item {
+  display: flex; align-items: center; padding: 5px 6px;
+  border-radius: 5px; transition: background 0.15s; cursor: pointer;
+}
+.rail-skill-item:hover { background: #272b35; }
+.rail-skill-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #2d303d; margin-right: 7px; flex-shrink: 0;
+}
+.rail-skill-dot.active { background: #4caf82; box-shadow: 0 0 5px #4caf82; }
+.rail-skill-item .mono { font-size: 10px; color: #8b909e; flex: 1; }
+.rail-skill-uses { font-size: 9px; color: #4e5262; }
+.rail-empty { font-size: 10px; color: #4e5262; font-style: italic; }
+
+/* Memory rows */
+.rail-memory-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 7px; font-size: 11px; color: #8b909e;
+}
+.rail-memory-row .mono { font-size: 10px; }
+
+/* Inner voice */
+.rail-inner-voice {
+  padding: 8px 10px; background: #1c1f25;
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 7px; border-left: 2px solid #2d303d;
+}
+.rail-inner-voice span {
+  font-size: 11px; color: #4e5262; font-style: italic; line-height: 1.5;
 }
 .compact-grid { display:grid; grid-template-columns: 1fr; gap:10px; }
 .compact-grid.compact-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }

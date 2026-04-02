@@ -674,6 +674,7 @@ function normalizePromptEvolution(item = {}) {
   const lastResult = item.last_result || {}
   const latestProposal = item.latest_proposal || {}
   const learningInfluence = item.learning_influence || {}
+  const dreamInfluence = item.dream_influence || {}
   const fragmentGrounding = item.fragment_grounding || {}
   const reviewLight = item.review_light || {}
 
@@ -706,6 +707,9 @@ function normalizePromptEvolution(item = {}) {
       latestLearningMode: summary.latest_learning_mode || 'none',
       latestReinforcementTarget: summary.latest_reinforcement_target || 'none',
       latestRetentionBias: summary.latest_retention_bias || 'light',
+      latestDreamInfluenceState: summary.latest_dream_influence_state || dreamInfluence.influence_state || 'quiet',
+      latestDreamInfluenceTarget: summary.latest_dream_influence_target || dreamInfluence.influence_target || 'none',
+      latestDreamInfluenceMode: summary.latest_dream_influence_mode || dreamInfluence.influence_mode || 'stabilize',
       latestCandidateFragment: summary.latest_candidate_fragment || '',
       proposalDirection: summary.proposal_direction || reviewLight.proposal_direction || 'none',
       proposedChangeKind: summary.proposed_change_kind || reviewLight.proposed_change_kind || 'none',
@@ -720,9 +724,17 @@ function normalizePromptEvolution(item = {}) {
       attenuationBias: learningInfluence.attenuation_bias || 'none',
       maturationState: learningInfluence.maturation_state || 'early',
     },
+    dreamInfluence: {
+      influenceState: dreamInfluence.influence_state || 'quiet',
+      influenceTarget: dreamInfluence.influence_target || 'none',
+      influenceMode: dreamInfluence.influence_mode || 'stabilize',
+      influenceStrength: dreamInfluence.influence_strength || 'none',
+      influenceHint: dreamInfluence.influence_hint || 'none',
+    },
     candidateFragment: item.candidate_fragment || '',
     fragmentGrounding: {
       adaptiveLearning: fragmentGrounding.adaptive_learning || 'none',
+      dreamInfluence: fragmentGrounding.dream_influence || 'none',
       guidedLearning: fragmentGrounding.guided_learning || 'none',
       adaptiveReasoning: fragmentGrounding.adaptive_reasoning || 'none',
     },
@@ -1905,8 +1917,15 @@ function normalizeSelfAuthoredPromptProposal(item = {}) {
     candidateFragment: item.candidate_fragment || supportFields.candidate_fragment || '',
     fragmentGrounding: {
       adaptiveLearning: supportFields.adaptive_learning || 'none',
+      dreamInfluence: supportFields.dream_influence || 'none',
       guidedLearning: supportFields.guided_learning || 'none',
       adaptiveReasoning: supportFields.adaptive_reasoning || 'none',
+    },
+    dreamInfluence: {
+      influenceState: supportFields.dream_influence_state || 'quiet',
+      influenceTarget: supportFields.dream_influence_target || 'none',
+      influenceMode: supportFields.dream_influence_mode || 'stabilize',
+      influenceStrength: supportFields.dream_influence_strength || 'none',
     },
     reviewLight: {
       proposalDirection: supportFields.proposal_direction || 'none',

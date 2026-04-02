@@ -56,6 +56,29 @@ function subsectionHeader(kicker, title) {
   )
 }
 
+function formatDreamInfluencePreview(dreamInfluence = {}) {
+  const state = dreamInfluence.influenceState || ''
+  if (!state || state === 'quiet') return ''
+
+  const tokens = [
+    `dream ${state}`,
+    dreamInfluence.influenceTarget && dreamInfluence.influenceTarget !== 'none' ? dreamInfluence.influenceTarget : '',
+    dreamInfluence.influenceMode && dreamInfluence.influenceMode !== 'stabilize' ? dreamInfluence.influenceMode : '',
+    dreamInfluence.influenceStrength && dreamInfluence.influenceStrength !== 'none' ? dreamInfluence.influenceStrength : '',
+  ].filter(Boolean)
+
+  return tokens.join(' · ')
+}
+
+function formatFragmentGroundingSummary(fragmentGrounding = {}) {
+  return [
+    fragmentGrounding.dreamInfluence && fragmentGrounding.dreamInfluence !== 'none' ? `dream ${fragmentGrounding.dreamInfluence}` : '',
+    fragmentGrounding.adaptiveLearning && fragmentGrounding.adaptiveLearning !== 'none' ? `learning ${fragmentGrounding.adaptiveLearning}` : '',
+    fragmentGrounding.guidedLearning && fragmentGrounding.guidedLearning !== 'none' ? `guided ${fragmentGrounding.guidedLearning}` : '',
+    fragmentGrounding.adaptiveReasoning && fragmentGrounding.adaptiveReasoning !== 'none' ? `reasoning ${fragmentGrounding.adaptiveReasoning}` : '',
+  ].filter(Boolean).join(' · ')
+}
+
 /* ─── Row renderers ─── */
 
 function developmentSnapshotRow({ focusSummary, goalSummary, criticSummary, reflectionSummary }, onOpen) {
@@ -826,13 +849,17 @@ function selfAuthoredPromptProposalRow(item, onOpen) {
     : item.status === 'fading'
       ? 'Fading prompt proposal'
       : item.status === 'stale'
-        ? 'Stale prompt proposal'
+      ? 'Stale prompt proposal'
         : item.status === 'superseded'
-          ? 'Superseded prompt proposal'
+      ? 'Superseded prompt proposal'
           : 'Fresh prompt proposal'
+  const dreamPreview = formatDreamInfluencePreview(item.dreamInfluence)
+  const grounding = formatFragmentGroundingSummary(item.fragmentGrounding)
   const detailText = [
+    item.candidateFragment && dreamPreview ? `${item.candidateFragment} · ${dreamPreview}` : '',
     item.candidateFragment,
     item.reviewLight?.diffLightSummary,
+    dreamPreview,
     item.proposalReason,
     item.proposedNudge,
     lifecycleLabel,
@@ -856,7 +883,11 @@ function selfAuthoredPromptProposalRow(item, onOpen) {
         <StatusPill status={item.status || 'fresh'} />
         {item.proposalConfidence ? <small>{`proposal ${item.proposalConfidence}`}</small> : null}
         {item.reviewLight?.proposalDirection && item.reviewLight.proposalDirection !== 'none' ? <small>{item.reviewLight.proposalDirection}</small> : null}
+        {item.reviewLight?.diffLightSummary ? <small>{item.reviewLight.diffLightSummary}</small> : null}
+        {dreamPreview ? <small>{dreamPreview}</small> : null}
+        {grounding ? <small>{grounding}</small> : null}
         {item.fragmentTruth ? <small>{item.fragmentTruth}</small> : null}
+        {item.fragmentVisibility ? <small>{item.fragmentVisibility}</small> : null}
         {sourceLabel ? <small>{sourceLabel}</small> : null}
         {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
         <ChevronRight size={14} />
@@ -867,17 +898,20 @@ function selfAuthoredPromptProposalRow(item, onOpen) {
 
 function promptEvolutionFragmentRow(item, onOpen) {
   if (!item || !item.candidateFragment) return null
+  const dreamPreview = formatDreamInfluencePreview(item.dreamInfluence || {
+    influenceState: item.summary?.latestDreamInfluenceState,
+    influenceTarget: item.summary?.latestDreamInfluenceTarget,
+    influenceMode: item.summary?.latestDreamInfluenceMode,
+  })
   const detailText = [
+    item.candidateFragment && dreamPreview ? `${item.candidateFragment} · ${dreamPreview}` : '',
     item.candidateFragment,
     item.reviewLight?.diffLightSummary,
+    dreamPreview,
     item.summary?.latestSummary,
     item.lastResult?.proposalSummary,
   ].filter(Boolean)[0] || 'Inspect bounded self-authored prompt fragment'
-  const grounding = [
-    item.fragmentGrounding?.adaptiveLearning && `learning ${item.fragmentGrounding.adaptiveLearning}`,
-    item.fragmentGrounding?.guidedLearning && `guided ${item.fragmentGrounding.guidedLearning}`,
-    item.fragmentGrounding?.adaptiveReasoning && `reasoning ${item.fragmentGrounding.adaptiveReasoning}`,
-  ].filter(Boolean).join(' · ')
+  const grounding = formatFragmentGroundingSummary(item.fragmentGrounding)
 
   return (
     <button
@@ -898,6 +932,8 @@ function promptEvolutionFragmentRow(item, onOpen) {
         {item.summary?.latestTargetAsset ? <small>{item.summary.latestTargetAsset}</small> : null}
         {item.reviewLight?.proposalDirection && item.reviewLight.proposalDirection !== 'none' ? <small>{item.reviewLight.proposalDirection}</small> : null}
         {item.reviewLight?.proposedChangeKind && item.reviewLight.proposedChangeKind !== 'none' ? <small>{item.reviewLight.proposedChangeKind}</small> : null}
+        {item.reviewLight?.diffLightSummary ? <small>{item.reviewLight.diffLightSummary}</small> : null}
+        {dreamPreview ? <small>{dreamPreview}</small> : null}
         {grounding ? <small>{grounding}</small> : null}
         <small>{`${item.fragmentTruth || 'proposal-only'} · ${item.fragmentVisibility || 'internal-only'}`}</small>
         {item.lastRunAt || item.builtAt ? <small>{formatFreshness(item.lastRunAt || item.builtAt)}</small> : null}

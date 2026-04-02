@@ -59,6 +59,10 @@ def build_tool_intent_approval_surface(
                 "verbal_supported": True,
                 "mc_supported": True,
                 "mode": "explicit-bounded-approval-only",
+                "proposal_only": False,
+                "execution_allowed": False,
+                "mutation_near": False,
+                "scope_classification": "none",
             },
             "execution_state": execution_state,
         }
@@ -116,6 +120,12 @@ def build_tool_intent_approval_surface(
             "verbal_supported": True,
             "mc_supported": True,
             "mode": "explicit-bounded-approval-only",
+            "proposal_only": True,
+            "execution_allowed": False,
+            "mutation_near": bool(intent_surface.get("mutation_near", False)),
+            "scope_classification": str(
+                intent_surface.get("mutation_intent_classification") or "read-only"
+            ),
         },
         "execution_state": str(request.get("execution_state") or execution_state),
     }
@@ -178,9 +188,17 @@ def tool_intent_approval_key(intent_surface: dict[str, object]) -> str:
 
 
 def _approval_reason(intent_surface: dict[str, object]) -> str:
+    mutation_classification = str(
+        intent_surface.get("mutation_intent_classification") or "read-only"
+    )
+    mutation_repo_scope = str(intent_surface.get("mutation_repo_scope") or "")
+    mutation_system_scope = str(intent_surface.get("mutation_system_scope") or "")
     return (
         "Intent remains proposal-only until explicitly approved within bounded scope; "
         f"scope={intent_surface.get('approval_scope') or 'repo-read'}; "
+        f"mutation_classification={mutation_classification}; "
+        f"repo_scope={mutation_repo_scope or 'none'}; "
+        f"system_scope={mutation_system_scope or 'none'}; "
         f"execution={intent_surface.get('execution_state') or 'not-executed'}."
     )
 

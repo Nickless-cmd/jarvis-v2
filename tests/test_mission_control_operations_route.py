@@ -17,6 +17,11 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "execution_state": "not-executed",
                 "execution_mode": "read-only",
                 "mutation_permitted": False,
+                "mutation_intent_state": "proposal-only",
+                "mutation_intent_classification": "modify-file",
+                "mutation_repo_scope": "",
+                "mutation_system_scope": "",
+                "mutation_sudo_required": False,
                 "action_continuity_state": "idle",
                 "last_action_outcome": "none",
                 "last_action_at": "",
@@ -64,6 +69,11 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_execution_state"] == "not-executed"
     assert payload["summary"]["tool_intent_execution_mode"] == "read-only"
     assert payload["summary"]["tool_intent_mutation_permitted"] is False
+    assert payload["summary"]["tool_intent_mutation_intent_state"] == "proposal-only"
+    assert payload["summary"]["tool_intent_mutation_classification"] == "modify-file"
+    assert payload["summary"]["tool_intent_mutation_repo_scope"] == ""
+    assert payload["summary"]["tool_intent_mutation_system_scope"] == ""
+    assert payload["summary"]["tool_intent_mutation_sudo_required"] is False
     assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
     assert payload["summary"]["tool_intent_last_action_outcome"] == "none"
     assert payload["summary"]["tool_intent_followup_state"] == "none"
@@ -106,11 +116,15 @@ def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
     assert payload["tool_intent"]["execution_state"] == "blocked-unavailable"
     assert payload["tool_intent"]["execution_mode"] == "read-only"
     assert payload["tool_intent"]["mutation_permitted"] is False
+    assert payload["tool_intent"]["mutation_intent_state"] == "proposal-only"
+    assert payload["tool_intent"]["mutation_intent_classification"] == "modify-file"
     assert payload["tool_intent"]["action_continuity_state"] == "idle"
     assert payload["summary"]["tool_intent_approval_state"] == "approved"
     assert payload["summary"]["tool_intent_execution_state"] == "blocked-unavailable"
     assert payload["summary"]["tool_intent_execution_mode"] == "read-only"
     assert payload["summary"]["tool_intent_mutation_permitted"] is False
+    assert payload["summary"]["tool_intent_mutation_intent_state"] == "proposal-only"
+    assert payload["summary"]["tool_intent_mutation_classification"] == "modify-file"
     assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
 
 

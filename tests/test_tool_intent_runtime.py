@@ -41,6 +41,15 @@ def test_tool_intent_builds_approval_gated_shape_from_awareness(
     assert surface["approval_state"] == "pending"
     assert surface["approval_source"] == "none"
     assert surface["execution_state"] == "not-executed"
+    assert surface["mutation_intent_state"] == "proposal-only"
+    assert surface["mutation_intent_classification"] == "git-mutate"
+    assert surface["mutation_near"] is True
+    assert surface["mutation_proposal_only"] is True
+    assert surface["mutation_execution_state"] == "not-executed"
+    assert surface["mutation_execution_permitted"] is False
+    assert surface["mutation_repo_scope"] == "upstream-sync:feature/tool-intent->origin/main"
+    assert surface["mutation_system_scope"] == ""
+    assert surface["mutation_sudo_required"] is False
     assert surface["action_continuity_state"] == "idle"
     assert "proposal-only" in surface["boundary"]
     assert "approval-gated" in surface["boundary"]
@@ -80,6 +89,9 @@ def test_tool_intent_stays_idle_when_awareness_is_stable(
     assert surface["execution_state"] == "not-executed"
     assert surface["execution_mode"] == "read-only"
     assert surface["mutation_permitted"] is False
+    assert surface["mutation_intent_state"] == "idle"
+    assert surface["mutation_intent_classification"] == "none"
+    assert surface["mutation_near"] is False
     assert surface["action_continuity_state"] == "idle"
 
 
@@ -103,6 +115,49 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
         "execution_operation": "inspect-working-tree",
         "execution_excerpt": ["modified:apps/api/jarvis_api/services/tool_intent_runtime.py"],
         "mutation_permitted": False,
+        "mutation_intent": {
+            "active": True,
+            "kind": "bounded-mutation-intent-light",
+            "mutation_intent_state": "proposal-only",
+            "classification": "modify-file",
+            "mutation_near": True,
+            "proposal_only": True,
+            "approval_required": True,
+            "explicit_approval_required": True,
+            "not_executed": True,
+            "execution_state": "not-executed",
+            "execution_permitted": False,
+            "summary": "Current intent is proposal-only and mutation-near.",
+            "scope": {
+                "target_files": ["apps/api/jarvis_api/services/tool_intent_runtime.py"],
+                "target_paths": ["apps/api/jarvis_api/services"],
+                "repo_mutation_scope": "",
+                "system_mutation_scope": "",
+                "sudo_required": False,
+                "mutation_critical": False,
+            },
+            "capability_boundary": {
+                "approval_required_mutation_capability_count": 2,
+                "approval_required_mutation_classes": ["modify-file", "git-mutate"],
+            },
+            "boundary": "Bounded mutation intent is classification-only runtime truth.",
+            "source_contributors": ["bounded-mutation-intent-runtime"],
+            "source": "/runtime/bounded-mutation-intent",
+        },
+        "mutation_intent_state": "proposal-only",
+        "mutation_intent_classification": "modify-file",
+        "mutation_near": True,
+        "mutation_proposal_only": True,
+        "mutation_execution_state": "not-executed",
+        "mutation_execution_permitted": False,
+        "mutation_summary": "Current intent is proposal-only and mutation-near.",
+        "mutation_target_files": ["apps/api/jarvis_api/services/tool_intent_runtime.py"],
+        "mutation_target_paths": ["apps/api/jarvis_api/services"],
+        "mutation_repo_scope": "",
+        "mutation_system_scope": "",
+        "mutation_sudo_required": False,
+        "mutation_critical": False,
+        "mutation_boundary": "Bounded mutation intent is classification-only runtime truth.",
         "action_continuity": {
             "active": True,
             "kind": "bounded-read-only-action-continuity-light",
@@ -200,9 +255,14 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert runtime["runtime_tool_intent"]["approval_required"] is True
     assert runtime["runtime_tool_intent"]["approval_state"] == "approved"
     assert endpoint["approval_source"] == "verbal"
+    assert endpoint["mutation_intent_classification"] == "modify-file"
+    assert endpoint["mutation_intent_state"] == "proposal-only"
+    assert runtime["runtime_tool_intent"]["mutation_near"] is True
     assert self_model["tool_intent"]["execution_state"] == "read-only-completed"
     assert self_model["tool_intent"]["execution_mode"] == "read-only"
     assert self_model["tool_intent"]["mutation_permitted"] is False
+    assert self_model["tool_intent"]["mutation_intent_classification"] == "modify-file"
+    assert self_model["tool_intent"]["mutation_intent_state"] == "proposal-only"
     assert self_model["tool_intent"]["action_continuity_state"] == "carrying-forward"
     assert self_model["tool_intent"]["last_action_outcome"] == "read-only-completed"
     assert self_model["tool_intent"]["followup_state"] == "carry-forward"
@@ -217,6 +277,8 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert "execution=read-only-completed" in layer["detail"]
     assert "execution_mode=read-only" in layer["detail"]
     assert "mutation_permitted=False" in layer["detail"]
+    assert "mutation_state=proposal-only" in layer["detail"]
+    assert "mutation_classification=modify-file" in layer["detail"]
     assert "continuity=carrying-forward" in layer["detail"]
     assert "followup_state=carry-forward" in layer["detail"]
 
@@ -241,6 +303,11 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
                 "execution_state": "not-executed",
                 "execution_mode": "read-only",
                 "mutation_permitted": False,
+                "mutation_intent_state": "proposal-only",
+                "mutation_intent_classification": "git-mutate",
+                "mutation_repo_scope": "upstream-sync:feature/tool-intent->origin/main",
+                "mutation_system_scope": "",
+                "mutation_sudo_required": False,
                 "execution_summary": "No bounded repo inspection has been executed.",
                 "action_continuity_state": "idle",
                 "last_action_outcome": "none",
@@ -261,6 +328,11 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
     assert "execution_state=not-executed" in lines
     assert "execution_mode=read-only" in lines
     assert "mutation_permitted=False" in lines
+    assert "mutation_state=proposal-only" in lines
+    assert "mutation_classification=git-mutate" in lines
+    assert "mutation_repo_scope=upstream-sync:feature/tool-intent->origin/main" in lines
+    assert "mutation_system_scope=none" in lines
+    assert "mutation_sudo_required=False" in lines
     assert "continuity=idle" in lines
     assert "last_action_outcome=none" in lines
     assert "followup_state=none" in lines

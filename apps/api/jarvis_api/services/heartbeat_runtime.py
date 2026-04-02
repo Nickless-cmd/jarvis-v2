@@ -1102,6 +1102,15 @@ def _build_influence_trace(
     tool_intent_scope = str(tool_intent.get("approval_scope") or "repo-read")
     tool_intent_approval_state = str(tool_intent.get("approval_state") or "none")
     tool_intent_approval_source = str(tool_intent.get("approval_source") or "none")
+    tool_intent_mutation_state = str(tool_intent.get("mutation_intent_state") or "idle")
+    tool_intent_mutation_classification = str(
+        tool_intent.get("mutation_intent_classification") or "none"
+    )
+    tool_intent_mutation_repo_scope = str(tool_intent.get("mutation_repo_scope") or "")
+    tool_intent_mutation_system_scope = str(tool_intent.get("mutation_system_scope") or "")
+    tool_intent_mutation_sudo_required = bool(
+        tool_intent.get("mutation_sudo_required", False)
+    )
     tool_intent_continuity_state = str(
         tool_intent.get("action_continuity_state") or "idle"
     )
@@ -1117,6 +1126,16 @@ def _build_influence_trace(
         )
     else:
         inputs_absent.append("tool-intent")
+
+    if tool_intent_mutation_state != "idle":
+        inputs_present.append(
+            "tool-mutation-intent "
+            f"({tool_intent_mutation_state}, classification={tool_intent_mutation_classification}, "
+            f"repo_scope={tool_intent_mutation_repo_scope or 'none'}, system_scope={tool_intent_mutation_system_scope or 'none'}, "
+            f"sudo_required={tool_intent_mutation_sudo_required})"
+        )
+    else:
+        inputs_absent.append("tool-mutation-intent")
 
     if tool_intent_continuity_state != "idle":
         inputs_present.append(
@@ -1181,6 +1200,11 @@ def _build_influence_trace(
         "tool_intent_approval_scope": tool_intent_scope,
         "tool_intent_approval_state": tool_intent_approval_state,
         "tool_intent_approval_source": tool_intent_approval_source,
+        "tool_intent_mutation_state": tool_intent_mutation_state,
+        "tool_intent_mutation_classification": tool_intent_mutation_classification,
+        "tool_intent_mutation_repo_scope": tool_intent_mutation_repo_scope,
+        "tool_intent_mutation_system_scope": tool_intent_mutation_system_scope,
+        "tool_intent_mutation_sudo_required": tool_intent_mutation_sudo_required,
         "tool_intent_action_continuity_state": tool_intent_continuity_state,
         "tool_intent_last_action_outcome": tool_intent_last_action_outcome,
         "tool_intent_followup_state": tool_intent_followup_state,

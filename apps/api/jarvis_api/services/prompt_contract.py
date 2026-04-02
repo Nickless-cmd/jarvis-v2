@@ -1273,6 +1273,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     dream_influence = context.get("dream_influence") or {}
     guided_learning = context.get("guided_learning") or {}
     adaptive_learning = context.get("adaptive_learning") or {}
+    self_system_code_awareness = context.get("self_system_code_awareness") or {}
     loop_runtime = context.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     return "\n".join(
@@ -1322,6 +1323,14 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | target={adaptive_learning.get('reinforcement_target') or 'reasoning'}"
                 f" | retention={adaptive_learning.get('retention_bias') or 'light'}"
                 f" | maturation={adaptive_learning.get('maturation_state') or 'early'}"
+            ),
+            (
+                f"- self_system_code_awareness={self_system_code_awareness.get('code_awareness_state') or 'repo-unavailable'}"
+                f" | repo={self_system_code_awareness.get('repo_status') or 'not-git'}"
+                f" | changes={self_system_code_awareness.get('local_change_state') or 'unknown'}"
+                f" | upstream={self_system_code_awareness.get('upstream_awareness') or 'unknown'}"
+                f" | concern={self_system_code_awareness.get('concern_state') or 'stable'}"
+                f" | approval_required={self_system_code_awareness.get('action_requires_approval', True)}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"

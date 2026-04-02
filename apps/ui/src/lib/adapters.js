@@ -673,6 +673,8 @@ function normalizePromptEvolution(item = {}) {
   const cadence = item.cadence || {}
   const lastResult = item.last_result || {}
   const latestProposal = item.latest_proposal || {}
+  const learningInfluence = item.learning_influence || {}
+  const fragmentGrounding = item.fragment_grounding || {}
 
   return {
     active: Boolean(item.active),
@@ -700,8 +702,28 @@ function normalizePromptEvolution(item = {}) {
       latestSummary: summary.latest_summary || 'No runtime prompt proposal recorded yet.',
       latestTargetAsset: summary.latest_target_asset || 'none',
       latestPromptTarget: summary.latest_prompt_target || 'none',
+      latestLearningMode: summary.latest_learning_mode || 'none',
+      latestReinforcementTarget: summary.latest_reinforcement_target || 'none',
+      latestRetentionBias: summary.latest_retention_bias || 'light',
+      latestCandidateFragment: summary.latest_candidate_fragment || '',
+      fragmentTruth: summary.fragment_truth || item.fragment_truth || 'proposal-only',
       proposalTruth: summary.proposal_truth || item.proposal_mode || 'proposal-only',
     },
+    learningInfluence: {
+      learningEngineMode: learningInfluence.learning_engine_mode || 'none',
+      reinforcementTarget: learningInfluence.reinforcement_target || 'none',
+      retentionBias: learningInfluence.retention_bias || 'light',
+      attenuationBias: learningInfluence.attenuation_bias || 'none',
+      maturationState: learningInfluence.maturation_state || 'early',
+    },
+    candidateFragment: item.candidate_fragment || '',
+    fragmentGrounding: {
+      adaptiveLearning: fragmentGrounding.adaptive_learning || 'none',
+      guidedLearning: fragmentGrounding.guided_learning || 'none',
+      adaptiveReasoning: fragmentGrounding.adaptive_reasoning || 'none',
+    },
+    fragmentTruth: item.fragment_truth || 'proposal-only',
+    fragmentVisibility: item.fragment_visibility || item.visibility || 'internal-only',
     lastResult: {
       producer: lastResult.producer || '',
       daemonRan: Boolean(lastResult.daemon_ran),
@@ -716,6 +738,7 @@ function normalizePromptEvolution(item = {}) {
       proposalType: lastResult.proposal_type || '',
       proposalSummary: lastResult.proposal_summary || '',
       targetAsset: lastResult.target_asset || '',
+      candidateFragment: lastResult.candidate_fragment || item.candidate_fragment || '',
       proposalTruth: lastResult.proposal_truth || item.proposal_mode || 'proposal-only',
       proposalVisibility: lastResult.proposal_visibility || item.visibility || 'internal-only',
       boundary: lastResult.boundary || item.boundary || 'not-memory-not-identity-not-action-not-applied-prompt',
@@ -1810,6 +1833,7 @@ function normalizeDreamInfluenceProposal(item = {}) {
 }
 
 function normalizeSelfAuthoredPromptProposal(item = {}) {
+  const supportFields = parseSupportSummary(item.support_summary || '')
   return {
     proposalId: item.proposal_id || '',
     proposalType: item.proposal_type || '',
@@ -1828,6 +1852,14 @@ function normalizeSelfAuthoredPromptProposal(item = {}) {
     influenceTarget: item.influence_target || '',
     promptTarget: item.prompt_target || '',
     proposedNudge: item.proposed_nudge || '',
+    candidateFragment: item.candidate_fragment || supportFields.candidate_fragment || '',
+    fragmentGrounding: {
+      adaptiveLearning: supportFields.adaptive_learning || 'none',
+      guidedLearning: supportFields.guided_learning || 'none',
+      adaptiveReasoning: supportFields.adaptive_reasoning || 'none',
+    },
+    fragmentTruth: item.fragment_truth || 'proposal-only',
+    fragmentVisibility: item.fragment_visibility || 'internal-only',
     proposalReason: item.proposal_reason || item.summary || '',
     proposalConfidence: item.proposal_confidence || 'low',
     influenceAnchor: item.influence_anchor || '',
@@ -1840,6 +1872,19 @@ function normalizeSelfAuthoredPromptProposal(item = {}) {
     createdAt: item.created_at || '',
     updatedAt: item.updated_at || '',
   }
+}
+
+function parseSupportSummary(text = '') {
+  return String(text)
+    .split(' | ')
+    .reduce((acc, chunk) => {
+      if (!chunk || !chunk.includes('=')) return acc
+      const [rawKey, ...rest] = chunk.split('=')
+      const key = rawKey.trim()
+      const value = rest.join('=').trim()
+      if (key) acc[key] = value
+      return acc
+    }, {})
 }
 
 function normalizeUserMdUpdateProposal(item = {}) {

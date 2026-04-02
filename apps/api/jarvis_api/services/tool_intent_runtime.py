@@ -5,12 +5,23 @@ from datetime import UTC, datetime
 from apps.api.jarvis_api.services.self_system_code_awareness import (
     build_self_system_code_awareness_surface,
 )
+from apps.api.jarvis_api.services.bounded_repo_tools_runtime import (
+    build_bounded_repo_tool_execution_surface,
+)
 from apps.api.jarvis_api.services.tool_intent_approval_runtime import (
     build_tool_intent_approval_surface,
 )
+from apps.api.jarvis_api.services.runtime_surface_cache import get_cached_runtime_surface
 
 
 def build_tool_intent_runtime_surface() -> dict[str, object]:
+    return get_cached_runtime_surface(
+        "tool_intent_runtime_surface",
+        _build_tool_intent_runtime_surface,
+    )
+
+
+def _build_tool_intent_runtime_surface() -> dict[str, object]:
     built_at = datetime.now(UTC).isoformat()
     awareness = build_self_system_code_awareness_surface()
     repo_observation = awareness.get("repo_observation") or {}
@@ -25,25 +36,46 @@ def build_tool_intent_runtime_surface() -> dict[str, object]:
         confidence,
     ) = _derive_intent_from_awareness(awareness=awareness, repo_observation=repo_observation)
 
+    intent_surface = {
+        "intent_state": intent_state,
+        "intent_type": intent_type,
+        "intent_target": intent_target,
+        "approval_scope": approval_scope,
+        "approval_required": True,
+        "execution_state": "not-executed",
+    }
     approval = build_tool_intent_approval_surface(
-        {
-            "intent_state": intent_state,
-            "intent_type": intent_type,
-            "intent_target": intent_target,
-            "approval_scope": approval_scope,
-            "approval_required": True,
-            "execution_state": "not-executed",
-        },
+        intent_surface,
         requested_at=built_at,
     )
+    execution = build_bounded_repo_tool_execution_surface(
+        {
+            **intent_surface,
+            "approval_state": approval.get("approval_state") or "none",
+            "approval_source": approval.get("approval_source") or "none",
+            "confidence": confidence,
+        },
+        awareness_surface=awareness,
+    )
+    execution_state = str(execution.get("execution_state") or "not-executed")
+    truth = "derived-runtime-truth" if execution_state != "not-executed" else "proposal-only"
 
     return {
         "active": intent_state != "idle",
         "authority": "derived-runtime-truth",
         "visibility": "internal-only",
-        "truth": "proposal-only",
+        "truth": truth,
         "kind": "approval-gated-tool-intent-light",
-        "execution_state": "not-executed",
+        "execution_state": execution_state,
+        "execution_mode": execution.get("execution_mode") or "read-only",
+        "execution_target": execution.get("execution_target") or intent_target,
+        "execution_summary": execution.get("execution_summary") or "No bounded repo inspection has been executed.",
+        "execution_started_at": execution.get("execution_started_at") or "",
+        "execution_finished_at": execution.get("execution_finished_at") or "",
+        "execution_confidence": execution.get("execution_confidence") or confidence,
+        "execution_operation": execution.get("execution_operation") or intent_type,
+        "execution_excerpt": execution.get("execution_excerpt") or [],
+        "mutation_permitted": bool(execution.get("mutation_permitted", False)),
         "intent_state": intent_state,
         "intent_type": intent_type,
         "intent_target": intent_target,
@@ -68,17 +100,27 @@ def build_tool_intent_runtime_surface() -> dict[str, object]:
         "urgency": urgency,
         "confidence": confidence,
         "source_contributors": [
+            *[
+                contributor
+                for contributor in (execution.get("source_contributors") or [])
+                if contributor not in {"self-system-code-awareness"}
+            ],
             "self-system-code-awareness",
             *[
                 contributor
                 for contributor in (awareness.get("source_contributors") or [])
-                if contributor not in {"self-system-code-awareness"}
+                if contributor
+                not in {
+                    "self-system-code-awareness",
+                    *(execution.get("source_contributors") or []),
+                }
             ],
         ],
         "boundary": (
-            "Intent is proposal-only and approval-gated. Approval may resolve only as pending, approved, denied, expired, or none; execution remains not-executed and no exec, git, fetch, pull, commit, reset, checkout, or apply action has been performed."
+            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope; mutation_permitted=false and no git fetch, pull, commit, reset, checkout, apply, install, or file/system write has been performed."
         ),
         "seam_usage": [
+            "bounded-read-only-repo-tools",
             "heartbeat-grounding",
             "prompt-contract-runtime-truth",
             "runtime-self-model",

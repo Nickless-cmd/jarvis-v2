@@ -221,6 +221,8 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "adaptive_learning:" in joined
     assert "self_system_code_awareness:" in joined
     assert "tool_intent:" in joined
+    assert "execution_mode=read-only" in joined
+    assert "mutation_permitted=False" in joined
     assert "loop_runtime:" in joined
     assert "idle_consolidation:" in joined
     assert "dream_articulation:" in joined

@@ -486,6 +486,12 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_execution_state": str(
                 tool_intent.get("execution_state") or "not-executed"
             ),
+            "tool_intent_execution_mode": str(
+                tool_intent.get("execution_mode") or "read-only"
+            ),
+            "tool_intent_mutation_permitted": bool(
+                tool_intent.get("mutation_permitted", False)
+            ),
         },
     }
 

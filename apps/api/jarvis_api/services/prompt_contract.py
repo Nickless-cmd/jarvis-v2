@@ -1342,6 +1342,10 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | approval_source={tool_intent.get('approval_source') or 'none'}"
                 f" | approval_required={tool_intent.get('approval_required', True)}"
                 f" | approval_expires_at={tool_intent.get('approval_expires_at') or 'none'}"
+                f" | execution_state={tool_intent.get('execution_state') or 'not-executed'}"
+                f" | execution_mode={tool_intent.get('execution_mode') or 'read-only'}"
+                f" | mutation_permitted={tool_intent.get('mutation_permitted', False)}"
+                f" | execution_summary={tool_intent.get('execution_summary') or 'none'}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"

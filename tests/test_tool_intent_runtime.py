@@ -77,6 +77,8 @@ def test_tool_intent_stays_idle_when_awareness_is_stable(
     assert surface["approval_state"] == "none"
     assert surface["approval_source"] == "none"
     assert surface["execution_state"] == "not-executed"
+    assert surface["execution_mode"] == "read-only"
+    assert surface["mutation_permitted"] is False
 
 
 def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
@@ -89,7 +91,16 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
         "visibility": "internal-only",
         "truth": "proposal-only",
         "kind": "approval-gated-tool-intent-light",
-        "execution_state": "not-executed",
+        "execution_state": "read-only-completed",
+        "execution_mode": "read-only",
+        "execution_target": "feature/tool-intent",
+        "execution_summary": "Working tree inspection ran in bounded read-only mode.",
+        "execution_started_at": datetime.now(UTC).isoformat(),
+        "execution_finished_at": datetime.now(UTC).isoformat(),
+        "execution_confidence": "high",
+        "execution_operation": "inspect-working-tree",
+        "execution_excerpt": ["modified:apps/api/jarvis_api/services/tool_intent_runtime.py"],
+        "mutation_permitted": False,
         "intent_state": "formed",
         "intent_type": "inspect-working-tree",
         "intent_target": "feature/tool-intent",
@@ -150,7 +161,9 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert runtime["runtime_tool_intent"]["approval_required"] is True
     assert runtime["runtime_tool_intent"]["approval_state"] == "approved"
     assert endpoint["approval_source"] == "verbal"
-    assert self_model["tool_intent"]["execution_state"] == "not-executed"
+    assert self_model["tool_intent"]["execution_state"] == "read-only-completed"
+    assert self_model["tool_intent"]["execution_mode"] == "read-only"
+    assert self_model["tool_intent"]["mutation_permitted"] is False
     layer = next(
         item for item in self_model["layers"]
         if item["id"] == "approval-gated-tool-intent-light"
@@ -159,7 +172,9 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert "approval_state=approved" in layer["detail"]
     assert "approval_source=verbal" in layer["detail"]
     assert "approval_required=True" in layer["detail"]
-    assert "execution=not-executed" in layer["detail"]
+    assert "execution=read-only-completed" in layer["detail"]
+    assert "execution_mode=read-only" in layer["detail"]
+    assert "mutation_permitted=False" in layer["detail"]
 
 
 def test_heartbeat_runtime_truth_includes_tool_intent(
@@ -179,6 +194,10 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
                 "approval_source": "none",
                 "approval_required": True,
                 "approval_expires_at": "2099-01-01T00:00:00+00:00",
+                "execution_state": "not-executed",
+                "execution_mode": "read-only",
+                "mutation_permitted": False,
+                "execution_summary": "No bounded repo inspection has been executed.",
             },
         }
     )
@@ -191,6 +210,9 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
     assert "approval_source=none" in lines
     assert "approval_required=True" in lines
     assert "approval_expires_at=2099-01-01T00:00:00+00:00" in lines
+    assert "execution_state=not-executed" in lines
+    assert "execution_mode=read-only" in lines
+    assert "mutation_permitted=False" in lines
 
 
 def test_tool_intent_verbal_approval_becomes_runtime_truth(
@@ -229,7 +251,9 @@ def test_tool_intent_verbal_approval_becomes_runtime_truth(
     assert pending["approval_state"] == "pending"
     assert approved["approval_state"] == "approved"
     assert approved["approval_source"] == "verbal"
-    assert approved["execution_state"] == "not-executed"
+    assert approved["execution_state"] == "blocked-unavailable"
+    assert approved["execution_mode"] == "read-only"
+    assert approved["mutation_permitted"] is False
     assert approved["approval_resolution_message"] == "approve repo read tool intent"
 
 
@@ -269,6 +293,7 @@ def test_tool_intent_verbal_denial_is_bounded_runtime_truth(
     assert denied["approval_state"] == "denied"
     assert denied["approval_source"] == "verbal"
     assert denied["execution_state"] == "not-executed"
+    assert denied["mutation_permitted"] is False
     assert "denial" in denied["approval_resolution_reason"].lower()
 
 
@@ -294,6 +319,110 @@ def test_tool_intent_approval_can_expire_without_execution(
     assert expired["execution_state"] == "not-executed"
     assert expired["approval_requested_at"] == "2000-01-01T00:00:00+00:00"
     assert expired["approval_resolution_reason"]
+
+
+def test_approved_read_only_tool_intent_executes_bounded_repo_inspection(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    tool_intent_mod = isolated_runtime.tool_intent_runtime
+    bounded_tools = isolated_runtime.bounded_repo_tools_runtime
+
+    monkeypatch.setattr(
+        tool_intent_mod,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "dirty",
+            "local_change_state": "modified",
+            "upstream_awareness": "in-sync",
+            "concern_state": "concern",
+            "source_contributors": ["repo-root", "git-status"],
+            "host_context": {
+                "repo_root": ".",
+                "git_present": True,
+            },
+            "repo_observation": {
+                "branch_name": "feature/bounded-read-only",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+    monkeypatch.setattr(
+        bounded_tools,
+        "_inspect_working_tree",
+        lambda repo_root, intent_target: {
+            "execution_target": intent_target,
+            "execution_summary": "Working tree inspection found 2 modified files in bounded read-only mode.",
+            "execution_confidence": "high",
+            "execution_excerpt": [
+                "modified:apps/api/jarvis_api/services/tool_intent_runtime.py",
+                "modified:tests/test_tool_intent_runtime.py",
+            ],
+            "source_contributors": ["git-status", "git-diff-stat"],
+        },
+    )
+
+    session = create_chat_session(title="Approved execution test")
+    pending = tool_intent_mod.build_tool_intent_runtime_surface()
+    append_chat_message(
+        session_id=str(session["id"]),
+        role="user",
+        content="approve inspect working tree tool intent",
+    )
+
+    approved = tool_intent_mod.build_tool_intent_runtime_surface()
+
+    assert pending["approval_state"] == "pending"
+    assert pending["execution_state"] == "not-executed"
+    assert approved["approval_state"] == "approved"
+    assert approved["execution_state"] == "read-only-completed"
+    assert approved["execution_mode"] == "read-only"
+    assert approved["execution_operation"] == "inspect-working-tree"
+    assert approved["execution_target"] == "feature/bounded-read-only"
+    assert approved["execution_summary"]
+    assert approved["execution_excerpt"]
+    assert approved["mutation_permitted"] is False
+    assert approved["truth"] == "derived-runtime-truth"
+
+
+@pytest.mark.parametrize("approval_state", ["pending", "denied", "expired"])
+def test_non_approved_tool_intent_does_not_execute_read_only_repo_tools(
+    isolated_runtime,
+    monkeypatch,
+    approval_state: str,
+) -> None:
+    bounded_tools = isolated_runtime.bounded_repo_tools_runtime
+
+    called = {"value": False}
+
+    def _fail_if_called(*args, **kwargs):
+        called["value"] = True
+        raise AssertionError("read-only handler should not run")
+
+    monkeypatch.setattr(bounded_tools, "_inspect_working_tree", _fail_if_called)
+
+    surface = bounded_tools.build_bounded_repo_tool_execution_surface(
+        {
+            "intent_state": "formed",
+            "intent_type": "inspect-working-tree",
+            "intent_target": "feature/non-approved",
+            "approval_scope": "repo-read",
+            "approval_state": approval_state,
+            "confidence": "high",
+        },
+        awareness_surface={
+            "host_context": {
+                "repo_root": "/tmp/demo-repo",
+                "git_present": True,
+            }
+        },
+    )
+
+    assert surface["execution_state"] == "not-executed"
+    assert surface["execution_mode"] == "read-only"
+    assert surface["mutation_permitted"] is False
+    assert called["value"] is False
 
 
 @pytest.mark.parametrize(
@@ -344,7 +473,10 @@ def test_tool_intent_pending_can_resolve_via_bounded_mc_path(
     assert payload["request"]["approval_source"] == "mc"
     assert payload["tool_intent"]["approval_state"] == expected_state
     assert payload["tool_intent"]["approval_source"] == "mc"
-    assert payload["tool_intent"]["execution_state"] == "not-executed"
+    expected_execution_state = "blocked-unavailable" if expected_state == "approved" else "not-executed"
+    assert payload["tool_intent"]["execution_state"] == expected_execution_state
+    assert payload["tool_intent"]["execution_mode"] == "read-only"
+    assert payload["tool_intent"]["mutation_permitted"] is False
 
 
 def test_mc_tool_intent_approval_does_not_mix_with_chat_or_execution(
@@ -397,4 +529,5 @@ def test_mc_tool_intent_approval_does_not_mix_with_chat_or_execution(
     assert message_count_after == message_count_before
     assert run_count_after == run_count_before
     assert payload["tool_intent"]["approval_source"] == "mc"
-    assert payload["tool_intent"]["execution_state"] == "not-executed"
+    assert payload["tool_intent"]["execution_state"] == "blocked-unavailable"
+    assert payload["tool_intent"]["mutation_permitted"] is False

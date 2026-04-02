@@ -1008,6 +1008,40 @@ function normalizeAdaptiveReasoning(item = {}) {
   }
 }
 
+function normalizeDreamInfluence(item = {}) {
+  const freshness = item.freshness || {}
+  const seamUsage = item.seam_usage || {}
+
+  return {
+    influenceState: item.influence_state || 'quiet',
+    influenceTarget: item.influence_target || 'none',
+    influenceMode: item.influence_mode || 'stabilize',
+    influenceStrength: item.influence_strength || 'none',
+    influenceHint: item.influence_hint || 'no-bounded-dream-pull',
+    confidence: item.confidence || 'low',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    boundary: item.boundary || 'not-memory-not-identity-not-action',
+    kind: item.kind || 'dream-influence-runtime-state',
+    summary: item.summary || 'No bounded dream influence state recorded yet.',
+    source: item.source || '/mc/dream-influence',
+    sourceContributors: (item.source_contributors || []).map((sourceInput) => ({
+      source: sourceInput.source || '',
+      signal: sourceInput.signal || '',
+    })),
+    seamUsage: {
+      guidedLearningEnrichment: Boolean(seamUsage.guided_learning_enrichment),
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+      heartbeatContext: Boolean(seamUsage.heartbeat_context),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+    },
+    builtAt: freshness.built_at || '',
+    freshnessState: freshness.state || 'unknown',
+    createdAt: freshness.built_at || '',
+  }
+}
+
 function normalizeGuidedLearning(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -2394,7 +2428,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -2402,6 +2436,7 @@ export const backend = {
       requestJson('/mc/self-deception-guard').catch(() => null),
       requestJson('/mc/runtime-self-model').catch(() => null),
       requestJson('/mc/internal-cadence').catch(() => null),
+      requestJson('/mc/dream-influence').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -2459,6 +2494,11 @@ export const backend = {
       heartbeat?.adaptive_reasoning ||
       development?.adaptive_reasoning ||
       selfModelPayload?.adaptive_reasoning ||
+      null
+    const dreamInfluenceSource =
+      dreamInfluencePayload ||
+      heartbeat?.dream_influence ||
+      selfModelPayload?.dream_influence ||
       null
     const guidedLearningSource =
       heartbeat?.guided_learning ||
@@ -3121,6 +3161,7 @@ export const backend = {
         councilRuntime: normalizeCouncilRuntime(development.council_runtime || councilRuntimeSource || {}),
         adaptivePlanner: normalizeAdaptivePlanner(development.adaptive_planner || adaptivePlannerSource || {}),
         adaptiveReasoning: normalizeAdaptiveReasoning(development.adaptive_reasoning || adaptiveReasoningSource || {}),
+        dreamInfluence: normalizeDreamInfluence(dreamInfluenceSource || {}),
         guidedLearning: normalizeGuidedLearning(development.guided_learning || guidedLearningSource || {}),
         adaptiveLearning: normalizeAdaptiveLearning(development.adaptive_learning || adaptiveLearningSource || {}),
         userUnderstandingSignals: {
@@ -3202,6 +3243,7 @@ export const backend = {
         councilRuntime: normalizeCouncilRuntime(heartbeat.council_runtime || councilRuntimeSource || {}),
         adaptivePlanner: normalizeAdaptivePlanner(heartbeat.adaptive_planner || adaptivePlannerSource || {}),
         adaptiveReasoning: normalizeAdaptiveReasoning(heartbeat.adaptive_reasoning || adaptiveReasoningSource || {}),
+        dreamInfluence: normalizeDreamInfluence(heartbeat.dream_influence || dreamInfluenceSource || {}),
         guidedLearning: normalizeGuidedLearning(heartbeat.guided_learning || guidedLearningSource || {}),
         adaptiveLearning: normalizeAdaptiveLearning(heartbeat.adaptive_learning || adaptiveLearningSource || {}),
       },
@@ -3216,6 +3258,7 @@ export const backend = {
       councilRuntime: normalizeCouncilRuntime(councilRuntimeSource || {}),
       adaptivePlanner: normalizeAdaptivePlanner(adaptivePlannerSource || {}),
       adaptiveReasoning: normalizeAdaptiveReasoning(adaptiveReasoningSource || {}),
+      dreamInfluence: normalizeDreamInfluence(dreamInfluenceSource || {}),
       guidedLearning: normalizeGuidedLearning(guidedLearningSource || {}),
       adaptiveLearning: normalizeAdaptiveLearning(adaptiveLearningSource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),

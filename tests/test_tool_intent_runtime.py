@@ -41,6 +41,7 @@ def test_tool_intent_builds_approval_gated_shape_from_awareness(
     assert surface["approval_state"] == "pending"
     assert surface["approval_source"] == "none"
     assert surface["execution_state"] == "not-executed"
+    assert surface["action_continuity_state"] == "idle"
     assert "proposal-only" in surface["boundary"]
     assert "approval-gated" in surface["boundary"]
     assert "self-system-code-awareness" in surface["source_contributors"]
@@ -79,6 +80,7 @@ def test_tool_intent_stays_idle_when_awareness_is_stable(
     assert surface["execution_state"] == "not-executed"
     assert surface["execution_mode"] == "read-only"
     assert surface["mutation_permitted"] is False
+    assert surface["action_continuity_state"] == "idle"
 
 
 def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
@@ -101,6 +103,43 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
         "execution_operation": "inspect-working-tree",
         "execution_excerpt": ["modified:apps/api/jarvis_api/services/tool_intent_runtime.py"],
         "mutation_permitted": False,
+        "action_continuity": {
+            "active": True,
+            "kind": "bounded-read-only-action-continuity-light",
+            "continuity_id": "action-continuity:demo",
+            "action_continuity_state": "carrying-forward",
+            "last_action_type": "inspect-working-tree",
+            "last_action_target": "feature/tool-intent",
+            "last_action_summary": "Working tree inspection ran in bounded read-only mode.",
+            "last_action_outcome": "read-only-completed",
+            "last_action_at": datetime.now(UTC).isoformat(),
+            "action_mode": "read-only",
+            "read_only": True,
+            "mutation_permitted": False,
+            "followup_state": "carry-forward",
+            "followup_hint": "Read-only inspection confirmed local modifications remain present.",
+            "post_action_understanding": "Read-only execution confirmed local repo concern without mutating anything.",
+            "post_action_concern": "concern",
+            "confidence": "high",
+            "source_contributors": ["bounded-action-continuity-runtime"],
+            "boundary": "Bounded action continuity carries the latest read-only execution truth only; it is runtime continuity, not MEMORY.md, not identity, and not permission to act.",
+            "updated_at": datetime.now(UTC).isoformat(),
+            "source": "/runtime/bounded-action-continuity",
+        },
+        "action_continuity_state": "carrying-forward",
+        "last_action_type": "inspect-working-tree",
+        "last_action_target": "feature/tool-intent",
+        "last_action_summary": "Working tree inspection ran in bounded read-only mode.",
+        "last_action_outcome": "read-only-completed",
+        "last_action_at": datetime.now(UTC).isoformat(),
+        "action_mode": "read-only",
+        "read_only": True,
+        "followup_state": "carry-forward",
+        "followup_hint": "Read-only inspection confirmed local modifications remain present.",
+        "post_action_understanding": "Read-only execution confirmed local repo concern without mutating anything.",
+        "post_action_concern": "concern",
+        "action_continuity_confidence": "high",
+        "action_continuity_boundary": "Bounded action continuity carries the latest read-only execution truth only; it is runtime continuity, not MEMORY.md, not identity, and not permission to act.",
         "intent_state": "formed",
         "intent_type": "inspect-working-tree",
         "intent_target": "feature/tool-intent",
@@ -164,6 +203,9 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert self_model["tool_intent"]["execution_state"] == "read-only-completed"
     assert self_model["tool_intent"]["execution_mode"] == "read-only"
     assert self_model["tool_intent"]["mutation_permitted"] is False
+    assert self_model["tool_intent"]["action_continuity_state"] == "carrying-forward"
+    assert self_model["tool_intent"]["last_action_outcome"] == "read-only-completed"
+    assert self_model["tool_intent"]["followup_state"] == "carry-forward"
     layer = next(
         item for item in self_model["layers"]
         if item["id"] == "approval-gated-tool-intent-light"
@@ -175,6 +217,8 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert "execution=read-only-completed" in layer["detail"]
     assert "execution_mode=read-only" in layer["detail"]
     assert "mutation_permitted=False" in layer["detail"]
+    assert "continuity=carrying-forward" in layer["detail"]
+    assert "followup_state=carry-forward" in layer["detail"]
 
 
 def test_heartbeat_runtime_truth_includes_tool_intent(
@@ -198,6 +242,10 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
                 "execution_mode": "read-only",
                 "mutation_permitted": False,
                 "execution_summary": "No bounded repo inspection has been executed.",
+                "action_continuity_state": "idle",
+                "last_action_outcome": "none",
+                "followup_state": "none",
+                "followup_hint": "",
             },
         }
     )
@@ -213,6 +261,9 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
     assert "execution_state=not-executed" in lines
     assert "execution_mode=read-only" in lines
     assert "mutation_permitted=False" in lines
+    assert "continuity=idle" in lines
+    assert "last_action_outcome=none" in lines
+    assert "followup_state=none" in lines
 
 
 def test_tool_intent_verbal_approval_becomes_runtime_truth(
@@ -383,6 +434,17 @@ def test_approved_read_only_tool_intent_executes_bounded_repo_inspection(
     assert approved["execution_summary"]
     assert approved["execution_excerpt"]
     assert approved["mutation_permitted"] is False
+    assert approved["action_continuity_state"] == "carrying-forward"
+    assert approved["last_action_type"] == "inspect-working-tree"
+    assert approved["last_action_outcome"] == "read-only-completed"
+    assert approved["action_mode"] == "read-only"
+    assert approved["read_only"] is True
+    assert approved["followup_state"] == "carry-forward"
+    assert approved["followup_hint"]
+    assert approved["post_action_understanding"]
+    assert approved["post_action_concern"] == "concern"
+    assert approved["action_continuity_boundary"]
+    assert "not MEMORY.md" in approved["action_continuity_boundary"]
     assert approved["truth"] == "derived-runtime-truth"
 
 

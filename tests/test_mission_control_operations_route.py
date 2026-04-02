@@ -17,6 +17,10 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "execution_state": "not-executed",
                 "execution_mode": "read-only",
                 "mutation_permitted": False,
+                "action_continuity_state": "idle",
+                "last_action_outcome": "none",
+                "last_action_at": "",
+                "followup_state": "none",
             },
         },
     )
@@ -60,6 +64,9 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_execution_state"] == "not-executed"
     assert payload["summary"]["tool_intent_execution_mode"] == "read-only"
     assert payload["summary"]["tool_intent_mutation_permitted"] is False
+    assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
+    assert payload["summary"]["tool_intent_last_action_outcome"] == "none"
+    assert payload["summary"]["tool_intent_followup_state"] == "none"
 
 
 def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
@@ -99,7 +106,63 @@ def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
     assert payload["tool_intent"]["execution_state"] == "blocked-unavailable"
     assert payload["tool_intent"]["execution_mode"] == "read-only"
     assert payload["tool_intent"]["mutation_permitted"] is False
+    assert payload["tool_intent"]["action_continuity_state"] == "idle"
     assert payload["summary"]["tool_intent_approval_state"] == "approved"
     assert payload["summary"]["tool_intent_execution_state"] == "blocked-unavailable"
     assert payload["summary"]["tool_intent_execution_mode"] == "read-only"
     assert payload["summary"]["tool_intent_mutation_permitted"] is False
+    assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
+
+
+def test_mission_control_operations_route_exposes_bounded_action_continuity(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    monkeypatch.setattr(
+        mission_control,
+        "mc_runtime",
+        lambda: {
+            "provider_router": {},
+            "visible_execution": {},
+            "runtime_tool_intent": {
+                "active": True,
+                "approval_state": "approved",
+                "approval_source": "mc",
+                "execution_state": "read-only-completed",
+                "execution_mode": "read-only",
+                "mutation_permitted": False,
+                "action_continuity_state": "carrying-forward",
+                "last_action_outcome": "read-only-completed",
+                "last_action_at": "2026-04-02T10:30:00+00:00",
+                "followup_state": "carry-forward",
+            },
+        },
+    )
+    monkeypatch.setattr(
+        mission_control,
+        "mc_runs",
+        lambda limit=20: {
+            "active_run": None,
+            "summary": {"recent_count": 0},
+            "recent_runs": [],
+        },
+    )
+    monkeypatch.setattr(
+        mission_control,
+        "mc_approvals",
+        lambda limit=20: {
+            "summary": {"request_count": 0},
+            "requests": [],
+            "recent_invocations": [],
+        },
+    )
+    monkeypatch.setattr(mission_control, "list_chat_sessions", lambda: [])
+
+    payload = mission_control.mc_operations(limit=10)
+
+    assert payload["summary"]["tool_intent_action_continuity_state"] == "carrying-forward"
+    assert payload["summary"]["tool_intent_last_action_outcome"] == "read-only-completed"
+    assert payload["summary"]["tool_intent_last_action_at"] == "2026-04-02T10:30:00+00:00"
+    assert payload["summary"]["tool_intent_followup_state"] == "carry-forward"

@@ -8,6 +8,9 @@ from apps.api.jarvis_api.services.self_system_code_awareness import (
 from apps.api.jarvis_api.services.bounded_repo_tools_runtime import (
     build_bounded_repo_tool_execution_surface,
 )
+from apps.api.jarvis_api.services.bounded_action_continuity_runtime import (
+    build_bounded_action_continuity_surface,
+)
 from apps.api.jarvis_api.services.tool_intent_approval_runtime import (
     build_tool_intent_approval_surface,
 )
@@ -57,6 +60,15 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         },
         awareness_surface=awareness,
     )
+    action_continuity = build_bounded_action_continuity_surface(
+        {
+            **intent_surface,
+            **approval,
+            **execution,
+            "confidence": confidence,
+        },
+        awareness_surface=awareness,
+    )
     execution_state = str(execution.get("execution_state") or "not-executed")
     truth = "derived-runtime-truth" if execution_state != "not-executed" else "proposal-only"
 
@@ -76,6 +88,25 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "execution_operation": execution.get("execution_operation") or intent_type,
         "execution_excerpt": execution.get("execution_excerpt") or [],
         "mutation_permitted": bool(execution.get("mutation_permitted", False)),
+        "action_continuity": action_continuity,
+        "action_continuity_state": action_continuity.get("action_continuity_state") or "idle",
+        "last_action_type": action_continuity.get("last_action_type") or "",
+        "last_action_target": action_continuity.get("last_action_target") or "",
+        "last_action_summary": action_continuity.get("last_action_summary") or "",
+        "last_action_outcome": action_continuity.get("last_action_outcome") or "none",
+        "last_action_at": action_continuity.get("last_action_at") or "",
+        "action_mode": action_continuity.get("action_mode") or "read-only",
+        "read_only": bool(action_continuity.get("read_only", True)),
+        "followup_state": action_continuity.get("followup_state") or "none",
+        "followup_hint": action_continuity.get("followup_hint") or "",
+        "post_action_understanding": action_continuity.get("post_action_understanding") or "",
+        "post_action_concern": action_continuity.get("post_action_concern") or "stable",
+        "action_continuity_confidence": action_continuity.get("confidence") or confidence,
+        "action_continuity_boundary": action_continuity.get("boundary")
+        or (
+            "Bounded action continuity carries the latest read-only execution truth only; "
+            "it is runtime continuity, not MEMORY.md, not identity, and not permission to act."
+        ),
         "intent_state": intent_state,
         "intent_type": intent_type,
         "intent_target": intent_target,
@@ -121,6 +152,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         ),
         "seam_usage": [
             "bounded-read-only-repo-tools",
+            "bounded-action-continuity",
             "heartbeat-grounding",
             "prompt-contract-runtime-truth",
             "runtime-self-model",

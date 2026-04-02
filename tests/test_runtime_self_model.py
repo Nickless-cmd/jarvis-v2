@@ -223,6 +223,8 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "tool_intent:" in joined
     assert "execution_mode=read-only" in joined
     assert "mutation_permitted=False" in joined
+    assert "continuity=" in joined
+    assert "followup_state=" in joined
     assert "loop_runtime:" in joined
     assert "idle_consolidation:" in joined
     assert "dream_articulation:" in joined

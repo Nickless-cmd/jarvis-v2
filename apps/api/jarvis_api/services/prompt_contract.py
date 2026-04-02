@@ -1346,6 +1346,10 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | execution_mode={tool_intent.get('execution_mode') or 'read-only'}"
                 f" | mutation_permitted={tool_intent.get('mutation_permitted', False)}"
                 f" | execution_summary={tool_intent.get('execution_summary') or 'none'}"
+                f" | continuity={tool_intent.get('action_continuity_state') or 'idle'}"
+                f" | last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}"
+                f" | followup_state={tool_intent.get('followup_state') or 'none'}"
+                f" | followup_hint={tool_intent.get('followup_hint') or 'none'}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"

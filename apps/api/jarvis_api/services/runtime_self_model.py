@@ -290,7 +290,10 @@ def _collect_layers() -> list[dict[str, str]]:
             f"approval_required={tool_intent.get('approval_required', True)}; "
             f"execution={tool_intent.get('execution_state') or 'not-executed'}; "
             f"execution_mode={tool_intent.get('execution_mode') or 'read-only'}; "
-            f"mutation_permitted={tool_intent.get('mutation_permitted', False)}."
+            f"mutation_permitted={tool_intent.get('mutation_permitted', False)}; "
+            f"continuity={tool_intent.get('action_continuity_state') or 'idle'}; "
+            f"last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}; "
+            f"followup_state={tool_intent.get('followup_state') or 'none'}."
         ),
     })
 
@@ -712,6 +715,9 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | execution_mode={tool_intent.get('execution_mode') or 'read-only'}"
         f" | mutation_permitted={tool_intent.get('mutation_permitted', False)}"
         f" | execution_summary={tool_intent.get('execution_summary') or 'none'}"
+        f" | continuity={tool_intent.get('action_continuity_state') or 'idle'}"
+        f" | last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}"
+        f" | followup_state={tool_intent.get('followup_state') or 'none'}"
     )
     lines.append(
         "  loop_runtime: "

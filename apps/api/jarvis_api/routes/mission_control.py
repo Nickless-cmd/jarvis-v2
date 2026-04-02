@@ -492,6 +492,18 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_mutation_permitted": bool(
                 tool_intent.get("mutation_permitted", False)
             ),
+            "tool_intent_action_continuity_state": str(
+                tool_intent.get("action_continuity_state") or "idle"
+            ),
+            "tool_intent_last_action_outcome": str(
+                tool_intent.get("last_action_outcome") or "none"
+            ),
+            "tool_intent_last_action_at": str(
+                tool_intent.get("last_action_at") or ""
+            ),
+            "tool_intent_followup_state": str(
+                tool_intent.get("followup_state") or "none"
+            ),
         },
     }
 

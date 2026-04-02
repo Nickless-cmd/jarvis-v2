@@ -1102,6 +1102,13 @@ def _build_influence_trace(
     tool_intent_scope = str(tool_intent.get("approval_scope") or "repo-read")
     tool_intent_approval_state = str(tool_intent.get("approval_state") or "none")
     tool_intent_approval_source = str(tool_intent.get("approval_source") or "none")
+    tool_intent_continuity_state = str(
+        tool_intent.get("action_continuity_state") or "idle"
+    )
+    tool_intent_last_action_outcome = str(
+        tool_intent.get("last_action_outcome") or "none"
+    )
+    tool_intent_followup_state = str(tool_intent.get("followup_state") or "none")
     if tool_intent_state != "idle":
         inputs_present.append(
             "tool-intent "
@@ -1110,6 +1117,14 @@ def _build_influence_trace(
         )
     else:
         inputs_absent.append("tool-intent")
+
+    if tool_intent_continuity_state != "idle":
+        inputs_present.append(
+            "tool-action-continuity "
+            f"({tool_intent_continuity_state}, outcome={tool_intent_last_action_outcome}, followup={tool_intent_followup_state})"
+        )
+    else:
+        inputs_absent.append("tool-action-continuity")
 
     return {
         "inputs_present": inputs_present,
@@ -1166,6 +1181,9 @@ def _build_influence_trace(
         "tool_intent_approval_scope": tool_intent_scope,
         "tool_intent_approval_state": tool_intent_approval_state,
         "tool_intent_approval_source": tool_intent_approval_source,
+        "tool_intent_action_continuity_state": tool_intent_continuity_state,
+        "tool_intent_last_action_outcome": tool_intent_last_action_outcome,
+        "tool_intent_followup_state": tool_intent_followup_state,
     }
 
 

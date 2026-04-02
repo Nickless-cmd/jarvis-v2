@@ -99,6 +99,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.dream_influence_runtime",
         "apps.api.jarvis_api.services.self_system_code_awareness",
         "apps.api.jarvis_api.services.bounded_repo_tools_runtime",
+        "apps.api.jarvis_api.services.bounded_action_continuity_runtime",
         "apps.api.jarvis_api.services.tool_intent_approval_runtime",
         "apps.api.jarvis_api.services.tool_intent_runtime",
         "apps.api.jarvis_api.services.loop_runtime",
@@ -320,6 +321,9 @@ def isolated_runtime(
         ],
         self_system_code_awareness=modules[
             "apps.api.jarvis_api.services.self_system_code_awareness"
+        ],
+        bounded_action_continuity_runtime=modules[
+            "apps.api.jarvis_api.services.bounded_action_continuity_runtime"
         ],
         bounded_repo_tools_runtime=modules[
             "apps.api.jarvis_api.services.bounded_repo_tools_runtime"

@@ -7,7 +7,16 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     monkeypatch.setattr(
         mission_control,
         "mc_runtime",
-        lambda: {"provider_router": {}, "visible_execution": {}},
+        lambda: {
+            "provider_router": {},
+            "visible_execution": {},
+            "runtime_tool_intent": {
+                "active": True,
+                "approval_state": "pending",
+                "approval_source": "none",
+                "execution_state": "not-executed",
+            },
+        },
     )
     monkeypatch.setattr(
         mission_control,
@@ -35,11 +44,15 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
 
     payload = mission_control.mc_operations(limit=10)
 
-    assert payload["runtime"] == {"provider_router": {}, "visible_execution": {}}
+    assert payload["runtime"]["provider_router"] == {}
     assert payload["runs"]["recent_runs"] == []
     assert payload["approvals"]["requests"] == []
+    assert payload["tool_intent"]["approval_state"] == "pending"
     assert payload["sessions"]["items"] == [
         {"id": "chat-1", "title": "Demo", "message_count": 2}
     ]
     assert payload["summary"]["session_count"] == 1
     assert payload["summary"]["approval_request_count"] == 0
+    assert payload["summary"]["tool_intent_active"] is True
+    assert payload["summary"]["tool_intent_approval_state"] == "pending"
+    assert payload["summary"]["tool_intent_execution_state"] == "not-executed"

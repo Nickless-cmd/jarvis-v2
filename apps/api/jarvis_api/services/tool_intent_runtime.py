@@ -5,6 +5,9 @@ from datetime import UTC, datetime
 from apps.api.jarvis_api.services.self_system_code_awareness import (
     build_self_system_code_awareness_surface,
 )
+from apps.api.jarvis_api.services.tool_intent_approval_runtime import (
+    build_tool_intent_approval_surface,
+)
 
 
 def build_tool_intent_runtime_surface() -> dict[str, object]:
@@ -22,6 +25,18 @@ def build_tool_intent_runtime_surface() -> dict[str, object]:
         confidence,
     ) = _derive_intent_from_awareness(awareness=awareness, repo_observation=repo_observation)
 
+    approval = build_tool_intent_approval_surface(
+        {
+            "intent_state": intent_state,
+            "intent_type": intent_type,
+            "intent_target": intent_target,
+            "approval_scope": approval_scope,
+            "approval_required": True,
+            "execution_state": "not-executed",
+        },
+        requested_at=built_at,
+    )
+
     return {
         "active": intent_state != "idle",
         "authority": "derived-runtime-truth",
@@ -35,6 +50,21 @@ def build_tool_intent_runtime_surface() -> dict[str, object]:
         "intent_reason": intent_reason,
         "approval_required": True,
         "approval_scope": approval_scope,
+        "approval_state": approval.get("approval_state") or "none",
+        "approval_source": approval.get("approval_source") or "none",
+        "approval_reason": approval.get("approval_reason") or "",
+        "approval_requested_at": approval.get("approval_requested_at") or "",
+        "approval_expires_at": approval.get("approval_expires_at") or "",
+        "approval_resolved_at": approval.get("approval_resolved_at") or "",
+        "approval_resolution_reason": approval.get("approval_resolution_reason") or "",
+        "approval_resolution_message": approval.get("approval_resolution_message") or "",
+        "approval_session_id": approval.get("approval_session_id") or "",
+        "approval_lifecycle": approval.get("approval_lifecycle") or "bounded-approval-surface-light",
+        "approval_semantics": approval.get("approval_semantics") or {
+            "verbal_supported": True,
+            "mc_supported": True,
+            "mode": "explicit-bounded-approval-only",
+        },
         "urgency": urgency,
         "confidence": confidence,
         "source_contributors": [
@@ -46,7 +76,7 @@ def build_tool_intent_runtime_surface() -> dict[str, object]:
             ],
         ],
         "boundary": (
-            "Intent is proposal-only and approval-gated. No exec, git, fetch, pull, commit, reset, checkout, or apply action has been performed."
+            "Intent is proposal-only and approval-gated. Approval may resolve only as pending, approved, denied, expired, or none; execution remains not-executed and no exec, git, fetch, pull, commit, reset, checkout, or apply action has been performed."
         ),
         "seam_usage": [
             "heartbeat-grounding",

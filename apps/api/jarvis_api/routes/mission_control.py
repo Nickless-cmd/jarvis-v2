@@ -462,9 +462,11 @@ def mc_operations(limit: int = 20) -> dict:
     approvals = mc_approvals(limit=limit)
     with runtime_surface_cache():
         runtime = mc_runtime()
+    tool_intent = dict(runtime.get("runtime_tool_intent") or {})
     sessions = {"items": list_chat_sessions()}
     return {
         "runtime": runtime,
+        "tool_intent": tool_intent,
         "runs": runs,
         "approvals": approvals,
         "sessions": sessions,
@@ -474,6 +476,13 @@ def mc_operations(limit: int = 20) -> dict:
                 (approvals.get("summary") or {}).get("request_count") or 0
             ),
             "session_count": len(sessions["items"]),
+            "tool_intent_active": bool(tool_intent.get("active")),
+            "tool_intent_approval_state": str(
+                tool_intent.get("approval_state") or "none"
+            ),
+            "tool_intent_execution_state": str(
+                tool_intent.get("execution_state") or "not-executed"
+            ),
         },
     }
 

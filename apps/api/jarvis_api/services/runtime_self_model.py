@@ -298,6 +298,7 @@ def _collect_layers() -> list[dict[str, str]]:
             f"target={prompt_evolution_summary.get('latest_target_asset') or 'none'}; "
             f"learning={prompt_evolution_summary.get('latest_learning_mode') or 'none'}; "
             f"fragment={'present' if prompt_evolution.get('candidate_fragment') else 'none'}; "
+            f"direction={prompt_evolution_summary.get('proposal_direction') or 'none'}; "
             f"latest={prompt_evolution_summary.get('latest_proposal_id') or 'none'}."
         ),
     })
@@ -643,6 +644,7 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | target={prompt_evolution_summary.get('latest_target_asset') or 'none'}"
         f" | learning={prompt_evolution_summary.get('latest_learning_mode') or 'none'}"
         f" | fragment={'present' if prompt_evolution.get('candidate_fragment') else 'none'}"
+        f" | direction={prompt_evolution_summary.get('proposal_direction') or 'none'}"
         f" | proposal_only={prompt_evolution_summary.get('proposal_truth') or 'proposal-only'}"
     )
 

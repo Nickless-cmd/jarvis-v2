@@ -15,6 +15,13 @@ def test_prompt_evolution_builds_bounded_proposal_from_runtime_inputs() -> None:
             },
             "summary": {"latest_summary": "A carried thread keeps pressing toward the same direction."},
         },
+        dream_influence={
+            "influence_state": "active",
+            "influence_target": "prompting",
+            "influence_mode": "reinforce",
+            "influence_strength": "medium",
+            "influence_hint": "reinforce prompt-shape toward carried thread",
+        },
         self_model_surface={
             "items": [{"canonical_key": "self-model:improving:carried-thread"}],
             "summary": {
@@ -55,10 +62,14 @@ def test_prompt_evolution_builds_bounded_proposal_from_runtime_inputs() -> None:
     assert artifact["candidate_fragment"]
     assert artifact["fragment_truth"] == "proposal-only"
     assert artifact["fragment_visibility"] == "internal-only"
+    assert artifact["dream_influence"]["influence_mode"] == "reinforce"
     assert artifact["fragment_grounding"]["guided_learning"] == "practice/planning"
-    assert artifact["review_light"]["proposal_direction"] == "reinforce-focus-framing"
+    assert artifact["fragment_grounding"]["dream_influence"] == "active/prompting/reinforce"
+    assert artifact["review_light"]["proposal_direction"] == "reinforce-dream-framing"
     assert artifact["review_light"]["proposed_change_kind"] == "framing-nudge"
+    assert "carried thread stay visible" in artifact["review_light"]["diff_light_summary"]
     assert any(item["source"] == "adaptive-learning" for item in plan["source_inputs"])
+    assert any(item["source"] == "dream-influence" for item in plan["source_inputs"])
     assert artifact["canonical_key"].startswith("runtime-prompt-evolution:focus-nudge:")
 
 
@@ -73,6 +84,13 @@ def test_prompt_evolution_learning_changes_proposal_direction() -> None:
                 "summary": "A carried thread keeps pressing toward the same direction.",
             },
             "summary": {"latest_summary": "A carried thread keeps pressing toward the same direction."},
+        },
+        "dream_influence": {
+            "influence_state": "present",
+            "influence_target": "learning",
+            "influence_mode": "explore",
+            "influence_strength": "low",
+            "influence_hint": "explore learning around carried thread",
         },
         "self_model_surface": {
             "items": [{"canonical_key": "self-model:improving:carried-thread"}],
@@ -120,11 +138,12 @@ def test_prompt_evolution_learning_changes_proposal_direction() -> None:
 
     assert (reinforce_plan["artifact"] or {})["proposal_type"] == "focus-nudge"
     assert (rebalance_plan["artifact"] or {})["proposal_type"] == "world-caution-nudge"
-    assert (reinforce_plan["artifact"] or {})["review_light"]["proposal_direction"] == "reinforce-focus-framing"
+    assert (reinforce_plan["artifact"] or {})["review_light"]["proposal_direction"] == "follow-dream-thread"
     assert (rebalance_plan["artifact"] or {})["review_light"]["proposal_direction"] == "tighten-caution"
-    assert "plain, bounded, and alive" in str((reinforce_plan["artifact"] or {})["candidate_fragment"])
+    assert "follow-dream-thread" == str((reinforce_plan["artifact"] or {})["review_light"]["proposal_direction"])
     assert "keep caution explicit" in str((rebalance_plan["artifact"] or {})["candidate_fragment"])
     assert "Adaptive learning currently points toward rebalance" in str((rebalance_plan["artifact"] or {})["rationale"])
+    assert "Dream influence currently sits at present toward learning via explore" in str((reinforce_plan["artifact"] or {})["rationale"])
 
 
 def test_prompt_evolution_respects_cooldown(isolated_runtime) -> None:
@@ -167,6 +186,13 @@ def test_prompt_evolution_creates_internal_only_runtime_proposal(isolated_runtim
                 },
                 "summary": {"latest_summary": "World interpretation still looks unstable."},
             },
+            "dream_influence": {
+                "influence_state": "present",
+                "influence_target": "reasoning",
+                "influence_mode": "soften",
+                "influence_strength": "low",
+                "influence_hint": "soften world-caution",
+            },
             "self_model_surface": {
                 "items": [{"canonical_key": "self-model:current-limitation:world-thread"}],
                 "summary": {
@@ -207,12 +233,16 @@ def test_prompt_evolution_creates_internal_only_runtime_proposal(isolated_runtim
     assert result["target_asset"] == "HEARTBEAT.md"
     assert result["proposal_type"] == "world-caution-nudge"
     assert result["learning_influence"]["learning_engine_mode"] == "rebalance"
+    assert result["dream_influence"]["influence_mode"] == "soften"
     assert "keep caution explicit" in result["candidate_fragment"]
-    assert result["review_light"]["proposal_direction"] == "tighten-caution"
+    assert "soften slightly" in result["candidate_fragment"]
+    assert result["review_light"]["proposal_direction"] == "soften-caution"
     assert surface["summary"]["latest_target_asset"] == "HEARTBEAT.md"
     assert surface["summary"]["latest_learning_mode"] == "rebalance"
+    assert surface["summary"]["latest_dream_influence_mode"] == "soften"
+    assert surface["summary"]["latest_dream_influence_target"] == "reasoning"
     assert surface["summary"]["latest_candidate_fragment"].startswith("When pressure rises")
-    assert surface["summary"]["proposal_direction"] == "tighten-caution"
+    assert surface["summary"]["proposal_direction"] == "soften-caution"
     assert surface["summary"]["proposed_change_kind"] == "boundary-nudge"
     assert "Tighten caution framing" in surface["summary"]["diff_light_summary"]
     assert surface["fragment_truth"] == "proposal-only"
@@ -220,6 +250,8 @@ def test_prompt_evolution_creates_internal_only_runtime_proposal(isolated_runtim
     assert latest["source_kind"] == "internal-runtime-prompt-evolution"
     assert latest["status"] == "fresh"
     assert "learning_mode=rebalance" in str(latest["support_summary"])
+    assert "dream_influence_mode=soften" in str(latest["support_summary"])
+    assert "dream_influence=present/reasoning/soften" in str(latest["support_summary"])
     assert "candidate_fragment=When pressure rises" in str(latest["support_summary"])
 
 
@@ -246,18 +278,25 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
             "reinforcement_target": "reasoning",
             "retention_bias": "hold",
         },
+        "dream_influence": {
+            "influence_state": "present",
+            "influence_target": "learning",
+            "influence_mode": "explore",
+            "influence_strength": "low",
+        },
         "candidate_fragment": "Keep the inner line plain, grounded in current runtime truth, and measured when claims are still forming.",
         "fragment_grounding": {
             "adaptive_learning": "retain/reasoning/hold",
+            "dream_influence": "present/learning/explore",
             "guided_learning": "clarify/reasoning",
             "adaptive_reasoning": "careful/cautious",
         },
         "fragment_truth": "proposal-only",
         "review_light": {
-            "proposal_direction": "increase-grounding",
+            "proposal_direction": "follow-dream-thread",
             "proposed_change_kind": "communication-calibration",
-            "diff_light_summary": "Stabilize communication toward plainer, more grounded wording.",
-            "review_hint": "Review as a grounding and tone adjustment, not a persona change.",
+            "diff_light_summary": "Let communication keep a quiet carried-thread openness while staying grounded.",
+            "review_hint": "Review as a bounded carried-thread nuance in communication, not a persona change.",
         },
         "cadence": {"cooldown_minutes": 45},
         "summary": {
@@ -266,10 +305,11 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
             "latest_proposal_id": "runtime-prompt-evolution-1",
             "latest_target_asset": "INNER_VOICE.md",
             "latest_learning_mode": "retain",
+            "latest_dream_influence_mode": "explore",
             "latest_candidate_fragment": "Keep the inner line plain, grounded in current runtime truth, and measured when claims are still forming.",
-            "proposal_direction": "increase-grounding",
+            "proposal_direction": "follow-dream-thread",
             "proposed_change_kind": "communication-calibration",
-            "diff_light_summary": "Stabilize communication toward plainer, more grounded wording.",
+            "diff_light_summary": "Let communication keep a quiet carried-thread openness while staying grounded.",
             "fragment_truth": "proposal-only",
             "proposal_truth": "proposal-only",
         },
@@ -291,10 +331,12 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
 
     assert endpoint["summary"]["latest_target_asset"] == "INNER_VOICE.md"
     assert endpoint["summary"]["latest_learning_mode"] == "retain"
-    assert endpoint["summary"]["proposal_direction"] == "increase-grounding"
+    assert endpoint["summary"]["latest_dream_influence_mode"] == "explore"
+    assert endpoint["summary"]["proposal_direction"] == "follow-dream-thread"
     assert endpoint["summary"]["fragment_truth"] == "proposal-only"
     assert runtime["runtime_prompt_evolution"]["summary"]["last_state"] == "forming"
     assert runtime["runtime_prompt_evolution"]["review_light"]["proposed_change_kind"] == "communication-calibration"
+    assert runtime["runtime_prompt_evolution"]["dream_influence"]["influence_mode"] == "explore"
     assert runtime["runtime_prompt_evolution"]["candidate_fragment"].startswith("Keep the inner line plain")
     assert runtime["runtime_prompt_evolution"]["boundary"] == "not-memory-not-identity-not-action-not-applied-prompt"
     assert self_model["prompt_evolution"]["candidate_fragment"].startswith("Keep the inner line plain")

@@ -28,6 +28,7 @@ export function useUnifiedShell() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [workingSteps, setWorkingSteps] = useState([])
+  const [systemHealth, setSystemHealth] = useState({ cpu_pct: 0, ram_pct: 0, disk_free_mb: 0 })
   const liveSubscriptionStartedAtRef = useRef(Date.now())
 
   async function refreshShell() {
@@ -89,6 +90,15 @@ export function useUnifiedShell() {
 
   useEffect(() => {
     initialize()
+    async function pollHealth() {
+      try {
+        const health = await backend.getSystemHealth()
+        setSystemHealth(health)
+      } catch { /* ignore health poll failures */ }
+    }
+    pollHealth()
+    const healthInterval = setInterval(pollHealth, 10000)
+    return () => clearInterval(healthInterval)
   }, [])
 
   useEffect(() => {
@@ -268,5 +278,6 @@ export function useUnifiedShell() {
     isRefreshing,
     isStreaming,
     workingSteps,
+    systemHealth,
   }
 }

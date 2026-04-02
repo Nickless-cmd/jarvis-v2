@@ -21,14 +21,25 @@ export function App() {
     isRefreshing,
     isStreaming,
     workingSteps,
+    systemHealth,
   } = useUnifiedShell()
+
+  function handleViewChange(view) {
+    if (view === 'memory' || view === 'skills') {
+      setActiveView('mission-control')
+      return
+    }
+    setActiveView(view)
+  }
 
   if (!shell) return <div className="boot-screen">Loading unified shell…</div>
 
   return (
     <AppShell
       activeView={activeView}
-      onChangeView={setActiveView}
+      onChangeView={handleViewChange}
+      systemHealth={systemHealth}
+      onNewChat={handleCreateSession}
       sidebarContent={
         activeView === 'chat' ? (
           <SidebarSessions

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from apps.api.jarvis_api.services.runtime_surface_cache import runtime_surface_cache
+
 
 def test_guided_learning_changes_direction_from_runtime_inputs(isolated_runtime) -> None:
     learning = isolated_runtime.guided_learning_runtime
@@ -129,6 +131,60 @@ def test_guided_learning_prompt_section_is_grounded(isolated_runtime) -> None:
     assert "mode=clarify" in section
     assert "focus=reasoning" in section
     assert "tighten-claims" in section
+
+
+def test_guided_learning_does_not_force_dream_influence_rebuild_when_uncached(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    learning = isolated_runtime.guided_learning_runtime
+
+    monkeypatch.setattr(
+        isolated_runtime.dream_influence_runtime,
+        "build_dream_influence_runtime_surface",
+        lambda: (_ for _ in ()).throw(AssertionError("dream influence should not be rebuilt")),
+    )
+    monkeypatch.setattr(
+        learning,
+        "_safe_adaptive_planner",
+        lambda: {"planner_mode": "incremental", "plan_horizon": "near", "planning_posture": "staged", "risk_posture": "balanced"},
+    )
+    monkeypatch.setattr(
+        learning,
+        "_safe_adaptive_reasoning",
+        lambda: {"reasoning_mode": "direct", "reasoning_posture": "balanced", "certainty_style": "crisp", "constraint_bias": "light"},
+    )
+    monkeypatch.setattr(
+        learning,
+        "_safe_epistemic_runtime_state",
+        lambda: {"wrongness_state": "clear", "regret_signal": "none", "counterfactual_mode": "none"},
+    )
+    monkeypatch.setattr(
+        learning,
+        "_safe_prompt_evolution",
+        lambda: {"summary": {"last_state": "idle", "latest_target_asset": "none"}},
+    )
+    monkeypatch.setattr(
+        learning,
+        "_safe_dream_articulation",
+        lambda: {"summary": {"last_state": "idle", "last_reason": "no-run-yet"}},
+    )
+    monkeypatch.setattr(
+        learning,
+        "_safe_loop_runtime",
+        lambda: {"summary": {"current_status": "active", "active_count": 1, "standby_count": 0}},
+    )
+    monkeypatch.setattr(
+        learning,
+        "_safe_council_runtime",
+        lambda: {"council_state": "aligned", "recommendation": "hold", "divergence_level": "low"},
+    )
+
+    with runtime_surface_cache():
+        surface = learning.build_guided_learning_runtime_surface()
+
+    assert surface["learning_mode"] in {"reinforce", "practice", "explore", "clarify", "stabilize"}
+    assert surface["kind"] == "guided-learning-runtime-state"
 
 
 def test_heartbeat_runtime_truth_instruction_includes_guided_learning(isolated_runtime) -> None:

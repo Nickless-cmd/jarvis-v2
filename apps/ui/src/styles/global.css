@@ -129,62 +129,29 @@ button { cursor: pointer; }
   border-bottom:1px solid rgba(255,255,255,.06);
   flex-shrink: 0;
 }
-.chat-header-copy {
-  min-width: 0;
-  display:flex;
-  align-items:center;
-  gap:10px;
+/* ─── Chat Header: Chips & Token Meter ─── */
+.chat-header-left {
+  display: flex; align-items: center; gap: 10px;
 }
-.chat-header-title-stack { min-width: 0; }
-.chat-header-copy .eyebrow { margin: 0; white-space: nowrap; }
-.chat-header-copy strong {
-  display:block;
-  font-size: 12px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+.chat-header-session-title {
+  font-size: 12px; font-weight: 500; color: #e4e6ed;
 }
-.chat-header-subtitle {
-  color:#7b8da2; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+.chat-header-chips { display: flex; gap: 4px; }
+.chat-header-right { display: flex; align-items: center; gap: 8px; }
+
+.chat-token-meter {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  background: #1c1f25; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px; transition: all 0.3s;
 }
-.chat-header-controls {
-  display:flex;
-  align-items:center;
-  gap:6px;
-  min-width:0;
+.chat-token-meter .mono { font-size: 9px; color: #4e5262; }
+.chat-token-meter svg { color: #4e5262; }
+.chat-token-meter.active {
+  background: rgba(61,143,124,0.10); border-color: #3d8f7c;
 }
-.header-select-group {
-  display:flex; align-items:center; gap:6px; padding:4px; border-radius:14px;
-  background:#101720; border:1px solid rgba(255,255,255,.05);
-}
-.header-select {
-  min-width: 108px;
-  max-width: 220px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.08);
-  background:#16181c;
-  color:#e4e6ed;
-  padding:7px 10px;
-  font-size:12px;
-}
-.header-select:focus-visible {
-  outline:none; border-color:rgba(104,163,255,.34); box-shadow:0 0 0 3px rgba(104,163,255,.12);
-}
-.header-model-select { min-width: 164px; }
-.header-refresh-btn { flex: 0 0 auto; }
-.header-status-pill {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:7px 10px;
-  border-radius:999px;
-  background:#16181c;
-  border:1px solid rgba(255,255,255,.05);
-  white-space:nowrap;
-  max-width: 260px;
-}
-.header-status-pill span { color:#8ca0b6; font-size:12px; }
-.header-status-pill strong { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-token-meter.active .mono { color: #5ab8a0; }
+.chat-token-meter.active svg { color: #5ab8a0; }
 .hero-card.compact { margin-bottom:18px; }
 .eyebrow { color:#5ab8a0; font-size:12px; letter-spacing:.12em; text-transform:uppercase; margin:0 0 8px; }
 .hero-card h1 { margin:0 0 8px; font-size:34px; line-height:1.1; }
@@ -599,9 +566,8 @@ button { cursor: pointer; }
   .chat-support-rail { display:none; }
   .sidebar-section { display:none; }
   .chat-header-bar { flex-direction: column; align-items: stretch; }
-  .chat-header-copy, .chat-header-controls { width: 100%; }
-  .header-status-pill { display:none; }
-  .chat-header-subtitle { display:none; }
+  .chat-header-left, .chat-header-right { width: 100%; }
+  .chat-token-meter { display:none; }
   .mc-header-card { flex-direction: column; gap:8px; padding:10px; }
   .mc-shell-status { flex-direction:column; gap:6px; width:100%; }
   .mc-status-group { justify-content:center; }

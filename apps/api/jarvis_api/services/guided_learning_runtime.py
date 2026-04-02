@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from apps.api.jarvis_api.services.runtime_surface_cache import (
     get_cached_runtime_surface,
+    peek_cached_runtime_surface,
 )
 
 
@@ -478,11 +479,10 @@ def _safe_dream_articulation() -> dict[str, object] | None:
 
 
 def _safe_dream_influence() -> dict[str, object] | None:
-    try:
-        from apps.api.jarvis_api.services.dream_influence_runtime import build_dream_influence_runtime_surface
-        return build_dream_influence_runtime_surface()
-    except Exception:
+    cached = peek_cached_runtime_surface("dream_influence_runtime_surface")
+    if cached is None:
         return None
+    return cached  # type: ignore[return-value]
 
 
 def _safe_loop_runtime() -> dict[str, object] | None:

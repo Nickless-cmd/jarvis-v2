@@ -34,3 +34,10 @@ def get_cached_runtime_surface(key: object, builder: Callable[[], _T]) -> _T:
     if key not in cache:
         cache[key] = builder()
     return cache[key]  # type: ignore[return-value]
+
+
+def peek_cached_runtime_surface(key: object) -> object | None:
+    cache = _CACHE.get()
+    if cache is None:
+        return None
+    return cache.get(key)

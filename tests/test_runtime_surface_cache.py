@@ -1,5 +1,6 @@
 from apps.api.jarvis_api.services.runtime_surface_cache import (
     get_cached_runtime_surface,
+    peek_cached_runtime_surface,
     runtime_surface_cache,
 )
 
@@ -34,3 +35,16 @@ def test_runtime_surface_cache_resets_after_context() -> None:
 
     assert first == {"count": 1}
     assert second == {"count": 2}
+
+
+def test_runtime_surface_cache_can_peek_existing_value() -> None:
+    with runtime_surface_cache():
+        cached = get_cached_runtime_surface("demo", lambda: {"ok": True})
+        peeked = peek_cached_runtime_surface("demo")
+
+    assert peeked == cached
+
+
+def test_runtime_surface_cache_peek_returns_none_when_missing() -> None:
+    with runtime_surface_cache():
+        assert peek_cached_runtime_surface("missing") is None

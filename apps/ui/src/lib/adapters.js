@@ -675,6 +675,7 @@ function normalizePromptEvolution(item = {}) {
   const latestProposal = item.latest_proposal || {}
   const learningInfluence = item.learning_influence || {}
   const fragmentGrounding = item.fragment_grounding || {}
+  const reviewLight = item.review_light || {}
 
   return {
     active: Boolean(item.active),
@@ -706,6 +707,9 @@ function normalizePromptEvolution(item = {}) {
       latestReinforcementTarget: summary.latest_reinforcement_target || 'none',
       latestRetentionBias: summary.latest_retention_bias || 'light',
       latestCandidateFragment: summary.latest_candidate_fragment || '',
+      proposalDirection: summary.proposal_direction || reviewLight.proposal_direction || 'none',
+      proposedChangeKind: summary.proposed_change_kind || reviewLight.proposed_change_kind || 'none',
+      diffLightSummary: summary.diff_light_summary || reviewLight.diff_light_summary || '',
       fragmentTruth: summary.fragment_truth || item.fragment_truth || 'proposal-only',
       proposalTruth: summary.proposal_truth || item.proposal_mode || 'proposal-only',
     },
@@ -724,6 +728,12 @@ function normalizePromptEvolution(item = {}) {
     },
     fragmentTruth: item.fragment_truth || 'proposal-only',
     fragmentVisibility: item.fragment_visibility || item.visibility || 'internal-only',
+    reviewLight: {
+      proposalDirection: reviewLight.proposal_direction || 'none',
+      proposedChangeKind: reviewLight.proposed_change_kind || 'none',
+      diffLightSummary: reviewLight.diff_light_summary || '',
+      reviewHint: reviewLight.review_hint || '',
+    },
     lastResult: {
       producer: lastResult.producer || '',
       daemonRan: Boolean(lastResult.daemon_ran),
@@ -739,6 +749,12 @@ function normalizePromptEvolution(item = {}) {
       proposalSummary: lastResult.proposal_summary || '',
       targetAsset: lastResult.target_asset || '',
       candidateFragment: lastResult.candidate_fragment || item.candidate_fragment || '',
+      reviewLight: {
+        proposalDirection: (lastResult.review_light || {}).proposal_direction || reviewLight.proposal_direction || 'none',
+        proposedChangeKind: (lastResult.review_light || {}).proposed_change_kind || reviewLight.proposed_change_kind || 'none',
+        diffLightSummary: (lastResult.review_light || {}).diff_light_summary || reviewLight.diff_light_summary || '',
+        reviewHint: (lastResult.review_light || {}).review_hint || reviewLight.review_hint || '',
+      },
       proposalTruth: lastResult.proposal_truth || item.proposal_mode || 'proposal-only',
       proposalVisibility: lastResult.proposal_visibility || item.visibility || 'internal-only',
       boundary: lastResult.boundary || item.boundary || 'not-memory-not-identity-not-action-not-applied-prompt',
@@ -1857,6 +1873,12 @@ function normalizeSelfAuthoredPromptProposal(item = {}) {
       adaptiveLearning: supportFields.adaptive_learning || 'none',
       guidedLearning: supportFields.guided_learning || 'none',
       adaptiveReasoning: supportFields.adaptive_reasoning || 'none',
+    },
+    reviewLight: {
+      proposalDirection: supportFields.proposal_direction || 'none',
+      proposedChangeKind: supportFields.proposed_change_kind || 'none',
+      diffLightSummary: supportFields.diff_light_summary || '',
+      reviewHint: supportFields.review_hint || '',
     },
     fragmentTruth: item.fragment_truth || 'proposal-only',
     fragmentVisibility: item.fragment_visibility || 'internal-only',

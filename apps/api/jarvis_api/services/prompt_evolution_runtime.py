@@ -151,6 +151,7 @@ def run_prompt_evolution_runtime(
         "learning_influence": dict(artifact.get("learning_influence") or {}),
         "candidate_fragment": str(artifact.get("candidate_fragment") or ""),
         "fragment_grounding": dict(artifact.get("fragment_grounding") or {}),
+        "review_light": dict(artifact.get("review_light") or {}),
         "proposal_visibility": "internal-only",
         "proposal_truth": "proposal-only",
         "boundary": "not-memory-not-identity-not-action-not-applied-prompt",
@@ -303,6 +304,14 @@ def build_prompt_evolution_from_inputs(
         guided_learning=guided,
         adaptive_reasoning=reasoning,
     )
+    review_light = _build_review_light(
+        proposal_type=proposal_type,
+        prompt_target=prompt_target,
+        adaptive_learning=learning_influence,
+        guided_learning=guided,
+        adaptive_reasoning=reasoning,
+        embodied_state=body,
+    )
     rationale = _build_rationale(
         proposal_type=proposal_type,
         target_asset=target_asset,
@@ -319,6 +328,7 @@ def build_prompt_evolution_from_inputs(
             f"Prompt target={prompt_target}. "
             f"Adaptive learning={learning_influence.get('learning_engine_mode') or 'none'}"
             f" toward {learning_influence.get('reinforcement_target') or 'none'}. "
+            f"Review direction={review_light.get('proposal_direction') or 'none'}. "
             f"Candidate fragment present. "
             f"Proposal-only; not applied."
         ),
@@ -340,6 +350,10 @@ def build_prompt_evolution_from_inputs(
                 f"retention_bias={learning_influence.get('retention_bias') or 'light'}",
                 f"guided_learning={fragment_grounding.get('guided_learning') or 'none'}",
                 f"adaptive_reasoning={fragment_grounding.get('adaptive_reasoning') or 'none'}",
+                f"proposal_direction={review_light.get('proposal_direction') or 'none'}",
+                f"proposed_change_kind={review_light.get('proposed_change_kind') or 'none'}",
+                f"diff_light_summary={review_light.get('diff_light_summary') or 'none'}",
+                f"review_hint={review_light.get('review_hint') or 'none'}",
                 f"candidate_fragment={candidate_fragment}",
             ]
         ),
@@ -355,6 +369,7 @@ def build_prompt_evolution_from_inputs(
         "fragment_grounding": fragment_grounding,
         "fragment_truth": "proposal-only",
         "fragment_visibility": "internal-only",
+        "review_light": review_light,
     }
 
     return {
@@ -392,6 +407,7 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
         "fragment_grounding": fragment_grounding,
         "fragment_truth": "proposal-only",
         "fragment_visibility": "internal-only",
+        "review_light": dict((_last_result or {}).get("review_light") or _review_light_from_latest(latest)),
         "cadence": {
             "cooldown_minutes": _PROMPT_EVOLUTION_COOLDOWN_MINUTES,
             "visible_grace_minutes": _PROMPT_EVOLUTION_VISIBLE_GRACE_MINUTES,
@@ -411,6 +427,9 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
             "latest_reinforcement_target": str(learning_influence.get("reinforcement_target") or "none"),
             "latest_retention_bias": str(learning_influence.get("retention_bias") or "light"),
             "latest_candidate_fragment": candidate_fragment or "none",
+            "proposal_direction": str(((_last_result or {}).get("review_light") or _review_light_from_latest(latest)).get("proposal_direction") or "none"),
+            "proposed_change_kind": str(((_last_result or {}).get("review_light") or _review_light_from_latest(latest)).get("proposed_change_kind") or "none"),
+            "diff_light_summary": str(((_last_result or {}).get("review_light") or _review_light_from_latest(latest)).get("diff_light_summary") or "none"),
             "fragment_truth": "proposal-only",
             "proposal_truth": "proposal-only",
         },
@@ -709,6 +728,69 @@ def _build_fragment_grounding(
     }
 
 
+def _build_review_light(
+    *,
+    proposal_type: str,
+    prompt_target: str,
+    adaptive_learning: dict[str, str],
+    guided_learning: dict[str, object],
+    adaptive_reasoning: dict[str, object],
+    embodied_state: dict[str, object],
+) -> dict[str, str]:
+    learning_mode = adaptive_learning.get("learning_engine_mode") or "retain"
+    reinforcement_target = adaptive_learning.get("reinforcement_target") or "reasoning"
+    guided_focus = str(guided_learning.get("learning_focus") or "reasoning")
+    reasoning_mode = str(adaptive_reasoning.get("reasoning_mode") or "direct")
+    body_state = str(embodied_state.get("state") or "steady")
+
+    if proposal_type == "world-caution-nudge":
+        return {
+            "proposal_direction": "tighten-caution",
+            "proposed_change_kind": "boundary-nudge",
+            "diff_light_summary": "Tighten caution framing and narrow the next move.",
+            "review_hint": "Review as a bounded caution increase, not a policy rewrite.",
+        }
+    if proposal_type == "communication-nudge":
+        return {
+            "proposal_direction": "increase-grounding",
+            "proposed_change_kind": "communication-calibration",
+            "diff_light_summary": "Stabilize communication toward plainer, more grounded wording.",
+            "review_hint": "Review as a grounding and tone adjustment, not a persona change.",
+        }
+    if proposal_type == "challenge-nudge":
+        return {
+            "proposal_direction": "soften-assertiveness" if body_state in {"strained", "degraded"} else "increase-challenge",
+            "proposed_change_kind": "posture-nudge",
+            "diff_light_summary": (
+                "Soften assertiveness while preserving bounded challenge."
+                if body_state in {"strained", "degraded"}
+                else "Increase challenge posture without widening scope."
+            ),
+            "review_hint": "Review as a posture adjustment, not an identity or memory edit.",
+        }
+
+    if learning_mode == "reinforce" or reinforcement_target == "prompt-shape":
+        return {
+            "proposal_direction": "reinforce-focus-framing",
+            "proposed_change_kind": "framing-nudge",
+            "diff_light_summary": "Reinforce focus framing so the next move stays plain and alive.",
+            "review_hint": "Review as a focus-framing nudge, not an applied behavioral policy.",
+        }
+    if reasoning_mode in {"careful", "constrained"} or guided_focus in {"restraint", "reasoning"}:
+        return {
+            "proposal_direction": "increase-grounding",
+            "proposed_change_kind": "framing-nudge",
+            "diff_light_summary": "Increase grounding and keep the next framing more constrained.",
+            "review_hint": "Review as a bounded grounding increase, not a full rewrite.",
+        }
+    return {
+        "proposal_direction": "stabilize-communication",
+        "proposed_change_kind": "tone-nudge",
+        "diff_light_summary": "Stabilize communication so the prompt direction stays readable and bounded.",
+        "review_hint": "Review as a small stabilizing nudge, not an applied patch.",
+    }
+
+
 def _sanitize_fragment(text: str) -> str:
     return " ".join(text.replace("|", "/").split())[:220]
 
@@ -747,6 +829,18 @@ def _fragment_grounding_from_latest(latest: dict[str, object] | None) -> dict[st
         "adaptive_learning": parsed.get("adaptive_learning", "none"),
         "guided_learning": parsed.get("guided_learning", "none"),
         "adaptive_reasoning": parsed.get("adaptive_reasoning", "none"),
+    }
+
+
+def _review_light_from_latest(latest: dict[str, object] | None) -> dict[str, str]:
+    parsed = _support_fields_from_latest(latest)
+    if not parsed:
+        return {}
+    return {
+        "proposal_direction": parsed.get("proposal_direction", "none"),
+        "proposed_change_kind": parsed.get("proposed_change_kind", "none"),
+        "diff_light_summary": parsed.get("diff_light_summary", "none"),
+        "review_hint": parsed.get("review_hint", "none"),
     }
 
 

@@ -832,6 +832,7 @@ function selfAuthoredPromptProposalRow(item, onOpen) {
           : 'Fresh prompt proposal'
   const detailText = [
     item.candidateFragment,
+    item.reviewLight?.diffLightSummary,
     item.proposalReason,
     item.proposedNudge,
     lifecycleLabel,
@@ -854,6 +855,7 @@ function selfAuthoredPromptProposalRow(item, onOpen) {
       <div className="mc-row-meta">
         <StatusPill status={item.status || 'fresh'} />
         {item.proposalConfidence ? <small>{`proposal ${item.proposalConfidence}`}</small> : null}
+        {item.reviewLight?.proposalDirection && item.reviewLight.proposalDirection !== 'none' ? <small>{item.reviewLight.proposalDirection}</small> : null}
         {item.fragmentTruth ? <small>{item.fragmentTruth}</small> : null}
         {sourceLabel ? <small>{sourceLabel}</small> : null}
         {item.updatedAt ? <small>{formatFreshness(item.updatedAt)}</small> : null}
@@ -867,6 +869,7 @@ function promptEvolutionFragmentRow(item, onOpen) {
   if (!item || !item.candidateFragment) return null
   const detailText = [
     item.candidateFragment,
+    item.reviewLight?.diffLightSummary,
     item.summary?.latestSummary,
     item.lastResult?.proposalSummary,
   ].filter(Boolean)[0] || 'Inspect bounded self-authored prompt fragment'
@@ -893,6 +896,8 @@ function promptEvolutionFragmentRow(item, onOpen) {
       <div className="mc-row-meta">
         <StatusPill status={item.summary?.lastState || item.lastResult?.proposalState || 'forming'} />
         {item.summary?.latestTargetAsset ? <small>{item.summary.latestTargetAsset}</small> : null}
+        {item.reviewLight?.proposalDirection && item.reviewLight.proposalDirection !== 'none' ? <small>{item.reviewLight.proposalDirection}</small> : null}
+        {item.reviewLight?.proposedChangeKind && item.reviewLight.proposedChangeKind !== 'none' ? <small>{item.reviewLight.proposedChangeKind}</small> : null}
         {grounding ? <small>{grounding}</small> : null}
         <small>{`${item.fragmentTruth || 'proposal-only'} · ${item.fragmentVisibility || 'internal-only'}`}</small>
         {item.lastRunAt || item.builtAt ? <small>{formatFreshness(item.lastRunAt || item.builtAt)}</small> : null}

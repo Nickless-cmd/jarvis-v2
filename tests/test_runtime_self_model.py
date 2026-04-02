@@ -221,6 +221,7 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "prompt_evolution:" in joined
     assert "learning=" in joined
     assert "fragment=" in joined
+    assert "direction=" in joined
 
 
 def test_prompt_lines_distinguish_kinds(isolated_runtime) -> None:

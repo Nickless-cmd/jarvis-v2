@@ -56,6 +56,8 @@ def test_prompt_evolution_builds_bounded_proposal_from_runtime_inputs() -> None:
     assert artifact["fragment_truth"] == "proposal-only"
     assert artifact["fragment_visibility"] == "internal-only"
     assert artifact["fragment_grounding"]["guided_learning"] == "practice/planning"
+    assert artifact["review_light"]["proposal_direction"] == "reinforce-focus-framing"
+    assert artifact["review_light"]["proposed_change_kind"] == "framing-nudge"
     assert any(item["source"] == "adaptive-learning" for item in plan["source_inputs"])
     assert artifact["canonical_key"].startswith("runtime-prompt-evolution:focus-nudge:")
 
@@ -118,6 +120,8 @@ def test_prompt_evolution_learning_changes_proposal_direction() -> None:
 
     assert (reinforce_plan["artifact"] or {})["proposal_type"] == "focus-nudge"
     assert (rebalance_plan["artifact"] or {})["proposal_type"] == "world-caution-nudge"
+    assert (reinforce_plan["artifact"] or {})["review_light"]["proposal_direction"] == "reinforce-focus-framing"
+    assert (rebalance_plan["artifact"] or {})["review_light"]["proposal_direction"] == "tighten-caution"
     assert "plain, bounded, and alive" in str((reinforce_plan["artifact"] or {})["candidate_fragment"])
     assert "keep caution explicit" in str((rebalance_plan["artifact"] or {})["candidate_fragment"])
     assert "Adaptive learning currently points toward rebalance" in str((rebalance_plan["artifact"] or {})["rationale"])
@@ -204,9 +208,13 @@ def test_prompt_evolution_creates_internal_only_runtime_proposal(isolated_runtim
     assert result["proposal_type"] == "world-caution-nudge"
     assert result["learning_influence"]["learning_engine_mode"] == "rebalance"
     assert "keep caution explicit" in result["candidate_fragment"]
+    assert result["review_light"]["proposal_direction"] == "tighten-caution"
     assert surface["summary"]["latest_target_asset"] == "HEARTBEAT.md"
     assert surface["summary"]["latest_learning_mode"] == "rebalance"
     assert surface["summary"]["latest_candidate_fragment"].startswith("When pressure rises")
+    assert surface["summary"]["proposal_direction"] == "tighten-caution"
+    assert surface["summary"]["proposed_change_kind"] == "boundary-nudge"
+    assert "Tighten caution framing" in surface["summary"]["diff_light_summary"]
     assert surface["fragment_truth"] == "proposal-only"
     assert surface["summary"]["proposal_truth"] == "proposal-only"
     assert latest["source_kind"] == "internal-runtime-prompt-evolution"
@@ -245,6 +253,12 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
             "adaptive_reasoning": "careful/cautious",
         },
         "fragment_truth": "proposal-only",
+        "review_light": {
+            "proposal_direction": "increase-grounding",
+            "proposed_change_kind": "communication-calibration",
+            "diff_light_summary": "Stabilize communication toward plainer, more grounded wording.",
+            "review_hint": "Review as a grounding and tone adjustment, not a persona change.",
+        },
         "cadence": {"cooldown_minutes": 45},
         "summary": {
             "last_state": "forming",
@@ -253,6 +267,9 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
             "latest_target_asset": "INNER_VOICE.md",
             "latest_learning_mode": "retain",
             "latest_candidate_fragment": "Keep the inner line plain, grounded in current runtime truth, and measured when claims are still forming.",
+            "proposal_direction": "increase-grounding",
+            "proposed_change_kind": "communication-calibration",
+            "diff_light_summary": "Stabilize communication toward plainer, more grounded wording.",
             "fragment_truth": "proposal-only",
             "proposal_truth": "proposal-only",
         },
@@ -274,8 +291,10 @@ def test_mission_control_runtime_and_endpoint_expose_prompt_evolution(isolated_r
 
     assert endpoint["summary"]["latest_target_asset"] == "INNER_VOICE.md"
     assert endpoint["summary"]["latest_learning_mode"] == "retain"
+    assert endpoint["summary"]["proposal_direction"] == "increase-grounding"
     assert endpoint["summary"]["fragment_truth"] == "proposal-only"
     assert runtime["runtime_prompt_evolution"]["summary"]["last_state"] == "forming"
+    assert runtime["runtime_prompt_evolution"]["review_light"]["proposed_change_kind"] == "communication-calibration"
     assert runtime["runtime_prompt_evolution"]["candidate_fragment"].startswith("Keep the inner line plain")
     assert runtime["runtime_prompt_evolution"]["boundary"] == "not-memory-not-identity-not-action-not-applied-prompt"
     assert self_model["prompt_evolution"]["candidate_fragment"].startswith("Keep the inner line plain")

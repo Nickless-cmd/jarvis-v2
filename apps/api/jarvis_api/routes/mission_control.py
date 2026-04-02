@@ -58,6 +58,9 @@ from apps.api.jarvis_api.services.guided_learning_runtime import (
 from apps.api.jarvis_api.services.adaptive_learning_runtime import (
     build_adaptive_learning_runtime_surface,
 )
+from apps.api.jarvis_api.services.self_system_code_awareness import (
+    build_self_system_code_awareness_surface,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -909,6 +912,12 @@ def mc_adaptive_learning() -> dict:
     return build_adaptive_learning_runtime_surface()
 
 
+@router.get("/self-system-code-awareness")
+def mc_self_system_code_awareness() -> dict:
+    """Return the current bounded self system / code awareness runtime state."""
+    return build_self_system_code_awareness_surface()
+
+
 @router.get("/private-brain")
 def mc_private_brain() -> dict:
     return {
@@ -991,6 +1000,7 @@ def mc_runtime() -> dict:
             "runtime_adaptive_reasoning": build_adaptive_reasoning_runtime_surface(),
             "runtime_guided_learning": build_guided_learning_runtime_surface(),
             "runtime_adaptive_learning": build_adaptive_learning_runtime_surface(),
+            "runtime_self_system_code_awareness": build_self_system_code_awareness_surface(),
             "runtime_loop_state": build_loop_runtime_surface(),
             "runtime_idle_consolidation": build_idle_consolidation_surface(),
             "runtime_dream_articulation": build_dream_articulation_surface(),

@@ -31,6 +31,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "dream_influence" in model
     assert "guided_learning" in model
     assert "adaptive_learning" in model
+    assert "self_system_code_awareness" in model
     assert "loop_runtime" in model
     assert "idle_consolidation" in model
     assert "dream_articulation" in model
@@ -217,6 +218,7 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "dream_influence:" in joined
     assert "guided_learning:" in joined
     assert "adaptive_learning:" in joined
+    assert "self_system_code_awareness:" in joined
     assert "loop_runtime:" in joined
     assert "idle_consolidation:" in joined
     assert "dream_articulation:" in joined

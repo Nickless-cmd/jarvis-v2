@@ -59,6 +59,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "dream_influence": _dream_influence_surface(),
             "guided_learning": _guided_learning_surface(),
             "adaptive_learning": _adaptive_learning_surface(),
+            "self_system_code_awareness": _self_system_code_awareness_surface(),
             "loop_runtime": _loop_runtime_surface(),
             "idle_consolidation": _idle_consolidation_surface(),
             "dream_articulation": _dream_articulation_surface(),
@@ -249,6 +250,24 @@ def _collect_layers() -> list[dict[str, str]]:
             f"target={adaptive_learning.get('reinforcement_target') or 'reasoning'}; "
             f"retention={adaptive_learning.get('retention_bias') or 'light'}; "
             f"maturation={adaptive_learning.get('maturation_state') or 'early'}."
+        ),
+    })
+
+    self_system_code_awareness = _self_system_code_awareness_surface()
+    layers.append({
+        "id": "self-system-code-awareness-light",
+        "label": "Self system / code awareness light",
+        "kind": "orchestration",
+        "role": "active" if str(self_system_code_awareness.get("code_awareness_state") or "repo-unavailable") != "repo-unavailable" else "idle",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"code={self_system_code_awareness.get('code_awareness_state') or 'repo-unavailable'}; "
+            f"repo={self_system_code_awareness.get('repo_status') or 'not-git'}; "
+            f"changes={self_system_code_awareness.get('local_change_state') or 'unknown'}; "
+            f"upstream={self_system_code_awareness.get('upstream_awareness') or 'unknown'}; "
+            f"concern={self_system_code_awareness.get('concern_state') or 'stable'}; "
+            f"approval_required={self_system_code_awareness.get('action_requires_approval', True)}."
         ),
     })
 
@@ -544,6 +563,7 @@ def build_self_model_prompt_lines() -> list[str]:
     dream_influence = model.get("dream_influence") or {}
     guided_learning = model.get("guided_learning") or {}
     adaptive_learning = model.get("adaptive_learning") or {}
+    self_system_code_awareness = model.get("self_system_code_awareness") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -645,6 +665,15 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | target={adaptive_learning.get('reinforcement_target') or 'reasoning'}"
         f" | retention={adaptive_learning.get('retention_bias') or 'light'}"
         f" | maturation={adaptive_learning.get('maturation_state') or 'early'}"
+    )
+    lines.append(
+        "  self_system_code_awareness: "
+        f"{self_system_code_awareness.get('code_awareness_state') or 'repo-unavailable'}"
+        f" | repo={self_system_code_awareness.get('repo_status') or 'not-git'}"
+        f" | changes={self_system_code_awareness.get('local_change_state') or 'unknown'}"
+        f" | upstream={self_system_code_awareness.get('upstream_awareness') or 'unknown'}"
+        f" | concern={self_system_code_awareness.get('concern_state') or 'stable'}"
+        f" | approval_required={self_system_code_awareness.get('action_requires_approval', True)}"
     )
     lines.append(
         "  loop_runtime: "
@@ -929,6 +958,25 @@ def _prompt_evolution_surface() -> dict[str, object]:
                 "latest_target_asset": "none",
                 "proposal_truth": "proposal-only",
             },
+        }
+
+
+def _self_system_code_awareness_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.self_system_code_awareness import (
+            build_self_system_code_awareness_surface,
+        )
+        return build_self_system_code_awareness_surface()
+    except Exception:
+        return {
+            "active": False,
+            "system_awareness_state": "host-limited",
+            "code_awareness_state": "repo-unavailable",
+            "repo_status": "not-git",
+            "local_change_state": "unknown",
+            "upstream_awareness": "unknown",
+            "concern_state": "notice",
+            "action_requires_approval": True,
         }
 
 

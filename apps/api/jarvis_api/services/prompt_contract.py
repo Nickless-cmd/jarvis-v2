@@ -1270,6 +1270,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
     epistemic = context.get("epistemic_runtime_state") or {}
     adaptive_planner = context.get("adaptive_planner") or {}
     adaptive_reasoning = context.get("adaptive_reasoning") or {}
+    dream_influence = context.get("dream_influence") or {}
     guided_learning = context.get("guided_learning") or {}
     adaptive_learning = context.get("adaptive_learning") or {}
     loop_runtime = context.get("loop_runtime") or {}
@@ -1303,6 +1304,12 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}"
                 f" | certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}"
                 f" | constraint={adaptive_reasoning.get('constraint_bias') or 'light'}"
+            ),
+            (
+                f"- dream_influence={dream_influence.get('influence_state') or 'quiet'}"
+                f" | target={dream_influence.get('influence_target') or 'none'}"
+                f" | mode={dream_influence.get('influence_mode') or 'stabilize'}"
+                f" | strength={dream_influence.get('influence_strength') or 'none'}"
             ),
             (
                 f"- guided_learning={guided_learning.get('learning_mode') or 'reinforce'}"

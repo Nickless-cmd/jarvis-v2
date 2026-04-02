@@ -43,6 +43,9 @@ from apps.api.jarvis_api.services.idle_consolidation import (
 from apps.api.jarvis_api.services.dream_articulation import (
     build_dream_articulation_surface,
 )
+from apps.api.jarvis_api.services.dream_influence_runtime import (
+    build_dream_influence_runtime_surface,
+)
 from apps.api.jarvis_api.services.prompt_evolution_runtime import (
     build_prompt_evolution_runtime_surface,
 )
@@ -275,6 +278,7 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
     council_runtime = build_council_runtime_surface()
     adaptive_planner = build_adaptive_planner_runtime_surface()
     adaptive_reasoning = build_adaptive_reasoning_runtime_surface()
+    dream_influence = build_dream_influence_runtime_surface()
     guided_learning = build_guided_learning_runtime_surface()
     adaptive_learning = build_adaptive_learning_runtime_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
@@ -864,6 +868,7 @@ def _build_heartbeat_context(
         council_runtime=council_runtime,
         adaptive_planner=adaptive_planner,
         adaptive_reasoning=adaptive_reasoning,
+        dream_influence=dream_influence,
         guided_learning=guided_learning,
         adaptive_learning=adaptive_learning,
     )
@@ -888,6 +893,7 @@ def _build_heartbeat_context(
         "council_runtime": council_runtime,
         "adaptive_planner": adaptive_planner,
         "adaptive_reasoning": adaptive_reasoning,
+        "dream_influence": dream_influence,
         "guided_learning": guided_learning,
         "adaptive_learning": adaptive_learning,
         "influence_trace": influence_trace,
@@ -908,6 +914,7 @@ def _build_influence_trace(
     council_runtime: dict[str, object],
     adaptive_planner: dict[str, object],
     adaptive_reasoning: dict[str, object],
+    dream_influence: dict[str, object],
     guided_learning: dict[str, object],
     adaptive_learning: dict[str, object],
 ) -> dict[str, object]:
@@ -1026,6 +1033,17 @@ def _build_influence_trace(
     else:
         inputs_absent.append("adaptive-reasoning")
 
+    dream_influence_state = str(dream_influence.get("influence_state") or "quiet")
+    dream_influence_target = str(dream_influence.get("influence_target") or "none")
+    dream_influence_mode = str(dream_influence.get("influence_mode") or "stabilize")
+    dream_influence_strength = str(dream_influence.get("influence_strength") or "none")
+    if dream_influence_state != "quiet":
+        inputs_present.append(
+            f"dream-influence ({dream_influence_state}, target={dream_influence_target}, mode={dream_influence_mode}, strength={dream_influence_strength})"
+        )
+    else:
+        inputs_absent.append("dream-influence")
+
     learning_mode = str(guided_learning.get("learning_mode") or "reinforce")
     learning_focus = str(guided_learning.get("learning_focus") or "reasoning")
     learning_pressure = str(guided_learning.get("learning_pressure") or "low")
@@ -1078,6 +1096,10 @@ def _build_influence_trace(
         "adaptive_reasoning_mode": reasoning_mode,
         "adaptive_reasoning_posture": reasoning_posture,
         "adaptive_certainty_style": certainty_style,
+        "dream_influence_state": dream_influence_state,
+        "dream_influence_target": dream_influence_target,
+        "dream_influence_mode": dream_influence_mode,
+        "dream_influence_strength": dream_influence_strength,
         "guided_learning_mode": learning_mode,
         "guided_learning_focus": learning_focus,
         "guided_learning_pressure": learning_pressure,

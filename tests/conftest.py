@@ -96,6 +96,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.adaptive_reasoning_runtime",
         "apps.api.jarvis_api.services.guided_learning_runtime",
         "apps.api.jarvis_api.services.adaptive_learning_runtime",
+        "apps.api.jarvis_api.services.dream_influence_runtime",
         "apps.api.jarvis_api.services.loop_runtime",
         "apps.api.jarvis_api.services.idle_consolidation",
         "apps.api.jarvis_api.services.dream_articulation",
@@ -312,6 +313,9 @@ def isolated_runtime(
         ],
         adaptive_learning_runtime=modules[
             "apps.api.jarvis_api.services.adaptive_learning_runtime"
+        ],
+        dream_influence_runtime=modules[
+            "apps.api.jarvis_api.services.dream_influence_runtime"
         ],
         loop_runtime=modules[
             "apps.api.jarvis_api.services.loop_runtime"

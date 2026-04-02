@@ -24,6 +24,7 @@ def test_guided_learning_changes_direction_from_runtime_inputs(isolated_runtime)
         },
         prompt_evolution={"summary": {"last_state": "idle", "latest_target_asset": "none"}},
         dream_articulation={"summary": {"last_state": "idle", "last_reason": "no-run-yet"}},
+        dream_influence={"influence_state": "quiet", "influence_target": "none", "influence_mode": "stabilize", "influence_strength": "none"},
         loop_runtime={"summary": {"current_status": "standby", "active_count": 0, "standby_count": 2}},
         council_runtime={"council_state": "checking", "recommendation": "bounded-check", "divergence_level": "high"},
     )
@@ -55,6 +56,7 @@ def test_guided_learning_changes_direction_from_runtime_inputs(isolated_runtime)
         },
         prompt_evolution={"summary": {"last_state": "forming", "latest_target_asset": "HEARTBEAT.md"}},
         dream_articulation={"summary": {"last_state": "tentative", "last_reason": "candidate-formed"}},
+        dream_influence={"influence_state": "present", "influence_target": "prompting", "influence_mode": "reinforce", "influence_strength": "low"},
         loop_runtime={"summary": {"current_status": "active", "active_count": 2, "standby_count": 0}},
         council_runtime={"council_state": "aligned", "recommendation": "carry-forward", "divergence_level": "low"},
     )
@@ -63,6 +65,45 @@ def test_guided_learning_changes_direction_from_runtime_inputs(isolated_runtime)
     assert practice["learning_focus"] == "prompting"
     assert practice["next_learning_bias"] == "rehearse-framing"
     assert practice["learning_posture"] == "active"
+
+
+def test_guided_learning_accepts_dream_influence_nudge(isolated_runtime) -> None:
+    learning = isolated_runtime.guided_learning_runtime
+
+    explore = learning.build_guided_learning_runtime_from_sources(
+        adaptive_planner={
+            "planner_mode": "incremental",
+            "plan_horizon": "near",
+            "planning_posture": "staged",
+            "risk_posture": "balanced",
+        },
+        adaptive_reasoning={
+            "reasoning_mode": "direct",
+            "reasoning_posture": "balanced",
+            "certainty_style": "crisp",
+            "constraint_bias": "light",
+        },
+        epistemic_runtime_state={
+            "wrongness_state": "clear",
+            "regret_signal": "none",
+            "counterfactual_mode": "none",
+        },
+        prompt_evolution={"summary": {"last_state": "idle", "latest_target_asset": "none"}},
+        dream_articulation={"summary": {"last_state": "forming", "last_reason": "candidate-formed"}},
+        dream_influence={
+            "influence_state": "active",
+            "influence_target": "learning",
+            "influence_mode": "explore",
+            "influence_strength": "medium",
+        },
+        loop_runtime={"summary": {"current_status": "standby", "active_count": 0, "standby_count": 1}},
+        council_runtime={"council_state": "held", "recommendation": "hold", "divergence_level": "low"},
+    )
+
+    assert explore["learning_focus"] == "self-knowledge"
+    assert explore["learning_mode"] == "explore"
+    assert explore["next_learning_bias"] == "follow-dream-explore-learning"
+    assert any(item["source"] == "dream-influence" for item in explore["source_contributors"])
 
 
 def test_guided_learning_prompt_section_is_grounded(isolated_runtime) -> None:
@@ -108,6 +149,12 @@ def test_heartbeat_runtime_truth_instruction_includes_guided_learning(isolated_r
                 "certainty_style": "tentative",
                 "constraint_bias": "moderate",
             },
+            "dream_influence": {
+                "influence_state": "present",
+                "influence_target": "learning",
+                "influence_mode": "explore",
+                "influence_strength": "low",
+            },
             "guided_learning": {
                 "learning_mode": "clarify",
                 "learning_focus": "reasoning",
@@ -119,6 +166,7 @@ def test_heartbeat_runtime_truth_instruction_includes_guided_learning(isolated_r
     )
 
     assert "guided_learning=clarify" in instruction
+    assert "dream_influence=present" in instruction
     assert "focus=reasoning" in instruction
     assert "pressure=medium" in instruction
 

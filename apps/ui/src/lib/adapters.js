@@ -1,26 +1,81 @@
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
+const inflightJsonRequests = new Map()
 
 async function requestJson(path, options = {}) {
-  const response = await fetch(path, {
+  const method = String(options.method || 'GET').toUpperCase()
+  const isDedupableGet = method === 'GET' && !options.body
+  const requestKey = isDedupableGet ? `${method}:${path}` : ''
+
+  if (requestKey) {
+    const pending = inflightJsonRequests.get(requestKey)
+    if (pending) return pending
+  }
+
+  const request = fetch(path, {
     ...options,
     headers: {
       ...(options.body ? JSON_HEADERS : {}),
       ...(options.headers || {}),
     },
+  }).then(async (response) => {
+    if (!response.ok) {
+      let detail = `${response.status} ${response.statusText}`
+      try {
+        const data = await response.json()
+        detail = data.detail || JSON.stringify(data)
+      } catch {
+        detail = await response.text()
+      }
+      throw new Error(`${path}: ${detail}`)
+    }
+
+    return response.json()
   })
 
-  if (!response.ok) {
-    let detail = `${response.status} ${response.statusText}`
-    try {
-      const data = await response.json()
-      detail = data.detail || JSON.stringify(data)
-    } catch {
-      detail = await response.text()
-    }
-    throw new Error(`${path}: ${detail}`)
-  }
+  if (!requestKey) return request
 
-  return response.json()
+  inflightJsonRequests.set(requestKey, request)
+  return request.finally(() => {
+    if (inflightJsonRequests.get(requestKey) === request) {
+      inflightJsonRequests.delete(requestKey)
+    }
+  })
+}
+
+function normalizeMissionControlOperationsPayload(payload = {}) {
+  const runtime = payload?.runtime || {}
+  const runs = payload?.runs || {}
+  const approvals = payload?.approvals || {}
+  const sessions = payload?.sessions || {}
+  const providerRouter = runtime?.provider_router || {}
+
+  return {
+    fetchedAt: new Date().toISOString(),
+    runs: {
+      activeRun: runs?.active_run ? normalizeRunItem(runs.active_run) : null,
+      lastOutcome: runs?.last_outcome || null,
+      lastCapabilityUse: runs?.last_capability_use || null,
+      recentRuns: (runs?.recent_runs || []).map(normalizeRunItem),
+      recentWorkUnits: runs?.recent_work_units || [],
+      recentWorkNotes: runs?.recent_work_notes || [],
+      summary: runs?.summary || {},
+    },
+    sessions: {
+      items: sessions?.items || [],
+    },
+    approvals: {
+      summary: approvals?.summary || {},
+      requests: (approvals?.requests || []).map(normalizeApprovalItem),
+      recentInvocations: approvals?.recent_invocations || [],
+    },
+    lanes: {
+      visible: normalizeLane('Visible', runtime?.visible_execution || {}, providerRouter?.main_agent_target || {}),
+      cheap: normalizeLane('Cheap', runtime?.cheap_lane_execution || {}, providerRouter?.lane_targets?.cheap || {}),
+      coding: normalizeLane('Coding', runtime?.coding_lane_execution || {}, providerRouter?.lane_targets?.coding || {}),
+      local: normalizeLane('Local', runtime?.local_lane_execution || {}, providerRouter?.lane_targets?.local || {}),
+    },
+    runtime,
+  }
 }
 
 const missionControlEventListeners = new Set()
@@ -2134,42 +2189,6 @@ export const backend = {
     return normalizeSelection(updated)
   },
 
-  async getJarvisSurface() {
-    const payload = await requestJson('/mc/jarvis')
-    const state = payload?.state || {}
-    const memory = payload?.memory || {}
-    const heartbeat = payload?.heartbeat || {}
-    const development = payload?.development || {}
-    const privateState = state.private_state?.current || {}
-    const innerVoice = state.protected_inner_voice?.current || {}
-    const affectiveRaw =
-      heartbeat?.affective_meta_state ||
-      development?.affective_meta_state ||
-      {}
-    const retainedMemory = memory.retained_projection?.current || memory.retained_projection || {}
-
-    return {
-      affectiveMetaState: {
-        confidenceLevel: privateState.confidence || affectiveRaw.confidence || 0,
-        curiosityLevel: affectiveRaw.curiosity || 0,
-        frustrationLevel: privateState.frustration || affectiveRaw.frustration || 0,
-        fatigueLevel: affectiveRaw.fatigue || affectiveRaw.reflective_load_pct || 0,
-        state: affectiveRaw.state || 'unknown',
-        bearing: affectiveRaw.bearing || 'unknown',
-      },
-      skills: (payload?.skills || []),
-      summary: {
-        retained_memory: {
-          kind: retainedMemory.kind || retainedMemory.retained_kind || 'unknown',
-          focus: retainedMemory.retained_focus || retainedMemory.retained_value || 'none',
-        },
-      },
-      protectedVoice: {
-        preview: innerVoice.current_pull || innerVoice.summary || null,
-      },
-    }
-  },
-
   async getMissionControlOverview({ selection } = {}) {
     const [overview, approvals, sessions, events] = await Promise.all([
       requestJson('/mc/overview'),
@@ -2265,49 +2284,19 @@ export const backend = {
   },
 
   async getMissionControlOperations() {
-    const [runtime, runs, approvals, sessions] = await Promise.all([
-      requestJson('/mc/runtime'),
-      requestJson('/mc/runs?limit=20'),
-      requestJson('/mc/approvals?limit=20'),
-      requestJson('/chat/sessions'),
-    ])
-
-    const providerRouter = runtime?.provider_router || {}
-    return {
-      fetchedAt: new Date().toISOString(),
-      runs: {
-        activeRun: runs?.active_run ? normalizeRunItem(runs.active_run) : null,
-        lastOutcome: runs?.last_outcome || null,
-        lastCapabilityUse: runs?.last_capability_use || null,
-        recentRuns: (runs?.recent_runs || []).map(normalizeRunItem),
-        recentWorkUnits: runs?.recent_work_units || [],
-        recentWorkNotes: runs?.recent_work_notes || [],
-        summary: runs?.summary || {},
-      },
-      sessions: {
-        items: sessions?.items || [],
-      },
-      approvals: {
-        summary: approvals?.summary || {},
-        requests: (approvals?.requests || []).map(normalizeApprovalItem),
-        recentInvocations: approvals?.recent_invocations || [],
-      },
-      lanes: {
-        visible: normalizeLane('Visible', runtime?.visible_execution || {}, providerRouter?.main_agent_target || {}),
-        cheap: normalizeLane('Cheap', runtime?.cheap_lane_execution || {}, providerRouter?.lane_targets?.cheap || {}),
-        coding: normalizeLane('Coding', runtime?.coding_lane_execution || {}, providerRouter?.lane_targets?.coding || {}),
-        local: normalizeLane('Local', runtime?.local_lane_execution || {}, providerRouter?.lane_targets?.local || {}),
-      },
-    }
+    const operations = await requestJson('/mc/operations')
+    return normalizeMissionControlOperationsPayload(operations)
   },
 
   async getMissionControlObservability() {
-    const [events, costs, runtime, runs] = await Promise.all([
+    const [events, costs, operations] = await Promise.all([
       requestJson('/mc/events?limit=80'),
       requestJson('/mc/costs?limit=40'),
-      requestJson('/mc/runtime'),
-      requestJson('/mc/runs?limit=20'),
+      requestJson('/mc/operations'),
     ])
+
+    const runtime = operations?.runtime || {}
+    const runs = operations?.runs || {}
 
     const normalizedRuns = (runs?.recent_runs || []).map(normalizeRunItem)
     const failedRuns = normalizedRuns.filter((item) => ['failed', 'cancelled'].includes(item.status))

@@ -69,6 +69,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   const [drawer, setDrawer] = useState(null)
   const refreshQueue = useRef(new Set())
   const refreshTimer = useRef(null)
+  const inflightRefreshes = useRef(new Map())
 
   const applySelectionToOverview = useCallback((overview) => {
     if (!overview) return overview
@@ -85,25 +86,47 @@ export function useMissionControlPhaseA({ active, selection }) {
     }
   }, [selection])
 
+  const runRefresh = useCallback((key, loader) => {
+    const current = inflightRefreshes.current.get(key)
+    if (current) return current
+    const pending = Promise.resolve()
+      .then(loader)
+      .finally(() => {
+        if (inflightRefreshes.current.get(key) === pending) {
+          inflightRefreshes.current.delete(key)
+        }
+      })
+    inflightRefreshes.current.set(key, pending)
+    return pending
+  }, [])
+
   const refreshOverview = useCallback(async () => {
-    const overview = await backend.getMissionControlOverview({ selection })
-    setData((current) => ({ ...current, overview: applySelectionToOverview(overview) }))
-  }, [selection, applySelectionToOverview])
+    await runRefresh('overview', async () => {
+      const overview = await backend.getMissionControlOverview({ selection })
+      setData((current) => ({ ...current, overview: applySelectionToOverview(overview) }))
+    })
+  }, [selection, applySelectionToOverview, runRefresh])
 
   const refreshOperations = useCallback(async () => {
-    const operations = await backend.getMissionControlOperations()
-    setData((current) => ({ ...current, operations }))
-  }, [])
+    await runRefresh('operations', async () => {
+      const operations = await backend.getMissionControlOperations()
+      setData((current) => ({ ...current, operations }))
+    })
+  }, [runRefresh])
 
   const refreshObservability = useCallback(async () => {
-    const observability = await backend.getMissionControlObservability()
-    setData((current) => ({ ...current, observability }))
-  }, [])
+    await runRefresh('observability', async () => {
+      const observability = await backend.getMissionControlObservability()
+      setData((current) => ({ ...current, observability }))
+    })
+  }, [runRefresh])
 
   const refreshJarvis = useCallback(async () => {
-    const jarvis = await backend.getMissionControlJarvis()
-    setData((current) => ({ ...current, jarvis }))
-  }, [])
+    await runRefresh('jarvis', async () => {
+      const jarvis = await backend.getMissionControlJarvis()
+      setData((current) => ({ ...current, jarvis }))
+    })
+  }, [runRefresh])
 
   const isJarvisTab = useCallback(
     (tabId) => ['living-mind', 'self-review', 'continuity', 'development'].includes(tabId),
@@ -139,7 +162,6 @@ export function useMissionControlPhaseA({ active, selection }) {
       void Promise.allSettled([
         refreshOperations(),
         refreshObservability(),
-        refreshJarvis(),
       ])
     } finally {
       setIsLoading(false)
@@ -223,13 +245,13 @@ export function useMissionControlPhaseA({ active, selection }) {
       if (RUN_RELATED_FAMILIES.has(family)) tabs.push('overview', 'operations')
       if (APPROVAL_RELATED_FAMILIES.has(family)) tabs.push('overview', 'operations')
       if (OBS_RELATED_FAMILIES.has(family)) tabs.push('observability')
-      if (JARVIS_RELATED_FAMILIES.has(family)) tabs.push('jarvis')
+      if (JARVIS_RELATED_FAMILIES.has(family) && (data.jarvis || isJarvisTab(activeTab))) tabs.push('jarvis')
       if (tabs.length > 0) scheduleRefresh(tabs)
     })
     return () => {
       stop?.()
     }
-  }, [active, scheduleRefresh])
+  }, [active, activeTab, data.jarvis, isJarvisTab, scheduleRefresh])
 
   useEffect(() => {
     if (!active) return

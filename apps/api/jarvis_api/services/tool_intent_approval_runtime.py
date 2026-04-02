@@ -121,6 +121,50 @@ def build_tool_intent_approval_surface(
     }
 
 
+def resolve_tool_intent_approval(
+    intent_surface: dict[str, object],
+    *,
+    approval_state: str,
+    approval_source: str,
+    resolution_reason: str,
+    resolution_message: str = "",
+    session_id: str = "",
+    resolved_at: str | None = None,
+) -> dict[str, object]:
+    normalized_state = str(approval_state or "").strip().lower()
+    if normalized_state not in {"approved", "denied"}:
+        raise ValueError("approval_state must be approved or denied")
+
+    intent_state = str(intent_surface.get("intent_state") or "idle")
+    approval_required = bool(intent_surface.get("approval_required", True))
+    if intent_state == "idle" or not approval_required:
+        raise ValueError("No active approval-gated tool intent is present.")
+
+    intent_key = tool_intent_approval_key(intent_surface)
+    request = get_tool_intent_approval_request(intent_key)
+    if request is None:
+        raise ValueError("Tool intent approval request not found for current runtime intent.")
+
+    current_state = str(request.get("approval_state") or "pending")
+    if current_state != "pending":
+        raise ValueError(
+            f"Tool intent approval is not pending; current state is {current_state}."
+        )
+
+    resolved_request = resolve_tool_intent_approval_request(
+        intent_key,
+        approval_state=normalized_state,
+        approval_source=str(approval_source or "mc"),
+        resolved_at=resolved_at or datetime.now(UTC).isoformat(),
+        resolution_reason=resolution_reason,
+        resolution_message=resolution_message,
+        session_id=session_id,
+    )
+    if resolved_request is None:
+        raise RuntimeError("tool intent approval request could not be resolved")
+    return resolved_request
+
+
 def tool_intent_approval_key(intent_surface: dict[str, object]) -> str:
     raw = "::".join(
         [

@@ -64,6 +64,9 @@ from apps.api.jarvis_api.services.self_system_code_awareness import (
 from apps.api.jarvis_api.services.tool_intent_runtime import (
     build_tool_intent_runtime_surface,
 )
+from apps.api.jarvis_api.services.tool_intent_approval_runtime import (
+    resolve_tool_intent_approval,
+)
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
@@ -934,6 +937,48 @@ def mc_self_system_code_awareness() -> dict:
 def mc_tool_intent() -> dict:
     """Return the current bounded approval-gated tool intent runtime state."""
     return build_tool_intent_runtime_surface()
+
+
+@router.post("/tool-intent/approve")
+def mc_approve_tool_intent() -> dict:
+    tool_intent = build_tool_intent_runtime_surface()
+    try:
+        request = resolve_tool_intent_approval(
+            tool_intent,
+            approval_state="approved",
+            approval_source="mc",
+            resolution_reason="Explicit bounded Mission Control approval resolved the current tool intent.",
+            resolution_message="Mission Control Operations approve control",
+            session_id="mission-control-operations",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        "request": request,
+        "tool_intent": build_tool_intent_runtime_surface(),
+    }
+
+
+@router.post("/tool-intent/deny")
+def mc_deny_tool_intent() -> dict:
+    tool_intent = build_tool_intent_runtime_surface()
+    try:
+        request = resolve_tool_intent_approval(
+            tool_intent,
+            approval_state="denied",
+            approval_source="mc",
+            resolution_reason="Explicit bounded Mission Control denial resolved the current tool intent.",
+            resolution_message="Mission Control Operations deny control",
+            session_id="mission-control-operations",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        "request": request,
+        "tool_intent": build_tool_intent_runtime_surface(),
+    }
 
 
 @router.get("/private-brain")

@@ -56,3 +56,42 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_active"] is True
     assert payload["summary"]["tool_intent_approval_state"] == "pending"
     assert payload["summary"]["tool_intent_execution_state"] == "not-executed"
+
+
+def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    monkeypatch.setattr(
+        isolated_runtime.tool_intent_runtime,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "dirty",
+            "local_change_state": "modified",
+            "upstream_awareness": "in-sync",
+            "concern_state": "concern",
+            "source_contributors": ["repo-root", "git-status"],
+            "repo_observation": {
+                "branch_name": "feature/tool-intent-operations-mc",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+    monkeypatch.setattr(
+        mission_control,
+        "build_tool_intent_runtime_surface",
+        isolated_runtime.tool_intent_runtime.build_tool_intent_runtime_surface,
+    )
+
+    mission_control.mc_tool_intent()
+    mission_control.mc_approve_tool_intent()
+    payload = mission_control.mc_operations(limit=10)
+
+    assert payload["tool_intent"]["approval_state"] == "approved"
+    assert payload["tool_intent"]["approval_source"] == "mc"
+    assert payload["tool_intent"]["execution_state"] == "not-executed"
+    assert payload["summary"]["tool_intent_approval_state"] == "approved"
+    assert payload["summary"]["tool_intent_execution_state"] == "not-executed"

@@ -35,9 +35,12 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     openSessionDetail,
     openJarvisDetail,
     actOnApproval,
+    actOnToolIntent,
     actOnContractCandidate,
     actOnHeartbeatTick,
     actOnDevelopmentFocus,
+    toolIntentActionBusy,
+    toolIntentActionError,
   } = useMissionControlPhaseA({ active: true, selection })
   const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
 
@@ -113,6 +116,9 @@ export function MissionControlPage({ selection, onSelectionChange }) {
           onOpenSession={openSessionDetail}
           onOpenApproval={openApprovalDetail}
           onOpenItem={openJarvisDetail}
+          onToolIntentAction={actOnToolIntent}
+          toolIntentActionBusy={toolIntentActionBusy}
+          toolIntentActionError={toolIntentActionError}
         />
       ) : null}
 

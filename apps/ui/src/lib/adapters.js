@@ -3436,6 +3436,18 @@ export const backend = {
     })
   },
 
+  async approveToolIntent() {
+    return requestJson('/mc/tool-intent/approve', {
+      method: 'POST',
+    })
+  },
+
+  async denyToolIntent() {
+    return requestJson('/mc/tool-intent/deny', {
+      method: 'POST',
+    })
+  },
+
   async completeDevelopmentFocus(focusId) {
     return requestJson(`/mc/development-focus/${focusId}/complete`, {
       method: 'POST',

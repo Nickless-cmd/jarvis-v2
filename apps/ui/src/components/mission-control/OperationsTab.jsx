@@ -81,6 +81,9 @@ export function OperationsTab({
   onOpenSession,
   onOpenApproval,
   onOpenItem,
+  onToolIntentAction,
+  toolIntentActionBusy,
+  toolIntentActionError,
 }) {
   const activeRunId = data?.runs?.activeRun?.runId || ''
   const recentRuns = (data?.runs?.recentRuns || []).filter((run) => run.runId !== activeRunId)
@@ -171,6 +174,28 @@ export function OperationsTab({
           <div className="mc-list">
             {toolIntentRow(toolIntent, onOpenItem)}
           </div>
+          {toolIntent.approvalState === 'pending' ? (
+            <>
+              {toolIntentActionError ? <div className="inline-error">{toolIntentActionError}</div> : null}
+              <div className="mc-inline-actions mc-tool-intent-actions">
+                <button
+                  className="primary-btn"
+                  disabled={toolIntentActionBusy}
+                  onClick={() => onToolIntentAction?.('approve')}
+                >
+                  {toolIntentActionBusy ? 'Working…' : 'Approve'}
+                </button>
+                <button
+                  className="secondary-btn"
+                  disabled={toolIntentActionBusy}
+                  onClick={() => onToolIntentAction?.('deny')}
+                >
+                  Deny
+                </button>
+              </div>
+              <p className="mc-tool-intent-help muted">Resolve only bounded approval state here. Execution remains not-executed.</p>
+            </>
+          ) : null}
         </section>
       ) : null}
 

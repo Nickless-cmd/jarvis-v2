@@ -14,17 +14,35 @@ function humanizeToken(value) {
     .trim()
 }
 
+function approvalTimingLabel(item) {
+  if (item?.approvalState === 'pending' && item?.approvalExpiresAt) {
+    return `expires ${formatFreshness(item.approvalExpiresAt)}`
+  }
+  if (item?.approvalResolvedAt) {
+    return `resolved ${formatFreshness(item.approvalResolvedAt)}`
+  }
+  if (item?.approvalRequestedAt) {
+    return `requested ${formatFreshness(item.approvalRequestedAt)}`
+  }
+  return ''
+}
+
 function toolIntentRow(item, onOpen) {
   if (!item || (!item.intentState && !item.intentType)) return null
 
   const detailText = [
-    item.intentReason,
     [
+      item.approvalState ? `approval ${humanizeToken(item.approvalState)}` : '',
+      item.approvalSource && item.approvalSource !== 'none' ? `source ${humanizeToken(item.approvalSource)}` : '',
       item.intentType ? `type ${humanizeToken(item.intentType)}` : '',
       item.intentTarget ? `target ${item.intentTarget}` : '',
       item.approvalScope ? `scope ${humanizeToken(item.approvalScope)}` : '',
     ].filter(Boolean).join(' · '),
+    item.intentReason,
+    item.approvalResolutionMessage,
   ].filter(Boolean)[0] || 'Inspect bounded operational tool intent'
+
+  const timingLabel = approvalTimingLabel(item)
 
   return (
     <button
@@ -42,11 +60,13 @@ function toolIntentRow(item, onOpen) {
       </div>
       <div className="mc-row-meta">
         <StatusPill status={item.intentState || 'idle'} />
+        <StatusPill status={item.approvalState || 'none'} />
         {item.intentType ? <small>{humanizeToken(item.intentType)}</small> : null}
         {item.urgency ? <small>{humanizeToken(item.urgency)}</small> : null}
-        {item.approvalRequired ? <small>approval required</small> : null}
+        {item.approvalSource && item.approvalSource !== 'none' ? <small>{humanizeToken(item.approvalSource)}</small> : null}
+        {item.approvalRequired ? <small>approval required</small> : <small>no approval</small>}
         {item.executionState ? <small>{humanizeToken(item.executionState)}</small> : null}
-        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        {timingLabel ? <small>{timingLabel}</small> : null}
         <ChevronRight size={14} />
       </div>
     </button>
@@ -127,6 +147,11 @@ export function OperationsTab({
               <strong>{toolIntent.intentState || 'idle'}</strong>
               <p className="muted">{toolIntent.intentType || 'inspect-repo-status'}</p>
             </div>
+            <div className="compact-metric" title="Approval lifecycle state and source">
+              <span>Approval</span>
+              <strong>{humanizeToken(toolIntent.approvalState || 'none')}</strong>
+              <p className="muted">{humanizeToken(toolIntent.approvalSource || 'none')} · {toolIntent.approvalRequired ? 'required' : 'not required'}</p>
+            </div>
             <div className="compact-metric" title="Intent target and urgency">
               <span>Target</span>
               <strong>{toolIntent.intentTarget || 'workspace'}</strong>
@@ -134,8 +159,13 @@ export function OperationsTab({
             </div>
             <div className="compact-metric" title="Approval boundary and execution state">
               <span>Boundary</span>
-              <strong>{toolIntent.approvalRequired ? 'Approval Required' : 'No Approval'}</strong>
-              <p className="muted">{toolIntent.executionState || 'not-executed'} · {toolIntent.approvalScope || 'repo-read'}</p>
+              <strong>{toolIntent.executionState || 'not-executed'}</strong>
+              <p className="muted">{toolIntent.approvalScope || 'repo-read'} · {toolIntent.approvalLifecycle || 'bounded-approval-surface-light'}</p>
+            </div>
+            <div className="compact-metric" title="Approval timing and resolution state">
+              <span>Timing</span>
+              <strong>{approvalTimingLabel(toolIntent) || 'awaiting signal'}</strong>
+              <p className="muted">{toolIntent.approvalResolutionReason || toolIntent.approvalResolutionMessage || 'No resolution recorded'}</p>
             </div>
           </div>
           <div className="mc-list">

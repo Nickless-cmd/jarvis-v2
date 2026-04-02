@@ -22,6 +22,7 @@ export function App() {
     isStreaming,
     workingSteps,
     systemHealth,
+    jarvisSurface,
   } = useUnifiedShell()
 
   function handleViewChange(view) {
@@ -62,6 +63,7 @@ export function App() {
           isRefreshing={isRefreshing}
           isStreaming={isStreaming}
           workingSteps={workingSteps}
+          jarvisSurface={jarvisSurface}
         />
       ) : (
         <MissionControlPage

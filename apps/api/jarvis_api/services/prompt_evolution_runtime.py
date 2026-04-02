@@ -76,6 +76,8 @@ def run_prompt_evolution_runtime(
         embodied_state=inputs["embodied_state"],
         loop_runtime=inputs["loop_runtime"],
         adaptive_learning=inputs["adaptive_learning"],
+        guided_learning=inputs["guided_learning"],
+        adaptive_reasoning=inputs["adaptive_reasoning"],
         now=now,
     )
 
@@ -147,6 +149,8 @@ def run_prompt_evolution_runtime(
         "proposal_summary": str(persisted.get("summary") or ""),
         "target_asset": str(artifact.get("target_asset") or ""),
         "learning_influence": dict(artifact.get("learning_influence") or {}),
+        "candidate_fragment": str(artifact.get("candidate_fragment") or ""),
+        "fragment_grounding": dict(artifact.get("fragment_grounding") or {}),
         "proposal_visibility": "internal-only",
         "proposal_truth": "proposal-only",
         "boundary": "not-memory-not-identity-not-action-not-applied-prompt",
@@ -178,6 +182,8 @@ def build_prompt_evolution_from_inputs(
     embodied_state: dict[str, object] | None,
     loop_runtime: dict[str, object] | None,
     adaptive_learning: dict[str, object] | None,
+    guided_learning: dict[str, object] | None,
+    adaptive_reasoning: dict[str, object] | None,
     now: datetime | None = None,
 ) -> dict[str, object]:
     built_at = (now or datetime.now(UTC)).isoformat()
@@ -281,10 +287,27 @@ def build_prompt_evolution_from_inputs(
         loop_runtime=loops,
     )
     learning_influence = _build_learning_influence(learning)
+    guided = guided_learning or {}
+    reasoning = adaptive_reasoning or {}
+    candidate_fragment = _build_candidate_fragment(
+        proposal_type=proposal_type,
+        target_asset=target_asset,
+        prompt_target=prompt_target,
+        adaptive_learning=learning_influence,
+        guided_learning=guided,
+        adaptive_reasoning=reasoning,
+        embodied_state=body,
+    )
+    fragment_grounding = _build_fragment_grounding(
+        adaptive_learning=learning_influence,
+        guided_learning=guided,
+        adaptive_reasoning=reasoning,
+    )
     rationale = _build_rationale(
         proposal_type=proposal_type,
         target_asset=target_asset,
         learning_influence=learning_influence,
+        candidate_fragment=candidate_fragment,
     )
     proposal_state = _proposal_state_from_type(proposal_type)
     artifact = {
@@ -296,6 +319,7 @@ def build_prompt_evolution_from_inputs(
             f"Prompt target={prompt_target}. "
             f"Adaptive learning={learning_influence.get('learning_engine_mode') or 'none'}"
             f" toward {learning_influence.get('reinforcement_target') or 'none'}. "
+            f"Candidate fragment present. "
             f"Proposal-only; not applied."
         ),
         "rationale": rationale,
@@ -314,16 +338,23 @@ def build_prompt_evolution_from_inputs(
                 f"learning_mode={learning_influence.get('learning_engine_mode') or 'none'}",
                 f"reinforcement_target={learning_influence.get('reinforcement_target') or 'none'}",
                 f"retention_bias={learning_influence.get('retention_bias') or 'light'}",
+                f"guided_learning={fragment_grounding.get('guided_learning') or 'none'}",
+                f"adaptive_reasoning={fragment_grounding.get('adaptive_reasoning') or 'none'}",
+                f"candidate_fragment={candidate_fragment}",
             ]
         ),
         "support_count": len(source_inputs),
         "status_reason": (
             "Adaptive learning and bounded runtime patterns now warrant a "
-            "proposal-only prompt evolution candidate."
+            "proposal-only prompt evolution candidate with a self-authored fragment."
         ),
         "target_asset": target_asset,
         "prompt_target": prompt_target,
         "learning_influence": learning_influence,
+        "candidate_fragment": candidate_fragment,
+        "fragment_grounding": fragment_grounding,
+        "fragment_truth": "proposal-only",
+        "fragment_visibility": "internal-only",
     }
 
     return {
@@ -341,7 +372,10 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
     latest_type = str((latest or {}).get("proposal_type") or "")
     target_asset = _target_asset_from_proposal_type(latest_type) if latest else ""
     prompt_target = _prompt_target_from_proposal_type(latest_type) if latest else ""
+    latest_summary_fields = _support_fields_from_latest(latest)
     learning_influence = dict((_last_result or {}).get("learning_influence") or _learning_influence_from_latest(latest))
+    candidate_fragment = str(((_last_result or {}).get("candidate_fragment")) or latest_summary_fields.get("candidate_fragment") or "")
+    fragment_grounding = dict((_last_result or {}).get("fragment_grounding") or _fragment_grounding_from_latest(latest))
     return {
         "active": bool(latest or _last_result),
         "authority": "authoritative-runtime-observability",
@@ -354,6 +388,10 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
         "last_result": _last_result,
         "latest_proposal": latest,
         "learning_influence": learning_influence,
+        "candidate_fragment": candidate_fragment,
+        "fragment_grounding": fragment_grounding,
+        "fragment_truth": "proposal-only",
+        "fragment_visibility": "internal-only",
         "cadence": {
             "cooldown_minutes": _PROMPT_EVOLUTION_COOLDOWN_MINUTES,
             "visible_grace_minutes": _PROMPT_EVOLUTION_VISIBLE_GRACE_MINUTES,
@@ -372,6 +410,8 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
             "latest_learning_mode": str(learning_influence.get("learning_engine_mode") or "none"),
             "latest_reinforcement_target": str(learning_influence.get("reinforcement_target") or "none"),
             "latest_retention_bias": str(learning_influence.get("retention_bias") or "light"),
+            "latest_candidate_fragment": candidate_fragment or "none",
+            "fragment_truth": "proposal-only",
             "proposal_truth": "proposal-only",
         },
         "source": "/mc/prompt-evolution",
@@ -383,6 +423,9 @@ def _load_runtime_inputs() -> dict[str, object]:
     from apps.api.jarvis_api.services.adaptive_learning_runtime import (
         build_adaptive_learning_runtime_surface,
     )
+    from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
+        build_adaptive_reasoning_runtime_surface,
+    )
     from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_surface
     from apps.api.jarvis_api.services.embodied_state import build_embodied_state_surface
     from apps.api.jarvis_api.services.emergent_signal_tracking import (
@@ -390,6 +433,9 @@ def _load_runtime_inputs() -> dict[str, object]:
     )
     from apps.api.jarvis_api.services.inner_voice_daemon import get_inner_voice_daemon_state
     from apps.api.jarvis_api.services.loop_runtime import build_loop_runtime_surface
+    from apps.api.jarvis_api.services.guided_learning_runtime import (
+        build_guided_learning_runtime_surface,
+    )
     from apps.api.jarvis_api.services.self_model_signal_tracking import (
         build_runtime_self_model_signal_surface,
     )
@@ -402,6 +448,8 @@ def _load_runtime_inputs() -> dict[str, object]:
         "embodied_state": build_embodied_state_surface(),
         "loop_runtime": build_loop_runtime_surface(),
         "adaptive_learning": build_adaptive_learning_runtime_surface(),
+        "guided_learning": build_guided_learning_runtime_surface(),
+        "adaptive_reasoning": build_adaptive_reasoning_runtime_surface(),
     }
 
 
@@ -527,6 +575,7 @@ def _build_rationale(
     proposal_type: str,
     target_asset: str,
     learning_influence: dict[str, str],
+    candidate_fragment: str,
 ) -> str:
     learning_clause = (
         f" Adaptive learning currently points toward "
@@ -538,24 +587,24 @@ def _build_rationale(
         return (
             f"Recent runtime material suggests a small communication-framing adjustment "
             f"candidate for {target_asset}, not an applied prompt change."
-            f"{learning_clause}"
+            f"{learning_clause} Candidate fragment: {candidate_fragment}"
         )
     if proposal_type == "focus-nudge":
         return (
             f"Recent runtime material suggests a small direction-framing adjustment "
             f"candidate for {target_asset}, not a policy rewrite."
-            f"{learning_clause}"
+            f"{learning_clause} Candidate fragment: {candidate_fragment}"
         )
     if proposal_type == "challenge-nudge":
         return (
             f"Recent runtime material suggests a small challenge-posture adjustment "
             f"candidate for {target_asset}, while remaining proposal-only."
-            f"{learning_clause}"
+            f"{learning_clause} Candidate fragment: {candidate_fragment}"
         )
     return (
         f"Recent runtime material suggests a small world-caution adjustment "
         f"candidate for {target_asset}, while remaining proposal-only."
-        f"{learning_clause}"
+        f"{learning_clause} Candidate fragment: {candidate_fragment}"
     )
 
 
@@ -592,7 +641,79 @@ def _build_learning_influence(adaptive_learning: dict[str, object]) -> dict[str,
     }
 
 
-def _learning_influence_from_latest(latest: dict[str, object] | None) -> dict[str, str]:
+def _build_candidate_fragment(
+    *,
+    proposal_type: str,
+    target_asset: str,
+    prompt_target: str,
+    adaptive_learning: dict[str, str],
+    guided_learning: dict[str, object],
+    adaptive_reasoning: dict[str, object],
+    embodied_state: dict[str, object],
+) -> str:
+    learning_mode = adaptive_learning.get("learning_engine_mode") or "retain"
+    reinforcement_target = adaptive_learning.get("reinforcement_target") or "reasoning"
+    guided_mode = str(guided_learning.get("learning_mode") or "reinforce")
+    guided_focus = str(guided_learning.get("learning_focus") or "reasoning")
+    reasoning_mode = str(adaptive_reasoning.get("reasoning_mode") or "direct")
+    certainty_style = str(adaptive_reasoning.get("certainty_style") or "crisp")
+    body_state = str(embodied_state.get("state") or "steady")
+
+    if proposal_type == "world-caution-nudge":
+        return _sanitize_fragment(
+            "When pressure rises, keep caution explicit, narrow the next move, "
+            "and prefer bounded wording before expansion."
+        )
+    if proposal_type == "communication-nudge":
+        return _sanitize_fragment(
+            "Keep the inner line plain, grounded in current runtime truth, "
+            f"and {certainty_style if certainty_style != 'crisp' else 'measured'} when claims are still forming."
+        )
+    if proposal_type == "challenge-nudge":
+        return _sanitize_fragment(
+            "Hold a small challenge posture: test the line, keep it bounded, "
+            "and do not overstate what has not stabilized."
+        )
+
+    fragment = (
+        "Prefer short forward-framing: keep the next step plain, bounded, and alive, "
+        f"with {learning_mode} around {reinforcement_target}."
+    )
+    if guided_mode in {"practice", "clarify"}:
+        fragment += f" Let {guided_focus} stay close to the next concrete turn."
+    if reasoning_mode in {"careful", "constrained"} or body_state in {"strained", "degraded"}:
+        fragment += " Keep the move narrow enough to remain trustworthy."
+    return _sanitize_fragment(fragment)
+
+
+def _build_fragment_grounding(
+    *,
+    adaptive_learning: dict[str, str],
+    guided_learning: dict[str, object],
+    adaptive_reasoning: dict[str, object],
+) -> dict[str, str]:
+    return {
+        "adaptive_learning": (
+            f"{adaptive_learning.get('learning_engine_mode') or 'retain'}"
+            f"/{adaptive_learning.get('reinforcement_target') or 'reasoning'}"
+            f"/{adaptive_learning.get('retention_bias') or 'light'}"
+        ),
+        "guided_learning": (
+            f"{guided_learning.get('learning_mode') or 'reinforce'}"
+            f"/{guided_learning.get('learning_focus') or 'reasoning'}"
+        ),
+        "adaptive_reasoning": (
+            f"{adaptive_reasoning.get('reasoning_mode') or 'direct'}"
+            f"/{adaptive_reasoning.get('certainty_style') or 'crisp'}"
+        ),
+    }
+
+
+def _sanitize_fragment(text: str) -> str:
+    return " ".join(text.replace("|", "/").split())[:220]
+
+
+def _support_fields_from_latest(latest: dict[str, object] | None) -> dict[str, str]:
     if not latest:
         return {}
     support_summary = str(latest.get("support_summary") or "")
@@ -601,9 +722,12 @@ def _learning_influence_from_latest(latest: dict[str, object] | None) -> dict[st
         if "=" not in chunk:
             continue
         key, value = chunk.split("=", 1)
-        key = key.strip()
-        if key in {"learning_mode", "reinforcement_target", "retention_bias"}:
-            parsed[key] = value.strip()
+        parsed[key.strip()] = value.strip()
+    return parsed
+
+
+def _learning_influence_from_latest(latest: dict[str, object] | None) -> dict[str, str]:
+    parsed = _support_fields_from_latest(latest)
     if not parsed:
         return {}
     return {
@@ -612,6 +736,17 @@ def _learning_influence_from_latest(latest: dict[str, object] | None) -> dict[st
         "retention_bias": parsed.get("retention_bias", "light"),
         "attenuation_bias": "none",
         "maturation_state": "early",
+    }
+
+
+def _fragment_grounding_from_latest(latest: dict[str, object] | None) -> dict[str, str]:
+    parsed = _support_fields_from_latest(latest)
+    if not parsed:
+        return {}
+    return {
+        "adaptive_learning": parsed.get("adaptive_learning", "none"),
+        "guided_learning": parsed.get("guided_learning", "none"),
+        "adaptive_reasoning": parsed.get("adaptive_reasoning", "none"),
     }
 
 

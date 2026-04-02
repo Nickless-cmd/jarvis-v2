@@ -27,22 +27,35 @@ function approvalTimingLabel(item) {
   return ''
 }
 
+function executionTimingLabel(item) {
+  if (item?.executionFinishedAt) {
+    return `finished ${formatFreshness(item.executionFinishedAt)}`
+  }
+  if (item?.executionStartedAt) {
+    return `started ${formatFreshness(item.executionStartedAt)}`
+  }
+  return ''
+}
+
 function toolIntentRow(item, onOpen) {
   if (!item || (!item.intentState && !item.intentType)) return null
 
   const detailText = [
     [
+      item.executionState ? `execution ${humanizeToken(item.executionState)}` : '',
+      item.executionMode ? `mode ${humanizeToken(item.executionMode)}` : '',
       item.approvalState ? `approval ${humanizeToken(item.approvalState)}` : '',
       item.approvalSource && item.approvalSource !== 'none' ? `source ${humanizeToken(item.approvalSource)}` : '',
       item.intentType ? `type ${humanizeToken(item.intentType)}` : '',
-      item.intentTarget ? `target ${item.intentTarget}` : '',
+      item.executionTarget || item.intentTarget ? `target ${item.executionTarget || item.intentTarget}` : '',
       item.approvalScope ? `scope ${humanizeToken(item.approvalScope)}` : '',
     ].filter(Boolean).join(' · '),
+    item.executionSummary,
     item.intentReason,
     item.approvalResolutionMessage,
   ].filter(Boolean)[0] || 'Inspect bounded operational tool intent'
 
-  const timingLabel = approvalTimingLabel(item)
+  const timingLabel = executionTimingLabel(item) || approvalTimingLabel(item)
 
   return (
     <button
@@ -61,11 +74,11 @@ function toolIntentRow(item, onOpen) {
       <div className="mc-row-meta">
         <StatusPill status={item.intentState || 'idle'} />
         <StatusPill status={item.approvalState || 'none'} />
+        <StatusPill status={item.executionState || 'not-executed'} />
         {item.intentType ? <small>{humanizeToken(item.intentType)}</small> : null}
+        {item.executionMode ? <small>{humanizeToken(item.executionMode)}</small> : null}
         {item.urgency ? <small>{humanizeToken(item.urgency)}</small> : null}
-        {item.approvalSource && item.approvalSource !== 'none' ? <small>{humanizeToken(item.approvalSource)}</small> : null}
-        {item.approvalRequired ? <small>approval required</small> : <small>no approval</small>}
-        {item.executionState ? <small>{humanizeToken(item.executionState)}</small> : null}
+        <small>{item.mutationPermitted ? 'mutation allowed' : 'mutation blocked'}</small>
         {timingLabel ? <small>{timingLabel}</small> : null}
         <ChevronRight size={14} />
       </div>
@@ -140,7 +153,7 @@ export function OperationsTab({
           <div className="panel-header">
             <div>
               <h3>Tool Intent</h3>
-              <p className="muted">Bounded operational intent, still proposal-only and not executed.</p>
+              <p className="muted">Bounded operational intent with read-only execution truth and boundary state.</p>
             </div>
             <span className="mc-section-hint">Read-only</span>
           </div>
@@ -157,20 +170,36 @@ export function OperationsTab({
             </div>
             <div className="compact-metric" title="Intent target and urgency">
               <span>Target</span>
-              <strong>{toolIntent.intentTarget || 'workspace'}</strong>
+              <strong>{toolIntent.executionTarget || toolIntent.intentTarget || 'workspace'}</strong>
               <p className="muted">{toolIntent.urgency || 'low'} urgency</p>
             </div>
-            <div className="compact-metric" title="Approval boundary and execution state">
-              <span>Boundary</span>
+            <div className="compact-metric" title="Read-only execution state and mode">
+              <span>Execution</span>
               <strong>{toolIntent.executionState || 'not-executed'}</strong>
+              <p className="muted">{humanizeToken(toolIntent.executionMode || 'read-only')} · {toolIntent.executionOperation ? humanizeToken(toolIntent.executionOperation) : humanizeToken(toolIntent.intentType || 'inspect-repo-status')}</p>
+            </div>
+            <div className="compact-metric" title="Boundary and mutation permission">
+              <span>Boundary</span>
+              <strong>{toolIntent.mutationPermitted ? 'mutable' : 'read-only'}</strong>
               <p className="muted">{toolIntent.approvalScope || 'repo-read'} · {toolIntent.approvalLifecycle || 'bounded-approval-surface-light'}</p>
             </div>
-            <div className="compact-metric" title="Approval timing and resolution state">
-              <span>Timing</span>
-              <strong>{approvalTimingLabel(toolIntent) || 'awaiting signal'}</strong>
-              <p className="muted">{toolIntent.approvalResolutionReason || toolIntent.approvalResolutionMessage || 'No resolution recorded'}</p>
+            <div className="compact-metric" title="Execution or approval freshness">
+              <span>Freshness</span>
+              <strong>{executionTimingLabel(toolIntent) || approvalTimingLabel(toolIntent) || 'awaiting signal'}</strong>
+              <p className="muted">{toolIntent.executionSummary || toolIntent.approvalResolutionReason || toolIntent.approvalResolutionMessage || 'No execution summary recorded'}</p>
             </div>
           </div>
+          {toolIntent.executionSummary ? (
+            <article className="mc-code-card mc-tool-intent-summary">
+              <strong>Read-only result</strong>
+              <p>{toolIntent.executionSummary}</p>
+              <div className="mc-inline-meta">
+                <span className="mc-meta-pill">mode {humanizeToken(toolIntent.executionMode || 'read-only')}</span>
+                <span className="mc-meta-pill">{toolIntent.mutationPermitted ? 'mutation permitted' : 'mutation_permitted=false'}</span>
+                {toolIntent.executionConfidence ? <span className="mc-meta-pill">confidence {humanizeToken(toolIntent.executionConfidence)}</span> : null}
+              </div>
+            </article>
+          ) : null}
           <div className="mc-list">
             {toolIntentRow(toolIntent, onOpenItem)}
           </div>
@@ -193,7 +222,7 @@ export function OperationsTab({
                   Deny
                 </button>
               </div>
-              <p className="mc-tool-intent-help muted">Resolve only bounded approval state here. Execution remains not-executed.</p>
+              <p className="mc-tool-intent-help muted">Resolve only bounded approval state here. Any execution stays read-only and mutation_permitted=false.</p>
             </>
           ) : null}
         </section>

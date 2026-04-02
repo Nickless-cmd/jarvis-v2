@@ -1201,6 +1201,15 @@ function normalizeToolIntent(item = {}) {
     truth: item.truth || 'proposal-only',
     kind: item.kind || 'approval-gated-tool-intent-light',
     executionState: item.execution_state || 'not-executed',
+    executionMode: item.execution_mode || 'read-only',
+    executionTarget: item.execution_target || item.intent_target || 'workspace',
+    executionSummary: item.execution_summary || 'No bounded repo inspection has been executed.',
+    executionStartedAt: item.execution_started_at || '',
+    executionFinishedAt: item.execution_finished_at || '',
+    executionConfidence: item.execution_confidence || item.confidence || 'low',
+    executionOperation: item.execution_operation || item.intent_type || 'inspect-repo-status',
+    executionExcerpt: Array.isArray(item.execution_excerpt) ? item.execution_excerpt : [],
+    mutationPermitted: Boolean(item.mutation_permitted),
     boundary: item.boundary || 'Intent is proposal-only and approval-gated; no action has been performed.',
     sourceContributors: (item.source_contributors || []).map((source) => ({ source: String(source || ''), signal: '' })),
     source: item.source || '/mc/tool-intent',
@@ -1217,7 +1226,7 @@ function normalizeToolIntent(item = {}) {
       || [
         item.intent_state ? `state ${item.intent_state}` : '',
         item.intent_type ? `type ${item.intent_type}` : '',
-        item.intent_target ? `target ${item.intent_target}` : '',
+        item.execution_state ? `execution ${item.execution_state}` : '',
       ].filter(Boolean).join(' · '),
   }
 }

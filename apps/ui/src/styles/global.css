@@ -547,6 +547,19 @@ button { cursor: pointer; }
 .mc-inline-actions { display:flex; gap:10px; }
 .mc-inline-actions .primary-btn { flex:1; width:auto; margin:0; }
 .mc-tool-intent-actions { margin-top:10px; }
+.mc-tool-intent-summary { margin:12px 0 0; }
+.mc-tool-intent-summary p { margin:8px 0 0; }
+.mc-drawer-list { display:flex; flex-direction:column; gap:8px; }
+.mc-drawer-list p {
+  margin:0;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#131c27;
+  border:1px solid rgba(255,255,255,.05);
+  color:#cfd6df;
+  line-height:1.45;
+  white-space:pre-wrap;
+}
 .secondary-btn {
   flex:1; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.08); background:#1a2431; color:#e4e6ed;
 }

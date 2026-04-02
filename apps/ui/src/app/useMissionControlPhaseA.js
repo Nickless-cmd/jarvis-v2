@@ -329,6 +329,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   const openJarvisDetail = useCallback((title, item) => {
     let kind = 'jarvis'
     if (item?.candidateId) kind = 'contract-candidate'
+    else if (item?.kind === 'approval-gated-tool-intent-light') kind = 'tool-intent'
     else if (item?.focusId) kind = 'development-focus'
     setDrawer({
       kind,

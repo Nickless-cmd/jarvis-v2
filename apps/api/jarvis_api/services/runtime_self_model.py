@@ -60,6 +60,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "guided_learning": _guided_learning_surface(),
             "adaptive_learning": _adaptive_learning_surface(),
             "self_system_code_awareness": _self_system_code_awareness_surface(),
+            "tool_intent": _tool_intent_surface(),
             "loop_runtime": _loop_runtime_surface(),
             "idle_consolidation": _idle_consolidation_surface(),
             "dream_articulation": _dream_articulation_surface(),
@@ -268,6 +269,24 @@ def _collect_layers() -> list[dict[str, str]]:
             f"upstream={self_system_code_awareness.get('upstream_awareness') or 'unknown'}; "
             f"concern={self_system_code_awareness.get('concern_state') or 'stable'}; "
             f"approval_required={self_system_code_awareness.get('action_requires_approval', True)}."
+        ),
+    })
+
+    tool_intent = _tool_intent_surface()
+    layers.append({
+        "id": "approval-gated-tool-intent-light",
+        "label": "Approval-gated tool intent light",
+        "kind": "orchestration",
+        "role": "active" if str(tool_intent.get("intent_state") or "idle") != "idle" else "idle",
+        "visibility": "internal-only",
+        "truth": "derived",
+        "detail": (
+            f"state={tool_intent.get('intent_state') or 'idle'}; "
+            f"type={tool_intent.get('intent_type') or 'inspect-repo-status'}; "
+            f"target={tool_intent.get('intent_target') or 'workspace'}; "
+            f"urgency={tool_intent.get('urgency') or 'low'}; "
+            f"approval_required={tool_intent.get('approval_required', True)}; "
+            f"execution={tool_intent.get('execution_state') or 'not-executed'}."
         ),
     })
 
@@ -564,6 +583,7 @@ def build_self_model_prompt_lines() -> list[str]:
     guided_learning = model.get("guided_learning") or {}
     adaptive_learning = model.get("adaptive_learning") or {}
     self_system_code_awareness = model.get("self_system_code_awareness") or {}
+    tool_intent = model.get("tool_intent") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
     consolidation = model.get("idle_consolidation") or {}
@@ -674,6 +694,15 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | upstream={self_system_code_awareness.get('upstream_awareness') or 'unknown'}"
         f" | concern={self_system_code_awareness.get('concern_state') or 'stable'}"
         f" | approval_required={self_system_code_awareness.get('action_requires_approval', True)}"
+    )
+    lines.append(
+        "  tool_intent: "
+        f"{tool_intent.get('intent_state') or 'idle'}"
+        f" | type={tool_intent.get('intent_type') or 'inspect-repo-status'}"
+        f" | target={tool_intent.get('intent_target') or 'workspace'}"
+        f" | urgency={tool_intent.get('urgency') or 'low'}"
+        f" | approval_required={tool_intent.get('approval_required', True)}"
+        f" | execution={tool_intent.get('execution_state') or 'not-executed'}"
     )
     lines.append(
         "  loop_runtime: "
@@ -977,6 +1006,25 @@ def _self_system_code_awareness_surface() -> dict[str, object]:
             "upstream_awareness": "unknown",
             "concern_state": "notice",
             "action_requires_approval": True,
+        }
+
+
+def _tool_intent_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.tool_intent_runtime import (
+            build_tool_intent_runtime_surface,
+        )
+        return build_tool_intent_runtime_surface()
+    except Exception:
+        return {
+            "active": False,
+            "intent_state": "idle",
+            "intent_type": "inspect-repo-status",
+            "intent_target": "workspace",
+            "approval_required": True,
+            "approval_scope": "repo-read",
+            "urgency": "low",
+            "execution_state": "not-executed",
         }
 
 

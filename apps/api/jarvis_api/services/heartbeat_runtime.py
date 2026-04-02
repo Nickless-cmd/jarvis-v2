@@ -70,6 +70,9 @@ from apps.api.jarvis_api.services.adaptive_learning_runtime import (
 from apps.api.jarvis_api.services.self_system_code_awareness import (
     build_self_system_code_awareness_surface,
 )
+from apps.api.jarvis_api.services.tool_intent_runtime import (
+    build_tool_intent_runtime_surface,
+)
 from apps.api.jarvis_api.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
@@ -285,6 +288,7 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
     guided_learning = build_guided_learning_runtime_surface()
     adaptive_learning = build_adaptive_learning_runtime_surface()
     self_system_code_awareness = build_self_system_code_awareness_surface()
+    tool_intent = build_tool_intent_runtime_surface()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -320,6 +324,7 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
             "guided_learning": guided_learning,
             "adaptive_learning": adaptive_learning,
             "self_system_code_awareness": self_system_code_awareness,
+            "tool_intent": tool_intent,
         },
     )
     return {
@@ -341,6 +346,7 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
         "guided_learning": guided_learning,
         "adaptive_learning": adaptive_learning,
         "self_system_code_awareness": self_system_code_awareness,
+        "tool_intent": tool_intent,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -860,6 +866,7 @@ def _build_heartbeat_context(
     guided_learning = build_guided_learning_runtime_surface()
     adaptive_learning = build_adaptive_learning_runtime_surface()
     self_system_code_awareness = build_self_system_code_awareness_surface()
+    tool_intent = build_tool_intent_runtime_surface()
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -879,6 +886,7 @@ def _build_heartbeat_context(
         guided_learning=guided_learning,
         adaptive_learning=adaptive_learning,
         self_system_code_awareness=self_system_code_awareness,
+        tool_intent=tool_intent,
     )
 
     return {
@@ -905,6 +913,7 @@ def _build_heartbeat_context(
         "guided_learning": guided_learning,
         "adaptive_learning": adaptive_learning,
         "self_system_code_awareness": self_system_code_awareness,
+        "tool_intent": tool_intent,
         "influence_trace": influence_trace,
     }
 
@@ -927,6 +936,7 @@ def _build_influence_trace(
     guided_learning: dict[str, object],
     adaptive_learning: dict[str, object],
     self_system_code_awareness: dict[str, object],
+    tool_intent: dict[str, object],
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -1086,6 +1096,17 @@ def _build_influence_trace(
     else:
         inputs_absent.append("self-system-code-awareness")
 
+    tool_intent_state = str(tool_intent.get("intent_state") or "idle")
+    tool_intent_type = str(tool_intent.get("intent_type") or "inspect-repo-status")
+    tool_intent_urgency = str(tool_intent.get("urgency") or "low")
+    tool_intent_scope = str(tool_intent.get("approval_scope") or "repo-read")
+    if tool_intent_state != "idle":
+        inputs_present.append(
+            f"tool-intent ({tool_intent_state}, type={tool_intent_type}, urgency={tool_intent_urgency}, scope={tool_intent_scope})"
+        )
+    else:
+        inputs_absent.append("tool-intent")
+
     return {
         "inputs_present": inputs_present,
         "inputs_absent": inputs_absent,
@@ -1135,6 +1156,10 @@ def _build_influence_trace(
         "self_system_code_repo_status": awareness_repo,
         "self_system_code_local_change_state": awareness_changes,
         "self_system_code_upstream_awareness": awareness_upstream,
+        "tool_intent_state": tool_intent_state,
+        "tool_intent_type": tool_intent_type,
+        "tool_intent_urgency": tool_intent_urgency,
+        "tool_intent_approval_scope": tool_intent_scope,
     }
 
 

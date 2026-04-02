@@ -1338,7 +1338,10 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | type={tool_intent.get('intent_type') or 'inspect-repo-status'}"
                 f" | target={tool_intent.get('intent_target') or 'workspace'}"
                 f" | urgency={tool_intent.get('urgency') or 'low'}"
+                f" | approval_state={tool_intent.get('approval_state') or 'none'}"
+                f" | approval_source={tool_intent.get('approval_source') or 'none'}"
                 f" | approval_required={tool_intent.get('approval_required', True)}"
+                f" | approval_expires_at={tool_intent.get('approval_expires_at') or 'none'}"
             ),
             (
                 f"- loop_runtime={loop_summary.get('current_status') or 'none'}"

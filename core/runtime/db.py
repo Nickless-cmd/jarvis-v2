@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from core.runtime.config import STATE_DIR
 
@@ -748,10 +750,40 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tool_intent_approval_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                approval_id TEXT NOT NULL UNIQUE,
+                intent_key TEXT NOT NULL UNIQUE,
+                intent_type TEXT NOT NULL,
+                intent_target TEXT NOT NULL,
+                approval_scope TEXT NOT NULL,
+                approval_required INTEGER NOT NULL DEFAULT 1,
+                approval_state TEXT NOT NULL,
+                approval_source TEXT NOT NULL DEFAULT 'none',
+                approval_reason TEXT NOT NULL DEFAULT '',
+                requested_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                resolved_at TEXT,
+                resolution_reason TEXT NOT NULL DEFAULT '',
+                resolution_message TEXT NOT NULL DEFAULT '',
+                session_id TEXT NOT NULL DEFAULT '',
+                execution_state TEXT NOT NULL DEFAULT 'not-executed'
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_tool_intent_approval_requests_state
+            ON tool_intent_approval_requests(approval_state, id DESC)
+            """
+        )
         _ensure_private_inner_note_columns(conn)
         _ensure_private_retained_memory_record_columns(conn)
         _ensure_capability_invocation_approval_columns(conn)
         _ensure_capability_approval_request_columns(conn)
+        _ensure_tool_intent_approval_request_columns(conn)
         _ensure_runtime_user_understanding_signal_table(conn)
         _ensure_runtime_remembered_fact_signal_table(conn)
         _ensure_runtime_memory_md_update_proposal_table(conn)
@@ -2128,6 +2160,230 @@ def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> Non
         conn.execute(
             f"ALTER TABLE capability_approval_requests ADD COLUMN {name} {spec}"
         )
+
+
+def create_tool_intent_approval_request(
+    *,
+    intent_key: str,
+    intent_type: str,
+    intent_target: str,
+    approval_scope: str,
+    approval_required: bool,
+    approval_reason: str,
+    requested_at: str,
+    expires_at: str,
+    execution_state: str = "not-executed",
+) -> dict[str, object]:
+    approval_id = f"tool-intent-approval-{uuid4().hex}"
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO tool_intent_approval_requests (
+                approval_id,
+                intent_key,
+                intent_type,
+                intent_target,
+                approval_scope,
+                approval_required,
+                approval_state,
+                approval_source,
+                approval_reason,
+                requested_at,
+                expires_at,
+                execution_state
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                approval_id,
+                intent_key,
+                intent_type,
+                intent_target,
+                approval_scope,
+                1 if approval_required else 0,
+                "pending",
+                "none",
+                approval_reason,
+                requested_at,
+                expires_at,
+                execution_state,
+            ),
+        )
+        conn.commit()
+    request = get_tool_intent_approval_request(intent_key)
+    if request is None:
+        raise RuntimeError("tool intent approval request was not persisted")
+    return request
+
+
+def get_tool_intent_approval_request(intent_key: str) -> dict[str, object] | None:
+    normalized = str(intent_key or "").strip()
+    if not normalized:
+        return None
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                approval_id,
+                intent_key,
+                intent_type,
+                intent_target,
+                approval_scope,
+                approval_required,
+                approval_state,
+                approval_source,
+                approval_reason,
+                requested_at,
+                expires_at,
+                resolved_at,
+                resolution_reason,
+                resolution_message,
+                session_id,
+                execution_state
+            FROM tool_intent_approval_requests
+            WHERE intent_key = ?
+            LIMIT 1
+            """,
+            (normalized,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _tool_intent_approval_request_from_row(row)
+
+
+def resolve_tool_intent_approval_request(
+    intent_key: str,
+    *,
+    approval_state: str,
+    approval_source: str,
+    resolved_at: str,
+    resolution_reason: str,
+    resolution_message: str = "",
+    session_id: str = "",
+) -> dict[str, object] | None:
+    request = get_tool_intent_approval_request(intent_key)
+    if request is None:
+        return None
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE tool_intent_approval_requests
+            SET
+                approval_state = ?,
+                approval_source = ?,
+                resolved_at = ?,
+                resolution_reason = ?,
+                resolution_message = ?,
+                session_id = ?
+            WHERE intent_key = ?
+            """,
+            (
+                approval_state,
+                approval_source,
+                resolved_at,
+                resolution_reason,
+                resolution_message,
+                session_id,
+                intent_key,
+            ),
+        )
+        conn.commit()
+    return get_tool_intent_approval_request(intent_key)
+
+
+def expire_tool_intent_approval_request(
+    intent_key: str,
+    *,
+    expired_at: str,
+    resolution_reason: str,
+) -> dict[str, object] | None:
+    request = get_tool_intent_approval_request(intent_key)
+    if request is None:
+        return None
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE tool_intent_approval_requests
+            SET
+                approval_state = ?,
+                approval_source = ?,
+                resolved_at = ?,
+                resolution_reason = ?
+            WHERE intent_key = ?
+            """,
+            (
+                "expired",
+                "none",
+                expired_at,
+                resolution_reason,
+                intent_key,
+            ),
+        )
+        conn.commit()
+    return get_tool_intent_approval_request(intent_key)
+
+
+def _tool_intent_approval_request_from_row(
+    row: sqlite3.Row,
+) -> dict[str, object]:
+    return {
+        "approval_id": str(row["approval_id"]),
+        "intent_key": str(row["intent_key"]),
+        "intent_type": str(row["intent_type"]),
+        "intent_target": str(row["intent_target"]),
+        "approval_scope": str(row["approval_scope"]),
+        "approval_required": bool(row["approval_required"]),
+        "approval_state": str(row["approval_state"]),
+        "approval_source": str(row["approval_source"]),
+        "approval_reason": str(row["approval_reason"]),
+        "requested_at": str(row["requested_at"]),
+        "expires_at": str(row["expires_at"]),
+        "resolved_at": str(row["resolved_at"] or ""),
+        "resolution_reason": str(row["resolution_reason"] or ""),
+        "resolution_message": str(row["resolution_message"] or ""),
+        "session_id": str(row["session_id"] or ""),
+        "execution_state": str(row["execution_state"] or "not-executed"),
+    }
+
+
+def _ensure_tool_intent_approval_request_columns(conn: sqlite3.Connection) -> None:
+    rows = conn.execute("PRAGMA table_info(tool_intent_approval_requests)").fetchall()
+    existing = {str(row["name"]) for row in rows}
+    required_columns = {
+        "approval_id": "TEXT NOT NULL DEFAULT ''",
+        "intent_key": "TEXT NOT NULL DEFAULT ''",
+        "intent_type": "TEXT NOT NULL DEFAULT ''",
+        "intent_target": "TEXT NOT NULL DEFAULT ''",
+        "approval_scope": "TEXT NOT NULL DEFAULT ''",
+        "approval_required": "INTEGER NOT NULL DEFAULT 1",
+        "approval_state": "TEXT NOT NULL DEFAULT 'pending'",
+        "approval_source": "TEXT NOT NULL DEFAULT 'none'",
+        "approval_reason": "TEXT NOT NULL DEFAULT ''",
+        "requested_at": "TEXT NOT NULL DEFAULT ''",
+        "expires_at": "TEXT NOT NULL DEFAULT ''",
+        "resolved_at": "TEXT",
+        "resolution_reason": "TEXT NOT NULL DEFAULT ''",
+        "resolution_message": "TEXT NOT NULL DEFAULT ''",
+        "session_id": "TEXT NOT NULL DEFAULT ''",
+        "execution_state": "TEXT NOT NULL DEFAULT 'not-executed'",
+    }
+    for name, spec in required_columns.items():
+        if name in existing:
+            continue
+        conn.execute(
+            f"ALTER TABLE tool_intent_approval_requests ADD COLUMN {name} {spec}"
+        )
+
+    if "approval_id" not in existing:
+        now = datetime.now(UTC).isoformat()
+        rows = conn.execute(
+            "SELECT id FROM tool_intent_approval_requests WHERE approval_id = '' OR approval_id IS NULL"
+        ).fetchall()
+        for row in rows:
+            conn.execute(
+                "UPDATE tool_intent_approval_requests SET approval_id = ?, resolved_at = COALESCE(resolved_at, ?) WHERE id = ?",
+                (f"tool-intent-approval-{uuid4().hex}", now, row["id"]),
+            )
 
 
 def upsert_runtime_contract_candidate(

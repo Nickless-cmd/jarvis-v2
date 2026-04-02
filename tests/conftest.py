@@ -98,6 +98,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.adaptive_learning_runtime",
         "apps.api.jarvis_api.services.dream_influence_runtime",
         "apps.api.jarvis_api.services.self_system_code_awareness",
+        "apps.api.jarvis_api.services.tool_intent_approval_runtime",
         "apps.api.jarvis_api.services.tool_intent_runtime",
         "apps.api.jarvis_api.services.loop_runtime",
         "apps.api.jarvis_api.services.idle_consolidation",
@@ -318,6 +319,9 @@ def isolated_runtime(
         ],
         self_system_code_awareness=modules[
             "apps.api.jarvis_api.services.self_system_code_awareness"
+        ],
+        tool_intent_approval_runtime=modules[
+            "apps.api.jarvis_api.services.tool_intent_approval_runtime"
         ],
         tool_intent_runtime=modules[
             "apps.api.jarvis_api.services.tool_intent_runtime"

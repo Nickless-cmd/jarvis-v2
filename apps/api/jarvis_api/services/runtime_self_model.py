@@ -285,6 +285,8 @@ def _collect_layers() -> list[dict[str, str]]:
             f"type={tool_intent.get('intent_type') or 'inspect-repo-status'}; "
             f"target={tool_intent.get('intent_target') or 'workspace'}; "
             f"urgency={tool_intent.get('urgency') or 'low'}; "
+            f"approval_state={tool_intent.get('approval_state') or 'none'}; "
+            f"approval_source={tool_intent.get('approval_source') or 'none'}; "
             f"approval_required={tool_intent.get('approval_required', True)}; "
             f"execution={tool_intent.get('execution_state') or 'not-executed'}."
         ),
@@ -701,6 +703,8 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | type={tool_intent.get('intent_type') or 'inspect-repo-status'}"
         f" | target={tool_intent.get('intent_target') or 'workspace'}"
         f" | urgency={tool_intent.get('urgency') or 'low'}"
+        f" | approval_state={tool_intent.get('approval_state') or 'none'}"
+        f" | approval_source={tool_intent.get('approval_source') or 'none'}"
         f" | approval_required={tool_intent.get('approval_required', True)}"
         f" | execution={tool_intent.get('execution_state') or 'not-executed'}"
     )

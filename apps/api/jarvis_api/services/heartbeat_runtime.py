@@ -1100,9 +1100,13 @@ def _build_influence_trace(
     tool_intent_type = str(tool_intent.get("intent_type") or "inspect-repo-status")
     tool_intent_urgency = str(tool_intent.get("urgency") or "low")
     tool_intent_scope = str(tool_intent.get("approval_scope") or "repo-read")
+    tool_intent_approval_state = str(tool_intent.get("approval_state") or "none")
+    tool_intent_approval_source = str(tool_intent.get("approval_source") or "none")
     if tool_intent_state != "idle":
         inputs_present.append(
-            f"tool-intent ({tool_intent_state}, type={tool_intent_type}, urgency={tool_intent_urgency}, scope={tool_intent_scope})"
+            "tool-intent "
+            f"({tool_intent_state}, type={tool_intent_type}, urgency={tool_intent_urgency}, "
+            f"scope={tool_intent_scope}, approval={tool_intent_approval_state}, source={tool_intent_approval_source})"
         )
     else:
         inputs_absent.append("tool-intent")
@@ -1160,6 +1164,8 @@ def _build_influence_trace(
         "tool_intent_type": tool_intent_type,
         "tool_intent_urgency": tool_intent_urgency,
         "tool_intent_approval_scope": tool_intent_scope,
+        "tool_intent_approval_state": tool_intent_approval_state,
+        "tool_intent_approval_source": tool_intent_approval_source,
     }
 
 

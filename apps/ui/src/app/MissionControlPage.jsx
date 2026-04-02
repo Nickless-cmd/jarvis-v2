@@ -112,6 +112,7 @@ export function MissionControlPage({ selection, onSelectionChange }) {
           onOpenRun={openRunDetail}
           onOpenSession={openSessionDetail}
           onOpenApproval={openApprovalDetail}
+          onOpenItem={openJarvisDetail}
         />
       ) : null}
 

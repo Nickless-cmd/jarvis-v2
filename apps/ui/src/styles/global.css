@@ -546,10 +546,13 @@ button { cursor: pointer; }
 .mc-status-pill.status-approval-gated { background:rgba(104,163,255,.15); color:#68a3ff; }
 .mc-inline-actions { display:flex; gap:10px; }
 .mc-inline-actions .primary-btn { flex:1; width:auto; margin:0; }
+.mc-tool-intent-actions { margin-top:10px; }
 .secondary-btn {
   flex:1; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,.08); background:#1a2431; color:#e4e6ed;
 }
+.mc-tool-intent-actions .secondary-btn { width:auto; margin:0; }
 .secondary-btn:disabled { opacity:.55; cursor:default; }
+.mc-tool-intent-help { margin:8px 0 0; font-size:12px; }
 .mc-transcript-preview { display:flex; flex-direction:column; gap:10px; }
 .mc-transcript-line {
   padding:12px 14px; border-radius:16px; background:#131c27; border:1px solid rgba(255,255,255,.05);

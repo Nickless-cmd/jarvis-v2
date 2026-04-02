@@ -67,6 +67,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastRealtimeEventAt, setLastRealtimeEventAt] = useState('')
   const [drawer, setDrawer] = useState(null)
+  const [toolIntentActionState, setToolIntentActionState] = useState({ busy: false, error: '' })
   const refreshQueue = useRef(new Set())
   const refreshTimer = useRef(null)
   const inflightRefreshes = useRef(new Map())
@@ -356,6 +357,30 @@ export function useMissionControlPhaseA({ active, selection }) {
     }
   }, [refreshObservability, refreshOperations, refreshOverview])
 
+  const actOnToolIntent = useCallback(async (action) => {
+    setToolIntentActionState({ busy: true, error: '' })
+    try {
+      let response = null
+      if (action === 'approve') response = await backend.approveToolIntent()
+      if (action === 'deny') response = await backend.denyToolIntent()
+      const [operations, jarvis] = await Promise.all([
+        backend.getMissionControlOperations(),
+        data.jarvis ? backend.getMissionControlJarvis() : Promise.resolve(null),
+      ])
+      setData((current) => ({
+        ...current,
+        operations,
+        jarvis: jarvis || current.jarvis,
+      }))
+      setToolIntentActionState({ busy: false, error: '' })
+      return response
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Action failed'
+      setToolIntentActionState({ busy: false, error: message })
+      throw error
+    }
+  }, [data.jarvis])
+
   const actOnContractCandidate = useCallback(async (candidateId, action) => {
     setDrawer((current) => (current ? { ...current, busy: true, error: '' } : current))
     try {
@@ -489,8 +514,11 @@ export function useMissionControlPhaseA({ active, selection }) {
     openSessionDetail,
     openJarvisDetail,
     actOnApproval,
+    actOnToolIntent,
     actOnContractCandidate,
     actOnHeartbeatTick,
     actOnDevelopmentFocus,
+    toolIntentActionBusy: toolIntentActionState.busy,
+    toolIntentActionError: toolIntentActionState.error,
   }
 }

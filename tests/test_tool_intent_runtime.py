@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
 from apps.api.jarvis_api.services.chat_sessions import append_chat_message, create_chat_session
 
 
@@ -292,3 +294,107 @@ def test_tool_intent_approval_can_expire_without_execution(
     assert expired["execution_state"] == "not-executed"
     assert expired["approval_requested_at"] == "2000-01-01T00:00:00+00:00"
     assert expired["approval_resolution_reason"]
+
+
+@pytest.mark.parametrize(
+    ("action", "expected_state"),
+    (("approve", "approved"), ("deny", "denied")),
+)
+def test_tool_intent_pending_can_resolve_via_bounded_mc_path(
+    isolated_runtime,
+    monkeypatch,
+    action: str,
+    expected_state: str,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    monkeypatch.setattr(
+        isolated_runtime.tool_intent_runtime,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "dirty",
+            "local_change_state": "modified",
+            "upstream_awareness": "in-sync",
+            "concern_state": "concern",
+            "source_contributors": ["repo-root", "git-status"],
+            "repo_observation": {
+                "branch_name": f"feature/tool-intent-mc-{action}",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+    monkeypatch.setattr(
+        mission_control,
+        "build_tool_intent_runtime_surface",
+        isolated_runtime.tool_intent_runtime.build_tool_intent_runtime_surface,
+    )
+
+    pending = mission_control.mc_tool_intent()
+    assert pending["approval_state"] == "pending"
+
+    payload = (
+        mission_control.mc_approve_tool_intent()
+        if action == "approve"
+        else mission_control.mc_deny_tool_intent()
+    )
+
+    assert payload["ok"] is True
+    assert payload["request"]["approval_state"] == expected_state
+    assert payload["request"]["approval_source"] == "mc"
+    assert payload["tool_intent"]["approval_state"] == expected_state
+    assert payload["tool_intent"]["approval_source"] == "mc"
+    assert payload["tool_intent"]["execution_state"] == "not-executed"
+
+
+def test_mc_tool_intent_approval_does_not_mix_with_chat_or_execution(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    monkeypatch.setattr(
+        isolated_runtime.tool_intent_runtime,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "dirty",
+            "local_change_state": "modified",
+            "upstream_awareness": "in-sync",
+            "concern_state": "concern",
+            "source_contributors": ["repo-root", "git-status"],
+            "repo_observation": {
+                "branch_name": "feature/tool-intent-mc-isolation",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+    monkeypatch.setattr(
+        mission_control,
+        "build_tool_intent_runtime_surface",
+        isolated_runtime.tool_intent_runtime.build_tool_intent_runtime_surface,
+    )
+
+    _ = mission_control.mc_tool_intent()
+    with isolated_runtime.db.connect() as conn:
+        message_count_before = conn.execute(
+            "SELECT COUNT(*) AS n FROM chat_messages"
+        ).fetchone()["n"]
+        run_count_before = conn.execute(
+            "SELECT COUNT(*) AS n FROM visible_runs"
+        ).fetchone()["n"]
+
+    payload = mission_control.mc_approve_tool_intent()
+
+    with isolated_runtime.db.connect() as conn:
+        message_count_after = conn.execute(
+            "SELECT COUNT(*) AS n FROM chat_messages"
+        ).fetchone()["n"]
+        run_count_after = conn.execute(
+            "SELECT COUNT(*) AS n FROM visible_runs"
+        ).fetchone()["n"]
+
+    assert message_count_after == message_count_before
+    assert run_count_after == run_count_before
+    assert payload["tool_intent"]["approval_source"] == "mc"
+    assert payload["tool_intent"]["execution_state"] == "not-executed"

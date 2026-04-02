@@ -11,6 +11,9 @@ from apps.api.jarvis_api.services.bounded_repo_tools_runtime import (
 from apps.api.jarvis_api.services.bounded_action_continuity_runtime import (
     build_bounded_action_continuity_surface,
 )
+from apps.api.jarvis_api.services.bounded_mutation_intent_runtime import (
+    build_bounded_mutation_intent_surface,
+)
 from apps.api.jarvis_api.services.tool_intent_approval_runtime import (
     build_tool_intent_approval_surface,
 )
@@ -47,8 +50,23 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "approval_required": True,
         "execution_state": "not-executed",
     }
-    approval = build_tool_intent_approval_surface(
+    mutation_intent = build_bounded_mutation_intent_surface(
         intent_surface,
+        awareness_surface=awareness,
+    )
+    approval = build_tool_intent_approval_surface(
+        {
+            **intent_surface,
+            "mutation_near": mutation_intent.get("mutation_near", False),
+            "mutation_intent_classification": mutation_intent.get("classification")
+            or "read-only",
+            "mutation_repo_scope": (
+                (mutation_intent.get("scope") or {}).get("repo_mutation_scope") or ""
+            ),
+            "mutation_system_scope": (
+                (mutation_intent.get("scope") or {}).get("system_mutation_scope") or ""
+            ),
+        },
         requested_at=built_at,
     )
     execution = build_bounded_repo_tool_execution_surface(
@@ -88,6 +106,35 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "execution_operation": execution.get("execution_operation") or intent_type,
         "execution_excerpt": execution.get("execution_excerpt") or [],
         "mutation_permitted": bool(execution.get("mutation_permitted", False)),
+        "mutation_intent": mutation_intent,
+        "mutation_intent_state": mutation_intent.get("mutation_intent_state") or "idle",
+        "mutation_intent_classification": mutation_intent.get("classification") or "none",
+        "mutation_near": bool(mutation_intent.get("mutation_near", False)),
+        "mutation_proposal_only": bool(mutation_intent.get("proposal_only", False)),
+        "mutation_execution_state": mutation_intent.get("execution_state") or "not-executed",
+        "mutation_execution_permitted": bool(
+            mutation_intent.get("execution_permitted", False)
+        ),
+        "mutation_summary": mutation_intent.get("summary") or "",
+        "mutation_target_files": (
+            (mutation_intent.get("scope") or {}).get("target_files") or []
+        ),
+        "mutation_target_paths": (
+            (mutation_intent.get("scope") or {}).get("target_paths") or []
+        ),
+        "mutation_repo_scope": (
+            (mutation_intent.get("scope") or {}).get("repo_mutation_scope") or ""
+        ),
+        "mutation_system_scope": (
+            (mutation_intent.get("scope") or {}).get("system_mutation_scope") or ""
+        ),
+        "mutation_sudo_required": bool(
+            (mutation_intent.get("scope") or {}).get("sudo_required", False)
+        ),
+        "mutation_critical": bool(
+            (mutation_intent.get("scope") or {}).get("mutation_critical", False)
+        ),
+        "mutation_boundary": mutation_intent.get("boundary") or "",
         "action_continuity": action_continuity,
         "action_continuity_state": action_continuity.get("action_continuity_state") or "idle",
         "last_action_type": action_continuity.get("last_action_type") or "",
@@ -148,10 +195,11 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             ],
         ],
         "boundary": (
-            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope; mutation_permitted=false and no git fetch, pull, commit, reset, checkout, apply, install, or file/system write has been performed."
+            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope; mutation classification is runtime truth only, mutation_permitted=false, mutation_execution_state=not-executed, and no git fetch, pull, commit, reset, checkout, apply, install, delete, or file/system write has been performed."
         ),
         "seam_usage": [
             "bounded-read-only-repo-tools",
+            "bounded-mutation-intent",
             "bounded-action-continuity",
             "heartbeat-grounding",
             "prompt-contract-runtime-truth",

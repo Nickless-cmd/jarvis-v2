@@ -223,6 +223,11 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "tool_intent:" in joined
     assert "execution_mode=read-only" in joined
     assert "mutation_permitted=False" in joined
+    assert "mutation_state=" in joined
+    assert "mutation_classification=" in joined
+    assert "mutation_repo_scope=" in joined
+    assert "mutation_system_scope=" in joined
+    assert "mutation_sudo_required=" in joined
     assert "continuity=" in joined
     assert "followup_state=" in joined
     assert "loop_runtime:" in joined

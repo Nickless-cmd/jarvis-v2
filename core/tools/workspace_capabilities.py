@@ -448,6 +448,66 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
     return "not-applicable"
 
 
+def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
+    normalized = str(execution_mode or "declared-only").strip().lower()
+    if normalized in {
+        "inline-text",
+        "workspace-file-read",
+        "workspace-search-read",
+        "guidance-only",
+        "declared-only",
+        "unsupported",
+    }:
+        return {
+            "classification": "read-only",
+            "mutation_near": False,
+            "sudo_required": False,
+            "mutation_critical": False,
+        }
+    if normalized in {
+        "workspace-file-write",
+        "workspace-file-edit",
+        "workspace-file-create",
+        "modify-file",
+    } or normalized.startswith("workspace-file-write"):
+        return {
+            "classification": "modify-file",
+            "mutation_near": True,
+            "sudo_required": False,
+            "mutation_critical": False,
+        }
+    if normalized in {"workspace-file-delete", "delete-file"}:
+        return {
+            "classification": "delete-file",
+            "mutation_near": True,
+            "sudo_required": False,
+            "mutation_critical": True,
+        }
+    if normalized.startswith("git-") or normalized in {"repo-update-check", "git-mutate"}:
+        return {
+            "classification": "git-mutate",
+            "mutation_near": True,
+            "sudo_required": False,
+            "mutation_critical": True,
+        }
+    if normalized.startswith(("system-", "package-", "sudo-")) or normalized in {
+        "system-mutate",
+        "package-mutate",
+    }:
+        return {
+            "classification": "system-mutate",
+            "mutation_near": True,
+            "sudo_required": normalized.startswith("sudo-") or "sudo" in normalized,
+            "mutation_critical": True,
+        }
+    return {
+        "classification": "unknown",
+        "mutation_near": False,
+        "sudo_required": False,
+        "mutation_critical": False,
+    }
+
+
 def _requires_capability_approval(summary: dict[str, object]) -> bool:
     return bool(summary.get("approval_required"))
 

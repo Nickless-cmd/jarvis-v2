@@ -7,7 +7,10 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
-from core.tools.workspace_capabilities import load_workspace_capabilities
+from core.tools.workspace_capabilities import (
+    classify_workspace_execution_mode,
+    load_workspace_capabilities,
+)
 
 
 def build_self_system_code_awareness_surface() -> dict[str, object]:
@@ -34,6 +37,7 @@ def build_self_system_code_awareness_surface() -> dict[str, object]:
     approval_required_count = int(
         ((capabilities.get("authority") or {}).get("approval_required_count") or 0)
     )
+    approval_required_mutation_classes = _approval_required_mutation_classes(capabilities)
 
     observation = _default_repo_observation()
     code_awareness_state = "repo-unavailable"
@@ -91,6 +95,10 @@ def build_self_system_code_awareness_surface() -> dict[str, object]:
             **observation,
             "repo_root_detected": repo_root is not None,
             "approval_required_capability_count": approval_required_count,
+            "approval_required_mutation_capability_count": len(
+                approval_required_mutation_classes
+            ),
+            "approval_required_mutation_classes": approval_required_mutation_classes,
         },
         "seam_usage": [
             "heartbeat-grounding",
@@ -112,7 +120,11 @@ def _default_repo_observation() -> dict[str, object]:
         "dirty_working_tree": False,
         "untracked_present": False,
         "modified_present": False,
+        "deleted_present": False,
         "recent_local_changes_present": False,
+        "modified_paths": [],
+        "deleted_paths": [],
+        "untracked_paths": [],
         "repo_status": "not-git",
         "local_change_state": "unknown",
         "upstream_awareness": "unknown",
@@ -150,6 +162,10 @@ def _observe_repo_status(repo_root: Path) -> dict[str, object]:
     behind_count = 0
     modified_present = False
     untracked_present = False
+    deleted_present = False
+    modified_paths: list[str] = []
+    deleted_paths: list[str] = []
+    untracked_paths: list[str] = []
 
     for raw_line in str(result.get("stdout") or "").splitlines():
         line = raw_line.strip()
@@ -166,8 +182,16 @@ def _observe_repo_status(repo_root: Path) -> dict[str, object]:
                     behind_count = _safe_int(part[1:])
         elif line.startswith("? "):
             untracked_present = True
+            _append_bounded_path(untracked_paths, line.removeprefix("? ").strip())
         elif line.startswith(("1 ", "2 ", "u ")):
-            modified_present = True
+            xy = _status_xy(line)
+            path = _status_path(line)
+            if "D" in xy:
+                deleted_present = True
+                _append_bounded_path(deleted_paths, path)
+            else:
+                modified_present = True
+                _append_bounded_path(modified_paths, path)
 
     local_change_state = "clean"
     if modified_present and untracked_present:
@@ -198,7 +222,11 @@ def _observe_repo_status(repo_root: Path) -> dict[str, object]:
         "dirty_working_tree": dirty_working_tree,
         "untracked_present": untracked_present,
         "modified_present": modified_present,
+        "deleted_present": deleted_present,
         "recent_local_changes_present": dirty_working_tree,
+        "modified_paths": modified_paths,
+        "deleted_paths": deleted_paths,
+        "untracked_paths": untracked_paths,
         "repo_status": repo_status,
         "local_change_state": local_change_state,
         "upstream_awareness": upstream_awareness,
@@ -272,3 +300,39 @@ def _safe_int(raw: str) -> int:
         return int(raw)
     except Exception:
         return 0
+
+
+def _status_xy(line: str) -> str:
+    parts = line.split()
+    if len(parts) >= 2:
+        return parts[1]
+    return ""
+
+
+def _status_path(line: str) -> str:
+    if "\t" in line:
+        return line.split("\t", 1)[0].split()[-1]
+    parts = line.split()
+    return parts[-1] if parts else ""
+
+
+def _append_bounded_path(paths: list[str], value: str, *, limit: int = 8) -> None:
+    candidate = str(value or "").strip()
+    if not candidate or candidate in paths or len(paths) >= limit:
+        return
+    paths.append(candidate)
+
+
+def _approval_required_mutation_classes(capabilities: dict[str, object]) -> list[str]:
+    classes: list[str] = []
+    for item in capabilities.get("runtime_capabilities") or []:
+        if str(item.get("runtime_status") or "") != "approval-required":
+            continue
+        classification = classify_workspace_execution_mode(
+            str(item.get("execution_mode") or "declared-only")
+        )
+        if bool(classification.get("mutation_near")):
+            current = str(classification.get("classification") or "unknown")
+            if current not in classes:
+                classes.append(current)
+    return classes

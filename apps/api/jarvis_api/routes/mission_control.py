@@ -492,6 +492,21 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_mutation_permitted": bool(
                 tool_intent.get("mutation_permitted", False)
             ),
+            "tool_intent_mutation_intent_state": str(
+                tool_intent.get("mutation_intent_state") or "idle"
+            ),
+            "tool_intent_mutation_classification": str(
+                tool_intent.get("mutation_intent_classification") or "none"
+            ),
+            "tool_intent_mutation_repo_scope": str(
+                tool_intent.get("mutation_repo_scope") or ""
+            ),
+            "tool_intent_mutation_system_scope": str(
+                tool_intent.get("mutation_system_scope") or ""
+            ),
+            "tool_intent_mutation_sudo_required": bool(
+                tool_intent.get("mutation_sudo_required", False)
+            ),
             "tool_intent_action_continuity_state": str(
                 tool_intent.get("action_continuity_state") or "idle"
             ),

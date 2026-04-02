@@ -2,8 +2,19 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from apps.api.jarvis_api.services.runtime_surface_cache import (
+    get_cached_runtime_surface,
+)
+
 
 def build_adaptive_reasoning_runtime_surface() -> dict[str, object]:
+    return get_cached_runtime_surface(
+        "adaptive_reasoning_runtime_surface",
+        _build_adaptive_reasoning_runtime_surface_uncached,
+    )
+
+
+def _build_adaptive_reasoning_runtime_surface_uncached() -> dict[str, object]:
     return build_adaptive_reasoning_runtime_from_sources(
         embodied_state=_safe_embodied_state(),
         affective_meta_state=_safe_affective_meta_state(),

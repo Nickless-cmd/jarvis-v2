@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from apps.api.jarvis_api.services.runtime_surface_cache import (
+    get_cached_runtime_surface,
+)
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -116,8 +120,19 @@ def refresh_runtime_proactive_loop_lifecycle_signal_statuses() -> dict[str, int]
 
 
 def build_runtime_proactive_loop_lifecycle_surface(*, limit: int = 8) -> dict[str, object]:
+    return get_cached_runtime_surface(
+        ("runtime_proactive_loop_lifecycle_surface", max(limit, 1)),
+        lambda: _build_runtime_proactive_loop_lifecycle_surface_uncached(
+            limit=max(limit, 1)
+        ),
+    )
+
+
+def _build_runtime_proactive_loop_lifecycle_surface_uncached(
+    *, limit: int = 8
+) -> dict[str, object]:
     refresh_runtime_proactive_loop_lifecycle_signal_statuses()
-    items = list_runtime_proactive_loop_lifecycle_signals(limit=max(limit, 1))
+    items = list_runtime_proactive_loop_lifecycle_signals(limit=limit)
     enriched_items = [_with_surface_view(item) for item in items]
     active = [item for item in enriched_items if str(item.get("status") or "") == "active"]
     softening = [item for item in enriched_items if str(item.get("status") or "") == "softening"]

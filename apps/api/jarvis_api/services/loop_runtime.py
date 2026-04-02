@@ -3,11 +3,22 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from apps.api.jarvis_api.services.runtime_surface_cache import (
+    get_cached_runtime_surface,
+)
+
 _LAST_LOOP_RUNTIME: dict[str, object] | None = None
 _RECENTLY_CLOSED_WINDOW = timedelta(minutes=20)
 
 
 def build_loop_runtime_surface() -> dict[str, object]:
+    return get_cached_runtime_surface(
+        "loop_runtime_surface",
+        _build_loop_runtime_surface_uncached,
+    )
+
+
+def _build_loop_runtime_surface_uncached() -> dict[str, object]:
     global _LAST_LOOP_RUNTIME
 
     from apps.api.jarvis_api.services.open_loop_signal_tracking import (

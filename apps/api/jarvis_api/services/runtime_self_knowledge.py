@@ -20,6 +20,8 @@ Design constraints:
 """
 from __future__ import annotations
 
+from apps.api.jarvis_api.services.runtime_surface_cache import runtime_surface_cache
+
 
 def build_runtime_self_knowledge_map(
     *, heartbeat_state: dict[str, object] | None = None
@@ -28,11 +30,12 @@ def build_runtime_self_knowledge_map(
 
     Returns a dict with five categories and a compact prompt-ready summary.
     """
-    active = _build_active_capabilities(heartbeat_state=heartbeat_state)
-    gated = _build_approval_gated()
-    inner = _build_passive_inner_forces()
-    constraints = _build_structural_constraints()
-    inactive = _build_unavailable_or_inactive()
+    with runtime_surface_cache():
+        active = _build_active_capabilities(heartbeat_state=heartbeat_state)
+        gated = _build_approval_gated()
+        inner = _build_passive_inner_forces()
+        constraints = _build_structural_constraints()
+        inactive = _build_unavailable_or_inactive()
 
     # Compact prompt-ready summary
     summary_parts = []

@@ -2,8 +2,19 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from apps.api.jarvis_api.services.runtime_surface_cache import (
+    get_cached_runtime_surface,
+)
+
 
 def build_epistemic_runtime_state_surface() -> dict[str, object]:
+    return get_cached_runtime_surface(
+        "epistemic_runtime_state_surface",
+        _build_epistemic_runtime_state_surface_uncached,
+    )
+
+
+def _build_epistemic_runtime_state_surface_uncached() -> dict[str, object]:
     return build_epistemic_runtime_state_from_sources(
         conflict_trace=_safe_conflict_trace(),
         deception_guard=_safe_deception_guard(),

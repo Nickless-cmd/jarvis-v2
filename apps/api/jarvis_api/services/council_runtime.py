@@ -2,8 +2,19 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from apps.api.jarvis_api.services.runtime_surface_cache import (
+    get_cached_runtime_surface,
+)
+
 
 def build_council_runtime_surface() -> dict[str, object]:
+    return get_cached_runtime_surface(
+        "council_runtime_surface",
+        _build_council_runtime_surface_uncached,
+    )
+
+
+def _build_council_runtime_surface_uncached() -> dict[str, object]:
     return build_council_runtime_from_sources(
         subagent_ecology=_safe_subagent_ecology(),
         affective_meta_state=_safe_affective_meta_state(),

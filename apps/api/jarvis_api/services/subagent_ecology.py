@@ -2,11 +2,22 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from apps.api.jarvis_api.services.runtime_surface_cache import (
+    get_cached_runtime_surface,
+)
+
 
 _ROLE_NAMES = ("critic", "witness-helper", "planner-helper")
 
 
 def build_subagent_ecology_surface() -> dict[str, object]:
+    return get_cached_runtime_surface(
+        "subagent_ecology_surface",
+        _build_subagent_ecology_surface_uncached,
+    )
+
+
+def _build_subagent_ecology_surface_uncached() -> dict[str, object]:
     return build_subagent_ecology_from_sources(
         affective_meta_state=_safe_affective_meta_state(),
         epistemic_runtime_state=_safe_epistemic_runtime_state(),

@@ -70,6 +70,7 @@ def run_prompt_evolution_runtime(
     inputs = _load_runtime_inputs()
     plan = build_prompt_evolution_from_inputs(
         dream_articulation=inputs["dream_articulation"],
+        dream_influence=inputs["dream_influence"],
         self_model_surface=inputs["self_model_surface"],
         inner_voice_state=inputs["inner_voice_state"],
         emergent_surface=inputs["emergent_surface"],
@@ -149,6 +150,7 @@ def run_prompt_evolution_runtime(
         "proposal_summary": str(persisted.get("summary") or ""),
         "target_asset": str(artifact.get("target_asset") or ""),
         "learning_influence": dict(artifact.get("learning_influence") or {}),
+        "dream_influence": dict(artifact.get("dream_influence") or {}),
         "candidate_fragment": str(artifact.get("candidate_fragment") or ""),
         "fragment_grounding": dict(artifact.get("fragment_grounding") or {}),
         "review_light": dict(artifact.get("review_light") or {}),
@@ -177,6 +179,7 @@ def run_prompt_evolution_runtime(
 def build_prompt_evolution_from_inputs(
     *,
     dream_articulation: dict[str, object] | None,
+    dream_influence: dict[str, object] | None,
     self_model_surface: dict[str, object] | None,
     inner_voice_state: dict[str, object] | None,
     emergent_surface: dict[str, object] | None,
@@ -191,8 +194,21 @@ def build_prompt_evolution_from_inputs(
     source_inputs: list[dict[str, str]] = []
 
     dream = dream_articulation or {}
+    dream_influence_surface = dream_influence or {}
     dream_summary = dream.get("summary") or {}
     dream_artifact = dream.get("latest_artifact") or {}
+    dream_influence_state = str(dream_influence_surface.get("influence_state") or "quiet")
+    if dream_influence_state != "quiet":
+        source_inputs.append({
+            "source": "dream-influence",
+            "signal": (
+                f"{dream_influence_state}"
+                f" / target={dream_influence_surface.get('influence_target') or 'none'}"
+                f" / mode={dream_influence_surface.get('influence_mode') or 'stabilize'}"
+                f" / strength={dream_influence_surface.get('influence_strength') or 'none'}"
+            )[:120],
+        })
+
     if dream_summary.get("latest_summary") or dream_artifact.get("summary"):
         source_inputs.append({
             "source": "dream-articulation",
@@ -275,6 +291,7 @@ def build_prompt_evolution_from_inputs(
 
     proposal_type = _choose_proposal_type(
         dream_articulation=dream,
+        dream_influence=dream_influence_surface,
         self_model_surface=self_model,
         embodied_state=body,
         loop_runtime=loops,
@@ -288,6 +305,7 @@ def build_prompt_evolution_from_inputs(
         loop_runtime=loops,
     )
     learning_influence = _build_learning_influence(learning)
+    dream_influence_summary = _build_dream_influence_summary(dream_influence_surface)
     guided = guided_learning or {}
     reasoning = adaptive_reasoning or {}
     candidate_fragment = _build_candidate_fragment(
@@ -295,12 +313,14 @@ def build_prompt_evolution_from_inputs(
         target_asset=target_asset,
         prompt_target=prompt_target,
         adaptive_learning=learning_influence,
+        dream_influence=dream_influence_summary,
         guided_learning=guided,
         adaptive_reasoning=reasoning,
         embodied_state=body,
     )
     fragment_grounding = _build_fragment_grounding(
         adaptive_learning=learning_influence,
+        dream_influence=dream_influence_summary,
         guided_learning=guided,
         adaptive_reasoning=reasoning,
     )
@@ -308,6 +328,7 @@ def build_prompt_evolution_from_inputs(
         proposal_type=proposal_type,
         prompt_target=prompt_target,
         adaptive_learning=learning_influence,
+        dream_influence=dream_influence_summary,
         guided_learning=guided,
         adaptive_reasoning=reasoning,
         embodied_state=body,
@@ -316,6 +337,7 @@ def build_prompt_evolution_from_inputs(
         proposal_type=proposal_type,
         target_asset=target_asset,
         learning_influence=learning_influence,
+        dream_influence=dream_influence_summary,
         candidate_fragment=candidate_fragment,
     )
     proposal_state = _proposal_state_from_type(proposal_type)
@@ -348,8 +370,13 @@ def build_prompt_evolution_from_inputs(
                 f"learning_mode={learning_influence.get('learning_engine_mode') or 'none'}",
                 f"reinforcement_target={learning_influence.get('reinforcement_target') or 'none'}",
                 f"retention_bias={learning_influence.get('retention_bias') or 'light'}",
+                f"dream_influence_state={dream_influence_summary.get('influence_state') or 'quiet'}",
+                f"dream_influence_target={dream_influence_summary.get('influence_target') or 'none'}",
+                f"dream_influence_mode={dream_influence_summary.get('influence_mode') or 'stabilize'}",
+                f"dream_influence_strength={dream_influence_summary.get('influence_strength') or 'none'}",
                 f"guided_learning={fragment_grounding.get('guided_learning') or 'none'}",
                 f"adaptive_reasoning={fragment_grounding.get('adaptive_reasoning') or 'none'}",
+                f"dream_influence={fragment_grounding.get('dream_influence') or 'none'}",
                 f"proposal_direction={review_light.get('proposal_direction') or 'none'}",
                 f"proposed_change_kind={review_light.get('proposed_change_kind') or 'none'}",
                 f"diff_light_summary={review_light.get('diff_light_summary') or 'none'}",
@@ -360,11 +387,14 @@ def build_prompt_evolution_from_inputs(
         "support_count": len(source_inputs),
         "status_reason": (
             "Adaptive learning and bounded runtime patterns now warrant a "
-            "proposal-only prompt evolution candidate with a self-authored fragment."
+            "proposal-only prompt evolution candidate with a self-authored fragment. "
+            f"Dream influence={dream_influence_summary.get('influence_state') or 'quiet'}"
+            f"/{dream_influence_summary.get('influence_mode') or 'stabilize'}."
         ),
         "target_asset": target_asset,
         "prompt_target": prompt_target,
         "learning_influence": learning_influence,
+        "dream_influence": dream_influence_summary,
         "candidate_fragment": candidate_fragment,
         "fragment_grounding": fragment_grounding,
         "fragment_truth": "proposal-only",
@@ -376,7 +406,7 @@ def build_prompt_evolution_from_inputs(
         "eligible": True,
         "reason": "grounded-runtime-prompt-proposal",
         "proposal_state": proposal_state,
-        "source_inputs": source_inputs[:6],
+        "source_inputs": source_inputs[:7],
         "artifact": artifact,
         "built_at": built_at,
     }
@@ -389,6 +419,7 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
     prompt_target = _prompt_target_from_proposal_type(latest_type) if latest else ""
     latest_summary_fields = _support_fields_from_latest(latest)
     learning_influence = dict((_last_result or {}).get("learning_influence") or _learning_influence_from_latest(latest))
+    dream_influence = dict((_last_result or {}).get("dream_influence") or _dream_influence_from_latest(latest))
     candidate_fragment = str(((_last_result or {}).get("candidate_fragment")) or latest_summary_fields.get("candidate_fragment") or "")
     fragment_grounding = dict((_last_result or {}).get("fragment_grounding") or _fragment_grounding_from_latest(latest))
     return {
@@ -403,6 +434,7 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
         "last_result": _last_result,
         "latest_proposal": latest,
         "learning_influence": learning_influence,
+        "dream_influence": dream_influence,
         "candidate_fragment": candidate_fragment,
         "fragment_grounding": fragment_grounding,
         "fragment_truth": "proposal-only",
@@ -426,6 +458,9 @@ def build_prompt_evolution_runtime_surface() -> dict[str, object]:
             "latest_learning_mode": str(learning_influence.get("learning_engine_mode") or "none"),
             "latest_reinforcement_target": str(learning_influence.get("reinforcement_target") or "none"),
             "latest_retention_bias": str(learning_influence.get("retention_bias") or "light"),
+            "latest_dream_influence_state": str(dream_influence.get("influence_state") or "quiet"),
+            "latest_dream_influence_target": str(dream_influence.get("influence_target") or "none"),
+            "latest_dream_influence_mode": str(dream_influence.get("influence_mode") or "stabilize"),
             "latest_candidate_fragment": candidate_fragment or "none",
             "proposal_direction": str(((_last_result or {}).get("review_light") or _review_light_from_latest(latest)).get("proposal_direction") or "none"),
             "proposed_change_kind": str(((_last_result or {}).get("review_light") or _review_light_from_latest(latest)).get("proposed_change_kind") or "none"),
@@ -446,6 +481,9 @@ def _load_runtime_inputs() -> dict[str, object]:
         build_adaptive_reasoning_runtime_surface,
     )
     from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_surface
+    from apps.api.jarvis_api.services.dream_influence_runtime import (
+        build_dream_influence_runtime_surface,
+    )
     from apps.api.jarvis_api.services.embodied_state import build_embodied_state_surface
     from apps.api.jarvis_api.services.emergent_signal_tracking import (
         build_runtime_emergent_signal_surface,
@@ -461,6 +499,7 @@ def _load_runtime_inputs() -> dict[str, object]:
 
     return {
         "dream_articulation": build_dream_articulation_surface(),
+        "dream_influence": build_dream_influence_runtime_surface(),
         "self_model_surface": build_runtime_self_model_signal_surface(limit=4),
         "inner_voice_state": get_inner_voice_daemon_state(),
         "emergent_surface": build_runtime_emergent_signal_surface(limit=4),
@@ -506,6 +545,7 @@ def _latest_prompt_evolution_proposal() -> dict[str, object] | None:
 def _choose_proposal_type(
     *,
     dream_articulation: dict[str, object],
+    dream_influence: dict[str, object],
     self_model_surface: dict[str, object],
     embodied_state: dict[str, object],
     loop_runtime: dict[str, object],
@@ -515,11 +555,20 @@ def _choose_proposal_type(
     reinforcement_target = str(adaptive_learning.get("reinforcement_target") or "reasoning")
     attenuation_bias = str(adaptive_learning.get("attenuation_bias") or "none")
     retention_bias = str(adaptive_learning.get("retention_bias") or "light")
+    influence_target = str(dream_influence.get("influence_target") or "none")
+    influence_mode = str(dream_influence.get("influence_mode") or "stabilize")
+    influence_strength = str(dream_influence.get("influence_strength") or "none")
 
-    if learning_mode in {"rebalance", "attenuate"} or attenuation_bias in {"soften", "release"}:
-        return "world-caution-nudge"
     if reinforcement_target == "prompt-shape":
         return "focus-nudge"
+    if learning_mode in {"rebalance", "attenuate"} or attenuation_bias in {"soften", "release"}:
+        return "world-caution-nudge"
+    if influence_target == "prompting" and influence_mode == "reinforce":
+        return "focus-nudge"
+    if influence_mode in {"soften", "caution"} and influence_strength in {"low", "medium"}:
+        return "world-caution-nudge"
+    if influence_target in {"learning", "reasoning"} and influence_mode == "explore":
+        return "communication-nudge"
     if reinforcement_target in {"reasoning", "self-knowledge"} and retention_bias in {"hold", "warm"}:
         return "communication-nudge"
 
@@ -594,6 +643,7 @@ def _build_rationale(
     proposal_type: str,
     target_asset: str,
     learning_influence: dict[str, str],
+    dream_influence: dict[str, str],
     candidate_fragment: str,
 ) -> str:
     learning_clause = (
@@ -602,28 +652,37 @@ def _build_rationale(
         f" around {learning_influence.get('reinforcement_target') or 'reasoning'}"
         f" with {learning_influence.get('retention_bias') or 'light'} retention."
     )
+    dream_clause = (
+        f" Dream influence currently sits at "
+        f"{dream_influence.get('influence_state') or 'quiet'}"
+        f" toward {dream_influence.get('influence_target') or 'none'}"
+        f" via {dream_influence.get('influence_mode') or 'stabilize'}"
+        f" ({dream_influence.get('influence_strength') or 'none'})."
+        if str(dream_influence.get("influence_state") or "quiet") != "quiet"
+        else ""
+    )
     if proposal_type == "communication-nudge":
         return (
             f"Recent runtime material suggests a small communication-framing adjustment "
             f"candidate for {target_asset}, not an applied prompt change."
-            f"{learning_clause} Candidate fragment: {candidate_fragment}"
+            f"{learning_clause}{dream_clause} Candidate fragment: {candidate_fragment}"
         )
     if proposal_type == "focus-nudge":
         return (
             f"Recent runtime material suggests a small direction-framing adjustment "
             f"candidate for {target_asset}, not a policy rewrite."
-            f"{learning_clause} Candidate fragment: {candidate_fragment}"
+            f"{learning_clause}{dream_clause} Candidate fragment: {candidate_fragment}"
         )
     if proposal_type == "challenge-nudge":
         return (
             f"Recent runtime material suggests a small challenge-posture adjustment "
             f"candidate for {target_asset}, while remaining proposal-only."
-            f"{learning_clause} Candidate fragment: {candidate_fragment}"
+            f"{learning_clause}{dream_clause} Candidate fragment: {candidate_fragment}"
         )
     return (
         f"Recent runtime material suggests a small world-caution adjustment "
         f"candidate for {target_asset}, while remaining proposal-only."
-        f"{learning_clause} Candidate fragment: {candidate_fragment}"
+        f"{learning_clause}{dream_clause} Candidate fragment: {candidate_fragment}"
     )
 
 
@@ -660,12 +719,23 @@ def _build_learning_influence(adaptive_learning: dict[str, object]) -> dict[str,
     }
 
 
+def _build_dream_influence_summary(dream_influence: dict[str, object]) -> dict[str, str]:
+    return {
+        "influence_state": str(dream_influence.get("influence_state") or "quiet"),
+        "influence_target": str(dream_influence.get("influence_target") or "none"),
+        "influence_mode": str(dream_influence.get("influence_mode") or "stabilize"),
+        "influence_strength": str(dream_influence.get("influence_strength") or "none"),
+        "influence_hint": str(dream_influence.get("influence_hint") or "none"),
+    }
+
+
 def _build_candidate_fragment(
     *,
     proposal_type: str,
     target_asset: str,
     prompt_target: str,
     adaptive_learning: dict[str, str],
+    dream_influence: dict[str, str],
     guided_learning: dict[str, object],
     adaptive_reasoning: dict[str, object],
     embodied_state: dict[str, object],
@@ -677,17 +747,26 @@ def _build_candidate_fragment(
     reasoning_mode = str(adaptive_reasoning.get("reasoning_mode") or "direct")
     certainty_style = str(adaptive_reasoning.get("certainty_style") or "crisp")
     body_state = str(embodied_state.get("state") or "steady")
+    dream_mode = dream_influence.get("influence_mode") or "stabilize"
+    dream_target = dream_influence.get("influence_target") or "none"
+    dream_strength = dream_influence.get("influence_strength") or "none"
 
     if proposal_type == "world-caution-nudge":
-        return _sanitize_fragment(
+        fragment = (
             "When pressure rises, keep caution explicit, narrow the next move, "
             "and prefer bounded wording before expansion."
         )
+        if dream_mode in {"soften", "caution"}:
+            fragment += " Let the line soften slightly before it hardens into instruction."
+        return _sanitize_fragment(fragment)
     if proposal_type == "communication-nudge":
-        return _sanitize_fragment(
+        fragment = (
             "Keep the inner line plain, grounded in current runtime truth, "
             f"and {certainty_style if certainty_style != 'crisp' else 'measured'} when claims are still forming."
         )
+        if dream_mode == "explore" and dream_target in {"learning", "reasoning"}:
+            fragment += " Leave a little room for a carried thread to stay legible without becoming decisive."
+        return _sanitize_fragment(fragment)
     if proposal_type == "challenge-nudge":
         return _sanitize_fragment(
             "Hold a small challenge posture: test the line, keep it bounded, "
@@ -700,6 +779,10 @@ def _build_candidate_fragment(
     )
     if guided_mode in {"practice", "clarify"}:
         fragment += f" Let {guided_focus} stay close to the next concrete turn."
+    if dream_target == "prompting" and dream_mode == "reinforce":
+        fragment += " Let the carried thread stay visible in the wording."
+    if dream_strength == "medium" and dream_mode == "explore":
+        fragment += " Keep one edge open for quiet exploration without widening scope."
     if reasoning_mode in {"careful", "constrained"} or body_state in {"strained", "degraded"}:
         fragment += " Keep the move narrow enough to remain trustworthy."
     return _sanitize_fragment(fragment)
@@ -708,6 +791,7 @@ def _build_candidate_fragment(
 def _build_fragment_grounding(
     *,
     adaptive_learning: dict[str, str],
+    dream_influence: dict[str, str],
     guided_learning: dict[str, object],
     adaptive_reasoning: dict[str, object],
 ) -> dict[str, str]:
@@ -721,6 +805,11 @@ def _build_fragment_grounding(
             f"{guided_learning.get('learning_mode') or 'reinforce'}"
             f"/{guided_learning.get('learning_focus') or 'reasoning'}"
         ),
+        "dream_influence": (
+            f"{dream_influence.get('influence_state') or 'quiet'}"
+            f"/{dream_influence.get('influence_target') or 'none'}"
+            f"/{dream_influence.get('influence_mode') or 'stabilize'}"
+        ),
         "adaptive_reasoning": (
             f"{adaptive_reasoning.get('reasoning_mode') or 'direct'}"
             f"/{adaptive_reasoning.get('certainty_style') or 'crisp'}"
@@ -733,6 +822,7 @@ def _build_review_light(
     proposal_type: str,
     prompt_target: str,
     adaptive_learning: dict[str, str],
+    dream_influence: dict[str, str],
     guided_learning: dict[str, object],
     adaptive_reasoning: dict[str, object],
     embodied_state: dict[str, object],
@@ -742,20 +832,34 @@ def _build_review_light(
     guided_focus = str(guided_learning.get("learning_focus") or "reasoning")
     reasoning_mode = str(adaptive_reasoning.get("reasoning_mode") or "direct")
     body_state = str(embodied_state.get("state") or "steady")
+    dream_mode = dream_influence.get("influence_mode") or "stabilize"
+    dream_target = dream_influence.get("influence_target") or "none"
 
     if proposal_type == "world-caution-nudge":
         return {
-            "proposal_direction": "tighten-caution",
+            "proposal_direction": "soften-caution" if dream_mode == "soften" else "tighten-caution",
             "proposed_change_kind": "boundary-nudge",
             "diff_light_summary": "Tighten caution framing and narrow the next move.",
-            "review_hint": "Review as a bounded caution increase, not a policy rewrite.",
+            "review_hint": (
+                "Review as a softened caution increase shaped by dream influence, not a policy rewrite."
+                if dream_mode == "soften"
+                else "Review as a bounded caution increase, not a policy rewrite."
+            ),
         }
     if proposal_type == "communication-nudge":
         return {
-            "proposal_direction": "increase-grounding",
+            "proposal_direction": "follow-dream-thread" if dream_mode == "explore" else "increase-grounding",
             "proposed_change_kind": "communication-calibration",
-            "diff_light_summary": "Stabilize communication toward plainer, more grounded wording.",
-            "review_hint": "Review as a grounding and tone adjustment, not a persona change.",
+            "diff_light_summary": (
+                "Let communication keep a quiet carried-thread openness while staying grounded."
+                if dream_mode == "explore" and dream_target in {"learning", "reasoning"}
+                else "Stabilize communication toward plainer, more grounded wording."
+            ),
+            "review_hint": (
+                "Review as a bounded carried-thread nuance in communication, not a persona change."
+                if dream_mode == "explore" and dream_target in {"learning", "reasoning"}
+                else "Review as a grounding and tone adjustment, not a persona change."
+            ),
         }
     if proposal_type == "challenge-nudge":
         return {
@@ -771,10 +875,28 @@ def _build_review_light(
 
     if learning_mode == "reinforce" or reinforcement_target == "prompt-shape":
         return {
-            "proposal_direction": "reinforce-focus-framing",
+            "proposal_direction": (
+                "reinforce-dream-framing"
+                if dream_target == "prompting" and dream_mode == "reinforce"
+                else "follow-dream-thread"
+                if dream_mode == "explore" and dream_target in {"learning", "reasoning"}
+                else "reinforce-focus-framing"
+            ),
             "proposed_change_kind": "framing-nudge",
-            "diff_light_summary": "Reinforce focus framing so the next move stays plain and alive.",
-            "review_hint": "Review as a focus-framing nudge, not an applied behavioral policy.",
+            "diff_light_summary": (
+                "Reinforce focus framing while letting the carried thread stay visible in the wording."
+                if dream_target == "prompting" and dream_mode == "reinforce"
+                else "Keep the framing forward while leaving a small carried-thread opening."
+                if dream_mode == "explore" and dream_target in {"learning", "reasoning"}
+                else "Reinforce focus framing so the next move stays plain and alive."
+            ),
+            "review_hint": (
+                "Review as a dream-shaped framing nudge, not an applied behavioral policy."
+                if dream_target == "prompting" and dream_mode == "reinforce"
+                else "Review as a bounded carried-thread opening in framing, not an applied behavioral policy."
+                if dream_mode == "explore" and dream_target in {"learning", "reasoning"}
+                else "Review as a focus-framing nudge, not an applied behavioral policy."
+            ),
         }
     if reasoning_mode in {"careful", "constrained"} or guided_focus in {"restraint", "reasoning"}:
         return {
@@ -828,7 +950,20 @@ def _fragment_grounding_from_latest(latest: dict[str, object] | None) -> dict[st
     return {
         "adaptive_learning": parsed.get("adaptive_learning", "none"),
         "guided_learning": parsed.get("guided_learning", "none"),
+        "dream_influence": parsed.get("dream_influence", "none"),
         "adaptive_reasoning": parsed.get("adaptive_reasoning", "none"),
+    }
+
+
+def _dream_influence_from_latest(latest: dict[str, object] | None) -> dict[str, str]:
+    parsed = _support_fields_from_latest(latest)
+    if not parsed:
+        return {}
+    return {
+        "influence_state": parsed.get("dream_influence_state", "quiet"),
+        "influence_target": parsed.get("dream_influence_target", "none"),
+        "influence_mode": parsed.get("dream_influence_mode", "stabilize"),
+        "influence_strength": parsed.get("dream_influence_strength", "none"),
     }
 
 

@@ -549,6 +549,9 @@ button { cursor: pointer; }
 .mc-tool-intent-actions { margin-top:10px; }
 .mc-tool-intent-summary { margin:12px 0 0; }
 .mc-tool-intent-summary p { margin:8px 0 0; }
+.mc-tool-intent-mutation-grid { margin-top:12px; }
+.mc-tool-intent-mutation-summary { margin-top:12px; }
+.mc-tool-intent-mutation-summary .mc-meta-pill { text-transform:none; }
 .mc-drawer-list { display:flex; flex-direction:column; gap:8px; }
 .mc-drawer-list p {
   margin:0;

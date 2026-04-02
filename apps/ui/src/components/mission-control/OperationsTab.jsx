@@ -37,6 +37,29 @@ function executionTimingLabel(item) {
   return ''
 }
 
+function summarizeMutationTargets(item) {
+  const files = Array.isArray(item?.mutationTargetFiles) ? item.mutationTargetFiles : []
+  const paths = Array.isArray(item?.mutationTargetPaths) ? item.mutationTargetPaths : []
+
+  if (files.length > 0) {
+    const preview = files.slice(0, 2).join(', ')
+    const remainder = files.length > 2 ? ` +${files.length - 2} more` : ''
+    return `${preview}${remainder}`
+  }
+
+  if (paths.length > 0) {
+    const preview = paths.slice(0, 2).join(', ')
+    const remainder = paths.length > 2 ? ` +${paths.length - 2} more` : ''
+    return `${preview}${remainder}`
+  }
+
+  return 'No target files or paths recorded'
+}
+
+function mutationScopeSummary(item) {
+  return [item?.mutationRepoScope, item?.mutationSystemScope].filter(Boolean).join(' · ')
+}
+
 function toolIntentRow(item, onOpen) {
   if (!item || (!item.intentState && !item.intentType)) return null
 
@@ -47,9 +70,12 @@ function toolIntentRow(item, onOpen) {
       item.approvalState ? `approval ${humanizeToken(item.approvalState)}` : '',
       item.approvalSource && item.approvalSource !== 'none' ? `source ${humanizeToken(item.approvalSource)}` : '',
       item.intentType ? `type ${humanizeToken(item.intentType)}` : '',
+      item.hasMutationIntentSurface ? `mutation ${humanizeToken(item.mutationIntentClassification || 'none')}` : '',
+      item.hasMutationIntentSurface ? `${item.mutationNear ? 'action-near' : 'non-mutation'}` : '',
       item.executionTarget || item.intentTarget ? `target ${item.executionTarget || item.intentTarget}` : '',
       item.approvalScope ? `scope ${humanizeToken(item.approvalScope)}` : '',
     ].filter(Boolean).join(' · '),
+    item.hasMutationIntentSurface ? summarizeMutationTargets(item) : '',
     item.executionSummary,
     item.intentReason,
     item.approvalResolutionMessage,
@@ -60,7 +86,7 @@ function toolIntentRow(item, onOpen) {
   return (
     <button
       className="mc-list-row"
-      onClick={() => onOpen('Tool Intent', item)}
+      onClick={() => onOpen('Tool Intent', { ...item, kind: 'approval-gated-tool-intent-light' })}
       title={sectionTitleWithMeta({
         source: item.source,
         fetchedAt: item.createdAt,
@@ -75,7 +101,9 @@ function toolIntentRow(item, onOpen) {
         <StatusPill status={item.intentState || 'idle'} />
         <StatusPill status={item.approvalState || 'none'} />
         <StatusPill status={item.executionState || 'not-executed'} />
+        {item.hasMutationIntentSurface ? <StatusPill status={item.mutationIntentState || 'idle'} /> : null}
         {item.intentType ? <small>{humanizeToken(item.intentType)}</small> : null}
+        {item.hasMutationIntentSurface ? <small>{humanizeToken(item.mutationIntentClassification || 'none')}</small> : null}
         {item.executionMode ? <small>{humanizeToken(item.executionMode)}</small> : null}
         {item.urgency ? <small>{humanizeToken(item.urgency)}</small> : null}
         <small>{item.mutationPermitted ? 'mutation allowed' : 'mutation blocked'}</small>
@@ -101,6 +129,9 @@ export function OperationsTab({
   const activeRunId = data?.runs?.activeRun?.runId || ''
   const recentRuns = (data?.runs?.recentRuns || []).filter((run) => run.runId !== activeRunId)
   const toolIntent = data?.toolIntent || null
+  const showMutationIntent = Boolean(toolIntent?.hasMutationIntentSurface)
+  const mutationScope = mutationScopeSummary(toolIntent)
+  const mutationTargets = summarizeMutationTargets(toolIntent)
 
   return (
     <div className="mc-tab-page">
@@ -189,6 +220,44 @@ export function OperationsTab({
               <p className="muted">{toolIntent.executionSummary || toolIntent.approvalResolutionReason || toolIntent.approvalResolutionMessage || 'No execution summary recorded'}</p>
             </div>
           </div>
+          {showMutationIntent ? (
+            <>
+              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
+                <div className="compact-metric" title="Mutation intent state and classification">
+                  <span>Mutation</span>
+                  <strong>{humanizeToken(toolIntent.mutationIntentClassification || 'none')}</strong>
+                  <p className="muted">{humanizeToken(toolIntent.mutationIntentState || 'idle')} · {toolIntent.mutationNear ? 'action-near' : 'not action-near'}</p>
+                </div>
+                <div className="compact-metric" title="Bounded mutation targets">
+                  <span>Targets</span>
+                  <strong>{toolIntent.mutationTargetFiles?.length || toolIntent.mutationTargetPaths?.length || 0}</strong>
+                  <p className="muted">{mutationTargets}</p>
+                </div>
+                <div className="compact-metric" title="Repo or system mutation scope">
+                  <span>Scope</span>
+                  <strong>{mutationScope || 'none'}</strong>
+                  <p className="muted">repo {toolIntent.mutationRepoScope || 'none'} · system {toolIntent.mutationSystemScope || 'none'}</p>
+                </div>
+                <div className="compact-metric" title="Mutation boundary and execution permission">
+                  <span>Guard</span>
+                  <strong>{toolIntent.mutationExecutionPermitted ? 'permitted' : 'proposal-only'}</strong>
+                  <p className="muted">sudo {toolIntent.mutationSudoRequired ? 'required' : 'not-needed'} · {toolIntent.mutationCritical ? 'critical' : 'non-critical'}</p>
+                </div>
+              </div>
+              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
+                <strong>Mutation intent</strong>
+                <p>{toolIntent.mutationSummary || 'No bounded mutation intent is active.'}</p>
+                <div className="mc-inline-meta">
+                  <span className="mc-meta-pill">classification {humanizeToken(toolIntent.mutationIntentClassification || 'none')}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutationNear ? 'mutation_near=true' : 'mutation_near=false'}</span>
+                  <span className="mc-meta-pill">execution_permitted={toolIntent.mutationExecutionPermitted ? 'true' : 'false'}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutationSudoRequired ? 'sudo-needed' : 'sudo-not-needed'}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutationCritical ? 'criticality=critical' : 'criticality=normal'}</span>
+                    {toolIntent.createdAt ? <span className="mc-meta-pill">updated {formatFreshness(toolIntent.createdAt)}</span> : null}
+                  </div>
+              </article>
+            </>
+          ) : null}
           {toolIntent.executionSummary ? (
             <article className="mc-code-card mc-tool-intent-summary">
               <strong>Read-only result</strong>

@@ -86,6 +86,18 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
               <div><span>Mutation</span><strong>{drawer.item.mutationPermitted ? 'permitted' : 'blocked'}</strong></div>
               <div><span>Urgency</span><strong>{drawer.item.urgency || 'low'}</strong></div>
             </div>
+            {drawer.item.hasMutationIntentSurface ? (
+              <div className="mc-keyval-grid">
+                <div><span>Mutation State</span><strong>{drawer.item.mutationIntentState || 'idle'}</strong></div>
+                <div><span>Classification</span><strong>{drawer.item.mutationIntentClassification || 'none'}</strong></div>
+                <div><span>Mutation Near</span><strong>{drawer.item.mutationNear ? 'true' : 'false'}</strong></div>
+                <div><span>Execution Permitted</span><strong>{drawer.item.mutationExecutionPermitted ? 'true' : 'false'}</strong></div>
+                <div><span>Repo Scope</span><strong>{drawer.item.mutationRepoScope || 'none'}</strong></div>
+                <div><span>System Scope</span><strong>{drawer.item.mutationSystemScope || 'none'}</strong></div>
+                <div><span>Sudo Needed</span><strong>{drawer.item.mutationSudoRequired ? 'true' : 'false'}</strong></div>
+                <div><span>Criticality</span><strong>{drawer.item.mutationCritical ? 'critical' : 'normal'}</strong></div>
+              </div>
+            ) : null}
             <div className="mc-inline-meta">
               {drawer.item.approvalSource ? <span className="mc-meta-pill">approval source {drawer.item.approvalSource}</span> : null}
               {drawer.item.approvalScope ? <span className="mc-meta-pill">scope {drawer.item.approvalScope}</span> : null}
@@ -93,10 +105,38 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
               {drawer.item.executionFinishedAt ? <span className="mc-meta-pill">finished {formatFreshness(drawer.item.executionFinishedAt)}</span> : null}
               {!drawer.item.executionFinishedAt && drawer.item.approvalResolvedAt ? <span className="mc-meta-pill">resolved {formatFreshness(drawer.item.approvalResolvedAt)}</span> : null}
             </div>
+            {drawer.item.hasMutationIntentSurface ? (
+              <article className="mc-code-card">
+                <strong>Mutation targets</strong>
+                <div className="mc-drawer-list">
+                  {drawer.item.mutationTargetFiles?.length ? (
+                    <p>files · {drawer.item.mutationTargetFiles.join(', ')}</p>
+                  ) : null}
+                  {drawer.item.mutationTargetPaths?.length ? (
+                    <p>paths · {drawer.item.mutationTargetPaths.join(', ')}</p>
+                  ) : null}
+                  {!drawer.item.mutationTargetFiles?.length && !drawer.item.mutationTargetPaths?.length ? (
+                    <p>No target files or paths recorded.</p>
+                  ) : null}
+                </div>
+              </article>
+            ) : null}
             <article className="mc-code-card">
               <strong>Read-only result</strong>
               <p>{drawer.item.executionSummary || 'No bounded repo inspection has been executed.'}</p>
             </article>
+            {drawer.item.hasMutationIntentSurface && drawer.item.mutationSummary ? (
+              <article className="mc-code-card">
+                <strong>Mutation summary</strong>
+                <p>{drawer.item.mutationSummary}</p>
+              </article>
+            ) : null}
+            {drawer.item.hasMutationIntentSurface && drawer.item.mutationBoundary ? (
+              <article className="mc-code-card">
+                <strong>Mutation boundary</strong>
+                <p>{drawer.item.mutationBoundary}</p>
+              </article>
+            ) : null}
             {drawer.item.boundary ? (
               <article className="mc-code-card">
                 <strong>Approval and execution boundary</strong>

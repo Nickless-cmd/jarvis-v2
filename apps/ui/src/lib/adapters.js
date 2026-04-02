@@ -48,6 +48,7 @@ function normalizeMissionControlOperationsPayload(payload = {}) {
   const approvals = payload?.approvals || {}
   const sessions = payload?.sessions || {}
   const providerRouter = runtime?.provider_router || {}
+  const toolIntentSource = payload?.toolIntent || runtime?.runtime_tool_intent || {}
 
   return {
     fetchedAt: new Date().toISOString(),
@@ -74,6 +75,7 @@ function normalizeMissionControlOperationsPayload(payload = {}) {
       coding: normalizeLane('Coding', runtime?.coding_lane_execution || {}, providerRouter?.lane_targets?.coding || {}),
       local: normalizeLane('Local', runtime?.local_lane_execution || {}, providerRouter?.lane_targets?.local || {}),
     },
+    toolIntent: Object.keys(toolIntentSource || {}).length ? normalizeToolIntent(toolIntentSource) : null,
     runtime,
   }
 }
@@ -1172,6 +1174,42 @@ function normalizeSelfSystemCodeAwareness(item = {}) {
     },
     builtAt: item.built_at || '',
     createdAt: item.built_at || '',
+  }
+}
+
+function normalizeToolIntent(item = {}) {
+  return {
+    intentState: item.intent_state || 'idle',
+    intentType: item.intent_type || 'inspect-repo-status',
+    intentTarget: item.intent_target || 'workspace',
+    intentReason: item.intent_reason || 'No bounded tool intent is active right now.',
+    approvalRequired: item.approval_required !== false,
+    approvalScope: item.approval_scope || 'repo-read',
+    urgency: item.urgency || 'low',
+    confidence: item.confidence || 'low',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    truth: item.truth || 'proposal-only',
+    kind: item.kind || 'approval-gated-tool-intent-light',
+    executionState: item.execution_state || 'not-executed',
+    boundary: item.boundary || 'Intent is proposal-only and approval-gated; no action has been performed.',
+    sourceContributors: (item.source_contributors || []).map((source) => ({ source: String(source || ''), signal: '' })),
+    source: item.source || '/mc/tool-intent',
+    seamUsage: {
+      heartbeatGrounding: (item.seam_usage || []).includes?.('heartbeat-grounding') || false,
+      promptContractRuntimeTruth: (item.seam_usage || []).includes?.('prompt-contract-runtime-truth') || false,
+      runtimeSelfModel: (item.seam_usage || []).includes?.('runtime-self-model') || false,
+      missionControlRuntime: (item.seam_usage || []).includes?.('mission-control-runtime') || false,
+    },
+    builtAt: item.built_at || '',
+    createdAt: item.built_at || '',
+    summary:
+      item.summary
+      || [
+        item.intent_state ? `state ${item.intent_state}` : '',
+        item.intent_type ? `type ${item.intent_type}` : '',
+        item.intent_target ? `target ${item.intent_target}` : '',
+      ].filter(Boolean).join(' · '),
   }
 }
 
@@ -2458,8 +2496,14 @@ export const backend = {
   },
 
   async getMissionControlOperations() {
-    const operations = await requestJson('/mc/operations')
-    return normalizeMissionControlOperationsPayload(operations)
+    const [operations, toolIntent] = await Promise.all([
+      requestJson('/mc/operations'),
+      requestJson('/mc/tool-intent').catch(() => null),
+    ])
+    return normalizeMissionControlOperationsPayload({
+      ...operations,
+      toolIntent: toolIntent || operations?.runtime?.runtime_tool_intent || {},
+    })
   },
 
   async getMissionControlObservability() {

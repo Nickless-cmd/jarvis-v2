@@ -1,6 +1,57 @@
 import { ChevronRight } from 'lucide-react'
 import { MainAgentPanel } from '../shared/MainAgentPanel'
-import { sectionTitleWithMeta } from './meta'
+import { formatFreshness, sectionTitleWithMeta } from './meta'
+
+function StatusPill({ status }) {
+  if (!status) return null
+  const normalizedStatus = String(status).toLowerCase().replace(/[-_\s]+/g, '-')
+  return <span className={`mc-status-pill status-${normalizedStatus}`}>{status}</span>
+}
+
+function humanizeToken(value) {
+  return String(value || '')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+}
+
+function toolIntentRow(item, onOpen) {
+  if (!item || (!item.intentState && !item.intentType)) return null
+
+  const detailText = [
+    item.intentReason,
+    [
+      item.intentType ? `type ${humanizeToken(item.intentType)}` : '',
+      item.intentTarget ? `target ${item.intentTarget}` : '',
+      item.approvalScope ? `scope ${humanizeToken(item.approvalScope)}` : '',
+    ].filter(Boolean).join(' · '),
+  ].filter(Boolean)[0] || 'Inspect bounded operational tool intent'
+
+  return (
+    <button
+      className="mc-list-row"
+      onClick={() => onOpen('Tool Intent', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'operations intent detail',
+      })}
+    >
+      <div>
+        <strong>Tool Intent</strong>
+        <span>{detailText}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={item.intentState || 'idle'} />
+        {item.intentType ? <small>{humanizeToken(item.intentType)}</small> : null}
+        {item.urgency ? <small>{humanizeToken(item.urgency)}</small> : null}
+        {item.approvalRequired ? <small>approval required</small> : null}
+        {item.executionState ? <small>{humanizeToken(item.executionState)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
 
 export function OperationsTab({
   data,
@@ -9,9 +60,11 @@ export function OperationsTab({
   onOpenRun,
   onOpenSession,
   onOpenApproval,
+  onOpenItem,
 }) {
   const activeRunId = data?.runs?.activeRun?.runId || ''
   const recentRuns = (data?.runs?.recentRuns || []).filter((run) => run.runId !== activeRunId)
+  const toolIntent = data?.toolIntent || null
 
   return (
     <div className="mc-tab-page">
@@ -54,6 +107,42 @@ export function OperationsTab({
           </div>
         </article>
       </section>
+
+      {toolIntent ? (
+        <section className="support-card" id="tool-intent" title={sectionTitleWithMeta({
+          source: toolIntent.source || '/mc/tool-intent',
+          fetchedAt: toolIntent.createdAt || data?.fetchedAt,
+          mode: 'operational intent detail',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Tool Intent</h3>
+              <p className="muted">Bounded operational intent, still proposal-only and not executed.</p>
+            </div>
+            <span className="mc-section-hint">Read-only</span>
+          </div>
+          <div className="compact-grid">
+            <div className="compact-metric" title="Current intent state">
+              <span>State</span>
+              <strong>{toolIntent.intentState || 'idle'}</strong>
+              <p className="muted">{toolIntent.intentType || 'inspect-repo-status'}</p>
+            </div>
+            <div className="compact-metric" title="Intent target and urgency">
+              <span>Target</span>
+              <strong>{toolIntent.intentTarget || 'workspace'}</strong>
+              <p className="muted">{toolIntent.urgency || 'low'} urgency</p>
+            </div>
+            <div className="compact-metric" title="Approval boundary and execution state">
+              <span>Boundary</span>
+              <strong>{toolIntent.approvalRequired ? 'Approval Required' : 'No Approval'}</strong>
+              <p className="muted">{toolIntent.executionState || 'not-executed'} · {toolIntent.approvalScope || 'repo-read'}</p>
+            </div>
+          </div>
+          <div className="mc-list">
+            {toolIntentRow(toolIntent, onOpenItem)}
+          </div>
+        </section>
+      ) : null}
 
       <section className="support-card" id="runs" title={sectionTitleWithMeta({
         source: '/mc/runs',

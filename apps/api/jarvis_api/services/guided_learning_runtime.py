@@ -2,8 +2,19 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from apps.api.jarvis_api.services.runtime_surface_cache import (
+    get_cached_runtime_surface,
+)
+
 
 def build_guided_learning_runtime_surface() -> dict[str, object]:
+    return get_cached_runtime_surface(
+        "guided_learning_runtime_surface",
+        _build_guided_learning_runtime_surface_uncached,
+    )
+
+
+def _build_guided_learning_runtime_surface_uncached() -> dict[str, object]:
     return build_guided_learning_runtime_from_sources(
         adaptive_planner=_safe_adaptive_planner(),
         adaptive_reasoning=_safe_adaptive_reasoning(),

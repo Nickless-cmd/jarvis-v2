@@ -87,6 +87,9 @@ from apps.api.jarvis_api.services.visible_model import visible_execution_readine
 from apps.api.jarvis_api.services.witness_signal_tracking import (
     build_runtime_witness_signal_surface,
 )
+from apps.api.jarvis_api.services.runtime_surface_cache import (
+    get_cached_runtime_surface,
+)
 from core.auth.profiles import get_provider_state
 from core.eventbus.bus import event_bus
 from core.identity.runtime_candidates import build_runtime_candidate_workflows
@@ -251,6 +254,13 @@ def _poll_heartbeat_schedule_with_trigger(
 
 
 def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:
+    return get_cached_runtime_surface(
+        ("heartbeat_runtime_surface", name),
+        lambda: _heartbeat_runtime_surface_uncached(name=name),
+    )
+
+
+def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, object]:
     policy = load_heartbeat_policy(name=name)
     persisted = get_heartbeat_runtime_state() or _default_persisted_state()
     now = datetime.now(UTC)

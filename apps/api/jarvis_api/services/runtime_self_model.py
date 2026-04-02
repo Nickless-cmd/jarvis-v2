@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from apps.api.jarvis_api.services.runtime_surface_cache import runtime_surface_cache
+
 
 # ---------------------------------------------------------------------------
 # Layer type definitions (the ontology)
@@ -40,29 +42,30 @@ def build_runtime_self_model() -> dict[str, object]:
     Returns a structured dict with typed layers, producer states,
     truth boundaries, and a compact prompt-ready summary.
     """
-    layers = _collect_layers()
-    boundaries = _truth_boundaries()
-    summary = _build_summary(layers, boundaries)
+    with runtime_surface_cache():
+        layers = _collect_layers()
+        boundaries = _truth_boundaries()
+        summary = _build_summary(layers, boundaries)
 
-    return {
-        "layers": layers,
-        "embodied_state": _embodied_state_surface(),
-        "affective_meta_state": _affective_meta_state_surface(),
-        "epistemic_runtime_state": _epistemic_runtime_state_surface(),
-        "subagent_ecology": _subagent_ecology_surface(),
-        "council_runtime": _council_runtime_surface(),
-        "adaptive_planner": _adaptive_planner_surface(),
-        "adaptive_reasoning": _adaptive_reasoning_surface(),
-        "guided_learning": _guided_learning_surface(),
-        "adaptive_learning": _adaptive_learning_surface(),
-        "loop_runtime": _loop_runtime_surface(),
-        "idle_consolidation": _idle_consolidation_surface(),
-        "dream_articulation": _dream_articulation_surface(),
-        "prompt_evolution": _prompt_evolution_surface(),
-        "truth_boundaries": boundaries,
-        "summary": summary,
-        "built_at": datetime.now(UTC).isoformat(),
-    }
+        return {
+            "layers": layers,
+            "embodied_state": _embodied_state_surface(),
+            "affective_meta_state": _affective_meta_state_surface(),
+            "epistemic_runtime_state": _epistemic_runtime_state_surface(),
+            "subagent_ecology": _subagent_ecology_surface(),
+            "council_runtime": _council_runtime_surface(),
+            "adaptive_planner": _adaptive_planner_surface(),
+            "adaptive_reasoning": _adaptive_reasoning_surface(),
+            "guided_learning": _guided_learning_surface(),
+            "adaptive_learning": _adaptive_learning_surface(),
+            "loop_runtime": _loop_runtime_surface(),
+            "idle_consolidation": _idle_consolidation_surface(),
+            "dream_articulation": _dream_articulation_surface(),
+            "prompt_evolution": _prompt_evolution_surface(),
+            "truth_boundaries": boundaries,
+            "summary": summary,
+            "built_at": datetime.now(UTC).isoformat(),
+        }
 
 
 def _collect_layers() -> list[dict[str, str]]:

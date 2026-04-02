@@ -24,6 +24,8 @@ Design constraints:
 """
 from __future__ import annotations
 
+from apps.api.jarvis_api.services.runtime_surface_cache import runtime_surface_cache
+
 
 # ---------------------------------------------------------------------------
 # Mental modes
@@ -207,45 +209,46 @@ def build_cognitive_frame(
     This is the central mental state assembly that reads from all
     existing runtime surfaces and produces a single coherent frame.
     """
-    # --- Gather inputs ---
-    brain_context = _safe_brain_context()
-    self_knowledge = self_knowledge or _safe_self_knowledge(
-        heartbeat_state=heartbeat_state
-    )
-    loop_surface = _safe_open_loops()
-    gate_surface = _safe_question_gates()
-    tension_surface = _safe_initiative_tension()
-    visible_status = _safe_visible_status()
-    liveness = _safe_liveness_snapshot(heartbeat_state=heartbeat_state)
+    with runtime_surface_cache():
+        # --- Gather inputs ---
+        brain_context = _safe_brain_context()
+        self_knowledge = self_knowledge or _safe_self_knowledge(
+            heartbeat_state=heartbeat_state
+        )
+        loop_surface = _safe_open_loops()
+        gate_surface = _safe_question_gates()
+        tension_surface = _safe_initiative_tension()
+        visible_status = _safe_visible_status()
+        liveness = _safe_liveness_snapshot(heartbeat_state=heartbeat_state)
 
-    # --- Extract summaries ---
-    brain_excerpts = brain_context.get("excerpts") or []
-    brain_count = int(brain_context.get("record_count") or 0)
-    brain_types = brain_context.get("by_type") or {}
+        # --- Extract summaries ---
+        brain_excerpts = brain_context.get("excerpts") or []
+        brain_count = int(brain_context.get("record_count") or 0)
+        brain_types = brain_context.get("by_type") or {}
 
-    loop_summary = loop_surface.get("summary") or {}
-    loop_items = loop_surface.get("items") or []
-    open_loop_count = int(loop_summary.get("open_count") or 0)
+        loop_summary = loop_surface.get("summary") or {}
+        loop_items = loop_surface.get("items") or []
+        open_loop_count = int(loop_summary.get("open_count") or 0)
 
-    gate_items = gate_surface.get("items") or []
-    gate_active = bool(gate_surface.get("active"))
+        gate_items = gate_surface.get("items") or []
+        gate_active = bool(gate_surface.get("active"))
 
-    tension_active = bool(tension_surface.get("active"))
-    tension_intensity = str((tension_surface.get("summary") or {}).get("current_intensity") or "low")
+        tension_active = bool(tension_surface.get("active"))
+        tension_intensity = str((tension_surface.get("summary") or {}).get("current_intensity") or "low")
 
-    visible_active = str(visible_status.get("provider_status") or "") in {"ready", "live-verified"}
+        visible_active = str(visible_status.get("provider_status") or "") in {"ready", "live-verified"}
 
-    liveness_state = str(liveness.get("liveness_state") or "quiet")
+        liveness_state = str(liveness.get("liveness_state") or "quiet")
 
-    active_capabilities = self_knowledge.get("active_capabilities", {}).get("items", [])
-    gated_items = self_knowledge.get("approval_gated", {}).get("items", [])
-    inner_forces = self_knowledge.get("passive_inner_forces", {}).get("items", [])
-    constraint_items = self_knowledge.get("structural_constraints", {}).get("items", [])
+        active_capabilities = self_knowledge.get("active_capabilities", {}).get("items", [])
+        gated_items = self_knowledge.get("approval_gated", {}).get("items", [])
+        inner_forces = self_knowledge.get("passive_inner_forces", {}).get("items", [])
+        constraint_items = self_knowledge.get("structural_constraints", {}).get("items", [])
 
-    approval_pending = any(
-        str(item.get("status") or "") == "awaiting-review"
-        for item in gated_items
-    )
+        approval_pending = any(
+            str(item.get("status") or "") == "awaiting-review"
+            for item in gated_items
+        )
 
     # Determine continuity mode from latest brain type distribution
     continuity_mode = "carry"

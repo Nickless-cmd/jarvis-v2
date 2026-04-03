@@ -427,7 +427,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield cancelled_chunk
             return
 
-        if capability_call and _is_runnable_workspace_capability(capability_call):
+        if capability_call and _is_known_workspace_capability(capability_call):
             capability_result = invoke_workspace_capability(
                 capability_call,
                 run_id=run.run_id,
@@ -1041,12 +1041,12 @@ def _capability_call_state(text: str) -> str:
     return "invalid"
 
 
-def _is_runnable_workspace_capability(capability_id: str) -> bool:
+def _is_known_workspace_capability(capability_id: str) -> bool:
     runtime_capabilities = load_workspace_capabilities().get("runtime_capabilities", [])
     for capability in runtime_capabilities:
         if capability.get("capability_id") != capability_id:
             continue
-        return bool(capability.get("available_now"))
+        return True
     return False
 
 

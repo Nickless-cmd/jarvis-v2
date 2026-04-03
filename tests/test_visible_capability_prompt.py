@@ -15,10 +15,12 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
     assert "tool:search-workspace-memory-continuity" in instruction
     assert "tool:read-repository-readme" in instruction
     assert "tool:read-external-file-by-path" in instruction
+    assert "tool:run-non-destructive-command" in instruction
     assert "tool:propose-workspace-memory-update" in instruction
     assert "tool:propose-external-repo-file-update" in instruction
     assert "workspace_read=allowed" in instruction
     assert "external_read=allowed" in instruction
+    assert "non_destructive_exec=allowed" in instruction
     assert "workspace_write=explicit-approval-required" in instruction
 
 
@@ -37,3 +39,4 @@ def test_visible_prompt_assembly_keeps_text_capability_contract(isolated_runtime
     assert "json_tool_call_supported=False" in assembly.text
     assert "tool:read-workspace-user-profile" in assembly.text
     assert "tool:read-external-file-by-path" in assembly.text
+    assert "tool:run-non-destructive-command" in assembly.text

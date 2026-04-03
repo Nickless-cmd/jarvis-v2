@@ -1224,6 +1224,14 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         lines.append(
             "- Dynamic external file read is allowed only when the user message already names one explicit /absolute/or ~/path outside the workspace root."
         )
+    if any(
+        str(item.get("execution_mode") or "") == "non-destructive-exec"
+        and str(item.get("command_source") or "") == "invocation-argument"
+        for item in available
+    ):
+        lines.append(
+            "- Non-destructive exec is allowed only when the user message already includes one explicit command in backticks or a command:/kommando: line."
+        )
     if available:
         lines.append(
             "- Callable capability_ids: "
@@ -1255,6 +1263,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         "- Policy: "
         f"workspace_read={policy.get('workspace_read', 'allowed')} | "
         f"external_read={policy.get('external_read', 'allowed')} | "
+        f"non_destructive_exec={policy.get('non_destructive_exec', 'allowed')} | "
         f"workspace_write={policy.get('workspace_write', 'explicit-approval-required')} | "
         f"external_write={policy.get('external_write', 'explicit-approval-required')}"
     )

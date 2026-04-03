@@ -398,6 +398,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     capability_id=capability_call,
                     user_message=run.user_message,
                 ),
+                command_text=_resolve_visible_capability_command_text(
+                    capability_id=capability_call,
+                    user_message=run.user_message,
+                ),
             )
             set_last_visible_capability_use(
                 run,
@@ -1201,6 +1205,45 @@ def _extract_external_target_path_from_user_message(user_message: str) -> str | 
         candidate = candidate.rstrip(".,:;!?)]}")
         if candidate:
             return candidate
+    return None
+
+
+def _resolve_visible_capability_command_text(
+    *, capability_id: str, user_message: str
+) -> str | None:
+    runtime_capabilities = load_workspace_capabilities().get("runtime_capabilities", [])
+    capability = next(
+        (
+            item
+            for item in runtime_capabilities
+            if item.get("capability_id") == capability_id
+        ),
+        None,
+    )
+    if capability is None:
+        return None
+    if str(capability.get("execution_mode") or "") != "non-destructive-exec":
+        return None
+    if str(capability.get("command_source") or "") != "invocation-argument":
+        return None
+    return _extract_exec_command_from_user_message(user_message)
+
+
+def _extract_exec_command_from_user_message(user_message: str) -> str | None:
+    fenced = re.search(r"`(?P<command>[^`\n]+)`", str(user_message or ""))
+    if fenced:
+        command = str(fenced.group("command") or "").strip()
+        if command:
+            return command
+    for raw_line in str(user_message or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        lowered = line.lower()
+        if lowered.startswith("command:") or lowered.startswith("kommando:"):
+            command = line.split(":", 1)[1].strip()
+            if command:
+                return command
     return None
 
 

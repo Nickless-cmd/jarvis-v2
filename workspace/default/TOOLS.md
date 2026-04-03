@@ -13,6 +13,7 @@ Callable now:
 - `tool:search-workspace-memory-continuity`
 - `tool:read-repository-readme`
 - `tool:read-external-file-by-path`
+- `tool:run-non-destructive-command`
 
 Approval-gated now:
 - `tool:propose-workspace-memory-update`
@@ -42,6 +43,12 @@ path_from: user-message
 
 Reads one explicit external file path from the current user message.
 Use this only for read-only external/system file access outside the active workspace root.
+
+## EXEC_COMMAND: run non-destructive command
+command_from: user-message
+
+Runs one explicit non-destructive command from the current user message.
+Use this only for read-only inspection or diagnostics. No sudo, package install/update, git mutation, delete, shell chaining, or redirection.
 
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md

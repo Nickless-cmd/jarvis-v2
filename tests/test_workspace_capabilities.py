@@ -28,6 +28,7 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert "tool:search-workspace-memory-continuity" in runtime_capabilities
     assert "tool:read-repository-readme" in runtime_capabilities
     assert "tool:read-external-file-by-path" in runtime_capabilities
+    assert "tool:run-non-destructive-command" in runtime_capabilities
     assert "tool:propose-workspace-memory-update" in runtime_capabilities
     assert "tool:propose-external-repo-file-update" in runtime_capabilities
 
@@ -35,6 +36,7 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert runtime_capabilities["tool:search-workspace-memory-continuity"]["available_now"] is True
     assert runtime_capabilities["tool:read-repository-readme"]["available_now"] is True
     assert runtime_capabilities["tool:read-external-file-by-path"]["available_now"] is True
+    assert runtime_capabilities["tool:run-non-destructive-command"]["available_now"] is True
     assert runtime_capabilities["tool:propose-workspace-memory-update"]["runtime_status"] == "approval-required"
     assert runtime_capabilities["tool:propose-workspace-memory-update"]["available_now"] is False
 
@@ -103,6 +105,66 @@ def test_dynamic_external_read_rejects_workspace_scoped_target(
 
     assert result["status"] == "blocked-scope-mismatch"
     assert result["execution_mode"] == "external-file-read"
+
+
+def test_non_destructive_exec_capability_runs_bounded_command(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="pwd",
+    )
+
+    assert result["status"] == "executed"
+    assert result["execution_mode"] == "non-destructive-exec"
+    payload = result.get("result") or {}
+    assert payload.get("type") == "non-destructive-exec"
+    assert payload.get("command_text") == "pwd"
+    assert payload.get("command_source") == "invocation-argument"
+    assert payload.get("mutation_permitted") is False
+    assert payload.get("sudo_permitted") is False
+    assert str(payload.get("text") or "").strip()
+
+
+def test_non_destructive_exec_blocks_destructive_and_sudo_commands(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    destructive = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="rm -rf tmp",
+    )
+    assert destructive["status"] == "blocked-destructive-command"
+    assert destructive["execution_mode"] == "non-destructive-exec"
+
+    sudo = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="sudo ls /root",
+    )
+    assert sudo["status"] == "blocked-sudo"
+    assert sudo["execution_mode"] == "non-destructive-exec"
+
+
+def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability() -> None:
+    default_tools = Path("/media/projects/jarvis-v2/workspace/default/TOOLS.md").read_text(
+        encoding="utf-8"
+    )
+    template_tools = Path("/media/projects/jarvis-v2/workspace/templates/TOOLS.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "tool:run-non-destructive-command" in default_tools
+    assert "## EXEC_COMMAND: run non-destructive command" in default_tools
+    assert "## EXEC_COMMAND: run non-destructive command" in template_tools
+    assert "command_from: user-message" in default_tools
+    assert "command_from: user-message" in template_tools
+    assert "No sudo, package install/update, git mutation, delete, shell chaining, or redirection." in default_tools
+    assert "blocks sudo, package mutation, git mutation, delete, shell chaining, and redirection." in template_tools
 
 
 def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime) -> None:

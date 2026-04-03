@@ -689,6 +689,14 @@ def build_self_model_prompt_lines() -> list[str]:
         lines.append(
             "  external_read_boundary: dynamic external file read requires one explicit /absolute/or ~/path in the user message and stays read-only outside workspace scope"
         )
+    if any(
+        str(item.get("execution_mode") or "") == "non-destructive-exec"
+        and str(item.get("command_source") or "") == "invocation-argument"
+        for item in runtime_capabilities
+    ):
+        lines.append(
+            "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, and blocks sudo, mutation, package, git, delete, and shell chaining"
+        )
     if gated_ids:
         lines.append(
             "  approval_gated_capability_ids: "
@@ -707,6 +715,7 @@ def build_self_model_prompt_lines() -> list[str]:
         "  capability_policy: "
         f"workspace_read={policy.get('workspace_read', 'allowed')}"
         f" | external_read={policy.get('external_read', 'allowed')}"
+        f" | non_destructive_exec={policy.get('non_destructive_exec', 'allowed')}"
         f" | workspace_write={policy.get('workspace_write', 'explicit-approval-required')}"
         f" | external_write={policy.get('external_write', 'explicit-approval-required')}"
     )

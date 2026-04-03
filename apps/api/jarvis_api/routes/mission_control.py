@@ -1332,12 +1332,14 @@ def mc_invoke_workspace_capability(
     approved: bool = False,
     write_content: str | None = None,
     target_path: str | None = None,
+    command_text: str | None = None,
 ) -> dict:
     result = invoke_workspace_capability(
         capability_id,
         approved=approved,
         write_content=write_content,
         target_path=target_path,
+        command_text=command_text,
     )
     return {
         "ok": result["status"] == "executed",

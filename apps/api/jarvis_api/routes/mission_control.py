@@ -534,6 +534,24 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_mutation_sudo_required": bool(
                 tool_intent.get("mutation_sudo_required", False)
             ),
+            "tool_intent_write_proposal_state": str(
+                tool_intent.get("write_proposal_state") or "none"
+            ),
+            "tool_intent_write_proposal_type": str(
+                tool_intent.get("write_proposal_type") or "none"
+            ),
+            "tool_intent_write_proposal_scope": str(
+                tool_intent.get("write_proposal_scope") or "none"
+            ),
+            "tool_intent_write_proposal_criticality": str(
+                tool_intent.get("write_proposal_criticality") or "none"
+            ),
+            "tool_intent_write_proposal_target_identity": bool(
+                tool_intent.get("write_proposal_target_identity", False)
+            ),
+            "tool_intent_write_proposal_target_memory": bool(
+                tool_intent.get("write_proposal_target_memory", False)
+            ),
             "tool_intent_action_continuity_state": str(
                 tool_intent.get("action_continuity_state") or "idle"
             ),

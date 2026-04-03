@@ -1210,6 +1210,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         '<capability-call id="capability_id" />'
     )
     lines.append(
+        "- If you invoke a capability, emit exactly one capability-call line and no surrounding prose."
+    )
+    lines.append(
         "- Do not emit JSON or pseudo-JSON tool calls. "
         f"json_tool_call_supported={contract.get('json_tool_call_supported', False)}"
     )

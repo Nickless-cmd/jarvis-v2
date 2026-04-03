@@ -60,6 +60,11 @@ function mutationScopeSummary(item) {
   return [item?.mutationRepoScope, item?.mutationSystemScope].filter(Boolean).join(' · ')
 }
 
+function mutatingExecGuardLabel(item) {
+  if (!item?.hasMutatingExecProposalSurface) return 'no proposal'
+  return item?.mutatingExecRequiresApproval ? 'approval required' : 'review only'
+}
+
 function toolIntentRow(item, onOpen) {
   if (!item || (!item.intentState && !item.intentType)) return null
 
@@ -130,6 +135,15 @@ export function OperationsTab({
   const recentRuns = (data?.runs?.recentRuns || []).filter((run) => run.runId !== activeRunId)
   const toolIntent = data?.toolIntent || null
   const showMutationIntent = Boolean(toolIntent?.hasMutationIntentSurface)
+  const showMutatingExecProposal = Boolean(
+    toolIntent?.hasMutatingExecProposalSurface
+    && (
+      toolIntent?.mutatingExecProposalState
+      || toolIntent?.mutatingExecProposalCommand
+      || toolIntent?.mutatingExecProposalSummary
+    )
+    && toolIntent?.mutatingExecProposalState !== 'none'
+  )
   const mutationScope = mutationScopeSummary(toolIntent)
   const mutationTargets = summarizeMutationTargets(toolIntent)
 
@@ -255,6 +269,43 @@ export function OperationsTab({
                   <span className="mc-meta-pill">{toolIntent.mutationCritical ? 'criticality=critical' : 'criticality=normal'}</span>
                     {toolIntent.createdAt ? <span className="mc-meta-pill">updated {formatFreshness(toolIntent.createdAt)}</span> : null}
                   </div>
+              </article>
+            </>
+          ) : null}
+          {showMutatingExecProposal ? (
+            <>
+              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
+                <div className="compact-metric" title="Mutating exec proposal state and review boundary">
+                  <span>Exec Proposal</span>
+                  <strong>{humanizeToken(toolIntent.mutatingExecProposalState || 'none')}</strong>
+                  <p className="muted">proposal-only · not executed</p>
+                </div>
+                <div className="compact-metric" title="Mutating exec scope and criticality">
+                  <span>Scope</span>
+                  <strong>{humanizeToken(toolIntent.mutatingExecProposalScope || 'none')}</strong>
+                  <p className="muted">{humanizeToken(toolIntent.mutatingExecCriticality || 'none')} criticality</p>
+                </div>
+                <div className="compact-metric" title="Approval and sudo requirements">
+                  <span>Guard</span>
+                  <strong>{mutatingExecGuardLabel(toolIntent)}</strong>
+                  <p className="muted">sudo {toolIntent.mutatingExecRequiresSudo ? 'required' : 'not needed'}</p>
+                </div>
+                <div className="compact-metric" title="Proposal confidence and fingerprint">
+                  <span>Confidence</span>
+                  <strong>{humanizeToken(toolIntent.mutatingExecConfidence || 'low')}</strong>
+                  <p className="muted">{toolIntent.mutatingExecCommandFingerprint || 'no fingerprint'}</p>
+                </div>
+              </div>
+              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
+                <strong>Mutating exec proposal</strong>
+                <p>{toolIntent.mutatingExecProposalSummary || toolIntent.mutatingExecProposalReason || 'A mutating exec proposal is present and remains review-only.'}</p>
+                <div className="mc-inline-meta">
+                  <span className="mc-meta-pill">command {toolIntent.mutatingExecProposalCommand || 'none'}</span>
+                  <span className="mc-meta-pill">scope {humanizeToken(toolIntent.mutatingExecProposalScope || 'none')}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresApproval ? 'approval required' : 'approval not required'}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresSudo ? 'sudo required' : 'sudo not needed'}</span>
+                  <span className="mc-meta-pill">not executed</span>
+                </div>
               </article>
             </>
           ) : null}

@@ -182,8 +182,10 @@ from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
 from apps.api.jarvis_api.services.visible_model import (
     VisibleModelDelta,
     VisibleModelRateLimited,
+    VisibleModelResult,
     VisibleModelStreamCancelled,
     VisibleModelStreamDone,
+    execute_visible_model,
     stream_visible_model,
 )
 from core.memory.private_layer_pipeline import write_private_terminal_layers
@@ -383,6 +385,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield cancelled_chunk
             return
 
+        total_input_tokens = result.input_tokens
+        total_output_tokens = result.output_tokens
+        total_cost_usd = result.cost_usd
+
         if capability_plan["selected_capability_id"]:
             capability_call = str(capability_plan["selected_capability_id"])
             capability_result = invoke_workspace_capability(
@@ -420,14 +426,52 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     "execution_mode": capability_result.get("execution_mode"),
                 },
             )
-            yield _sse(
-                "delta",
-                {
-                    "type": "delta",
-                    "run_id": run.run_id,
-                    "delta": visible_output_text,
-                },
-            )
+            if str(capability_result.get("status") or "") == "executed":
+                yield _sse(
+                    "working_step",
+                    {
+                        "type": "working_step",
+                        "run_id": run.run_id,
+                        "action": "thinking",
+                        "detail": "Grounding final response from capability result",
+                        "step": 1,
+                        "status": "running",
+                    },
+                )
+                followup_result = _run_grounded_capability_followup(
+                    run,
+                    capability_id=capability_call,
+                    invocation=capability_result,
+                    initial_model_text=_visible_text_without_capability_markup(
+                        result.text,
+                        had_markup=bool(capability_plan["had_markup"]),
+                    ),
+                )
+                if followup_result is not None:
+                    total_input_tokens += followup_result.input_tokens
+                    total_output_tokens += followup_result.output_tokens
+                    total_cost_usd += followup_result.cost_usd
+                    visible_output_text = _finalize_second_pass_visible_text(
+                        followup_result.text,
+                        fallback=visible_output_text,
+                    )
+                yield _sse(
+                    "delta",
+                    {
+                        "type": "delta",
+                        "run_id": run.run_id,
+                        "delta": visible_output_text,
+                    },
+                )
+            else:
+                yield _sse(
+                    "delta",
+                    {
+                        "type": "delta",
+                        "run_id": run.run_id,
+                        "delta": visible_output_text,
+                    },
+                )
         else:
             visible_output_text = _visible_text_without_capability_markup(
                 result.text,
@@ -447,9 +491,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             lane=run.lane,
             provider=run.provider,
             model=run.model,
-            input_tokens=result.input_tokens,
-            output_tokens=result.output_tokens,
-            cost_usd=result.cost_usd,
+            input_tokens=total_input_tokens,
+            output_tokens=total_output_tokens,
+            cost_usd=total_cost_usd,
         )
         event_bus.publish(
             "cost.recorded",
@@ -458,9 +502,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "lane": run.lane,
                 "provider": run.provider,
                 "model": run.model,
-                "input_tokens": result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "cost_usd": result.cost_usd,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "cost_usd": total_cost_usd,
             },
         )
         finished_at = datetime.now(UTC).isoformat()
@@ -474,9 +518,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "status": "completed",
                 "started_at": controller.started_at,
                 "finished_at": finished_at,
-                "input_tokens": result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "cost_usd": result.cost_usd,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "cost_usd": total_cost_usd,
             },
         )
         set_last_visible_run_outcome(
@@ -1044,6 +1088,77 @@ def _visible_text_without_capability_markup(text: str, *, had_markup: bool) -> s
     if had_markup:
         return "Capability request was consumed by the visible lane."
     return ""
+
+
+def _run_grounded_capability_followup(
+    run: VisibleRun,
+    *,
+    capability_id: str,
+    invocation: dict[str, object],
+    initial_model_text: str,
+) -> VisibleModelResult | None:
+    followup_message = _build_grounded_capability_followup_message(
+        run,
+        capability_id=capability_id,
+        invocation=invocation,
+        initial_model_text=initial_model_text,
+    )
+    try:
+        return execute_visible_model(
+            message=followup_message,
+            provider=run.provider,
+            model=run.model,
+            session_id=run.session_id,
+        )
+    except Exception:
+        return None
+
+
+def _build_grounded_capability_followup_message(
+    run: VisibleRun,
+    *,
+    capability_id: str,
+    invocation: dict[str, object],
+    initial_model_text: str,
+) -> str:
+    execution_mode = str(invocation.get("execution_mode") or "unknown")
+    status = str(invocation.get("status") or "unknown")
+    result = invocation.get("result") or {}
+    detail = str(invocation.get("detail") or "").strip()
+    result_text = ""
+    if isinstance(result, dict):
+        result_text = str(result.get("text") or "").strip()
+    parts = [
+        "Second-pass visible response task.",
+        "You have already completed one bounded capability invocation for the current user turn.",
+        "Respond to the user in ordinary prose only.",
+        "Do not emit any <capability-call ... /> tags.",
+        "Do not invoke another capability.",
+        "Do not describe hidden orchestration; just answer grounded in the result below.",
+        f"Original user message: {run.user_message}",
+        f"Capability used: {capability_id}",
+        f"Capability status: {status}",
+        f"Capability execution mode: {execution_mode}",
+    ]
+    if initial_model_text:
+        parts.append(f"First-pass draft without capability markup: {initial_model_text}")
+    if result_text:
+        parts.append("Capability result text:")
+        parts.append(result_text)
+    elif detail:
+        parts.append(f"Capability result detail: {detail}")
+    return "\n".join(parts)
+
+
+def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:
+    plan = _extract_capability_plan(text)
+    cleaned = _visible_text_without_capability_markup(
+        text,
+        had_markup=bool(plan["had_markup"]),
+    )
+    if cleaned:
+        return cleaned
+    return fallback
 
 
 def _is_known_workspace_capability(capability_id: str) -> bool:

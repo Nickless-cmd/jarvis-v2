@@ -680,6 +680,15 @@ def build_self_model_prompt_lines() -> list[str]:
             "  callable_capability_ids: "
             + ", ".join(str(item) for item in callable_ids[:6])
         )
+    runtime_capabilities = workspace_capabilities.get("runtime_capabilities") or []
+    if any(
+        str(item.get("execution_mode") or "") == "external-file-read"
+        and str(item.get("target_path_source") or "") == "invocation-argument"
+        for item in runtime_capabilities
+    ):
+        lines.append(
+            "  external_read_boundary: dynamic external file read requires one explicit /absolute/or ~/path in the user message and stays read-only outside workspace scope"
+        )
     if gated_ids:
         lines.append(
             "  approval_gated_capability_ids: "

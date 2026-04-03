@@ -394,6 +394,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             capability_result = invoke_workspace_capability(
                 capability_call,
                 run_id=run.run_id,
+                target_path=_resolve_visible_capability_target_path(
+                    capability_id=capability_call,
+                    user_message=run.user_message,
+                ),
             )
             set_last_visible_capability_use(
                 run,
@@ -1168,6 +1172,36 @@ def _is_known_workspace_capability(capability_id: str) -> bool:
             continue
         return True
     return False
+
+
+def _resolve_visible_capability_target_path(
+    *, capability_id: str, user_message: str
+) -> str | None:
+    runtime_capabilities = load_workspace_capabilities().get("runtime_capabilities", [])
+    capability = next(
+        (
+            item
+            for item in runtime_capabilities
+            if item.get("capability_id") == capability_id
+        ),
+        None,
+    )
+    if capability is None:
+        return None
+    if str(capability.get("execution_mode") or "") != "external-file-read":
+        return None
+    if str(capability.get("target_path_source") or "") != "invocation-argument":
+        return None
+    return _extract_external_target_path_from_user_message(user_message)
+
+
+def _extract_external_target_path_from_user_message(user_message: str) -> str | None:
+    for match in re.finditer(r"(?P<path>(?:~|/)[^\s<>'\"]+)", str(user_message or "")):
+        candidate = str(match.group("path") or "").strip()
+        candidate = candidate.rstrip(".,:;!?)]}")
+        if candidate:
+            return candidate
+    return None
 
 
 def _capability_visible_text(*, capability_id: str, invocation: dict) -> str:

@@ -1331,11 +1331,13 @@ def mc_invoke_workspace_capability(
     capability_id: str,
     approved: bool = False,
     write_content: str | None = None,
+    target_path: str | None = None,
 ) -> dict:
     result = invoke_workspace_capability(
         capability_id,
         approved=approved,
         write_content=write_content,
+        target_path=target_path,
     )
     return {
         "ok": result["status"] == "executed",

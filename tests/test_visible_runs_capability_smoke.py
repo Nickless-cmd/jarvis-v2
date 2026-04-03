@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+from pathlib import Path
 
 
 def _parse_sse(chunks: list[str], event_name: str) -> list[dict[str, object]]:
@@ -26,6 +27,7 @@ def _run_visible_stream(
     text: str,
     run_id: str,
     second_pass_text: str | None = None,
+    user_message: str = "smoke",
 ) -> tuple[list[str], dict[str, object]]:
     monkeypatch.setattr(visible_runs, "record_cost", lambda **kwargs: None)
     monkeypatch.setattr(
@@ -66,7 +68,7 @@ def _run_visible_stream(
         lane="local",
         provider="phase1-runtime",
         model="stub",
-        user_message="smoke",
+        user_message=user_message,
         session_id="session-smoke",
     )
 
@@ -241,4 +243,39 @@ def test_visible_run_second_pass_strips_capability_markup_and_does_not_loop(
     assert capability_events[0]["capability_id"] == "tool:read-workspace-user-profile"
     assert any("Jeg svarer nu grounded." in str(item.get("delta") or "") for item in delta_events)
     assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
+    assert len(last_use.get("second_pass_calls") or []) == 1
+
+
+def test_visible_run_executes_dynamic_external_read_from_user_message_path(
+    isolated_runtime,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    external_file = tmp_path / "external-visible-target.txt"
+    external_file.write_text("Visible external read text.\n", encoding="utf-8")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text='<capability-call id="tool:read-external-file-by-path" />',
+        run_id="visible-cap-external-read",
+        second_pass_text="Jeg har læst den eksterne fil, og den indeholder Visible external read text.",
+        user_message=f"Læs venligst {external_file}",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    delta_events = _parse_sse(chunks, "delta")
+
+    assert capability_events
+    assert capability_events[-1]["capability_id"] == "tool:read-external-file-by-path"
+    assert capability_events[-1]["status"] == "executed"
+    assert capability_events[-1]["execution_mode"] == "external-file-read"
+    assert any("Visible external read text." in str(item.get("delta") or "") for item in delta_events)
+    assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
+    assert last_use.get("capability_id") == "tool:read-external-file-by-path"
     assert len(last_use.get("second_pass_calls") or []) == 1

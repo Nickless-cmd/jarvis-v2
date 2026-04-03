@@ -75,6 +75,36 @@ def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime
     assert approval_required["execution_mode"] == "workspace-file-write"
 
 
+def test_workspace_write_proposal_content_is_persisted_with_approval_request(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:propose-workspace-memory-update",
+        write_content="Bounded proposal content for MEMORY.md.\n",
+    )
+
+    assert result["status"] == "approval-required"
+    proposal_content = result.get("proposal_content") or {}
+    assert proposal_content.get("state") == "bounded-content-ready"
+    assert proposal_content.get("target") == "MEMORY.md"
+    assert proposal_content.get("content") == "Bounded proposal content for MEMORY.md.\n"
+    assert proposal_content.get("fingerprint")
+
+    latest_request = isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="workspace-file-write",
+        include_executed=False,
+    )
+    assert latest_request is not None
+    assert latest_request["proposal_target_path"] == "MEMORY.md"
+    assert latest_request["proposal_content"] == "Bounded proposal content for MEMORY.md.\n"
+    assert latest_request["proposal_content_summary"]
+    assert latest_request["proposal_content_fingerprint"] == proposal_content.get("fingerprint")
+    assert latest_request["proposal_content_source"] == "explicit-write-content"
+
+
 def test_approved_workspace_write_executes_only_with_explicit_content(isolated_runtime) -> None:
     caps_mod = importlib.import_module("core.tools.workspace_capabilities")
     caps_mod = importlib.reload(caps_mod)
@@ -116,3 +146,58 @@ def test_external_write_capability_stays_closed_even_when_approved(isolated_runt
 
     assert result["status"] == "not-runnable"
     assert result["execution_mode"] == "external-file-write"
+
+
+def test_approved_workspace_write_request_executes_using_stored_proposal_content(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "")
+    target = workspace_dir / "MEMORY.md"
+
+    proposed = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:propose-workspace-memory-update",
+        write_content="Stored approved proposal content.\n",
+    )
+    request_id = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="workspace-file-write",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_id
+
+    approved = isolated_runtime.mission_control.mc_approve_capability_request(request_id)
+    assert approved["request"]["status"] == "approved"
+
+    executed = isolated_runtime.mission_control.mc_execute_capability_request(request_id)
+
+    assert executed["ok"] is True
+    assert executed["status"] == "executed"
+    assert target.read_text(encoding="utf-8") == "Stored approved proposal content.\n"
+
+
+def test_workspace_write_execution_rejects_content_mismatch_against_approved_proposal(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    _ = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:propose-workspace-memory-update",
+        write_content="Approved proposal baseline.\n",
+    )
+    request_id = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="workspace-file-write",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_id
+    _ = isolated_runtime.mission_control.mc_approve_capability_request(request_id)
+
+    executed = isolated_runtime.mission_control.mc_execute_capability_request(
+        request_id,
+        write_content="Different content.\n",
+    )
+
+    assert executed["ok"] is False
+    assert executed["status"] == "proposal-content-mismatch"

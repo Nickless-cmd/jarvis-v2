@@ -31,6 +31,9 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "write_proposal_criticality": "medium",
                 "write_proposal_target_identity": False,
                 "write_proposal_target_memory": False,
+                "write_proposal_target": "MEMORY.md",
+                "write_proposal_content_state": "bounded-content-ready",
+                "write_proposal_content_fingerprint": "feedface12345678",
                 "action_continuity_state": "idle",
                 "last_action_outcome": "none",
                 "last_action_at": "",
@@ -92,6 +95,9 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_write_proposal_criticality"] == "medium"
     assert payload["summary"]["tool_intent_write_proposal_target_identity"] is False
     assert payload["summary"]["tool_intent_write_proposal_target_memory"] is False
+    assert payload["summary"]["tool_intent_write_proposal_target"] == "MEMORY.md"
+    assert payload["summary"]["tool_intent_write_proposal_content_state"] == "bounded-content-ready"
+    assert payload["summary"]["tool_intent_write_proposal_content_fingerprint"] == "feedface12345678"
     assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
     assert payload["summary"]["tool_intent_last_action_outcome"] == "none"
     assert payload["summary"]["tool_intent_followup_state"] == "none"

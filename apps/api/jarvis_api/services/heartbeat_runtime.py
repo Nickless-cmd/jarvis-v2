@@ -1129,6 +1129,15 @@ def _build_influence_trace(
     tool_intent_write_proposal_target_memory = bool(
         tool_intent.get("write_proposal_target_memory", False)
     )
+    tool_intent_write_proposal_target = str(
+        tool_intent.get("write_proposal_target") or "none"
+    )
+    tool_intent_write_proposal_content_state = str(
+        tool_intent.get("write_proposal_content_state") or "none"
+    )
+    tool_intent_write_proposal_content_fingerprint = str(
+        tool_intent.get("write_proposal_content_fingerprint") or "none"
+    )
     tool_intent_workspace_scoped = bool(tool_intent.get("workspace_scoped", False))
     tool_intent_external_mutation_permitted = bool(
         tool_intent.get("external_mutation_permitted", False)
@@ -1166,6 +1175,8 @@ def _build_influence_trace(
             f"({tool_intent_write_proposal_state}, type={tool_intent_write_proposal_type}, "
             f"scope={tool_intent_write_proposal_scope}, criticality={tool_intent_write_proposal_criticality}, "
             f"identity={tool_intent_write_proposal_target_identity}, memory={tool_intent_write_proposal_target_memory}, "
+            f"target={tool_intent_write_proposal_target}, content_state={tool_intent_write_proposal_content_state}, "
+            f"content_fingerprint={tool_intent_write_proposal_content_fingerprint}, "
             f"workspace_scoped={tool_intent_workspace_scoped}, external_mutation_permitted={tool_intent_external_mutation_permitted}, "
             f"delete_permitted={tool_intent_delete_permitted})"
         )
@@ -1246,6 +1257,9 @@ def _build_influence_trace(
         "tool_intent_write_proposal_criticality": tool_intent_write_proposal_criticality,
         "tool_intent_write_proposal_target_identity": tool_intent_write_proposal_target_identity,
         "tool_intent_write_proposal_target_memory": tool_intent_write_proposal_target_memory,
+        "tool_intent_write_proposal_target": tool_intent_write_proposal_target,
+        "tool_intent_write_proposal_content_state": tool_intent_write_proposal_content_state,
+        "tool_intent_write_proposal_content_fingerprint": tool_intent_write_proposal_content_fingerprint,
         "tool_intent_workspace_scoped": tool_intent_workspace_scoped,
         "tool_intent_external_mutation_permitted": tool_intent_external_mutation_permitted,
         "tool_intent_delete_permitted": tool_intent_delete_permitted,

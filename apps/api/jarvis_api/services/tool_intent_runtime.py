@@ -58,6 +58,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         awareness_surface=awareness,
     )
     write_proposal = mutation_intent.get("write_proposal") or {}
+    workspace_write_execution = build_bounded_workspace_write_execution_surface()
     approval = build_tool_intent_approval_surface(
         {
             **intent_surface,
@@ -75,6 +76,20 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             "write_proposal_targets": write_proposal.get("write_proposal_targets") or [],
             "write_proposal_reason": write_proposal.get("write_proposal_reason") or "",
             "write_proposal_criticality": write_proposal.get("criticality") or "none",
+            "write_proposal_target": workspace_write_execution.get("write_proposal_target")
+            or "",
+            "write_proposal_content_state": workspace_write_execution.get(
+                "write_proposal_content_state"
+            )
+            or "none",
+            "write_proposal_content_summary": workspace_write_execution.get(
+                "write_proposal_content_summary"
+            )
+            or "",
+            "write_proposal_content_fingerprint": workspace_write_execution.get(
+                "write_proposal_content_fingerprint"
+            )
+            or "",
         },
         requested_at=built_at,
     )
@@ -87,8 +102,11 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         },
         awareness_surface=awareness,
     )
-    workspace_write_execution = build_bounded_workspace_write_execution_surface()
-    if str(workspace_write_execution.get("execution_state") or "not-executed") != "not-executed":
+    if (
+        str(workspace_write_execution.get("execution_state") or "not-executed")
+        != "not-executed"
+        or str(workspace_write_execution.get("write_proposal_state") or "none") != "none"
+    ):
         execution = {
             **execution,
             **workspace_write_execution,
@@ -120,6 +138,13 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             "target_identity": bool(execution.get("write_proposal_target_identity", False)),
             "target_memory": bool(execution.get("write_proposal_target_memory", False)),
             "boundary": execution.get("write_proposal_boundary") or "",
+            "content_state": execution.get("write_proposal_content_state") or "none",
+            "content": execution.get("write_proposal_content") or "",
+            "content_summary": execution.get("write_proposal_content_summary") or "",
+            "content_fingerprint": execution.get("write_proposal_content_fingerprint")
+            or "",
+            "content_source": execution.get("write_proposal_content_source") or "none",
+            "target": execution.get("write_proposal_target") or "",
         }
     effective_approval = dict(approval)
     if str(execution.get("approval_state") or "none") != "none":
@@ -221,6 +246,18 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "write_proposal_target_memory": bool(
             effective_write_proposal.get("target_memory", False)
         ),
+        "write_proposal_content_state": effective_write_proposal.get("content_state")
+        or "none",
+        "write_proposal_content": effective_write_proposal.get("content") or "",
+        "write_proposal_content_summary": effective_write_proposal.get("content_summary")
+        or "",
+        "write_proposal_content_fingerprint": effective_write_proposal.get(
+            "content_fingerprint"
+        )
+        or "",
+        "write_proposal_content_source": effective_write_proposal.get("content_source")
+        or "none",
+        "write_proposal_target": effective_write_proposal.get("target") or "",
         "write_proposal_boundary": effective_write_proposal.get("boundary") or "",
         "action_continuity": action_continuity,
         "action_continuity_state": action_continuity.get("action_continuity_state") or "idle",

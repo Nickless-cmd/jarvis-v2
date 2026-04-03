@@ -200,6 +200,16 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
     write_proposal_criticality = str(
         intent_surface.get("write_proposal_criticality") or "none"
     )
+    write_proposal_target = str(intent_surface.get("write_proposal_target") or "none")
+    write_proposal_content_state = str(
+        intent_surface.get("write_proposal_content_state") or "none"
+    )
+    write_proposal_content_summary = str(
+        intent_surface.get("write_proposal_content_summary") or "none"
+    )
+    write_proposal_content_fingerprint = str(
+        intent_surface.get("write_proposal_content_fingerprint") or "none"
+    )
     return (
         "Intent remains proposal-only until explicitly approved within bounded scope; "
         f"scope={intent_surface.get('approval_scope') or 'repo-read'}; "
@@ -209,8 +219,12 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
         f"write_proposal_type={write_proposal_type}; "
         f"write_proposal_scope={write_proposal_scope}; "
         f"write_proposal_targets={','.join(str(item) for item in write_proposal_targets[:4]) or 'none'}; "
+        f"write_proposal_target={write_proposal_target}; "
         f"write_proposal_criticality={write_proposal_criticality}; "
         f"write_proposal_reason={write_proposal_reason or 'none'}; "
+        f"write_proposal_content_state={write_proposal_content_state}; "
+        f"write_proposal_content_summary={write_proposal_content_summary}; "
+        f"write_proposal_content_fingerprint={write_proposal_content_fingerprint}; "
         f"execution={intent_surface.get('execution_state') or 'not-executed'}."
     )
 

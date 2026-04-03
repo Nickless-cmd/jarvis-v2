@@ -740,6 +740,12 @@ def init_db() -> None:
                 execution_mode TEXT NOT NULL,
                 approval_policy TEXT,
                 run_id TEXT,
+                proposal_target_path TEXT,
+                proposal_content TEXT,
+                proposal_content_summary TEXT,
+                proposal_content_fingerprint TEXT,
+                proposal_content_source TEXT,
+                proposal_reason TEXT,
                 requested_at TEXT NOT NULL,
                 status TEXT NOT NULL,
                 approved_at TEXT,
@@ -1983,6 +1989,12 @@ def recent_capability_approval_requests(limit: int = 5) -> list[dict[str, object
                 execution_mode,
                 approval_policy,
                 run_id,
+                proposal_target_path,
+                proposal_content,
+                proposal_content_summary,
+                proposal_content_fingerprint,
+                proposal_content_source,
+                proposal_reason,
                 requested_at,
                 status,
                 approved_at,
@@ -2011,6 +2023,12 @@ def get_capability_approval_request(request_id: str) -> dict[str, object] | None
                 execution_mode,
                 approval_policy,
                 run_id,
+                proposal_target_path,
+                proposal_content,
+                proposal_content_summary,
+                proposal_content_fingerprint,
+                proposal_content_source,
+                proposal_reason,
                 requested_at,
                 status,
                 approved_at,
@@ -2042,6 +2060,12 @@ def approve_capability_approval_request(
                 execution_mode,
                 approval_policy,
                 run_id,
+                proposal_target_path,
+                proposal_content,
+                proposal_content_summary,
+                proposal_content_fingerprint,
+                proposal_content_source,
+                proposal_reason,
                 requested_at,
                 status,
                 approved_at,
@@ -2097,6 +2121,12 @@ def record_capability_approval_request_execution(
                 execution_mode,
                 approval_policy,
                 run_id,
+                proposal_target_path,
+                proposal_content,
+                proposal_content_summary,
+                proposal_content_fingerprint,
+                proposal_content_source,
+                proposal_reason,
                 requested_at,
                 status,
                 approved_at,
@@ -2151,6 +2181,12 @@ def _capability_approval_request_from_row(
         "execution_mode": row["execution_mode"],
         "approval_policy": row["approval_policy"],
         "run_id": row["run_id"],
+        "proposal_target_path": row["proposal_target_path"],
+        "proposal_content": row["proposal_content"],
+        "proposal_content_summary": row["proposal_content_summary"],
+        "proposal_content_fingerprint": row["proposal_content_fingerprint"],
+        "proposal_content_source": row["proposal_content_source"],
+        "proposal_reason": row["proposal_reason"],
         "requested_at": row["requested_at"],
         "status": status if status is not None else row["status"],
         "approved_at": approved_at if approved_at is not None else row["approved_at"],
@@ -2178,6 +2214,12 @@ def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> Non
         "executed_at": "TEXT",
         "invocation_status": "TEXT",
         "invocation_execution_mode": "TEXT",
+        "proposal_target_path": "TEXT",
+        "proposal_content": "TEXT",
+        "proposal_content_summary": "TEXT",
+        "proposal_content_fingerprint": "TEXT",
+        "proposal_content_source": "TEXT",
+        "proposal_reason": "TEXT",
     }
     for name, spec in required_columns.items():
         if name in existing:
@@ -2185,6 +2227,55 @@ def _ensure_capability_approval_request_columns(conn: sqlite3.Connection) -> Non
         conn.execute(
             f"ALTER TABLE capability_approval_requests ADD COLUMN {name} {spec}"
         )
+
+
+def latest_capability_approval_request(
+    *,
+    execution_mode: str | None = None,
+    include_executed: bool = True,
+) -> dict[str, object] | None:
+    clauses: list[str] = []
+    params: list[object] = []
+    if execution_mode:
+        clauses.append("execution_mode = ?")
+        params.append(execution_mode)
+    if not include_executed:
+        clauses.append("executed = 0")
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    with connect() as conn:
+        row = conn.execute(
+            f"""
+            SELECT
+                request_id,
+                capability_id,
+                capability_name,
+                capability_kind,
+                execution_mode,
+                approval_policy,
+                run_id,
+                proposal_target_path,
+                proposal_content,
+                proposal_content_summary,
+                proposal_content_fingerprint,
+                proposal_content_source,
+                proposal_reason,
+                requested_at,
+                status,
+                approved_at,
+                executed,
+                executed_at,
+                invocation_status,
+                invocation_execution_mode
+            FROM capability_approval_requests
+            {where}
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            tuple(params),
+        ).fetchone()
+    if row is None:
+        return None
+    return _capability_approval_request_from_row(row)
 
 
 def create_tool_intent_approval_request(

@@ -238,6 +238,55 @@ function normalizeEventItem(item = {}) {
   }
 }
 
+function normalizeVisibleExecutionTrace(item = {}) {
+  const selectedCapabilityId = item.selected_capability_id || ''
+  const parsedCommandText = item.parsed_command_text || ''
+  const parsedTargetPath = item.parsed_target_path || ''
+  const providerFirstPassStatus = item.provider_first_pass_status || 'unknown'
+  const providerSecondPassStatus = item.provider_second_pass_status || 'not-started'
+  const invokeStatus = item.invoke_status || 'not-invoked'
+  const finalStatus = item.final_status || 'unknown'
+  return {
+    runId: item.run_id || '',
+    lane: item.lane || '',
+    provider: item.provider || '',
+    model: item.model || '',
+    selectedCapabilityId,
+    parsedCommandText,
+    parsedTargetPath,
+    parsedArgumentSummary: parsedCommandText || parsedTargetPath || '',
+    argumentSource: item.argument_source || 'none',
+    argumentBindingMode: item.argument_binding_mode || 'id-only',
+    invokeStatus,
+    blockedReason: item.blocked_reason || '',
+    providerFirstPassStatus,
+    providerSecondPassStatus,
+    providerErrorSummary: item.provider_error_summary || '',
+    providerCallCount: Number(item.provider_call_count || 0),
+    capabilityMarkupCount: Number(item.capability_markup_count || 0),
+    multipleCapabilityTags: Boolean(item.multiple_capability_tags),
+    firstPassInputTokens: Number(item.first_pass_input_tokens || 0),
+    firstPassOutputTokens: Number(item.first_pass_output_tokens || 0),
+    secondPassInputTokens: Number(item.second_pass_input_tokens || 0),
+    secondPassOutputTokens: Number(item.second_pass_output_tokens || 0),
+    totalInputTokens: Number(item.total_input_tokens || 0),
+    totalOutputTokens: Number(item.total_output_tokens || 0),
+    finalStatus,
+    updatedAt: item.updated_at || '',
+    source: '/mc/operations',
+    summary:
+      item.summary ||
+      [
+        selectedCapabilityId || 'no capability',
+        invokeStatus,
+        providerFirstPassStatus,
+        providerSecondPassStatus,
+        finalStatus,
+      ].join(' · '),
+    raw: item,
+  }
+}
+
 function normalizeJarvisItem(item = {}, defaults = {}) {
   const source = item?.source || defaults.source || ''
   const createdAt = item?.created_at || item?.updated_at || defaults.createdAt || ''
@@ -2588,6 +2637,11 @@ export const backend = {
         coding: runtime?.coding_lane_execution || {},
         local: runtime?.local_lane_execution || {},
       },
+      visibleTrace: normalizeVisibleExecutionTrace(
+        runs?.last_execution_trace ||
+        runs?.last_capability_use?.trace ||
+        {}
+      ),
       runEvidence: {
         recentEvents: (runs?.recent_events || []).map(normalizeEventItem),
         recentWorkUnits: runs?.recent_work_units || [],

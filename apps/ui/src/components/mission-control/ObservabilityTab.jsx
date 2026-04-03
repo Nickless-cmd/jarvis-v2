@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import { sectionTitleWithMeta } from './meta'
+import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 function summarizeFailures(data) {
   const failed = data?.failures?.failedRuns || []
@@ -9,9 +9,33 @@ function summarizeFailures(data) {
   }
 }
 
+function buildTraceDetailEvent(trace) {
+  return {
+    id: trace?.runId || 'visible-trace',
+    kind: 'runtime.visible_run_execution_trace',
+    family: 'runtime',
+    relativeTime: formatFreshness(trace?.updatedAt),
+    payload: trace?.raw || trace || {},
+  }
+}
+
+function hasVisibleTrace(trace) {
+  return Boolean(
+    trace?.selectedCapabilityId ||
+    trace?.parsedCommandText ||
+    trace?.parsedTargetPath ||
+    trace?.providerErrorSummary ||
+    trace?.invokeStatus !== 'not-invoked' ||
+    trace?.providerFirstPassStatus !== 'unknown' ||
+    trace?.providerSecondPassStatus !== 'not-started'
+  )
+}
+
 export function ObservabilityTab({ data, onOpenEvent, onOpenRun }) {
   const failure = summarizeFailures(data)
   const costSummary = data?.costs?.summary || {}
+  const visibleTrace = data?.visibleTrace || null
+  const tracePresent = hasVisibleTrace(visibleTrace)
   const healthItems = [
     ['Visible', data?.providerHealth?.visible],
     ['Cheap', data?.providerHealth?.cheap],
@@ -112,6 +136,95 @@ export function ObservabilityTab({ data, onOpenEvent, onOpenRun }) {
               </div>
             ))}
           </div>
+        </article>
+
+        <article className="support-card" id="visible-execution-trace" title={sectionTitleWithMeta({
+          source: '/mc/operations.visible_run.last_execution_trace',
+          fetchedAt: data?.fetchedAt,
+          mode: 'latest visible capability trace',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Visible Execution Trace</h3>
+              <p className="muted">Latest capability-run trace without chain-of-thought.</p>
+            </div>
+            <span className="mc-section-hint">Trace detail</span>
+          </div>
+          {!tracePresent ? (
+            <div className="mc-empty-state">
+              <strong>No visible trace yet</strong>
+              <p className="muted">A visible capability run will surface selected capability, args, invoke status and provider pass state here.</p>
+            </div>
+          ) : (
+            <>
+              <div className="compact-grid compact-grid-4">
+                <div className="compact-metric">
+                  <span>Capability</span>
+                  <strong>{visibleTrace?.selectedCapabilityId || 'none'}</strong>
+                  <p className="muted">{visibleTrace?.argumentSource || 'no arg source'}</p>
+                </div>
+                <div className="compact-metric">
+                  <span>Invoke</span>
+                  <strong>{visibleTrace?.invokeStatus || 'not-invoked'}</strong>
+                  <p className="muted">{visibleTrace?.finalStatus || 'unknown'}</p>
+                </div>
+                <div className="compact-metric">
+                  <span>First pass</span>
+                  <strong>{visibleTrace?.providerFirstPassStatus || 'unknown'}</strong>
+                  <p className="muted">{visibleTrace?.providerCallCount || 0} provider calls</p>
+                </div>
+                <div className="compact-metric">
+                  <span>Second pass</span>
+                  <strong>{visibleTrace?.providerSecondPassStatus || 'not-started'}</strong>
+                  <p className="muted">{visibleTrace?.updatedAt ? formatFreshness(visibleTrace.updatedAt) : 'unknown'}</p>
+                </div>
+              </div>
+
+              <div className="mc-keyval-grid">
+                <div>
+                  <span>Command</span>
+                  <strong>{visibleTrace?.parsedCommandText || 'none'}</strong>
+                </div>
+                <div>
+                  <span>Target Path</span>
+                  <strong>{visibleTrace?.parsedTargetPath || 'none'}</strong>
+                </div>
+                <div>
+                  <span>Arg Binding</span>
+                  <strong>{visibleTrace?.argumentBindingMode || 'id-only'}</strong>
+                </div>
+                <div>
+                  <span>Final Status</span>
+                  <strong>{visibleTrace?.finalStatus || 'unknown'}</strong>
+                </div>
+              </div>
+
+              {visibleTrace?.blockedReason ? (
+                <article className="mc-code-card tone-danger">
+                  <strong>Blocked reason</strong>
+                  <p>{visibleTrace.blockedReason}</p>
+                </article>
+              ) : null}
+
+              {visibleTrace?.providerErrorSummary ? (
+                <article className="mc-code-card tone-danger">
+                  <strong>Provider error</strong>
+                  <p>{visibleTrace.providerErrorSummary}</p>
+                </article>
+              ) : null}
+
+              <button className="mc-list-row" onClick={() => onOpenEvent(buildTraceDetailEvent(visibleTrace))}>
+                <div>
+                  <strong>Inspect full trace</strong>
+                  <span>{visibleTrace?.summary || 'Open payload detail'}</span>
+                </div>
+                <div className="mc-row-meta">
+                  <small>{visibleTrace?.runId || 'trace'}</small>
+                  <ChevronRight size={14} />
+                </div>
+              </button>
+            </>
+          )}
         </article>
       </section>
 

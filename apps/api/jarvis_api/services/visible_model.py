@@ -1336,6 +1336,8 @@ def _capability_instruction() -> str | None:
             "Visible lane capability rule:",
             "Use a workspace capability only by replying with exactly one line in this exact form and nothing else:",
             '<capability-call id="capability_id" />',
+            "If the capability needs arguments, bind them in the same tag as quoted attributes, for example:",
+            '<capability-call id="capability_id" command_text="pwd" />',
             "Only use one of these currently runnable capability_ids:",
             *capability_lines,
             "If no capability is needed, answer normally.",

@@ -706,10 +706,20 @@ def build_self_model_prompt_lines() -> list[str]:
         contract.get("visible_invocation_format")
         or '<capability-call id="capability_id" />'
     )
+    visible_invocation_with_args_format = (
+        contract.get("visible_invocation_with_args_format")
+        or '<capability-call id="capability_id" arg_name="value" />'
+    )
     lines.append(
         "  tool_call_contract: "
         f"{visible_invocation_format}"
         " | json_tool_calls_not_supported"
+    )
+    lines.append(
+        "  tool_call_args_contract: "
+        f"{visible_invocation_with_args_format}"
+        " | argument_binding=in-tag-attributes"
+        " | user_message_fallback=compatibility-only"
     )
     lines.append(
         "  capability_policy: "

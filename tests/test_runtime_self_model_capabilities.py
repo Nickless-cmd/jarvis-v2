@@ -23,5 +23,7 @@ def test_runtime_self_model_surfaces_capability_registry_truth(isolated_runtime)
     assert "callable_capability_ids:" in joined
     assert "approval_gated_capability_ids:" in joined
     assert "json_tool_calls_not_supported" in joined
+    assert "tool_call_args_contract:" in joined
+    assert "argument_binding=in-tag-attributes" in joined
     assert "workspace_read=allowed" in joined
     assert "non_destructive_exec=allowed" in joined

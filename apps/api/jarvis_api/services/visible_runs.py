@@ -203,13 +203,17 @@ from core.tools.workspace_capabilities import (
 )
 
 CAPABILITY_CALL_PATTERN = re.compile(
-    r'^<capability-call id="(?P<capability_id>[a-z0-9:-]+)"\s*/>$'
+    r"^<capability-call\s+(?P<attrs>[^<>]*?)\s*/>$"
 )
 CAPABILITY_CALL_SCAN_PATTERN = re.compile(
-    r'<capability-call id="(?P<capability_id>[a-z0-9:-]+)"\s*/>'
+    r"<capability-call\s+(?P<attrs>[^<>]*?)\s*/>"
+)
+CAPABILITY_ATTR_PATTERN = re.compile(
+    r'(?P<name>[a-z_]+)="(?P<value>[^"]*)"'
 )
 CAPABILITY_CALL_PREFIX = '<capability-call id="'
 CAPABILITY_CALL_SUFFIX = '" />'
+VISIBLE_CAPABILITY_ARG_NAMES = {"command_text", "target_path"}
 
 
 @dataclass(slots=True)
@@ -254,6 +258,7 @@ class VisibleRunController:
 _VISIBLE_RUN_CONTROLLERS: dict[str, VisibleRunController] = {}
 _LAST_VISIBLE_RUN_OUTCOME: dict[str, str] | None = None
 _LAST_VISIBLE_CAPABILITY_USE: dict[str, object] | None = None
+_LAST_VISIBLE_EXECUTION_TRACE: dict[str, object] | None = None
 
 
 def start_visible_run(
@@ -273,6 +278,7 @@ def start_visible_run(
 
 async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     controller = register_visible_run(run)
+    trace = _start_visible_execution_trace(run)
     event_bus.publish(
         "runtime.visible_run_started",
         {
@@ -326,8 +332,24 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     continue
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
+                    _update_visible_execution_trace(
+                        run,
+                        {
+                            "provider_first_pass_status": "completed",
+                            "provider_call_count": 1,
+                            "first_pass_input_tokens": item.result.input_tokens,
+                            "first_pass_output_tokens": item.result.output_tokens,
+                        },
+                    )
                     break
         except VisibleModelStreamCancelled:
+            _update_visible_execution_trace(
+                run,
+                {
+                    "provider_first_pass_status": "cancelled",
+                    "provider_error_summary": "visible-run-cancelled",
+                },
+            )
             _persist_session_assistant_message(run, "Generation cancelled.")
             set_last_visible_run_outcome(
                 run,
@@ -340,41 +362,77 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             bounded_message = (
                 str(exc) or "Backend is temporarily unavailable. Please try again."
             )
+            stage_error = f"first-pass-provider-error: {bounded_message}"
+            _update_visible_execution_trace(
+                run,
+                {
+                    "provider_first_pass_status": "failed",
+                    "provider_error_summary": bounded_message,
+                    "provider_call_count": 1,
+                },
+            )
             _persist_session_assistant_message(run, bounded_message)
             set_last_visible_run_outcome(
                 run,
                 status="failed",
-                error=str(exc) or "rate-limited",
+                error=stage_error,
             )
-            for failure_chunk in _fail_visible_run(run, bounded_message):
+            for failure_chunk in _fail_visible_run(run, stage_error):
                 yield failure_chunk
             return
         except Exception as exc:
-            _persist_session_assistant_message(run, str(exc) or "visible-run-failed")
+            bounded_message = str(exc) or "visible-run-failed"
+            stage_error = f"first-pass-provider-error: {bounded_message}"
+            _update_visible_execution_trace(
+                run,
+                {
+                    "provider_first_pass_status": "failed",
+                    "provider_error_summary": bounded_message,
+                    "provider_call_count": 1,
+                },
+            )
+            _persist_session_assistant_message(run, bounded_message)
             set_last_visible_run_outcome(
                 run,
                 status="failed",
-                error=str(exc) or "visible-run-failed",
+                error=stage_error,
             )
-            for failure_chunk in _fail_visible_run(
-                run, str(exc) or "visible-run-failed"
-            ):
+            for failure_chunk in _fail_visible_run(run, stage_error):
                 yield failure_chunk
             return
 
         if result is None:
+            stage_error = "first-pass-provider-error: Visible model stream completed without final result"
+            _update_visible_execution_trace(
+                run,
+                {
+                    "provider_first_pass_status": "failed",
+                    "provider_error_summary": "Visible model stream completed without final result",
+                    "provider_call_count": 1,
+                },
+            )
             set_last_visible_run_outcome(
                 run,
                 status="failed",
-                error="Visible model stream completed without final result",
+                error=stage_error,
             )
-            for failure_chunk in _fail_visible_run(
-                run, "Visible model stream completed without final result"
-            ):
+            for failure_chunk in _fail_visible_run(run, stage_error):
                 yield failure_chunk
             return
 
         capability_plan = _extract_capability_plan(result.text)
+        _update_visible_execution_trace(
+            run,
+            {
+                "selected_capability_id": capability_plan.get("selected_capability_id"),
+                "parsed_command_text": (capability_plan.get("selected_arguments") or {}).get("command_text"),
+                "parsed_target_path": (capability_plan.get("selected_arguments") or {}).get("target_path"),
+                "argument_source": capability_plan.get("argument_source") or "none",
+                "argument_binding_mode": capability_plan.get("argument_binding_mode") or "id-only",
+                "capability_markup_count": len(capability_plan.get("capability_ids") or []),
+                "multiple_capability_tags": bool(capability_plan.get("multiple")),
+            },
+        )
 
         if controller.is_cancelled():
             set_last_visible_run_outcome(
@@ -391,22 +449,45 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
         if capability_plan["selected_capability_id"]:
             capability_call = str(capability_plan["selected_capability_id"])
+            resolved_target_path, target_source = _resolve_visible_capability_target_path(
+                capability_id=capability_call,
+                capability_arguments=capability_plan.get("selected_arguments") or {},
+                user_message=run.user_message,
+            )
+            resolved_command_text, command_source = _resolve_visible_capability_command_text(
+                capability_id=capability_call,
+                capability_arguments=capability_plan.get("selected_arguments") or {},
+                user_message=run.user_message,
+            )
+            _update_visible_execution_trace(
+                run,
+                {
+                    "parsed_target_path": resolved_target_path,
+                    "parsed_command_text": resolved_command_text,
+                    "argument_source": _merge_argument_sources(target_source, command_source),
+                    "invoke_status": "started",
+                },
+            )
             capability_result = invoke_workspace_capability(
                 capability_call,
                 run_id=run.run_id,
-                target_path=_resolve_visible_capability_target_path(
-                    capability_id=capability_call,
-                    user_message=run.user_message,
-                ),
-                command_text=_resolve_visible_capability_command_text(
-                    capability_id=capability_call,
-                    user_message=run.user_message,
-                ),
+                target_path=resolved_target_path,
+                command_text=resolved_command_text,
             )
             set_last_visible_capability_use(
                 run,
                 capability_id=capability_call,
                 invocation=capability_result,
+                capability_arguments=capability_plan.get("selected_arguments") or {},
+                argument_source=_merge_argument_sources(target_source, command_source),
+            )
+            _update_visible_execution_trace(
+                run,
+                {
+                    "invoke_status": capability_result.get("status"),
+                    "blocked_reason": capability_result.get("detail"),
+                    "argument_source": _merge_argument_sources(target_source, command_source),
+                },
             )
             visible_output_text = _capability_visible_text(
                 capability_id=capability_call,
@@ -424,6 +505,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     "execution_mode": capability_result.get("execution_mode"),
                 },
             )
+            yield _sse("trace", _visible_trace_payload(run))
             yield _sse(
                 "capability",
                 {
@@ -435,6 +517,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 },
             )
             if str(capability_result.get("status") or "") == "executed":
+                _update_visible_execution_trace(
+                    run,
+                    {
+                        "provider_second_pass_status": "started",
+                    },
+                )
                 yield _sse(
                     "working_step",
                     {
@@ -459,9 +547,30 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     total_input_tokens += followup_result.input_tokens
                     total_output_tokens += followup_result.output_tokens
                     total_cost_usd += followup_result.cost_usd
+                    _update_visible_execution_trace(
+                        run,
+                        {
+                            "provider_second_pass_status": "completed",
+                            "provider_call_count": 2,
+                            "second_pass_input_tokens": followup_result.input_tokens,
+                            "second_pass_output_tokens": followup_result.output_tokens,
+                        },
+                    )
                     visible_output_text = _finalize_second_pass_visible_text(
                         followup_result.text,
                         fallback=visible_output_text,
+                    )
+                else:
+                    _update_visible_execution_trace(
+                        run,
+                        {
+                            "provider_second_pass_status": "failed",
+                            "provider_error_summary": (
+                                get_last_visible_execution_trace() or {}
+                            ).get("provider_error_summary")
+                            or "second-pass-provider-error",
+                            "provider_call_count": 2,
+                        },
                     )
                 yield _sse(
                     "delta",
@@ -472,6 +581,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     },
                 )
             else:
+                _update_visible_execution_trace(
+                    run,
+                    {
+                        "provider_second_pass_status": "skipped",
+                    },
+                )
                 yield _sse(
                     "delta",
                     {
@@ -481,6 +596,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     },
                 )
         else:
+            _update_visible_execution_trace(
+                run,
+                {
+                    "invoke_status": "not-invoked",
+                    "provider_second_pass_status": "skipped",
+                },
+            )
             visible_output_text = _visible_text_without_capability_markup(
                 result.text,
                 had_markup=bool(capability_plan["had_markup"]),
@@ -531,6 +653,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "cost_usd": total_cost_usd,
             },
         )
+        _update_visible_execution_trace(
+            run,
+            {
+                "total_input_tokens": total_input_tokens,
+                "total_output_tokens": total_output_tokens,
+                "final_status": "completed",
+            },
+        )
+        yield _sse("trace", _visible_trace_payload(run))
         set_last_visible_run_outcome(
             run,
             status="completed",
@@ -1030,33 +1161,70 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
 
 
 def _extract_capability_call(text: str) -> str | None:
-    match = CAPABILITY_CALL_PATTERN.fullmatch((text or "").strip())
-    if not match:
+    parsed = _parse_capability_call_markup((text or "").strip())
+    if not parsed:
         return None
-    return match.group("capability_id")
+    return str(parsed.get("capability_id") or "")
 
 
 def _extract_capability_plan(text: str) -> dict[str, object]:
     raw = str(text or "")
-    matches = [
-        match.group("capability_id")
+    parsed_matches = [
+        parsed
         for match in CAPABILITY_CALL_SCAN_PATTERN.finditer(raw)
+        if (parsed := _parse_capability_call_markup(match.group(0)))
     ]
+    matches = [str(item.get("capability_id") or "") for item in parsed_matches]
     selected: str | None = None
+    selected_arguments: dict[str, str] = {}
+    argument_binding_mode = "id-only"
     seen: set[str] = set()
-    for capability_id in matches:
+    for item in parsed_matches:
+        capability_id = str(item.get("capability_id") or "")
         if capability_id in seen:
             continue
         seen.add(capability_id)
         if _is_known_workspace_capability(capability_id):
             selected = capability_id
+            selected_arguments = dict(item.get("arguments") or {})
+            if selected_arguments:
+                argument_binding_mode = "tag-attributes"
             break
     return {
         "selected_capability_id": selected,
+        "selected_arguments": selected_arguments,
+        "argument_source": "tag-attributes" if selected_arguments else "none",
+        "argument_binding_mode": argument_binding_mode,
         "capability_ids": matches,
         "had_markup": bool(matches),
         "multiple": len(matches) > 1,
     }
+
+
+def _parse_capability_call_markup(text: str) -> dict[str, object] | None:
+    match = CAPABILITY_CALL_PATTERN.fullmatch(str(text or "").strip())
+    if not match:
+        return None
+    attrs = _parse_capability_attrs(match.group("attrs"))
+    capability_id = str(attrs.pop("id", "")).strip()
+    if not capability_id or not re.fullmatch(r"[a-z0-9:-]+", capability_id):
+        return None
+    arguments = {
+        key: value
+        for key, value in attrs.items()
+        if key in VISIBLE_CAPABILITY_ARG_NAMES and str(value).strip()
+    }
+    return {
+        "capability_id": capability_id,
+        "arguments": arguments,
+    }
+
+
+def _parse_capability_attrs(attrs_text: str) -> dict[str, str]:
+    attrs: dict[str, str] = {}
+    for match in CAPABILITY_ATTR_PATTERN.finditer(str(attrs_text or "")):
+        attrs[str(match.group("name") or "")] = str(match.group("value") or "")
+    return attrs
 
 
 def _capability_call_state(text: str) -> str:
@@ -1118,7 +1286,14 @@ def _run_grounded_capability_followup(
             model=run.model,
             session_id=run.session_id,
         )
-    except Exception:
+    except Exception as exc:
+        _update_visible_execution_trace(
+            run,
+            {
+                "provider_second_pass_status": "failed",
+                "provider_error_summary": str(exc) or "second-pass-provider-error",
+            },
+        )
         return None
 
 
@@ -1179,8 +1354,8 @@ def _is_known_workspace_capability(capability_id: str) -> bool:
 
 
 def _resolve_visible_capability_target_path(
-    *, capability_id: str, user_message: str
-) -> str | None:
+    *, capability_id: str, capability_arguments: dict[str, str], user_message: str
+) -> tuple[str | None, str]:
     runtime_capabilities = load_workspace_capabilities().get("runtime_capabilities", [])
     capability = next(
         (
@@ -1191,12 +1366,17 @@ def _resolve_visible_capability_target_path(
         None,
     )
     if capability is None:
-        return None
+        return None, "none"
     if str(capability.get("execution_mode") or "") != "external-file-read":
-        return None
+        return None, "none"
+    if str(capability_arguments.get("target_path") or "").strip():
+        return str(capability_arguments.get("target_path") or "").strip(), "tag-attributes"
     if str(capability.get("target_path_source") or "") != "invocation-argument":
-        return None
-    return _extract_external_target_path_from_user_message(user_message)
+        return None, "none"
+    fallback = _extract_external_target_path_from_user_message(user_message)
+    if fallback:
+        return fallback, "user-message-fallback"
+    return None, "none"
 
 
 def _extract_external_target_path_from_user_message(user_message: str) -> str | None:
@@ -1209,8 +1389,8 @@ def _extract_external_target_path_from_user_message(user_message: str) -> str | 
 
 
 def _resolve_visible_capability_command_text(
-    *, capability_id: str, user_message: str
-) -> str | None:
+    *, capability_id: str, capability_arguments: dict[str, str], user_message: str
+) -> tuple[str | None, str]:
     runtime_capabilities = load_workspace_capabilities().get("runtime_capabilities", [])
     capability = next(
         (
@@ -1221,12 +1401,28 @@ def _resolve_visible_capability_command_text(
         None,
     )
     if capability is None:
-        return None
+        return None, "none"
     if str(capability.get("execution_mode") or "") != "non-destructive-exec":
-        return None
+        return None, "none"
+    if str(capability_arguments.get("command_text") or "").strip():
+        return str(capability_arguments.get("command_text") or "").strip(), "tag-attributes"
     if str(capability.get("command_source") or "") != "invocation-argument":
-        return None
-    return _extract_exec_command_from_user_message(user_message)
+        return None, "none"
+    fallback = _extract_exec_command_from_user_message(user_message)
+    if fallback:
+        return fallback, "user-message-fallback"
+    return None, "none"
+
+
+def _merge_argument_sources(*sources: str) -> str:
+    meaningful = [str(source or "").strip() for source in sources if str(source or "").strip() and str(source or "").strip() != "none"]
+    if not meaningful:
+        return "none"
+    unique = []
+    for item in meaningful:
+        if item not in unique:
+            unique.append(item)
+    return "+".join(unique)
 
 
 def _extract_exec_command_from_user_message(user_message: str) -> str | None:
@@ -1309,6 +1505,17 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
     controller = get_visible_run_controller(run.run_id)
     finished_at = datetime.now(UTC).isoformat()
     bounded_error = _bounded_error(error_message)
+    _update_visible_execution_trace(
+        run,
+        {
+            "final_status": "failed",
+            "provider_error_summary": (
+                get_last_visible_execution_trace() or {}
+            ).get("provider_error_summary")
+            or bounded_error,
+        },
+    )
+    yield _sse("trace", _visible_trace_payload(run))
     event_bus.publish(
         "runtime.visible_run_failed",
         {
@@ -1345,6 +1552,17 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
 def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     controller = get_visible_run_controller(run.run_id)
     finished_at = datetime.now(UTC).isoformat()
+    _update_visible_execution_trace(
+        run,
+        {
+            "final_status": "cancelled",
+            "provider_first_pass_status": (
+                get_last_visible_execution_trace() or {}
+            ).get("provider_first_pass_status")
+            or "cancelled",
+        },
+    )
+    yield _sse("trace", _visible_trace_payload(run))
     event_bus.publish(
         "runtime.visible_run_cancelled",
         {
@@ -1604,7 +1822,16 @@ def get_last_visible_run_outcome() -> dict[str, str] | None:
 
 
 def get_last_visible_capability_use() -> dict[str, object] | None:
-    return dict(_LAST_VISIBLE_CAPABILITY_USE) if _LAST_VISIBLE_CAPABILITY_USE else None
+    if not _LAST_VISIBLE_CAPABILITY_USE:
+        return None
+    return {
+        **dict(_LAST_VISIBLE_CAPABILITY_USE),
+        "trace": get_last_visible_execution_trace(),
+    }
+
+
+def get_last_visible_execution_trace() -> dict[str, object] | None:
+    return dict(_LAST_VISIBLE_EXECUTION_TRACE) if _LAST_VISIBLE_EXECUTION_TRACE else None
 
 
 def set_last_visible_run_outcome(
@@ -1639,7 +1866,12 @@ def set_last_visible_run_outcome(
 
 
 def set_last_visible_capability_use(
-    run: VisibleRun, *, capability_id: str, invocation: dict[str, object]
+    run: VisibleRun,
+    *,
+    capability_id: str,
+    invocation: dict[str, object],
+    capability_arguments: dict[str, str] | None = None,
+    argument_source: str = "none",
 ) -> None:
     global _LAST_VISIBLE_CAPABILITY_USE
     controller = get_visible_run_controller(run.run_id)
@@ -1669,6 +1901,9 @@ def set_last_visible_capability_use(
         "used_at": datetime.now(UTC).isoformat(),
         "result_preview": result_preview,
         "detail": invocation.get("detail"),
+        "parsed_arguments": dict(capability_arguments or {}),
+        "argument_source": argument_source,
+        "trace": get_last_visible_execution_trace(),
     }
 
 
@@ -1802,3 +2037,67 @@ def _persist_visible_run_outcome(
         work_preview=work_preview,
         capability_id=capability_id,
     )
+
+
+def _start_visible_execution_trace(run: VisibleRun) -> dict[str, object]:
+    trace = {
+        "run_id": run.run_id,
+        "lane": run.lane,
+        "provider": run.provider,
+        "model": run.model,
+        "selected_capability_id": None,
+        "parsed_target_path": None,
+        "parsed_command_text": None,
+        "argument_source": "none",
+        "argument_binding_mode": "id-only",
+        "invoke_status": "not-invoked",
+        "blocked_reason": None,
+        "provider_first_pass_status": "started",
+        "provider_second_pass_status": "not-started",
+        "provider_error_summary": None,
+        "provider_call_count": 0,
+        "capability_markup_count": 0,
+        "multiple_capability_tags": False,
+        "first_pass_input_tokens": 0,
+        "first_pass_output_tokens": 0,
+        "second_pass_input_tokens": 0,
+        "second_pass_output_tokens": 0,
+        "total_input_tokens": 0,
+        "total_output_tokens": 0,
+        "final_status": "running",
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
+    _set_last_visible_execution_trace(trace)
+    return trace
+
+
+def _update_visible_execution_trace(run: VisibleRun, updates: dict[str, object]) -> None:
+    trace = get_last_visible_execution_trace() or {}
+    merged = {
+        **trace,
+        **updates,
+        "run_id": run.run_id,
+        "lane": run.lane,
+        "provider": run.provider,
+        "model": run.model,
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
+    _set_last_visible_execution_trace(merged)
+
+
+def _set_last_visible_execution_trace(trace: dict[str, object]) -> None:
+    global _LAST_VISIBLE_EXECUTION_TRACE
+    _LAST_VISIBLE_EXECUTION_TRACE = dict(trace)
+    event_bus.publish(
+        "runtime.visible_run_execution_trace",
+        dict(trace),
+    )
+
+
+def _visible_trace_payload(run: VisibleRun) -> dict[str, object]:
+    trace = get_last_visible_execution_trace() or {}
+    return {
+        "type": "trace",
+        "run_id": run.run_id,
+        **trace,
+    }

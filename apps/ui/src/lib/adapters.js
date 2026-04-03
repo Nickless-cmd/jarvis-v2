@@ -1245,6 +1245,16 @@ function normalizeToolIntent(item = {}) {
     'mutation_critical',
     'mutation_execution_permitted',
   ].some((key) => Object.prototype.hasOwnProperty.call(item, key))
+  const hasMutatingExecProposalSurface = [
+    'mutating_exec_proposal_state',
+    'mutating_exec_proposal_command',
+    'mutating_exec_proposal_summary',
+    'mutating_exec_proposal_scope',
+    'mutating_exec_proposal_reason',
+    'mutating_exec_requires_approval',
+    'mutating_exec_requires_sudo',
+    'mutating_exec_criticality',
+  ].some((key) => Object.prototype.hasOwnProperty.call(item, key))
 
   return {
     intentState: item.intent_state || 'idle',
@@ -1293,6 +1303,20 @@ function normalizeToolIntent(item = {}) {
     mutationSudoRequired: Boolean(item.mutation_sudo_required),
     mutationCritical: Boolean(item.mutation_critical),
     mutationBoundary: item.mutation_boundary || '',
+    hasMutatingExecProposalSurface,
+    mutatingExecProposalState: item.mutating_exec_proposal_state || 'none',
+    mutatingExecProposalCommand: item.mutating_exec_proposal_command || '',
+    mutatingExecProposalSummary: item.mutating_exec_proposal_summary || '',
+    mutatingExecProposalScope: item.mutating_exec_proposal_scope || 'none',
+    mutatingExecProposalReason: item.mutating_exec_proposal_reason || '',
+    mutatingExecRequiresApproval: Boolean(item.mutating_exec_requires_approval),
+    mutatingExecRequiresSudo: Boolean(item.mutating_exec_requires_sudo),
+    mutatingExecCriticality: item.mutating_exec_criticality || 'none',
+    mutatingExecConfidence: item.mutating_exec_confidence || 'low',
+    mutatingExecCommandFingerprint: item.mutating_exec_command_fingerprint || '',
+    mutatingExecSourceContributors: Array.isArray(item.mutating_exec_source_contributors)
+      ? item.mutating_exec_source_contributors.filter(Boolean)
+      : [],
     boundary: item.boundary || 'Intent is proposal-only and approval-gated; no action has been performed.',
     sourceContributors: (item.source_contributors || []).map((source) => ({ source: String(source || ''), signal: '' })),
     source: item.source || '/mc/tool-intent',

@@ -4,9 +4,9 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from core.runtime.config import WORKSPACES_DIR
+from core.runtime.config import WORKSPACES_DIR, WORKSPACE_TEMPLATES_DIR
 
-TEMPLATE_DIR = Path("workspace/templates")
+TEMPLATE_DIR = WORKSPACE_TEMPLATES_DIR
 REQUIRED_WORKSPACE_FILES = (
     "SOUL.md",
     "IDENTITY.md",

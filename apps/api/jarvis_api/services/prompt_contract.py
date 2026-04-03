@@ -278,6 +278,7 @@ def build_visible_chat_prompt_assembly(
 
     capability_truth = _visible_capability_truth_instruction(compact=compact)
     # capability_truth is added via budget-controlled section below
+    capability_ids_line = _visible_capability_id_summary()
 
     visible_rules = _visible_chat_rules_instruction(workspace_dir=workspace_dir)
     if visible_rules:
@@ -291,6 +292,10 @@ def build_visible_chat_prompt_assembly(
             parts.append(local_rules)
             conditional_files.append("VISIBLE_LOCAL_MODEL.md")
             derived_inputs.append("local model behavior guardrails")
+
+    if capability_ids_line:
+        parts.append(capability_ids_line)
+        derived_inputs.append("runtime capability id summary")
 
     for filename in ("SOUL.md", "IDENTITY.md", "USER.md"):
         section = _workspace_file_section(
@@ -1197,26 +1202,74 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         for item in capabilities
         if item.get("runtime_status") == "approval-required"
     ]
+    policy = capability_truth.get("policy") or {}
+    contract = capability_truth.get("contract") or {}
     lines = ["Runtime capability truth:"]
+    lines.append(
+        "- Visible tool invocation uses exactly this one-line contract: "
+        '<capability-call id="capability_id" />'
+    )
+    lines.append(
+        "- Do not emit JSON or pseudo-JSON tool calls. "
+        f"json_tool_call_supported={contract.get('json_tool_call_supported', False)}"
+    )
     if available:
         lines.append(
-            "- Use a workspace capability only by replying with exactly one line in this form: "
-            '<capability-call id="capability_id" />'
+            "- Callable capability_ids: "
+            + ", ".join(str(item.get("capability_id") or "") for item in available[:6])
         )
-        lines.append("- Currently available capability_ids:")
+        lines.append(f"- Callable now: {len(available)} capability_ids.")
         limit = 4 if compact else 8
         for item in available[:limit]:
-            lines.append(f"  - {item['capability_id']}: {item.get('name', '')}")
+            lines.append(
+                f"  - {item['capability_id']}: {item.get('name', '')}"
+                f" [{item.get('execution_mode', 'unknown')}]"
+            )
     else:
         lines.append(
             "- No workspace capabilities are currently available for direct execution."
         )
     if gated:
         lines.append(
-            f"- Approval-gated capabilities currently known to runtime: {min(len(gated), 6)} shown below."
+            "- Approval-gated capability_ids: "
+            + ", ".join(str(item.get("capability_id") or "") for item in gated[:6])
         )
+        lines.append(f"- Approval-gated but not auto-executable now: {len(gated)} capability_ids.")
         for item in gated[:6]:
-            lines.append(f"  - {item['capability_id']}: approval required")
+            lines.append(
+                f"  - {item['capability_id']}: approval required"
+                f" [{item.get('execution_mode', 'unknown')}]"
+            )
+    lines.append(
+        "- Policy: "
+        f"workspace_read={policy.get('workspace_read', 'allowed')} | "
+        f"external_read={policy.get('external_read', 'allowed')} | "
+        f"workspace_write={policy.get('workspace_write', 'explicit-approval-required')} | "
+        f"external_write={policy.get('external_write', 'explicit-approval-required')}"
+    )
+    return "\n".join(lines)
+
+
+def _visible_capability_id_summary() -> str | None:
+    capability_truth = load_workspace_capabilities()
+    callable_ids = [
+        str(item.get("capability_id") or "")
+        for item in (capability_truth.get("runtime_capabilities") or [])
+        if item.get("available_now") and str(item.get("capability_id") or "").strip()
+    ]
+    gated_ids = [
+        str(item.get("capability_id") or "")
+        for item in (capability_truth.get("runtime_capabilities") or [])
+        if item.get("runtime_status") == "approval-required"
+        and str(item.get("capability_id") or "").strip()
+    ]
+    if not callable_ids and not gated_ids:
+        return None
+    lines = ["Visible capability ids:"]
+    if callable_ids:
+        lines.append("- callable: " + ", ".join(callable_ids[:6]))
+    if gated_ids:
+        lines.append("- approval_gated: " + ", ".join(gated_ids[:6]))
     return "\n".join(lines)
 
 

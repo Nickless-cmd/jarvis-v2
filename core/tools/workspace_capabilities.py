@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.runtime.config import PROJECT_ROOT
 from core.runtime.db import connect
 
 CAPABILITY_FILES = {
@@ -16,6 +17,9 @@ CAPABILITY_FILES = {
 RUNTIME_NOTE_PREFIX = "RUNTIME_NOTE:"
 READ_FILE_PREFIX = "READ_FILE:"
 SEARCH_FILE_PREFIX = "SEARCH_FILE:"
+READ_EXTERNAL_FILE_PREFIX = "READ_EXTERNAL_FILE:"
+WRITE_FILE_PREFIX = "WRITE_FILE:"
+WRITE_EXTERNAL_FILE_PREFIX = "WRITE_EXTERNAL_FILE:"
 MAX_FILE_OUTPUT_CHARS = 4000
 MAX_SEARCH_MATCHES = 5
 MAX_MATCH_EXCERPT_CHARS = 160
@@ -44,6 +48,16 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
     unavailable = [
         item for item in runtime_capabilities if item["runtime_status"] == "unavailable"
     ]
+    callable_capability_ids = [
+        str(item.get("capability_id") or "")
+        for item in available_now
+        if str(item.get("capability_id") or "").strip()
+    ]
+    approval_gated_capability_ids = [
+        str(item.get("capability_id") or "")
+        for item in approval_required
+        if str(item.get("capability_id") or "").strip()
+    ]
     return {
         "workspace": str(workspace_dir),
         "name": name,
@@ -52,6 +66,23 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
         "described_capabilities": described_capabilities,
         "declared_capabilities": described_capabilities,
         "runtime_capabilities": runtime_capabilities,
+        "callable_capability_ids": callable_capability_ids,
+        "approval_gated_capability_ids": approval_gated_capability_ids,
+        "contract": {
+            "mode": "text-capability-call",
+            "visible_invocation_format": '<capability-call id="capability_id" />',
+            "json_tool_call_supported": False,
+            "provider_native_structured_tools": False,
+            "summary": "Visible lane uses text capability calls only. JSON tool-call payloads are not part of the contract.",
+        },
+        "policy": {
+            "workspace_read": "allowed",
+            "workspace_write": "explicit-approval-required",
+            "external_read": "allowed",
+            "external_write": "explicit-approval-required",
+            "mutation_outside_workspace": "explicit-approval-required",
+            "principle": "Read freely. Propose freely. Mutate only with explicit approval.",
+        },
         "authority": {
             "authority_source": "runtime.workspace_capabilities",
             "guidance_sources": ["TOOLS.md", "SKILLS.md"],
@@ -295,6 +326,8 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
     heading = section["heading"]
     read_file_path = _declared_read_file_path(section["body"])
     search_spec = _declared_search_file_spec(section["body"])
+    external_read_path = _declared_external_file_path(section["body"])
+    write_target_path = _declared_write_target_path(section["body"])
     if heading.startswith(RUNTIME_NOTE_PREFIX):
         name = heading[len(RUNTIME_NOTE_PREFIX) :].strip()
         execution_mode = "inline-text"
@@ -307,6 +340,18 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         name = heading[len(SEARCH_FILE_PREFIX) :].strip()
         execution_mode = "workspace-search-read"
         runnable = search_spec is not None
+    elif heading.startswith(READ_EXTERNAL_FILE_PREFIX):
+        name = heading[len(READ_EXTERNAL_FILE_PREFIX) :].strip()
+        execution_mode = "external-file-read"
+        runnable = external_read_path is not None
+    elif heading.startswith(WRITE_FILE_PREFIX):
+        name = heading[len(WRITE_FILE_PREFIX) :].strip()
+        execution_mode = "workspace-file-write"
+        runnable = False
+    elif heading.startswith(WRITE_EXTERNAL_FILE_PREFIX):
+        name = heading[len(WRITE_EXTERNAL_FILE_PREFIX) :].strip()
+        execution_mode = "external-file-write"
+        runnable = False
     else:
         name = heading
         execution_mode = "declared-only"
@@ -320,16 +365,17 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         "authority_source": "workspace-guidance",
         "runtime_authoritative": False,
         "runnable": runnable,
-        "execution_mode": execution_mode if runnable else "declared-only",
+        "execution_mode": execution_mode,
         "status": "runnable" if runnable else "declared-only",
         "approval_policy": _approval_policy_for_execution_mode(
-            execution_mode if runnable else "declared-only"
+            execution_mode
         ),
         "approval_required": _approval_policy_for_execution_mode(
-            execution_mode if runnable else "declared-only"
+            execution_mode
         )
-        == "required",
-        "target_path": read_file_path,
+        == "required"
+        or _approval_policy_for_execution_mode(execution_mode) == "required",
+        "target_path": read_file_path or external_read_path or write_target_path,
         "target_query": search_spec["query"] if search_spec else None,
     }
 
@@ -339,7 +385,7 @@ def _runtime_capability_record(item: dict[str, object]) -> dict[str, object]:
     approval_required = bool(item.get("approval_required"))
     if runnable and not approval_required:
         runtime_status = "available"
-    elif runnable and approval_required:
+    elif approval_required:
         runtime_status = "approval-required"
     elif str(item.get("execution_mode") or "") == "declared-only":
         runtime_status = "guidance-only"
@@ -353,6 +399,7 @@ def _runtime_capability_record(item: dict[str, object]) -> dict[str, object]:
         "runtime_authoritative": True,
         "runtime_status": runtime_status,
         "available_now": runtime_status == "available",
+        "callable_now": runtime_status == "available",
     }
 
 
@@ -431,6 +478,30 @@ def _invoke_runnable_capability(
             },
         }
 
+    if summary["execution_mode"] == "external-file-read":
+        target_path = str(summary.get("target_path") or "").strip()
+        candidate = _resolve_external_path(workspace_dir, target_path)
+        if candidate is None or not candidate.exists() or not candidate.is_file():
+            return {
+                "capability": summary,
+                "status": "executed",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=True),
+                "result": None,
+                "detail": f"Declared external file missing: {target_path or 'unknown'}",
+            }
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=True),
+            "result": {
+                "type": "external-file-read",
+                "path": str(candidate),
+                "text": _read_bounded_text(candidate),
+            },
+        }
+
     return {
         "capability": summary,
         "status": "not-runnable",
@@ -441,10 +512,24 @@ def _invoke_runnable_capability(
 
 
 def _approval_policy_for_execution_mode(execution_mode: str) -> str:
-    if execution_mode == "workspace-file-read":
-        return "required"
-    if execution_mode in {"inline-text", "workspace-search-read"}:
+    if execution_mode in {
+        "inline-text",
+        "workspace-file-read",
+        "workspace-search-read",
+        "external-file-read",
+    }:
         return "not-needed"
+    if execution_mode in {
+        "workspace-file-write",
+        "external-file-write",
+        "workspace-file-delete",
+        "delete-file",
+        "git-mutate",
+        "repo-update-check",
+        "system-mutate",
+        "package-mutate",
+    }:
+        return "required"
     return "not-applicable"
 
 
@@ -454,6 +539,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "inline-text",
         "workspace-file-read",
         "workspace-search-read",
+        "external-file-read",
         "guidance-only",
         "declared-only",
         "unsupported",
@@ -469,6 +555,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "workspace-file-edit",
         "workspace-file-create",
         "modify-file",
+        "external-file-write",
     } or normalized.startswith("workspace-file-write"):
         return {
             "classification": "modify-file",
@@ -543,6 +630,14 @@ def _declared_search_file_spec(body: str) -> dict[str, str] | None:
     }
 
 
+def _declared_external_file_path(body: str) -> str | None:
+    return _declared_body_value(body, "path", validate=False)
+
+
+def _declared_write_target_path(body: str) -> str | None:
+    return _declared_body_value(body, "path", validate=False)
+
+
 def _declared_body_value(body: str, key: str, *, validate: bool = True) -> str | None:
     for raw_line in body.splitlines():
         line = raw_line.strip()
@@ -581,6 +676,27 @@ def _resolve_workspace_relative_path(workspace_dir: Path, value: str) -> Path | 
     except ValueError:
         return None
     return candidate
+
+
+def _resolve_external_path(workspace_dir: Path, value: str) -> Path | None:
+    expanded = _expand_declared_path(value, workspace_dir=workspace_dir)
+    if not expanded:
+        return None
+    candidate = Path(expanded)
+    if not candidate.is_absolute():
+        candidate = (workspace_dir / candidate).resolve()
+    return candidate.resolve()
+
+
+def _expand_declared_path(value: str, *, workspace_dir: Path) -> str:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return ""
+    return (
+        normalized
+        .replace("${PROJECT_ROOT}", str(PROJECT_ROOT))
+        .replace("${WORKSPACE_ROOT}", str(workspace_dir.resolve()))
+    )
 
 
 def _read_bounded_text(path: Path) -> str:

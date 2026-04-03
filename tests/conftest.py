@@ -20,6 +20,7 @@ def isolated_runtime(
     home = tmp_path / "home"
     home.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("JARVIS_WORKSPACES_DIR", str(tmp_path / "workspaces"))
 
     module_names = [
         "core.runtime.config",

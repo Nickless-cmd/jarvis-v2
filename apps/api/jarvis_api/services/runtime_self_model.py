@@ -20,6 +20,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from apps.api.jarvis_api.services.runtime_surface_cache import runtime_surface_cache
+from core.tools.workspace_capabilities import load_workspace_capabilities
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +50,7 @@ def build_runtime_self_model() -> dict[str, object]:
 
         return {
             "layers": layers,
+            "workspace_capabilities": load_workspace_capabilities(),
             "embodied_state": _embodied_state_surface(),
             "affective_meta_state": _affective_meta_state_surface(),
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
@@ -424,6 +426,25 @@ def _collect_layers() -> list[dict[str, str]]:
         "detail": "Local model for heartbeat and inner producers.",
     })
 
+    workspace_capabilities = load_workspace_capabilities()
+    callable_ids = workspace_capabilities.get("callable_capability_ids") or []
+    gated_ids = workspace_capabilities.get("approval_gated_capability_ids") or []
+    layers.append({
+        "id": "workspace-capability-registry",
+        "label": "Workspace capability registry",
+        "kind": "capability",
+        "role": "active" if callable_ids else ("gated" if gated_ids else "idle"),
+        "visibility": "mixed",
+        "truth": "authoritative",
+        "detail": (
+            f"workspace={workspace_capabilities.get('workspace') or 'unknown'}; "
+            f"callable={len(callable_ids)}; "
+            f"approval_gated={len(gated_ids)}; "
+            f"mode={(workspace_capabilities.get('contract') or {}).get('mode') or 'text-capability-call'}; "
+            f"json_tool_calls={(workspace_capabilities.get('contract') or {}).get('json_tool_call_supported', False)}."
+        ),
+    })
+
     # --- Producer layers ---
     for p in _producer_layers():
         layers.append(p)
@@ -604,6 +625,11 @@ def build_self_model_prompt_lines() -> list[str]:
     dream_summary = dream.get("summary") or {}
     prompt_evolution = model.get("prompt_evolution") or {}
     prompt_evolution_summary = prompt_evolution.get("summary") or {}
+    workspace_capabilities = model.get("workspace_capabilities") or {}
+    callable_ids = workspace_capabilities.get("callable_capability_ids") or []
+    gated_ids = workspace_capabilities.get("approval_gated_capability_ids") or []
+    policy = workspace_capabilities.get("policy") or {}
+    contract = workspace_capabilities.get("contract") or {}
 
     lines: list[str] = [
         "- RUNTIME SELF-MODEL: Use these structural facts when asked about your layers, capabilities, or boundaries:",
@@ -628,6 +654,41 @@ def build_self_model_prompt_lines() -> list[str]:
     gw = [l for l in layers if l["role"] == "groundwork-only"]
     if gw:
         lines.append(f"  groundwork_only: {', '.join(l['label'] for l in gw)}")
+
+    lines.append(
+        "  workspace_capabilities: "
+        f"callable={len(callable_ids)}"
+        f" | approval_gated={len(gated_ids)}"
+        f" | workspace={workspace_capabilities.get('workspace') or 'unknown'}"
+        f" | mode={contract.get('mode') or 'text-capability-call'}"
+        f" | json_tool_calls={contract.get('json_tool_call_supported', False)}"
+    )
+    if callable_ids:
+        lines.append(
+            "  callable_capability_ids: "
+            + ", ".join(str(item) for item in callable_ids[:6])
+        )
+    if gated_ids:
+        lines.append(
+            "  approval_gated_capability_ids: "
+            + ", ".join(str(item) for item in gated_ids[:6])
+        )
+    visible_invocation_format = (
+        contract.get("visible_invocation_format")
+        or '<capability-call id="capability_id" />'
+    )
+    lines.append(
+        "  tool_call_contract: "
+        f"{visible_invocation_format}"
+        " | json_tool_calls_not_supported"
+    )
+    lines.append(
+        "  capability_policy: "
+        f"workspace_read={policy.get('workspace_read', 'allowed')}"
+        f" | external_read={policy.get('external_read', 'allowed')}"
+        f" | workspace_write={policy.get('workspace_write', 'explicit-approval-required')}"
+        f" | external_write={policy.get('external_write', 'explicit-approval-required')}"
+    )
 
     # Key truth boundaries (compact)
     lines.append(f"  truth_boundary: capability!=permission!=action | memory!=identity | internal!=visible | runtime_truth!=interpretation")

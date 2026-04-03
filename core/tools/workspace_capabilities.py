@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from hashlib import sha1
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -154,12 +155,17 @@ def invoke_workspace_capability(
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
         if summary["runtime_status"] == "approval-required" and not approved:
+            proposal_content = _workspace_write_proposal_content(
+                summary=summary,
+                write_content=write_content,
+            )
             result = {
                 "capability": summary,
                 "status": "approval-required",
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=False, granted=False),
-                "result": None,
+                "result": proposal_content,
+                "proposal_content": proposal_content,
                 "detail": f"Capability requires explicit approval: {summary['execution_mode']}",
             }
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
@@ -546,8 +552,14 @@ def _invoke_runnable_capability(
                     write_content,
                     limit=min(MAX_FILE_OUTPUT_CHARS, 400),
                 ),
+                "content_fingerprint": _content_fingerprint(write_content),
+                "content_source": "explicit-write-content",
                 "workspace_scoped": True,
             },
+            "proposal_content": _workspace_write_proposal_content(
+                summary=summary,
+                write_content=write_content,
+            ),
             "detail": f"Approved workspace write executed for {target_path}.",
         }
 
@@ -794,6 +806,7 @@ def _set_last_capability_invocation(
     result = invocation.get("result") or {}
     detail = invocation.get("detail")
     result_preview = _result_preview(result)
+    proposal_content = invocation.get("proposal_content") or {}
     finished_at = _now()
 
     _LAST_CAPABILITY_INVOCATION = {
@@ -806,6 +819,7 @@ def _set_last_capability_invocation(
         "invoked_at": invoked_at,
         "finished_at": finished_at,
         "result_preview": result_preview,
+        "proposal_content": proposal_content,
         "detail": detail,
         "run_id": run_id,
     }
@@ -828,6 +842,7 @@ def _publish_capability_invocation_completed(
     result = invocation.get("result") or {}
     detail = invocation.get("detail")
     result_preview = _result_preview(result)
+    proposal_content = invocation.get("proposal_content") or {}
 
     event_bus.publish(
         "runtime.capability_invocation_completed",
@@ -840,6 +855,7 @@ def _publish_capability_invocation_completed(
             "invoked_at": invoked_at,
             "finished_at": _now(),
             "result_preview": result_preview,
+            "proposal_content": proposal_content,
             "detail": detail,
         },
     )
@@ -907,6 +923,7 @@ def _persist_capability_approval_request(
 ) -> None:
     capability = invocation.get("capability") or {}
     approval = invocation.get("approval") or {}
+    proposal_content = invocation.get("proposal_content") or {}
     with connect() as conn:
         conn.execute(
             """
@@ -918,10 +935,16 @@ def _persist_capability_approval_request(
                 execution_mode,
                 approval_policy,
                 run_id,
+                proposal_target_path,
+                proposal_content,
+                proposal_content_summary,
+                proposal_content_fingerprint,
+                proposal_content_source,
+                proposal_reason,
                 requested_at,
                 status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 f"cap-approval-{uuid4().hex}",
@@ -931,6 +954,12 @@ def _persist_capability_approval_request(
                 invocation.get("execution_mode") or "unknown",
                 approval.get("policy"),
                 run_id,
+                proposal_content.get("target"),
+                proposal_content.get("content"),
+                proposal_content.get("summary"),
+                proposal_content.get("fingerprint"),
+                proposal_content.get("source"),
+                proposal_content.get("reason"),
                 requested_at,
                 "pending",
             ),
@@ -957,6 +986,57 @@ def _result_preview(result: object) -> str | None:
         if excerpt:
             return _preview_text(excerpt)
     return None
+
+
+def _workspace_write_proposal_content(
+    *,
+    summary: dict[str, object],
+    write_content: str | None,
+) -> dict[str, object] | None:
+    if str(summary.get("execution_mode") or "") != "workspace-file-write":
+        return None
+    content = str(write_content or "")
+    if not content:
+        return {
+            "state": "content-missing",
+            "type": "workspace-file-write-proposal",
+            "target": str(summary.get("target_path") or ""),
+            "content": "",
+            "summary": "",
+            "fingerprint": "",
+            "source": "explicit-write-content",
+            "reason": (
+                "Workspace write proposal exists, but no explicit write_content has been attached yet."
+            ),
+            "explicit_approval_required": True,
+            "approval_scope": "workspace-write",
+            "confidence": "low",
+            "target_identity": False,
+            "target_memory": False,
+            "workspace_scoped": True,
+        }
+    return {
+        "state": "bounded-content-ready",
+        "type": "workspace-file-write-proposal",
+        "target": str(summary.get("target_path") or ""),
+        "content": content,
+        "summary": _preview_text(content, limit=160),
+        "fingerprint": _content_fingerprint(content),
+        "source": "explicit-write-content",
+        "reason": (
+            f"Scoped workspace write proposal prepared for {summary.get('target_path') or 'workspace'}."
+        ),
+        "explicit_approval_required": True,
+        "approval_scope": "workspace-write",
+        "confidence": "high",
+        "target_identity": False,
+        "target_memory": False,
+        "workspace_scoped": True,
+    }
+
+
+def _content_fingerprint(text: str) -> str:
+    return sha1((text or "").encode("utf-8")).hexdigest()[:16]
 
 
 def _now() -> str:

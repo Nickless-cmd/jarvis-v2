@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from hashlib import sha1
 import threading
 import time
 from datetime import UTC, datetime
@@ -560,6 +561,15 @@ def mc_operations(limit: int = 20) -> dict:
             ),
             "tool_intent_write_proposal_target_memory": bool(
                 tool_intent.get("write_proposal_target_memory", False)
+            ),
+            "tool_intent_write_proposal_target": str(
+                tool_intent.get("write_proposal_target") or "none"
+            ),
+            "tool_intent_write_proposal_content_state": str(
+                tool_intent.get("write_proposal_content_state") or "none"
+            ),
+            "tool_intent_write_proposal_content_fingerprint": str(
+                tool_intent.get("write_proposal_content_fingerprint") or "none"
             ),
             "tool_intent_action_continuity_state": str(
                 tool_intent.get("action_continuity_state") or "idle"
@@ -1374,11 +1384,30 @@ def mc_execute_capability_request(
             "invocation": None,
         }
 
+    proposed_content = str(request.get("proposal_content") or "")
+    proposed_fingerprint = str(request.get("proposal_content_fingerprint") or "")
+    final_write_content = write_content
+    if proposed_content and final_write_content is None:
+        final_write_content = proposed_content
+    if proposed_fingerprint and final_write_content is not None:
+        supplied_fingerprint = sha1(final_write_content.encode("utf-8")).hexdigest()[:16]
+        if supplied_fingerprint != proposed_fingerprint:
+            return {
+                "ok": False,
+                "request_id": request_id,
+                "status": "proposal-content-mismatch",
+                "detail": (
+                    "Execution write_content does not match the approved bounded proposal content fingerprint."
+                ),
+                "request": request,
+                "invocation": None,
+            }
+
     invocation = invoke_workspace_capability(
         str(request.get("capability_id") or ""),
         approved=True,
         run_id=str(request.get("run_id") or "") or None,
-        write_content=write_content,
+        write_content=final_write_content,
     )
     projected_request = record_capability_approval_request_execution(
         request_id,

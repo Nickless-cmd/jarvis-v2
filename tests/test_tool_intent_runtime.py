@@ -61,6 +61,8 @@ def test_tool_intent_builds_approval_gated_shape_from_awareness(
     assert surface["write_proposal_execution_state"] == "not-executed"
     assert surface["write_proposal_target_identity"] is False
     assert surface["write_proposal_target_memory"] is False
+    assert surface["write_proposal_content_state"] == "none"
+    assert surface["write_proposal_content_fingerprint"] == ""
     assert surface["action_continuity_state"] == "idle"
     assert "proposal-only" in surface["boundary"]
     assert "approval-gated" in surface["boundary"]
@@ -232,6 +234,12 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
             "sudo_required": False,
             "target_identity": False,
             "target_memory": False,
+            "content_state": "bounded-content-ready",
+            "content": "replace content",
+            "content_summary": "replace content",
+            "content_fingerprint": "abc123",
+            "content_source": "explicit-write-content",
+            "target": "apps/api/jarvis_api/services/tool_intent_runtime.py",
             "boundary": "Write proposal light is approval-scoped runtime truth only.",
             "source_contributors": ["bounded-mutation-intent-runtime"],
         },
@@ -256,6 +264,12 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
         "write_proposal_sudo_required": False,
         "write_proposal_target_identity": False,
         "write_proposal_target_memory": False,
+        "write_proposal_content_state": "bounded-content-ready",
+        "write_proposal_content": "replace content",
+        "write_proposal_content_summary": "replace content",
+        "write_proposal_content_fingerprint": "abc123",
+        "write_proposal_content_source": "explicit-write-content",
+        "write_proposal_target": "apps/api/jarvis_api/services/tool_intent_runtime.py",
         "write_proposal_boundary": "Write proposal light is approval-scoped runtime truth only.",
         "action_continuity": {
             "active": True,
@@ -360,6 +374,8 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert runtime["runtime_tool_intent"]["mutation_near"] is True
     assert runtime["runtime_tool_intent"]["write_proposal_state"] == "scoped-proposal"
     assert runtime["runtime_tool_intent"]["write_proposal_type"] == "propose-file-modification"
+    assert runtime["runtime_tool_intent"]["write_proposal_content_state"] == "bounded-content-ready"
+    assert runtime["runtime_tool_intent"]["write_proposal_content_fingerprint"] == "abc123"
     assert self_model["tool_intent"]["execution_state"] == "read-only-completed"
     assert self_model["tool_intent"]["execution_mode"] == "read-only"
     assert self_model["tool_intent"]["mutation_permitted"] is False
@@ -369,6 +385,8 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert self_model["tool_intent"]["mutation_intent_classification"] == "modify-file"
     assert self_model["tool_intent"]["mutation_intent_state"] == "proposal-only"
     assert self_model["tool_intent"]["write_proposal_type"] == "propose-file-modification"
+    assert self_model["tool_intent"]["write_proposal_content_state"] == "bounded-content-ready"
+    assert self_model["tool_intent"]["write_proposal_content_fingerprint"] == "abc123"
     assert self_model["tool_intent"]["write_proposal_target_identity"] is False
     assert self_model["tool_intent"]["write_proposal_target_memory"] is False
     assert self_model["tool_intent"]["action_continuity_state"] == "carrying-forward"
@@ -392,6 +410,9 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert "mutation_classification=modify-file" in layer["detail"]
     assert "write_proposal_state=scoped-proposal" in layer["detail"]
     assert "write_proposal_type=propose-file-modification" in layer["detail"]
+    assert "write_proposal_target=apps/api/jarvis_api/services/tool_intent_runtime.py" in layer["detail"]
+    assert "write_proposal_content_state=bounded-content-ready" in layer["detail"]
+    assert "write_proposal_content_fingerprint=abc123" in layer["detail"]
     assert "write_proposal_target_identity=False" in layer["detail"]
     assert "write_proposal_target_memory=False" in layer["detail"]
     assert "continuity=carrying-forward" in layer["detail"]
@@ -429,6 +450,10 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
                 "write_proposal_criticality": "high",
                 "write_proposal_target_identity": False,
                 "write_proposal_target_memory": False,
+                "write_proposal_target": "MEMORY.md",
+                "write_proposal_content_state": "bounded-content-ready",
+                "write_proposal_content_fingerprint": "deadbeefcafefeed",
+                "write_proposal_content_summary": "Replace MEMORY.md with approved bounded content.",
                 "execution_summary": "No bounded repo inspection has been executed.",
                 "action_continuity_state": "idle",
                 "last_action_outcome": "none",
@@ -461,6 +486,10 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
     assert "write_proposal_type=propose-git-mutation" in lines
     assert "write_proposal_scope=git" in lines
     assert "write_proposal_criticality=high" in lines
+    assert "write_proposal_target=MEMORY.md" in lines
+    assert "write_proposal_content_state=bounded-content-ready" in lines
+    assert "write_proposal_content_fingerprint=deadbeefcafefeed" in lines
+    assert "write_proposal_content_summary=Replace MEMORY.md with approved bounded content." in lines
     assert "write_proposal_target_identity=False" in lines
     assert "write_proposal_target_memory=False" in lines
     assert "continuity=idle" in lines
@@ -700,6 +729,9 @@ def test_approved_workspace_write_execution_becomes_runtime_truth_and_continuity
     assert surface["write_proposal_scope"] == "workspace-file"
     assert surface["write_proposal_targets"] == ["MEMORY.md"]
     assert surface["write_proposal_execution_state"] == "workspace-write-completed"
+    assert surface["write_proposal_content_state"] == "executed-proposal-content"
+    assert surface["write_proposal_content"] == "Approved runtime truth write.\n"
+    assert surface["write_proposal_content_fingerprint"]
     assert surface["action_continuity_state"] == "carrying-forward"
     assert surface["last_action_outcome"] == "workspace-write-completed"
     assert surface["action_mode"] == "workspace-write"
@@ -707,6 +739,58 @@ def test_approved_workspace_write_execution_becomes_runtime_truth_and_continuity
     assert surface["workspace_write"] is True
     assert surface["followup_state"] == "bounded-write-recorded"
     assert surface["truth"] == "derived-runtime-truth"
+
+
+def test_workspace_write_proposal_content_becomes_runtime_truth_before_execution(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    tool_intent_mod = isolated_runtime.tool_intent_runtime
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    monkeypatch.setattr(
+        tool_intent_mod,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "clean",
+            "local_change_state": "clean",
+            "upstream_awareness": "in-sync",
+            "concern_state": "stable",
+            "source_contributors": ["repo-root", "git-status"],
+            "host_context": {
+                "repo_root": ".",
+                "git_present": True,
+            },
+            "repo_observation": {
+                "branch_name": "main",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+
+    proposed = caps_mod.invoke_workspace_capability(
+        "tool:propose-workspace-memory-update",
+        write_content="Pending bounded proposal content.\n",
+    )
+    assert proposed["status"] == "approval-required"
+
+    surface = tool_intent_mod.build_tool_intent_runtime_surface()
+
+    assert surface["execution_state"] == "not-executed"
+    assert surface["write_proposal_state"] == "scoped-proposal"
+    assert surface["write_proposal_target"] == "MEMORY.md"
+    assert surface["write_proposal_content_state"] == "bounded-content-ready"
+    assert surface["write_proposal_content"] == "Pending bounded proposal content.\n"
+    assert surface["write_proposal_content_summary"]
+    assert surface["write_proposal_content_fingerprint"]
+    latest_request = isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="workspace-file-write",
+        include_executed=False,
+    )
+    assert latest_request is not None
+    assert latest_request["proposal_content_fingerprint"] == surface["write_proposal_content_fingerprint"]
 
 
 @pytest.mark.parametrize("approval_state", ["pending", "denied", "expired"])

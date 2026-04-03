@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from core.runtime.db import latest_capability_approval_request
 from core.tools.workspace_capabilities import get_capability_invocation_truth
 
 
@@ -9,6 +10,7 @@ def build_bounded_workspace_write_execution_surface() -> dict[str, object]:
     )
     capability = dict(invocation.get("capability") or {})
     approval = dict(invocation.get("approval") or {})
+    proposal_content = dict(invocation.get("proposal_content") or {})
     execution_mode = str(invocation.get("execution_mode") or "")
     status = str(invocation.get("status") or "not-executed")
     target_path = str(capability.get("target_path") or "")
@@ -55,23 +57,76 @@ def build_bounded_workspace_write_execution_surface() -> dict[str, object]:
         "write_proposal_boundary": (
             "Workspace write proposal truth is bounded to explicit approval and workspace-only targets."
         ),
+        "write_proposal_content_state": "none",
+        "write_proposal_content": "",
+        "write_proposal_content_summary": "",
+        "write_proposal_content_fingerprint": "",
+        "write_proposal_content_source": "none",
+        "write_proposal_target": target_path or "",
         "boundary": (
             "Workspace write execution may occur only after explicit approval, only for workspace-scoped file writes, and never for external paths, delete, git mutation, or system mutation."
         ),
     }
 
-    if execution_mode != "workspace-file-write":
+    latest_request = latest_capability_approval_request(
+        execution_mode="workspace-file-write",
+        include_executed=False,
+    )
+    request_target = str((latest_request or {}).get("proposal_target_path") or "")
+    request_content = str((latest_request or {}).get("proposal_content") or "")
+    request_summary = str((latest_request or {}).get("proposal_content_summary") or "")
+    request_fingerprint = str(
+        (latest_request or {}).get("proposal_content_fingerprint") or ""
+    )
+    request_source = str((latest_request or {}).get("proposal_content_source") or "none")
+    request_reason = str((latest_request or {}).get("proposal_reason") or "")
+    request_status = str((latest_request or {}).get("status") or "none")
+
+    if execution_mode != "workspace-file-write" and not latest_request:
         return base
 
     proposal_fields = {
         "write_proposal_state": "scoped-proposal",
         "write_proposal_type": "propose-file-modification",
         "write_proposal_scope": "workspace-file",
-        "write_proposal_targets": [target_path] if target_path else [],
-        "write_proposal_target_paths": [target_path] if target_path else [],
+        "write_proposal_targets": [target_path or request_target] if (target_path or request_target) else [],
+        "write_proposal_target_paths": [target_path or request_target] if (target_path or request_target) else [],
         "write_proposal_criticality": "medium",
         "write_proposal_confidence": "high",
+        "write_proposal_content_state": str(
+            proposal_content.get("state")
+            or ("approved-proposal-content" if request_status == "approved" else "bounded-content-ready")
+            if (proposal_content or request_content)
+            else "none"
+        ),
+        "write_proposal_content": str(proposal_content.get("content") or request_content or ""),
+        "write_proposal_content_summary": str(
+            proposal_content.get("summary") or request_summary or ""
+        ),
+        "write_proposal_content_fingerprint": str(
+            proposal_content.get("fingerprint") or request_fingerprint or ""
+        ),
+        "write_proposal_content_source": str(
+            proposal_content.get("source") or request_source or "none"
+        ),
+        "write_proposal_target": str(
+            proposal_content.get("target") or target_path or request_target or ""
+        ),
     }
+
+    if execution_mode != "workspace-file-write" and latest_request is not None:
+        return {
+            **base,
+            **proposal_fields,
+            "execution_target": request_target or "workspace",
+            "execution_summary": request_reason
+            or "A bounded workspace write proposal with concrete content is awaiting execution.",
+            "approval_state": request_status,
+            "approval_source": "capability-approval",
+            "workspace_scoped": bool(request_target),
+            "write_proposal_reason": request_reason
+            or "A bounded workspace write proposal is attached to a capability approval request.",
+        }
 
     if status == "approval-required":
         return {
@@ -81,8 +136,10 @@ def build_bounded_workspace_write_execution_surface() -> dict[str, object]:
             or "Workspace write capability is awaiting explicit approval.",
             "approval_state": "pending",
             "approval_source": "capability-approval",
+            "workspace_scoped": bool(proposal_fields.get("write_proposal_target")),
             "write_proposal_reason": (
-                detail
+                str(proposal_content.get("reason") or "")
+                or detail
                 or "A bounded workspace file write is proposed and still requires explicit approval."
             ),
         }
@@ -109,11 +166,13 @@ def build_bounded_workspace_write_execution_surface() -> dict[str, object]:
             ],
             "write_proposal_state": "executed",
             "write_proposal_reason": (
-                f"Approved workspace write executed within bounded scope for {target_path or 'workspace'}."
+                str(proposal_content.get("reason") or "")
+                or f"Approved workspace write executed within bounded scope for {target_path or 'workspace'}."
             ),
             "write_proposal_proposal_only": False,
             "write_proposal_not_executed": False,
             "write_proposal_execution_state": "workspace-write-completed",
+            "write_proposal_content_state": "executed-proposal-content",
         }
 
     return {

@@ -1240,7 +1240,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
             "- Non-destructive exec is allowed only when the user message already includes one explicit command in backticks or a command:/kommando: line."
         )
         lines.append(
-            "- If that command is mutating or sudo-near, do not claim execution; runtime may carry it only as an approval-gated proposal and not as executed work."
+            "- If that command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands remain proposal-only and not executed in this pass."
         )
     if available:
         lines.append(
@@ -1274,7 +1274,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         f"workspace_read={policy.get('workspace_read', 'allowed')} | "
         f"external_read={policy.get('external_read', 'allowed')} | "
         f"non_destructive_exec={policy.get('non_destructive_exec', 'allowed')} | "
-        f"mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-proposal-only')} | "
+        f"mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-bounded-non-sudo-only')} | "
         f"sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-proposal-only')} | "
         f"workspace_write={policy.get('workspace_write', 'explicit-approval-required')} | "
         f"external_write={policy.get('external_write', 'explicit-approval-required')}"
@@ -1448,6 +1448,10 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | write_proposal_content_state={tool_intent.get('write_proposal_content_state') or 'none'}"
                 f" | write_proposal_content_fingerprint={tool_intent.get('write_proposal_content_fingerprint') or 'none'}"
                 f" | write_proposal_content_summary={tool_intent.get('write_proposal_content_summary') or 'none'}"
+                f" | mutating_exec_state={tool_intent.get('mutating_exec_proposal_state') or 'none'}"
+                f" | mutating_exec_scope={tool_intent.get('mutating_exec_proposal_scope') or 'none'}"
+                f" | mutating_exec_requires_sudo={tool_intent.get('mutating_exec_requires_sudo', False)}"
+                f" | mutating_exec_fingerprint={tool_intent.get('mutating_exec_command_fingerprint') or 'none'}"
                 f" | execution_summary={tool_intent.get('execution_summary') or 'none'}"
                 f" | continuity={tool_intent.get('action_continuity_state') or 'idle'}"
                 f" | last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}"

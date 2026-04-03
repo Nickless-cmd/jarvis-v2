@@ -225,3 +225,71 @@ def test_mission_control_operations_route_exposes_bounded_action_continuity(
     assert payload["summary"]["tool_intent_last_action_outcome"] == "read-only-completed"
     assert payload["summary"]["tool_intent_last_action_at"] == "2026-04-02T10:30:00+00:00"
     assert payload["summary"]["tool_intent_followup_state"] == "carry-forward"
+
+
+def test_mission_control_operations_route_surfaces_mutating_exec_execution_summary(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    monkeypatch.setattr(
+        mission_control,
+        "mc_runtime",
+        lambda: {
+            "provider_router": {},
+            "visible_execution": {},
+            "runtime_tool_intent": {
+                "active": True,
+                "approval_state": "approved",
+                "approval_source": "capability-approval",
+                "execution_state": "mutating-exec-completed",
+                "execution_mode": "mutating-exec",
+                "mutation_permitted": True,
+                "workspace_scoped": False,
+                "external_mutation_permitted": True,
+                "delete_permitted": False,
+                "mutating_exec_proposal_state": "executed",
+                "mutating_exec_proposal_scope": "filesystem",
+                "mutating_exec_requires_sudo": False,
+                "mutating_exec_criticality": "medium",
+                "action_continuity_state": "carrying-forward",
+                "last_action_outcome": "mutating-exec-completed",
+                "last_action_at": "2026-04-03T12:00:00+00:00",
+                "followup_state": "bounded-mutating-exec-recorded",
+            },
+        },
+    )
+    monkeypatch.setattr(
+        mission_control,
+        "mc_runs",
+        lambda limit=20: {
+            "active_run": None,
+            "summary": {"recent_count": 0},
+            "recent_runs": [],
+        },
+    )
+    monkeypatch.setattr(
+        mission_control,
+        "mc_approvals",
+        lambda limit=20: {
+            "summary": {"request_count": 1},
+            "requests": [],
+            "recent_invocations": [],
+        },
+    )
+    monkeypatch.setattr(mission_control, "list_chat_sessions", lambda: [])
+
+    payload = mission_control.mc_operations(limit=5)
+
+    assert payload["summary"]["tool_intent_execution_state"] == "mutating-exec-completed"
+    assert payload["summary"]["tool_intent_execution_mode"] == "mutating-exec"
+    assert payload["summary"]["tool_intent_mutation_permitted"] is True
+    assert payload["summary"]["tool_intent_external_mutation_permitted"] is True
+    assert payload["summary"]["tool_intent_delete_permitted"] is False
+    assert payload["summary"]["tool_intent_mutating_exec_proposal_state"] == "executed"
+    assert payload["summary"]["tool_intent_mutating_exec_proposal_scope"] == "filesystem"
+    assert payload["summary"]["tool_intent_mutating_exec_requires_sudo"] is False
+    assert payload["summary"]["tool_intent_action_continuity_state"] == "carrying-forward"
+    assert payload["summary"]["tool_intent_last_action_outcome"] == "mutating-exec-completed"
+    assert payload["summary"]["tool_intent_followup_state"] == "bounded-mutating-exec-recorded"

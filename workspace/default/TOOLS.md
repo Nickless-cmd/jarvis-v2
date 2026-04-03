@@ -51,7 +51,7 @@ command_from: user-message
 
 Runs one explicit non-destructive command from the current user message.
 Use this only for read-only inspection or diagnostics. No sudo, package install/update, git mutation, delete, shell chaining, or redirection.
-If the explicit command is mutating or sudo-near, runtime may carry it only as an approval-gated proposal and not as executed work.
+If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Sudo-near, package, git, delete, and broader system mutation remain proposal-only and not executed in this pass.
 
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md

@@ -49,6 +49,11 @@ NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
     "printenv",
     "rg",
 }
+APPROVED_MUTATING_EXEC_ALLOWLIST = {
+    "mv",
+    "cp",
+    "chmod",
+}
 MUTATING_EXEC_PROPOSAL_TOKENS = {
     "sudo",
     "mv",
@@ -158,7 +163,7 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
             "workspace_write": "explicit-approval-required",
             "external_read": "allowed",
             "non_destructive_exec": "allowed",
-            "mutating_exec": "explicit-approval-required-proposal-only",
+            "mutating_exec": "explicit-approval-required-bounded-non-sudo-only",
             "sudo_exec": "explicit-approval-required-proposal-only",
             "external_write": "explicit-approval-required",
             "mutation_outside_workspace": "explicit-approval-required",
@@ -684,6 +689,112 @@ def _invoke_runnable_capability(
             }
         command_verdict = _classify_exec_command(resolved_command)
         if command_verdict.get("proposal_required"):
+            if approved:
+                approved_verdict = _approved_mutating_exec_verdict(command_verdict)
+                if not approved_verdict.get("allowed"):
+                    return {
+                        "capability": summary,
+                        "status": str(
+                            approved_verdict.get("status")
+                            or "blocked-approved-mutating-exec"
+                        ),
+                        "execution_mode": str(
+                            command_verdict.get("proposal_execution_mode")
+                            or "mutating-exec-proposal"
+                        ),
+                        "approval": {
+                            "policy": "required",
+                            "required": True,
+                            "approved": True,
+                            "granted": False,
+                        },
+                        "result": None,
+                        "proposal_content": _mutating_exec_proposal_content(
+                            command_text=resolved_command,
+                            command_source=command_source or "declared-command",
+                            classification=command_verdict,
+                        ),
+                        "detail": str(
+                            approved_verdict.get("detail")
+                            or "Approved mutating exec remains blocked in this pass."
+                        ),
+                    }
+                argv = list(command_verdict.get("argv") or [])
+                completed, timeout_detail = _run_bounded_command(
+                    argv=argv,
+                    workspace_dir=workspace_dir,
+                )
+                if completed is None:
+                    return {
+                        "capability": summary,
+                        "status": "blocked-timeout",
+                        "execution_mode": "mutating-exec",
+                        "approval": {
+                            "policy": "required",
+                            "required": True,
+                            "approved": True,
+                            "granted": False,
+                        },
+                        "result": None,
+                        "proposal_content": _mutating_exec_execution_content(
+                            command_text=resolved_command,
+                            command_source=command_source or "declared-command",
+                            classification=command_verdict,
+                            exit_code=None,
+                            output_text="",
+                        ),
+                        "detail": timeout_detail,
+                    }
+                output_text = _bounded_exec_output(
+                    stdout=completed.stdout,
+                    stderr=completed.stderr,
+                )
+                execution_content = _mutating_exec_execution_content(
+                    command_text=resolved_command,
+                    command_source=command_source or "declared-command",
+                    classification=command_verdict,
+                    exit_code=completed.returncode,
+                    output_text=output_text,
+                )
+                return {
+                    "capability": summary,
+                    "status": "executed",
+                    "execution_mode": "mutating-exec",
+                    "approval": {
+                        "policy": "required",
+                        "required": True,
+                        "approved": True,
+                        "granted": True,
+                    },
+                    "result": {
+                        "type": "mutating-exec",
+                        "command_text": resolved_command,
+                        "argv": argv,
+                        "exit_code": completed.returncode,
+                        "text": output_text,
+                        "command_source": command_source or "declared-command",
+                        "workspace_scoped": False,
+                        "mutation_permitted": True,
+                        "sudo_permitted": False,
+                        "external_mutation_permitted": True,
+                        "delete_permitted": False,
+                        "scope": str(
+                            command_verdict.get("proposal_scope") or "filesystem"
+                        ),
+                        "matched_token": str(
+                            command_verdict.get("matched_token") or "unknown"
+                        ),
+                        "command_fingerprint": execution_content.get("fingerprint") or "",
+                        "proposal_only": False,
+                        "not_executed": False,
+                    },
+                    "proposal_content": execution_content,
+                    "detail": (
+                        "Approved bounded non-sudo mutating exec completed."
+                        if completed.returncode == 0
+                        else "Approved bounded non-sudo mutating exec exited non-zero."
+                    ),
+                }
             proposal_content = _mutating_exec_proposal_content(
                 command_text=resolved_command,
                 command_source=command_source or "declared-command",
@@ -719,25 +830,18 @@ def _invoke_runnable_capability(
                 "detail": str(command_verdict.get("detail") or "Command is not allowed."),
             }
         argv = list(command_verdict.get("argv") or [])
-        try:
-            completed = subprocess.run(
-                argv,
-                cwd=str(workspace_dir),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=MAX_EXEC_SECONDS,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
+        completed, timeout_detail = _run_bounded_command(
+            argv=argv,
+            workspace_dir=workspace_dir,
+        )
+        if completed is None:
             return {
                 "capability": summary,
                 "status": "blocked-timeout",
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=False, granted=False),
                 "result": None,
-                "detail": f"Non-destructive exec exceeded {MAX_EXEC_SECONDS} seconds.",
+                "detail": timeout_detail,
             }
         output_text = _bounded_exec_output(
             stdout=completed.stdout,
@@ -834,6 +938,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "workspace-file-delete",
         "delete-file",
         "git-mutate",
+        "mutating-exec",
         "repo-update-check",
         "system-mutate",
         "package-mutate",
@@ -865,6 +970,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "workspace-file-edit",
         "workspace-file-create",
         "modify-file",
+        "mutating-exec",
         "external-file-write",
         "mutating-exec-proposal",
     } or normalized.startswith("workspace-file-write"):
@@ -1081,6 +1187,27 @@ def _bounded_exec_output(*, stdout: str, stderr: str) -> str:
     return joined[: MAX_EXEC_OUTPUT_CHARS - 1].rstrip() + "…"
 
 
+def _run_bounded_command(
+    *,
+    argv: list[str],
+    workspace_dir: Path,
+) -> tuple[subprocess.CompletedProcess[str] | None, str | None]:
+    try:
+        completed = subprocess.run(
+            argv,
+            cwd=str(workspace_dir),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=MAX_EXEC_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return None, f"Bounded exec exceeded {MAX_EXEC_SECONDS} seconds."
+    return completed, None
+
+
 def _classify_exec_command(command_text: str) -> dict[str, object]:
     normalized = str(command_text or "").strip()
     if not normalized:
@@ -1181,11 +1308,53 @@ def _mutating_exec_proposal_metadata(argv: list[str]) -> dict[str, object] | Non
         "proposal_scope": scope,
         "proposal_execution_mode": proposal_execution_mode,
         "criticality": criticality,
+        "argv": list(argv),
         "detail": (
             "sudo-near command was captured as an approval-gated proposal only and was not executed."
             if requires_sudo
             else f"Mutating command token {matched_token} was captured as an approval-gated proposal only and was not executed."
         ),
+    }
+
+
+def _approved_mutating_exec_verdict(
+    classification: dict[str, object],
+) -> dict[str, object]:
+    matched_token = str(classification.get("matched_token") or "unknown")
+    if bool(classification.get("requires_sudo", False)):
+        return {
+            "allowed": False,
+            "status": "blocked-sudo-execution-disabled",
+            "detail": "Sudo exec remains proposal-only and is not executable in this pass.",
+        }
+    scope = str(classification.get("proposal_scope") or "filesystem")
+    if scope in {"git", "package", "system"}:
+        return {
+            "allowed": False,
+            "status": "blocked-command-class",
+            "detail": (
+                f"Approved {scope} mutation remains proposal-only in this pass and is not executable."
+            ),
+        }
+    if matched_token not in APPROVED_MUTATING_EXEC_ALLOWLIST:
+        return {
+            "allowed": False,
+            "status": "blocked-command-class",
+            "detail": (
+                f"Approved mutating exec token {matched_token} is outside the bounded non-sudo execution allowlist for this pass."
+            ),
+        }
+    argv = list(classification.get("argv") or [])
+    if len(argv) != 3 or any(part.startswith("-") for part in argv[1:]):
+        return {
+            "allowed": False,
+            "status": "blocked-command-shape",
+            "detail": (
+                "Approved bounded non-sudo mutating exec currently allows only simple three-part commands without flags."
+            ),
+        }
+    return {
+        "allowed": True,
     }
 
 
@@ -1230,6 +1399,40 @@ def _mutating_exec_proposal_content(
             "workspace-capability-runtime",
             "exec-command-classifier",
         ],
+    }
+
+
+def _mutating_exec_execution_content(
+    *,
+    command_text: str,
+    command_source: str,
+    classification: dict[str, object],
+    exit_code: int | None,
+    output_text: str,
+) -> dict[str, object]:
+    proposal = _mutating_exec_proposal_content(
+        command_text=command_text,
+        command_source=command_source,
+        classification=classification,
+    )
+    execution_state = "mutating-exec-completed"
+    reason = "Approved bounded non-sudo mutating exec completed."
+    if exit_code is None:
+        execution_state = "mutating-exec-blocked"
+        reason = "Approved bounded non-sudo mutating exec timed out before completion."
+    elif exit_code != 0:
+        execution_state = "mutating-exec-failed"
+        reason = "Approved bounded non-sudo mutating exec exited non-zero."
+    return {
+        **proposal,
+        "state": "executed" if exit_code is not None else "blocked",
+        "type": "mutating-exec",
+        "reason": reason,
+        "proposal_only": exit_code is None,
+        "not_executed": exit_code is None,
+        "execution_state": execution_state,
+        "exit_code": exit_code,
+        "text": output_text,
     }
 
 

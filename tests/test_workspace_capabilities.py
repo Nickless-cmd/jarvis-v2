@@ -44,7 +44,7 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert contract.get("mode") == "text-capability-call"
     assert contract.get("json_tool_call_supported") is False
     policy = capabilities.get("policy") or {}
-    assert policy.get("mutating_exec") == "explicit-approval-required-proposal-only"
+    assert policy.get("mutating_exec") == "explicit-approval-required-bounded-non-sudo-only"
     assert policy.get("sudo_exec") == "explicit-approval-required-proposal-only"
 
 
@@ -182,6 +182,48 @@ def test_mutating_exec_command_surfaces_as_approval_gated_proposal_only(
     assert proposal.get("not_executed") is True
 
 
+def test_approved_non_sudo_mutating_exec_runs_for_exact_approved_command(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    source = Path("/tmp/jarvis_mutating_exec_source.txt")
+    target = Path("/tmp/jarvis_mutating_exec_target.txt")
+    source.write_text("bounded mutating exec\n", encoding="utf-8")
+    if target.exists():
+        target.unlink()
+
+    proposed = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"cp {source} {target}",
+    )
+    assert proposed["status"] == "approval-required"
+    assert proposed["execution_mode"] == "mutating-exec-proposal"
+
+    request_id = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="mutating-exec-proposal",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_id
+
+    approved = isolated_runtime.mission_control.mc_approve_capability_request(request_id)
+    assert approved["request"]["status"] == "approved"
+
+    executed = isolated_runtime.mission_control.mc_execute_capability_request(request_id)
+
+    assert executed["ok"] is True
+    assert executed["status"] == "executed"
+    assert executed["invocation"]["execution_mode"] == "mutating-exec"
+    result = executed["invocation"].get("result") or {}
+    assert result.get("type") == "mutating-exec"
+    assert result.get("command_text") == f"cp {source} {target}"
+    assert result.get("mutation_permitted") is True
+    assert result.get("sudo_permitted") is False
+    assert result.get("external_mutation_permitted") is True
+    assert target.read_text(encoding="utf-8") == "bounded mutating exec\n"
+
+
 def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability() -> None:
     default_tools = Path("/media/projects/jarvis-v2/workspace/default/TOOLS.md").read_text(
         encoding="utf-8"
@@ -197,8 +239,8 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
     assert "command_from: user-message" in template_tools
     assert "No sudo, package install/update, git mutation, delete, shell chaining, or redirection." in default_tools
     assert "blocks sudo, package mutation, git mutation, delete, shell chaining, and redirection." in template_tools
-    assert "approval-gated proposal and not as executed work" in default_tools
-    assert "approval-gated proposal and not as executed work" in template_tools
+    assert "exact bounded non-sudo command" in default_tools
+    assert "exact bounded non-sudo command" in template_tools
 
 
 def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime) -> None:
@@ -369,3 +411,33 @@ def test_approved_mutating_exec_proposal_stays_non_executable_in_this_pass(
     executed = isolated_runtime.mission_control.mc_execute_capability_request(request_id)
     assert executed["ok"] is False
     assert executed["status"] == "execution-disabled-in-this-pass"
+
+
+def test_mutating_exec_execution_rejects_command_mismatch_against_approved_proposal(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    source = Path("/tmp/jarvis_mutating_exec_mismatch_source.txt")
+    target = Path("/tmp/jarvis_mutating_exec_mismatch_target.txt")
+    source.write_text("fingerprint baseline\n", encoding="utf-8")
+
+    _ = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"cp {source} {target}",
+    )
+    request_id = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="mutating-exec-proposal",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_id
+    _ = isolated_runtime.mission_control.mc_approve_capability_request(request_id)
+
+    executed = isolated_runtime.mission_control.mc_execute_capability_request(
+        request_id,
+        command_text=f"chmod 644 {source}",
+    )
+
+    assert executed["ok"] is False
+    assert executed["status"] == "proposal-content-mismatch"

@@ -203,6 +203,9 @@ from core.tools.workspace_capabilities import (
 CAPABILITY_CALL_PATTERN = re.compile(
     r'^<capability-call id="(?P<capability_id>[a-z0-9:-]+)"\s*/>$'
 )
+CAPABILITY_CALL_SCAN_PATTERN = re.compile(
+    r'<capability-call id="(?P<capability_id>[a-z0-9:-]+)"\s*/>'
+)
 CAPABILITY_CALL_PREFIX = '<capability-call id="'
 CAPABILITY_CALL_SUFFIX = '" />'
 
@@ -304,8 +307,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
     result = None
     visible_output_text = ""
-    buffered_capability_text = ""
-    buffering_capability_marker = False
     try:
         try:
             for item in stream_visible_model(
@@ -320,36 +321,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         yield cancelled_chunk
                     return
                 if isinstance(item, VisibleModelDelta):
-                    candidate = (
-                        f"{buffered_capability_text}{item.delta}"
-                        if buffering_capability_marker
-                        else item.delta
-                    )
-                    marker_state = _capability_call_state(candidate)
-                    if buffering_capability_marker or marker_state != "invalid":
-                        if marker_state == "invalid":
-                            yield _sse(
-                                "delta",
-                                {
-                                    "type": "delta",
-                                    "run_id": run.run_id,
-                                    "delta": candidate,
-                                },
-                            )
-                            buffered_capability_text = ""
-                            buffering_capability_marker = False
-                            continue
-                        buffered_capability_text = candidate
-                        buffering_capability_marker = True
-                        continue
-                    yield _sse(
-                        "delta",
-                        {
-                            "type": "delta",
-                            "run_id": run.run_id,
-                            "delta": item.delta,
-                        },
-                    )
                     continue
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
@@ -401,22 +372,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield failure_chunk
             return
 
-        capability_call = _extract_capability_call(result.text)
-        if (
-            buffering_capability_marker
-            and not capability_call
-            and buffered_capability_text
-        ):
-            yield _sse(
-                "delta",
-                {
-                    "type": "delta",
-                    "run_id": run.run_id,
-                    "delta": buffered_capability_text,
-                },
-            )
-        buffered_capability_text = ""
-        buffering_capability_marker = False
+        capability_plan = _extract_capability_plan(result.text)
 
         if controller.is_cancelled():
             set_last_visible_run_outcome(
@@ -427,7 +383,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 yield cancelled_chunk
             return
 
-        if capability_call and _is_known_workspace_capability(capability_call):
+        if capability_plan["selected_capability_id"]:
+            capability_call = str(capability_plan["selected_capability_id"])
             capability_result = invoke_workspace_capability(
                 capability_call,
                 run_id=run.run_id,
@@ -472,7 +429,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 },
             )
         else:
-            visible_output_text = result.text
+            visible_output_text = _visible_text_without_capability_markup(
+                result.text,
+                had_markup=bool(capability_plan["had_markup"]),
+            )
+            if visible_output_text:
+                yield _sse(
+                    "delta",
+                    {
+                        "type": "delta",
+                        "run_id": run.run_id,
+                        "delta": visible_output_text,
+                    },
+                )
 
         record_cost(
             lane=run.lane,
@@ -1015,6 +984,29 @@ def _extract_capability_call(text: str) -> str | None:
     return match.group("capability_id")
 
 
+def _extract_capability_plan(text: str) -> dict[str, object]:
+    raw = str(text or "")
+    matches = [
+        match.group("capability_id")
+        for match in CAPABILITY_CALL_SCAN_PATTERN.finditer(raw)
+    ]
+    selected: str | None = None
+    seen: set[str] = set()
+    for capability_id in matches:
+        if capability_id in seen:
+            continue
+        seen.add(capability_id)
+        if _is_known_workspace_capability(capability_id):
+            selected = capability_id
+            break
+    return {
+        "selected_capability_id": selected,
+        "capability_ids": matches,
+        "had_markup": bool(matches),
+        "multiple": len(matches) > 1,
+    }
+
+
 def _capability_call_state(text: str) -> str:
     candidate = (text or "").strip()
     if not candidate:
@@ -1039,6 +1031,19 @@ def _capability_call_state(text: str) -> str:
     if CAPABILITY_CALL_SUFFIX.startswith(tail):
         return "exact" if tail == CAPABILITY_CALL_SUFFIX else "prefix"
     return "invalid"
+
+
+def _strip_capability_markup(text: str) -> str:
+    return CAPABILITY_CALL_SCAN_PATTERN.sub("", str(text or ""))
+
+
+def _visible_text_without_capability_markup(text: str, *, had_markup: bool) -> str:
+    cleaned = " ".join(_strip_capability_markup(text).split()).strip()
+    if cleaned:
+        return cleaned
+    if had_markup:
+        return "Capability request was consumed by the visible lane."
+    return ""
 
 
 def _is_known_workspace_capability(capability_id: str) -> bool:

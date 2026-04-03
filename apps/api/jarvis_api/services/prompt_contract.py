@@ -1239,6 +1239,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         lines.append(
             "- Non-destructive exec is allowed only when the user message already includes one explicit command in backticks or a command:/kommando: line."
         )
+        lines.append(
+            "- If that command is mutating or sudo-near, do not claim execution; runtime may carry it only as an approval-gated proposal and not as executed work."
+        )
     if available:
         lines.append(
             "- Callable capability_ids: "
@@ -1271,6 +1274,8 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         f"workspace_read={policy.get('workspace_read', 'allowed')} | "
         f"external_read={policy.get('external_read', 'allowed')} | "
         f"non_destructive_exec={policy.get('non_destructive_exec', 'allowed')} | "
+        f"mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-proposal-only')} | "
+        f"sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-proposal-only')} | "
         f"workspace_write={policy.get('workspace_write', 'explicit-approval-required')} | "
         f"external_write={policy.get('external_write', 'explicit-approval-required')}"
     )

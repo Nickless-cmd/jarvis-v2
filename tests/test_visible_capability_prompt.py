@@ -23,7 +23,10 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
     assert "workspace_read=allowed" in instruction
     assert "external_read=allowed" in instruction
     assert "non_destructive_exec=allowed" in instruction
+    assert "mutating_exec=explicit-approval-required-proposal-only" in instruction
+    assert "sudo_exec=explicit-approval-required-proposal-only" in instruction
     assert "workspace_write=explicit-approval-required" in instruction
+    assert "approval-gated proposal" in instruction
 
 
 def test_visible_prompt_assembly_keeps_text_capability_contract(isolated_runtime) -> None:

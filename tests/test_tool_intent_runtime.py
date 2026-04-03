@@ -793,6 +793,52 @@ def test_workspace_write_proposal_content_becomes_runtime_truth_before_execution
     assert latest_request["proposal_content_fingerprint"] == surface["write_proposal_content_fingerprint"]
 
 
+def test_mutating_exec_proposal_becomes_runtime_truth_without_execution(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    tool_intent_mod = isolated_runtime.tool_intent_runtime
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    monkeypatch.setattr(
+        tool_intent_mod,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "clean",
+            "local_change_state": "clean",
+            "upstream_awareness": "in-sync",
+            "concern_state": "stable",
+            "source_contributors": ["repo-root", "git-status"],
+            "repo_observation": {
+                "branch_name": "main",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+
+    proposal = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="sudo ls /root",
+    )
+    assert proposal["status"] == "approval-required"
+
+    surface = tool_intent_mod.build_tool_intent_runtime_surface()
+
+    assert surface["execution_state"] == "not-executed"
+    assert surface["execution_mode"] == "sudo-exec-proposal"
+    assert surface["approval_state"] == "pending"
+    assert surface["mutation_permitted"] is False
+    assert surface["mutating_exec_proposal_state"] == "approval-required-proposal"
+    assert surface["mutating_exec_proposal_command"] == "sudo ls /root"
+    assert surface["mutating_exec_proposal_scope"] == "system"
+    assert surface["mutating_exec_requires_approval"] is True
+    assert surface["mutating_exec_requires_sudo"] is True
+    assert surface["mutating_exec_criticality"] == "high"
+    assert surface["mutating_exec_command_fingerprint"]
+
+
 @pytest.mark.parametrize("approval_state", ["pending", "denied", "expired"])
 def test_non_approved_tool_intent_does_not_execute_read_only_repo_tools(
     isolated_runtime,

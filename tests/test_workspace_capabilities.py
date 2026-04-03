@@ -43,6 +43,9 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     contract = capabilities.get("contract") or {}
     assert contract.get("mode") == "text-capability-call"
     assert contract.get("json_tool_call_supported") is False
+    policy = capabilities.get("policy") or {}
+    assert policy.get("mutating_exec") == "explicit-approval-required-proposal-only"
+    assert policy.get("sudo_exec") == "explicit-approval-required-proposal-only"
 
 
 def test_workspace_and_external_read_capabilities_execute(isolated_runtime) -> None:
@@ -146,8 +149,37 @@ def test_non_destructive_exec_blocks_destructive_and_sudo_commands(
         "tool:run-non-destructive-command",
         command_text="sudo ls /root",
     )
-    assert sudo["status"] == "blocked-sudo"
-    assert sudo["execution_mode"] == "non-destructive-exec"
+    assert sudo["status"] == "approval-required"
+    assert sudo["execution_mode"] == "sudo-exec-proposal"
+    proposal = sudo.get("proposal_content") or {}
+    assert proposal.get("type") == "sudo-exec-proposal"
+    assert proposal.get("command") == "sudo ls /root"
+    assert proposal.get("requires_sudo") is True
+    assert proposal.get("explicit_approval_required") is True
+    assert proposal.get("not_executed") is True
+
+
+def test_mutating_exec_command_surfaces_as_approval_gated_proposal_only(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="git add README.md",
+    )
+
+    assert result["status"] == "approval-required"
+    assert result["execution_mode"] == "mutating-exec-proposal"
+    assert result["approval"]["required"] is True
+    assert result["approval"]["granted"] is False
+    proposal = result.get("proposal_content") or {}
+    assert proposal.get("type") == "mutating-exec-proposal"
+    assert proposal.get("command") == "git add README.md"
+    assert proposal.get("scope") == "git"
+    assert proposal.get("explicit_approval_required") is True
+    assert proposal.get("not_executed") is True
 
 
 def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability() -> None:
@@ -165,6 +197,8 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
     assert "command_from: user-message" in template_tools
     assert "No sudo, package install/update, git mutation, delete, shell chaining, or redirection." in default_tools
     assert "blocks sudo, package mutation, git mutation, delete, shell chaining, and redirection." in template_tools
+    assert "approval-gated proposal and not as executed work" in default_tools
+    assert "approval-gated proposal and not as executed work" in template_tools
 
 
 def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime) -> None:
@@ -308,3 +342,30 @@ def test_workspace_write_execution_rejects_content_mismatch_against_approved_pro
 
     assert executed["ok"] is False
     assert executed["status"] == "proposal-content-mismatch"
+
+
+def test_approved_mutating_exec_proposal_stays_non_executable_in_this_pass(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    proposed = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="sudo ls /root",
+    )
+    assert proposed["status"] == "approval-required"
+    assert proposed["execution_mode"] == "sudo-exec-proposal"
+
+    request_id = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="sudo-exec-proposal",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_id
+
+    approved = isolated_runtime.mission_control.mc_approve_capability_request(request_id)
+    assert approved["request"]["status"] == "approved"
+
+    executed = isolated_runtime.mission_control.mc_execute_capability_request(request_id)
+    assert executed["ok"] is False
+    assert executed["status"] == "execution-disabled-in-this-pass"

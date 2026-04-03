@@ -73,3 +73,46 @@ def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime
     approval_required = caps_mod.invoke_workspace_capability("tool:propose-workspace-memory-update")
     assert approval_required["status"] == "approval-required"
     assert approval_required["execution_mode"] == "workspace-file-write"
+
+
+def test_approved_workspace_write_executes_only_with_explicit_content(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "")
+    target = workspace_dir / "MEMORY.md"
+    before = target.read_text(encoding="utf-8")
+
+    blocked = caps_mod.invoke_workspace_capability(
+        "tool:propose-workspace-memory-update",
+        approved=True,
+    )
+    assert blocked["status"] == "blocked-missing-write-content"
+    assert target.read_text(encoding="utf-8") == before
+
+    executed = caps_mod.invoke_workspace_capability(
+        "tool:propose-workspace-memory-update",
+        approved=True,
+        write_content="Approved workspace write.\nScoped to MEMORY.md only.\n",
+    )
+    assert executed["status"] == "executed"
+    assert executed["execution_mode"] == "workspace-file-write"
+    result = executed.get("result") or {}
+    assert result.get("type") == "workspace-file-write"
+    assert result.get("path") == "MEMORY.md"
+    assert result.get("workspace_scoped") is True
+    assert target.read_text(encoding="utf-8") == "Approved workspace write.\nScoped to MEMORY.md only.\n"
+
+
+def test_external_write_capability_stays_closed_even_when_approved(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:propose-external-repo-file-update",
+        approved=True,
+        write_content="should not be written\n",
+    )
+
+    assert result["status"] == "not-runnable"
+    assert result["execution_mode"] == "external-file-write"

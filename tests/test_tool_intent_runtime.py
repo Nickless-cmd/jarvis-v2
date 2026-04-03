@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from datetime import UTC, datetime
 
 import pytest
@@ -41,6 +42,9 @@ def test_tool_intent_builds_approval_gated_shape_from_awareness(
     assert surface["approval_state"] == "pending"
     assert surface["approval_source"] == "none"
     assert surface["execution_state"] == "not-executed"
+    assert surface["workspace_scoped"] is False
+    assert surface["external_mutation_permitted"] is False
+    assert surface["delete_permitted"] is False
     assert surface["mutation_intent_state"] == "proposal-only"
     assert surface["mutation_intent_classification"] == "git-mutate"
     assert surface["mutation_near"] is True
@@ -96,6 +100,9 @@ def test_tool_intent_stays_idle_when_awareness_is_stable(
     assert surface["execution_state"] == "not-executed"
     assert surface["execution_mode"] == "read-only"
     assert surface["mutation_permitted"] is False
+    assert surface["workspace_scoped"] is False
+    assert surface["external_mutation_permitted"] is False
+    assert surface["delete_permitted"] is False
     assert surface["mutation_intent_state"] == "idle"
     assert surface["mutation_intent_classification"] == "none"
     assert surface["mutation_near"] is False
@@ -124,6 +131,9 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
         "execution_operation": "inspect-working-tree",
         "execution_excerpt": ["modified:apps/api/jarvis_api/services/tool_intent_runtime.py"],
         "mutation_permitted": False,
+        "workspace_scoped": False,
+        "external_mutation_permitted": False,
+        "delete_permitted": False,
         "mutation_intent": {
             "active": True,
             "kind": "bounded-mutation-intent-light",
@@ -249,7 +259,7 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
         "write_proposal_boundary": "Write proposal light is approval-scoped runtime truth only.",
         "action_continuity": {
             "active": True,
-            "kind": "bounded-read-only-action-continuity-light",
+            "kind": "bounded-action-continuity-light",
             "continuity_id": "action-continuity:demo",
             "action_continuity_state": "carrying-forward",
             "last_action_type": "inspect-working-tree",
@@ -259,6 +269,7 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
             "last_action_at": datetime.now(UTC).isoformat(),
             "action_mode": "read-only",
             "read_only": True,
+            "workspace_write": False,
             "mutation_permitted": False,
             "followup_state": "carry-forward",
             "followup_hint": "Read-only inspection confirmed local modifications remain present.",
@@ -352,6 +363,9 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert self_model["tool_intent"]["execution_state"] == "read-only-completed"
     assert self_model["tool_intent"]["execution_mode"] == "read-only"
     assert self_model["tool_intent"]["mutation_permitted"] is False
+    assert self_model["tool_intent"]["workspace_scoped"] is False
+    assert self_model["tool_intent"]["external_mutation_permitted"] is False
+    assert self_model["tool_intent"]["delete_permitted"] is False
     assert self_model["tool_intent"]["mutation_intent_classification"] == "modify-file"
     assert self_model["tool_intent"]["mutation_intent_state"] == "proposal-only"
     assert self_model["tool_intent"]["write_proposal_type"] == "propose-file-modification"
@@ -371,6 +385,9 @@ def test_tool_intent_is_exposed_in_runtime_endpoint_and_self_model(
     assert "execution=read-only-completed" in layer["detail"]
     assert "execution_mode=read-only" in layer["detail"]
     assert "mutation_permitted=False" in layer["detail"]
+    assert "workspace_scoped=False" in layer["detail"]
+    assert "external_mutation_permitted=False" in layer["detail"]
+    assert "delete_permitted=False" in layer["detail"]
     assert "mutation_state=proposal-only" in layer["detail"]
     assert "mutation_classification=modify-file" in layer["detail"]
     assert "write_proposal_state=scoped-proposal" in layer["detail"]
@@ -432,6 +449,9 @@ def test_heartbeat_runtime_truth_includes_tool_intent(
     assert "execution_state=not-executed" in lines
     assert "execution_mode=read-only" in lines
     assert "mutation_permitted=False" in lines
+    assert "workspace_scoped=False" in lines
+    assert "external_mutation_permitted=False" in lines
+    assert "delete_permitted=False" in lines
     assert "mutation_state=proposal-only" in lines
     assert "mutation_classification=git-mutate" in lines
     assert "mutation_repo_scope=upstream-sync:feature/tool-intent->origin/main" in lines
@@ -628,6 +648,65 @@ def test_approved_read_only_tool_intent_executes_bounded_repo_inspection(
     assert approved["action_continuity_boundary"]
     assert "not MEMORY.md" in approved["action_continuity_boundary"]
     assert approved["truth"] == "derived-runtime-truth"
+
+
+def test_approved_workspace_write_execution_becomes_runtime_truth_and_continuity(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    tool_intent_mod = isolated_runtime.tool_intent_runtime
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    monkeypatch.setattr(
+        tool_intent_mod,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "clean",
+            "local_change_state": "clean",
+            "upstream_awareness": "in-sync",
+            "concern_state": "stable",
+            "source_contributors": ["repo-root", "git-status"],
+            "host_context": {
+                "repo_root": ".",
+                "git_present": True,
+            },
+            "repo_observation": {
+                "branch_name": "main",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:propose-workspace-memory-update",
+        approved=True,
+        write_content="Approved runtime truth write.\n",
+    )
+    assert result["status"] == "executed"
+
+    surface = tool_intent_mod.build_tool_intent_runtime_surface()
+
+    assert surface["execution_state"] == "workspace-write-completed"
+    assert surface["execution_mode"] == "workspace-write"
+    assert surface["execution_target"] == "MEMORY.md"
+    assert surface["mutation_permitted"] is True
+    assert surface["workspace_scoped"] is True
+    assert surface["external_mutation_permitted"] is False
+    assert surface["delete_permitted"] is False
+    assert surface["write_proposal_state"] == "executed"
+    assert surface["write_proposal_type"] == "propose-file-modification"
+    assert surface["write_proposal_scope"] == "workspace-file"
+    assert surface["write_proposal_targets"] == ["MEMORY.md"]
+    assert surface["write_proposal_execution_state"] == "workspace-write-completed"
+    assert surface["action_continuity_state"] == "carrying-forward"
+    assert surface["last_action_outcome"] == "workspace-write-completed"
+    assert surface["action_mode"] == "workspace-write"
+    assert surface["read_only"] is False
+    assert surface["workspace_write"] is True
+    assert surface["followup_state"] == "bounded-write-recorded"
+    assert surface["truth"] == "derived-runtime-truth"
 
 
 @pytest.mark.parametrize("approval_state", ["pending", "denied", "expired"])

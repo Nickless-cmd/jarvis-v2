@@ -519,6 +519,15 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_mutation_permitted": bool(
                 tool_intent.get("mutation_permitted", False)
             ),
+            "tool_intent_workspace_scoped": bool(
+                tool_intent.get("workspace_scoped", False)
+            ),
+            "tool_intent_external_mutation_permitted": bool(
+                tool_intent.get("external_mutation_permitted", False)
+            ),
+            "tool_intent_delete_permitted": bool(
+                tool_intent.get("delete_permitted", False)
+            ),
             "tool_intent_mutation_intent_state": str(
                 tool_intent.get("mutation_intent_state") or "idle"
             ),
@@ -1308,8 +1317,16 @@ def mc_ollama_models() -> dict:
 
 
 @router.post("/workspace-capabilities/{capability_id}/invoke")
-def mc_invoke_workspace_capability(capability_id: str, approved: bool = False) -> dict:
-    result = invoke_workspace_capability(capability_id, approved=approved)
+def mc_invoke_workspace_capability(
+    capability_id: str,
+    approved: bool = False,
+    write_content: str | None = None,
+) -> dict:
+    result = invoke_workspace_capability(
+        capability_id,
+        approved=approved,
+        write_content=write_content,
+    )
     return {
         "ok": result["status"] == "executed",
         **result,
@@ -1333,7 +1350,10 @@ def mc_approve_capability_request(request_id: str) -> dict:
 
 
 @router.post("/capability-approval-requests/{request_id}/execute")
-def mc_execute_capability_request(request_id: str) -> dict:
+def mc_execute_capability_request(
+    request_id: str,
+    write_content: str | None = None,
+) -> dict:
     request = get_capability_approval_request(request_id)
     if request is None:
         return {
@@ -1358,6 +1378,7 @@ def mc_execute_capability_request(request_id: str) -> dict:
         str(request.get("capability_id") or ""),
         approved=True,
         run_id=str(request.get("run_id") or "") or None,
+        write_content=write_content,
     )
     projected_request = record_capability_approval_request_execution(
         request_id,

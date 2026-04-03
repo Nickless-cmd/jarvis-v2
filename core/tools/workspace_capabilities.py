@@ -105,6 +105,7 @@ def invoke_workspace_capability(
     name: str = "default",
     run_id: str | None = None,
     approved: bool = False,
+    write_content: str | None = None,
 ) -> dict[str, object]:
     invoked_at = _now()
     event_bus.publish(
@@ -169,7 +170,7 @@ def invoke_workspace_capability(
             )
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
-        if not summary["available_now"]:
+        if summary["runtime_status"] != "approval-required" and not summary["available_now"]:
             result = {
                 "capability": summary,
                 "status": "unavailable",
@@ -202,6 +203,7 @@ def invoke_workspace_capability(
             workspace_dir=workspace_dir,
             section=section,
             summary=summary,
+            write_content=write_content,
         )
         _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
         _publish_capability_invocation_completed(result, invoked_at=invoked_at)
@@ -414,7 +416,11 @@ def _slugify(value: str) -> str:
 
 
 def _invoke_runnable_capability(
-    *, workspace_dir: Path, section: dict[str, str], summary: dict[str, object]
+    *,
+    workspace_dir: Path,
+    section: dict[str, str],
+    summary: dict[str, object],
+    write_content: str | None = None,
 ) -> dict[str, object]:
     if summary["execution_mode"] == "inline-text":
         return {
@@ -500,6 +506,49 @@ def _invoke_runnable_capability(
                 "path": str(candidate),
                 "text": _read_bounded_text(candidate),
             },
+        }
+
+    if summary["execution_mode"] == "workspace-file-write":
+        target_path = str(summary.get("target_path") or "").strip()
+        candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
+        if candidate is None:
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": (
+                    f"Declared workspace write target is outside workspace scope: {target_path or 'unknown'}"
+                ),
+            }
+        if write_content is None:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-write-content",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Approved workspace write execution requires explicit write_content.",
+            }
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        candidate.write_text(write_content, encoding="utf-8")
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=True),
+            "result": {
+                "type": "workspace-file-write",
+                "path": target_path,
+                "bytes_written": len(write_content.encode("utf-8")),
+                "text": _preview_text(
+                    write_content,
+                    limit=min(MAX_FILE_OUTPUT_CHARS, 400),
+                ),
+                "workspace_scoped": True,
+            },
+            "detail": f"Approved workspace write executed for {target_path}.",
         }
 
     return {

@@ -1129,6 +1129,11 @@ def _build_influence_trace(
     tool_intent_write_proposal_target_memory = bool(
         tool_intent.get("write_proposal_target_memory", False)
     )
+    tool_intent_workspace_scoped = bool(tool_intent.get("workspace_scoped", False))
+    tool_intent_external_mutation_permitted = bool(
+        tool_intent.get("external_mutation_permitted", False)
+    )
+    tool_intent_delete_permitted = bool(tool_intent.get("delete_permitted", False))
     tool_intent_continuity_state = str(
         tool_intent.get("action_continuity_state") or "idle"
     )
@@ -1160,7 +1165,9 @@ def _build_influence_trace(
             "tool-write-proposal "
             f"({tool_intent_write_proposal_state}, type={tool_intent_write_proposal_type}, "
             f"scope={tool_intent_write_proposal_scope}, criticality={tool_intent_write_proposal_criticality}, "
-            f"identity={tool_intent_write_proposal_target_identity}, memory={tool_intent_write_proposal_target_memory})"
+            f"identity={tool_intent_write_proposal_target_identity}, memory={tool_intent_write_proposal_target_memory}, "
+            f"workspace_scoped={tool_intent_workspace_scoped}, external_mutation_permitted={tool_intent_external_mutation_permitted}, "
+            f"delete_permitted={tool_intent_delete_permitted})"
         )
     else:
         inputs_absent.append("tool-write-proposal")
@@ -1239,6 +1246,9 @@ def _build_influence_trace(
         "tool_intent_write_proposal_criticality": tool_intent_write_proposal_criticality,
         "tool_intent_write_proposal_target_identity": tool_intent_write_proposal_target_identity,
         "tool_intent_write_proposal_target_memory": tool_intent_write_proposal_target_memory,
+        "tool_intent_workspace_scoped": tool_intent_workspace_scoped,
+        "tool_intent_external_mutation_permitted": tool_intent_external_mutation_permitted,
+        "tool_intent_delete_permitted": tool_intent_delete_permitted,
         "tool_intent_action_continuity_state": tool_intent_continuity_state,
         "tool_intent_last_action_outcome": tool_intent_last_action_outcome,
         "tool_intent_followup_state": tool_intent_followup_state,

@@ -8,6 +8,9 @@ from apps.api.jarvis_api.services.self_system_code_awareness import (
 from apps.api.jarvis_api.services.bounded_repo_tools_runtime import (
     build_bounded_repo_tool_execution_surface,
 )
+from apps.api.jarvis_api.services.bounded_workspace_write_runtime import (
+    build_bounded_workspace_write_execution_surface,
+)
 from apps.api.jarvis_api.services.bounded_action_continuity_runtime import (
     build_bounded_action_continuity_surface,
 )
@@ -84,10 +87,48 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         },
         awareness_surface=awareness,
     )
+    workspace_write_execution = build_bounded_workspace_write_execution_surface()
+    if str(workspace_write_execution.get("execution_state") or "not-executed") != "not-executed":
+        execution = {
+            **execution,
+            **workspace_write_execution,
+        }
+    effective_write_proposal = dict(write_proposal)
+    if str(execution.get("write_proposal_state") or "none") != "none":
+        effective_write_proposal = {
+            "write_proposal_state": execution.get("write_proposal_state") or "none",
+            "write_proposal_type": execution.get("write_proposal_type") or "none",
+            "write_proposal_scope": execution.get("write_proposal_scope") or "none",
+            "write_proposal_targets": execution.get("write_proposal_targets") or [],
+            "write_proposal_target_paths": execution.get("write_proposal_target_paths")
+            or [],
+            "write_proposal_reason": execution.get("write_proposal_reason") or "",
+            "explicit_approval_required": bool(
+                execution.get("write_proposal_explicit_approval_required", True)
+            ),
+            "approval_scope": execution.get("write_proposal_approval_scope")
+            or approval_scope,
+            "criticality": execution.get("write_proposal_criticality") or "none",
+            "confidence": execution.get("write_proposal_confidence") or confidence,
+            "proposal_only": bool(execution.get("write_proposal_proposal_only", True)),
+            "not_executed": bool(execution.get("write_proposal_not_executed", True)),
+            "execution_state": execution.get("write_proposal_execution_state")
+            or "not-executed",
+            "repo_scope": execution.get("write_proposal_repo_scope") or "",
+            "system_scope": execution.get("write_proposal_system_scope") or "",
+            "sudo_required": bool(execution.get("write_proposal_sudo_required", False)),
+            "target_identity": bool(execution.get("write_proposal_target_identity", False)),
+            "target_memory": bool(execution.get("write_proposal_target_memory", False)),
+            "boundary": execution.get("write_proposal_boundary") or "",
+        }
+    effective_approval = dict(approval)
+    if str(execution.get("approval_state") or "none") != "none":
+        effective_approval["approval_state"] = execution.get("approval_state") or "none"
+        effective_approval["approval_source"] = execution.get("approval_source") or "none"
     action_continuity = build_bounded_action_continuity_surface(
         {
             **intent_surface,
-            **approval,
+            **effective_approval,
             **execution,
             "confidence": confidence,
         },
@@ -112,6 +153,11 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "execution_operation": execution.get("execution_operation") or intent_type,
         "execution_excerpt": execution.get("execution_excerpt") or [],
         "mutation_permitted": bool(execution.get("mutation_permitted", False)),
+        "workspace_scoped": bool(execution.get("workspace_scoped", False)),
+        "external_mutation_permitted": bool(
+            execution.get("external_mutation_permitted", False)
+        ),
+        "delete_permitted": bool(execution.get("delete_permitted", False)),
         "mutation_intent": mutation_intent,
         "mutation_intent_state": mutation_intent.get("mutation_intent_state") or "idle",
         "mutation_intent_classification": mutation_intent.get("classification") or "none",
@@ -141,39 +187,41 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             (mutation_intent.get("scope") or {}).get("mutation_critical", False)
         ),
         "mutation_boundary": mutation_intent.get("boundary") or "",
-        "write_proposal": write_proposal,
-        "write_proposal_state": write_proposal.get("write_proposal_state") or "none",
-        "write_proposal_type": write_proposal.get("write_proposal_type") or "none",
-        "write_proposal_scope": write_proposal.get("write_proposal_scope") or "none",
-        "write_proposal_targets": write_proposal.get("write_proposal_targets") or [],
-        "write_proposal_target_paths": write_proposal.get("write_proposal_target_paths")
+        "write_proposal": effective_write_proposal,
+        "write_proposal_state": effective_write_proposal.get("write_proposal_state") or "none",
+        "write_proposal_type": effective_write_proposal.get("write_proposal_type") or "none",
+        "write_proposal_scope": effective_write_proposal.get("write_proposal_scope") or "none",
+        "write_proposal_targets": effective_write_proposal.get("write_proposal_targets") or [],
+        "write_proposal_target_paths": effective_write_proposal.get("write_proposal_target_paths")
         or [],
-        "write_proposal_reason": write_proposal.get("write_proposal_reason") or "",
+        "write_proposal_reason": effective_write_proposal.get("write_proposal_reason") or "",
         "write_proposal_explicit_approval_required": bool(
-            write_proposal.get("explicit_approval_required", True)
+            effective_write_proposal.get("explicit_approval_required", True)
         ),
-        "write_proposal_approval_scope": write_proposal.get("approval_scope")
+        "write_proposal_approval_scope": effective_write_proposal.get("approval_scope")
         or approval_scope,
-        "write_proposal_criticality": write_proposal.get("criticality") or "none",
-        "write_proposal_confidence": write_proposal.get("confidence") or confidence,
+        "write_proposal_criticality": effective_write_proposal.get("criticality") or "none",
+        "write_proposal_confidence": effective_write_proposal.get("confidence") or confidence,
         "write_proposal_proposal_only": bool(
-            write_proposal.get("proposal_only", True)
+            effective_write_proposal.get("proposal_only", True)
         ),
-        "write_proposal_not_executed": bool(write_proposal.get("not_executed", True)),
-        "write_proposal_execution_state": write_proposal.get("execution_state")
+        "write_proposal_not_executed": bool(
+            effective_write_proposal.get("not_executed", True)
+        ),
+        "write_proposal_execution_state": effective_write_proposal.get("execution_state")
         or "not-executed",
-        "write_proposal_repo_scope": write_proposal.get("repo_scope") or "",
-        "write_proposal_system_scope": write_proposal.get("system_scope") or "",
+        "write_proposal_repo_scope": effective_write_proposal.get("repo_scope") or "",
+        "write_proposal_system_scope": effective_write_proposal.get("system_scope") or "",
         "write_proposal_sudo_required": bool(
-            write_proposal.get("sudo_required", False)
+            effective_write_proposal.get("sudo_required", False)
         ),
         "write_proposal_target_identity": bool(
-            write_proposal.get("target_identity", False)
+            effective_write_proposal.get("target_identity", False)
         ),
         "write_proposal_target_memory": bool(
-            write_proposal.get("target_memory", False)
+            effective_write_proposal.get("target_memory", False)
         ),
-        "write_proposal_boundary": write_proposal.get("boundary") or "",
+        "write_proposal_boundary": effective_write_proposal.get("boundary") or "",
         "action_continuity": action_continuity,
         "action_continuity_state": action_continuity.get("action_continuity_state") or "idle",
         "last_action_type": action_continuity.get("last_action_type") or "",
@@ -183,6 +231,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "last_action_at": action_continuity.get("last_action_at") or "",
         "action_mode": action_continuity.get("action_mode") or "read-only",
         "read_only": bool(action_continuity.get("read_only", True)),
+        "workspace_write": bool(action_continuity.get("workspace_write", False)),
         "followup_state": action_continuity.get("followup_state") or "none",
         "followup_hint": action_continuity.get("followup_hint") or "",
         "post_action_understanding": action_continuity.get("post_action_understanding") or "",
@@ -199,17 +248,17 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "intent_reason": intent_reason,
         "approval_required": True,
         "approval_scope": approval_scope,
-        "approval_state": approval.get("approval_state") or "none",
-        "approval_source": approval.get("approval_source") or "none",
-        "approval_reason": approval.get("approval_reason") or "",
-        "approval_requested_at": approval.get("approval_requested_at") or "",
-        "approval_expires_at": approval.get("approval_expires_at") or "",
-        "approval_resolved_at": approval.get("approval_resolved_at") or "",
-        "approval_resolution_reason": approval.get("approval_resolution_reason") or "",
-        "approval_resolution_message": approval.get("approval_resolution_message") or "",
-        "approval_session_id": approval.get("approval_session_id") or "",
-        "approval_lifecycle": approval.get("approval_lifecycle") or "bounded-approval-surface-light",
-        "approval_semantics": approval.get("approval_semantics") or {
+        "approval_state": effective_approval.get("approval_state") or "none",
+        "approval_source": effective_approval.get("approval_source") or "none",
+        "approval_reason": effective_approval.get("approval_reason") or "",
+        "approval_requested_at": effective_approval.get("approval_requested_at") or "",
+        "approval_expires_at": effective_approval.get("approval_expires_at") or "",
+        "approval_resolved_at": effective_approval.get("approval_resolved_at") or "",
+        "approval_resolution_reason": effective_approval.get("approval_resolution_reason") or "",
+        "approval_resolution_message": effective_approval.get("approval_resolution_message") or "",
+        "approval_session_id": effective_approval.get("approval_session_id") or "",
+        "approval_lifecycle": effective_approval.get("approval_lifecycle") or "bounded-approval-surface-light",
+        "approval_semantics": effective_approval.get("approval_semantics") or {
             "verbal_supported": True,
             "mc_supported": True,
             "mode": "explicit-bounded-approval-only",
@@ -234,7 +283,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             ],
         ],
         "boundary": (
-            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope; mutation classification and write proposals are runtime truth only, mutation_permitted=false, mutation_execution_state=not-executed, write_proposal_execution_state=not-executed, and no git fetch, pull, commit, reset, checkout, apply, install, delete, or file/system write has been performed."
+            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content; external write, delete, git mutation, package install/update, and system mutation remain closed in this pass."
         ),
         "seam_usage": [
             "bounded-read-only-repo-tools",

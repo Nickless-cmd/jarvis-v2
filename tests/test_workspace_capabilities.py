@@ -27,12 +27,14 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert "tool:read-workspace-user-profile" in runtime_capabilities
     assert "tool:search-workspace-memory-continuity" in runtime_capabilities
     assert "tool:read-repository-readme" in runtime_capabilities
+    assert "tool:read-external-file-by-path" in runtime_capabilities
     assert "tool:propose-workspace-memory-update" in runtime_capabilities
     assert "tool:propose-external-repo-file-update" in runtime_capabilities
 
     assert runtime_capabilities["tool:read-workspace-user-profile"]["available_now"] is True
     assert runtime_capabilities["tool:search-workspace-memory-continuity"]["available_now"] is True
     assert runtime_capabilities["tool:read-repository-readme"]["available_now"] is True
+    assert runtime_capabilities["tool:read-external-file-by-path"]["available_now"] is True
     assert runtime_capabilities["tool:propose-workspace-memory-update"]["runtime_status"] == "approval-required"
     assert runtime_capabilities["tool:propose-workspace-memory-update"]["available_now"] is False
 
@@ -58,6 +60,49 @@ def test_workspace_and_external_read_capabilities_execute(isolated_runtime) -> N
     assert result.get("type") == "external-file-read"
     assert str(result.get("path") or "").endswith("README.md")
     assert len(str(result.get("text") or "")) > 0
+
+
+def test_dynamic_external_read_capability_reads_explicit_external_path(
+    isolated_runtime,
+    tmp_path: Path,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    external_file = tmp_path / "external-visible-read.txt"
+    external_file.write_text("External capability smoke text.\n", encoding="utf-8")
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:read-external-file-by-path",
+        target_path=str(external_file),
+    )
+
+    assert result["status"] == "executed"
+    assert result["execution_mode"] == "external-file-read"
+    payload = result.get("result") or {}
+    assert payload.get("type") == "external-file-read"
+    assert payload.get("path") == str(external_file.resolve())
+    assert payload.get("target_source") == "invocation-argument"
+    assert payload.get("workspace_scoped") is False
+    assert "External capability smoke text." in str(payload.get("text") or "")
+
+
+def test_dynamic_external_read_rejects_workspace_scoped_target(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "")
+    workspace_target = workspace_dir / "USER.md"
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:read-external-file-by-path",
+        target_path=str(workspace_target),
+    )
+
+    assert result["status"] == "blocked-scope-mismatch"
+    assert result["execution_mode"] == "external-file-read"
 
 
 def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime) -> None:

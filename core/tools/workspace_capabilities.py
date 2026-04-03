@@ -107,6 +107,7 @@ def invoke_workspace_capability(
     run_id: str | None = None,
     approved: bool = False,
     write_content: str | None = None,
+    target_path: str | None = None,
 ) -> dict[str, object]:
     invoked_at = _now()
     event_bus.publish(
@@ -210,6 +211,7 @@ def invoke_workspace_capability(
             section=section,
             summary=summary,
             write_content=write_content,
+            target_path=target_path,
         )
         _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
         _publish_capability_invocation_completed(result, invoked_at=invoked_at)
@@ -334,7 +336,8 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
     heading = section["heading"]
     read_file_path = _declared_read_file_path(section["body"])
     search_spec = _declared_search_file_spec(section["body"])
-    external_read_path = _declared_external_file_path(section["body"])
+    external_read_spec = _declared_external_file_spec(section["body"])
+    external_read_path = external_read_spec["path"] if external_read_spec else None
     write_target_path = _declared_write_target_path(section["body"])
     if heading.startswith(RUNTIME_NOTE_PREFIX):
         name = heading[len(RUNTIME_NOTE_PREFIX) :].strip()
@@ -351,7 +354,7 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
     elif heading.startswith(READ_EXTERNAL_FILE_PREFIX):
         name = heading[len(READ_EXTERNAL_FILE_PREFIX) :].strip()
         execution_mode = "external-file-read"
-        runnable = external_read_path is not None
+        runnable = external_read_spec is not None
     elif heading.startswith(WRITE_FILE_PREFIX):
         name = heading[len(WRITE_FILE_PREFIX) :].strip()
         execution_mode = "workspace-file-write"
@@ -384,6 +387,11 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         == "required"
         or _approval_policy_for_execution_mode(execution_mode) == "required",
         "target_path": read_file_path or external_read_path or write_target_path,
+        "target_path_source": (
+            (external_read_spec or {}).get("path_source")
+            if execution_mode == "external-file-read"
+            else "declared-path"
+        ),
         "target_query": search_spec["query"] if search_spec else None,
     }
 
@@ -427,6 +435,7 @@ def _invoke_runnable_capability(
     section: dict[str, str],
     summary: dict[str, object],
     write_content: str | None = None,
+    target_path: str | None = None,
 ) -> dict[str, object]:
     if summary["execution_mode"] == "inline-text":
         return {
@@ -491,8 +500,44 @@ def _invoke_runnable_capability(
         }
 
     if summary["execution_mode"] == "external-file-read":
-        target_path = str(summary.get("target_path") or "").strip()
-        candidate = _resolve_external_path(workspace_dir, target_path)
+        declared_target_path = str(summary.get("target_path") or "").strip()
+        target_path_source = str(summary.get("target_path_source") or "").strip()
+        resolved_target_path = (
+            str(target_path or "").strip()
+            if target_path_source == "invocation-argument"
+            else declared_target_path
+        )
+        if not resolved_target_path:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-target-path",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": "External file read requires an explicit target_path.",
+            }
+        candidate = _resolve_external_path(workspace_dir, resolved_target_path)
+        if candidate is None:
+            return {
+                "capability": summary,
+                "status": "blocked-invalid-target-path",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": f"Declared external file path is invalid: {resolved_target_path}",
+            }
+        if _is_within_workspace_root(workspace_dir, candidate):
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": (
+                    "External file read is bounded to paths outside the active workspace root."
+                ),
+            }
+        target_path = resolved_target_path
         if candidate is None or not candidate.exists() or not candidate.is_file():
             return {
                 "capability": summary,
@@ -511,6 +556,8 @@ def _invoke_runnable_capability(
                 "type": "external-file-read",
                 "path": str(candidate),
                 "text": _read_bounded_text(candidate),
+                "target_source": target_path_source or "declared-path",
+                "workspace_scoped": False,
             },
         }
 
@@ -691,8 +738,21 @@ def _declared_search_file_spec(body: str) -> dict[str, str] | None:
     }
 
 
-def _declared_external_file_path(body: str) -> str | None:
-    return _declared_body_value(body, "path", validate=False)
+def _declared_external_file_spec(body: str) -> dict[str, str] | None:
+    path = _declared_body_value(body, "path", validate=False)
+    if path is not None:
+        return {
+            "path": path,
+            "path_source": "declared-path",
+        }
+    path_from = _declared_body_value(body, "path_from", validate=False)
+    normalized_source = str(path_from or "").strip().lower()
+    if normalized_source in {"user-message", "invocation-argument"}:
+        return {
+            "path": "",
+            "path_source": "invocation-argument",
+        }
+    return None
 
 
 def _declared_write_target_path(body: str) -> str | None:
@@ -743,10 +803,21 @@ def _resolve_external_path(workspace_dir: Path, value: str) -> Path | None:
     expanded = _expand_declared_path(value, workspace_dir=workspace_dir)
     if not expanded:
         return None
+    if expanded.startswith("~"):
+        expanded = str(Path(expanded).expanduser())
     candidate = Path(expanded)
     if not candidate.is_absolute():
         candidate = (workspace_dir / candidate).resolve()
     return candidate.resolve()
+
+
+def _is_within_workspace_root(workspace_dir: Path, candidate: Path) -> bool:
+    root = workspace_dir.resolve()
+    try:
+        candidate.resolve().relative_to(root)
+        return True
+    except ValueError:
+        return False
 
 
 def _expand_declared_path(value: str, *, workspace_dir: Path) -> str:

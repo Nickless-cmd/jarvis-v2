@@ -14,6 +14,7 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
     assert "tool:read-workspace-user-profile" in instruction
     assert "tool:search-workspace-memory-continuity" in instruction
     assert "tool:read-repository-readme" in instruction
+    assert "tool:read-external-file-by-path" in instruction
     assert "tool:propose-workspace-memory-update" in instruction
     assert "tool:propose-external-repo-file-update" in instruction
     assert "workspace_read=allowed" in instruction
@@ -35,3 +36,4 @@ def test_visible_prompt_assembly_keeps_text_capability_contract(isolated_runtime
     assert "emit exactly one capability-call line and no surrounding prose" in assembly.text
     assert "json_tool_call_supported=False" in assembly.text
     assert "tool:read-workspace-user-profile" in assembly.text
+    assert "tool:read-external-file-by-path" in assembly.text

@@ -12,6 +12,7 @@ Callable now:
 - `tool:read-workspace-user-profile`
 - `tool:search-workspace-memory-continuity`
 - `tool:read-repository-readme`
+- `tool:read-external-file-by-path`
 
 Approval-gated now:
 - `tool:propose-workspace-memory-update`
@@ -35,6 +36,12 @@ Searches workspace memory for continuity anchors about `project`.
 path: ${PROJECT_ROOT}/README.md
 
 Reads the bounded repository README outside the workspace root.
+
+## READ_EXTERNAL_FILE: read external file by path
+path_from: user-message
+
+Reads one explicit external file path from the current user message.
+Use this only for read-only external/system file access outside the active workspace root.
 
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md

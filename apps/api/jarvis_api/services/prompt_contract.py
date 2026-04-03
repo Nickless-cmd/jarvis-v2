@@ -1216,6 +1216,14 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         "- Do not emit JSON or pseudo-JSON tool calls. "
         f"json_tool_call_supported={contract.get('json_tool_call_supported', False)}"
     )
+    if any(
+        str(item.get("execution_mode") or "") == "external-file-read"
+        and str(item.get("target_path_source") or "") == "invocation-argument"
+        for item in available
+    ):
+        lines.append(
+            "- Dynamic external file read is allowed only when the user message already names one explicit /absolute/or ~/path outside the workspace root."
+        )
     if available:
         lines.append(
             "- Callable capability_ids: "

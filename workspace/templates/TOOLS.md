@@ -25,6 +25,12 @@ path: ${PROJECT_ROOT}/README.md
 
 Reads a bounded file outside the workspace root. External read is allowed.
 
+## READ_EXTERNAL_FILE: read external file by path
+path_from: user-message
+
+Reads one explicit external file path from the current user message.
+This stays read-only and is bounded to paths outside the active workspace root.
+
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md
 

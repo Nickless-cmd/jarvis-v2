@@ -13,6 +13,7 @@ def test_runtime_self_model_surfaces_capability_registry_truth(isolated_runtime)
     assert capability_truth.get("contract", {}).get("mode") == "text-capability-call"
     assert capability_truth.get("contract", {}).get("json_tool_call_supported") is False
     assert "tool:read-workspace-user-profile" in (capability_truth.get("callable_capability_ids") or [])
+    assert "tool:read-external-file-by-path" in (capability_truth.get("callable_capability_ids") or [])
     assert "tool:propose-workspace-memory-update" in (capability_truth.get("approval_gated_capability_ids") or [])
 
     lines = self_model_mod.build_self_model_prompt_lines()

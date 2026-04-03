@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -837,6 +838,71 @@ def test_mutating_exec_proposal_becomes_runtime_truth_without_execution(
     assert surface["mutating_exec_requires_sudo"] is True
     assert surface["mutating_exec_criticality"] == "high"
     assert surface["mutating_exec_command_fingerprint"]
+
+
+def test_approved_non_sudo_mutating_exec_becomes_runtime_truth_and_continuity(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    tool_intent_mod = isolated_runtime.tool_intent_runtime
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    source = Path("/tmp/jarvis_tool_intent_mutating_exec_source.txt")
+    target = Path("/tmp/jarvis_tool_intent_mutating_exec_target.txt")
+    source.write_text("runtime truth mutating exec\n", encoding="utf-8")
+    if target.exists():
+        target.unlink()
+
+    monkeypatch.setattr(
+        tool_intent_mod,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "clean",
+            "local_change_state": "clean",
+            "upstream_awareness": "in-sync",
+            "concern_state": "stable",
+            "source_contributors": ["repo-root", "git-status"],
+            "repo_observation": {
+                "branch_name": "main",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+
+    proposed = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"cp {source} {target}",
+    )
+    assert proposed["status"] == "approval-required"
+    request_id = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="mutating-exec-proposal",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_id
+    _ = isolated_runtime.mission_control.mc_approve_capability_request(request_id)
+
+    executed = isolated_runtime.mission_control.mc_execute_capability_request(request_id)
+    assert executed["ok"] is True
+
+    surface = tool_intent_mod.build_tool_intent_runtime_surface()
+
+    assert surface["execution_state"] == "mutating-exec-completed"
+    assert surface["execution_mode"] == "mutating-exec"
+    assert surface["mutation_permitted"] is True
+    assert surface["workspace_scoped"] is False
+    assert surface["external_mutation_permitted"] is True
+    assert surface["delete_permitted"] is False
+    assert surface["mutating_exec_proposal_state"] == "executed"
+    assert surface["mutating_exec_proposal_command"] == f"cp {source} {target}"
+    assert surface["mutating_exec_proposal_scope"] == "filesystem"
+    assert surface["mutating_exec_requires_sudo"] is False
+    assert surface["mutating_exec_command_fingerprint"]
+    assert surface["action_continuity_state"] == "carrying-forward"
+    assert surface["last_action_outcome"] == "mutating-exec-completed"
+    assert surface["action_mode"] == "mutating-exec"
+    assert surface["truth"] == "derived-runtime-truth"
 
 
 @pytest.mark.parametrize("approval_state", ["pending", "denied", "expired"])

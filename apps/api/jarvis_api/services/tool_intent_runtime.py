@@ -378,7 +378,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             ],
         ],
         "boundary": (
-            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content; external write, delete, git mutation, package install/update, and system mutation remain closed in this pass."
+            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content. Approved bounded non-sudo mutating exec may execute only for the exact approved command fingerprint; sudo, delete, git mutation, package install/update, and broader system mutation remain closed in this pass."
         ),
         "seam_usage": [
             "bounded-read-only-repo-tools",
@@ -397,6 +397,8 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
 def _build_mutating_exec_proposal_surface() -> dict[str, object]:
     invocation = dict((get_capability_invocation_truth().get("last_invocation") or {}))
     proposal_content = dict(invocation.get("proposal_content") or {})
+    result = dict(invocation.get("result") or {})
+    approval = dict(invocation.get("approval") or {})
     execution_mode = str(invocation.get("execution_mode") or "")
     status = str(invocation.get("status") or "not-executed")
 
@@ -413,8 +415,77 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
         "mutating_exec_command_fingerprint": "",
         "mutating_exec_source_contributors": [],
     }
-    if execution_mode not in {"mutating-exec-proposal", "sudo-exec-proposal"}:
+    if execution_mode not in {
+        "mutating-exec-proposal",
+        "sudo-exec-proposal",
+        "mutating-exec",
+    }:
         return base
+
+    command = str(
+        proposal_content.get("command")
+        or proposal_content.get("content")
+        or result.get("command_text")
+        or ""
+    )
+    scope = str(proposal_content.get("scope") or result.get("scope") or "filesystem")
+    requires_sudo = bool(
+        proposal_content.get("requires_sudo", execution_mode == "sudo-exec-proposal")
+    )
+    criticality = str(
+        proposal_content.get("criticality")
+        or ("high" if execution_mode == "sudo-exec-proposal" else "medium")
+    )
+    fingerprint = str(
+        proposal_content.get("fingerprint") or result.get("command_fingerprint") or ""
+    )
+    if execution_mode == "mutating-exec":
+        exit_code = result.get("exit_code")
+        execution_state = "mutating-exec-completed"
+        if exit_code not in (None, 0):
+            execution_state = "mutating-exec-failed"
+        return {
+            **base,
+            "execution_state": execution_state,
+            "execution_mode": execution_mode,
+            "execution_target": command or str(proposal_content.get("target") or "mutating-exec"),
+            "execution_summary": str(
+                invocation.get("detail")
+                or proposal_content.get("reason")
+                or "Approved bounded non-sudo mutating exec executed."
+            ),
+            "execution_confidence": "high",
+            "mutation_permitted": True,
+            "workspace_scoped": False,
+            "external_mutation_permitted": True,
+            "delete_permitted": False,
+            "approval_state": "approved",
+            "approval_source": "capability-approval",
+            "mutating_exec_proposal_state": "executed",
+            "mutating_exec_proposal_command": command,
+            "mutating_exec_proposal_summary": str(
+                proposal_content.get("summary") or command
+            ),
+            "mutating_exec_proposal_scope": scope,
+            "mutating_exec_proposal_reason": str(
+                proposal_content.get("reason")
+                or invocation.get("detail")
+                or "Approved bounded non-sudo mutating exec executed."
+            ),
+            "mutating_exec_requires_approval": True,
+            "mutating_exec_requires_sudo": requires_sudo,
+            "mutating_exec_criticality": criticality,
+            "mutating_exec_confidence": str(proposal_content.get("confidence") or "high"),
+            "mutating_exec_command_fingerprint": fingerprint,
+            "mutating_exec_source_contributors": proposal_content.get(
+                "source_contributors"
+            )
+            or ["workspace-capability-runtime", "exec-command-classifier"],
+            "source_contributors": [
+                "bounded-mutating-exec-runtime",
+                "workspace-capability-runtime",
+            ],
+        }
 
     return {
         **base,
@@ -431,31 +502,30 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
         "workspace_scoped": False,
         "external_mutation_permitted": False,
         "delete_permitted": False,
-        "approval_state": "pending" if status == "approval-required" else "none",
-        "approval_source": "capability-approval" if status == "approval-required" else "none",
-        "mutating_exec_proposal_state": "approval-required-proposal",
-        "mutating_exec_proposal_command": str(
-            proposal_content.get("command") or proposal_content.get("content") or ""
+        "approval_state": (
+            "pending"
+            if status == "approval-required"
+            else ("approved" if approval.get("approved") else "none")
         ),
+        "approval_source": (
+            "capability-approval"
+            if status == "approval-required" or approval.get("approved")
+            else "none"
+        ),
+        "mutating_exec_proposal_state": "approval-required-proposal",
+        "mutating_exec_proposal_command": command,
         "mutating_exec_proposal_summary": str(proposal_content.get("summary") or ""),
-        "mutating_exec_proposal_scope": str(proposal_content.get("scope") or "filesystem"),
+        "mutating_exec_proposal_scope": scope,
         "mutating_exec_proposal_reason": str(
             proposal_content.get("reason")
             or invocation.get("detail")
             or "Mutating exec proposal captured but not executed."
         ),
         "mutating_exec_requires_approval": True,
-        "mutating_exec_requires_sudo": bool(
-            proposal_content.get("requires_sudo", execution_mode == "sudo-exec-proposal")
-        ),
-        "mutating_exec_criticality": str(
-            proposal_content.get("criticality")
-            or ("high" if execution_mode == "sudo-exec-proposal" else "medium")
-        ),
+        "mutating_exec_requires_sudo": requires_sudo,
+        "mutating_exec_criticality": criticality,
         "mutating_exec_confidence": str(proposal_content.get("confidence") or "high"),
-        "mutating_exec_command_fingerprint": str(
-            proposal_content.get("fingerprint") or ""
-        ),
+        "mutating_exec_command_fingerprint": fingerprint,
         "mutating_exec_source_contributors": proposal_content.get(
             "source_contributors"
         )

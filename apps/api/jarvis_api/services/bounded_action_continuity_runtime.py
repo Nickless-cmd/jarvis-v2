@@ -31,6 +31,7 @@ def build_bounded_action_continuity_surface(
 
     persistable = dict(current)
     persistable.pop("workspace_write", None)
+    persistable.pop("mutating_exec", None)
     stored = upsert_bounded_action_continuity_state(**persistable)
     return _normalize_action_continuity_surface(stored)
 
@@ -46,6 +47,8 @@ def _derive_current_action_continuity_surface(
         "read-only-failed",
         "workspace-write-completed",
         "workspace-write-failed",
+        "mutating-exec-completed",
+        "mutating-exec-failed",
     }:
         return None
 
@@ -116,6 +119,7 @@ def _derive_current_action_continuity_surface(
         "action_mode": action_mode,
         "read_only": action_mode == "read-only",
         "workspace_write": action_mode == "workspace-write",
+        "mutating_exec": action_mode == "mutating-exec",
         "mutation_permitted": mutation_permitted,
         "followup_state": followup_state,
         "followup_hint": followup_hint,
@@ -160,11 +164,27 @@ def _derive_followup_from_awareness(
             "concern",
         )
 
+    if execution_state == "mutating-exec-failed":
+        return (
+            "review-bounded-mutating-exec",
+            "Den approved bounded non-sudo mutating exec fejlede; review den godkendte kommando og output før et nyt forsøg.",
+            "Approved bounded non-sudo mutating exec nåede ikke et stabilt resultat.",
+            "concern",
+        )
+
     if execution_state == "workspace-write-completed":
         return (
             "bounded-write-recorded",
             f"Approved workspace write blev udført for {action_target}; næste skridt er review af resultatet inden yderligere mutation.",
             f"Workspace write execution udførte en bounded ændring mod {action_target} inden for eksplicit approval.",
+            "stable",
+        )
+
+    if execution_state == "mutating-exec-completed":
+        return (
+            "bounded-mutating-exec-recorded",
+            f"Approved bounded non-sudo mutating exec blev udført for {action_target}; næste skridt er review af output og effekt før yderligere mutation.",
+            f"Approved bounded non-sudo mutating exec udførte {action_type} mod {action_target} inden for eksplicit approval.",
             "stable",
         )
 
@@ -201,7 +221,11 @@ def _derive_followup_from_awareness(
 
 
 def _derive_continuity_state(*, execution_state: str, followup_state: str) -> str:
-    if execution_state in {"read-only-failed", "workspace-write-failed"}:
+    if execution_state in {
+        "read-only-failed",
+        "workspace-write-failed",
+        "mutating-exec-failed",
+    }:
         return "attention-required"
     if followup_state in {
         "approval-may-be-needed",
@@ -210,6 +234,8 @@ def _derive_continuity_state(*, execution_state: str, followup_state: str) -> st
         "retry-read-only",
         "review-bounded-write",
         "bounded-write-recorded",
+        "review-bounded-mutating-exec",
+        "bounded-mutating-exec-recorded",
     }:
         return "carrying-forward"
     return "settled"
@@ -253,6 +279,7 @@ def _default_action_continuity_surface() -> dict[str, object]:
         "action_mode": "read-only",
         "read_only": True,
         "workspace_write": False,
+        "mutating_exec": False,
         "mutation_permitted": False,
         "followup_state": "none",
         "followup_hint": "",
@@ -273,6 +300,9 @@ def _normalize_action_continuity_surface(surface: dict[str, object]) -> dict[str
     normalized = dict(surface)
     normalized["workspace_write"] = (
         str(normalized.get("action_mode") or "read-only") == "workspace-write"
+    )
+    normalized["mutating_exec"] = (
+        str(normalized.get("action_mode") or "read-only") == "mutating-exec"
     )
     return normalized
 

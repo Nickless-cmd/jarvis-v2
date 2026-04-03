@@ -1380,6 +1380,7 @@ def mc_approve_capability_request(request_id: str) -> dict:
 def mc_execute_capability_request(
     request_id: str,
     write_content: str | None = None,
+    command_text: str | None = None,
 ) -> dict:
     request = get_capability_approval_request(request_id)
     if request is None:
@@ -1400,16 +1401,13 @@ def mc_execute_capability_request(
             "request": request,
             "invocation": None,
         }
-    if str(request.get("execution_mode") or "") in {
-        "mutating-exec-proposal",
-        "sudo-exec-proposal",
-    }:
+    if str(request.get("execution_mode") or "") == "sudo-exec-proposal":
         return {
             "ok": False,
             "request_id": request_id,
             "status": "execution-disabled-in-this-pass",
             "detail": (
-                "Mutating exec proposals remain approval-scoped runtime truth only in this pass and are not executable."
+                "Sudo exec proposals remain approval-scoped runtime truth only in this pass and are not executable."
             ),
             "request": request,
             "invocation": None,
@@ -1418,17 +1416,24 @@ def mc_execute_capability_request(
     proposed_content = str(request.get("proposal_content") or "")
     proposed_fingerprint = str(request.get("proposal_content_fingerprint") or "")
     final_write_content = write_content
-    if proposed_content and final_write_content is None:
-        final_write_content = proposed_content
-    if proposed_fingerprint and final_write_content is not None:
-        supplied_fingerprint = sha1(final_write_content.encode("utf-8")).hexdigest()[:16]
+    final_command_text = command_text
+    if proposed_content and final_write_content is None and final_command_text is None:
+        if str(request.get("execution_mode") or "") == "workspace-file-write":
+            final_write_content = proposed_content
+        elif str(request.get("execution_mode") or "") == "mutating-exec-proposal":
+            final_command_text = proposed_content
+    fingerprint_source = final_write_content
+    if str(request.get("execution_mode") or "") == "mutating-exec-proposal":
+        fingerprint_source = final_command_text
+    if proposed_fingerprint and fingerprint_source is not None:
+        supplied_fingerprint = sha1(fingerprint_source.encode("utf-8")).hexdigest()[:16]
         if supplied_fingerprint != proposed_fingerprint:
             return {
                 "ok": False,
                 "request_id": request_id,
                 "status": "proposal-content-mismatch",
                 "detail": (
-                    "Execution write_content does not match the approved bounded proposal content fingerprint."
+                    "Execution content does not match the approved bounded proposal content fingerprint."
                 ),
                 "request": request,
                 "invocation": None,
@@ -1439,6 +1444,7 @@ def mc_execute_capability_request(
         approved=True,
         run_id=str(request.get("run_id") or "") or None,
         write_content=final_write_content,
+        command_text=final_command_text,
     )
     projected_request = record_capability_approval_request_execution(
         request_id,

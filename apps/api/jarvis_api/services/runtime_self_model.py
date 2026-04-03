@@ -310,6 +310,10 @@ def _collect_layers() -> list[dict[str, str]]:
             f"write_proposal_target={tool_intent.get('write_proposal_target') or 'none'}; "
             f"write_proposal_content_state={tool_intent.get('write_proposal_content_state') or 'none'}; "
             f"write_proposal_content_fingerprint={tool_intent.get('write_proposal_content_fingerprint') or 'none'}; "
+            f"mutating_exec_state={tool_intent.get('mutating_exec_proposal_state') or 'none'}; "
+            f"mutating_exec_scope={tool_intent.get('mutating_exec_proposal_scope') or 'none'}; "
+            f"mutating_exec_requires_sudo={tool_intent.get('mutating_exec_requires_sudo', False)}; "
+            f"mutating_exec_fingerprint={tool_intent.get('mutating_exec_command_fingerprint') or 'none'}; "
             f"continuity={tool_intent.get('action_continuity_state') or 'idle'}; "
             f"last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}; "
             f"followup_state={tool_intent.get('followup_state') or 'none'}."
@@ -698,7 +702,7 @@ def build_self_model_prompt_lines() -> list[str]:
             "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, and blocks sudo, mutation, package, git, delete, and shell chaining"
         )
         lines.append(
-            "  mutating_exec_boundary: mutating or sudo-near commands may surface only as approval-gated proposals and never as executed work in this pass"
+            "  mutating_exec_boundary: non-sudo filesystem mutation may execute only after explicit approval of the exact command fingerprint; sudo, git, package, delete, and broader system mutation remain non-executable in this pass"
         )
     if gated_ids:
         lines.append(
@@ -729,7 +733,7 @@ def build_self_model_prompt_lines() -> list[str]:
         f"workspace_read={policy.get('workspace_read', 'allowed')}"
         f" | external_read={policy.get('external_read', 'allowed')}"
         f" | non_destructive_exec={policy.get('non_destructive_exec', 'allowed')}"
-        f" | mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-proposal-only')}"
+        f" | mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-bounded-non-sudo-only')}"
         f" | sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-proposal-only')}"
         f" | workspace_write={policy.get('workspace_write', 'explicit-approval-required')}"
         f" | external_write={policy.get('external_write', 'explicit-approval-required')}"

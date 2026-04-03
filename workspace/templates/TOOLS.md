@@ -31,6 +31,12 @@ path_from: user-message
 Reads one explicit external file path from the current user message.
 This stays read-only and is bounded to paths outside the active workspace root.
 
+## EXEC_COMMAND: run non-destructive command
+command_from: user-message
+
+Runs one explicit non-destructive command from the current user message.
+This stays diagnostic-only and blocks sudo, package mutation, git mutation, delete, shell chaining, and redirection.
+
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md
 

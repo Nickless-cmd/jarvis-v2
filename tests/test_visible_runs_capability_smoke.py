@@ -279,3 +279,62 @@ def test_visible_run_executes_dynamic_external_read_from_user_message_path(
     assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
     assert last_use.get("capability_id") == "tool:read-external-file-by-path"
     assert len(last_use.get("second_pass_calls") or []) == 1
+
+
+def test_visible_run_executes_non_destructive_command_from_user_message(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text='<capability-call id="tool:run-non-destructive-command" />',
+        run_id="visible-cap-non-destructive-exec",
+        second_pass_text="Kommandoen kørte, og outputtet viser den aktuelle arbejdsmappe.",
+        user_message="Kør `pwd` for at inspicere den aktuelle arbejdsmappe.",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    delta_events = _parse_sse(chunks, "delta")
+
+    assert capability_events
+    assert capability_events[-1]["capability_id"] == "tool:run-non-destructive-command"
+    assert capability_events[-1]["status"] == "executed"
+    assert capability_events[-1]["execution_mode"] == "non-destructive-exec"
+    assert any("aktuelle arbejdsmappe" in str(item.get("delta") or "") for item in delta_events)
+    assert last_use.get("capability_id") == "tool:run-non-destructive-command"
+    assert len(last_use.get("second_pass_calls") or []) == 1
+
+
+def test_visible_run_blocks_destructive_exec_command_without_markup_leakage(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text='<capability-call id="tool:run-non-destructive-command" />',
+        run_id="visible-cap-blocked-exec",
+        user_message="Kør `sudo ls /root` og vis outputtet.",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    delta_events = _parse_sse(chunks, "delta")
+
+    assert capability_events
+    assert capability_events[-1]["capability_id"] == "tool:run-non-destructive-command"
+    assert capability_events[-1]["status"] == "blocked-sudo"
+    assert capability_events[-1]["execution_mode"] == "non-destructive-exec"
+    assert any("sudo is not allowed" in str(item.get("delta") or "") for item in delta_events)
+    assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
+    assert last_use.get("second_pass_calls") == []

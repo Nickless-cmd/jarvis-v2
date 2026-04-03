@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import shlex
+import subprocess
 from hashlib import sha1
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,12 +21,76 @@ RUNTIME_NOTE_PREFIX = "RUNTIME_NOTE:"
 READ_FILE_PREFIX = "READ_FILE:"
 SEARCH_FILE_PREFIX = "SEARCH_FILE:"
 READ_EXTERNAL_FILE_PREFIX = "READ_EXTERNAL_FILE:"
+EXEC_COMMAND_PREFIX = "EXEC_COMMAND:"
 WRITE_FILE_PREFIX = "WRITE_FILE:"
 WRITE_EXTERNAL_FILE_PREFIX = "WRITE_EXTERNAL_FILE:"
 MAX_FILE_OUTPUT_CHARS = 4000
 MAX_SEARCH_MATCHES = 5
 MAX_MATCH_EXCERPT_CHARS = 160
+MAX_EXEC_OUTPUT_CHARS = 4000
+MAX_EXEC_SECONDS = 8
 _LAST_CAPABILITY_INVOCATION: dict[str, object] | None = None
+NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
+    "pwd",
+    "ls",
+    "cat",
+    "head",
+    "tail",
+    "wc",
+    "stat",
+    "file",
+    "whoami",
+    "id",
+    "uname",
+    "date",
+    "ps",
+    "pgrep",
+    "env",
+    "printenv",
+    "rg",
+}
+NON_DESTRUCTIVE_EXEC_BLOCKED_TOKENS = {
+    "sudo",
+    "rm",
+    "mv",
+    "cp",
+    "chmod",
+    "chown",
+    "tee",
+    "sed",
+    "awk",
+    "perl",
+    "python",
+    "python3",
+    "node",
+    "npm",
+    "pip",
+    "pip3",
+    "apt",
+    "apt-get",
+    "dnf",
+    "yum",
+    "brew",
+    "git",
+    "make",
+    "cargo",
+    "go",
+    "docker",
+    "kubectl",
+}
+NON_DESTRUCTIVE_EXEC_BLOCKED_PATTERNS = (
+    ">",
+    "<",
+    "|",
+    "&",
+    ";",
+    "$(",
+    "`",
+    ">>",
+    "<<",
+    "*",
+    "?",
+)
 
 
 def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
@@ -80,9 +146,10 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
             "workspace_read": "allowed",
             "workspace_write": "explicit-approval-required",
             "external_read": "allowed",
+            "non_destructive_exec": "allowed",
             "external_write": "explicit-approval-required",
             "mutation_outside_workspace": "explicit-approval-required",
-            "principle": "Read freely. Propose freely. Mutate only with explicit approval.",
+            "principle": "Read freely. Inspect freely. Exec freely when non-destructive. Mutate only with explicit approval.",
         },
         "authority": {
             "authority_source": "runtime.workspace_capabilities",
@@ -108,6 +175,7 @@ def invoke_workspace_capability(
     approved: bool = False,
     write_content: str | None = None,
     target_path: str | None = None,
+    command_text: str | None = None,
 ) -> dict[str, object]:
     invoked_at = _now()
     event_bus.publish(
@@ -212,6 +280,7 @@ def invoke_workspace_capability(
             summary=summary,
             write_content=write_content,
             target_path=target_path,
+            command_text=command_text,
         )
         _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
         _publish_capability_invocation_completed(result, invoked_at=invoked_at)
@@ -338,6 +407,7 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
     search_spec = _declared_search_file_spec(section["body"])
     external_read_spec = _declared_external_file_spec(section["body"])
     external_read_path = external_read_spec["path"] if external_read_spec else None
+    exec_spec = _declared_exec_spec(section["body"])
     write_target_path = _declared_write_target_path(section["body"])
     if heading.startswith(RUNTIME_NOTE_PREFIX):
         name = heading[len(RUNTIME_NOTE_PREFIX) :].strip()
@@ -355,6 +425,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         name = heading[len(READ_EXTERNAL_FILE_PREFIX) :].strip()
         execution_mode = "external-file-read"
         runnable = external_read_spec is not None
+    elif heading.startswith(EXEC_COMMAND_PREFIX):
+        name = heading[len(EXEC_COMMAND_PREFIX) :].strip()
+        execution_mode = "non-destructive-exec"
+        runnable = exec_spec is not None
     elif heading.startswith(WRITE_FILE_PREFIX):
         name = heading[len(WRITE_FILE_PREFIX) :].strip()
         execution_mode = "workspace-file-write"
@@ -391,6 +465,12 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
             (external_read_spec or {}).get("path_source")
             if execution_mode == "external-file-read"
             else "declared-path"
+        ),
+        "command_text": (exec_spec or {}).get("command"),
+        "command_source": (
+            (exec_spec or {}).get("command_source")
+            if execution_mode == "non-destructive-exec"
+            else "declared-command"
         ),
         "target_query": search_spec["query"] if search_spec else None,
     }
@@ -436,6 +516,7 @@ def _invoke_runnable_capability(
     summary: dict[str, object],
     write_content: str | None = None,
     target_path: str | None = None,
+    command_text: str | None = None,
 ) -> dict[str, object]:
     if summary["execution_mode"] == "inline-text":
         return {
@@ -561,6 +642,76 @@ def _invoke_runnable_capability(
             },
         }
 
+    if summary["execution_mode"] == "non-destructive-exec":
+        declared_command = str(summary.get("command_text") or "").strip()
+        command_source = str(summary.get("command_source") or "").strip()
+        resolved_command = (
+            str(command_text or "").strip()
+            if command_source == "invocation-argument"
+            else declared_command
+        )
+        if not resolved_command:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-command",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": "Non-destructive exec requires one explicit command_text.",
+            }
+        command_verdict = _validate_non_destructive_command(resolved_command)
+        if not command_verdict["allowed"]:
+            return {
+                "capability": summary,
+                "status": str(command_verdict.get("status") or "blocked-command"),
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": str(command_verdict.get("detail") or "Command is not allowed."),
+            }
+        argv = list(command_verdict.get("argv") or [])
+        try:
+            completed = subprocess.run(
+                argv,
+                cwd=str(workspace_dir),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=MAX_EXEC_SECONDS,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "capability": summary,
+                "status": "blocked-timeout",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": f"Non-destructive exec exceeded {MAX_EXEC_SECONDS} seconds.",
+            }
+        output_text = _bounded_exec_output(
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+        )
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=True),
+            "result": {
+                "type": "non-destructive-exec",
+                "command_text": resolved_command,
+                "argv": argv,
+                "exit_code": completed.returncode,
+                "text": output_text,
+                "command_source": command_source or "declared-command",
+                "workspace_scoped": False,
+                "mutation_permitted": False,
+                "sudo_permitted": False,
+            },
+        }
+
     if summary["execution_mode"] == "workspace-file-write":
         target_path = str(summary.get("target_path") or "").strip()
         candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
@@ -625,6 +776,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "workspace-file-read",
         "workspace-search-read",
         "external-file-read",
+        "non-destructive-exec",
     }:
         return "not-needed"
     if execution_mode in {
@@ -648,6 +800,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "workspace-file-read",
         "workspace-search-read",
         "external-file-read",
+        "non-destructive-exec",
         "guidance-only",
         "declared-only",
         "unsupported",
@@ -755,6 +908,23 @@ def _declared_external_file_spec(body: str) -> dict[str, str] | None:
     return None
 
 
+def _declared_exec_spec(body: str) -> dict[str, str] | None:
+    command = _declared_body_value(body, "command", validate=False)
+    if command is not None:
+        return {
+            "command": command,
+            "command_source": "declared-command",
+        }
+    command_from = _declared_body_value(body, "command_from", validate=False)
+    normalized_source = str(command_from or "").strip().lower()
+    if normalized_source in {"user-message", "invocation-argument"}:
+        return {
+            "command": "",
+            "command_source": "invocation-argument",
+        }
+    return None
+
+
 def _declared_write_target_path(body: str) -> str | None:
     return _declared_body_value(body, "path", validate=False)
 
@@ -836,6 +1006,83 @@ def _read_bounded_text(path: Path) -> str:
     if len(text) <= MAX_FILE_OUTPUT_CHARS:
         return text
     return text[: MAX_FILE_OUTPUT_CHARS - 1].rstrip() + "…"
+
+
+def _bounded_exec_output(*, stdout: str, stderr: str) -> str:
+    parts: list[str] = []
+    normalized_stdout = str(stdout or "").strip()
+    normalized_stderr = str(stderr or "").strip()
+    if normalized_stdout:
+        parts.append(normalized_stdout)
+    if normalized_stderr:
+        parts.append(f"[stderr]\n{normalized_stderr}")
+    joined = "\n".join(parts).strip()
+    if not joined:
+        joined = "[no output]"
+    if len(joined) <= MAX_EXEC_OUTPUT_CHARS:
+        return joined
+    return joined[: MAX_EXEC_OUTPUT_CHARS - 1].rstrip() + "…"
+
+
+def _validate_non_destructive_command(command_text: str) -> dict[str, object]:
+    normalized = str(command_text or "").strip()
+    if not normalized:
+        return {
+            "allowed": False,
+            "status": "blocked-missing-command",
+            "detail": "Non-destructive exec requires a non-empty command.",
+        }
+    if any(pattern in normalized for pattern in NON_DESTRUCTIVE_EXEC_BLOCKED_PATTERNS):
+        return {
+            "allowed": False,
+            "status": "blocked-shell-features",
+            "detail": "Shell metacharacters, redirection, globbing, and command chaining are not allowed.",
+        }
+    try:
+        argv = shlex.split(normalized, posix=True)
+    except ValueError:
+        return {
+            "allowed": False,
+            "status": "blocked-invalid-command",
+            "detail": "Command could not be parsed safely.",
+        }
+    if not argv:
+        return {
+            "allowed": False,
+            "status": "blocked-missing-command",
+            "detail": "Non-destructive exec requires a non-empty command.",
+        }
+    command_name = argv[0]
+    if "/" in command_name:
+        return {
+            "allowed": False,
+            "status": "blocked-command-path",
+            "detail": "Explicit binary paths are not allowed in non-destructive exec.",
+        }
+    lowered = [part.lower() for part in argv]
+    if any(token in NON_DESTRUCTIVE_EXEC_BLOCKED_TOKENS for token in lowered):
+        blocked = next(token for token in lowered if token in NON_DESTRUCTIVE_EXEC_BLOCKED_TOKENS)
+        status = "blocked-sudo" if blocked == "sudo" else "blocked-destructive-command"
+        detail = (
+            "sudo is not allowed in non-destructive exec."
+            if blocked == "sudo"
+            else f"Mutating or high-risk command token is not allowed: {blocked}"
+        )
+        return {
+            "allowed": False,
+            "status": status,
+            "detail": detail,
+        }
+    if command_name not in NON_DESTRUCTIVE_EXEC_ALLOWLIST:
+        return {
+            "allowed": False,
+            "status": "blocked-command-not-allowlisted",
+            "detail": f"Command is not in the bounded non-destructive allowlist: {command_name}",
+        }
+    return {
+        "allowed": True,
+        "argv": argv,
+    }
 
 
 def _search_file_matches(path: Path, query: str) -> list[dict[str, object]]:

@@ -572,6 +572,18 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_write_proposal_content_fingerprint": str(
                 tool_intent.get("write_proposal_content_fingerprint") or "none"
             ),
+            "tool_intent_mutating_exec_proposal_state": str(
+                tool_intent.get("mutating_exec_proposal_state") or "none"
+            ),
+            "tool_intent_mutating_exec_proposal_scope": str(
+                tool_intent.get("mutating_exec_proposal_scope") or "none"
+            ),
+            "tool_intent_mutating_exec_requires_sudo": bool(
+                tool_intent.get("mutating_exec_requires_sudo", False)
+            ),
+            "tool_intent_mutating_exec_criticality": str(
+                tool_intent.get("mutating_exec_criticality") or "none"
+            ),
             "tool_intent_action_continuity_state": str(
                 tool_intent.get("action_continuity_state") or "idle"
             ),
@@ -1385,6 +1397,20 @@ def mc_execute_capability_request(
             "request_id": request_id,
             "status": "not-approved",
             "detail": "Capability approval request must be approved before execution",
+            "request": request,
+            "invocation": None,
+        }
+    if str(request.get("execution_mode") or "") in {
+        "mutating-exec-proposal",
+        "sudo-exec-proposal",
+    }:
+        return {
+            "ok": False,
+            "request_id": request_id,
+            "status": "execution-disabled-in-this-pass",
+            "detail": (
+                "Mutating exec proposals remain approval-scoped runtime truth only in this pass and are not executable."
+            ),
             "request": request,
             "invocation": None,
         }

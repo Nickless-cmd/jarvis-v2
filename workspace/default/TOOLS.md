@@ -21,6 +21,7 @@ Approval-gated now:
 - `tool:propose-external-repo-file-update`
 
 Write proposals are approval-gated.
+Mutating or sudo-near exec commands are proposal-only and approval-gated.
 Do not imply that a write has executed unless runtime truth says it executed.
 
 ## READ_FILE: read workspace user profile
@@ -50,6 +51,7 @@ command_from: user-message
 
 Runs one explicit non-destructive command from the current user message.
 Use this only for read-only inspection or diagnostics. No sudo, package install/update, git mutation, delete, shell chaining, or redirection.
+If the explicit command is mutating or sudo-near, runtime may carry it only as an approval-gated proposal and not as executed work.
 
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md

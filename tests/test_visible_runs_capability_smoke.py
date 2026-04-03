@@ -383,7 +383,7 @@ def test_visible_run_binds_exec_command_from_capability_tag_attributes(
     assert trace_events[-1]["selected_capability_id"] == "tool:run-non-destructive-command"
 
 
-def test_visible_run_blocks_destructive_exec_command_without_markup_leakage(
+def test_visible_run_surfaces_sudo_exec_as_approval_gated_proposal_without_markup_leakage(
     isolated_runtime,
     monkeypatch,
 ) -> None:
@@ -405,11 +405,40 @@ def test_visible_run_blocks_destructive_exec_command_without_markup_leakage(
 
     assert capability_events
     assert capability_events[-1]["capability_id"] == "tool:run-non-destructive-command"
-    assert capability_events[-1]["status"] == "blocked-sudo"
-    assert capability_events[-1]["execution_mode"] == "non-destructive-exec"
-    assert any("sudo is not allowed" in str(item.get("delta") or "") for item in delta_events)
+    assert capability_events[-1]["status"] == "approval-required"
+    assert capability_events[-1]["execution_mode"] == "sudo-exec-proposal"
+    assert any("approval-gated proposal only" in str(item.get("delta") or "") for item in delta_events)
     assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
     assert (last_use.get("trace") or {}).get("blocked_reason")
+    assert last_use.get("second_pass_calls") == []
+
+
+def test_visible_run_surfaces_mutating_exec_as_proposal_only(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text='<capability-call id="tool:run-non-destructive-command" command_text="git add README.md" />',
+        run_id="visible-cap-mutating-exec-proposal",
+        user_message="ja tak",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    delta_events = _parse_sse(chunks, "delta")
+
+    assert capability_events
+    assert capability_events[-1]["status"] == "approval-required"
+    assert capability_events[-1]["execution_mode"] == "mutating-exec-proposal"
+    assert any("approval-gated proposal only" in str(item.get("delta") or "") for item in delta_events)
+    assert last_use.get("argument_source") == "tag-attributes"
+    assert (last_use.get("trace") or {}).get("parsed_command_text") == "git add README.md"
     assert last_use.get("second_pass_calls") == []
 
 

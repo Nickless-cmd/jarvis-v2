@@ -37,6 +37,7 @@ command_from: user-message
 
 Runs one explicit non-destructive command from the current user message.
 This stays diagnostic-only and blocks sudo, package mutation, git mutation, delete, shell chaining, and redirection.
+If the explicit command is mutating or sudo-near, runtime may carry it only as an approval-gated proposal and not as executed work.
 
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md

@@ -210,6 +210,24 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
     write_proposal_content_fingerprint = str(
         intent_surface.get("write_proposal_content_fingerprint") or "none"
     )
+    mutating_exec_proposal_state = str(
+        intent_surface.get("mutating_exec_proposal_state") or "none"
+    )
+    mutating_exec_proposal_command = str(
+        intent_surface.get("mutating_exec_proposal_command") or "none"
+    )
+    mutating_exec_proposal_scope = str(
+        intent_surface.get("mutating_exec_proposal_scope") or "none"
+    )
+    mutating_exec_proposal_reason = str(
+        intent_surface.get("mutating_exec_proposal_reason") or "none"
+    )
+    mutating_exec_requires_sudo = bool(
+        intent_surface.get("mutating_exec_requires_sudo", False)
+    )
+    mutating_exec_criticality = str(
+        intent_surface.get("mutating_exec_criticality") or "none"
+    )
     return (
         "Intent remains proposal-only until explicitly approved within bounded scope; "
         f"scope={intent_surface.get('approval_scope') or 'repo-read'}; "
@@ -225,6 +243,12 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
         f"write_proposal_content_state={write_proposal_content_state}; "
         f"write_proposal_content_summary={write_proposal_content_summary}; "
         f"write_proposal_content_fingerprint={write_proposal_content_fingerprint}; "
+        f"mutating_exec_proposal_state={mutating_exec_proposal_state}; "
+        f"mutating_exec_proposal_scope={mutating_exec_proposal_scope}; "
+        f"mutating_exec_proposal_command={mutating_exec_proposal_command}; "
+        f"mutating_exec_requires_sudo={mutating_exec_requires_sudo}; "
+        f"mutating_exec_criticality={mutating_exec_criticality}; "
+        f"mutating_exec_proposal_reason={mutating_exec_proposal_reason}; "
         f"execution={intent_surface.get('execution_state') or 'not-executed'}."
     )
 

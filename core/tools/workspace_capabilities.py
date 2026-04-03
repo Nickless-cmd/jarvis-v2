@@ -49,20 +49,14 @@ NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
     "printenv",
     "rg",
 }
-NON_DESTRUCTIVE_EXEC_BLOCKED_TOKENS = {
+MUTATING_EXEC_PROPOSAL_TOKENS = {
     "sudo",
-    "rm",
     "mv",
     "cp",
     "chmod",
     "chown",
     "tee",
     "sed",
-    "awk",
-    "perl",
-    "python",
-    "python3",
-    "node",
     "npm",
     "pip",
     "pip3",
@@ -77,6 +71,14 @@ NON_DESTRUCTIVE_EXEC_BLOCKED_TOKENS = {
     "go",
     "docker",
     "kubectl",
+}
+HARD_BLOCKED_EXEC_TOKENS = {
+    "rm",
+    "awk",
+    "perl",
+    "python",
+    "python3",
+    "node",
 }
 NON_DESTRUCTIVE_EXEC_BLOCKED_PATTERNS = (
     ">",
@@ -156,8 +158,12 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
             "workspace_write": "explicit-approval-required",
             "external_read": "allowed",
             "non_destructive_exec": "allowed",
+            "mutating_exec": "explicit-approval-required-proposal-only",
+            "sudo_exec": "explicit-approval-required-proposal-only",
             "external_write": "explicit-approval-required",
             "mutation_outside_workspace": "explicit-approval-required",
+            "delete_exec": "not-executable-in-this-pass",
+            "package_mutation_exec": "not-executable-in-this-pass",
             "principle": "Read freely. Inspect freely. Exec freely when non-destructive. Mutate only with explicit approval.",
         },
         "authority": {
@@ -287,11 +293,18 @@ def invoke_workspace_capability(
             workspace_dir=workspace_dir,
             section=section,
             summary=summary,
+            approved=approved,
             write_content=write_content,
             target_path=target_path,
             command_text=command_text,
         )
         _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
+        if str(result.get("status") or "") == "approval-required" and not approved:
+            _persist_capability_approval_request(
+                result,
+                requested_at=invoked_at,
+                run_id=run_id,
+            )
         _publish_capability_invocation_completed(result, invoked_at=invoked_at)
         return result
 
@@ -523,6 +536,7 @@ def _invoke_runnable_capability(
     workspace_dir: Path,
     section: dict[str, str],
     summary: dict[str, object],
+    approved: bool = False,
     write_content: str | None = None,
     target_path: str | None = None,
     command_text: str | None = None,
@@ -668,7 +682,33 @@ def _invoke_runnable_capability(
                 "result": None,
                 "detail": "Non-destructive exec requires one explicit command_text.",
             }
-        command_verdict = _validate_non_destructive_command(resolved_command)
+        command_verdict = _classify_exec_command(resolved_command)
+        if command_verdict.get("proposal_required"):
+            proposal_content = _mutating_exec_proposal_content(
+                command_text=resolved_command,
+                command_source=command_source or "declared-command",
+                classification=command_verdict,
+            )
+            return {
+                "capability": summary,
+                "status": "approval-required",
+                "execution_mode": str(
+                    command_verdict.get("proposal_execution_mode")
+                    or "mutating-exec-proposal"
+                ),
+                "approval": {
+                    "policy": "required",
+                    "required": True,
+                    "approved": approved,
+                    "granted": False,
+                },
+                "result": proposal_content,
+                "proposal_content": proposal_content,
+                "detail": str(
+                    command_verdict.get("detail")
+                    or "Mutating exec remains proposal-only until explicitly approved."
+                ),
+            }
         if not command_verdict["allowed"]:
             return {
                 "capability": summary,
@@ -826,12 +866,20 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "workspace-file-create",
         "modify-file",
         "external-file-write",
+        "mutating-exec-proposal",
     } or normalized.startswith("workspace-file-write"):
         return {
             "classification": "modify-file",
             "mutation_near": True,
             "sudo_required": False,
             "mutation_critical": False,
+        }
+    if normalized == "sudo-exec-proposal":
+        return {
+            "classification": "system-mutate",
+            "mutation_near": True,
+            "sudo_required": True,
+            "mutation_critical": True,
         }
     if normalized in {"workspace-file-delete", "delete-file"}:
         return {
@@ -1033,7 +1081,7 @@ def _bounded_exec_output(*, stdout: str, stderr: str) -> str:
     return joined[: MAX_EXEC_OUTPUT_CHARS - 1].rstrip() + "…"
 
 
-def _validate_non_destructive_command(command_text: str) -> dict[str, object]:
+def _classify_exec_command(command_text: str) -> dict[str, object]:
     normalized = str(command_text or "").strip()
     if not normalized:
         return {
@@ -1069,18 +1117,19 @@ def _validate_non_destructive_command(command_text: str) -> dict[str, object]:
             "detail": "Explicit binary paths are not allowed in non-destructive exec.",
         }
     lowered = [part.lower() for part in argv]
-    if any(token in NON_DESTRUCTIVE_EXEC_BLOCKED_TOKENS for token in lowered):
-        blocked = next(token for token in lowered if token in NON_DESTRUCTIVE_EXEC_BLOCKED_TOKENS)
-        status = "blocked-sudo" if blocked == "sudo" else "blocked-destructive-command"
-        detail = (
-            "sudo is not allowed in non-destructive exec."
-            if blocked == "sudo"
-            else f"Mutating or high-risk command token is not allowed: {blocked}"
-        )
+    if any(token in HARD_BLOCKED_EXEC_TOKENS for token in lowered):
+        blocked = next(token for token in lowered if token in HARD_BLOCKED_EXEC_TOKENS)
         return {
             "allowed": False,
-            "status": status,
-            "detail": detail,
+            "status": "blocked-destructive-command",
+            "detail": f"Destructive or arbitrary-exec token is not allowed in this pass: {blocked}",
+        }
+    proposal_metadata = _mutating_exec_proposal_metadata(argv)
+    if proposal_metadata is not None:
+        return {
+            "allowed": False,
+            "proposal_required": True,
+            **proposal_metadata,
         }
     if command_name not in NON_DESTRUCTIVE_EXEC_ALLOWLIST:
         return {
@@ -1091,6 +1140,96 @@ def _validate_non_destructive_command(command_text: str) -> dict[str, object]:
     return {
         "allowed": True,
         "argv": argv,
+    }
+
+
+def _mutating_exec_proposal_metadata(argv: list[str]) -> dict[str, object] | None:
+    lowered = [part.lower() for part in argv]
+    matched_token = next(
+        (token for token in lowered if token in MUTATING_EXEC_PROPOSAL_TOKENS),
+        None,
+    )
+    if matched_token is None:
+        return None
+
+    requires_sudo = "sudo" in lowered
+    scope = "filesystem"
+    criticality = "medium"
+    proposal_execution_mode = "mutating-exec-proposal"
+
+    if matched_token == "sudo":
+        scope = "system"
+        criticality = "high"
+        proposal_execution_mode = "sudo-exec-proposal"
+    elif matched_token in {"git"}:
+        scope = "git"
+        criticality = "high"
+    elif matched_token in {"npm", "pip", "pip3", "apt", "apt-get", "dnf", "yum", "brew"}:
+        scope = "package"
+        criticality = "high"
+    elif matched_token in {"docker", "kubectl"}:
+        scope = "system"
+        criticality = "high"
+
+    if requires_sudo and proposal_execution_mode != "sudo-exec-proposal":
+        proposal_execution_mode = "sudo-exec-proposal"
+        criticality = "high"
+
+    return {
+        "matched_token": matched_token,
+        "requires_sudo": requires_sudo,
+        "proposal_scope": scope,
+        "proposal_execution_mode": proposal_execution_mode,
+        "criticality": criticality,
+        "detail": (
+            "sudo-near command was captured as an approval-gated proposal only and was not executed."
+            if requires_sudo
+            else f"Mutating command token {matched_token} was captured as an approval-gated proposal only and was not executed."
+        ),
+    }
+
+
+def _mutating_exec_proposal_content(
+    *,
+    command_text: str,
+    command_source: str,
+    classification: dict[str, object],
+) -> dict[str, object]:
+    matched_token = str(classification.get("matched_token") or "unknown")
+    requires_sudo = bool(classification.get("requires_sudo", False))
+    scope = str(classification.get("proposal_scope") or "filesystem")
+    criticality = str(classification.get("criticality") or "medium")
+    proposal_type = (
+        "sudo-exec-proposal" if requires_sudo else "mutating-exec-proposal"
+    )
+    return {
+        "state": "approval-required-proposal",
+        "type": proposal_type,
+        "command": command_text,
+        "content": command_text,
+        "summary": _preview_text(command_text, limit=160),
+        "fingerprint": _content_fingerprint(command_text),
+        "source": command_source or "invocation-argument",
+        "target": matched_token,
+        "reason": str(
+            classification.get("detail")
+            or "Mutating exec proposal was captured but not executed."
+        ),
+        "scope": scope,
+        "explicit_approval_required": True,
+        "approval_scope": "mutating-exec",
+        "requires_sudo": requires_sudo,
+        "criticality": criticality,
+        "confidence": "high",
+        "proposal_only": True,
+        "not_executed": True,
+        "workspace_scoped": False,
+        "target_identity": False,
+        "target_memory": False,
+        "source_contributors": [
+            "workspace-capability-runtime",
+            "exec-command-classifier",
+        ],
     }
 
 

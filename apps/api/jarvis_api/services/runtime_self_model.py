@@ -697,6 +697,9 @@ def build_self_model_prompt_lines() -> list[str]:
         lines.append(
             "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, and blocks sudo, mutation, package, git, delete, and shell chaining"
         )
+        lines.append(
+            "  mutating_exec_boundary: mutating or sudo-near commands may surface only as approval-gated proposals and never as executed work in this pass"
+        )
     if gated_ids:
         lines.append(
             "  approval_gated_capability_ids: "
@@ -726,6 +729,8 @@ def build_self_model_prompt_lines() -> list[str]:
         f"workspace_read={policy.get('workspace_read', 'allowed')}"
         f" | external_read={policy.get('external_read', 'allowed')}"
         f" | non_destructive_exec={policy.get('non_destructive_exec', 'allowed')}"
+        f" | mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-proposal-only')}"
+        f" | sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-proposal-only')}"
         f" | workspace_write={policy.get('workspace_write', 'explicit-approval-required')}"
         f" | external_write={policy.get('external_write', 'explicit-approval-required')}"
     )

@@ -21,15 +21,18 @@ def build_bounded_action_continuity_surface(
     )
     if current is None:
         if persisted is not None:
-            return persisted
-        return _default_action_continuity_surface()
+            return _normalize_action_continuity_surface(persisted)
+        return _normalize_action_continuity_surface(_default_action_continuity_surface())
 
     if persisted is not None and str(persisted.get("continuity_id") or "") == str(
         current.get("continuity_id") or ""
     ):
-        return persisted
+        return _normalize_action_continuity_surface(persisted)
 
-    return upsert_bounded_action_continuity_state(**current)
+    persistable = dict(current)
+    persistable.pop("workspace_write", None)
+    stored = upsert_bounded_action_continuity_state(**persistable)
+    return _normalize_action_continuity_surface(stored)
 
 
 def _derive_current_action_continuity_surface(
@@ -38,7 +41,12 @@ def _derive_current_action_continuity_surface(
     awareness_surface: dict[str, object] | None,
 ) -> dict[str, object] | None:
     execution_state = str(tool_intent_surface.get("execution_state") or "not-executed")
-    if execution_state not in {"read-only-completed", "read-only-failed"}:
+    if execution_state not in {
+        "read-only-completed",
+        "read-only-failed",
+        "workspace-write-completed",
+        "workspace-write-failed",
+    }:
         return None
 
     action_type = str(
@@ -97,7 +105,7 @@ def _derive_current_action_continuity_surface(
     )
     return {
         "active": True,
-        "kind": "bounded-read-only-action-continuity-light",
+        "kind": "bounded-action-continuity-light",
         "continuity_id": continuity_id,
         "action_continuity_state": continuity_state,
         "last_action_type": action_type,
@@ -107,6 +115,7 @@ def _derive_current_action_continuity_surface(
         "last_action_at": action_at,
         "action_mode": action_mode,
         "read_only": action_mode == "read-only",
+        "workspace_write": action_mode == "workspace-write",
         "mutation_permitted": mutation_permitted,
         "followup_state": followup_state,
         "followup_hint": followup_hint,
@@ -115,8 +124,8 @@ def _derive_current_action_continuity_surface(
         "confidence": confidence,
         "source_contributors": source_contributors,
         "boundary": (
-            "Bounded action continuity carries the latest read-only execution truth only; "
-            "it is runtime continuity, not MEMORY.md, not identity, and not permission to act."
+            "Bounded action continuity carries the latest bounded execution truth only; "
+            "it is runtime continuity, not MEMORY.md, not identity, and not permission to broaden write scope."
         ),
         "updated_at": action_at,
         "source": "/runtime/bounded-action-continuity",
@@ -141,6 +150,22 @@ def _derive_followup_from_awareness(
             "Den bounded read-only inspection fejlede; re-check repo-runtime og spørg igen inden en ny inspect-intent dannes.",
             "Read-only execution forsøgte at løbe, men gav ikke et stabilt observationsresultat.",
             "concern",
+        )
+
+    if execution_state == "workspace-write-failed":
+        return (
+            "review-bounded-write",
+            "Den bounded workspace write fejlede; bekræft scope, approval og eksplicit write_content før et nyt forsøg.",
+            "Workspace write execution nåede ikke et stabilt resultat inden for den godkendte scope.",
+            "concern",
+        )
+
+    if execution_state == "workspace-write-completed":
+        return (
+            "bounded-write-recorded",
+            f"Approved workspace write blev udført for {action_target}; næste skridt er review af resultatet inden yderligere mutation.",
+            f"Workspace write execution udførte en bounded ændring mod {action_target} inden for eksplicit approval.",
+            "stable",
         )
 
     if upstream_awareness in {"behind", "diverged"}:
@@ -176,9 +201,16 @@ def _derive_followup_from_awareness(
 
 
 def _derive_continuity_state(*, execution_state: str, followup_state: str) -> str:
-    if execution_state == "read-only-failed":
+    if execution_state in {"read-only-failed", "workspace-write-failed"}:
         return "attention-required"
-    if followup_state in {"approval-may-be-needed", "carry-forward", "monitor", "retry-read-only"}:
+    if followup_state in {
+        "approval-may-be-needed",
+        "carry-forward",
+        "monitor",
+        "retry-read-only",
+        "review-bounded-write",
+        "bounded-write-recorded",
+    }:
         return "carrying-forward"
     return "settled"
 
@@ -210,7 +242,7 @@ def _continuity_id(
 def _default_action_continuity_surface() -> dict[str, object]:
     return {
         "active": False,
-        "kind": "bounded-read-only-action-continuity-light",
+        "kind": "bounded-action-continuity-light",
         "continuity_id": "",
         "action_continuity_state": "idle",
         "last_action_type": "",
@@ -220,6 +252,7 @@ def _default_action_continuity_surface() -> dict[str, object]:
         "last_action_at": "",
         "action_mode": "read-only",
         "read_only": True,
+        "workspace_write": False,
         "mutation_permitted": False,
         "followup_state": "none",
         "followup_hint": "",
@@ -228,12 +261,20 @@ def _default_action_continuity_surface() -> dict[str, object]:
         "confidence": "low",
         "source_contributors": ["bounded-action-continuity-runtime"],
         "boundary": (
-            "Bounded action continuity carries the latest read-only execution truth only; "
-            "it is runtime continuity, not MEMORY.md, not identity, and not permission to act."
+            "Bounded action continuity carries the latest bounded execution truth only; "
+            "it is runtime continuity, not MEMORY.md, not identity, and not permission to broaden write scope."
         ),
         "updated_at": "",
         "source": "/runtime/bounded-action-continuity",
     }
+
+
+def _normalize_action_continuity_surface(surface: dict[str, object]) -> dict[str, object]:
+    normalized = dict(surface)
+    normalized["workspace_write"] = (
+        str(normalized.get("action_mode") or "read-only") == "workspace-write"
+    )
+    return normalized
 
 
 def _merge_unique(left: list[str], right: list[object]) -> list[str]:

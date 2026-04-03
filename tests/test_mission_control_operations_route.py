@@ -17,6 +17,9 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "execution_state": "not-executed",
                 "execution_mode": "read-only",
                 "mutation_permitted": False,
+                "workspace_scoped": False,
+                "external_mutation_permitted": False,
+                "delete_permitted": False,
                 "mutation_intent_state": "proposal-only",
                 "mutation_intent_classification": "modify-file",
                 "mutation_repo_scope": "",
@@ -75,6 +78,9 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_execution_state"] == "not-executed"
     assert payload["summary"]["tool_intent_execution_mode"] == "read-only"
     assert payload["summary"]["tool_intent_mutation_permitted"] is False
+    assert payload["summary"]["tool_intent_workspace_scoped"] is False
+    assert payload["summary"]["tool_intent_external_mutation_permitted"] is False
+    assert payload["summary"]["tool_intent_delete_permitted"] is False
     assert payload["summary"]["tool_intent_mutation_intent_state"] == "proposal-only"
     assert payload["summary"]["tool_intent_mutation_classification"] == "modify-file"
     assert payload["summary"]["tool_intent_mutation_repo_scope"] == ""
@@ -128,6 +134,9 @@ def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
     assert payload["tool_intent"]["execution_state"] == "blocked-unavailable"
     assert payload["tool_intent"]["execution_mode"] == "read-only"
     assert payload["tool_intent"]["mutation_permitted"] is False
+    assert payload["tool_intent"]["workspace_scoped"] is False
+    assert payload["tool_intent"]["external_mutation_permitted"] is False
+    assert payload["tool_intent"]["delete_permitted"] is False
     assert payload["tool_intent"]["mutation_intent_state"] == "proposal-only"
     assert payload["tool_intent"]["mutation_intent_classification"] == "modify-file"
     assert payload["tool_intent"]["write_proposal_state"] == "scoped-proposal"
@@ -137,6 +146,9 @@ def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
     assert payload["summary"]["tool_intent_execution_state"] == "blocked-unavailable"
     assert payload["summary"]["tool_intent_execution_mode"] == "read-only"
     assert payload["summary"]["tool_intent_mutation_permitted"] is False
+    assert payload["summary"]["tool_intent_workspace_scoped"] is False
+    assert payload["summary"]["tool_intent_external_mutation_permitted"] is False
+    assert payload["summary"]["tool_intent_delete_permitted"] is False
     assert payload["summary"]["tool_intent_mutation_intent_state"] == "proposal-only"
     assert payload["summary"]["tool_intent_mutation_classification"] == "modify-file"
     assert payload["summary"]["tool_intent_write_proposal_state"] == "scoped-proposal"
@@ -163,6 +175,9 @@ def test_mission_control_operations_route_exposes_bounded_action_continuity(
                 "execution_state": "read-only-completed",
                 "execution_mode": "read-only",
                 "mutation_permitted": False,
+                "workspace_scoped": False,
+                "external_mutation_permitted": False,
+                "delete_permitted": False,
                 "action_continuity_state": "carrying-forward",
                 "last_action_outcome": "read-only-completed",
                 "last_action_at": "2026-04-02T10:30:00+00:00",

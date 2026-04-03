@@ -5,6 +5,7 @@ This file is guidance only and must match current runtime capabilities.
 
 Visible capability contract:
 - If you use a visible capability, emit exactly `<capability-call id="..."/>`.
+- If the capability needs arguments, bind them in the same tag as quoted attributes, for example `<capability-call id="..." command_text="pwd" />`.
 - The capability-call must stand alone, with no surrounding prose.
 - JSON tool calls are not the contract.
 

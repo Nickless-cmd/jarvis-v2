@@ -1206,11 +1206,18 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     contract = capability_truth.get("contract") or {}
     lines = ["Runtime capability truth:"]
     lines.append(
-        "- Visible tool invocation uses exactly this one-line contract: "
+        "- Visible tool invocation uses text capability-call lines, not JSON: "
         '<capability-call id="capability_id" />'
     )
     lines.append(
+        "- If a capability needs arguments, bind them in the same tag as quoted attributes, for example: "
+        '<capability-call id="capability_id" command_text="pwd" />'
+    )
+    lines.append(
         "- If you invoke a capability, emit exactly one capability-call line and no surrounding prose."
+    )
+    lines.append(
+        "- For arg-requiring capabilities, the capability-call tag is authoritative. User-message extraction is compatibility fallback only."
     )
     lines.append(
         "- Do not emit JSON or pseudo-JSON tool calls. "

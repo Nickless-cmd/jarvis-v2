@@ -28,6 +28,8 @@ def _run_visible_stream(
     run_id: str,
     second_pass_text: str | None = None,
     user_message: str = "smoke",
+    stream_error: Exception | None = None,
+    second_pass_error: Exception | None = None,
 ) -> tuple[list[str], dict[str, object]]:
     monkeypatch.setattr(visible_runs, "record_cost", lambda **kwargs: None)
     monkeypatch.setattr(
@@ -38,6 +40,8 @@ def _run_visible_stream(
     )
 
     def stub_stream_visible_model(**kwargs):
+        if stream_error is not None:
+            raise stream_error
         yield visible_model.VisibleModelDelta(delta=text)
         yield visible_model.VisibleModelStreamDone(
             result=visible_model.VisibleModelResult(
@@ -53,6 +57,8 @@ def _run_visible_stream(
 
     def stub_execute_visible_model(*, message: str, provider: str, model: str, session_id=None):
         second_pass_calls.append(message)
+        if second_pass_error is not None:
+            raise second_pass_error
         response_text = second_pass_text or "Grounded fallback response."
         return visible_model.VisibleModelResult(
             text=response_text,
@@ -82,7 +88,8 @@ def _run_visible_stream(
 
     chunks = asyncio.run(collect())
     last_use = visible_runs.get_last_visible_capability_use() or {}
-    return chunks, {**last_use, "second_pass_calls": second_pass_calls}
+    last_trace = visible_runs.get_last_visible_execution_trace() or {}
+    return chunks, {**last_use, "second_pass_calls": second_pass_calls, "trace": last_trace}
 
 
 def test_visible_run_executes_read_capability_and_surfaces_result(
@@ -281,6 +288,40 @@ def test_visible_run_executes_dynamic_external_read_from_user_message_path(
     assert len(last_use.get("second_pass_calls") or []) == 1
 
 
+def test_visible_run_binds_external_read_target_from_capability_tag_attributes(
+    isolated_runtime,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    external_file = tmp_path / "external-visible-attr.txt"
+    external_file.write_text("External attr binding text.\n", encoding="utf-8")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text=f'<capability-call id="tool:read-external-file-by-path" target_path="{external_file}" />',
+        run_id="visible-cap-external-read-attr",
+        second_pass_text="Jeg læste den eksplicit bundne eksterne fil.",
+        user_message="ja tak",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    trace_events = _parse_sse(chunks, "trace")
+
+    assert capability_events
+    assert capability_events[-1]["status"] == "executed"
+    assert last_use.get("argument_source") == "tag-attributes"
+    assert (last_use.get("parsed_arguments") or {}).get("target_path") == str(external_file)
+    assert (last_use.get("trace") or {}).get("parsed_target_path") == str(external_file)
+    assert trace_events
+    assert trace_events[-1]["provider_second_pass_status"] == "completed"
+
+
 def test_visible_run_executes_non_destructive_command_from_user_message(
     isolated_runtime,
     monkeypatch,
@@ -308,7 +349,38 @@ def test_visible_run_executes_non_destructive_command_from_user_message(
     assert capability_events[-1]["execution_mode"] == "non-destructive-exec"
     assert any("aktuelle arbejdsmappe" in str(item.get("delta") or "") for item in delta_events)
     assert last_use.get("capability_id") == "tool:run-non-destructive-command"
+    assert (last_use.get("trace") or {}).get("argument_source") == "user-message-fallback"
     assert len(last_use.get("second_pass_calls") or []) == 1
+
+
+def test_visible_run_binds_exec_command_from_capability_tag_attributes(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text='<capability-call id="tool:run-non-destructive-command" command_text="pwd" />',
+        run_id="visible-cap-exec-attr",
+        second_pass_text="Jeg kørte den eksplicit bundne kommando og læste outputtet.",
+        user_message="ja tak",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    trace_events = _parse_sse(chunks, "trace")
+
+    assert capability_events
+    assert capability_events[-1]["status"] == "executed"
+    assert last_use.get("argument_source") == "tag-attributes"
+    assert (last_use.get("parsed_arguments") or {}).get("command_text") == "pwd"
+    assert (last_use.get("trace") or {}).get("parsed_command_text") == "pwd"
+    assert trace_events
+    assert trace_events[-1]["selected_capability_id"] == "tool:run-non-destructive-command"
 
 
 def test_visible_run_blocks_destructive_exec_command_without_markup_leakage(
@@ -337,4 +409,33 @@ def test_visible_run_blocks_destructive_exec_command_without_markup_leakage(
     assert capability_events[-1]["execution_mode"] == "non-destructive-exec"
     assert any("sudo is not allowed" in str(item.get("delta") or "") for item in delta_events)
     assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
+    assert (last_use.get("trace") or {}).get("blocked_reason")
     assert last_use.get("second_pass_calls") == []
+
+
+def test_visible_run_surfaces_provider_first_pass_error_in_trace(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text="",
+        run_id="visible-cap-provider-first-pass-error",
+        stream_error=RuntimeError("Ollama visible execution returned no streamed response"),
+    )
+
+    failed_events = _parse_sse(chunks, "failed")
+    trace_events = _parse_sse(chunks, "trace")
+
+    assert failed_events
+    assert "first-pass-provider-error" in str(failed_events[-1].get("error") or "")
+    assert trace_events
+    assert trace_events[-1]["provider_first_pass_status"] == "failed"
+    assert trace_events[-1]["invoke_status"] == "not-invoked"
+    assert "no streamed response" in str(trace_events[-1].get("provider_error_summary") or "")

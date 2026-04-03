@@ -138,9 +138,18 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
         "contract": {
             "mode": "text-capability-call",
             "visible_invocation_format": '<capability-call id="capability_id" />',
+            "visible_invocation_with_args_format": (
+                '<capability-call id="capability_id" arg_name="value" />'
+            ),
+            "visible_argument_binding": "in-tag-attributes",
+            "visible_argument_fallback": "current-user-message-compatibility-only",
             "json_tool_call_supported": False,
             "provider_native_structured_tools": False,
-            "summary": "Visible lane uses text capability calls only. JSON tool-call payloads are not part of the contract.",
+            "summary": (
+                "Visible lane uses text capability calls only. "
+                "Arguments for arg-requiring capabilities bind in capability-call attributes. "
+                "JSON tool-call payloads are not part of the contract."
+            ),
         },
         "policy": {
             "workspace_read": "allowed",

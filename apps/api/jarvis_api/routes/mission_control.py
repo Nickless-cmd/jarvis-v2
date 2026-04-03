@@ -265,6 +265,7 @@ from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
 from apps.api.jarvis_api.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
+    get_last_visible_execution_trace,
     get_last_visible_run_outcome,
     get_visible_selected_work_note,
     get_visible_selected_work_item,
@@ -1702,6 +1703,7 @@ def _visible_run_surface() -> dict:
         "active_run": active,
         "last_outcome": last_outcome,
         "last_capability_use": get_last_visible_capability_use(),
+        "last_execution_trace": get_last_visible_execution_trace(),
         "persisted_recent_runs": recent_visible_runs(limit=5),
         "recent_events": _recent_visible_run_events(),
     }

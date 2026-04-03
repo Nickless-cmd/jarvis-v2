@@ -54,6 +54,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         intent_surface,
         awareness_surface=awareness,
     )
+    write_proposal = mutation_intent.get("write_proposal") or {}
     approval = build_tool_intent_approval_surface(
         {
             **intent_surface,
@@ -66,6 +67,11 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             "mutation_system_scope": (
                 (mutation_intent.get("scope") or {}).get("system_mutation_scope") or ""
             ),
+            "write_proposal_type": write_proposal.get("write_proposal_type") or "none",
+            "write_proposal_scope": write_proposal.get("write_proposal_scope") or "none",
+            "write_proposal_targets": write_proposal.get("write_proposal_targets") or [],
+            "write_proposal_reason": write_proposal.get("write_proposal_reason") or "",
+            "write_proposal_criticality": write_proposal.get("criticality") or "none",
         },
         requested_at=built_at,
     )
@@ -135,6 +141,39 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             (mutation_intent.get("scope") or {}).get("mutation_critical", False)
         ),
         "mutation_boundary": mutation_intent.get("boundary") or "",
+        "write_proposal": write_proposal,
+        "write_proposal_state": write_proposal.get("write_proposal_state") or "none",
+        "write_proposal_type": write_proposal.get("write_proposal_type") or "none",
+        "write_proposal_scope": write_proposal.get("write_proposal_scope") or "none",
+        "write_proposal_targets": write_proposal.get("write_proposal_targets") or [],
+        "write_proposal_target_paths": write_proposal.get("write_proposal_target_paths")
+        or [],
+        "write_proposal_reason": write_proposal.get("write_proposal_reason") or "",
+        "write_proposal_explicit_approval_required": bool(
+            write_proposal.get("explicit_approval_required", True)
+        ),
+        "write_proposal_approval_scope": write_proposal.get("approval_scope")
+        or approval_scope,
+        "write_proposal_criticality": write_proposal.get("criticality") or "none",
+        "write_proposal_confidence": write_proposal.get("confidence") or confidence,
+        "write_proposal_proposal_only": bool(
+            write_proposal.get("proposal_only", True)
+        ),
+        "write_proposal_not_executed": bool(write_proposal.get("not_executed", True)),
+        "write_proposal_execution_state": write_proposal.get("execution_state")
+        or "not-executed",
+        "write_proposal_repo_scope": write_proposal.get("repo_scope") or "",
+        "write_proposal_system_scope": write_proposal.get("system_scope") or "",
+        "write_proposal_sudo_required": bool(
+            write_proposal.get("sudo_required", False)
+        ),
+        "write_proposal_target_identity": bool(
+            write_proposal.get("target_identity", False)
+        ),
+        "write_proposal_target_memory": bool(
+            write_proposal.get("target_memory", False)
+        ),
+        "write_proposal_boundary": write_proposal.get("boundary") or "",
         "action_continuity": action_continuity,
         "action_continuity_state": action_continuity.get("action_continuity_state") or "idle",
         "last_action_type": action_continuity.get("last_action_type") or "",
@@ -195,7 +234,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             ],
         ],
         "boundary": (
-            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope; mutation classification is runtime truth only, mutation_permitted=false, mutation_execution_state=not-executed, and no git fetch, pull, commit, reset, checkout, apply, install, delete, or file/system write has been performed."
+            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope; mutation classification and write proposals are runtime truth only, mutation_permitted=false, mutation_execution_state=not-executed, write_proposal_execution_state=not-executed, and no git fetch, pull, commit, reset, checkout, apply, install, delete, or file/system write has been performed."
         ),
         "seam_usage": [
             "bounded-read-only-repo-tools",

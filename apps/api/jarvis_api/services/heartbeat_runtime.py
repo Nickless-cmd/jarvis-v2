@@ -1111,6 +1111,24 @@ def _build_influence_trace(
     tool_intent_mutation_sudo_required = bool(
         tool_intent.get("mutation_sudo_required", False)
     )
+    tool_intent_write_proposal_state = str(
+        tool_intent.get("write_proposal_state") or "none"
+    )
+    tool_intent_write_proposal_type = str(
+        tool_intent.get("write_proposal_type") or "none"
+    )
+    tool_intent_write_proposal_scope = str(
+        tool_intent.get("write_proposal_scope") or "none"
+    )
+    tool_intent_write_proposal_criticality = str(
+        tool_intent.get("write_proposal_criticality") or "none"
+    )
+    tool_intent_write_proposal_target_identity = bool(
+        tool_intent.get("write_proposal_target_identity", False)
+    )
+    tool_intent_write_proposal_target_memory = bool(
+        tool_intent.get("write_proposal_target_memory", False)
+    )
     tool_intent_continuity_state = str(
         tool_intent.get("action_continuity_state") or "idle"
     )
@@ -1136,6 +1154,16 @@ def _build_influence_trace(
         )
     else:
         inputs_absent.append("tool-mutation-intent")
+
+    if tool_intent_write_proposal_state != "none":
+        inputs_present.append(
+            "tool-write-proposal "
+            f"({tool_intent_write_proposal_state}, type={tool_intent_write_proposal_type}, "
+            f"scope={tool_intent_write_proposal_scope}, criticality={tool_intent_write_proposal_criticality}, "
+            f"identity={tool_intent_write_proposal_target_identity}, memory={tool_intent_write_proposal_target_memory})"
+        )
+    else:
+        inputs_absent.append("tool-write-proposal")
 
     if tool_intent_continuity_state != "idle":
         inputs_present.append(
@@ -1205,6 +1233,12 @@ def _build_influence_trace(
         "tool_intent_mutation_repo_scope": tool_intent_mutation_repo_scope,
         "tool_intent_mutation_system_scope": tool_intent_mutation_system_scope,
         "tool_intent_mutation_sudo_required": tool_intent_mutation_sudo_required,
+        "tool_intent_write_proposal_state": tool_intent_write_proposal_state,
+        "tool_intent_write_proposal_type": tool_intent_write_proposal_type,
+        "tool_intent_write_proposal_scope": tool_intent_write_proposal_scope,
+        "tool_intent_write_proposal_criticality": tool_intent_write_proposal_criticality,
+        "tool_intent_write_proposal_target_identity": tool_intent_write_proposal_target_identity,
+        "tool_intent_write_proposal_target_memory": tool_intent_write_proposal_target_memory,
         "tool_intent_action_continuity_state": tool_intent_continuity_state,
         "tool_intent_last_action_outcome": tool_intent_last_action_outcome,
         "tool_intent_followup_state": tool_intent_followup_state,

@@ -13,6 +13,12 @@ _MUTATION_NEAR_CLASSES = {
     "git-mutate",
     "system-mutate",
 }
+_WRITE_PROPOSAL_TYPES = {
+    "modify-file": "propose-file-modification",
+    "delete-file": "propose-file-deletion",
+    "git-mutate": "propose-git-mutation",
+    "system-mutate": "propose-system-mutation",
+}
 _MAX_TARGET_FILES = 8
 
 
@@ -56,6 +62,19 @@ def build_bounded_mutation_intent_surface(
     )
     mutation_critical = classification in {"delete-file", "git-mutate", "system-mutate"}
     capabilities_summary = _approval_required_mutation_capability_summary()
+    write_proposal = _build_write_proposal_surface(
+        classification=classification,
+        mutation_near=mutation_near,
+        intent_state=intent_state,
+        intent_type=intent_type,
+        approval_scope=approval_scope,
+        target_files=target_files,
+        target_paths=target_paths,
+        repo_scope=repo_scope,
+        system_scope=system_scope,
+        sudo_required=sudo_required,
+        mutation_critical=mutation_critical,
+    )
 
     if state == "idle":
         summary = "No bounded mutation intent is active. Current runtime intent is idle."
@@ -82,6 +101,7 @@ def build_bounded_mutation_intent_surface(
         "execution_state": "not-executed",
         "execution_permitted": False,
         "summary": summary,
+        "write_proposal": write_proposal,
         "scope": {
             "target_files": target_files,
             "target_paths": target_paths,
@@ -102,6 +122,154 @@ def build_bounded_mutation_intent_surface(
         ],
         "source": "/runtime/bounded-mutation-intent",
     }
+
+
+def _build_write_proposal_surface(
+    *,
+    classification: str,
+    mutation_near: bool,
+    intent_state: str,
+    intent_type: str,
+    approval_scope: str,
+    target_files: list[str],
+    target_paths: list[str],
+    repo_scope: str,
+    system_scope: str,
+    sudo_required: bool,
+    mutation_critical: bool,
+) -> dict[str, object]:
+    proposal_type = _WRITE_PROPOSAL_TYPES.get(classification, "none")
+    if intent_state == "idle" or not mutation_near:
+        return {
+            "active": False,
+            "write_proposal_state": "none",
+            "write_proposal_type": "none",
+            "write_proposal_scope": "none",
+            "write_proposal_targets": [],
+            "write_proposal_target_paths": [],
+            "write_proposal_reason": "No bounded approval-scoped write proposal is active.",
+            "explicit_approval_required": True,
+            "approval_scope": approval_scope or "repo-read",
+            "criticality": "none",
+            "confidence": "low",
+            "proposal_only": True,
+            "not_executed": True,
+            "execution_state": "not-executed",
+            "mutation_near": False,
+            "repo_scope": "",
+            "system_scope": "",
+            "sudo_required": False,
+            "target_identity": False,
+            "target_memory": False,
+            "boundary": (
+                "Write proposal light is scoped runtime truth only. It is not execution, "
+                "not approval itself, not identity, and not MEMORY.md mutation."
+            ),
+            "source_contributors": ["bounded-mutation-intent-runtime"],
+        }
+
+    scope = "repo-file" if proposal_type in {
+        "propose-file-modification",
+        "propose-file-deletion",
+    } else ("git" if proposal_type == "propose-git-mutation" else "system")
+    criticality = "high" if mutation_critical else "medium"
+    confidence = _derive_write_proposal_confidence(
+        proposal_type=proposal_type,
+        target_files=target_files,
+        repo_scope=repo_scope,
+        system_scope=system_scope,
+    )
+    targets = target_files if target_files else target_paths
+    reason = _write_proposal_reason(
+        proposal_type=proposal_type,
+        approval_scope=approval_scope,
+        target_files=target_files,
+        repo_scope=repo_scope,
+        system_scope=system_scope,
+        sudo_required=sudo_required,
+        intent_type=intent_type,
+    )
+    return {
+        "active": True,
+        "write_proposal_state": "scoped-proposal",
+        "write_proposal_type": proposal_type,
+        "write_proposal_scope": scope,
+        "write_proposal_targets": targets[:_MAX_TARGET_FILES],
+        "write_proposal_target_paths": target_paths[:_MAX_TARGET_FILES],
+        "write_proposal_reason": reason,
+        "explicit_approval_required": True,
+        "approval_scope": approval_scope or "repo-read",
+        "criticality": criticality,
+        "confidence": confidence,
+        "proposal_only": True,
+        "not_executed": True,
+        "execution_state": "not-executed",
+        "mutation_near": True,
+        "repo_scope": repo_scope,
+        "system_scope": system_scope,
+        "sudo_required": sudo_required,
+        "target_identity": False,
+        "target_memory": False,
+        "boundary": (
+            "Write proposal light is approval-scoped runtime truth only. It stays proposal-only, "
+            "approval-gated, and not-executed. It is not identity, not MEMORY.md, and not action by itself."
+        ),
+        "source_contributors": [
+            "bounded-mutation-intent-runtime",
+            "self-system-code-awareness",
+        ],
+    }
+
+
+def _derive_write_proposal_confidence(
+    *,
+    proposal_type: str,
+    target_files: list[str],
+    repo_scope: str,
+    system_scope: str,
+) -> str:
+    if proposal_type in {"propose-file-modification", "propose-file-deletion"} and target_files:
+        return "high"
+    if proposal_type == "propose-git-mutation" and repo_scope:
+        return "high"
+    if proposal_type == "propose-system-mutation" and system_scope:
+        return "medium"
+    return "medium"
+
+
+def _write_proposal_reason(
+    *,
+    proposal_type: str,
+    approval_scope: str,
+    target_files: list[str],
+    repo_scope: str,
+    system_scope: str,
+    sudo_required: bool,
+    intent_type: str,
+) -> str:
+    if proposal_type == "propose-file-modification":
+        targets = ", ".join(target_files[:3]) or "bounded repo files"
+        return (
+            "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; "
+            f"targets={targets}; approval_scope={approval_scope}."
+        )
+    if proposal_type == "propose-file-deletion":
+        targets = ", ".join(target_files[:3]) or "bounded repo files"
+        return (
+            "Runtime sees deletion-near scope and can carry a bounded file-deletion proposal; "
+            f"targets={targets}; approval_scope={approval_scope}."
+        )
+    if proposal_type == "propose-git-mutation":
+        return (
+            "Runtime sees repo mutation-near scope and can carry a bounded git proposal; "
+            f"repo_scope={repo_scope or 'none'}; approval_scope={approval_scope}."
+        )
+    if proposal_type == "propose-system-mutation":
+        return (
+            "Runtime sees system mutation-near scope and can carry a bounded system proposal; "
+            f"system_scope={system_scope or intent_type}; sudo_required={sudo_required}; approval_scope={approval_scope}."
+        )
+    return "No bounded approval-scoped write proposal is active."
 
 
 def _derive_classification(

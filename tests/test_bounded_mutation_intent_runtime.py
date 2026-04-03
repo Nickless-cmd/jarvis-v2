@@ -60,6 +60,25 @@ def test_bounded_mutation_intent_classifies_modified_paths_as_modify_file(
         "modify-file",
         "git-mutate",
     ]
+    proposal = surface["write_proposal"]
+    assert proposal["active"] is True
+    assert proposal["write_proposal_state"] == "scoped-proposal"
+    assert proposal["write_proposal_type"] == "propose-file-modification"
+    assert proposal["write_proposal_scope"] == "repo-file"
+    assert proposal["write_proposal_targets"] == [
+        "apps/api/jarvis_api/services/tool_intent_runtime.py",
+        "tests/test_tool_intent_runtime.py",
+    ]
+    assert proposal["write_proposal_target_paths"] == [
+        "apps/api/jarvis_api/services",
+        "tests",
+    ]
+    assert proposal["explicit_approval_required"] is True
+    assert proposal["proposal_only"] is True
+    assert proposal["not_executed"] is True
+    assert proposal["execution_state"] == "not-executed"
+    assert proposal["target_identity"] is False
+    assert proposal["target_memory"] is False
 
 
 def test_bounded_mutation_intent_classifies_upstream_check_as_git_mutate(
@@ -101,3 +120,10 @@ def test_bounded_mutation_intent_classifies_upstream_check_as_git_mutate(
     assert surface["scope"]["system_mutation_scope"] == ""
     assert surface["scope"]["sudo_required"] is False
     assert surface["scope"]["mutation_critical"] is True
+    proposal = surface["write_proposal"]
+    assert proposal["write_proposal_type"] == "propose-git-mutation"
+    assert proposal["write_proposal_scope"] == "git"
+    assert proposal["repo_scope"] == "upstream-sync:feature/tool-intent->origin/main"
+    assert proposal["criticality"] == "high"
+    assert proposal["target_identity"] is False
+    assert proposal["target_memory"] is False

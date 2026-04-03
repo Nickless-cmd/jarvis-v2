@@ -22,6 +22,12 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "mutation_repo_scope": "",
                 "mutation_system_scope": "",
                 "mutation_sudo_required": False,
+                "write_proposal_state": "scoped-proposal",
+                "write_proposal_type": "propose-file-modification",
+                "write_proposal_scope": "repo-file",
+                "write_proposal_criticality": "medium",
+                "write_proposal_target_identity": False,
+                "write_proposal_target_memory": False,
                 "action_continuity_state": "idle",
                 "last_action_outcome": "none",
                 "last_action_at": "",
@@ -74,6 +80,12 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_mutation_repo_scope"] == ""
     assert payload["summary"]["tool_intent_mutation_system_scope"] == ""
     assert payload["summary"]["tool_intent_mutation_sudo_required"] is False
+    assert payload["summary"]["tool_intent_write_proposal_state"] == "scoped-proposal"
+    assert payload["summary"]["tool_intent_write_proposal_type"] == "propose-file-modification"
+    assert payload["summary"]["tool_intent_write_proposal_scope"] == "repo-file"
+    assert payload["summary"]["tool_intent_write_proposal_criticality"] == "medium"
+    assert payload["summary"]["tool_intent_write_proposal_target_identity"] is False
+    assert payload["summary"]["tool_intent_write_proposal_target_memory"] is False
     assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
     assert payload["summary"]["tool_intent_last_action_outcome"] == "none"
     assert payload["summary"]["tool_intent_followup_state"] == "none"
@@ -118,6 +130,8 @@ def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
     assert payload["tool_intent"]["mutation_permitted"] is False
     assert payload["tool_intent"]["mutation_intent_state"] == "proposal-only"
     assert payload["tool_intent"]["mutation_intent_classification"] == "modify-file"
+    assert payload["tool_intent"]["write_proposal_state"] == "scoped-proposal"
+    assert payload["tool_intent"]["write_proposal_type"] == "propose-file-modification"
     assert payload["tool_intent"]["action_continuity_state"] == "idle"
     assert payload["summary"]["tool_intent_approval_state"] == "approved"
     assert payload["summary"]["tool_intent_execution_state"] == "blocked-unavailable"
@@ -125,6 +139,8 @@ def test_mission_control_operations_route_reflects_mc_tool_intent_resolution(
     assert payload["summary"]["tool_intent_mutation_permitted"] is False
     assert payload["summary"]["tool_intent_mutation_intent_state"] == "proposal-only"
     assert payload["summary"]["tool_intent_mutation_classification"] == "modify-file"
+    assert payload["summary"]["tool_intent_write_proposal_state"] == "scoped-proposal"
+    assert payload["summary"]["tool_intent_write_proposal_type"] == "propose-file-modification"
     assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
 
 

@@ -193,12 +193,24 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
     )
     mutation_repo_scope = str(intent_surface.get("mutation_repo_scope") or "")
     mutation_system_scope = str(intent_surface.get("mutation_system_scope") or "")
+    write_proposal_type = str(intent_surface.get("write_proposal_type") or "none")
+    write_proposal_scope = str(intent_surface.get("write_proposal_scope") or "none")
+    write_proposal_targets = list(intent_surface.get("write_proposal_targets") or [])
+    write_proposal_reason = str(intent_surface.get("write_proposal_reason") or "")
+    write_proposal_criticality = str(
+        intent_surface.get("write_proposal_criticality") or "none"
+    )
     return (
         "Intent remains proposal-only until explicitly approved within bounded scope; "
         f"scope={intent_surface.get('approval_scope') or 'repo-read'}; "
         f"mutation_classification={mutation_classification}; "
         f"repo_scope={mutation_repo_scope or 'none'}; "
         f"system_scope={mutation_system_scope or 'none'}; "
+        f"write_proposal_type={write_proposal_type}; "
+        f"write_proposal_scope={write_proposal_scope}; "
+        f"write_proposal_targets={','.join(str(item) for item in write_proposal_targets[:4]) or 'none'}; "
+        f"write_proposal_criticality={write_proposal_criticality}; "
+        f"write_proposal_reason={write_proposal_reason or 'none'}; "
         f"execution={intent_surface.get('execution_state') or 'not-executed'}."
     )
 

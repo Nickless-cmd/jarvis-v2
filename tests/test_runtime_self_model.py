@@ -26,6 +26,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "experiential_runtime_context" in model
     assert "inner_voice_daemon" in model
     assert "support_stream_awareness" in model
+    assert "subjective_temporal_feel" in model
     assert "epistemic_runtime_state" in model
     assert "subagent_ecology" in model
     assert "council_runtime" in model
@@ -442,3 +443,164 @@ def test_support_stream_prompt_line_only_when_active(isolated_runtime) -> None:
     if "support_stream:" in joined:
         # If it does appear, it must have a non-baseline state
         assert "state=baseline" not in joined
+
+
+# ---------------------------------------------------------------------------
+# 14. Subjective temporal feel
+# ---------------------------------------------------------------------------
+
+
+def test_self_model_includes_subjective_temporal_feel(isolated_runtime) -> None:
+    """Self-model must include subjective_temporal_feel surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "subjective_temporal_feel" in model
+    feel = model["subjective_temporal_feel"]
+    assert "temporal_state" in feel
+    assert "felt_proximity" in feel
+    assert "return_signal" in feel
+    assert "persistence_feel" in feel
+    assert "narrative" in feel
+    assert feel["authority"] == "derived-runtime-truth"
+    assert feel["visibility"] == "internal-only"
+    assert feel["kind"] == "subjective-temporal-feel"
+
+
+def test_temporal_feel_immediate_when_continuous_stable() -> None:
+    """Temporal feel is 'immediate' / 'close' when no gap and state stable."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+
+    experiential = {
+        "intermittence_translation": {"state": "continuous", "gap_minutes": 0},
+        "experiential_continuity": {"continuity_state": "stable"},
+        "experiential_support": {"support_posture": "steadying"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    inner_voice = {"last_result": None}
+
+    feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+    assert feel["temporal_state"] == "immediate"
+    assert feel["felt_proximity"] == "close"
+    assert feel["return_signal"] is False
+    assert feel["persistence_feel"] == "settled"
+
+
+def test_temporal_feel_returning_after_gap() -> None:
+    """Temporal feel is 'returning' / 'resumed' when returned-after-gap."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+
+    experiential = {
+        "intermittence_translation": {"state": "returned-after-gap", "gap_minutes": 35},
+        "experiential_continuity": {"continuity_state": "returning"},
+        "experiential_support": {"support_posture": "steadying"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    inner_voice = {"last_result": None}
+
+    feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+    assert feel["temporal_state"] == "returning"
+    assert feel["felt_proximity"] == "resumed"
+    assert feel["return_signal"] is True
+    assert feel["persistence_feel"] == "reconnecting"
+    assert "return" in feel["narrative"]
+    assert "35m" in feel["narrative"]
+
+
+def test_temporal_feel_lingering_elevated_state() -> None:
+    """Temporal feel is 'lingering' when elevated state persists without shift."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+
+    experiential = {
+        "intermittence_translation": {"state": "continuous", "gap_minutes": 2},
+        "experiential_continuity": {"continuity_state": "lingering"},
+        "experiential_support": {"support_posture": "steadying"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    inner_voice = {"last_result": None}
+
+    feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+    assert feel["temporal_state"] == "lingering"
+    assert feel["persistence_feel"] == "persistent"
+    assert "still present" in feel["narrative"]
+
+
+def test_temporal_feel_stretched_when_lingering_with_gap() -> None:
+    """Temporal feel is 'stretched' when lingering AND brief gap present."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+
+    experiential = {
+        "intermittence_translation": {"state": "brief-gap", "gap_minutes": 12},
+        "experiential_continuity": {"continuity_state": "lingering"},
+        "experiential_support": {"support_posture": "steadying"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    inner_voice = {"last_result": None}
+
+    feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+    assert feel["temporal_state"] == "stretched"
+    assert "drawn out" in feel["narrative"]
+
+
+def test_temporal_feel_receding_when_easing() -> None:
+    """Temporal feel is 'receding' / 'fading' when continuity state is easing."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+
+    experiential = {
+        "intermittence_translation": {"state": "continuous", "gap_minutes": 3},
+        "experiential_continuity": {"continuity_state": "easing"},
+        "experiential_support": {"support_posture": "steadying"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    inner_voice = {"last_result": None}
+
+    feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+    assert feel["temporal_state"] == "receding"
+    assert feel["felt_proximity"] == "fading"
+    assert feel["persistence_feel"] == "releasing"
+
+
+def test_temporal_feel_held_when_support_active() -> None:
+    """Felt proximity is 'held' when support posture is active."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+
+    experiential = {
+        "intermittence_translation": {"state": "continuous", "gap_minutes": 0},
+        "experiential_continuity": {"continuity_state": "stable"},
+        "experiential_support": {"support_posture": "carrying"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    inner_voice = {"last_result": None}
+
+    feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+    assert feel["temporal_state"] == "immediate"
+    assert feel["felt_proximity"] == "held"
+    assert "held" in feel["narrative"]
+
+
+def test_temporal_feel_held_when_inner_voice_created() -> None:
+    """Felt proximity is 'held' when inner voice was recently created."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+
+    experiential = {
+        "intermittence_translation": {"state": "continuous", "gap_minutes": 0},
+        "experiential_continuity": {"continuity_state": "stable"},
+        "experiential_support": {"support_posture": "steadying"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    inner_voice = {"last_result": {"inner_voice_created": True, "mode": "reflective-carry"}}
+
+    feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+    assert feel["felt_proximity"] == "held"
+
+
+def test_temporal_feel_prompt_line_only_when_non_immediate(isolated_runtime) -> None:
+    """Temporal feel prompt line should only appear when state != immediate or proximity == held."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    # In isolated_runtime, temporal feel is likely immediate/close
+    # so temporal_feel line should NOT appear (unless held)
+    if "temporal_feel:" in joined:
+        assert "state=immediate" not in joined or "proximity=held" in joined

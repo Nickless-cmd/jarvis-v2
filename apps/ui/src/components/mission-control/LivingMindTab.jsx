@@ -1056,6 +1056,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const experientialInfluence = experientialRuntimeContext?.experientialInfluence || null
   const experientialSupport = experientialRuntimeContext?.experientialSupport || null
   const innerVoiceDaemon = data?.innerVoiceDaemon || null
+  const supportStreamAwareness = data?.supportStreamAwareness || null
+  const hasSupportStreamAwareness = Boolean(
+    supportStreamAwareness &&
+    supportStreamAwareness.kind === 'support-stream-awareness' &&
+    supportStreamAwareness.streamState !== 'baseline'
+  )
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1354,6 +1360,52 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
             {`shaped inner voice → mode ${humanizeToken(innerVoiceDaemon.lastResult.mode)} · ${humanizeToken(innerVoiceDaemon.lastResult.renderMode)}`}
           </small>
           ) : null}
+        </article>
+        ) : null}
+
+        {hasSupportStreamAwareness ? (
+        <article className="support-card" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::support_stream_awareness',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header stacked">
+            <div>
+              <h3>Support Stream Awareness</h3>
+              <p className="muted">Self-aware runtime truth: whether the inner stream is support-shaped.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(supportStreamAwareness.streamState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Stream state</span>
+              <strong>{humanizeToken(supportStreamAwareness.streamState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Shaped</span>
+              <strong>{supportStreamAwareness.streamShaped ? 'yes' : 'no'}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Support posture</span>
+              <strong>{humanizeToken(supportStreamAwareness.activeSupportPosture)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Support bias</span>
+              <strong>{humanizeToken(supportStreamAwareness.activeSupportBias)}</strong>
+            </div>
+          </div>
+          {supportStreamAwareness.shapedVoiceMode ? (
+          <div className="compact-grid" style={{ marginTop: 8 }}>
+            <div className="compact-metric">
+              <span>Shaped voice mode</span>
+              <strong>{humanizeToken(supportStreamAwareness.shapedVoiceMode)}</strong>
+            </div>
+          </div>
+          ) : null}
+          {supportStreamAwareness.narrative ? (
+          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{supportStreamAwareness.narrative}</small>
+          ) : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${supportStreamAwareness.authority} · kind: ${supportStreamAwareness.kind}`}</small>
         </article>
         ) : null}
       </section>

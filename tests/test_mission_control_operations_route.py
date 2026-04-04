@@ -316,6 +316,71 @@ def test_mission_control_operations_route_surfaces_mutating_exec_execution_summa
     assert payload["summary"]["tool_intent_followup_state"] == "bounded-mutating-exec-recorded"
 
 
+def test_runtime_inspection_bundle_is_shared_across_read_only_mc_routes(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    call_count = {"count": 0}
+
+    def fake_bundle() -> dict:
+        call_count["count"] += 1
+        return {
+            "runtime_self_model": {"built_at": "bundle-1", "layers": []},
+            "experiential_runtime_context": {"summary": "steady", "built_at": "bundle-1"},
+            "attention_budget": {
+                "profiles": {"visible_compact": {"total_char_target": 1000, "sections": {}}},
+                "micro_cognitive_frame": "frame",
+                "micro_frame_chars": 5,
+            },
+        }
+
+    monkeypatch.setattr(mission_control, "_mc_runtime_inspection_bundle_uncached", fake_bundle)
+    mission_control._MC_ROUTE_CACHE.clear()
+
+    runtime_self_model = mission_control.mc_runtime_self_model()
+    experiential = mission_control.mc_experiential_runtime_context()
+    attention = mission_control.mc_attention_budget()
+
+    assert runtime_self_model["built_at"] == "bundle-1"
+    assert experiential["summary"] == "steady"
+    assert attention["micro_cognitive_frame"] == "frame"
+    assert "live_traces" in attention
+    assert call_count["count"] == 1
+
+
+def test_experiential_runtime_context_route_uses_shared_bundle_cache(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    call_count = {"count": 0}
+
+    def fake_bundle() -> dict:
+        call_count["count"] += 1
+        return {
+            "runtime_self_model": {},
+            "experiential_runtime_context": {"summary": f"steady-{call_count['count']}"},
+            "attention_budget": {
+                "profiles": {},
+                "micro_cognitive_frame": "",
+                "micro_frame_chars": 0,
+            },
+        }
+
+    monkeypatch.setattr(mission_control, "_mc_runtime_inspection_bundle_uncached", fake_bundle)
+    mission_control._MC_ROUTE_CACHE.clear()
+
+    first = mission_control.mc_experiential_runtime_context()
+    second = mission_control.mc_experiential_runtime_context()
+
+    assert first["summary"] == "steady-1"
+    assert second["summary"] == "steady-1"
+    assert call_count["count"] == 1
+
+
 def test_mission_control_operations_route_surfaces_sudo_exec_execution_summary(
     isolated_runtime,
     monkeypatch,

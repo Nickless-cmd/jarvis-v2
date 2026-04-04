@@ -264,6 +264,23 @@ def _gather_grounding() -> dict[str, object]:
     except Exception:
         pass
 
+    # Experiential support carry-forward
+    try:
+        from apps.api.jarvis_api.services.experiential_runtime_context import (
+            build_experiential_runtime_context_surface,
+        )
+        exp_surface = build_experiential_runtime_context_surface()
+        exp_support = exp_surface.get("experiential_support") or {}
+        if exp_support.get("support_posture") and exp_support["support_posture"] != "steadying":
+            sources.append("experiential-support")
+            fragments["experiential_support_posture"] = exp_support["support_posture"]
+            fragments["experiential_support_bias"] = exp_support.get("support_bias") or "none"
+            fragments["experiential_support_mode"] = exp_support.get("support_mode") or "steady"
+            if exp_support.get("narrative"):
+                fragments["experiential_support_narrative"] = str(exp_support["narrative"])[:120]
+    except Exception:
+        pass
+
     return {
         "source_count": len(sources),
         "sources": sources,
@@ -386,6 +403,35 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
     }
 
 
+def _apply_support_shading(
+    base_mode: str,
+    fragments: dict[str, str],
+) -> str:
+    """Apply experiential support bias to inner voice mode selection.
+
+    Small bounded carry-forward: when experiential support is non-default,
+    nudge the inner voice mode toward the support direction.
+    Only shades the weak default mode — does not override strong
+    grounding-based mode selection.
+    """
+    support_bias = fragments.get("experiential_support_bias") or "none"
+
+    if support_bias == "none":
+        return base_mode
+
+    # Only shade "observing" (default/weak) mode
+    if base_mode != "observing":
+        return base_mode
+
+    _BIAS_MODE_MAP = {
+        "protect_focus": "continuity-aware",
+        "stabilize_thread": "reflective-carry",
+        "reopen_context": "growth-oriented",
+        "reduce_spread": "held-tension",
+    }
+    return _BIAS_MODE_MAP.get(support_bias, base_mode)
+
+
 def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
     """Deterministic fallback composition when LLM is unavailable."""
     fragments = grounding.get("fragments") or {}
@@ -401,6 +447,9 @@ def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
         mode = "continuity-aware"
     else:
         mode = "observing"
+
+    # Apply experiential support shading to mode selection
+    mode = _apply_support_shading(mode, fragments)
 
     focus = (
         fragments.get("brain_top_focus")
@@ -419,6 +468,8 @@ def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
         parts.append(f"Holding: {fragments['open_loop_signal'][:60]}")
     if fragments.get("conflict_outcome"):
         parts.append(f"Resolved: {fragments['conflict_outcome']}")
+    if fragments.get("experiential_support_narrative"):
+        parts.append(f"Support: {fragments['experiential_support_narrative'][:80]}")
 
     source_count = grounding.get("source_count", 0)
     confidence = "high" if source_count >= 4 else ("medium" if source_count >= 2 else "low")

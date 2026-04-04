@@ -854,6 +854,7 @@ function normalizeExperientialRuntimeContext(item = {}) {
   const affective = item.affective_translation || {}
   const intermittence = item.intermittence_translation || {}
   const contextPressure = item.context_pressure_translation || {}
+  const continuity = item.experiential_continuity || {}
 
   return {
     authority: item.authority || 'derived-runtime-truth',
@@ -881,6 +882,15 @@ function normalizeExperientialRuntimeContext(item = {}) {
       continuityPressure: contextPressure.continuity_pressure || 'low',
       narrative: contextPressure.narrative || '',
     },
+    experientialContinuity: continuity.continuity_state ? {
+      continuityState: continuity.continuity_state,
+      stateShiftSummary: continuity.state_shift_summary || '',
+      narrative: continuity.narrative || '',
+      dimensionShifts: continuity.dimension_shifts || {},
+      priorSource: continuity.prior_source || 'none',
+      sharedRuntimeTruth: Boolean(continuity.shared_runtime_truth),
+      comparisonBasis: continuity.comparison_basis || 'none',
+    } : null,
     seamUsage: {
       heartbeatRuntimeTruth: Boolean(seamUsage.heartbeat_runtime_truth),
       heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),

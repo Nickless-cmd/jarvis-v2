@@ -295,13 +295,14 @@ function experientialRuntimeContextRow(item, onOpen) {
   const affective = item.affectiveTranslation || {}
   const intermittence = item.intermittenceTranslation || {}
   const contextPressure = item.contextPressureTranslation || {}
+  const continuity = item.experientialContinuity || null
   const hasNonDefault = (
     embodied.state !== 'steady' ||
     affective.state !== 'settled' ||
     intermittence.state !== 'continuous' ||
     contextPressure.state !== 'clear'
   )
-  if (!hasNonDefault && !item.summary) return null
+  if (!hasNonDefault && !item.summary && !continuity) return null
   const usageLine = experientialUsageSummary(item)
   const detailText = [
     `body ${humanizeToken(embodied.state || 'steady')}`,
@@ -310,6 +311,11 @@ function experientialRuntimeContextRow(item, onOpen) {
     `pressure ${humanizeToken(contextPressure.state || 'clear')}`,
     usageLine ? `used by ${usageLine}` : '',
   ].filter(Boolean).join(' · ')
+
+  const continuityLine = continuity ? [
+    `continuity ${humanizeToken(continuity.continuityState)}`,
+    continuity.stateShiftSummary && continuity.stateShiftSummary !== 'No dimensional shifts.' ? continuity.stateShiftSummary : '',
+  ].filter(Boolean).join(' — ') : null
 
   return (
     <button
@@ -324,6 +330,7 @@ function experientialRuntimeContextRow(item, onOpen) {
       <div>
         <strong>Experiential Context</strong>
         <span>{detailText || 'Inspect bounded experiential runtime context'}</span>
+        {continuityLine ? <span className="muted">{continuityLine}</span> : null}
       </div>
       <div className="mc-row-meta">
         <StatusPill status={embodied.initiativeGate || 'clear'} />
@@ -1023,12 +1030,14 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const experientialAffective = experientialRuntimeContext?.affectiveTranslation || {}
   const experientialIntermittence = experientialRuntimeContext?.intermittenceTranslation || {}
   const experientialPressure = experientialRuntimeContext?.contextPressureTranslation || {}
+  const experientialContinuity = experientialRuntimeContext?.experientialContinuity || null
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
       experientialAffective.state !== 'settled' ||
       experientialIntermittence.state !== 'continuous' ||
-      experientialPressure.state !== 'clear'
+      experientialPressure.state !== 'clear' ||
+      (experientialContinuity && experientialContinuity.continuityState !== 'stable' && experientialContinuity.continuityState !== 'initial')
     ),
   )
   const internalCadence = data?.internalCadence || {}
@@ -1294,6 +1303,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
             {`tone ${humanizeToken(experientialAffective.state) || 'settled'} · gap ${humanizeToken(experientialIntermittence.state) || 'continuous'} · pressure ${humanizeToken(experientialPressure.state) || 'clear'}`}
             {experientialRuntimeContext.createdAt ? ` · ${formatFreshness(experientialRuntimeContext.createdAt)}` : ''}
           </small>
+          {experientialContinuity && experientialContinuity.continuityState ? (
+          <small className="muted">
+            {`continuity ${humanizeToken(experientialContinuity.continuityState)}`}
+            {experientialContinuity.stateShiftSummary && experientialContinuity.stateShiftSummary !== 'No dimensional shifts.' ? ` · ${experientialContinuity.stateShiftSummary}` : ''}
+          </small>
+          ) : null}
         </article>
         ) : null}
       </section>

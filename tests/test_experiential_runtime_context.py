@@ -83,6 +83,172 @@ def test_experiential_runtime_prompt_section_exposes_translated_context(
     assert "strain is easing" in section
 
 
+def test_experiential_continuity_stable_when_no_shifts(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    prior = {
+        "embodied_translation": {"state": "steady"},
+        "affective_translation": {"state": "settled"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    current = {
+        "embodied_translation": {"state": "steady"},
+        "affective_translation": {"state": "settled"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    result = experiential._derive_experiential_continuity(current, prior)
+    assert result["continuity_state"] == "stable"
+    assert result["dimension_shifts"] == {}
+    assert "holding steady" in result["narrative"]
+
+
+def test_experiential_continuity_escalating_when_worsening(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    prior = {
+        "embodied_translation": {"state": "steady"},
+        "affective_translation": {"state": "settled"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    current = {
+        "embodied_translation": {"state": "strained"},
+        "affective_translation": {"state": "tense"},
+        "context_pressure_translation": {"state": "narrowing"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    result = experiential._derive_experiential_continuity(current, prior)
+    assert result["continuity_state"] == "escalating"
+    assert "body" in result["dimension_shifts"]
+    assert "tone" in result["dimension_shifts"]
+    assert "pressure" in result["dimension_shifts"]
+    assert "Pressure is building" in result["narrative"]
+
+
+def test_experiential_continuity_easing_when_improving(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    prior = {
+        "embodied_translation": {"state": "strained"},
+        "affective_translation": {"state": "burdened"},
+        "context_pressure_translation": {"state": "narrowing"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    current = {
+        "embodied_translation": {"state": "steady"},
+        "affective_translation": {"state": "settled"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    result = experiential._derive_experiential_continuity(current, prior)
+    assert result["continuity_state"] == "easing"
+    assert "Things are settling" in result["narrative"]
+
+
+def test_experiential_continuity_lingering_when_elevated_unchanged(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    prior = {
+        "embodied_translation": {"state": "strained"},
+        "affective_translation": {"state": "tense"},
+        "context_pressure_translation": {"state": "crowded"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    current = {
+        "embodied_translation": {"state": "strained"},
+        "affective_translation": {"state": "tense"},
+        "context_pressure_translation": {"state": "crowded"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    result = experiential._derive_experiential_continuity(current, prior)
+    assert result["continuity_state"] == "lingering"
+    assert "persisting without change" in result["narrative"]
+
+
+def test_experiential_continuity_returning_after_gap(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    prior = {
+        "embodied_translation": {"state": "steady"},
+        "affective_translation": {"state": "settled"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    current = {
+        "embodied_translation": {"state": "loaded"},
+        "affective_translation": {"state": "attentive"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "returned-after-gap"},
+    }
+    result = experiential._derive_experiential_continuity(current, prior)
+    assert result["continuity_state"] == "returning"
+    assert "returning after a gap" in result["narrative"]
+
+
+def test_experiential_continuity_initial_without_prior(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    current = {
+        "embodied_translation": {"state": "steady"},
+        "affective_translation": {"state": "settled"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    result = experiential._derive_experiential_continuity(current, None)
+    assert result["continuity_state"] == "initial"
+    assert "beginning of experienced time" in result["narrative"]
+
+
+def test_experiential_continuity_shifted_when_mixed(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    prior = {
+        "embodied_translation": {"state": "strained"},
+        "affective_translation": {"state": "settled"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    current = {
+        "embodied_translation": {"state": "steady"},
+        "affective_translation": {"state": "tense"},
+        "context_pressure_translation": {"state": "clear"},
+        "intermittence_translation": {"state": "continuous"},
+    }
+    result = experiential._derive_experiential_continuity(current, prior)
+    assert result["continuity_state"] == "shifted"
+    assert "Something changed" in result["narrative"]
+
+
+def test_experiential_prompt_section_includes_continuity(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    section = experiential.build_experiential_runtime_prompt_section(
+        {
+            "embodied_translation": {"state": "strained", "narrative": "heavy"},
+            "affective_translation": {"state": "tense", "narrative": "taut"},
+            "intermittence_translation": {"state": "continuous", "narrative": "continuous"},
+            "context_pressure_translation": {"state": "clear", "narrative": "clear"},
+            "experiential_continuity": {
+                "continuity_state": "escalating",
+                "state_shift_summary": "body steady→strained · tone settled→tense",
+                "narrative": "Pressure is building: body moved from steady to strained.",
+            },
+        }
+    )
+    assert "continuity=escalating" in section
+    assert "Pressure is building" in section
+
+
 def test_heartbeat_self_knowledge_section_includes_experiential_runtime_context(
     isolated_runtime,
     monkeypatch,

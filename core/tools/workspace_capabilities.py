@@ -167,7 +167,7 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
             "external_read": "allowed",
             "non_destructive_exec": "allowed",
             "mutating_exec": "explicit-approval-required-bounded-non-sudo-only",
-            "sudo_exec": "explicit-approval-required-bounded-allowlist-only",
+            "sudo_exec": "explicit-approval-required-bounded-allowlist-with-short-ttl-window",
             "external_write": "explicit-approval-required",
             "mutation_outside_workspace": "explicit-approval-required",
             "delete_exec": "not-executable-in-this-pass",

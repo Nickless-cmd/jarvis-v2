@@ -2278,6 +2278,56 @@ def latest_capability_approval_request(
     return _capability_approval_request_from_row(row)
 
 
+def latest_approved_capability_approval_request(
+    *,
+    execution_mode: str | None = None,
+    capability_id: str | None = None,
+) -> dict[str, object] | None:
+    clauses = ["status = 'approved'", "approved_at IS NOT NULL"]
+    params: list[object] = []
+    if execution_mode:
+        clauses.append("execution_mode = ?")
+        params.append(execution_mode)
+    if capability_id:
+        clauses.append("capability_id = ?")
+        params.append(capability_id)
+    where = f"WHERE {' AND '.join(clauses)}"
+    with connect() as conn:
+        row = conn.execute(
+            f"""
+            SELECT
+                request_id,
+                capability_id,
+                capability_name,
+                capability_kind,
+                execution_mode,
+                approval_policy,
+                run_id,
+                proposal_target_path,
+                proposal_content,
+                proposal_content_summary,
+                proposal_content_fingerprint,
+                proposal_content_source,
+                proposal_reason,
+                requested_at,
+                status,
+                approved_at,
+                executed,
+                executed_at,
+                invocation_status,
+                invocation_execution_mode
+            FROM capability_approval_requests
+            {where}
+            ORDER BY approved_at DESC, id DESC
+            LIMIT 1
+            """,
+            tuple(params),
+        ).fetchone()
+    if row is None:
+        return None
+    return _capability_approval_request_from_row(row)
+
+
 def create_tool_intent_approval_request(
     *,
     intent_key: str,

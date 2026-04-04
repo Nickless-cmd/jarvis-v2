@@ -46,7 +46,7 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert contract.get("json_tool_call_supported") is False
     policy = capabilities.get("policy") or {}
     assert policy.get("mutating_exec") == "explicit-approval-required-bounded-non-sudo-only"
-    assert policy.get("sudo_exec") == "explicit-approval-required-bounded-allowlist-only"
+    assert policy.get("sudo_exec") == "explicit-approval-required-bounded-allowlist-with-short-ttl-window"
 
 
 def test_workspace_and_external_read_capabilities_execute(isolated_runtime) -> None:
@@ -246,6 +246,8 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
     assert "exact bounded non-sudo command" in template_tools
     assert "tiny bounded sudo allowlist" in default_tools
     assert "tiny bounded sudo allowlist" in template_tools
+    assert "short auto-expiring sudo approval window" in default_tools
+    assert "short auto-expiring sudo approval window" in template_tools
 
 
 def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime) -> None:
@@ -491,6 +493,57 @@ def test_sudo_exec_execution_rejects_command_mismatch_against_approved_proposal(
 
     assert executed["ok"] is False
     assert executed["status"] == "proposal-content-mismatch"
+
+
+def test_pending_sudo_exec_can_reuse_active_approval_window(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "")
+    target_one = workspace_dir / "sudo_exec_window_one.txt"
+    target_two = workspace_dir / "sudo_exec_window_two.txt"
+    target_one.write_text("window one\n", encoding="utf-8")
+    target_two.write_text("window two\n", encoding="utf-8")
+
+    def _fake_run_bounded_command(*, argv, workspace_dir):
+        return subprocess.CompletedProcess(argv, 0, "", ""), None
+
+    monkeypatch.setattr(caps_mod, "_run_bounded_command", _fake_run_bounded_command)
+
+    proposed_one = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"sudo chmod 600 {target_one}",
+    )
+    assert proposed_one["execution_mode"] == "sudo-exec-proposal"
+    request_one = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="sudo-exec-proposal",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_one
+    _ = isolated_runtime.mission_control.mc_approve_capability_request(request_one)
+    executed_one = isolated_runtime.mission_control.mc_execute_capability_request(request_one)
+    assert executed_one["ok"] is True
+
+    proposed_two = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"sudo chmod 644 {target_two}",
+    )
+    assert proposed_two["status"] == "approval-required"
+    request_two = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="sudo-exec-proposal",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_two and request_two != request_one
+
+    executed_two = isolated_runtime.mission_control.mc_execute_capability_request(request_two)
+
+    assert executed_two["ok"] is True
+    assert executed_two["status"] == "executed"
+    assert executed_two["request"]["status"] == "approved"
+    assert executed_two["invocation"]["execution_mode"] == "sudo-exec"
 
 
 def test_mutating_exec_execution_rejects_command_mismatch_against_approved_proposal(

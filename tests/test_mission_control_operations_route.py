@@ -42,6 +42,11 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "sudo_exec_proposal_scope": "system",
                 "sudo_exec_requires_sudo": True,
                 "sudo_exec_criticality": "high",
+                "sudo_approval_window_state": "active",
+                "sudo_approval_window_scope": "tool:run-non-destructive-command::sudo-exec::system::chmod",
+                "sudo_approval_window_expires_at": "2026-04-04T12:05:00+00:00",
+                "sudo_approval_window_remaining_seconds": 240,
+                "sudo_approval_window_reusable": True,
                 "action_continuity_state": "idle",
                 "last_action_outcome": "none",
                 "last_action_at": "",
@@ -114,6 +119,10 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_sudo_exec_proposal_scope"] == "system"
     assert payload["summary"]["tool_intent_sudo_exec_requires_sudo"] is True
     assert payload["summary"]["tool_intent_sudo_exec_criticality"] == "high"
+    assert payload["summary"]["tool_intent_sudo_approval_window_state"] == "active"
+    assert payload["summary"]["tool_intent_sudo_approval_window_scope"] == "tool:run-non-destructive-command::sudo-exec::system::chmod"
+    assert payload["summary"]["tool_intent_sudo_approval_window_remaining_seconds"] == 240
+    assert payload["summary"]["tool_intent_sudo_approval_window_reusable"] is True
     assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
     assert payload["summary"]["tool_intent_last_action_outcome"] == "none"
     assert payload["summary"]["tool_intent_followup_state"] == "none"
@@ -331,6 +340,11 @@ def test_mission_control_operations_route_surfaces_sudo_exec_execution_summary(
                 "sudo_exec_proposal_scope": "system",
                 "sudo_exec_requires_sudo": True,
                 "sudo_exec_criticality": "high",
+                "sudo_approval_window_state": "active",
+                "sudo_approval_window_scope": "tool:run-non-destructive-command::sudo-exec::system::chmod",
+                "sudo_approval_window_expires_at": "2026-04-03T14:05:00+00:00",
+                "sudo_approval_window_remaining_seconds": 120,
+                "sudo_approval_window_reusable": True,
                 "action_continuity_state": "carrying-forward",
                 "last_action_outcome": "sudo-exec-completed",
                 "last_action_at": "2026-04-03T14:00:00+00:00",
@@ -371,6 +385,8 @@ def test_mission_control_operations_route_surfaces_sudo_exec_execution_summary(
     assert payload["summary"]["tool_intent_sudo_exec_proposal_state"] == "executed"
     assert payload["summary"]["tool_intent_sudo_exec_proposal_scope"] == "system"
     assert payload["summary"]["tool_intent_sudo_exec_requires_sudo"] is True
+    assert payload["summary"]["tool_intent_sudo_approval_window_state"] == "active"
+    assert payload["summary"]["tool_intent_sudo_approval_window_reusable"] is True
     assert payload["summary"]["tool_intent_action_continuity_state"] == "carrying-forward"
     assert payload["summary"]["tool_intent_last_action_outcome"] == "sudo-exec-completed"
     assert payload["summary"]["tool_intent_followup_state"] == "bounded-sudo-exec-recorded"

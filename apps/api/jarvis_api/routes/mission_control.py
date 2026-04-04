@@ -70,6 +70,7 @@ from apps.api.jarvis_api.services.tool_intent_runtime import (
 )
 from apps.api.jarvis_api.services.tool_intent_approval_runtime import (
     resolve_tool_intent_approval,
+    sudo_approval_window_allows_request,
 )
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
@@ -601,6 +602,21 @@ def mc_operations(limit: int = 20) -> dict:
             ),
             "tool_intent_sudo_exec_criticality": str(
                 tool_intent.get("sudo_exec_criticality") or "none"
+            ),
+            "tool_intent_sudo_approval_window_state": str(
+                tool_intent.get("sudo_approval_window_state") or "none"
+            ),
+            "tool_intent_sudo_approval_window_scope": str(
+                tool_intent.get("sudo_approval_window_scope") or "none"
+            ),
+            "tool_intent_sudo_approval_window_expires_at": str(
+                tool_intent.get("sudo_approval_window_expires_at") or ""
+            ),
+            "tool_intent_sudo_approval_window_remaining_seconds": int(
+                tool_intent.get("sudo_approval_window_remaining_seconds") or 0
+            ),
+            "tool_intent_sudo_approval_window_reusable": bool(
+                tool_intent.get("sudo_approval_window_reusable", False)
             ),
             "tool_intent_action_continuity_state": str(
                 tool_intent.get("action_continuity_state") or "idle"
@@ -1410,15 +1426,35 @@ def mc_execute_capability_request(
             "request": None,
             "invocation": None,
         }
+    reusable_sudo_window = None
     if request.get("status") != "approved":
-        return {
-            "ok": False,
-            "request_id": request_id,
-            "status": "not-approved",
-            "detail": "Capability approval request must be approved before execution",
-            "request": request,
-            "invocation": None,
-        }
+        if (
+            request.get("status") == "pending"
+            and str(request.get("execution_mode") or "") == "sudo-exec-proposal"
+        ):
+            reusable_sudo_window = sudo_approval_window_allows_request(request)
+            if reusable_sudo_window.get("allowed"):
+                request = approve_capability_approval_request(
+                    request_id,
+                    approved_at=datetime.now(UTC).isoformat(),
+                ) or request
+        if request.get("status") == "approved":
+            pass
+        else:
+            detail = "Capability approval request must be approved before execution"
+            if reusable_sudo_window is not None:
+                detail = str(
+                    reusable_sudo_window.get("detail")
+                    or detail
+                )
+            return {
+                "ok": False,
+                "request_id": request_id,
+                "status": "not-approved",
+                "detail": detail,
+                "request": request,
+                "invocation": None,
+            }
     proposed_content = str(request.get("proposal_content") or "")
     proposed_fingerprint = str(request.get("proposal_content_fingerprint") or "")
     final_write_content = write_content

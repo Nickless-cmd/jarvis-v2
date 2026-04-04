@@ -356,6 +356,12 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
     mutating_exec_proposal_scope = str(
         intent_surface.get("mutating_exec_proposal_scope") or "none"
     )
+    mutating_exec_git_mutation_class = str(
+        intent_surface.get("mutating_exec_git_mutation_class") or "none"
+    )
+    mutating_exec_repo_stewardship_domain = str(
+        intent_surface.get("mutating_exec_repo_stewardship_domain") or "none"
+    )
     mutating_exec_proposal_reason = str(
         intent_surface.get("mutating_exec_proposal_reason") or "none"
     )
@@ -396,6 +402,8 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
         f"write_proposal_content_fingerprint={write_proposal_content_fingerprint}; "
         f"mutating_exec_proposal_state={mutating_exec_proposal_state}; "
         f"mutating_exec_proposal_scope={mutating_exec_proposal_scope}; "
+        f"mutating_exec_git_mutation_class={mutating_exec_git_mutation_class}; "
+        f"mutating_exec_repo_stewardship_domain={mutating_exec_repo_stewardship_domain}; "
         f"mutating_exec_proposal_command={mutating_exec_proposal_command}; "
         f"mutating_exec_requires_sudo={mutating_exec_requires_sudo}; "
         f"mutating_exec_criticality={mutating_exec_criticality}; "

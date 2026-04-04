@@ -585,6 +585,12 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_mutating_exec_proposal_scope": str(
                 tool_intent.get("mutating_exec_proposal_scope") or "none"
             ),
+            "tool_intent_mutating_exec_git_mutation_class": str(
+                tool_intent.get("mutating_exec_git_mutation_class") or "none"
+            ),
+            "tool_intent_mutating_exec_repo_stewardship_domain": str(
+                tool_intent.get("mutating_exec_repo_stewardship_domain") or "none"
+            ),
             "tool_intent_mutating_exec_requires_sudo": bool(
                 tool_intent.get("mutating_exec_requires_sudo", False)
             ),

@@ -1485,6 +1485,7 @@ def _classify_git_exec_command(argv: list[str]) -> dict[str, object]:
         }
 
     if subcommand in GIT_MUTATING_SUBCOMMANDS:
+        git_mutation_class = _classify_git_mutation_subcommand(subcommand)
         return {
             "allowed": False,
             "proposal_required": True,
@@ -1494,10 +1495,19 @@ def _classify_git_exec_command(argv: list[str]) -> dict[str, object]:
             "proposal_scope": "git",
             "proposal_execution_mode": "mutating-exec-proposal",
             "criticality": "high",
+            "git_mutation_class": git_mutation_class,
+            "repo_stewardship_domain": "git",
             "argv": list(argv),
             "detail": (
-                f"Git mutation subcommand {subcommand} was captured as an approval-gated proposal only and was not executed."
+                f"Git mutation subcommand {subcommand} was classified as {git_mutation_class} and captured as an approval-gated repo stewardship proposal only."
             ),
+        }
+
+    if subcommand == "clean":
+        return {
+            "allowed": False,
+            "status": "blocked-git-destructive",
+            "detail": "Git clean is destructive and stays blocked in this pass.",
         }
 
     if subcommand in GIT_BLOCKED_SUBCOMMANDS:
@@ -1516,6 +1526,23 @@ def _classify_git_exec_command(argv: list[str]) -> dict[str, object]:
             f"Git subcommand {subcommand or 'unknown'} is not in the bounded git read allowlist and is not opened for execution in this pass."
         ),
     }
+
+
+def _classify_git_mutation_subcommand(subcommand: str) -> str:
+    normalized = str(subcommand or "").strip().lower()
+    if normalized == "add":
+        return "git-stage"
+    if normalized == "commit":
+        return "git-commit"
+    if normalized in {"push", "pull", "fetch", "merge"}:
+        return "git-sync"
+    if normalized in {"checkout", "switch", "restore"}:
+        return "git-branch-switch"
+    if normalized in {"reset", "rebase", "cherry-pick", "revert"}:
+        return "git-history-rewrite"
+    if normalized == "stash":
+        return "git-stash"
+    return "git-other-mutate"
 
 
 def _mutating_exec_proposal_metadata(argv: list[str]) -> dict[str, object] | None:
@@ -1695,6 +1722,11 @@ def _mutating_exec_proposal_content(
     proposal_type = (
         "sudo-exec-proposal" if requires_sudo else "mutating-exec-proposal"
     )
+    git_mutation_class = str(classification.get("git_mutation_class") or "none")
+    repo_stewardship_domain = str(
+        classification.get("repo_stewardship_domain")
+        or ("git" if scope == "git" else "none")
+    )
     return {
         "state": "approval-required-proposal",
         "type": proposal_type,
@@ -1713,6 +1745,8 @@ def _mutating_exec_proposal_content(
         "approval_scope": "sudo-exec" if requires_sudo else "mutating-exec",
         "requires_sudo": requires_sudo,
         "criticality": criticality,
+        "git_mutation_class": git_mutation_class,
+        "repo_stewardship_domain": repo_stewardship_domain,
         "confidence": "high",
         "proposal_only": True,
         "not_executed": True,

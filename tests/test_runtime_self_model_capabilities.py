@@ -31,5 +31,6 @@ def test_runtime_self_model_surfaces_capability_registry_truth(isolated_runtime)
     assert "sudo_exec=explicit-approval-required-bounded-allowlist-with-short-ttl-window" in joined
     assert "allows only a tiny bounded git read/inspect subset" in joined
     assert "mutating_exec_boundary:" in joined
+    assert "git-stage, git-commit, git-sync, git-branch-switch, git-history-rewrite, git-stash, and git-other-mutate" in joined
     assert "sudo_approval_window:" in joined
     assert "sudo_exec_state=" in joined

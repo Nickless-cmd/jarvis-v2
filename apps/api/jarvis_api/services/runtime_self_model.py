@@ -709,10 +709,10 @@ def build_self_model_prompt_lines() -> list[str]:
         for item in runtime_capabilities
     ):
         lines.append(
-            "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, allows only a tiny bounded git read/inspect subset, and blocks sudo, package mutation, git mutation, delete, and shell chaining"
+            "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, allows only a tiny bounded git read/inspect subset, and blocks sudo, package mutation, delete, shell chaining, and broad git destruction"
         )
         lines.append(
-            "  mutating_exec_boundary: non-sudo filesystem mutation may execute only after explicit approval of the exact command fingerprint; bounded sudo exec may execute only after explicit approval of the exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass"
+            "  mutating_exec_boundary: non-sudo filesystem mutation may execute only after explicit approval of the exact command fingerprint; git mutation remains repo-stewardship proposal truth only and is classified into bounded classes such as git-stage, git-commit, git-sync, git-branch-switch, git-history-rewrite, git-stash, and git-other-mutate; bounded sudo exec may execute only after explicit approval of the exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass"
         )
         lines.append(
             "  sudo_approval_window: sudo approval may be reused only for a short auto-expiring window within the same bounded sudo scope; it is not global root access"

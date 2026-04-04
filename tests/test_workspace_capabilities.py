@@ -230,8 +230,42 @@ def test_mutating_exec_command_surfaces_as_approval_gated_proposal_only(
     assert proposal.get("type") == "mutating-exec-proposal"
     assert proposal.get("command") == "git add README.md"
     assert proposal.get("scope") == "git"
+    assert proposal.get("git_mutation_class") == "git-stage"
+    assert proposal.get("repo_stewardship_domain") == "git"
     assert proposal.get("explicit_approval_required") is True
     assert proposal.get("not_executed") is True
+
+
+def test_git_mutation_commands_land_in_bounded_repo_stewardship_classes(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    cases = [
+        ("git add README.md", "git-stage"),
+        ('git commit -m "msg"', "git-commit"),
+        ("git push", "git-sync"),
+        ("git pull", "git-sync"),
+        ("git checkout main", "git-branch-switch"),
+        ("git switch feature-x", "git-branch-switch"),
+        ("git reset HEAD~1", "git-history-rewrite"),
+        ("git rebase main", "git-history-rewrite"),
+        ("git stash", "git-stash"),
+    ]
+
+    for command_text, expected_class in cases:
+        result = caps_mod.invoke_workspace_capability(
+            "tool:run-non-destructive-command",
+            command_text=command_text,
+        )
+        assert result["status"] == "approval-required"
+        assert result["execution_mode"] == "mutating-exec-proposal"
+        proposal = result.get("proposal_content") or {}
+        assert proposal.get("scope") == "git"
+        assert proposal.get("git_mutation_class") == expected_class
+        assert proposal.get("repo_stewardship_domain") == "git"
+        assert proposal.get("not_executed") is True
 
 
 def test_git_read_exec_commands_are_allowed_as_bounded_inspection(
@@ -282,7 +316,7 @@ def test_git_mutation_and_destructive_git_commands_do_not_execute(
         "tool:run-non-destructive-command",
         command_text="git clean -fd",
     )
-    assert blocked["status"] == "blocked-git-command"
+    assert blocked["status"] == "blocked-git-destructive"
     assert blocked["execution_mode"] == "non-destructive-exec"
 
 
@@ -343,8 +377,10 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
     assert "command_from: user-message" in template_tools
     assert "Tiny bounded git read/inspect commands such as `git status`, `git diff --stat`, `git diff --name-only`, `git log --oneline -n N`, and `git branch --show-current` are allowed." in default_tools
     assert "allows only a tiny bounded git read/inspect subset" in template_tools
-    assert "Git mutation remains proposal-only and non-executed in this pass." in default_tools
-    assert "Git mutation remains proposal-only and non-executed in this pass." in template_tools
+    assert "runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`." in default_tools
+    assert "runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`." in template_tools
+    assert "`git clean` stays blocked." in default_tools
+    assert "`git clean` stays blocked." in template_tools
     assert "exact bounded non-sudo command" in default_tools
     assert "exact bounded non-sudo command" in template_tools
     assert "tiny bounded sudo allowlist" in default_tools

@@ -983,6 +983,45 @@ def test_approved_non_sudo_mutating_exec_becomes_runtime_truth_and_continuity(
     assert surface["truth"] == "derived-runtime-truth"
 
 
+def test_git_mutation_proposal_surfaces_repo_stewardship_class(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    tool_intent_mod = isolated_runtime.tool_intent_runtime
+
+    monkeypatch.setattr(
+        tool_intent_mod,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "clean",
+            "local_change_state": "clean",
+            "upstream_awareness": "in-sync",
+            "concern_state": "stable",
+            "source_contributors": ["repo-root", "git-status"],
+            "repo_observation": {
+                "branch_name": "main",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+
+    proposed = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="git push",
+    )
+    assert proposed["status"] == "approval-required"
+
+    surface = tool_intent_mod.build_tool_intent_runtime_surface()
+
+    assert surface["mutating_exec_proposal_state"] == "approval-required-proposal"
+    assert surface["mutating_exec_proposal_scope"] == "git"
+    assert surface["mutating_exec_git_mutation_class"] == "git-sync"
+    assert surface["mutating_exec_repo_stewardship_domain"] == "git"
+    assert surface["mutating_exec_requires_sudo"] is False
+    assert surface["mutation_permitted"] is False
+
+
 def test_approved_sudo_exec_becomes_runtime_truth_and_continuity(
     isolated_runtime,
     monkeypatch,

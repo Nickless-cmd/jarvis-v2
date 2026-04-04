@@ -24,6 +24,8 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "embodied_state" in model
     assert "affective_meta_state" in model
     assert "experiential_runtime_context" in model
+    assert "inner_voice_daemon" in model
+    assert "support_stream_awareness" in model
     assert "epistemic_runtime_state" in model
     assert "subagent_ecology" in model
     assert "council_runtime" in model
@@ -281,6 +283,8 @@ def test_mc_runtime_self_model_endpoint(isolated_runtime) -> None:
     assert "embodied_state" in response
     assert "affective_meta_state" in response
     assert "epistemic_runtime_state" in response
+    assert "inner_voice_daemon" in response
+    assert "support_stream_awareness" in response
     assert "subagent_ecology" in response
     assert "council_runtime" in response
     assert "adaptive_planner" in response
@@ -333,3 +337,108 @@ def test_memory_and_identity_are_distinct(isolated_runtime) -> None:
     memory_ids = {l["id"] for l in memory}
     identity_ids = {l["id"] for l in identity}
     assert memory_ids.isdisjoint(identity_ids), "Memory and identity layers must not overlap"
+
+
+# ---------------------------------------------------------------------------
+# 13. Support stream awareness
+# ---------------------------------------------------------------------------
+
+
+def test_self_model_includes_support_stream_awareness(isolated_runtime) -> None:
+    """Self-model must include support_stream_awareness surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "support_stream_awareness" in model
+    assert "inner_voice_daemon" in model
+    stream = model["support_stream_awareness"]
+    assert "stream_state" in stream
+    assert "stream_shaped" in stream
+    assert "active_support_posture" in stream
+    assert "active_support_bias" in stream
+    assert "narrative" in stream
+    assert stream["authority"] == "derived-runtime-truth"
+    assert stream["visibility"] == "internal-only"
+    assert stream["kind"] == "support-stream-awareness"
+
+
+def test_support_stream_baseline_when_no_support() -> None:
+    """Stream state must be 'baseline' when experiential support is steadying."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_support_stream_awareness
+
+    experiential = {
+        "experiential_support": {
+            "support_posture": "steadying",
+            "support_bias": "none",
+            "support_mode": "steady",
+        },
+    }
+    inner_voice = {"last_result": None}
+
+    stream = _derive_support_stream_awareness(experiential, inner_voice)
+    assert stream["stream_state"] == "baseline"
+    assert stream["stream_shaped"] is False
+    assert stream["active_support_posture"] == "none"
+    assert stream["active_support_bias"] == "none"
+    assert stream["narrative"] == ""
+
+
+def test_support_stream_active_but_not_shaped() -> None:
+    """Stream active when support is non-default but inner voice not yet produced."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_support_stream_awareness
+
+    experiential = {
+        "experiential_support": {
+            "support_posture": "carrying",
+            "support_bias": "protect_focus",
+            "support_mode": "weighted",
+        },
+    }
+    inner_voice = {"last_result": {"inner_voice_created": False, "mode": ""}}
+
+    stream = _derive_support_stream_awareness(experiential, inner_voice)
+    assert stream["stream_state"] == "weighted"
+    assert stream["stream_shaped"] is False
+    assert stream["active_support_posture"] == "carrying"
+    assert stream["active_support_bias"] == "protect_focus"
+    assert stream["shaped_voice_mode"] == ""
+    assert "not yet shaped" in stream["narrative"]
+
+
+def test_support_stream_shaped_when_voice_produced() -> None:
+    """Stream shaped when support is active AND inner voice was produced."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_support_stream_awareness
+
+    experiential = {
+        "experiential_support": {
+            "support_posture": "carrying",
+            "support_bias": "protect_focus",
+            "support_mode": "weighted",
+        },
+    }
+    inner_voice = {
+        "last_result": {
+            "inner_voice_created": True,
+            "mode": "continuity-aware",
+        },
+    }
+
+    stream = _derive_support_stream_awareness(experiential, inner_voice)
+    assert stream["stream_state"] == "weighted"
+    assert stream["stream_shaped"] is True
+    assert stream["active_support_posture"] == "carrying"
+    assert stream["shaped_voice_mode"] == "continuity-aware"
+    assert "shaped inner voice to continuity-aware" in stream["narrative"]
+
+
+def test_support_stream_prompt_line_only_when_active(isolated_runtime) -> None:
+    """support_stream prompt line should only appear when stream_state != baseline."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    # In isolated_runtime without real state, support should be steadying/baseline
+    # so support_stream line should NOT appear
+    if "support_stream:" in joined:
+        # If it does appear, it must have a non-baseline state
+        assert "state=baseline" not in joined

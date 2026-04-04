@@ -26,6 +26,9 @@ from apps.api.jarvis_api.services.embodied_state import (
 from apps.api.jarvis_api.services.affective_meta_state import (
     build_affective_meta_state_surface,
 )
+from apps.api.jarvis_api.services.experiential_runtime_context import (
+    build_experiential_runtime_context_surface,
+)
 from apps.api.jarvis_api.services.epistemic_runtime_state import (
     build_epistemic_runtime_state_surface,
 )
@@ -1019,6 +1022,12 @@ def mc_embodied_state() -> dict:
 def mc_affective_meta_state() -> dict:
     """Return the current bounded affective/meta runtime state."""
     return build_affective_meta_state_surface()
+
+
+@router.get("/experiential-runtime-context")
+def mc_experiential_runtime_context() -> dict:
+    """Return the current bounded experiential runtime context (body/tone/intermittence/pressure)."""
+    return build_experiential_runtime_context_surface()
 
 
 @router.get("/epistemic-runtime-state")

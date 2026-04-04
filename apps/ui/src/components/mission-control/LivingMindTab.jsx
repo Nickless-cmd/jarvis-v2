@@ -280,6 +280,61 @@ function adaptiveLearningBoundarySummary(item) {
   return parts.join(' / ')
 }
 
+function experientialUsageSummary(item) {
+  const usage = item?.seamUsage || {}
+  const labels = []
+  if (usage.heartbeatRuntimeTruth || usage.heartbeatPromptGrounding) labels.push('heartbeat')
+  if (usage.runtimeSelfModel) labels.push('self-model')
+  if (usage.missionControlRuntimeTruth) labels.push('MC truth')
+  return labels.join(' · ')
+}
+
+function experientialRuntimeContextRow(item, onOpen) {
+  if (!item || !item.kind || item.kind !== 'experiential-runtime-context') return null
+  const embodied = item.embodiedTranslation || {}
+  const affective = item.affectiveTranslation || {}
+  const intermittence = item.intermittenceTranslation || {}
+  const contextPressure = item.contextPressureTranslation || {}
+  const hasNonDefault = (
+    embodied.state !== 'steady' ||
+    affective.state !== 'settled' ||
+    intermittence.state !== 'continuous' ||
+    contextPressure.state !== 'clear'
+  )
+  if (!hasNonDefault && !item.summary) return null
+  const usageLine = experientialUsageSummary(item)
+  const detailText = [
+    `body ${humanizeToken(embodied.state || 'steady')}`,
+    `tone ${humanizeToken(affective.state || 'settled')}`,
+    `gap ${humanizeToken(intermittence.state || 'continuous')}`,
+    `pressure ${humanizeToken(contextPressure.state || 'clear')}`,
+    usageLine ? `used by ${usageLine}` : '',
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="mc-list-row mc-list-row-subtle"
+      onClick={() => onOpen('Experiential Runtime Context', item)}
+      title={sectionTitleWithMeta({
+        source: item.source,
+        fetchedAt: item.createdAt,
+        mode: 'experiential runtime context (derived-runtime-truth)',
+      })}
+    >
+      <div>
+        <strong>Experiential Context</strong>
+        <span>{detailText || 'Inspect bounded experiential runtime context'}</span>
+      </div>
+      <div className="mc-row-meta">
+        <StatusPill status={embodied.initiativeGate || 'clear'} />
+        {affective.bearing && affective.bearing !== 'even' ? <small>{humanizeToken(affective.bearing)}</small> : null}
+        {item.createdAt ? <small>{formatFreshness(item.createdAt)}</small> : null}
+        <ChevronRight size={14} />
+      </div>
+    </button>
+  )
+}
+
 function cadenceProducer(item, name) {
   return (item?.producers || []).find((producer) => producer.name === name) || null
 }
@@ -963,6 +1018,19 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasGuidedLearning = Boolean(guidedLearning?.learningMode)
   const adaptiveLearning = data?.adaptiveLearning || heartbeat?.adaptiveLearning || data?.development?.adaptiveLearning || data?.runtimeSelfModel?.adaptive_learning || {}
   const hasAdaptiveLearning = Boolean(adaptiveLearning?.learningEngineMode)
+  const experientialRuntimeContext = data?.experientialRuntimeContext || {}
+  const experientialEmbodied = experientialRuntimeContext?.embodiedTranslation || {}
+  const experientialAffective = experientialRuntimeContext?.affectiveTranslation || {}
+  const experientialIntermittence = experientialRuntimeContext?.intermittenceTranslation || {}
+  const experientialPressure = experientialRuntimeContext?.contextPressureTranslation || {}
+  const hasExperientialRuntimeContext = Boolean(
+    experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
+      experientialEmbodied.state !== 'steady' ||
+      experientialAffective.state !== 'settled' ||
+      experientialIntermittence.state !== 'continuous' ||
+      experientialPressure.state !== 'clear'
+    ),
+  )
   const internalCadence = data?.internalCadence || {}
   const sleepCadence = cadenceProducer(internalCadence, 'sleep_consolidation')
   const dreamCadence = cadenceProducer(internalCadence, 'dream_articulation')
@@ -984,6 +1052,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'dream-influence', label: 'Dream Influence', icon: Sparkles, active: hasDreamInfluence, status: dreamInfluence.influenceState, statusLabel: dreamInfluence.influenceState || 'quiet' },
     { id: 'guided', label: 'Guided Learning', icon: GraduationCap, active: hasGuidedLearning, status: guidedLearning.learningMode, statusLabel: guidedLearning.learningMode || 'reinforce' },
     { id: 'adaptive', label: 'Adaptive Learning', icon: TrendingUp, active: hasAdaptiveLearning, status: adaptiveLearning.learningEngineMode, statusLabel: adaptiveLearning.learningEngineMode || 'retain' },
+    { id: 'experiential', label: 'Experiential Context', icon: Activity, active: hasExperientialRuntimeContext, status: experientialEmbodied.initiativeGate, statusLabel: experientialEmbodied.state || 'steady' },
   ]
 
   return (
@@ -1213,6 +1282,20 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           </small>
         </article>
         ) : null}
+        {hasExperientialRuntimeContext ? (
+        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+          source: experientialRuntimeContext.source || '/mc/experiential-runtime-context',
+          fetchedAt: experientialRuntimeContext.createdAt || data?.fetchedAt,
+          mode: 'experiential runtime context (derived-runtime-truth)',
+        })}>
+          <span>Experiential Context</span>
+          <strong>{humanizeToken(experientialEmbodied.state) || 'steady'}</strong>
+          <small className="muted">
+            {`tone ${humanizeToken(experientialAffective.state) || 'settled'} · gap ${humanizeToken(experientialIntermittence.state) || 'continuous'} · pressure ${humanizeToken(experientialPressure.state) || 'clear'}`}
+            {experientialRuntimeContext.createdAt ? ` · ${formatFreshness(experientialRuntimeContext.createdAt)}` : ''}
+          </small>
+        </article>
+        ) : null}
       </section>
 
       {/* ─── Heartbeat Section ─── */}
@@ -1289,6 +1372,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
                 {dreamArticulationRow(dreamArticulation, onOpenItem)}
                 {promptEvolutionRow(promptEvolution, onOpenItem)}
                 {affectiveMetaStateRow(affectiveMetaState, onOpenItem)}
+                {experientialRuntimeContextRow(experientialRuntimeContext, onOpenItem)}
                 {epistemicRuntimeStateRow(epistemicRuntimeState, onOpenItem)}
                 {subagentEcologyRow(subagentEcology, onOpenItem)}
                 {councilRuntimeRow(councilRuntime, onOpenItem)}

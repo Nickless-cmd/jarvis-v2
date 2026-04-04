@@ -939,6 +939,21 @@ function normalizeInnerVoiceDaemonState(item = {}) {
   }
 }
 
+function normalizeSupportStreamAwareness(item = {}) {
+  if (!item || !item.kind) return null
+  return {
+    streamState: item.stream_state || 'baseline',
+    streamShaped: Boolean(item.stream_shaped),
+    activeSupportPosture: item.active_support_posture || 'none',
+    activeSupportBias: item.active_support_bias || 'none',
+    shapedVoiceMode: item.shaped_voice_mode || '',
+    narrative: item.narrative || '',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'support-stream-awareness',
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -3695,6 +3710,7 @@ export const backend = {
       selfSystemCodeAwareness: normalizeSelfSystemCodeAwareness(selfSystemCodeAwarenessSource || {}),
       experientialRuntimeContext: normalizeExperientialRuntimeContext(experientialRuntimeContextSource || {}),
       innerVoiceDaemon: normalizeInnerVoiceDaemonState(innerVoiceDaemonPayload || {}),
+      supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

@@ -1184,8 +1184,8 @@ def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
         workspace_dir / "VISIBLE_CHAT_RULES.md",
         fallback_path=TEMPLATE_DIR / "VISIBLE_CHAT_RULES.md",
         label="Visible chat guidance rules",
-        max_lines=6,
-        max_chars=220,
+        max_lines=14,
+        max_chars=600,
     )
 
 

@@ -1269,7 +1269,13 @@ def _strip_capability_markup(text: str) -> str:
 
 
 def _visible_text_without_capability_markup(text: str, *, had_markup: bool) -> str:
-    cleaned = " ".join(_strip_capability_markup(text).split()).strip()
+    stripped = _strip_capability_markup(text)
+    # Collapse runs of 3+ newlines into 2 (preserve paragraph breaks) and
+    # normalise horizontal whitespace per line, but keep markdown structure.
+    lines = stripped.split("\n")
+    lines = [" ".join(line.split()) for line in lines]
+    cleaned = "\n".join(lines).strip()
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     if cleaned:
         return cleaned
     if had_markup:

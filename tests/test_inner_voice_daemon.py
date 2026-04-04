@@ -341,3 +341,117 @@ def test_render_mode_is_observable_in_daemon_result(isolated_runtime) -> None:
     assert result["inner_voice_created"] is True
     assert "render_mode" in result
     assert result["render_mode"] in {"llm-rendered", "deterministic-fallback"}
+
+
+# ---------------------------------------------------------------------------
+# Experiential support carry-forward into inner voice
+# ---------------------------------------------------------------------------
+
+
+def test_support_shading_nudges_observing_to_continuity_aware() -> None:
+    """protect_focus bias should nudge 'observing' mode to 'continuity-aware'."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+
+    result = _apply_support_shading("observing", {
+        "experiential_support_bias": "protect_focus",
+    })
+    assert result == "continuity-aware"
+
+
+def test_support_shading_nudges_observing_to_reflective_carry() -> None:
+    """stabilize_thread bias should nudge 'observing' to 'reflective-carry'."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+
+    result = _apply_support_shading("observing", {
+        "experiential_support_bias": "stabilize_thread",
+    })
+    assert result == "reflective-carry"
+
+
+def test_support_shading_nudges_observing_to_growth_oriented() -> None:
+    """reopen_context bias should nudge 'observing' to 'growth-oriented'."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+
+    result = _apply_support_shading("observing", {
+        "experiential_support_bias": "reopen_context",
+    })
+    assert result == "growth-oriented"
+
+
+def test_support_shading_nudges_observing_to_held_tension() -> None:
+    """reduce_spread bias should nudge 'observing' to 'held-tension'."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+
+    result = _apply_support_shading("observing", {
+        "experiential_support_bias": "reduce_spread",
+    })
+    assert result == "held-tension"
+
+
+def test_support_shading_does_not_override_strong_mode() -> None:
+    """Support shading must not override grounding-based modes."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+
+    for strong_mode in ("reflective-carry", "held-tension", "growth-oriented", "continuity-aware"):
+        result = _apply_support_shading(strong_mode, {
+            "experiential_support_bias": "protect_focus",
+        })
+        assert result == strong_mode, f"Support shading overrode strong mode {strong_mode}"
+
+
+def test_support_shading_noop_when_bias_is_none() -> None:
+    """No shading when support_bias is 'none'."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+
+    result = _apply_support_shading("observing", {
+        "experiential_support_bias": "none",
+    })
+    assert result == "observing"
+
+
+def test_support_shading_noop_when_no_fragments() -> None:
+    """No shading when fragments have no support data."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+
+    result = _apply_support_shading("observing", {})
+    assert result == "observing"
+
+
+def test_deterministic_compose_includes_support_narrative() -> None:
+    """When experiential support narrative is present, it should appear in compose output."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["experiential-support", "open-loops"],
+        "fragments": {
+            "open_loop_signal": "An open thread about testing",
+            "experiential_support_posture": "carrying",
+            "experiential_support_bias": "protect_focus",
+            "experiential_support_mode": "weighted",
+            "experiential_support_narrative": "Carrying weight, holding focus tight",
+        },
+    }
+    note = _deterministic_compose(grounding)
+
+    assert "Support:" in note["summary"]
+    assert "Carrying weight" in note["summary"]
+    # Mode should be shaded from observing → continuity-aware
+    assert note["mode"] == "continuity-aware"
+
+
+def test_deterministic_compose_no_support_when_baseline() -> None:
+    """No support line when support data is absent."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["open-loops", "development-focus"],
+        "fragments": {
+            "open_loop_signal": "Test loop",
+            "dev_focus": "Test focus",
+        },
+    }
+    note = _deterministic_compose(grounding)
+
+    assert "Support:" not in note["summary"]

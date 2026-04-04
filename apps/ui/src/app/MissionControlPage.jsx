@@ -1,5 +1,5 @@
 import { Activity, RefreshCcw, Radio, Zap } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { CostTab } from '../components/mission-control/CostTab'
 import { ContinuityTab } from '../components/mission-control/ContinuityTab'
@@ -17,7 +17,7 @@ import { SkillsTab } from '../components/mission-control/SkillsTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
 
-export function MissionControlPage({ selection, onSelectionChange }) {
+export function MissionControlPage({ selection, onSelectionChange, initialTab }) {
   const {
     activeTab,
     setActiveTab,
@@ -43,6 +43,12 @@ export function MissionControlPage({ selection, onSelectionChange }) {
     toolIntentActionError,
   } = useMissionControlPhaseA({ active: true, selection })
   const [eventFamilyFilter, setEventFamilyFilter] = useState('all')
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab)
+    }
+  }, [initialTab])
 
   const filteredObservability = useMemo(() => {
     if (!sections.observability) return sections.observability

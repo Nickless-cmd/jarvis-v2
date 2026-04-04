@@ -3839,4 +3839,17 @@ export const backend = {
       return { cost_24h_usd: 0, tokens_24h: 0, unknown_pricing_24h: 0, providers: [] }
     }
   },
+
+  async getJarvisSurface() {
+    const [jarvis, affective] = await Promise.all([
+      requestJson('/mc/jarvis'),
+      requestJson('/mc/affective-meta-state').catch(() => ({})),
+    ])
+    return {
+      ...jarvis,
+      affectiveMetaState: affective,
+      protectedVoice: jarvis?.state?.protected_inner_voice || {},
+      skills: [],
+    }
+  },
 }

@@ -3,6 +3,7 @@ import { SidebarSessions } from '../components/layout/SidebarSessions'
 import { ChatPage } from './ChatPage'
 import { MissionControlPage } from './MissionControlPage'
 import { useUnifiedShell } from './useUnifiedShell'
+import { useRef } from 'react'
 
 export function App() {
   const {
@@ -25,11 +26,15 @@ export function App() {
     jarvisSurface,
   } = useUnifiedShell()
 
+  const mcInitialTabRef = useRef(null)
+
   function handleViewChange(view) {
     if (view === 'memory' || view === 'skills') {
+      mcInitialTabRef.current = view
       setActiveView('mission-control')
       return
     }
+    mcInitialTabRef.current = null
     setActiveView(view)
   }
 
@@ -69,6 +74,7 @@ export function App() {
         <MissionControlPage
           selection={shell.selection}
           onSelectionChange={handleSelectionChange}
+          initialTab={mcInitialTabRef.current}
         />
       )}
     </AppShell>

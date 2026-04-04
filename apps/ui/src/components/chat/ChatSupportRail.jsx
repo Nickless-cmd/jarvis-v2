@@ -1,4 +1,4 @@
-import { Smile, Frown, Lightbulb, Battery } from 'lucide-react'
+import { Activity, Brain, Compass, Eye, Gauge, MessageCircle } from 'lucide-react'
 
 function PanelSection({ title, children }) {
   return (
@@ -14,50 +14,39 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
   const summary = jarvisSurface?.summary || {}
   const memorySummary = summary?.retained_memory || {}
 
-  const emotions = [
-    { label: 'CONF', value: affective.confidenceLevel || 0, color: '#4caf82', icon: Smile },
-    { label: 'CURIO', value: affective.curiosityLevel || 0, color: '#d4963a', icon: Lightbulb },
-    { label: 'FRUS', value: affective.frustrationLevel || 0, color: '#c05050', icon: Frown },
-    { label: 'FATIGUE', value: affective.fatigueLevel || 0, color: '#4a80c0', icon: Battery },
-  ]
+  // Real affective meta state fields from the API
+  const affectiveState = affective.state || 'unknown'
+  const bearing = affective.bearing || 'unknown'
+  const monitoringMode = affective.monitoring_mode || 'unknown'
+  const reflectiveLoad = affective.reflective_load || 'unknown'
 
-  const innerVoice = jarvisSurface?.protectedVoice?.preview || 'ingen tanker endnu...'
+  // Inner voice from protected_inner_voice.current
+  const voiceData = jarvisSurface?.protectedVoice?.current || {}
+  const innerVoiceText = voiceData.voice_line || voiceData.current_concern || 'ingen tanker endnu...'
+  const voiceMood = voiceData.mood_tone || null
 
   return (
     <aside className="chat-support-rail">
-      <PanelSection title="Emotional State">
-        <div className="emotion-grid">
-          {emotions.map(({ label, value, color, icon: Icon }) => {
-            const pct = typeof value === 'number' && value <= 1 ? value * 100 : Number(value) || 0
-            return (
-              <div key={label} className="emotion-card">
-                <div className="emotion-card-header">
-                  <Icon size={9} color={color} />
-                  <span className="mono">{label}</span>
-                </div>
-                <div className="emotion-card-value mono">{pct.toFixed(0)}%</div>
-                <div className="progress-bar">
-                  <div className="progress-bar-fill" style={{ width: `${pct}%`, background: color }} />
-                </div>
+      <PanelSection title="Affective State">
+        <div className="rail-affective-grid">
+          {[
+            { label: 'STATE', value: affectiveState, icon: Activity, color: '#5ab8a0' },
+            { label: 'BEARING', value: bearing, icon: Compass, color: '#d4963a' },
+            { label: 'MONITOR', value: monitoringMode, icon: Eye, color: '#4a80c0' },
+            { label: 'REFLECT', value: reflectiveLoad, icon: Gauge, color: '#8b6cc0' },
+          ].map(({ label, value, icon: Icon, color }) => (
+            <div key={label} className="rail-affective-card">
+              <div className="rail-affective-card-header">
+                <Icon size={9} color={color} />
+                <span className="mono">{label}</span>
               </div>
-            )
-          })}
-        </div>
-      </PanelSection>
-
-      <PanelSection title="Skills">
-        <div className="rail-skill-list">
-          {(jarvisSurface?.skills || []).slice(0, 6).map(sk => (
-            <div key={sk.name || sk} className="rail-skill-item">
-              <div className={`rail-skill-dot ${sk.status === 'active' || sk.status === 'registered' ? 'active' : ''}`} />
-              <span className="mono">{sk.name || sk}</span>
-              <span className="rail-skill-uses mono">{sk.uses || 0}</span>
+              <div className="rail-affective-card-value mono" style={{ color }}>{value}</div>
             </div>
           ))}
-          {!(jarvisSurface?.skills || []).length && (
-            <span className="rail-empty mono">no skills loaded</span>
-          )}
         </div>
+        {affective.summary ? (
+          <div className="rail-affective-summary mono">{affective.summary}</div>
+        ) : null}
       </PanelSection>
 
       <PanelSection title="Memory">
@@ -74,7 +63,10 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
 
       <PanelSection title="Inner Voice">
         <div className="rail-inner-voice">
-          <span>{innerVoice}</span>
+          {voiceMood ? (
+            <div className="rail-inner-voice-mood mono">{voiceMood}</div>
+          ) : null}
+          <span>{innerVoiceText}</span>
         </div>
       </PanelSection>
     </aside>

@@ -12,28 +12,51 @@ export function AppShell({ activeView, onChangeView, sidebarContent, systemHealt
           <div className="brand-status-dot" />
         </div>
 
-        <button className="sidebar-new-chat-btn" onClick={onNewChat}>
-          <Plus size={12} />
-          Ny chat
-        </button>
-
         <nav className="global-nav">
-          {[
-            { id: 'chat', icon: MessageSquare, label: 'Chat' },
-            { id: 'memory', icon: Brain, label: 'Memory' },
-            { id: 'skills', icon: Layers, label: 'Skills' },
-            { id: 'mission-control', icon: LayoutDashboard, label: 'Mission Control' },
-          ].map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              className={activeView === id ? 'nav-item active' : 'nav-item'}
-              onClick={() => onChangeView(id)}
-              title={label}
-            >
-              <Icon size={13} />
-              <span>{label}</span>
-            </button>
-          ))}
+          <button
+            className={activeView === 'chat' ? 'nav-item active' : 'nav-item'}
+            onClick={() => onChangeView('chat')}
+            title="Chat"
+          >
+            <MessageSquare size={13} />
+            <span>Chat</span>
+          </button>
+
+          <button
+            className="nav-item nav-item-sub"
+            onClick={onNewChat}
+            title="Ny chat"
+          >
+            <Plus size={13} />
+            <span>Ny chat</span>
+          </button>
+
+          <button
+            className={activeView === 'memory' ? 'nav-item active' : 'nav-item'}
+            onClick={() => onChangeView('memory')}
+            title="Memory"
+          >
+            <Brain size={13} />
+            <span>Memory</span>
+          </button>
+
+          <button
+            className={activeView === 'skills' ? 'nav-item active' : 'nav-item'}
+            onClick={() => onChangeView('skills')}
+            title="Skills"
+          >
+            <Layers size={13} />
+            <span>Skills</span>
+          </button>
+
+          <button
+            className={activeView === 'mission-control' ? 'nav-item active' : 'nav-item'}
+            onClick={() => onChangeView('mission-control')}
+            title="Mission Control"
+          >
+            <LayoutDashboard size={13} />
+            <span>Mission Control</span>
+          </button>
         </nav>
 
         {sidebarContent ? <div className="sidebar-section">{sidebarContent}</div> : null}

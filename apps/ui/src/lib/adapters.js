@@ -848,6 +848,51 @@ function normalizePromptEvolution(item = {}) {
   }
 }
 
+function normalizeExperientialRuntimeContext(item = {}) {
+  const seamUsage = item.seam_usage || {}
+  const embodied = item.embodied_translation || {}
+  const affective = item.affective_translation || {}
+  const intermittence = item.intermittence_translation || {}
+  const contextPressure = item.context_pressure_translation || {}
+
+  return {
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'experiential-runtime-context',
+    summary: item.summary || '',
+    narrativeLines: item.narrative_lines || [],
+    embodiedTranslation: {
+      state: embodied.state || 'steady',
+      initiativeGate: embodied.initiative_gate || 'clear',
+      narrative: embodied.narrative || '',
+    },
+    affectiveTranslation: {
+      state: affective.state || 'settled',
+      bearing: affective.bearing || 'even',
+      narrative: affective.narrative || '',
+    },
+    intermittenceTranslation: {
+      state: intermittence.state || 'continuous',
+      gapMinutes: Number(intermittence.gap_minutes || 0),
+      narrative: intermittence.narrative || '',
+    },
+    contextPressureTranslation: {
+      state: contextPressure.state || 'clear',
+      continuityPressure: contextPressure.continuity_pressure || 'low',
+      narrative: contextPressure.narrative || '',
+    },
+    seamUsage: {
+      heartbeatRuntimeTruth: Boolean(seamUsage.heartbeat_runtime_truth),
+      heartbeatPromptGrounding: Boolean(seamUsage.heartbeat_prompt_grounding),
+      runtimeSelfModel: Boolean(seamUsage.runtime_self_model),
+      missionControlRuntimeTruth: Boolean(seamUsage.mission_control_runtime_truth),
+    },
+    source: item.source || '/mc/experiential-runtime-context',
+    builtAt: item.built_at || '',
+    createdAt: item.built_at || '',
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -2752,7 +2797,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -2762,6 +2807,7 @@ export const backend = {
       requestJson('/mc/internal-cadence').catch(() => null),
       requestJson('/mc/dream-influence').catch(() => null),
       requestJson('/mc/self-system-code-awareness').catch(() => null),
+      requestJson('/mc/experiential-runtime-context').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -2840,6 +2886,9 @@ export const backend = {
       heartbeat?.self_system_code_awareness ||
       continuity?.self_system_code_awareness ||
       selfModelPayload?.self_system_code_awareness ||
+      null
+    const experientialRuntimeContextSource =
+      experientialRuntimeContextPayload ||
       null
 
     return {
@@ -3595,6 +3644,7 @@ export const backend = {
       guidedLearning: normalizeGuidedLearning(guidedLearningSource || {}),
       adaptiveLearning: normalizeAdaptiveLearning(adaptiveLearningSource || {}),
       selfSystemCodeAwareness: normalizeSelfSystemCodeAwareness(selfSystemCodeAwarenessSource || {}),
+      experientialRuntimeContext: normalizeExperientialRuntimeContext(experientialRuntimeContextSource || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

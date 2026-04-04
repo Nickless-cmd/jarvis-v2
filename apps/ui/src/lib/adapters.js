@@ -1265,6 +1265,15 @@ function normalizeToolIntent(item = {}) {
     'sudo_exec_requires_sudo',
     'sudo_exec_criticality',
   ].some((key) => Object.prototype.hasOwnProperty.call(item, key))
+  const hasSudoApprovalWindowSurface = [
+    'sudo_approval_window_state',
+    'sudo_approval_window_scope',
+    'sudo_approval_window_started_at',
+    'sudo_approval_window_expires_at',
+    'sudo_approval_window_remaining_seconds',
+    'sudo_approval_window_source',
+    'sudo_approval_window_reusable',
+  ].some((key) => Object.prototype.hasOwnProperty.call(item, key))
   const hasMutatingExecExecutionSurface = (
     String(item.execution_mode || '') === 'mutating-exec'
     || String(item.execution_state || '').startsWith('mutating-exec-')
@@ -1335,6 +1344,7 @@ function normalizeToolIntent(item = {}) {
     mutationBoundary: item.mutation_boundary || '',
     hasMutatingExecProposalSurface,
     hasSudoExecProposalSurface,
+    hasSudoApprovalWindowSurface,
     hasMutatingExecExecutionSurface,
     mutatingExecProposalState: item.mutating_exec_proposal_state || 'none',
     mutatingExecProposalCommand: item.mutating_exec_proposal_command || '',
@@ -1367,6 +1377,13 @@ function normalizeToolIntent(item = {}) {
     sudoExecSourceContributors: Array.isArray(item.sudo_exec_source_contributors)
       ? item.sudo_exec_source_contributors.filter(Boolean)
       : [],
+    sudoApprovalWindowState: item.sudo_approval_window_state || 'none',
+    sudoApprovalWindowScope: item.sudo_approval_window_scope || 'none',
+    sudoApprovalWindowStartedAt: item.sudo_approval_window_started_at || '',
+    sudoApprovalWindowExpiresAt: item.sudo_approval_window_expires_at || '',
+    sudoApprovalWindowRemainingSeconds: Number(item.sudo_approval_window_remaining_seconds || 0),
+    sudoApprovalWindowSource: item.sudo_approval_window_source || 'none',
+    sudoApprovalWindowReusable: Boolean(item.sudo_approval_window_reusable),
     boundary: item.boundary || 'Intent is proposal-only and approval-gated; no action has been performed.',
     sourceContributors: (item.source_contributors || []).map((source) => ({ source: String(source || ''), signal: '' })),
     source: item.source || '/mc/tool-intent',

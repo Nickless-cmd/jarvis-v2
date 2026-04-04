@@ -75,6 +75,11 @@ function sudoExecGuardLabel(item) {
   return item?.sudoExecRequiresApproval ? 'approval required' : 'review only'
 }
 
+function sudoApprovalWindowGuardLabel(item) {
+  if (!item?.hasSudoApprovalWindowSurface) return 'no window'
+  return item?.sudoApprovalWindowReusable ? 'reusable' : 'not reusable'
+}
+
 function toolIntentRow(item, onOpen) {
   if (!item || (!item.intentState && !item.intentType)) return null
 
@@ -166,6 +171,15 @@ export function OperationsTab({
       || toolIntent?.sudoExecProposalSummary
     )
     && toolIntent?.sudoExecProposalState !== 'none'
+  )
+  const showSudoApprovalWindow = Boolean(
+    toolIntent?.hasSudoApprovalWindowSurface
+    && (
+      toolIntent?.sudoApprovalWindowState
+      || toolIntent?.sudoApprovalWindowScope
+      || toolIntent?.sudoApprovalWindowExpiresAt
+    )
+    && toolIntent?.sudoApprovalWindowState !== 'none'
   )
   const mutationScope = mutationScopeSummary(toolIntent)
   const mutationTargets = summarizeMutationTargets(toolIntent)
@@ -365,6 +379,43 @@ export function OperationsTab({
                   <span className="mc-meta-pill">{toolIntent.sudoExecRequiresApproval ? 'approval required' : 'approval not required'}</span>
                   <span className="mc-meta-pill">{toolIntent.sudoExecRequiresSudo ? 'requires sudo' : 'sudo not needed'}</span>
                   <span className="mc-meta-pill">not executed</span>
+                </div>
+              </article>
+            </>
+          ) : null}
+          {showSudoApprovalWindow ? (
+            <>
+              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
+                <div className="compact-metric" title="Short bounded sudo approval window state">
+                  <span>Sudo Window</span>
+                  <strong>{humanizeToken(toolIntent.sudoApprovalWindowState || 'none')}</strong>
+                  <p className="muted">{sudoApprovalWindowGuardLabel(toolIntent)} · short TTL</p>
+                </div>
+                <div className="compact-metric" title="Bounded sudo approval scope and source">
+                  <span>Scope</span>
+                  <strong>{humanizeToken(toolIntent.sudoApprovalWindowScope || 'none')}</strong>
+                  <p className="muted">via {humanizeToken(toolIntent.sudoApprovalWindowSource || 'none')}</p>
+                </div>
+                <div className="compact-metric" title="Remaining sudo approval window time">
+                  <span>Remaining</span>
+                  <strong>{toolIntent.sudoApprovalWindowRemainingSeconds || 0}s</strong>
+                  <p className="muted">{toolIntent.sudoApprovalWindowReusable ? 'approval reusable' : 'reuse blocked'}</p>
+                </div>
+                <div className="compact-metric" title="Window lifecycle timestamps">
+                  <span>Expires</span>
+                  <strong>{toolIntent.sudoApprovalWindowExpiresAt ? formatFreshness(toolIntent.sudoApprovalWindowExpiresAt) : 'unknown'}</strong>
+                  <p className="muted">{toolIntent.sudoApprovalWindowStartedAt ? `started ${formatFreshness(toolIntent.sudoApprovalWindowStartedAt)}` : 'start time unavailable'}</p>
+                </div>
+              </div>
+              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
+                <strong>Sudo approval window</strong>
+                <p>A short, scoped sudo approval window may reuse a recent approval only within the same bounded sudo scope. It is not global root access.</p>
+                <div className="mc-inline-meta">
+                  <span className="mc-meta-pill">state {humanizeToken(toolIntent.sudoApprovalWindowState || 'none')}</span>
+                  <span className="mc-meta-pill">scope {humanizeToken(toolIntent.sudoApprovalWindowScope || 'none')}</span>
+                  <span className="mc-meta-pill">{toolIntent.sudoApprovalWindowReusable ? 'reusable' : 'not reusable'}</span>
+                  <span className="mc-meta-pill">{toolIntent.sudoApprovalWindowRemainingSeconds || 0}s remaining</span>
+                  <span className="mc-meta-pill">source {humanizeToken(toolIntent.sudoApprovalWindowSource || 'none')}</span>
                 </div>
               </article>
             </>

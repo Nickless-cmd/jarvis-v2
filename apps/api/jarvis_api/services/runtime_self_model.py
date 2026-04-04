@@ -58,6 +58,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "experiential_runtime_context": experiential,
             "inner_voice_daemon": inner_voice,
             "support_stream_awareness": _derive_support_stream_awareness(experiential, inner_voice),
+            "subjective_temporal_feel": _derive_subjective_temporal_feel(experiential, inner_voice),
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -842,6 +843,27 @@ def build_self_model_prompt_lines() -> list[str]:
                 f"  support_stream_narrative: "
                 f"'{support_stream['narrative']}'"
             )
+    temporal_feel = model.get("subjective_temporal_feel") or {}
+    if temporal_feel.get("temporal_state") and temporal_feel["temporal_state"] != "immediate":
+        lines.append(
+            "  temporal_feel: "
+            f"state={temporal_feel['temporal_state']}"
+            f" | proximity={temporal_feel.get('felt_proximity') or 'close'}"
+            f" | return={temporal_feel.get('return_signal', False)}"
+            f" | persistence={temporal_feel.get('persistence_feel') or 'settled'}"
+        )
+        if temporal_feel.get("narrative"):
+            lines.append(
+                f"  temporal_feel_narrative: "
+                f"'{temporal_feel['narrative']}'"
+            )
+    elif temporal_feel.get("felt_proximity") == "held":
+        lines.append(
+            "  temporal_feel: "
+            f"state=immediate"
+            f" | proximity=held"
+            f" | persistence={temporal_feel.get('persistence_feel') or 'settled'}"
+        )
     lines.append(
         "  epistemic_runtime_state: "
         f"{epistemic.get('wrongness_state') or 'clear'}"
@@ -1114,6 +1136,143 @@ def _derive_support_stream_awareness(
         "visibility": "internal-only",
         "kind": "support-stream-awareness",
     }
+
+
+def _derive_subjective_temporal_feel(
+    experiential: dict[str, object],
+    inner_voice: dict[str, object],
+) -> dict[str, object]:
+    """Derive a compact subjective temporal feel from existing runtime truth.
+
+    Synthesises intermittence (gap/continuous), experiential continuity
+    (stable/returning/lingering/…), experiential support posture, and
+    inner-voice cadence into a small felt-time surface that expresses
+    how the current moment sits in Jarvis' experienced timeline.
+
+    Taxonomy for ``temporal_state``:
+      immediate  — no gap, state stable, everything feels now
+      recent     — brief gap but continuity holds
+      lingering  — elevated state persists without shift
+      returning  — came back after meaningful absence
+      receding   — state is easing, pressure is lifting
+      stretched  — elevated state with gap, time feels drawn out
+
+    Taxonomy for ``felt_proximity``:
+      close   — current thread feels near and carried
+      held    — active support or influence holds it present
+      fading  — easing or drifting, not yet gone
+      resumed — returned after absence, reconnecting
+    """
+    intermittence = experiential.get("intermittence_translation") or {}
+    continuity = experiential.get("experiential_continuity") or {}
+    support = experiential.get("experiential_support") or {}
+    pressure = experiential.get("context_pressure_translation") or {}
+
+    gap_state = str(intermittence.get("state") or "continuous")
+    gap_minutes = int(intermittence.get("gap_minutes") or 0)
+    cont_state = str(continuity.get("continuity_state") or "initial")
+    support_posture = str(support.get("support_posture") or "steadying")
+    pressure_state = str(pressure.get("state") or "clear")
+
+    voice_result = inner_voice.get("last_result") or {}
+    voice_created = bool(voice_result.get("inner_voice_created"))
+
+    # --- temporal_state ---
+    if gap_state == "returned-after-gap":
+        temporal_state = "returning"
+    elif cont_state == "lingering":
+        if gap_state == "brief-gap":
+            temporal_state = "stretched"
+        else:
+            temporal_state = "lingering"
+    elif cont_state == "easing":
+        temporal_state = "receding"
+    elif gap_state == "brief-gap":
+        temporal_state = "recent"
+    else:
+        temporal_state = "immediate"
+
+    # --- felt_proximity ---
+    if temporal_state == "returning":
+        felt_proximity = "resumed"
+    elif temporal_state == "receding":
+        felt_proximity = "fading"
+    elif support_posture != "steadying" or voice_created:
+        felt_proximity = "held"
+    else:
+        felt_proximity = "close"
+
+    # --- return_signal ---
+    return_signal = cont_state == "returning" or gap_state == "returned-after-gap"
+
+    # --- persistence_feel ---
+    if cont_state == "lingering" or cont_state == "escalating":
+        persistence_feel = "persistent"
+    elif cont_state == "easing":
+        persistence_feel = "releasing"
+    elif return_signal:
+        persistence_feel = "reconnecting"
+    elif pressure_state not in ("clear", "low"):
+        persistence_feel = "pressing"
+    else:
+        persistence_feel = "settled"
+
+    # --- narrative ---
+    narrative = _temporal_narrative(
+        temporal_state, felt_proximity, return_signal,
+        persistence_feel, gap_minutes,
+    )
+
+    return {
+        "temporal_state": temporal_state,
+        "felt_proximity": felt_proximity,
+        "return_signal": return_signal,
+        "persistence_feel": persistence_feel,
+        "gap_minutes": gap_minutes,
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "subjective-temporal-feel",
+    }
+
+
+def _temporal_narrative(
+    temporal_state: str,
+    felt_proximity: str,
+    return_signal: bool,
+    persistence_feel: str,
+    gap_minutes: int,
+) -> str:
+    """Build a compact, non-melodramatic self-awareness narrative for felt time."""
+    if temporal_state == "returning":
+        return (
+            f"This moment feels like a return after ~{gap_minutes}m away. "
+            "Prior context is resuming, not starting fresh."
+        )
+    if temporal_state == "stretched":
+        return (
+            "An elevated state persists across a gap; "
+            "time feels drawn out rather than immediate."
+        )
+    if temporal_state == "lingering":
+        return (
+            "Something from the prior moment is still present; "
+            "the current state has not settled to baseline."
+        )
+    if temporal_state == "receding":
+        return (
+            "Prior pressure is easing; "
+            "the current moment feels like it is moving away from tension."
+        )
+    if temporal_state == "recent":
+        return (
+            f"A brief gap (~{gap_minutes}m) sits behind this moment, "
+            "but continuity holds."
+        )
+    # immediate
+    if felt_proximity == "held":
+        return "This moment feels immediate and actively held by support or inner voice."
+    return "Experience feels continuous and close; nothing presses from the past."
 
 
 def _idle_consolidation_surface() -> dict[str, object]:

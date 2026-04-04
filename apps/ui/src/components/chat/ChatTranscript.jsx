@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Bot, User } from 'lucide-react'
 import { WorkingIndicator } from './WorkingIndicator'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 export function ChatTranscript({ messages, workingSteps }) {
   const transcriptRef = useRef(null)
@@ -36,10 +37,10 @@ export function ChatTranscript({ messages, workingSteps }) {
               <span>{message.ts}</span>
             </div>
             {message.content ? (
-              <p>
-                {message.content}
+              <div className="message-content">
+                <MarkdownRenderer content={message.content} />
                 {message.pending && <span className="streaming-cursor" />}
-              </p>
+              </div>
             ) : null}
             {message.pending && !message.content ? (
               <div className="thinking-indicator">

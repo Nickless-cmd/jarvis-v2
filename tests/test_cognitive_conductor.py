@@ -22,6 +22,7 @@ def test_cognitive_frame_has_required_keys() -> None:
     assert "continuity_pressure" in frame
     assert "continuity_mode" in frame
     assert "active_constraints" in frame
+    assert "experiential_support" in frame
     assert "counts" in frame
     assert "summary" in frame
 
@@ -235,3 +236,20 @@ def test_counts_are_populated() -> None:
     assert "gated_affordances" in counts
     assert "inner_forces" in counts
     assert all(isinstance(v, int) for v in counts.values())
+
+
+def test_experiential_support_in_frame() -> None:
+    """Cognitive frame includes experiential_support key (may be empty dict)."""
+    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+        build_cognitive_frame,
+    )
+
+    frame = build_cognitive_frame()
+    assert "experiential_support" in frame
+    support = frame["experiential_support"]
+    assert isinstance(support, dict)
+    # If populated, must have expected keys
+    if support.get("support_posture"):
+        assert support["support_posture"] in ("steadying", "grounding", "narrowing", "carrying", "reopening")
+        assert support.get("support_bias") in ("protect_focus", "stabilize_thread", "reopen_context", "reduce_spread", "none")
+        assert support.get("support_mode") in ("steady", "guarded", "weighted", "opening")

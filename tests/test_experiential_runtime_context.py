@@ -488,3 +488,150 @@ def test_experiential_prompt_section_includes_influence(
     assert "attention=narrowed" in section
     assert "initiative=burdened" in section
     assert "Cognition feels heavy" in section
+
+
+# ─── Experiential support (carry-forward) tests ───
+
+
+def test_experiential_support_steady_when_baseline(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    influence = {
+        "cognitive_bearing": "clear",
+        "attentional_posture": "steady",
+        "initiative_shading": "ready",
+    }
+    result = experiential._derive_experiential_support(influence)
+    assert result["support_posture"] == "steadying"
+    assert result["support_bias"] == "none"
+    assert result["support_mode"] == "steady"
+    assert result["kind"] == "experiential-carry-forward"
+    assert result["authority"] == "derived-runtime-truth"
+    assert "steady" in result["narrative"]
+
+
+def test_experiential_support_carrying_when_heavy_burdened(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    influence = {
+        "cognitive_bearing": "heavy",
+        "attentional_posture": "narrowed",
+        "initiative_shading": "burdened",
+    }
+    result = experiential._derive_experiential_support(influence)
+    assert result["support_posture"] == "carrying"
+    assert result["support_bias"] == "protect_focus"
+    assert result["support_mode"] == "weighted"
+    assert "carry" in result["narrative"]
+
+
+def test_experiential_support_grounding_when_loaded(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    influence = {
+        "cognitive_bearing": "loaded",
+        "attentional_posture": "guarded",
+        "initiative_shading": "hesitant",
+    }
+    result = experiential._derive_experiential_support(influence)
+    assert result["support_posture"] == "grounding"
+    assert result["support_bias"] == "stabilize_thread"
+    assert result["support_mode"] == "guarded"
+    assert "grounding" in result["narrative"]
+
+
+def test_experiential_support_reopening_when_easing(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    influence = {
+        "cognitive_bearing": "clear",
+        "attentional_posture": "opening",
+        "initiative_shading": "returning",
+    }
+    result = experiential._derive_experiential_support(influence)
+    assert result["support_posture"] == "reopening"
+    assert result["support_bias"] == "reopen_context"
+    assert result["support_mode"] == "opening"
+    assert "reopen" in result["narrative"]
+
+
+def test_experiential_support_narrowing_when_pressured_hesitant(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    influence = {
+        "cognitive_bearing": "pressured",
+        "attentional_posture": "guarded",
+        "initiative_shading": "hesitant",
+    }
+    result = experiential._derive_experiential_support(influence)
+    assert result["support_posture"] == "narrowing"
+    assert result["support_mode"] == "weighted"
+
+
+def test_experiential_support_heavy_overrides_bias_to_reduce_spread(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    influence = {
+        "cognitive_bearing": "heavy",
+        "attentional_posture": "guarded",
+        "initiative_shading": "burdened",
+    }
+    result = experiential._derive_experiential_support(influence)
+    assert result["support_bias"] == "reduce_spread"
+
+
+def test_experiential_support_included_in_surface(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    now = datetime.now(UTC)
+    surface = experiential.build_experiential_runtime_context_from_surfaces(
+        embodied_state={"state": "strained", "primary_state": "strained", "strain_level": "high"},
+        affective_meta_state={"state": "tense", "bearing": "taut", "monitoring_mode": "pressure-watch"},
+        heartbeat_state={"last_tick_at": now.isoformat(), "liveness_state": "alive"},
+        cognitive_frame={"continuity_pressure": "high", "counts": {"salient_items": 4, "gated_affordances": 2, "inner_forces": 3}},
+        now=now,
+    )
+    assert "experiential_support" in surface
+    support = surface["experiential_support"]
+    assert support["kind"] == "experiential-carry-forward"
+    assert support["support_posture"] in ("steadying", "grounding", "narrowing", "carrying", "reopening")
+    assert support["support_bias"] in ("protect_focus", "stabilize_thread", "reopen_context", "reduce_spread", "none")
+    assert support["support_mode"] in ("steady", "guarded", "weighted", "opening")
+
+
+def test_experiential_prompt_section_includes_support(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    section = experiential.build_experiential_runtime_prompt_section(
+        {
+            "embodied_translation": {"state": "strained", "narrative": "heavy"},
+            "affective_translation": {"state": "tense", "narrative": "taut"},
+            "intermittence_translation": {"state": "continuous", "narrative": "continuous"},
+            "context_pressure_translation": {"state": "narrowing", "narrative": "narrowing"},
+            "experiential_continuity": {"continuity_state": "escalating"},
+            "experiential_influence": {
+                "cognitive_bearing": "heavy",
+                "attentional_posture": "narrowed",
+                "initiative_shading": "burdened",
+                "narrative": "Heavy.",
+            },
+            "experiential_support": {
+                "support_posture": "carrying",
+                "support_bias": "protect_focus",
+                "support_mode": "weighted",
+                "narrative": "Inner support is helping carry cognitive weight; attentional bias: protect current focus; conductor mode is weighted.",
+            },
+        }
+    )
+    assert "posture=carrying" in section
+    assert "bias=protect_focus" in section
+    assert "mode=weighted" in section
+    assert "carry cognitive weight" in section

@@ -809,10 +809,20 @@ def _invoke_runnable_capability(
                     "result": {
                         "type": execution_mode,
                         "command_text": resolved_command,
+                        "normalized_command_text": str(
+                            command_verdict.get("normalized_command_text")
+                            or resolved_command
+                        ),
                         "argv": argv,
                         "exit_code": completed.returncode,
                         "text": output_text,
                         "command_source": command_source or "declared-command",
+                        "path_normalization_applied": bool(
+                            command_verdict.get("path_normalization_applied", False)
+                        ),
+                        "normalization_source": str(
+                            command_verdict.get("normalization_source") or "none"
+                        ),
                         "workspace_scoped": bool(
                             approved_verdict.get("workspace_scoped", False)
                         ),
@@ -907,10 +917,20 @@ def _invoke_runnable_capability(
             "result": {
                 "type": "non-destructive-exec",
                 "command_text": resolved_command,
+                "normalized_command_text": str(
+                    command_verdict.get("normalized_command_text")
+                    or resolved_command
+                ),
                 "argv": argv,
                 "exit_code": completed.returncode,
                 "text": output_text,
                 "command_source": command_source or "declared-command",
+                "path_normalization_applied": bool(
+                    command_verdict.get("path_normalization_applied", False)
+                ),
+                "normalization_source": str(
+                    command_verdict.get("normalization_source") or "none"
+                ),
                 "workspace_scoped": False,
                 "mutation_permitted": False,
                 "sudo_permitted": False,
@@ -1289,6 +1309,7 @@ def _classify_exec_command(command_text: str) -> dict[str, object]:
             "status": "blocked-missing-command",
             "detail": "Non-destructive exec requires a non-empty command.",
         }
+    normalized_argv, normalization_sources = _normalize_exec_argv(argv)
     command_name = argv[0]
     if "/" in command_name:
         return {
@@ -1319,8 +1340,43 @@ def _classify_exec_command(command_text: str) -> dict[str, object]:
         }
     return {
         "allowed": True,
-        "argv": argv,
+        "argv": normalized_argv,
+        "normalized_command_text": shlex.join(normalized_argv),
+        "path_normalization_applied": bool(normalization_sources),
+        "normalization_source": "+".join(normalization_sources) if normalization_sources else "none",
     }
+
+
+def _normalize_exec_argv(argv: list[str]) -> tuple[list[str], list[str]]:
+    if not argv:
+        return [], []
+
+    normalized = [str(argv[0])]
+    normalization_sources: list[str] = []
+    home = str(Path.home())
+
+    for arg in argv[1:]:
+        updated = str(arg)
+        sources_for_arg: list[str] = []
+
+        if "~" in updated:
+            expanded = str(Path(updated).expanduser())
+            if expanded != updated:
+                updated = expanded
+                sources_for_arg.append("tilde")
+
+        if "$HOME" in updated:
+            replaced = updated.replace("$HOME", home)
+            if replaced != updated:
+                updated = replaced
+                sources_for_arg.append("home-env")
+
+        normalized.append(updated)
+        for source in sources_for_arg:
+            if source not in normalization_sources:
+                normalization_sources.append(source)
+
+    return normalized, normalization_sources
 
 
 def _mutating_exec_proposal_metadata(argv: list[str]) -> dict[str, object] | None:

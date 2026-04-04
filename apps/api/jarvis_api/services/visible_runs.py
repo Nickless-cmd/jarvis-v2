@@ -487,6 +487,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     "invoke_status": capability_result.get("status"),
                     "blocked_reason": capability_result.get("detail"),
                     "argument_source": _merge_argument_sources(target_source, command_source),
+                    "normalized_command_text": (
+                        ((capability_result.get("result") or {}).get("normalized_command_text"))
+                        or None
+                    ),
+                    "path_normalization_applied": bool(
+                        (capability_result.get("result") or {}).get("path_normalization_applied", False)
+                    ),
+                    "normalization_source": (
+                        ((capability_result.get("result") or {}).get("normalization_source"))
+                        or "none"
+                    ),
                 },
             )
             visible_output_text = _capability_visible_text(
@@ -2048,6 +2059,9 @@ def _start_visible_execution_trace(run: VisibleRun) -> dict[str, object]:
         "selected_capability_id": None,
         "parsed_target_path": None,
         "parsed_command_text": None,
+        "normalized_command_text": None,
+        "path_normalization_applied": False,
+        "normalization_source": "none",
         "argument_source": "none",
         "argument_binding_mode": "id-only",
         "invoke_status": "not-invoked",

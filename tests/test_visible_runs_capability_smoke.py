@@ -383,6 +383,37 @@ def test_visible_run_binds_exec_command_from_capability_tag_attributes(
     assert trace_events[-1]["selected_capability_id"] == "tool:run-non-destructive-command"
 
 
+def test_visible_run_surfaces_exec_path_normalization_in_trace(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text='<capability-call id="tool:run-non-destructive-command" command_text="ls -la ~" />',
+        run_id="visible-cap-exec-home-normalization",
+        second_pass_text="Jeg normaliserede hjemmesti-argumentet og viste resultatet.",
+        user_message="ja tak",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    trace_events = _parse_sse(chunks, "trace")
+
+    assert capability_events
+    assert capability_events[-1]["status"] == "executed"
+    assert trace_events
+    assert trace_events[-1]["parsed_command_text"] == "ls -la ~"
+    assert trace_events[-1]["normalized_command_text"] == f"ls -la {Path.home()}"
+    assert trace_events[-1]["path_normalization_applied"] is True
+    assert trace_events[-1]["normalization_source"] == "tilde"
+    assert (last_use.get("trace") or {}).get("normalized_command_text") == f"ls -la {Path.home()}"
+
+
 def test_visible_run_surfaces_sudo_exec_as_approval_gated_proposal_without_markup_leakage(
     isolated_runtime,
     monkeypatch,

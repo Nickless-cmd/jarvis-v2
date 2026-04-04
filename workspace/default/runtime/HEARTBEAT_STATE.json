@@ -1,0 +1,1406 @@
+{
+  "adaptive_learning": {
+    "attenuation_bias": "soften",
+    "authority": "derived-runtime-truth",
+    "boundary": "not-memory-not-identity-not-action",
+    "confidence": "low",
+    "freshness": {
+      "built_at": "2026-04-04T12:55:10.743640+00:00",
+      "state": "fresh"
+    },
+    "kind": "adaptive-learning-runtime-state",
+    "learning_engine_mode": "rebalance",
+    "maturation_state": "early",
+    "reinforcement_target": "restraint",
+    "retention_bias": "warm",
+    "seam_usage": {
+      "guided_learning_enrichment": true,
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "source_contributors": [
+      {
+        "signal": "stabilize / focus=restraint / pressure=high",
+        "source": "guided-learning"
+      },
+      {
+        "signal": "hold / risk=constrained",
+        "source": "adaptive-planner"
+      },
+      {
+        "signal": "constrained / certainty=cautious",
+        "source": "adaptive-reasoning"
+      },
+      {
+        "signal": "off / counterfactual=none",
+        "source": "epistemic-runtime-state"
+      },
+      {
+        "signal": "active / active=4 / standby=0",
+        "source": "loop-runtime"
+      }
+    ],
+    "summary": "rebalance adaptive learning around restraint with early maturation",
+    "visibility": "internal-only"
+  },
+  "adaptive_planner": {
+    "authority": "derived-runtime-truth",
+    "boundary": "not-memory-not-identity-not-action",
+    "confidence": "low",
+    "freshness": {
+      "built_at": "2026-04-04T12:55:09.039394+00:00",
+      "state": "fresh"
+    },
+    "kind": "adaptive-planner-runtime-state",
+    "next_planning_bias": "stabilize-first",
+    "plan_horizon": "immediate",
+    "planner_mode": "hold",
+    "planning_posture": "held",
+    "risk_posture": "constrained",
+    "seam_usage": {
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "source_contributors": [
+      {
+        "signal": "steady / strain=low",
+        "source": "embodied-state"
+      },
+      {
+        "signal": "tense / bearing=taut",
+        "source": "affective-meta-state"
+      },
+      {
+        "signal": "off / regret=none",
+        "source": "epistemic-runtime-state"
+      },
+      {
+        "signal": "active / active=4 / standby=0",
+        "source": "loop-runtime"
+      },
+      {
+        "signal": "diverging / recommend=bounded-check / divergence=high",
+        "source": "council-runtime"
+      }
+    ],
+    "summary": "hold adaptive planner with immediate horizon and constrained risk posture",
+    "visibility": "internal-only"
+  },
+  "adaptive_reasoning": {
+    "authority": "derived-runtime-truth",
+    "boundary": "not-memory-not-identity-not-action",
+    "certainty_style": "cautious",
+    "confidence": "low",
+    "constraint_bias": "strong",
+    "exploration_bias": "minimal",
+    "freshness": {
+      "built_at": "2026-04-04T12:55:09.696772+00:00",
+      "state": "fresh"
+    },
+    "kind": "adaptive-reasoning-runtime-state",
+    "reasoning_mode": "constrained",
+    "reasoning_posture": "guarded",
+    "seam_usage": {
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "source_contributors": [
+      {
+        "signal": "steady / strain=low",
+        "source": "embodied-state"
+      },
+      {
+        "signal": "tense / bearing=taut",
+        "source": "affective-meta-state"
+      },
+      {
+        "signal": "off / regret=none / counterfactual=none",
+        "source": "epistemic-runtime-state"
+      },
+      {
+        "signal": "active / active=4 / standby=0",
+        "source": "loop-runtime"
+      },
+      {
+        "signal": "diverging / recommend=bounded-check / divergence=high",
+        "source": "council-runtime"
+      },
+      {
+        "signal": "hold / posture=held / risk=constrained",
+        "source": "adaptive-planner"
+      }
+    ],
+    "summary": "constrained adaptive reasoning with cautious certainty and strong constraint bias",
+    "visibility": "internal-only"
+  },
+  "affective_meta_state": {
+    "authority": "derived-runtime-truth",
+    "bearing": "taut",
+    "freshness": {
+      "built_at": "2026-04-04T12:55:08.316115+00:00",
+      "state": "fresh"
+    },
+    "kind": "affective-meta-runtime-state",
+    "monitoring_mode": "pressure-watch",
+    "reflective_load": "low",
+    "seam_usage": {
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "source_contributors": [
+      {
+        "signal": "steady / strain=low",
+        "source": "embodied-state"
+      },
+      {
+        "signal": "active / active=4 / standby=0",
+        "source": "loop-runtime"
+      },
+      {
+        "signal": "steady-support / pressure=low",
+        "source": "regulation-homeostasis"
+      },
+      {
+        "signal": "idle",
+        "source": "idle-consolidation"
+      }
+    ],
+    "state": "tense",
+    "summary": "tense affective/meta state with taut bearing",
+    "visibility": "internal-only"
+  },
+  "council_runtime": {
+    "authority": "derived-runtime-truth",
+    "boundary": "not-memory-not-identity-not-action-not-tool-execution",
+    "confidence": "low",
+    "council_state": "diverging",
+    "divergence_level": "high",
+    "influence_scope": "bounded",
+    "internal_only": true,
+    "kind": "council-runtime-light",
+    "last_council_at": "2026-04-04T12:55:08.720792+00:00",
+    "participating_roles": [
+      "critic",
+      "witness-helper",
+      "planner-helper"
+    ],
+    "recommendation": "bounded-check",
+    "recommendation_reason": "critic-pressure from wrongness=off and conflict=none",
+    "role_positions": [
+      {
+        "activation_reason": "epistemic-off",
+        "internal_only": true,
+        "position": "constrain",
+        "role_kind": "epistemic-check",
+        "role_name": "critic",
+        "status": "active",
+        "tool_access": "none"
+      },
+      {
+        "activation_reason": "holding-pressure-needs-witness",
+        "internal_only": true,
+        "position": "observe",
+        "role_kind": "reflective-observer",
+        "role_name": "witness-helper",
+        "status": "active",
+        "tool_access": "none"
+      },
+      {
+        "activation_reason": "loop-pressure-live",
+        "internal_only": true,
+        "position": "advance",
+        "role_kind": "bounded-coordination",
+        "role_name": "planner-helper",
+        "status": "active",
+        "tool_access": "none"
+      }
+    ],
+    "seam_usage": {
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "source_contributors": [
+      {
+        "signal": "active=3 / blocked=0 / last=critic",
+        "source": "subagent-ecology"
+      },
+      {
+        "signal": "tense / bearing=taut",
+        "source": "affective-meta-state"
+      },
+      {
+        "signal": "off / regret=none",
+        "source": "epistemic-runtime-state"
+      }
+    ],
+    "summary": "diverging council with bounded-check recommendation at high divergence",
+    "tool_access": "none",
+    "visibility": "internal-only"
+  },
+  "dream_articulation": {
+    "active": false,
+    "authority": "authoritative-runtime-observability",
+    "boundary": "not-memory-not-identity-not-action",
+    "built_at": "2026-04-04T12:55:08.398958+00:00",
+    "cadence": {
+      "adjacent_producer_grace_minutes": 5,
+      "cooldown_minutes": 35,
+      "min_source_inputs": 3,
+      "visible_grace_minutes": 14
+    },
+    "kind": "dream-articulation-light",
+    "last_result": null,
+    "last_run_at": null,
+    "latest_artifact": null,
+    "source": "/mc/dream-articulation",
+    "summary": {
+      "candidate_truth": "candidate-only",
+      "last_output_kind": "runtime-dream-hypothesis",
+      "last_reason": "no-run-yet",
+      "last_state": "idle",
+      "latest_signal_id": "",
+      "latest_summary": "No dream articulation candidate recorded yet.",
+      "source_input_count": 0
+    },
+    "truth": "candidate-only",
+    "visibility": "internal-only"
+  },
+  "embodied_state": {
+    "authority": "authoritative",
+    "facts": {
+      "cpu": {
+        "bucket": "steady",
+        "cpu_count": 16,
+        "load_1m": 1.83,
+        "load_per_cpu": 0.11,
+        "source": "os.getloadavg"
+      },
+      "disk": {
+        "bucket": "steady",
+        "free_bytes": 943425851392,
+        "source": "shutil.disk_usage",
+        "total_bytes": 1006978363392,
+        "used_ratio": 0.063
+      },
+      "memory": {
+        "available_bytes": 39117516800,
+        "bucket": "steady",
+        "pressure_ratio": 0.224,
+        "source": "proc-meminfo",
+        "total_bytes": 50424348672
+      },
+      "thermal": {
+        "bucket": "steady",
+        "celsius": 59.0,
+        "source": "sysfs-thermal"
+      }
+    },
+    "freshness": {
+      "age_seconds": 0,
+      "built_at": "2026-04-04T12:55:08.283461+00:00",
+      "sampled_at": "2026-04-04T12:55:08.282856+00:00",
+      "state": "fresh"
+    },
+    "kind": "embodied-runtime-state",
+    "primary_state": "steady",
+    "recovery_state": "steady",
+    "seam_usage": {
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "stability": "stable",
+    "state": "steady",
+    "strain_level": "low",
+    "summary": "steady host/body state",
+    "visibility": "internal-only"
+  },
+  "epistemic_runtime_state": {
+    "authority": "derived-runtime-truth",
+    "boundary": "not-memory-not-identity-not-action",
+    "confidence": "medium",
+    "counterfactual_hint": "none",
+    "counterfactual_mode": "none",
+    "freshness": {
+      "built_at": "2026-04-04T12:55:08.372715+00:00",
+      "state": "fresh"
+    },
+    "kind": "epistemic-runtime-state",
+    "regret_signal": "none",
+    "seam_usage": {
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "source_contributors": [
+      {
+        "signal": "tense / bearing=taut",
+        "source": "affective-meta-state"
+      },
+      {
+        "signal": "steady / strain=low",
+        "source": "embodied-state"
+      },
+      {
+        "signal": "active / active=4 / standby=0",
+        "source": "loop-runtime"
+      }
+    ],
+    "summary": "off epistemic state with none regret and none counterfactual mode",
+    "visibility": "internal-only",
+    "wrongness_state": "off"
+  },
+  "guided_learning": {
+    "authority": "derived-runtime-truth",
+    "boundary": "not-memory-not-identity-not-action",
+    "confidence": "low",
+    "freshness": {
+      "built_at": "2026-04-04T12:55:10.324110+00:00",
+      "state": "fresh"
+    },
+    "kind": "guided-learning-runtime-state",
+    "learning_focus": "restraint",
+    "learning_mode": "stabilize",
+    "learning_posture": "watchful",
+    "learning_pressure": "high",
+    "next_learning_bias": "tighten-bounds",
+    "seam_usage": {
+      "dream_influence_enrichment": true,
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "source_contributors": [
+      {
+        "signal": "hold / horizon=immediate / risk=constrained",
+        "source": "adaptive-planner"
+      },
+      {
+        "signal": "constrained / posture=guarded / certainty=cautious",
+        "source": "adaptive-reasoning"
+      },
+      {
+        "signal": "off / regret=none / counterfactual=none",
+        "source": "epistemic-runtime-state"
+      },
+      {
+        "signal": "active / active=4 / standby=0",
+        "source": "loop-runtime"
+      },
+      {
+        "signal": "diverging / recommend=bounded-check / divergence=high",
+        "source": "council-runtime"
+      }
+    ],
+    "summary": "stabilize guided learning around restraint with watchful posture",
+    "visibility": "internal-only"
+  },
+  "idle_consolidation": {
+    "active": true,
+    "authority": "authoritative",
+    "boundary": "not-memory-not-identity-not-action",
+    "built_at": "2026-04-04T12:55:08.397558+00:00",
+    "cadence": {
+      "adjacent_producer_grace_minutes": 4,
+      "cooldown_minutes": 25,
+      "min_source_inputs": 3,
+      "visible_grace_minutes": 12
+    },
+    "kind": "sleep-consolidation-light",
+    "last_result": null,
+    "last_run_at": null,
+    "latest_artifact": {
+      "confidence": "medium",
+      "created_at": "2026-04-01T17:53:16.757565+00:00",
+      "detail": "Private brain carries 5 active records (1 continuity-carry, 1 continuity-settle, 1 diary-carry, 2 inner-note-carry). Latest: [carry] Diverse | private-brain=Private brain carries 5 active records (1 continuity-carry, 1 continuity-settle, 1 diary-carry, 2 inner-note-carry). Lat; embodied-state=steady / strain=low / recover | loop_kind=open-loop | loop_reason=open-loop-active | recovery=steady",
+      "focus": "Open loop: Visible work",
+      "layer": "private_brain",
+      "record_id": "pb-sleep-8b5e6ab21d8b",
+      "record_type": "sleep-consolidation",
+      "run_id": "",
+      "session_id": "",
+      "source_signals": "private-brain,embodied-state,loop-runtime",
+      "status": "active",
+      "summary": "Idle consolidation settled bounded internal material into a holding carry using private-brain, embodied-state, loop-runtime. Loop=active; body=steady.",
+      "updated_at": "2026-04-01T17:53:16.757565+00:00"
+    },
+    "source": "/mc/idle-consolidation",
+    "summary": {
+      "last_output_kind": "private-brain-sleep-consolidation",
+      "last_reason": "no-run-yet",
+      "last_state": "idle",
+      "latest_record_id": "pb-sleep-8b5e6ab21d8b",
+      "latest_summary": "Idle consolidation settled bounded internal material into a holding carry using private-brain, embodied-state, loop-runtime. Loop=active; body=steady.",
+      "source_input_count": 0
+    },
+    "visibility": "internal-only"
+  },
+  "loop_runtime": {
+    "active": true,
+    "authority": "authoritative",
+    "freshness": {
+      "built_at": "2026-04-04T12:55:08.396121+00:00",
+      "state": "fresh"
+    },
+    "items": [
+      {
+        "boundary": "not-memory-not-identity-not-action",
+        "canonical_key": "open-loop:open-loop:visible-work",
+        "loop_id": "open-loop:open-loop:open-loop:visible-work",
+        "loop_kind": "open-loop",
+        "reason_code": "open-loop-active",
+        "runtime_status": "active",
+        "source_status": "open",
+        "source_type": "open-loop-signal",
+        "summary": "A bounded loop around visible work is still carrying live pressure through active focus, active goal carry, initiative tension, and regulation support.",
+        "title": "Open loop: Visible work",
+        "updated_at": "2026-03-30T18:17:19.969802+00:00"
+      },
+      {
+        "boundary": "not-memory-not-identity-not-action",
+        "canonical_key": "proactive-loop-lifecycle:question-loop:visible-work",
+        "loop_id": "proactive-loop:proactive-loop-lifecycle:question-loop:visible-work:Visible work",
+        "loop_kind": "question-loop",
+        "reason_code": "proactive-loop-active:loop-emerging",
+        "runtime_status": "active",
+        "source_status": "active",
+        "source_type": "proactive-loop-lifecycle",
+        "summary": "Bounded proactive-loop lifecycle is carrying visible work as a question-capable thread with question-readiness medium. This is runtime support only, not send permission.",
+        "title": "Proactive loop lifecycle: Visible work",
+        "updated_at": "2026-03-30T18:17:20.968335+00:00"
+      },
+      {
+        "boundary": "not-memory-not-identity-not-action",
+        "canonical_key": "proactive-loop-lifecycle:initiative-loop:visible-work",
+        "loop_id": "proactive-loop:proactive-loop-lifecycle:initiative-loop:visible-work:Visible work",
+        "loop_kind": "initiative-loop",
+        "reason_code": "proactive-loop-active:loop-emerging",
+        "runtime_status": "active",
+        "source_status": "active",
+        "source_type": "proactive-loop-lifecycle",
+        "summary": "Bounded proactive-loop lifecycle is carrying visible work as a small initiative thread in state loop-emerging. This is descriptive runtime continuity, not proactive execution.",
+        "title": "Proactive loop lifecycle: Visible work",
+        "updated_at": "2026-03-30T18:17:20.968335+00:00"
+      },
+      {
+        "boundary": "not-memory-not-identity-not-action",
+        "canonical_key": "open-loop:persistent-open-loop:smoke-thread",
+        "loop_id": "open-loop:open-loop:persistent-open-loop:smoke-thread",
+        "loop_kind": "open-loop",
+        "reason_code": "open-loop-active",
+        "runtime_status": "active",
+        "source_status": "open",
+        "source_type": "open-loop-signal",
+        "summary": "Bounded open loop for smoke test.",
+        "title": "Open loop: Smoke thread",
+        "updated_at": "2026-04-01T09:56:09.842776+00:00"
+      }
+    ],
+    "kind": "loop-runtime-state",
+    "seam_usage": {
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "summary": {
+      "active_count": 4,
+      "closed_count": 0,
+      "current_kind": "open-loop",
+      "current_loop": "Open loop: Visible work",
+      "current_reason": "open-loop-active",
+      "current_status": "active",
+      "loop_count": 4,
+      "resumed_count": 0,
+      "standby_count": 0
+    },
+    "visibility": "internal-only"
+  },
+  "policy": {
+    "allow_execute": true,
+    "allow_ping": true,
+    "allow_propose": true,
+    "budget_status": "bounded-internal-only",
+    "enabled": true,
+    "heartbeat_file": "/media/projects/jarvis-v2/workspace/default/HEARTBEAT.md",
+    "interval_minutes": 15,
+    "kill_switch": "enabled",
+    "ping_channel": "webchat",
+    "present": true,
+    "source": "/mc/jarvis::heartbeat",
+    "summary": "interval=15m | propose=allowed | execute=allowed | ping=allowed:webchat | budget=bounded-internal-only",
+    "workspace": "/media/projects/jarvis-v2/workspace/default"
+  },
+  "prompt_evolution": {
+    "active": false,
+    "authority": "authoritative-runtime-observability",
+    "boundary": "not-memory-not-identity-not-action-not-applied-prompt",
+    "built_at": "2026-04-04T12:55:08.400391+00:00",
+    "cadence": {
+      "adjacent_producer_grace_minutes": 6,
+      "cooldown_minutes": 45,
+      "min_source_inputs": 3,
+      "visible_grace_minutes": 16
+    },
+    "candidate_fragment": "",
+    "dream_influence": {},
+    "fragment_grounding": {},
+    "fragment_truth": "proposal-only",
+    "fragment_visibility": "internal-only",
+    "kind": "runtime-prompt-evolution-light",
+    "last_result": null,
+    "last_run_at": null,
+    "latest_proposal": null,
+    "learning_influence": {},
+    "proposal_mode": "proposal-only",
+    "review_light": {},
+    "source": "/mc/prompt-evolution",
+    "summary": {
+      "diff_light_summary": "none",
+      "fragment_truth": "proposal-only",
+      "last_output_kind": "self-authored-prompt-proposal",
+      "last_reason": "no-run-yet",
+      "last_state": "idle",
+      "latest_candidate_fragment": "none",
+      "latest_dream_influence_mode": "stabilize",
+      "latest_dream_influence_state": "quiet",
+      "latest_dream_influence_target": "none",
+      "latest_fragment_co_influence": "none",
+      "latest_learning_mode": "none",
+      "latest_prompt_target": "none",
+      "latest_proposal_id": "",
+      "latest_reinforcement_target": "none",
+      "latest_retention_bias": "light",
+      "latest_summary": "No runtime prompt proposal recorded yet.",
+      "latest_target_asset": "none",
+      "proposal_direction": "none",
+      "proposal_truth": "proposal-only",
+      "proposed_change_kind": "none",
+      "source_input_count": 0
+    },
+    "truth": "candidate-only",
+    "visibility": "internal-only"
+  },
+  "recent_ticks": [
+    {
+      "action_artifact": "execution-pilot-1cc4c914fabc47c8895ede916c284d02",
+      "action_status": "blocked",
+      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "cooldown-active",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
+      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "decision_type": "ping",
+      "execution_status": "runtime-failed",
+      "fallback_used": false,
+      "finished_at": "2026-04-02T17:01:52.361218+00:00",
+      "input_tokens": 0,
+      "lane": "local",
+      "model": "qwen3.5:397b-cloud",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 0,
+      "parse_status": "not-run",
+      "ping_eligible": false,
+      "ping_result": "blocked",
+      "provider": "ollama",
+      "raw_response": "",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-02T17:01:19.756745+00:00",
+      "tick_id": "heartbeat-tick:401aefc7-2c82-4c25-bae7-e8e5d30e7d74",
+      "tick_status": "blocked",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "execution-pilot-9695ec7bd14049aab2711aba89d6c368",
+      "action_status": "blocked",
+      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "cooldown-active",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
+      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "decision_type": "ping",
+      "execution_status": "runtime-failed",
+      "fallback_used": false,
+      "finished_at": "2026-04-02T16:46:01.531624+00:00",
+      "input_tokens": 0,
+      "lane": "local",
+      "model": "qwen3.5:397b-cloud",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 0,
+      "parse_status": "not-run",
+      "ping_eligible": false,
+      "ping_result": "blocked",
+      "provider": "ollama",
+      "raw_response": "",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-02T16:45:12.372393+00:00",
+      "tick_id": "heartbeat-tick:21037fc2-f562-4090-9ed7-0f88bf3aee82",
+      "tick_status": "blocked",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "execution-pilot-890d005c790a4c4e8ad25c3d21444559",
+      "action_status": "blocked",
+      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "cooldown-active",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
+      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "decision_type": "ping",
+      "execution_status": "runtime-failed",
+      "fallback_used": false,
+      "finished_at": "2026-04-02T16:30:05.205716+00:00",
+      "input_tokens": 0,
+      "lane": "local",
+      "model": "qwen3.5:397b-cloud",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 0,
+      "parse_status": "not-run",
+      "ping_eligible": false,
+      "ping_result": "blocked",
+      "provider": "ollama",
+      "raw_response": "",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-02T16:28:56.680411+00:00",
+      "tick_id": "heartbeat-tick:e524e824-eb11-4fb2-b212-b97a9e135a57",
+      "tick_status": "blocked",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "execution-pilot-e335c534a01f4ab69c9cdc34d3c4e4ec",
+      "action_status": "blocked",
+      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "cooldown-active",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
+      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "decision_type": "ping",
+      "execution_status": "runtime-failed",
+      "fallback_used": false,
+      "finished_at": "2026-04-02T16:13:45.337624+00:00",
+      "input_tokens": 0,
+      "lane": "local",
+      "model": "qwen3.5:397b-cloud",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 0,
+      "parse_status": "not-run",
+      "ping_eligible": false,
+      "ping_result": "blocked",
+      "provider": "ollama",
+      "raw_response": "",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-02T16:12:48.295965+00:00",
+      "tick_id": "heartbeat-tick:cd6422cd-d457-4f43-af26-6834c47247d6",
+      "tick_status": "blocked",
+      "trigger": "startup-recovery"
+    },
+    {
+      "action_artifact": "execution-pilot-c8be5901c0eb4352a3591d7d51735a8d",
+      "action_status": "blocked",
+      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "cooldown-active",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
+      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "decision_type": "ping",
+      "execution_status": "runtime-failed",
+      "fallback_used": false,
+      "finished_at": "2026-04-02T14:12:11.712273+00:00",
+      "input_tokens": 0,
+      "lane": "local",
+      "model": "qwen3.5:397b-cloud",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 0,
+      "parse_status": "not-run",
+      "ping_eligible": false,
+      "ping_result": "blocked",
+      "provider": "ollama",
+      "raw_response": "",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-02T14:10:40.356928+00:00",
+      "tick_id": "heartbeat-tick:5c50c19a-40c5-4f7c-a9c7-7d2f3f813a60",
+      "tick_status": "blocked",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "execution-pilot-a0a07ef1101d4fedbe20225474cf5947",
+      "action_status": "sent",
+      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
+      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "decision_type": "ping",
+      "execution_status": "runtime-failed",
+      "fallback_used": false,
+      "finished_at": "2026-04-02T13:54:50.675052+00:00",
+      "input_tokens": 0,
+      "lane": "local",
+      "model": "qwen3.5:397b-cloud",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 0,
+      "parse_status": "not-run",
+      "ping_eligible": true,
+      "ping_result": "sent-webchat",
+      "provider": "ollama",
+      "raw_response": "",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-02T13:50:22.244485+00:00",
+      "tick_id": "heartbeat-tick:aca56a57-2fed-4c1b-8158-c1af50cbb3f9",
+      "tick_status": "completed",
+      "trigger": "startup-recovery"
+    },
+    {
+      "action_artifact": "execution-pilot-5af80041242d4f419d2d3a6762d30815",
+      "action_status": "blocked",
+      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "cooldown-active",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
+      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "decision_type": "ping",
+      "execution_status": "runtime-failed",
+      "fallback_used": false,
+      "finished_at": "2026-04-01T20:56:14.733730+00:00",
+      "input_tokens": 0,
+      "lane": "local",
+      "model": "qwen3.5:397b-cloud",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 0,
+      "parse_status": "not-run",
+      "ping_eligible": false,
+      "ping_result": "blocked",
+      "provider": "ollama",
+      "raw_response": "",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-01T20:55:27.892337+00:00",
+      "tick_id": "heartbeat-tick:9d92e5e8-00dc-4aa0-8795-0e399645fb46",
+      "tick_status": "blocked",
+      "trigger": "startup-recovery"
+    },
+    {
+      "action_artifact": "execution-pilot-266a5d61cfac49e7b7c92c716822ab7f",
+      "action_status": "sent",
+      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
+      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "decision_type": "ping",
+      "execution_status": "runtime-failed",
+      "fallback_used": false,
+      "finished_at": "2026-04-01T20:30:29.460783+00:00",
+      "input_tokens": 0,
+      "lane": "local",
+      "model": "qwen3.5:397b-cloud",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 0,
+      "parse_status": "not-run",
+      "ping_eligible": true,
+      "ping_result": "sent-webchat",
+      "provider": "ollama",
+      "raw_response": "",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-01T20:29:38.092908+00:00",
+      "tick_id": "heartbeat-tick:a4a7c03c-3202-443b-89a5-ef017d0df968",
+      "tick_status": "completed",
+      "trigger": "startup-recovery"
+    }
+  ],
+  "self_system_code_awareness": {
+    "action_requires_approval": true,
+    "active": true,
+    "approval_boundary": "Observation is read-only. Any exec, git, fetch, pull, commit, reset, checkout, or apply step would require explicit approval.",
+    "authority": "derived-runtime-truth",
+    "built_at": "2026-04-04T12:55:10.836761+00:00",
+    "code_awareness_state": "repo-visible",
+    "concern_hint": "Branch main has both modified and untracked local changes; observation is bounded and any git handling would require approval.",
+    "concern_state": "action-requires-approval",
+    "confidence": "high",
+    "host_context": {
+      "cwd": "/media/projects/jarvis-v2",
+      "git_present": true,
+      "hostname": "CheifOne",
+      "platform": "linux",
+      "repo_root": "/media/projects/jarvis-v2",
+      "workspace_root": "/media/projects/jarvis-v2/workspace/default"
+    },
+    "kind": "self-system-code-awareness-light",
+    "local_change_state": "mixed",
+    "observation_mode": "read-only",
+    "repo_observation": {
+      "ahead_count": 32,
+      "approval_required_capability_count": 2,
+      "approval_required_mutation_capability_count": 1,
+      "approval_required_mutation_classes": [
+        "modify-file"
+      ],
+      "behind_count": 0,
+      "branch_name": "main",
+      "deleted_paths": [],
+      "deleted_present": false,
+      "dirty_working_tree": true,
+      "local_change_state": "mixed",
+      "modified_paths": [
+        "apps/api/jarvis_api/routes/mission_control.py",
+        "apps/api/jarvis_api/services/prompt_contract.py",
+        "apps/api/jarvis_api/services/runtime_self_model.py",
+        "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
+        "apps/api/jarvis_api/services/tool_intent_runtime.py",
+        "apps/ui/src/components/mission-control/DetailDrawer.jsx",
+        "apps/ui/src/components/mission-control/OperationsTab.jsx",
+        "core/tools/workspace_capabilities.py"
+      ],
+      "modified_present": true,
+      "recent_local_changes_present": true,
+      "repo_root_detected": true,
+      "repo_status": "dirty",
+      "untracked_paths": [
+        ".claude/",
+        "docs/CONSCIOUSNESS_ROADMAP.md",
+        "docs/UI_ROADMAP.md",
+        "\"docs/id\\303\\253r.txt\"",
+        "docs/superpowers/",
+        "spec-file.txt",
+        "ui-v2-old/",
+        "workspace/default/HEARTBEAT.md"
+      ],
+      "untracked_present": true,
+      "upstream_awareness": "ahead",
+      "upstream_ref": "origin/main"
+    },
+    "repo_status": "dirty",
+    "seam_usage": [
+      "heartbeat-grounding",
+      "prompt-contract-runtime-truth",
+      "runtime-self-model",
+      "mission-control-runtime"
+    ],
+    "source": "/mc/self-system-code-awareness",
+    "source_contributors": [
+      "cwd",
+      "workspace-capabilities",
+      "host-runtime",
+      "workspace-root",
+      "repo-root",
+      "git-status"
+    ],
+    "system_awareness_state": "host-ready",
+    "truth": "read-only-observation",
+    "upstream_awareness": "ahead",
+    "visibility": "internal-only"
+  },
+  "state": {
+    "authority": "non-authoritative",
+    "blocked_reason": "",
+    "budget_status": "bounded-internal-only",
+    "canonical_self_state": "not-canonical-self-truth",
+    "checkin_worthiness": "low",
+    "companion_pressure_reason": "meaning significance is still softly carried under silence",
+    "companion_pressure_state": "light",
+    "companion_pressure_weight": 1,
+    "currently_ticking": true,
+    "due": true,
+    "enabled": true,
+    "execution_status": "runtime-failed",
+    "fallback_used": false,
+    "idle_presence_state": "present",
+    "interval_minutes": 15,
+    "kill_switch": "enabled",
+    "lane": "local",
+    "last_action_artifact": "execution-pilot-1cc4c914fabc47c8895ede916c284d02",
+    "last_action_status": "blocked",
+    "last_action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
+    "last_action_type": "webchat-proactive-question",
+    "last_decision_type": "ping",
+    "last_ping_eligible": false,
+    "last_ping_result": "blocked",
+    "last_recovery_at": "2026-04-04T12:45:25.163901+00:00",
+    "last_result": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+    "last_tick_at": "2026-04-02T17:01:52.361218+00:00",
+    "last_tick_id": "heartbeat-tick:401aefc7-2c82-4c25-bae7-e8e5d30e7d74",
+    "last_trigger_source": "startup-recovery",
+    "layer_role": "runtime-support",
+    "liveness_confidence": "high",
+    "liveness_core_pressure_count": 3,
+    "liveness_debug_summary": "score=16 signals=8 core_pressure=3 propose_gates=3 proactive=loop-emerging/question-gated-candidate companion=1/light idle=present",
+    "liveness_pressure": "high",
+    "liveness_propose_gate_count": 3,
+    "liveness_reason": "open-loop continuity is still live",
+    "liveness_score": 16,
+    "liveness_signal_count": 8,
+    "liveness_state": "propose-worthy",
+    "liveness_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+    "liveness_threshold_state": "propose-worthy-threshold",
+    "model": "qwen3.5:397b-cloud",
+    "model_source": "heartbeat-local-only-pinned",
+    "next_tick_at": "2026-04-02T17:16:52.361218+00:00",
+    "parse_status": "not-run",
+    "planner_authority_state": "not-planner-authority",
+    "policy_summary": "interval=15m | propose=allowed | execute=allowed | ping=allowed:webchat | budget=bounded-internal-only",
+    "provider": "ollama",
+    "recovery_status": "idle",
+    "resolution_status": "local-only-pinned",
+    "schedule_state": "ticking",
+    "schedule_status": "ticking",
+    "scheduler_active": true,
+    "scheduler_health": "active",
+    "scheduler_started_at": "2026-04-04T12:54:03.094614+00:00",
+    "scheduler_stopped_at": "",
+    "source": "/mc/jarvis::heartbeat",
+    "source_anchor": "Open loop: Smoke thread | tension-level=medium | source-anchor=smoke-anchor | I can feel the pressure from this. | Visible work note visible-work-note:visible-d22bcf668ec640a38b9f797a292aa292 for visible-work:visible-d22bcf668ec640a38b9f797a292aa292 | I notice inner-note, initiative-tension, and inner-interplay all present. | private-inner-note-signal-112695da60fe4331a379bcfa7e657a30:Private inner note: tool:read external file by path | initiative-72f153ce905a47a9ac6ac99a97f0ad66:Private initiative tension: Open loop: Smoke thread | private-inner-interplay-signal-f525145935e8403eb7d29b60da1fe690:Private inner interplay: Private initiative tension: Open loop: Smoke thread",
+    "state_file": "/media/projects/jarvis-v2/workspace/default/runtime/HEARTBEAT_STATE.json",
+    "status": "active",
+    "summary": "Heartbeat tick is currently in progress.",
+    "updated_at": "2026-04-04T12:54:03.094614+00:00"
+  },
+  "subagent_ecology": {
+    "authority": "derived-runtime-truth",
+    "boundary": "not-memory-not-identity-not-action-not-tool-execution",
+    "freshness": {
+      "built_at": "2026-04-04T12:55:08.515839+00:00",
+      "state": "fresh"
+    },
+    "internal_only": true,
+    "kind": "subagent-ecology-light",
+    "roles": [
+      {
+        "activation_reason": "epistemic-off",
+        "current_status": "active",
+        "influence_scope": "bounded",
+        "internal_only": true,
+        "last_activation_at": "2026-04-04T12:55:08.515839+00:00",
+        "role_kind": "epistemic-check",
+        "role_name": "critic",
+        "tool_access": "none"
+      },
+      {
+        "activation_reason": "holding-pressure-needs-witness",
+        "current_status": "active",
+        "influence_scope": "bounded",
+        "internal_only": true,
+        "last_activation_at": "2026-04-04T12:55:08.515839+00:00",
+        "role_kind": "reflective-observer",
+        "role_name": "witness-helper",
+        "tool_access": "none"
+      },
+      {
+        "activation_reason": "loop-pressure-live",
+        "current_status": "active",
+        "influence_scope": "bounded",
+        "internal_only": true,
+        "last_activation_at": "2026-04-04T12:55:08.515839+00:00",
+        "role_kind": "bounded-coordination",
+        "role_name": "planner-helper",
+        "tool_access": "none"
+      }
+    ],
+    "seam_usage": {
+      "heartbeat_context": true,
+      "heartbeat_prompt_grounding": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "source_contributors": [
+      {
+        "signal": "tense / bearing=taut",
+        "source": "affective-meta-state"
+      },
+      {
+        "signal": "off / regret=none",
+        "source": "epistemic-runtime-state"
+      },
+      {
+        "signal": "active / active=4 / standby=0",
+        "source": "loop-runtime"
+      }
+    ],
+    "summary": {
+      "active_count": 3,
+      "blocked_count": 0,
+      "cooling_count": 0,
+      "idle_count": 0,
+      "last_activation_reason": "epistemic-off",
+      "last_active_role_name": "critic",
+      "last_active_role_status": "active",
+      "role_count": 3
+    },
+    "summary_text": "active internal roles: critic, witness-helper, planner-helper",
+    "tool_access": "none",
+    "visibility": "internal-only"
+  },
+  "tool_intent": {
+    "action_continuity": {
+      "action_continuity_state": "idle",
+      "action_mode": "read-only",
+      "active": false,
+      "boundary": "Bounded action continuity carries the latest bounded execution truth only; it is runtime continuity, not MEMORY.md, not identity, and not permission to broaden write scope.",
+      "confidence": "low",
+      "continuity_id": "",
+      "followup_hint": "",
+      "followup_state": "none",
+      "kind": "bounded-action-continuity-light",
+      "last_action_at": "",
+      "last_action_outcome": "none",
+      "last_action_summary": "No bounded read-only action continuity is being carried yet.",
+      "last_action_target": "",
+      "last_action_type": "",
+      "mutating_exec": false,
+      "mutation_permitted": false,
+      "post_action_concern": "stable",
+      "post_action_understanding": "",
+      "read_only": true,
+      "source": "/runtime/bounded-action-continuity",
+      "source_contributors": [
+        "bounded-action-continuity-runtime"
+      ],
+      "sudo_exec": false,
+      "updated_at": "",
+      "workspace_write": false
+    },
+    "action_continuity_boundary": "Bounded action continuity carries the latest bounded execution truth only; it is runtime continuity, not MEMORY.md, not identity, and not permission to broaden write scope.",
+    "action_continuity_confidence": "low",
+    "action_continuity_state": "idle",
+    "action_mode": "read-only",
+    "active": true,
+    "approval_expires_at": "2026-04-02T20:31:14.550343+00:00",
+    "approval_lifecycle": "bounded-approval-surface-light",
+    "approval_reason": "Intent remains proposal-only until explicitly approved within bounded scope; scope=repo-read; mutation_classification=modify-file; repo_scope=none; system_scope=none; execution=not-executed.",
+    "approval_requested_at": "2026-04-02T20:16:14.550343+00:00",
+    "approval_required": true,
+    "approval_resolution_message": "",
+    "approval_resolution_reason": "Approval window elapsed without an explicit bounded decision.",
+    "approval_resolved_at": "2026-04-02T20:33:21.797893+00:00",
+    "approval_scope": "repo-read",
+    "approval_semantics": {
+      "execution_allowed": false,
+      "mc_supported": true,
+      "mode": "explicit-bounded-approval-only",
+      "mutation_near": true,
+      "proposal_only": true,
+      "scope_classification": "modify-file",
+      "sudo_window_reusable": false,
+      "sudo_window_state": "none",
+      "verbal_supported": true
+    },
+    "approval_session_id": "",
+    "approval_source": "none",
+    "approval_state": "expired",
+    "authority": "derived-runtime-truth",
+    "boundary": "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content. Approved bounded non-sudo mutating exec may execute only for the exact approved command fingerprint. Approved bounded sudo exec may execute only for the exact approved sudo command fingerprint within the tiny allowlist; delete, git mutation, package install/update, and broader system mutation remain closed in this pass.",
+    "built_at": "2026-04-04T12:55:10.841049+00:00",
+    "confidence": "high",
+    "delete_permitted": false,
+    "execution_command": "main",
+    "execution_confidence": "high",
+    "execution_excerpt": [],
+    "execution_finished_at": "",
+    "execution_mode": "read-only",
+    "execution_operation": "inspect-local-changes",
+    "execution_started_at": "",
+    "execution_state": "not-executed",
+    "execution_summary": "Read-only execution remains blocked until the current tool intent is explicitly approved; approval_state=expired.",
+    "execution_target": "main",
+    "external_mutation_permitted": false,
+    "followup_hint": "",
+    "followup_state": "none",
+    "intent_reason": "Read-only awareness sees both modified and untracked changes on main; Jarvis can ask to inspect them, but may not act without approval.",
+    "intent_state": "approval-required",
+    "intent_target": "main",
+    "intent_type": "inspect-local-changes",
+    "kind": "approval-gated-tool-intent-light",
+    "last_action_at": "",
+    "last_action_outcome": "none",
+    "last_action_summary": "No bounded read-only action continuity is being carried yet.",
+    "last_action_target": "",
+    "last_action_type": "",
+    "mutating_exec_command_fingerprint": "",
+    "mutating_exec_confidence": "low",
+    "mutating_exec_criticality": "none",
+    "mutating_exec_git_mutation_class": "none",
+    "mutating_exec_proposal_command": "",
+    "mutating_exec_proposal_reason": "",
+    "mutating_exec_proposal_scope": "none",
+    "mutating_exec_proposal_state": "none",
+    "mutating_exec_proposal_summary": "",
+    "mutating_exec_repo_stewardship_domain": "none",
+    "mutating_exec_requires_approval": false,
+    "mutating_exec_requires_sudo": false,
+    "mutating_exec_source_contributors": [],
+    "mutation_boundary": "Bounded mutation intent is classification-only runtime truth. It distinguishes read-only from mutation-near intent, but remains proposal-only, approval-gated, and not-executed. It is not MEMORY.md, not identity, and not a write path.",
+    "mutation_critical": false,
+    "mutation_execution_permitted": false,
+    "mutation_execution_state": "not-executed",
+    "mutation_intent": {
+      "active": true,
+      "approval_required": true,
+      "boundary": "Bounded mutation intent is classification-only runtime truth. It distinguishes read-only from mutation-near intent, but remains proposal-only, approval-gated, and not-executed. It is not MEMORY.md, not identity, and not a write path.",
+      "capability_boundary": {
+        "approval_required_mutation_capability_count": 1,
+        "approval_required_mutation_classes": [
+          "modify-file"
+        ]
+      },
+      "classification": "modify-file",
+      "execution_permitted": false,
+      "execution_state": "not-executed",
+      "explicit_approval_required": true,
+      "kind": "bounded-mutation-intent-light",
+      "mutation_intent_state": "proposal-only",
+      "mutation_near": true,
+      "not_executed": true,
+      "proposal_only": true,
+      "scope": {
+        "mutation_critical": false,
+        "repo_mutation_scope": "",
+        "sudo_required": false,
+        "system_mutation_scope": "",
+        "target_files": [
+          "apps/api/jarvis_api/routes/mission_control.py",
+          "apps/api/jarvis_api/services/prompt_contract.py",
+          "apps/api/jarvis_api/services/runtime_self_model.py",
+          "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
+          "apps/api/jarvis_api/services/tool_intent_runtime.py",
+          "apps/ui/src/components/mission-control/DetailDrawer.jsx",
+          "apps/ui/src/components/mission-control/OperationsTab.jsx",
+          "core/tools/workspace_capabilities.py"
+        ],
+        "target_paths": [
+          "apps/api/jarvis_api/routes",
+          "apps/api/jarvis_api/services",
+          "apps/ui/src/components/mission-control",
+          "core/tools"
+        ]
+      },
+      "source": "/runtime/bounded-mutation-intent",
+      "source_contributors": [
+        "bounded-mutation-intent-runtime",
+        "self-system-code-awareness",
+        "workspace-capabilities"
+      ],
+      "summary": "Current intent is proposal-only and mutation-near: classification=modify-file; explicit scoped approval is required before any file, git, package, or system change.",
+      "write_proposal": {
+        "active": true,
+        "approval_scope": "repo-read",
+        "boundary": "Write proposal light is approval-scoped runtime truth only. It stays proposal-only, approval-gated, and not-executed. It is not identity, not MEMORY.md, and not action by itself.",
+        "confidence": "high",
+        "criticality": "medium",
+        "execution_state": "not-executed",
+        "explicit_approval_required": true,
+        "mutation_near": true,
+        "not_executed": true,
+        "proposal_only": true,
+        "repo_scope": "",
+        "source_contributors": [
+          "bounded-mutation-intent-runtime",
+          "self-system-code-awareness"
+        ],
+        "sudo_required": false,
+        "system_scope": "",
+        "target_identity": false,
+        "target_memory": false,
+        "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=apps/api/jarvis_api/routes/mission_control.py, apps/api/jarvis_api/services/prompt_contract.py, apps/api/jarvis_api/services/runtime_self_model.py; approval_scope=repo-read.",
+        "write_proposal_scope": "repo-file",
+        "write_proposal_state": "scoped-proposal",
+        "write_proposal_target_paths": [
+          "apps/api/jarvis_api/routes",
+          "apps/api/jarvis_api/services",
+          "apps/ui/src/components/mission-control",
+          "core/tools"
+        ],
+        "write_proposal_targets": [
+          "apps/api/jarvis_api/routes/mission_control.py",
+          "apps/api/jarvis_api/services/prompt_contract.py",
+          "apps/api/jarvis_api/services/runtime_self_model.py",
+          "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
+          "apps/api/jarvis_api/services/tool_intent_runtime.py",
+          "apps/ui/src/components/mission-control/DetailDrawer.jsx",
+          "apps/ui/src/components/mission-control/OperationsTab.jsx",
+          "core/tools/workspace_capabilities.py"
+        ],
+        "write_proposal_type": "propose-file-modification"
+      }
+    },
+    "mutation_intent_classification": "modify-file",
+    "mutation_intent_state": "proposal-only",
+    "mutation_near": true,
+    "mutation_permitted": false,
+    "mutation_proposal_only": true,
+    "mutation_repo_scope": "",
+    "mutation_sudo_required": false,
+    "mutation_summary": "Current intent is proposal-only and mutation-near: classification=modify-file; explicit scoped approval is required before any file, git, package, or system change.",
+    "mutation_system_scope": "",
+    "mutation_target_files": [
+      "apps/api/jarvis_api/routes/mission_control.py",
+      "apps/api/jarvis_api/services/prompt_contract.py",
+      "apps/api/jarvis_api/services/runtime_self_model.py",
+      "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
+      "apps/api/jarvis_api/services/tool_intent_runtime.py",
+      "apps/ui/src/components/mission-control/DetailDrawer.jsx",
+      "apps/ui/src/components/mission-control/OperationsTab.jsx",
+      "core/tools/workspace_capabilities.py"
+    ],
+    "mutation_target_paths": [
+      "apps/api/jarvis_api/routes",
+      "apps/api/jarvis_api/services",
+      "apps/ui/src/components/mission-control",
+      "core/tools"
+    ],
+    "post_action_concern": "stable",
+    "post_action_understanding": "",
+    "read_only": true,
+    "seam_usage": [
+      "bounded-read-only-repo-tools",
+      "bounded-mutation-intent",
+      "bounded-action-continuity",
+      "heartbeat-grounding",
+      "prompt-contract-runtime-truth",
+      "runtime-self-model",
+      "mission-control-runtime"
+    ],
+    "source": "/mc/tool-intent",
+    "source_contributors": [
+      "tool-intent-approval-runtime",
+      "self-system-code-awareness",
+      "cwd",
+      "workspace-capabilities",
+      "host-runtime",
+      "workspace-root",
+      "repo-root",
+      "git-status"
+    ],
+    "sudo_approval_window_expires_at": "",
+    "sudo_approval_window_remaining_seconds": 0,
+    "sudo_approval_window_reusable": false,
+    "sudo_approval_window_scope": "none",
+    "sudo_approval_window_source": "none",
+    "sudo_approval_window_started_at": "",
+    "sudo_approval_window_state": "none",
+    "sudo_exec_command_fingerprint": "",
+    "sudo_exec_confidence": "low",
+    "sudo_exec_criticality": "none",
+    "sudo_exec_proposal_command": "",
+    "sudo_exec_proposal_reason": "",
+    "sudo_exec_proposal_scope": "none",
+    "sudo_exec_proposal_state": "none",
+    "sudo_exec_proposal_summary": "",
+    "sudo_exec_requires_approval": false,
+    "sudo_exec_requires_sudo": false,
+    "sudo_exec_source_contributors": [],
+    "sudo_permitted": false,
+    "truth": "proposal-only",
+    "urgency": "high",
+    "visibility": "internal-only",
+    "workspace_scoped": false,
+    "workspace_write": false,
+    "write_proposal": {
+      "active": true,
+      "approval_scope": "repo-read",
+      "boundary": "Write proposal light is approval-scoped runtime truth only. It stays proposal-only, approval-gated, and not-executed. It is not identity, not MEMORY.md, and not action by itself.",
+      "confidence": "high",
+      "criticality": "medium",
+      "execution_state": "not-executed",
+      "explicit_approval_required": true,
+      "mutation_near": true,
+      "not_executed": true,
+      "proposal_only": true,
+      "repo_scope": "",
+      "source_contributors": [
+        "bounded-mutation-intent-runtime",
+        "self-system-code-awareness"
+      ],
+      "sudo_required": false,
+      "system_scope": "",
+      "target_identity": false,
+      "target_memory": false,
+      "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=apps/api/jarvis_api/routes/mission_control.py, apps/api/jarvis_api/services/prompt_contract.py, apps/api/jarvis_api/services/runtime_self_model.py; approval_scope=repo-read.",
+      "write_proposal_scope": "repo-file",
+      "write_proposal_state": "scoped-proposal",
+      "write_proposal_target_paths": [
+        "apps/api/jarvis_api/routes",
+        "apps/api/jarvis_api/services",
+        "apps/ui/src/components/mission-control",
+        "core/tools"
+      ],
+      "write_proposal_targets": [
+        "apps/api/jarvis_api/routes/mission_control.py",
+        "apps/api/jarvis_api/services/prompt_contract.py",
+        "apps/api/jarvis_api/services/runtime_self_model.py",
+        "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
+        "apps/api/jarvis_api/services/tool_intent_runtime.py",
+        "apps/ui/src/components/mission-control/DetailDrawer.jsx",
+        "apps/ui/src/components/mission-control/OperationsTab.jsx",
+        "core/tools/workspace_capabilities.py"
+      ],
+      "write_proposal_type": "propose-file-modification"
+    },
+    "write_proposal_approval_scope": "repo-read",
+    "write_proposal_boundary": "Write proposal light is approval-scoped runtime truth only. It stays proposal-only, approval-gated, and not-executed. It is not identity, not MEMORY.md, and not action by itself.",
+    "write_proposal_confidence": "high",
+    "write_proposal_content": "",
+    "write_proposal_content_fingerprint": "",
+    "write_proposal_content_source": "none",
+    "write_proposal_content_state": "none",
+    "write_proposal_content_summary": "",
+    "write_proposal_criticality": "medium",
+    "write_proposal_execution_state": "not-executed",
+    "write_proposal_explicit_approval_required": true,
+    "write_proposal_not_executed": true,
+    "write_proposal_proposal_only": true,
+    "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=apps/api/jarvis_api/routes/mission_control.py, apps/api/jarvis_api/services/prompt_contract.py, apps/api/jarvis_api/services/runtime_self_model.py; approval_scope=repo-read.",
+    "write_proposal_repo_scope": "",
+    "write_proposal_scope": "repo-file",
+    "write_proposal_state": "scoped-proposal",
+    "write_proposal_sudo_required": false,
+    "write_proposal_system_scope": "",
+    "write_proposal_target": "",
+    "write_proposal_target_identity": false,
+    "write_proposal_target_memory": false,
+    "write_proposal_target_paths": [
+      "apps/api/jarvis_api/routes",
+      "apps/api/jarvis_api/services",
+      "apps/ui/src/components/mission-control",
+      "core/tools"
+    ],
+    "write_proposal_targets": [
+      "apps/api/jarvis_api/routes/mission_control.py",
+      "apps/api/jarvis_api/services/prompt_contract.py",
+      "apps/api/jarvis_api/services/runtime_self_model.py",
+      "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
+      "apps/api/jarvis_api/services/tool_intent_runtime.py",
+      "apps/ui/src/components/mission-control/DetailDrawer.jsx",
+      "apps/ui/src/components/mission-control/OperationsTab.jsx",
+      "core/tools/workspace_capabilities.py"
+    ],
+    "write_proposal_type": "propose-file-modification"
+  }
+}

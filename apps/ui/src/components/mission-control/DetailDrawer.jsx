@@ -90,11 +90,11 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
               <div className="mc-keyval-grid">
                 <div><span>Mutation State</span><strong>{drawer.item.mutationIntentState || 'idle'}</strong></div>
                 <div><span>Classification</span><strong>{drawer.item.mutationIntentClassification || 'none'}</strong></div>
-                <div><span>Mutation Near</span><strong>{drawer.item.mutationNear ? 'true' : 'false'}</strong></div>
-                <div><span>Execution Permitted</span><strong>{drawer.item.mutationExecutionPermitted ? 'true' : 'false'}</strong></div>
+                <div><span>Action Near</span><strong>{drawer.item.mutationNear ? 'yes' : 'no'}</strong></div>
+                <div><span>Can Execute</span><strong>{drawer.item.mutationExecutionPermitted ? 'yes' : 'no'}</strong></div>
                 <div><span>Repo Scope</span><strong>{drawer.item.mutationRepoScope || 'none'}</strong></div>
                 <div><span>System Scope</span><strong>{drawer.item.mutationSystemScope || 'none'}</strong></div>
-                <div><span>Sudo Needed</span><strong>{drawer.item.mutationSudoRequired ? 'true' : 'false'}</strong></div>
+                <div><span>Sudo</span><strong>{drawer.item.mutationSudoRequired ? 'required' : 'not needed'}</strong></div>
                 <div><span>Criticality</span><strong>{drawer.item.mutationCritical ? 'critical' : 'normal'}</strong></div>
               </div>
             ) : null}
@@ -110,13 +110,13 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
                 <strong>Mutation targets</strong>
                 <div className="mc-drawer-list">
                   {drawer.item.mutationTargetFiles?.length ? (
-                    <p>files · {drawer.item.mutationTargetFiles.join(', ')}</p>
+                    <p>Files: {drawer.item.mutationTargetFiles.join(', ')}</p>
                   ) : null}
                   {drawer.item.mutationTargetPaths?.length ? (
-                    <p>paths · {drawer.item.mutationTargetPaths.join(', ')}</p>
+                    <p>Paths: {drawer.item.mutationTargetPaths.join(', ')}</p>
                   ) : null}
                   {!drawer.item.mutationTargetFiles?.length && !drawer.item.mutationTargetPaths?.length ? (
-                    <p>No target files or paths recorded.</p>
+                    <p>No mutation targets recorded.</p>
                   ) : null}
                 </div>
               </article>

@@ -1278,6 +1278,13 @@ function normalizeToolIntent(item = {}) {
     String(item.execution_mode || '') === 'mutating-exec'
     || String(item.execution_state || '').startsWith('mutating-exec-')
   )
+  const mutatingExecRepoStewardshipDomain = item.mutating_exec_repo_stewardship_domain || 'none'
+  const mutatingExecGitMutationClass = item.mutating_exec_git_mutation_class || 'none'
+  const hasGitRepoStewardshipProposalSurface = (
+    hasMutatingExecProposalSurface
+    && mutatingExecRepoStewardshipDomain === 'git'
+    && mutatingExecGitMutationClass !== 'none'
+  )
   const mutatingExecExecutionState = hasMutatingExecExecutionSurface
     ? (item.execution_state || 'mutating-exec')
     : 'not-executed'
@@ -1346,6 +1353,7 @@ function normalizeToolIntent(item = {}) {
     hasSudoExecProposalSurface,
     hasSudoApprovalWindowSurface,
     hasMutatingExecExecutionSurface,
+    hasGitRepoStewardshipProposalSurface,
     mutatingExecProposalState: item.mutating_exec_proposal_state || 'none',
     mutatingExecProposalCommand: item.mutating_exec_proposal_command || '',
     mutatingExecProposalSummary: item.mutating_exec_proposal_summary || '',
@@ -1356,6 +1364,8 @@ function normalizeToolIntent(item = {}) {
     mutatingExecCriticality: item.mutating_exec_criticality || 'none',
     mutatingExecConfidence: item.mutating_exec_confidence || 'low',
     mutatingExecCommandFingerprint: item.mutating_exec_command_fingerprint || '',
+    mutatingExecRepoStewardshipDomain,
+    mutatingExecGitMutationClass,
     mutatingExecExecutionState,
     mutatingExecExecutionCommand,
     mutatingExecExecutionScope: item.mutating_exec_proposal_scope || 'none',

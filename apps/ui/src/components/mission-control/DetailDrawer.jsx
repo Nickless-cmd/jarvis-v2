@@ -121,6 +121,23 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
                 </div>
               </article>
             ) : null}
+            {drawer.item.hasGitRepoStewardshipProposalSurface ? (
+              <article className="mc-code-card">
+                <strong>Git repo stewardship</strong>
+                <div className="mc-keyval-grid">
+                  <div><span>Domain</span><strong>{drawer.item.mutatingExecRepoStewardshipDomain || 'git'}</strong></div>
+                  <div><span>Class</span><strong>{drawer.item.mutatingExecGitMutationClass || 'none'}</strong></div>
+                  <div><span>Command</span><strong>{drawer.item.mutatingExecProposalCommand || 'none'}</strong></div>
+                  <div><span>Boundary</span><strong>{drawer.item.executionState === 'not-executed' ? 'proposal only' : 'executed'}</strong></div>
+                </div>
+                <p>{drawer.item.mutatingExecProposalReason || drawer.item.mutatingExecProposalSummary || 'Git repo stewardship intent is present.'}</p>
+                <div className="mc-inline-meta">
+                  <span className="mc-meta-pill">approval gated</span>
+                  <span className="mc-meta-pill">{drawer.item.mutatingExecRequiresSudo ? 'sudo required' : 'non-sudo path'}</span>
+                  <span className="mc-meta-pill">{drawer.item.executionState === 'not-executed' ? 'not executed' : 'execution recorded'}</span>
+                </div>
+              </article>
+            ) : null}
             <article className="mc-code-card">
               <strong>Read-only result</strong>
               <p>{drawer.item.executionSummary || 'No bounded repo inspection has been executed.'}</p>

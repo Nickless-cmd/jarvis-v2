@@ -70,6 +70,11 @@ function mutatingExecExecutionGuardLabel(item) {
   return item?.mutatingExecApprovalMatched ? 'approved binding matched' : 'review binding'
 }
 
+function sudoExecGuardLabel(item) {
+  if (!item?.hasSudoExecProposalSurface) return 'no sudo proposal'
+  return item?.sudoExecRequiresApproval ? 'approval required' : 'review only'
+}
+
 function toolIntentRow(item, onOpen) {
   if (!item || (!item.intentState && !item.intentType)) return null
 
@@ -152,6 +157,15 @@ export function OperationsTab({
   const showMutatingExecExecution = Boolean(
     toolIntent?.hasMutatingExecExecutionSurface
     && toolIntent?.executionMode === 'mutating-exec'
+  )
+  const showSudoExecProposal = Boolean(
+    toolIntent?.hasSudoExecProposalSurface
+    && (
+      toolIntent?.sudoExecProposalState
+      || toolIntent?.sudoExecProposalCommand
+      || toolIntent?.sudoExecProposalSummary
+    )
+    && toolIntent?.sudoExecProposalState !== 'none'
   )
   const mutationScope = mutationScopeSummary(toolIntent)
   const mutationTargets = summarizeMutationTargets(toolIntent)
@@ -313,6 +327,43 @@ export function OperationsTab({
                   <span className="mc-meta-pill">scope {humanizeToken(toolIntent.mutatingExecProposalScope || 'none')}</span>
                   <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresApproval ? 'approval required' : 'approval not required'}</span>
                   <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresSudo ? 'sudo required' : 'sudo not needed'}</span>
+                  <span className="mc-meta-pill">not executed</span>
+                </div>
+              </article>
+            </>
+          ) : null}
+          {showSudoExecProposal ? (
+            <>
+              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
+                <div className="compact-metric" title="Sudo exec proposal state and review boundary">
+                  <span>Sudo Proposal</span>
+                  <strong>{humanizeToken(toolIntent.sudoExecProposalState || 'none')}</strong>
+                  <p className="muted">proposal-only · not executed</p>
+                </div>
+                <div className="compact-metric" title="Sudo exec scope and criticality">
+                  <span>Scope</span>
+                  <strong>{humanizeToken(toolIntent.sudoExecProposalScope || 'none')}</strong>
+                  <p className="muted">{humanizeToken(toolIntent.sudoExecCriticality || 'none')} criticality</p>
+                </div>
+                <div className="compact-metric" title="Approval and sudo requirements">
+                  <span>Guard</span>
+                  <strong>{sudoExecGuardLabel(toolIntent)}</strong>
+                  <p className="muted">{toolIntent.sudoExecRequiresSudo ? 'requires sudo' : 'sudo not needed'}</p>
+                </div>
+                <div className="compact-metric" title="Proposal confidence and fingerprint">
+                  <span>Fingerprint</span>
+                  <strong>{toolIntent.sudoExecCommandFingerprint || 'none'}</strong>
+                  <p className="muted">{humanizeToken(toolIntent.sudoExecConfidence || 'low')} confidence</p>
+                </div>
+              </div>
+              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
+                <strong>Sudo exec proposal</strong>
+                <p>{toolIntent.sudoExecProposalSummary || toolIntent.sudoExecProposalReason || 'A sudo exec proposal is present and remains review-only.'}</p>
+                <div className="mc-inline-meta">
+                  <span className="mc-meta-pill">command {toolIntent.sudoExecProposalCommand || 'none'}</span>
+                  <span className="mc-meta-pill">scope {humanizeToken(toolIntent.sudoExecProposalScope || 'none')}</span>
+                  <span className="mc-meta-pill">{toolIntent.sudoExecRequiresApproval ? 'approval required' : 'approval not required'}</span>
+                  <span className="mc-meta-pill">{toolIntent.sudoExecRequiresSudo ? 'requires sudo' : 'sudo not needed'}</span>
                   <span className="mc-meta-pill">not executed</span>
                 </div>
               </article>

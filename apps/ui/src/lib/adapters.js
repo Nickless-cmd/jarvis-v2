@@ -1255,6 +1255,16 @@ function normalizeToolIntent(item = {}) {
     'mutating_exec_requires_sudo',
     'mutating_exec_criticality',
   ].some((key) => Object.prototype.hasOwnProperty.call(item, key))
+  const hasSudoExecProposalSurface = [
+    'sudo_exec_proposal_state',
+    'sudo_exec_proposal_command',
+    'sudo_exec_proposal_summary',
+    'sudo_exec_proposal_scope',
+    'sudo_exec_proposal_reason',
+    'sudo_exec_requires_approval',
+    'sudo_exec_requires_sudo',
+    'sudo_exec_criticality',
+  ].some((key) => Object.prototype.hasOwnProperty.call(item, key))
   const hasMutatingExecExecutionSurface = (
     String(item.execution_mode || '') === 'mutating-exec'
     || String(item.execution_state || '').startsWith('mutating-exec-')
@@ -1324,6 +1334,7 @@ function normalizeToolIntent(item = {}) {
     mutationCritical: Boolean(item.mutation_critical),
     mutationBoundary: item.mutation_boundary || '',
     hasMutatingExecProposalSurface,
+    hasSudoExecProposalSurface,
     hasMutatingExecExecutionSurface,
     mutatingExecProposalState: item.mutating_exec_proposal_state || 'none',
     mutatingExecProposalCommand: item.mutating_exec_proposal_command || '',
@@ -1342,6 +1353,19 @@ function normalizeToolIntent(item = {}) {
     mutatingExecApprovalMatched,
     mutatingExecSourceContributors: Array.isArray(item.mutating_exec_source_contributors)
       ? item.mutating_exec_source_contributors.filter(Boolean)
+      : [],
+    sudoExecProposalState: item.sudo_exec_proposal_state || 'none',
+    sudoExecProposalCommand: item.sudo_exec_proposal_command || '',
+    sudoExecProposalSummary: item.sudo_exec_proposal_summary || '',
+    sudoExecProposalScope: item.sudo_exec_proposal_scope || 'none',
+    sudoExecProposalReason: item.sudo_exec_proposal_reason || '',
+    sudoExecRequiresApproval: Boolean(item.sudo_exec_requires_approval),
+    sudoExecRequiresSudo: Boolean(item.sudo_exec_requires_sudo),
+    sudoExecCriticality: item.sudo_exec_criticality || 'none',
+    sudoExecConfidence: item.sudo_exec_confidence || 'low',
+    sudoExecCommandFingerprint: item.sudo_exec_command_fingerprint || '',
+    sudoExecSourceContributors: Array.isArray(item.sudo_exec_source_contributors)
+      ? item.sudo_exec_source_contributors.filter(Boolean)
       : [],
     boundary: item.boundary || 'Intent is proposal-only and approval-gated; no action has been performed.',
     sourceContributors: (item.source_contributors || []).map((source) => ({ source: String(source || ''), signal: '' })),

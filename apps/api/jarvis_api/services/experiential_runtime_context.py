@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 from apps.api.jarvis_api.services.affective_meta_state import (
     build_affective_meta_state_surface,
@@ -11,33 +13,49 @@ from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
 )
 from apps.api.jarvis_api.services.runtime_surface_cache import (
     get_cached_runtime_surface,
+    peek_cached_runtime_surface,
 )
+from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.runtime.db import get_heartbeat_runtime_state
 from core.runtime.db import recent_heartbeat_runtime_ticks
 
 
+HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
+
 # ─── Module-level prior state for continuity carry-forward ───
-# Survives across requests within the same process.
-# Reset on process restart = honest "initial" continuity state.
+# Fallback only when no shared heartbeat/runtime comparison basis exists.
 _PRIOR_EXPERIENTIAL_SNAPSHOT: dict[str, object] | None = None
 
 
 def build_experiential_runtime_context_surface() -> dict[str, object]:
+    heartbeat_surface = peek_cached_runtime_surface(("heartbeat_runtime_surface", "default"))
+    if isinstance(heartbeat_surface, dict):
+        shared = heartbeat_surface.get("experiential_runtime_context")
+        if isinstance(shared, dict) and shared.get("experiential_continuity"):
+            return shared
     return get_cached_runtime_surface(
         "experiential_runtime_context_surface",
         _build_experiential_runtime_context_surface_uncached,
     )
 
 
+def resolve_prior_experiential_snapshot(
+    *, name: str = "default"
+) -> tuple[dict[str, object] | None, str]:
+    return _resolve_prior_experiential_snapshot(name=name)
+
+
 def _build_experiential_runtime_context_surface_uncached() -> dict[str, object]:
     global _PRIOR_EXPERIENTIAL_SNAPSHOT
+    prior_snapshot, prior_source = _resolve_prior_experiential_snapshot()
     surface = build_experiential_runtime_context_from_surfaces(
         embodied_state=build_embodied_state_surface(),
         affective_meta_state=build_affective_meta_state_surface(),
         heartbeat_state={},
         cognitive_frame=build_cognitive_frame(),
+        prior_snapshot=prior_snapshot,
+        continuity_source=prior_source,
     )
-    continuity = _derive_experiential_continuity(surface, _PRIOR_EXPERIENTIAL_SNAPSHOT)
-    surface["experiential_continuity"] = continuity
     _PRIOR_EXPERIENTIAL_SNAPSHOT = _snapshot_for_carry(surface)
     return surface
 
@@ -48,6 +66,8 @@ def build_experiential_runtime_context_from_surfaces(
     affective_meta_state: dict[str, object] | None,
     heartbeat_state: dict[str, object] | None,
     cognitive_frame: dict[str, object] | None,
+    prior_snapshot: dict[str, object] | None = None,
+    continuity_source: str = "none",
     now: datetime | None = None,
 ) -> dict[str, object]:
     current_time = now or datetime.now(UTC)
@@ -68,7 +88,7 @@ def build_experiential_runtime_context_from_surfaces(
         context_pressure_translation["narrative"],
     ]
 
-    return {
+    surface = {
         "embodied_translation": embodied_translation,
         "affective_translation": affective_translation,
         "intermittence_translation": intermittence_translation,
@@ -86,6 +106,18 @@ def build_experiential_runtime_context_from_surfaces(
         },
         "built_at": current_time.isoformat(),
     }
+    continuity = _derive_experiential_continuity(surface, prior_snapshot)
+    continuity["prior_source"] = continuity_source
+    continuity["shared_runtime_truth"] = continuity_source.startswith("heartbeat")
+    continuity["comparison_basis"] = (
+        "shared-runtime-history"
+        if continuity_source.startswith("heartbeat")
+        else "local-fallback"
+        if continuity_source == "module-fallback"
+        else "none"
+    )
+    surface["experiential_continuity"] = continuity
+    return surface
 
 
 def build_experiential_runtime_prompt_section(
@@ -137,6 +169,42 @@ def _snapshot_for_carry(surface: dict[str, object]) -> dict[str, object]:
         "context_pressure_translation": surface.get("context_pressure_translation"),
         "built_at": surface.get("built_at"),
     }
+
+
+def _resolve_prior_experiential_snapshot(
+    *, name: str = "default"
+) -> tuple[dict[str, object] | None, str]:
+    shared_snapshot = _load_heartbeat_artifact_snapshot(name=name)
+    if shared_snapshot is not None:
+        return shared_snapshot, "heartbeat-artifact"
+    if _PRIOR_EXPERIENTIAL_SNAPSHOT is not None:
+        return _PRIOR_EXPERIENTIAL_SNAPSHOT, "module-fallback"
+    if _has_shared_heartbeat_history():
+        return None, "heartbeat-history-without-snapshot"
+    return None, "none"
+
+
+def _load_heartbeat_artifact_snapshot(*, name: str = "default") -> dict[str, object] | None:
+    state_path = ensure_default_workspace(name=name) / HEARTBEAT_STATE_REL_PATH
+    if not state_path.exists():
+        return None
+    try:
+        payload = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return None
+    experiential = payload.get("experiential_runtime_context")
+    if not isinstance(experiential, dict):
+        return None
+    if not experiential.get("embodied_translation"):
+        return None
+    return _snapshot_for_carry(experiential)
+
+
+def _has_shared_heartbeat_history() -> bool:
+    state = get_heartbeat_runtime_state() or {}
+    if str(state.get("last_tick_at") or "").strip():
+        return True
+    return bool(recent_heartbeat_runtime_ticks(limit=1))
 
 
 def _derive_experiential_continuity(

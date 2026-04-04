@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 
 
@@ -271,3 +272,78 @@ def test_heartbeat_self_knowledge_section_includes_experiential_runtime_context(
     assert "Experiential runtime context (derived from runtime truth, internal-only):" in section
     assert "embodied=strained" in section
     assert "context_pressure=narrowing" in section
+
+
+def test_experiential_runtime_context_uses_heartbeat_artifact_as_prior_truth(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    workspace = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
+    state_path = workspace / "runtime/HEARTBEAT_STATE.json"
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "experiential_runtime_context": {
+                    "embodied_translation": {"state": "steady"},
+                    "affective_translation": {"state": "settled"},
+                    "intermittence_translation": {"state": "continuous"},
+                    "context_pressure_translation": {"state": "clear"},
+                    "built_at": datetime.now(UTC).isoformat(),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(experiential, "_PRIOR_EXPERIENTIAL_SNAPSHOT", None)
+    monkeypatch.setattr(
+        experiential,
+        "build_embodied_state_surface",
+        lambda: {"state": "strained", "primary_state": "strained"},
+    )
+    monkeypatch.setattr(
+        experiential,
+        "build_affective_meta_state_surface",
+        lambda: {"state": "tense", "bearing": "taut"},
+    )
+    monkeypatch.setattr(
+        experiential,
+        "build_cognitive_frame",
+        lambda: {
+            "continuity_pressure": "high",
+            "counts": {"salient_items": 4, "gated_affordances": 2, "inner_forces": 2},
+        },
+    )
+
+    surface = experiential.build_experiential_runtime_context_surface()
+
+    continuity = surface["experiential_continuity"]
+    assert continuity["continuity_state"] == "escalating"
+    assert continuity["prior_source"] == "heartbeat-artifact"
+    assert continuity["shared_runtime_truth"] is True
+    assert continuity["comparison_basis"] == "shared-runtime-history"
+
+
+def test_experiential_runtime_context_uses_cached_heartbeat_surface_when_present(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    shared_surface = {
+        "experiential_continuity": {
+            "continuity_state": "returning",
+            "state_shift_summary": "shared",
+            "narrative": "shared continuity",
+        },
+        "summary": "shared experiential truth",
+    }
+
+    with isolated_runtime.runtime_surface_cache.runtime_surface_cache():
+        cache = isolated_runtime.runtime_surface_cache._CACHE.get()
+        assert cache is not None
+        cache[("heartbeat_runtime_surface", "default")] = {
+            "experiential_runtime_context": shared_surface
+        }
+        result = experiential.build_experiential_runtime_context_surface()
+
+    assert result is shared_surface

@@ -27,6 +27,7 @@ from apps.api.jarvis_api.services.affective_meta_state import (
 )
 from apps.api.jarvis_api.services.experiential_runtime_context import (
     build_experiential_runtime_context_from_surfaces,
+    resolve_prior_experiential_snapshot,
 )
 from apps.api.jarvis_api.services.epistemic_runtime_state import (
     build_epistemic_runtime_state_surface,
@@ -307,11 +308,16 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
         **merged,
         **liveness,
     }
+    prior_experiential_snapshot, continuity_source = resolve_prior_experiential_snapshot(
+        name=name
+    )
     experiential_runtime_context = build_experiential_runtime_context_from_surfaces(
         embodied_state=embodied_state,
         affective_meta_state=affective_meta_state,
         heartbeat_state=merged,
         cognitive_frame=_build_heartbeat_cognitive_frame(merged_state=merged),
+        prior_snapshot=prior_experiential_snapshot,
+        continuity_source=continuity_source,
     )
     _write_heartbeat_state_artifact(
         workspace_dir=ensure_default_workspace(name=name),

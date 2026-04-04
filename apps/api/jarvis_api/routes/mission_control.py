@@ -363,6 +363,7 @@ CAPABILITY_INVOCATION_EVENT_KINDS = (
 
 _MC_ROUTE_CACHE_LOCK = threading.Lock()
 _MC_ROUTE_CACHE: dict[str, tuple[float, object]] = {}
+_MC_ROUTE_BUILD_LOCKS: dict[str, threading.Lock] = {}
 
 
 def _get_cached_mc_payload(cache_key: str, ttl_seconds: float) -> object | None:
@@ -379,6 +380,88 @@ def _store_cached_mc_payload(cache_key: str, ttl_seconds: float, payload: object
     with _MC_ROUTE_CACHE_LOCK:
         _MC_ROUTE_CACHE[cache_key] = (expires_at, copy.deepcopy(payload))
     return payload
+
+
+def _get_or_build_cached_mc_payload(
+    cache_key: str,
+    ttl_seconds: float,
+    builder,
+) -> object:
+    cached = _get_cached_mc_payload(cache_key, ttl_seconds)
+    if cached is not None:
+        return cached
+
+    with _MC_ROUTE_CACHE_LOCK:
+        lock = _MC_ROUTE_BUILD_LOCKS.setdefault(cache_key, threading.Lock())
+
+    with lock:
+        cached = _get_cached_mc_payload(cache_key, ttl_seconds)
+        if cached is not None:
+            return cached
+        payload = builder()
+        return _store_cached_mc_payload(cache_key, ttl_seconds, payload)
+
+
+def _build_attention_budget_snapshot_uncached() -> dict[str, object]:
+    from apps.api.jarvis_api.services.attention_budget import (
+        get_attention_budget,
+        build_micro_cognitive_frame,
+    )
+
+    profiles = {}
+    for profile_name in ("visible_compact", "visible_full", "heartbeat"):
+        budget = get_attention_budget(profile_name)
+        section_budgets = {
+            "cognitive_frame": budget.cognitive_frame,
+            "private_brain": budget.private_brain,
+            "self_knowledge": budget.self_knowledge,
+            "self_report": budget.self_report,
+            "support_signals": budget.support_signals,
+            "inner_visible_bridge": budget.inner_visible_bridge,
+            "continuity": budget.continuity,
+            "liveness": budget.liveness,
+            "capability_truth": budget.capability_truth,
+        }
+        profiles[profile_name] = {
+            "total_char_target": budget.total_char_target,
+            "sections": {
+                name: {
+                    "max_chars": sb.max_chars,
+                    "max_items": sb.max_items,
+                    "must_include": sb.must_include,
+                    "priority": sb.priority,
+                    "has_budget": sb.max_chars > 0,
+                }
+                for name, sb in sorted(section_budgets.items(), key=lambda x: x[1].priority)
+            },
+        }
+
+    micro_frame = build_micro_cognitive_frame()
+    return {
+        "profiles": profiles,
+        "micro_cognitive_frame": micro_frame,
+        "micro_frame_chars": len(micro_frame) if micro_frame else 0,
+    }
+
+
+def _mc_runtime_inspection_bundle_uncached() -> dict[str, object]:
+    from apps.api.jarvis_api.services.runtime_self_model import build_runtime_self_model
+
+    with runtime_surface_cache():
+        return {
+            "runtime_self_model": build_runtime_self_model(),
+            "experiential_runtime_context": build_experiential_runtime_context_surface(),
+            "attention_budget": _build_attention_budget_snapshot_uncached(),
+        }
+
+
+def _mc_runtime_inspection_bundle() -> dict[str, object]:
+    payload = _get_or_build_cached_mc_payload(
+        "runtime-inspection-bundle",
+        10.0,
+        _mc_runtime_inspection_bundle_uncached,
+    )
+    return payload  # type: ignore[return-value]
 
 
 @router.get("/overview")
@@ -899,55 +982,15 @@ def mc_cognitive_frame() -> dict:
 @router.get("/attention-budget")
 def mc_attention_budget() -> dict:
     """Return attention budget traces for all prompt paths."""
-    cached = _get_cached_mc_payload("attention-budget", 10.0)
-    if cached is not None:
-        return cached  # type: ignore[return-value]
-
-    from apps.api.jarvis_api.services.attention_budget import (
-        get_attention_budget,
-        build_micro_cognitive_frame,
-    )
-    with runtime_surface_cache():
-        profiles = {}
-        for profile_name in ("visible_compact", "visible_full", "heartbeat"):
-            budget = get_attention_budget(profile_name)
-            section_budgets = {
-                "cognitive_frame": budget.cognitive_frame,
-                "private_brain": budget.private_brain,
-                "self_knowledge": budget.self_knowledge,
-                "self_report": budget.self_report,
-                "support_signals": budget.support_signals,
-                "inner_visible_bridge": budget.inner_visible_bridge,
-                "continuity": budget.continuity,
-                "liveness": budget.liveness,
-                "capability_truth": budget.capability_truth,
-            }
-            profiles[profile_name] = {
-                "total_char_target": budget.total_char_target,
-                "sections": {
-                    name: {
-                        "max_chars": sb.max_chars,
-                        "max_items": sb.max_items,
-                        "must_include": sb.must_include,
-                        "priority": sb.priority,
-                        "has_budget": sb.max_chars > 0,
-                    }
-                    for name, sb in sorted(section_budgets.items(), key=lambda x: x[1].priority)
-                },
-            }
-        micro_frame = build_micro_cognitive_frame()
-
+    bundle = _mc_runtime_inspection_bundle()
+    attention_snapshot = dict(bundle.get("attention_budget") or {})
     # Live runtime traces from the last actual prompt assembly
     from apps.api.jarvis_api.services.prompt_contract import get_last_attention_traces
     live_traces = get_last_attention_traces()
-
-    payload = {
-        "profiles": profiles,
-        "micro_cognitive_frame": micro_frame,
-        "micro_frame_chars": len(micro_frame) if micro_frame else 0,
+    return {
+        **attention_snapshot,
         "live_traces": live_traces,
     }
-    return _store_cached_mc_payload("attention-budget", 10.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/conflict-resolution")
@@ -1002,14 +1045,8 @@ def mc_self_knowledge() -> dict:
 @router.get("/runtime-self-model")
 def mc_runtime_self_model() -> dict:
     """Return the current runtime self-model snapshot."""
-    cached = _get_cached_mc_payload("runtime-self-model", 10.0)
-    if cached is not None:
-        return cached  # type: ignore[return-value]
-
-    from apps.api.jarvis_api.services.runtime_self_model import build_runtime_self_model
-    with runtime_surface_cache():
-        payload = build_runtime_self_model()
-    return _store_cached_mc_payload("runtime-self-model", 10.0, payload)  # type: ignore[return-value]
+    bundle = _mc_runtime_inspection_bundle()
+    return dict(bundle.get("runtime_self_model") or {})
 
 
 @router.get("/embodied-state")
@@ -1027,7 +1064,8 @@ def mc_affective_meta_state() -> dict:
 @router.get("/experiential-runtime-context")
 def mc_experiential_runtime_context() -> dict:
     """Return the current bounded experiential runtime context (body/tone/intermittence/pressure)."""
-    return build_experiential_runtime_context_surface()
+    bundle = _mc_runtime_inspection_bundle()
+    return dict(bundle.get("experiential_runtime_context") or {})
 
 
 @router.get("/epistemic-runtime-state")

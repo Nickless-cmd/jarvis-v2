@@ -314,6 +314,10 @@ def _collect_layers() -> list[dict[str, str]]:
             f"mutating_exec_scope={tool_intent.get('mutating_exec_proposal_scope') or 'none'}; "
             f"mutating_exec_requires_sudo={tool_intent.get('mutating_exec_requires_sudo', False)}; "
             f"mutating_exec_fingerprint={tool_intent.get('mutating_exec_command_fingerprint') or 'none'}; "
+            f"sudo_exec_state={tool_intent.get('sudo_exec_proposal_state') or 'none'}; "
+            f"sudo_exec_scope={tool_intent.get('sudo_exec_proposal_scope') or 'none'}; "
+            f"sudo_exec_requires_sudo={tool_intent.get('sudo_exec_requires_sudo', False)}; "
+            f"sudo_exec_fingerprint={tool_intent.get('sudo_exec_command_fingerprint') or 'none'}; "
             f"continuity={tool_intent.get('action_continuity_state') or 'idle'}; "
             f"last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}; "
             f"followup_state={tool_intent.get('followup_state') or 'none'}."
@@ -702,7 +706,7 @@ def build_self_model_prompt_lines() -> list[str]:
             "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, and blocks sudo, mutation, package, git, delete, and shell chaining"
         )
         lines.append(
-            "  mutating_exec_boundary: non-sudo filesystem mutation may execute only after explicit approval of the exact command fingerprint; sudo, git, package, delete, and broader system mutation remain non-executable in this pass"
+            "  mutating_exec_boundary: non-sudo filesystem mutation may execute only after explicit approval of the exact command fingerprint; sudo commands surface as explicit sudo proposals and remain non-executable in this pass"
         )
     if gated_ids:
         lines.append(
@@ -847,6 +851,10 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | write_proposal_content_state={tool_intent.get('write_proposal_content_state') or 'none'}"
         f" | write_proposal_content_fingerprint={tool_intent.get('write_proposal_content_fingerprint') or 'none'}"
         f" | write_proposal_content_summary={tool_intent.get('write_proposal_content_summary') or 'none'}"
+        f" | sudo_exec_state={tool_intent.get('sudo_exec_proposal_state') or 'none'}"
+        f" | sudo_exec_scope={tool_intent.get('sudo_exec_proposal_scope') or 'none'}"
+        f" | sudo_exec_requires_sudo={tool_intent.get('sudo_exec_requires_sudo', False)}"
+        f" | sudo_exec_fingerprint={tool_intent.get('sudo_exec_command_fingerprint') or 'none'}"
         f" | execution_summary={tool_intent.get('execution_summary') or 'none'}"
         f" | continuity={tool_intent.get('action_continuity_state') or 'idle'}"
         f" | last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}"

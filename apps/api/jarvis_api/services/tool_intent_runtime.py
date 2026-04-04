@@ -61,6 +61,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
     write_proposal = mutation_intent.get("write_proposal") or {}
     workspace_write_execution = build_bounded_workspace_write_execution_surface()
     mutating_exec_proposal = _build_mutating_exec_proposal_surface()
+    sudo_exec_proposal = _build_sudo_exec_proposal_surface(mutating_exec_proposal)
     approval = build_tool_intent_approval_surface(
         {
             **intent_surface,
@@ -115,6 +116,21 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
                 "mutating_exec_criticality"
             )
             or "none",
+            "sudo_exec_proposal_state": sudo_exec_proposal.get("sudo_exec_proposal_state")
+            or "none",
+            "sudo_exec_proposal_command": sudo_exec_proposal.get(
+                "sudo_exec_proposal_command"
+            )
+            or "",
+            "sudo_exec_proposal_scope": sudo_exec_proposal.get("sudo_exec_proposal_scope")
+            or "none",
+            "sudo_exec_proposal_reason": sudo_exec_proposal.get("sudo_exec_proposal_reason")
+            or "",
+            "sudo_exec_requires_sudo": bool(
+                sudo_exec_proposal.get("sudo_exec_requires_sudo", False)
+            ),
+            "sudo_exec_criticality": sudo_exec_proposal.get("sudo_exec_criticality")
+            or "none",
         },
         requested_at=built_at,
     )
@@ -140,6 +156,11 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         execution = {
             **execution,
             **mutating_exec_proposal,
+        }
+    if str(sudo_exec_proposal.get("sudo_exec_proposal_state") or "none") != "none":
+        execution = {
+            **execution,
+            **sudo_exec_proposal,
         }
     effective_write_proposal = dict(write_proposal)
     if str(execution.get("write_proposal_state") or "none") != "none":
@@ -316,6 +337,25 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "mutating_exec_source_contributors": execution.get(
             "mutating_exec_source_contributors"
         )
+        or [],
+        "sudo_exec_proposal_state": execution.get("sudo_exec_proposal_state") or "none",
+        "sudo_exec_proposal_command": execution.get("sudo_exec_proposal_command") or "",
+        "sudo_exec_proposal_summary": execution.get("sudo_exec_proposal_summary") or "",
+        "sudo_exec_proposal_scope": execution.get("sudo_exec_proposal_scope") or "none",
+        "sudo_exec_proposal_reason": execution.get("sudo_exec_proposal_reason") or "",
+        "sudo_exec_requires_approval": bool(
+            execution.get("sudo_exec_requires_approval", False)
+        ),
+        "sudo_exec_requires_sudo": bool(
+            execution.get("sudo_exec_requires_sudo", False)
+        ),
+        "sudo_exec_criticality": execution.get("sudo_exec_criticality") or "none",
+        "sudo_exec_confidence": execution.get("sudo_exec_confidence") or "low",
+        "sudo_exec_command_fingerprint": execution.get(
+            "sudo_exec_command_fingerprint"
+        )
+        or "",
+        "sudo_exec_source_contributors": execution.get("sudo_exec_source_contributors")
         or [],
         "action_continuity": action_continuity,
         "action_continuity_state": action_continuity.get("action_continuity_state") or "idle",
@@ -534,6 +574,62 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
             "bounded-mutating-exec-runtime",
             "workspace-capability-runtime",
         ],
+    }
+
+
+def _build_sudo_exec_proposal_surface(
+    mutating_exec_surface: dict[str, object],
+) -> dict[str, object]:
+    base = {
+        "sudo_exec_proposal_state": "none",
+        "sudo_exec_proposal_command": "",
+        "sudo_exec_proposal_summary": "",
+        "sudo_exec_proposal_scope": "none",
+        "sudo_exec_proposal_reason": "",
+        "sudo_exec_requires_approval": False,
+        "sudo_exec_requires_sudo": False,
+        "sudo_exec_criticality": "none",
+        "sudo_exec_confidence": "low",
+        "sudo_exec_command_fingerprint": "",
+        "sudo_exec_source_contributors": [],
+    }
+    if (
+        str(mutating_exec_surface.get("execution_mode") or "") != "sudo-exec-proposal"
+        or not bool(mutating_exec_surface.get("mutating_exec_requires_sudo", False))
+    ):
+        return base
+    return {
+        **base,
+        "sudo_exec_proposal_state": str(
+            mutating_exec_surface.get("mutating_exec_proposal_state")
+            or "approval-required-proposal"
+        ),
+        "sudo_exec_proposal_command": str(
+            mutating_exec_surface.get("mutating_exec_proposal_command") or ""
+        ),
+        "sudo_exec_proposal_summary": str(
+            mutating_exec_surface.get("mutating_exec_proposal_summary") or ""
+        ),
+        "sudo_exec_proposal_scope": str(
+            mutating_exec_surface.get("mutating_exec_proposal_scope") or "system"
+        ),
+        "sudo_exec_proposal_reason": str(
+            mutating_exec_surface.get("mutating_exec_proposal_reason") or ""
+        ),
+        "sudo_exec_requires_approval": True,
+        "sudo_exec_requires_sudo": True,
+        "sudo_exec_criticality": str(
+            mutating_exec_surface.get("mutating_exec_criticality") or "high"
+        ),
+        "sudo_exec_confidence": str(
+            mutating_exec_surface.get("mutating_exec_confidence") or "high"
+        ),
+        "sudo_exec_command_fingerprint": str(
+            mutating_exec_surface.get("mutating_exec_command_fingerprint") or ""
+        ),
+        "sudo_exec_source_contributors": list(
+            mutating_exec_surface.get("mutating_exec_source_contributors") or []
+        ),
     }
 
 

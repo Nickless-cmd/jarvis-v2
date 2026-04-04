@@ -38,6 +38,10 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "mutating_exec_proposal_scope": "system",
                 "mutating_exec_requires_sudo": True,
                 "mutating_exec_criticality": "high",
+                "sudo_exec_proposal_state": "approval-required-proposal",
+                "sudo_exec_proposal_scope": "system",
+                "sudo_exec_requires_sudo": True,
+                "sudo_exec_criticality": "high",
                 "action_continuity_state": "idle",
                 "last_action_outcome": "none",
                 "last_action_at": "",
@@ -106,6 +110,10 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_mutating_exec_proposal_scope"] == "system"
     assert payload["summary"]["tool_intent_mutating_exec_requires_sudo"] is True
     assert payload["summary"]["tool_intent_mutating_exec_criticality"] == "high"
+    assert payload["summary"]["tool_intent_sudo_exec_proposal_state"] == "approval-required-proposal"
+    assert payload["summary"]["tool_intent_sudo_exec_proposal_scope"] == "system"
+    assert payload["summary"]["tool_intent_sudo_exec_requires_sudo"] is True
+    assert payload["summary"]["tool_intent_sudo_exec_criticality"] == "high"
     assert payload["summary"]["tool_intent_action_continuity_state"] == "idle"
     assert payload["summary"]["tool_intent_last_action_outcome"] == "none"
     assert payload["summary"]["tool_intent_followup_state"] == "none"

@@ -65,6 +65,11 @@ function mutatingExecGuardLabel(item) {
   return item?.mutatingExecRequiresApproval ? 'approval required' : 'review only'
 }
 
+function mutatingExecExecutionGuardLabel(item) {
+  if (!item?.hasMutatingExecExecutionSurface) return 'not executed'
+  return item?.mutatingExecApprovalMatched ? 'approved binding matched' : 'review binding'
+}
+
 function toolIntentRow(item, onOpen) {
   if (!item || (!item.intentState && !item.intentType)) return null
 
@@ -143,6 +148,10 @@ export function OperationsTab({
       || toolIntent?.mutatingExecProposalSummary
     )
     && toolIntent?.mutatingExecProposalState !== 'none'
+  )
+  const showMutatingExecExecution = Boolean(
+    toolIntent?.hasMutatingExecExecutionSurface
+    && toolIntent?.executionMode === 'mutating-exec'
   )
   const mutationScope = mutationScopeSummary(toolIntent)
   const mutationTargets = summarizeMutationTargets(toolIntent)
@@ -309,9 +318,47 @@ export function OperationsTab({
               </article>
             </>
           ) : null}
+          {showMutatingExecExecution ? (
+            <>
+              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
+                <div className="compact-metric" title="Mutating exec execution state and outcome">
+                  <span>Exec Result</span>
+                  <strong>{humanizeToken(toolIntent.mutatingExecExecutionState || 'mutating-exec')}</strong>
+                  <p className="muted">{toolIntent.mutatingExecExecutionSucceeded ? 'completed' : 'failed'} · {toolIntent.mutationPermitted ? 'mutation permitted' : 'mutation blocked'}</p>
+                </div>
+                <div className="compact-metric" title="Mutating exec scope and non-sudo boundary">
+                  <span>Scope</span>
+                  <strong>{humanizeToken(toolIntent.mutatingExecExecutionScope || 'none')}</strong>
+                  <p className="muted">{toolIntent.mutatingExecRequiresSudo ? 'sudo required' : 'sudo not permitted'}</p>
+                </div>
+                <div className="compact-metric" title="Approval binding and execution mode">
+                  <span>Binding</span>
+                  <strong>{mutatingExecExecutionGuardLabel(toolIntent)}</strong>
+                  <p className="muted">{humanizeToken(toolIntent.executionMode || 'mutating-exec')} · approval {humanizeToken(toolIntent.approvalState || 'none')}</p>
+                </div>
+                <div className="compact-metric" title="Command fingerprint and continuity outcome">
+                  <span>Fingerprint</span>
+                  <strong>{toolIntent.mutatingExecCommandFingerprint || 'none'}</strong>
+                  <p className="muted">{humanizeToken(toolIntent.lastActionOutcome || 'none')} · {humanizeToken(toolIntent.followupState || 'none')}</p>
+                </div>
+              </div>
+              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
+                <strong>Mutating exec execution</strong>
+                <p>{toolIntent.executionSummary || 'No bounded mutating exec execution summary is recorded.'}</p>
+                <div className="mc-inline-meta">
+                  <span className="mc-meta-pill">command {toolIntent.mutatingExecExecutionCommand || 'none'}</span>
+                  <span className="mc-meta-pill">scope {humanizeToken(toolIntent.mutatingExecExecutionScope || 'none')}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutatingExecApprovalMatched ? 'approval matched' : 'review binding'}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresSudo ? 'sudo required' : 'sudo_permitted=false'}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutationPermitted ? 'mutation permitted' : 'mutation_permitted=false'}</span>
+                  {toolIntent.executionFinishedAt ? <span className="mc-meta-pill">finished {formatFreshness(toolIntent.executionFinishedAt)}</span> : null}
+                </div>
+              </article>
+            </>
+          ) : null}
           {toolIntent.executionSummary ? (
             <article className="mc-code-card mc-tool-intent-summary">
-              <strong>Read-only result</strong>
+              <strong>{showMutatingExecExecution ? 'Execution result' : 'Read-only result'}</strong>
               <p>{toolIntent.executionSummary}</p>
               <div className="mc-inline-meta">
                 <span className="mc-meta-pill">mode {humanizeToken(toolIntent.executionMode || 'read-only')}</span>

@@ -1255,6 +1255,26 @@ function normalizeToolIntent(item = {}) {
     'mutating_exec_requires_sudo',
     'mutating_exec_criticality',
   ].some((key) => Object.prototype.hasOwnProperty.call(item, key))
+  const hasMutatingExecExecutionSurface = (
+    String(item.execution_mode || '') === 'mutating-exec'
+    || String(item.execution_state || '').startsWith('mutating-exec-')
+  )
+  const mutatingExecExecutionState = hasMutatingExecExecutionSurface
+    ? (item.execution_state || 'mutating-exec')
+    : 'not-executed'
+  const mutatingExecExecutionCommand = hasMutatingExecExecutionSurface
+    ? (
+      item.mutating_exec_proposal_command
+      || item.execution_target
+      || ''
+    )
+    : ''
+  const mutatingExecExecutionSucceeded = mutatingExecExecutionState === 'mutating-exec-completed'
+  const mutatingExecApprovalMatched = Boolean(
+    hasMutatingExecExecutionSurface
+    && item.approval_state === 'approved'
+    && !item.mutating_exec_requires_sudo
+  )
 
   return {
     intentState: item.intent_state || 'idle',
@@ -1304,6 +1324,7 @@ function normalizeToolIntent(item = {}) {
     mutationCritical: Boolean(item.mutation_critical),
     mutationBoundary: item.mutation_boundary || '',
     hasMutatingExecProposalSurface,
+    hasMutatingExecExecutionSurface,
     mutatingExecProposalState: item.mutating_exec_proposal_state || 'none',
     mutatingExecProposalCommand: item.mutating_exec_proposal_command || '',
     mutatingExecProposalSummary: item.mutating_exec_proposal_summary || '',
@@ -1314,6 +1335,11 @@ function normalizeToolIntent(item = {}) {
     mutatingExecCriticality: item.mutating_exec_criticality || 'none',
     mutatingExecConfidence: item.mutating_exec_confidence || 'low',
     mutatingExecCommandFingerprint: item.mutating_exec_command_fingerprint || '',
+    mutatingExecExecutionState,
+    mutatingExecExecutionCommand,
+    mutatingExecExecutionScope: item.mutating_exec_proposal_scope || 'none',
+    mutatingExecExecutionSucceeded,
+    mutatingExecApprovalMatched,
     mutatingExecSourceContributors: Array.isArray(item.mutating_exec_source_contributors)
       ? item.mutating_exec_source_contributors.filter(Boolean)
       : [],

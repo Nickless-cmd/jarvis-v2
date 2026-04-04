@@ -16,6 +16,7 @@ export function ChatHeader({
   isRefreshing,
   isStreaming,
   lastRunTokens,
+  streamingTokenEstimate,
 }) {
   const [provider, setProvider] = useState(selection.currentProvider || '')
   const [model, setModel] = useState(selection.currentModel || '')
@@ -51,9 +52,17 @@ export function ChatHeader({
     onSelectionChange?.({ provider, model: next, authProfile: candidate?.authProfile || '' })
   }
 
-  const tokenLabel = lastRunTokens
-    ? `${formatTokens(lastRunTokens.total)} tok`
-    : '— tok'
+  const tokenLabel = isStreaming && streamingTokenEstimate > 0
+    ? `~${formatTokens(streamingTokenEstimate)} tok`
+    : lastRunTokens
+      ? `${formatTokens(lastRunTokens.total)} tok`
+      : '— tok'
+
+  const tokenTitle = isStreaming
+    ? `Streaming (~${streamingTokenEstimate} output tokens estimated)`
+    : lastRunTokens
+      ? `In: ${formatTokens(lastRunTokens.input)} / Out: ${formatTokens(lastRunTokens.output)}`
+      : 'No run yet'
 
   return (
     <section className="chat-header-bar">
@@ -84,7 +93,7 @@ export function ChatHeader({
           {models.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
         </select>
 
-        <div className={`chat-token-meter ${isStreaming ? 'active' : ''}`} title={lastRunTokens ? `In: ${formatTokens(lastRunTokens.input)} / Out: ${formatTokens(lastRunTokens.output)}` : 'No run yet'}>
+        <div className={`chat-token-meter ${isStreaming ? 'active' : ''}`} title={tokenTitle}>
           <Activity size={9} />
           <span className="mono">{tokenLabel}</span>
         </div>

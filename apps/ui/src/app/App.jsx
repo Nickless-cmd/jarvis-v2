@@ -25,6 +25,7 @@ export function App() {
     systemHealth,
     jarvisSurface,
     lastRunTokens,
+    streamingTokenEstimate,
   } = useUnifiedShell()
 
   const mcInitialTabRef = useRef(null)
@@ -71,6 +72,7 @@ export function App() {
           workingSteps={workingSteps}
           jarvisSurface={jarvisSurface}
           lastRunTokens={lastRunTokens}
+          streamingTokenEstimate={streamingTokenEstimate}
         />
       ) : (
         <MissionControlPage

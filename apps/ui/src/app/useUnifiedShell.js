@@ -29,6 +29,7 @@ export function useUnifiedShell() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [workingSteps, setWorkingSteps] = useState([])
   const [lastRunTokens, setLastRunTokens] = useState(null)
+  const [streamingTokenEstimate, setStreamingTokenEstimate] = useState(0)
   const [systemHealth, setSystemHealth] = useState({ cpu_pct: 0, ram_pct: 0, disk_free_mb: 0 })
   const [jarvisSurface, setJarvisSurface] = useState(null)
   const liveSubscriptionStartedAtRef = useRef(Date.now())
@@ -180,6 +181,7 @@ export function useUnifiedShell() {
     setIsStreaming(true)
     setError('')
     setLastRunTokens(null)
+    setStreamingTokenEstimate(0)
     setActiveSession((current) =>
       current ? appendMessagesToSession(current, userMessage, pendingAssistantMessage) : current
     )
@@ -199,6 +201,7 @@ export function useUnifiedShell() {
           })
         },
         onDelta: (_delta, fullText) => {
+          setStreamingTokenEstimate(Math.round(fullText.length / 4))
           setActiveSession((current) =>
             current
               ? updateSessionMessage(current, assistantMessageId, () => ({
@@ -246,6 +249,7 @@ export function useUnifiedShell() {
     } finally {
       setIsStreaming(false)
       setWorkingSteps([])
+      setStreamingTokenEstimate(0)
     }
   }
 
@@ -304,5 +308,6 @@ export function useUnifiedShell() {
     systemHealth,
     jarvisSurface,
     lastRunTokens,
+    streamingTokenEstimate,
   }
 }

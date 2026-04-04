@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import shlex
 from datetime import UTC, datetime, timedelta
 
 from apps.api.jarvis_api.services.chat_sessions import (
@@ -12,10 +13,12 @@ from core.runtime.db import (
     create_tool_intent_approval_request,
     expire_tool_intent_approval_request,
     get_tool_intent_approval_request,
+    latest_approved_capability_approval_request,
     resolve_tool_intent_approval_request,
 )
 
 _APPROVAL_TTL = timedelta(minutes=15)
+_SUDO_APPROVAL_WINDOW_TTL = timedelta(minutes=5)
 _APPROVE_PATTERNS = (
     re.compile(r"\bapprove\b"),
     re.compile(r"\bgodkend\b"),
@@ -43,6 +46,7 @@ def build_tool_intent_approval_surface(
     intent_state = str(intent_surface.get("intent_state") or "idle")
     approval_required = bool(intent_surface.get("approval_required", True))
     execution_state = str(intent_surface.get("execution_state") or "not-executed")
+    sudo_window = build_sudo_approval_window_surface(intent_surface)
     if intent_state == "idle" or not approval_required:
         return {
             "approval_state": "none",
@@ -63,7 +67,12 @@ def build_tool_intent_approval_surface(
                 "execution_allowed": False,
                 "mutation_near": False,
                 "scope_classification": "none",
+                "sudo_window_state": sudo_window.get("sudo_approval_window_state") or "none",
+                "sudo_window_reusable": bool(
+                    sudo_window.get("sudo_approval_window_reusable", False)
+                ),
             },
+            **sudo_window,
             "execution_state": execution_state,
         }
 
@@ -121,13 +130,141 @@ def build_tool_intent_approval_surface(
             "mc_supported": True,
             "mode": "explicit-bounded-approval-only",
             "proposal_only": True,
-            "execution_allowed": False,
+            "execution_allowed": bool(sudo_window.get("sudo_approval_window_reusable", False)),
             "mutation_near": bool(intent_surface.get("mutation_near", False)),
             "scope_classification": str(
                 intent_surface.get("mutation_intent_classification") or "read-only"
             ),
+            "sudo_window_state": sudo_window.get("sudo_approval_window_state") or "none",
+            "sudo_window_reusable": bool(
+                sudo_window.get("sudo_approval_window_reusable", False)
+            ),
         },
+        **sudo_window,
         "execution_state": str(request.get("execution_state") or execution_state),
+    }
+
+
+def build_sudo_approval_window_surface(
+    intent_surface: dict[str, object],
+    *,
+    now: datetime | None = None,
+) -> dict[str, object]:
+    reference_now = now or _now()
+    current_scope = sudo_approval_window_scope_from_intent(intent_surface)
+    request = latest_approved_capability_approval_request(
+        execution_mode="sudo-exec-proposal",
+        capability_id=str(intent_surface.get("capability_id") or "tool:run-non-destructive-command"),
+    )
+    base = {
+        "sudo_approval_window_state": "none",
+        "sudo_approval_window_scope": current_scope or "none",
+        "sudo_approval_window_started_at": "",
+        "sudo_approval_window_expires_at": "",
+        "sudo_approval_window_remaining_seconds": 0,
+        "sudo_approval_window_source": "none",
+        "sudo_approval_window_reusable": False,
+    }
+    if request is None:
+        return base
+
+    approved_at = _parse_iso(request.get("approved_at"))
+    if approved_at is None:
+        return base
+    expires_at = approved_at + _SUDO_APPROVAL_WINDOW_TTL
+    request_scope = sudo_approval_window_scope_from_request(request)
+    remaining_seconds = max(0, int((expires_at - reference_now).total_seconds()))
+    active = reference_now < expires_at
+    reusable = active and bool(request_scope) and request_scope == current_scope
+    state = "expired"
+    if active:
+        state = "active" if reusable or not current_scope else "scope-mismatch"
+        if not current_scope:
+            state = "active"
+    return {
+        "sudo_approval_window_state": state,
+        "sudo_approval_window_scope": request_scope or current_scope or "none",
+        "sudo_approval_window_started_at": approved_at.isoformat(),
+        "sudo_approval_window_expires_at": expires_at.isoformat(),
+        "sudo_approval_window_remaining_seconds": remaining_seconds,
+        "sudo_approval_window_source": str(request.get("request_id") or "capability-approval"),
+        "sudo_approval_window_reusable": reusable,
+    }
+
+
+def sudo_approval_window_scope_from_request(request: dict[str, object]) -> str:
+    return _sudo_approval_window_scope(
+        capability_id=str(request.get("capability_id") or ""),
+        command_text=str(request.get("proposal_content") or ""),
+        proposal_scope="system",
+    )
+
+
+def sudo_approval_window_scope_from_intent(intent_surface: dict[str, object]) -> str:
+    return _sudo_approval_window_scope(
+        capability_id=str(intent_surface.get("capability_id") or "tool:run-non-destructive-command"),
+        command_text=str(intent_surface.get("sudo_exec_proposal_command") or ""),
+        proposal_scope=str(intent_surface.get("sudo_exec_proposal_scope") or "system"),
+    )
+
+
+def sudo_approval_window_allows_request(
+    request: dict[str, object],
+    *,
+    now: datetime | None = None,
+) -> dict[str, object]:
+    reference_now = now or _now()
+    request_scope = sudo_approval_window_scope_from_request(request)
+    if not request_scope:
+        return {
+            "allowed": False,
+            "state": "missing-scope",
+            "scope": "none",
+            "detail": "Sudo approval window requires a bounded sudo scope.",
+        }
+    latest_request = latest_approved_capability_approval_request(
+        execution_mode="sudo-exec-proposal",
+        capability_id=str(request.get("capability_id") or ""),
+    )
+    if latest_request is None:
+        return {
+            "allowed": False,
+            "state": "none",
+            "scope": request_scope,
+            "detail": "No approved sudo approval window is active.",
+        }
+    approved_at = _parse_iso(latest_request.get("approved_at"))
+    if approved_at is None:
+        return {
+            "allowed": False,
+            "state": "none",
+            "scope": request_scope,
+            "detail": "Approved sudo request is missing its approval timestamp.",
+        }
+    expires_at = approved_at + _SUDO_APPROVAL_WINDOW_TTL
+    latest_scope = sudo_approval_window_scope_from_request(latest_request)
+    if reference_now >= expires_at:
+        return {
+            "allowed": False,
+            "state": "expired",
+            "scope": latest_scope or request_scope,
+            "detail": "Approved sudo approval window has expired.",
+        }
+    if latest_scope != request_scope:
+        return {
+            "allowed": False,
+            "state": "scope-mismatch",
+            "scope": latest_scope or request_scope,
+            "detail": "Approved sudo approval window does not match the current bounded sudo scope.",
+        }
+    return {
+        "allowed": True,
+        "state": "active",
+        "scope": latest_scope,
+        "started_at": approved_at.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "remaining_seconds": max(0, int((expires_at - reference_now).total_seconds())),
+        "source": str(latest_request.get("request_id") or "capability-approval"),
     }
 
 
@@ -332,6 +469,38 @@ def _matches_intent_context(content: str, intent_surface: dict[str, object]) -> 
     }
     context_tokens = {token for token in context_tokens if token}
     return any(token in normalized for token in context_tokens)
+
+
+def _sudo_approval_window_scope(
+    *,
+    capability_id: str,
+    command_text: str,
+    proposal_scope: str,
+) -> str:
+    normalized_command = str(command_text or "").strip()
+    if not normalized_command:
+        return ""
+    try:
+        argv = shlex.split(normalized_command, posix=True)
+    except ValueError:
+        return ""
+    if len(argv) < 2 or str(argv[0]).lower() != "sudo":
+        return ""
+    sudo_command = str(argv[1]).lower().strip()
+    if not sudo_command:
+        return ""
+    return "::".join(
+        [
+            str(capability_id or "tool:run-non-destructive-command"),
+            "sudo-exec",
+            str(proposal_scope or "system"),
+            sudo_command,
+        ]
+    )
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
 
 
 def _normalize(value: str) -> str:

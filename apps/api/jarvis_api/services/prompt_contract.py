@@ -1240,7 +1240,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
             "- Non-destructive exec is allowed only when the user message already includes one explicit command in backticks or a command:/kommando: line."
         )
         lines.append(
-            "- If that command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass."
+            "- If that command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass. Runtime may reuse a short auto-expiring sudo approval window only for the same bounded sudo scope."
         )
     if available:
         lines.append(
@@ -1275,7 +1275,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         f"external_read={policy.get('external_read', 'allowed')} | "
         f"non_destructive_exec={policy.get('non_destructive_exec', 'allowed')} | "
         f"mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-bounded-non-sudo-only')} | "
-        f"sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-bounded-allowlist-only')} | "
+        f"sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-bounded-allowlist-with-short-ttl-window')} | "
         f"workspace_write={policy.get('workspace_write', 'explicit-approval-required')} | "
         f"external_write={policy.get('external_write', 'explicit-approval-required')}"
     )
@@ -1456,6 +1456,10 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | sudo_exec_scope={tool_intent.get('sudo_exec_proposal_scope') or 'none'}"
                 f" | sudo_exec_requires_sudo={tool_intent.get('sudo_exec_requires_sudo', False)}"
                 f" | sudo_exec_fingerprint={tool_intent.get('sudo_exec_command_fingerprint') or 'none'}"
+                f" | sudo_window_state={tool_intent.get('sudo_approval_window_state') or 'none'}"
+                f" | sudo_window_scope={tool_intent.get('sudo_approval_window_scope') or 'none'}"
+                f" | sudo_window_expires_at={tool_intent.get('sudo_approval_window_expires_at') or 'none'}"
+                f" | sudo_window_reusable={tool_intent.get('sudo_approval_window_reusable', False)}"
                 f" | execution_command={tool_intent.get('execution_command') or 'none'}"
                 f" | sudo_permitted={tool_intent.get('sudo_permitted', False)}"
                 f" | execution_summary={tool_intent.get('execution_summary') or 'none'}"

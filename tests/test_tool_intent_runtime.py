@@ -605,6 +605,76 @@ def test_tool_intent_approval_can_expire_without_execution(
     assert expired["approval_resolution_reason"]
 
 
+def test_sudo_approval_window_surface_tracks_active_expired_and_scope_mismatch(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    approval_runtime = isolated_runtime.tool_intent_approval_runtime
+    mission_control = isolated_runtime.mission_control
+
+    workspace_dir = Path("/media/projects/jarvis-v2/workspace/default")
+    target_one = workspace_dir / "sudo_window_surface_one.txt"
+    target_two = workspace_dir / "sudo_window_surface_two.txt"
+    target_one.write_text("one\n", encoding="utf-8")
+    target_two.write_text("two\n", encoding="utf-8")
+
+    _ = mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"sudo chmod 600 {target_one}",
+    )
+    request_id = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="sudo-exec-proposal",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_id
+    approved = mission_control.mc_approve_capability_request(request_id)
+    approved_at = approved["request"]["approved_at"]
+    approved_dt = datetime.fromisoformat(str(approved_at))
+
+    monkeypatch.setattr(
+        approval_runtime,
+        "_now",
+        lambda: approved_dt + approval_runtime.timedelta(seconds=30),
+    )
+
+    active = approval_runtime.build_sudo_approval_window_surface(
+        {
+            "capability_id": "tool:run-non-destructive-command",
+            "sudo_exec_proposal_command": f"sudo chmod 644 {target_two}",
+            "sudo_exec_proposal_scope": "system",
+        }
+    )
+    assert active["sudo_approval_window_state"] == "active"
+    assert active["sudo_approval_window_reusable"] is True
+    assert active["sudo_approval_window_remaining_seconds"] > 0
+
+    mismatch = approval_runtime.build_sudo_approval_window_surface(
+        {
+            "capability_id": "tool:run-non-destructive-command",
+            "sudo_exec_proposal_command": "sudo chown root /tmp/x",
+            "sudo_exec_proposal_scope": "system",
+        }
+    )
+    assert mismatch["sudo_approval_window_state"] == "scope-mismatch"
+    assert mismatch["sudo_approval_window_reusable"] is False
+
+    monkeypatch.setattr(
+        approval_runtime,
+        "_now",
+        lambda: approved_dt + approval_runtime._SUDO_APPROVAL_WINDOW_TTL + approval_runtime.timedelta(seconds=1),
+    )
+    expired = approval_runtime.build_sudo_approval_window_surface(
+        {
+            "capability_id": "tool:run-non-destructive-command",
+            "sudo_exec_proposal_command": f"sudo chmod 644 {target_two}",
+            "sudo_exec_proposal_scope": "system",
+        }
+    )
+    assert expired["sudo_approval_window_state"] == "expired"
+    assert expired["sudo_approval_window_reusable"] is False
+    assert expired["sudo_approval_window_remaining_seconds"] == 0
+
+
 def test_approved_read_only_tool_intent_executes_bounded_repo_inspection(
     isolated_runtime,
     monkeypatch,
@@ -977,6 +1047,9 @@ def test_approved_sudo_exec_becomes_runtime_truth_and_continuity(
     assert surface["sudo_exec_proposal_state"] == "executed"
     assert surface["sudo_exec_proposal_command"] == f"sudo chmod 600 {target}"
     assert surface["sudo_exec_requires_sudo"] is True
+    assert surface["sudo_approval_window_state"] in {"active", "scope-mismatch"}
+    assert surface["sudo_approval_window_scope"]
+    assert surface["sudo_approval_window_expires_at"]
     assert surface["action_continuity_state"] == "carrying-forward"
     assert surface["last_action_outcome"] == "sudo-exec-completed"
     assert surface["action_mode"] == "sudo-exec"

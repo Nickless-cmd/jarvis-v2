@@ -389,6 +389,26 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "approval_scope": approval_scope,
         "approval_state": effective_approval.get("approval_state") or "none",
         "approval_source": effective_approval.get("approval_source") or "none",
+        "sudo_approval_window_state": effective_approval.get("sudo_approval_window_state")
+        or "none",
+        "sudo_approval_window_scope": effective_approval.get("sudo_approval_window_scope")
+        or "none",
+        "sudo_approval_window_started_at": effective_approval.get(
+            "sudo_approval_window_started_at"
+        )
+        or "",
+        "sudo_approval_window_expires_at": effective_approval.get(
+            "sudo_approval_window_expires_at"
+        )
+        or "",
+        "sudo_approval_window_remaining_seconds": int(
+            effective_approval.get("sudo_approval_window_remaining_seconds") or 0
+        ),
+        "sudo_approval_window_source": effective_approval.get("sudo_approval_window_source")
+        or "none",
+        "sudo_approval_window_reusable": bool(
+            effective_approval.get("sudo_approval_window_reusable", False)
+        ),
         "approval_reason": effective_approval.get("approval_reason") or "",
         "approval_requested_at": effective_approval.get("approval_requested_at") or "",
         "approval_expires_at": effective_approval.get("approval_expires_at") or "",

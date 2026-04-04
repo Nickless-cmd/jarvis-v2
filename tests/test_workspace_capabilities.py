@@ -133,6 +133,48 @@ def test_non_destructive_exec_capability_runs_bounded_command(
     assert str(payload.get("text") or "").strip()
 
 
+def test_non_destructive_exec_normalizes_tilde_home_path(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="ls -la ~",
+    )
+
+    assert result["status"] == "executed"
+    payload = result.get("result") or {}
+    argv = payload.get("argv") or []
+    assert argv[0:2] == ["ls", "-la"]
+    assert argv[-1] == str(Path.home())
+    assert payload.get("normalized_command_text") == f"ls -la {Path.home()}"
+    assert payload.get("path_normalization_applied") is True
+    assert payload.get("normalization_source") == "tilde"
+
+
+def test_non_destructive_exec_normalizes_home_env_path(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="ls -la $HOME",
+    )
+
+    assert result["status"] == "executed"
+    payload = result.get("result") or {}
+    argv = payload.get("argv") or []
+    assert argv[0:2] == ["ls", "-la"]
+    assert argv[-1] == str(Path.home())
+    assert payload.get("normalized_command_text") == f"ls -la {Path.home()}"
+    assert payload.get("path_normalization_applied") is True
+    assert payload.get("normalization_source") == "home-env"
+
+
 def test_non_destructive_exec_blocks_destructive_and_sudo_commands(
     isolated_runtime,
 ) -> None:
@@ -160,6 +202,13 @@ def test_non_destructive_exec_blocks_destructive_and_sudo_commands(
     assert proposal.get("not_executed") is True
     assert proposal.get("scope") == "system"
     assert proposal.get("criticality") == "high"
+
+    shell_features = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="ls $HOME && pwd",
+    )
+    assert shell_features["status"] == "blocked-shell-features"
+    assert shell_features["execution_mode"] == "non-destructive-exec"
 
 
 def test_mutating_exec_command_surfaces_as_approval_gated_proposal_only(

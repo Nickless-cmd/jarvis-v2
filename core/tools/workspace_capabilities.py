@@ -54,6 +54,9 @@ APPROVED_MUTATING_EXEC_ALLOWLIST = {
     "cp",
     "chmod",
 }
+APPROVED_SUDO_EXEC_ALLOWLIST = {
+    "chmod",
+}
 MUTATING_EXEC_PROPOSAL_TOKENS = {
     "sudo",
     "mv",
@@ -164,7 +167,7 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
             "external_read": "allowed",
             "non_destructive_exec": "allowed",
             "mutating_exec": "explicit-approval-required-bounded-non-sudo-only",
-            "sudo_exec": "explicit-approval-required-proposal-only",
+            "sudo_exec": "explicit-approval-required-bounded-allowlist-only",
             "external_write": "explicit-approval-required",
             "mutation_outside_workspace": "explicit-approval-required",
             "delete_exec": "not-executable-in-this-pass",
@@ -690,7 +693,19 @@ def _invoke_runnable_capability(
         command_verdict = _classify_exec_command(resolved_command)
         if command_verdict.get("proposal_required"):
             if approved:
-                approved_verdict = _approved_mutating_exec_verdict(command_verdict)
+                execution_mode = (
+                    "sudo-exec"
+                    if bool(command_verdict.get("requires_sudo", False))
+                    else "mutating-exec"
+                )
+                approved_verdict = (
+                    _approved_sudo_exec_verdict(
+                        command_verdict,
+                        workspace_dir=workspace_dir,
+                    )
+                    if execution_mode == "sudo-exec"
+                    else _approved_mutating_exec_verdict(command_verdict)
+                )
                 if not approved_verdict.get("allowed"):
                     return {
                         "capability": summary,
@@ -719,16 +734,37 @@ def _invoke_runnable_capability(
                             or "Approved mutating exec remains blocked in this pass."
                         ),
                     }
-                argv = list(command_verdict.get("argv") or [])
+                argv = list(
+                    approved_verdict.get("argv")
+                    or command_verdict.get("argv")
+                    or []
+                )
                 completed, timeout_detail = _run_bounded_command(
                     argv=argv,
                     workspace_dir=workspace_dir,
                 )
                 if completed is None:
+                    execution_content = (
+                        _sudo_exec_execution_content(
+                            command_text=resolved_command,
+                            command_source=command_source or "declared-command",
+                            classification=command_verdict,
+                            exit_code=None,
+                            output_text="",
+                        )
+                        if execution_mode == "sudo-exec"
+                        else _mutating_exec_execution_content(
+                            command_text=resolved_command,
+                            command_source=command_source or "declared-command",
+                            classification=command_verdict,
+                            exit_code=None,
+                            output_text="",
+                        )
+                    )
                     return {
                         "capability": summary,
                         "status": "blocked-timeout",
-                        "execution_mode": "mutating-exec",
+                        "execution_mode": execution_mode,
                         "approval": {
                             "policy": "required",
                             "required": True,
@@ -736,30 +772,34 @@ def _invoke_runnable_capability(
                             "granted": False,
                         },
                         "result": None,
-                        "proposal_content": _mutating_exec_execution_content(
-                            command_text=resolved_command,
-                            command_source=command_source or "declared-command",
-                            classification=command_verdict,
-                            exit_code=None,
-                            output_text="",
-                        ),
+                        "proposal_content": execution_content,
                         "detail": timeout_detail,
                     }
                 output_text = _bounded_exec_output(
                     stdout=completed.stdout,
                     stderr=completed.stderr,
                 )
-                execution_content = _mutating_exec_execution_content(
-                    command_text=resolved_command,
-                    command_source=command_source or "declared-command",
-                    classification=command_verdict,
-                    exit_code=completed.returncode,
-                    output_text=output_text,
+                execution_content = (
+                    _sudo_exec_execution_content(
+                        command_text=resolved_command,
+                        command_source=command_source or "declared-command",
+                        classification=command_verdict,
+                        exit_code=completed.returncode,
+                        output_text=output_text,
+                    )
+                    if execution_mode == "sudo-exec"
+                    else _mutating_exec_execution_content(
+                        command_text=resolved_command,
+                        command_source=command_source or "declared-command",
+                        classification=command_verdict,
+                        exit_code=completed.returncode,
+                        output_text=output_text,
+                    )
                 )
                 return {
                     "capability": summary,
                     "status": "executed",
-                    "execution_mode": "mutating-exec",
+                    "execution_mode": execution_mode,
                     "approval": {
                         "policy": "required",
                         "required": True,
@@ -767,16 +807,20 @@ def _invoke_runnable_capability(
                         "granted": True,
                     },
                     "result": {
-                        "type": "mutating-exec",
+                        "type": execution_mode,
                         "command_text": resolved_command,
                         "argv": argv,
                         "exit_code": completed.returncode,
                         "text": output_text,
                         "command_source": command_source or "declared-command",
-                        "workspace_scoped": False,
+                        "workspace_scoped": bool(
+                            approved_verdict.get("workspace_scoped", False)
+                        ),
                         "mutation_permitted": True,
-                        "sudo_permitted": False,
-                        "external_mutation_permitted": True,
+                        "sudo_permitted": execution_mode == "sudo-exec",
+                        "external_mutation_permitted": bool(
+                            approved_verdict.get("external_mutation_permitted", True)
+                        ),
                         "delete_permitted": False,
                         "scope": str(
                             command_verdict.get("proposal_scope") or "filesystem"
@@ -790,9 +834,17 @@ def _invoke_runnable_capability(
                     },
                     "proposal_content": execution_content,
                     "detail": (
-                        "Approved bounded non-sudo mutating exec completed."
+                        (
+                            "Approved bounded sudo exec completed."
+                            if execution_mode == "sudo-exec"
+                            else "Approved bounded non-sudo mutating exec completed."
+                        )
                         if completed.returncode == 0
-                        else "Approved bounded non-sudo mutating exec exited non-zero."
+                        else (
+                            "Approved bounded sudo exec exited non-zero."
+                            if execution_mode == "sudo-exec"
+                            else "Approved bounded non-sudo mutating exec exited non-zero."
+                        )
                     ),
                 }
             proposal_content = _mutating_exec_proposal_content(
@@ -939,6 +991,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "delete-file",
         "git-mutate",
         "mutating-exec",
+        "sudo-exec",
         "repo-update-check",
         "system-mutate",
         "package-mutate",
@@ -980,7 +1033,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
             "sudo_required": False,
             "mutation_critical": False,
         }
-    if normalized == "sudo-exec-proposal":
+    if normalized in {"sudo-exec-proposal", "sudo-exec"}:
         return {
             "classification": "system-mutate",
             "mutation_near": True,
@@ -1283,8 +1336,10 @@ def _mutating_exec_proposal_metadata(argv: list[str]) -> dict[str, object] | Non
     scope = "filesystem"
     criticality = "medium"
     proposal_execution_mode = "mutating-exec-proposal"
+    effective_token = matched_token
 
     if matched_token == "sudo":
+        effective_token = lowered[1] if len(lowered) > 1 else "sudo"
         scope = "system"
         criticality = "high"
         proposal_execution_mode = "sudo-exec-proposal"
@@ -1304,6 +1359,7 @@ def _mutating_exec_proposal_metadata(argv: list[str]) -> dict[str, object] | Non
 
     return {
         "matched_token": matched_token,
+        "effective_token": effective_token,
         "requires_sudo": requires_sudo,
         "proposal_scope": scope,
         "proposal_execution_mode": proposal_execution_mode,
@@ -1320,7 +1376,11 @@ def _mutating_exec_proposal_metadata(argv: list[str]) -> dict[str, object] | Non
 def _approved_mutating_exec_verdict(
     classification: dict[str, object],
 ) -> dict[str, object]:
-    matched_token = str(classification.get("matched_token") or "unknown")
+    matched_token = str(
+        classification.get("effective_token")
+        or classification.get("matched_token")
+        or "unknown"
+    )
     if bool(classification.get("requires_sudo", False)):
         return {
             "allowed": False,
@@ -1358,6 +1418,75 @@ def _approved_mutating_exec_verdict(
     }
 
 
+def _approved_sudo_exec_verdict(
+    classification: dict[str, object],
+    *,
+    workspace_dir: Path,
+) -> dict[str, object]:
+    if not bool(classification.get("requires_sudo", False)):
+        return {
+            "allowed": False,
+            "status": "blocked-sudo-classification-mismatch",
+            "detail": "Approved sudo exec requires a sudo-classified proposal.",
+        }
+    argv = list(classification.get("argv") or [])
+    sudo_subcommand = str(classification.get("effective_token") or "").strip().lower()
+    if sudo_subcommand not in APPROVED_SUDO_EXEC_ALLOWLIST:
+        return {
+            "allowed": False,
+            "status": "blocked-sudo-command-class",
+            "detail": (
+                f"Approved sudo exec token {sudo_subcommand or 'unknown'} is outside the bounded sudo allowlist for this pass."
+            ),
+        }
+    if len(argv) != 4 or argv[0] != "sudo":
+        return {
+            "allowed": False,
+            "status": "blocked-command-shape",
+            "detail": (
+                "Approved bounded sudo exec currently allows only simple four-part sudo commands."
+            ),
+        }
+    if argv[1] != sudo_subcommand:
+        return {
+            "allowed": False,
+            "status": "blocked-sudo-command-shape",
+            "detail": "Approved sudo exec must match the exact bounded subcommand shape.",
+        }
+    if any(part.startswith("-") for part in argv[2:]):
+        return {
+            "allowed": False,
+            "status": "blocked-command-shape",
+            "detail": "Approved bounded sudo exec does not allow flags in this pass.",
+        }
+    mode = argv[2]
+    if sudo_subcommand == "chmod" and not re.fullmatch(r"[0-7]{3,4}", mode):
+        return {
+            "allowed": False,
+            "status": "blocked-sudo-command-shape",
+            "detail": "Approved bounded sudo chmod requires a simple octal mode.",
+        }
+    candidate = _resolve_target_path_for_sudo_exec(workspace_dir, argv[3])
+    if candidate is None:
+        return {
+            "allowed": False,
+            "status": "blocked-sudo-target-path",
+            "detail": "Approved bounded sudo exec requires a valid target path within the active workspace root.",
+        }
+    if not candidate.exists():
+        return {
+            "allowed": False,
+            "status": "blocked-sudo-target-missing",
+            "detail": "Approved bounded sudo exec target does not exist within the active workspace root.",
+        }
+    return {
+        "allowed": True,
+        "argv": ["sudo", sudo_subcommand, mode, str(candidate)],
+        "workspace_scoped": True,
+        "external_mutation_permitted": False,
+    }
+
+
 def _mutating_exec_proposal_content(
     *,
     command_text: str,
@@ -1386,7 +1515,7 @@ def _mutating_exec_proposal_content(
         ),
         "scope": scope,
         "explicit_approval_required": True,
-        "approval_scope": "mutating-exec",
+        "approval_scope": "sudo-exec" if requires_sudo else "mutating-exec",
         "requires_sudo": requires_sudo,
         "criticality": criticality,
         "confidence": "high",
@@ -1434,6 +1563,56 @@ def _mutating_exec_execution_content(
         "exit_code": exit_code,
         "text": output_text,
     }
+
+
+def _sudo_exec_execution_content(
+    *,
+    command_text: str,
+    command_source: str,
+    classification: dict[str, object],
+    exit_code: int | None,
+    output_text: str,
+) -> dict[str, object]:
+    proposal = _mutating_exec_proposal_content(
+        command_text=command_text,
+        command_source=command_source,
+        classification=classification,
+    )
+    execution_state = "sudo-exec-completed"
+    reason = "Approved bounded sudo exec completed."
+    if exit_code is None:
+        execution_state = "sudo-exec-blocked"
+        reason = "Approved bounded sudo exec timed out before completion."
+    elif exit_code != 0:
+        execution_state = "sudo-exec-failed"
+        reason = "Approved bounded sudo exec exited non-zero."
+    return {
+        **proposal,
+        "state": "executed" if exit_code is not None else "blocked",
+        "type": "sudo-exec",
+        "reason": reason,
+        "proposal_only": exit_code is None,
+        "not_executed": exit_code is None,
+        "execution_state": execution_state,
+        "workspace_scoped": True,
+        "exit_code": exit_code,
+        "text": output_text,
+    }
+
+
+def _resolve_target_path_for_sudo_exec(workspace_dir: Path, target: str) -> Path | None:
+    normalized = str(target or "").strip()
+    if not normalized:
+        return None
+    expanded = Path(normalized).expanduser()
+    candidate = (
+        expanded.resolve()
+        if expanded.is_absolute()
+        else (workspace_dir / expanded).resolve()
+    )
+    if not _is_within_workspace_root(workspace_dir, candidate):
+        return None
+    return candidate
 
 
 def _search_file_matches(path: Path, query: str) -> list[dict[str, object]]:

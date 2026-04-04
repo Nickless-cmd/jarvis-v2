@@ -221,6 +221,9 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "kind": "approval-gated-tool-intent-light",
         "execution_state": execution_state,
         "execution_mode": execution.get("execution_mode") or "read-only",
+        "execution_command": execution.get("execution_command")
+        or execution.get("execution_target")
+        or "",
         "execution_target": execution.get("execution_target") or intent_target,
         "execution_summary": execution.get("execution_summary") or "No bounded repo inspection has been executed.",
         "execution_started_at": execution.get("execution_started_at") or "",
@@ -229,6 +232,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         "execution_operation": execution.get("execution_operation") or intent_type,
         "execution_excerpt": execution.get("execution_excerpt") or [],
         "mutation_permitted": bool(execution.get("mutation_permitted", False)),
+        "sudo_permitted": bool(execution.get("sudo_permitted", False)),
         "workspace_scoped": bool(execution.get("workspace_scoped", False)),
         "external_mutation_permitted": bool(
             execution.get("external_mutation_permitted", False)
@@ -418,7 +422,7 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
             ],
         ],
         "boundary": (
-            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content. Approved bounded non-sudo mutating exec may execute only for the exact approved command fingerprint; sudo, delete, git mutation, package install/update, and broader system mutation remain closed in this pass."
+            "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content. Approved bounded non-sudo mutating exec may execute only for the exact approved command fingerprint. Approved bounded sudo exec may execute only for the exact approved sudo command fingerprint within the tiny allowlist; delete, git mutation, package install/update, and broader system mutation remain closed in this pass."
         ),
         "seam_usage": [
             "bounded-read-only-repo-tools",
@@ -459,6 +463,7 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
         "mutating-exec-proposal",
         "sudo-exec-proposal",
         "mutating-exec",
+        "sudo-exec",
     }:
         return base
 
@@ -479,25 +484,48 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
     fingerprint = str(
         proposal_content.get("fingerprint") or result.get("command_fingerprint") or ""
     )
-    if execution_mode == "mutating-exec":
+    if execution_mode in {"mutating-exec", "sudo-exec"}:
         exit_code = result.get("exit_code")
-        execution_state = "mutating-exec-completed"
+        execution_state = (
+            "sudo-exec-completed" if execution_mode == "sudo-exec" else "mutating-exec-completed"
+        )
         if exit_code not in (None, 0):
-            execution_state = "mutating-exec-failed"
+            execution_state = (
+                "sudo-exec-failed" if execution_mode == "sudo-exec" else "mutating-exec-failed"
+            )
         return {
             **base,
             "execution_state": execution_state,
             "execution_mode": execution_mode,
+            "execution_command": command,
             "execution_target": command or str(proposal_content.get("target") or "mutating-exec"),
             "execution_summary": str(
                 invocation.get("detail")
                 or proposal_content.get("reason")
-                or "Approved bounded non-sudo mutating exec executed."
+                or (
+                    "Approved bounded sudo exec executed."
+                    if execution_mode == "sudo-exec"
+                    else "Approved bounded non-sudo mutating exec executed."
+                )
             ),
             "execution_confidence": "high",
             "mutation_permitted": True,
-            "workspace_scoped": False,
-            "external_mutation_permitted": True,
+            "sudo_permitted": execution_mode == "sudo-exec",
+            "workspace_scoped": bool(
+                result.get(
+                    "workspace_scoped",
+                    proposal_content.get("workspace_scoped", execution_mode == "sudo-exec"),
+                )
+            ),
+            "external_mutation_permitted": bool(
+                result.get(
+                    "external_mutation_permitted",
+                    proposal_content.get(
+                        "external_mutation_permitted",
+                        execution_mode != "sudo-exec",
+                    ),
+                )
+            ),
             "delete_permitted": False,
             "approval_state": "approved",
             "approval_source": "capability-approval",
@@ -531,6 +559,7 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
         **base,
         "execution_state": "not-executed",
         "execution_mode": execution_mode,
+        "execution_command": command,
         "execution_target": str(proposal_content.get("target") or "mutating-exec"),
         "execution_summary": str(
             invocation.get("detail")
@@ -539,6 +568,7 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
         ),
         "execution_confidence": "high",
         "mutation_permitted": False,
+        "sudo_permitted": False,
         "workspace_scoped": False,
         "external_mutation_permitted": False,
         "delete_permitted": False,
@@ -593,10 +623,10 @@ def _build_sudo_exec_proposal_surface(
         "sudo_exec_command_fingerprint": "",
         "sudo_exec_source_contributors": [],
     }
-    if (
-        str(mutating_exec_surface.get("execution_mode") or "") != "sudo-exec-proposal"
-        or not bool(mutating_exec_surface.get("mutating_exec_requires_sudo", False))
-    ):
+    if str(mutating_exec_surface.get("execution_mode") or "") not in {
+        "sudo-exec-proposal",
+        "sudo-exec",
+    } or not bool(mutating_exec_surface.get("mutating_exec_requires_sudo", False)):
         return base
     return {
         **base,

@@ -21,7 +21,7 @@ Approval-gated now:
 - `tool:propose-external-repo-file-update`
 
 Write proposals are approval-gated.
-Sudo-near exec commands surface as explicit sudo proposals and remain proposal-only.
+Sudo-near exec commands surface as explicit sudo proposals first.
 Do not imply that a write has executed unless runtime truth says it executed.
 
 ## READ_FILE: read workspace user profile
@@ -51,7 +51,7 @@ command_from: user-message
 
 Runs one explicit non-destructive command from the current user message.
 Use this only for read-only inspection or diagnostics. No sudo, package install/update, git mutation, delete, shell chaining, or redirection.
-If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Sudo-near commands surface as explicit sudo proposals and remain not executed in this pass. Package, git, delete, and broader system mutation also remain non-executed here.
+If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. Package, git, delete, and broader system mutation remain non-executed here.
 
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md

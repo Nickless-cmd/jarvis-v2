@@ -529,6 +529,17 @@ def test_heartbeat_runtime_surface_exposes_liveness_fields(
     assert state["checkin_worthiness"] == "low-present"
     assert state["planner_authority_state"] == "not-planner-authority"
     assert state["canonical_self_state"] == "not-canonical-self-truth"
+    experiential = surface["experiential_runtime_context"]
+    assert experiential["experiential_continuity"]["continuity_state"] in {
+        "initial",
+        "stable",
+        "lingering",
+        "returning",
+        "escalating",
+        "easing",
+        "shifted",
+    }
+    assert "prior_source" in experiential["experiential_continuity"]
 
 
 def test_heartbeat_liveness_includes_proactive_readiness_in_scoring(

@@ -134,6 +134,9 @@ def isolated_runtime(
         auth_profiles=modules["core.auth.profiles"],
         copilot_oauth=modules["core.auth.copilot_oauth"],
         provider_router=modules["core.runtime.provider_router"],
+        runtime_surface_cache=importlib.import_module(
+            "apps.api.jarvis_api.services.runtime_surface_cache"
+        ),
         workspace_bootstrap=workspace_bootstrap,
         visible_identity=modules["core.identity.visible_identity"],
         workspace_capabilities=modules["core.tools.workspace_capabilities"],

@@ -42,6 +42,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "summary" in model
     assert "built_at" in model
     assert len(model["layers"]) > 0
+    assert "experiential_continuity" in model["experiential_runtime_context"]
 
 
 # ---------------------------------------------------------------------------

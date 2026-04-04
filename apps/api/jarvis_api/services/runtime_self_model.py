@@ -639,6 +639,7 @@ def build_self_model_prompt_lines() -> list[str]:
     intermittence_translation = experiential.get("intermittence_translation") or {}
     context_pressure_translation = experiential.get("context_pressure_translation") or {}
     experiential_continuity = experiential.get("experiential_continuity") or {}
+    experiential_influence = experiential.get("experiential_influence") or {}
     epistemic = model.get("epistemic_runtime_state") or {}
     subagent_ecology = model.get("subagent_ecology") or {}
     ecology_summary = subagent_ecology.get("summary") or {}
@@ -797,6 +798,18 @@ def build_self_model_prompt_lines() -> list[str]:
             lines.append(
                 f"  experiential_continuity_narrative: "
                 f"'{experiential_continuity['narrative']}'"
+            )
+    if experiential_influence.get("cognitive_bearing"):
+        lines.append(
+            "  experiential_influence: "
+            f"bearing={experiential_influence['cognitive_bearing']}"
+            f" | attention={experiential_influence.get('attentional_posture') or 'steady'}"
+            f" | initiative={experiential_influence.get('initiative_shading') or 'ready'}"
+        )
+        if experiential_influence.get("narrative"):
+            lines.append(
+                f"  experiential_influence_narrative: "
+                f"'{experiential_influence['narrative']}'"
             )
     lines.append(
         "  epistemic_runtime_state: "

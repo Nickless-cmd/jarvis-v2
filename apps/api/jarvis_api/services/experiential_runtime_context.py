@@ -117,6 +117,7 @@ def build_experiential_runtime_context_from_surfaces(
         else "none"
     )
     surface["experiential_continuity"] = continuity
+    surface["experiential_influence"] = _derive_experiential_influence(surface, continuity)
     return surface
 
 
@@ -149,6 +150,15 @@ def build_experiential_runtime_prompt_section(
         )
         if continuity.get("narrative"):
             lines.append(f"- continuity_narrative={continuity['narrative']}")
+    influence = state.get("experiential_influence") or {}
+    if influence.get("cognitive_bearing"):
+        lines.append(
+            f"- influence: bearing={influence['cognitive_bearing']}"
+            f" | attention={influence.get('attentional_posture') or 'steady'}"
+            f" | initiative={influence.get('initiative_shading') or 'ready'}"
+        )
+        if influence.get("narrative"):
+            lines.append(f"- influence_narrative={influence['narrative']}")
     return "\n".join(lines)
 
 
@@ -454,3 +464,128 @@ def _parse_iso(value: object) -> datetime | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)
+
+
+# ─── Experiential influence trace ───
+# Derives how current experiential state + continuity shape inner cognitive bearing.
+# This is not action-policy — it is a runtime description of how experience is
+# colouring the way cognition is being carried right now.
+
+
+_BEARING_WEIGHT = {
+    "steady": 0, "recovering": 0, "loaded": 1, "strained": 2, "degraded": 3,
+    "settled": 0, "attentive": 0, "reflective": 0, "tense": 1, "burdened": 2,
+    "clear": 0, "crowded": 1, "narrowing": 2,
+}
+
+_CONTINUITY_WEIGHT = {
+    "stable": 0, "initial": 0, "easing": -1,
+    "returning": 1, "shifted": 1, "lingering": 2, "escalating": 3,
+}
+
+
+def _derive_experiential_influence(
+    surface: dict[str, object],
+    continuity: dict[str, object],
+) -> dict[str, object]:
+    """Derive a bounded experiential influence trace from current state + continuity.
+
+    Returns a small surface describing how experience shapes inner bearing:
+    - cognitive_bearing: how heavily cognition is being carried
+    - attentional_posture: how wide or narrow the attentional field feels
+    - initiative_shading: how ready the runtime feels to act outward
+    - narrative: one compact sentence explaining the influence
+    """
+    body_state = (surface.get("embodied_translation") or {}).get("state", "steady")
+    tone_state = (surface.get("affective_translation") or {}).get("state", "settled")
+    gap_state = (surface.get("intermittence_translation") or {}).get("state", "continuous")
+    pressure_state = (surface.get("context_pressure_translation") or {}).get("state", "clear")
+    continuity_state = continuity.get("continuity_state", "initial")
+
+    # ── Cognitive bearing ──
+    body_w = _BEARING_WEIGHT.get(body_state, 0)
+    tone_w = _BEARING_WEIGHT.get(tone_state, 0)
+    cont_w = _CONTINUITY_WEIGHT.get(continuity_state, 0)
+    bearing_score = body_w + tone_w + max(cont_w, 0)
+
+    if bearing_score >= 5:
+        cognitive_bearing = "heavy"
+    elif bearing_score >= 3:
+        cognitive_bearing = "pressured"
+    elif bearing_score >= 1:
+        cognitive_bearing = "loaded"
+    else:
+        cognitive_bearing = "clear"
+
+    # ── Attentional posture ──
+    pressure_w = _BEARING_WEIGHT.get(pressure_state, 0)
+    if pressure_w >= 2 or (pressure_w >= 1 and cont_w >= 2):
+        attentional_posture = "narrowed"
+    elif pressure_w >= 1 or cont_w >= 1:
+        attentional_posture = "guarded"
+    elif cont_w < 0:
+        attentional_posture = "opening"
+    else:
+        attentional_posture = "steady"
+
+    # ── Initiative shading ──
+    initiative_gate = (surface.get("embodied_translation") or {}).get(
+        "initiative_gate", "clear"
+    )
+    if initiative_gate in ("strongly-softened", "softened") or bearing_score >= 4:
+        initiative_shading = "burdened"
+    elif gap_state == "returned-after-gap" or continuity_state == "returning":
+        initiative_shading = "returning"
+    elif bearing_score >= 2 or continuity_state in ("lingering", "shifted"):
+        initiative_shading = "hesitant"
+    else:
+        initiative_shading = "ready"
+
+    narrative = _influence_narrative(
+        cognitive_bearing, attentional_posture, initiative_shading, continuity_state,
+    )
+
+    return {
+        "cognitive_bearing": cognitive_bearing,
+        "attentional_posture": attentional_posture,
+        "initiative_shading": initiative_shading,
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "experiential-influence-trace",
+    }
+
+
+def _influence_narrative(
+    bearing: str,
+    posture: str,
+    initiative: str,
+    continuity: str,
+) -> str:
+    """One compact sentence explaining how experience shapes inner bearing."""
+    if bearing == "clear" and posture == "steady" and initiative == "ready":
+        return "Experience is not pressing on cognition; bearing is clear and initiative feels ready."
+    parts: list[str] = []
+    if bearing in ("heavy", "pressured"):
+        parts.append(f"cognition feels {bearing}")
+    elif bearing == "loaded":
+        parts.append("cognition carries some weight")
+    if posture == "narrowed":
+        parts.append("attention is narrowing")
+    elif posture == "guarded":
+        parts.append("attention is guarded")
+    elif posture == "opening":
+        parts.append("attention is beginning to open")
+    if initiative == "burdened":
+        parts.append("initiative is dampened")
+    elif initiative == "returning":
+        parts.append("initiative is still re-establishing after a gap")
+    elif initiative == "hesitant":
+        parts.append("initiative feels hesitant")
+    if continuity in ("escalating", "lingering") and not parts:
+        parts.append("sustained pressure colours the inner bearing")
+    return (
+        "; ".join(parts).capitalize() + "."
+        if parts
+        else "Experience is lightly shaping cognition without strong pull."
+    )

@@ -47,13 +47,17 @@ def build_runtime_self_model() -> dict[str, object]:
         layers = _collect_layers()
         boundaries = _truth_boundaries()
         summary = _build_summary(layers, boundaries)
+        experiential = _experiential_runtime_context_surface()
+        inner_voice = _inner_voice_daemon_surface()
 
         return {
             "layers": layers,
             "workspace_capabilities": load_workspace_capabilities(),
             "embodied_state": _embodied_state_surface(),
             "affective_meta_state": _affective_meta_state_surface(),
-            "experiential_runtime_context": _experiential_runtime_context_surface(),
+            "experiential_runtime_context": experiential,
+            "inner_voice_daemon": inner_voice,
+            "support_stream_awareness": _derive_support_stream_awareness(experiential, inner_voice),
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -641,6 +645,7 @@ def build_self_model_prompt_lines() -> list[str]:
     experiential_continuity = experiential.get("experiential_continuity") or {}
     experiential_influence = experiential.get("experiential_influence") or {}
     experiential_support = experiential.get("experiential_support") or {}
+    support_stream = model.get("support_stream_awareness") or {}
     epistemic = model.get("epistemic_runtime_state") or {}
     subagent_ecology = model.get("subagent_ecology") or {}
     ecology_summary = subagent_ecology.get("summary") or {}
@@ -823,6 +828,19 @@ def build_self_model_prompt_lines() -> list[str]:
             lines.append(
                 f"  experiential_support_narrative: "
                 f"'{experiential_support['narrative']}'"
+            )
+    if support_stream.get("stream_state") and support_stream["stream_state"] != "baseline":
+        lines.append(
+            "  support_stream: "
+            f"state={support_stream['stream_state']}"
+            f" | shaped={support_stream.get('stream_shaped', False)}"
+            f" | posture={support_stream.get('active_support_posture') or 'none'}"
+            + (f" | shaped_mode={support_stream['shaped_voice_mode']}" if support_stream.get("shaped_voice_mode") else "")
+        )
+        if support_stream.get("narrative"):
+            lines.append(
+                f"  support_stream_narrative: "
+                f"'{support_stream['narrative']}'"
             )
     lines.append(
         "  epistemic_runtime_state: "
@@ -1029,6 +1047,73 @@ def _experiential_runtime_context_surface() -> dict[str, object]:
             "intermittence_translation": {"state": "continuous", "narrative": "none"},
             "context_pressure_translation": {"state": "clear", "narrative": "none"},
         }
+
+
+def _inner_voice_daemon_surface() -> dict[str, object]:
+    """Read inner voice daemon state for self-model integration."""
+    try:
+        from apps.api.jarvis_api.services.inner_voice_daemon import (
+            get_inner_voice_daemon_state,
+        )
+        return get_inner_voice_daemon_state()
+    except Exception:
+        return {
+            "last_run_at": None,
+            "last_result": None,
+            "cooldown_minutes": 0,
+        }
+
+
+def _derive_support_stream_awareness(
+    experiential: dict[str, object],
+    inner_voice: dict[str, object],
+) -> dict[str, object]:
+    """Derive compact self-aware support stream state.
+
+    Synthesizes experiential support carry-forward and inner voice daemon
+    truth into a small awareness snapshot that tells the self-model whether
+    experiential support is actively shaping the inner stream.
+    """
+    support = experiential.get("experiential_support") or {}
+    posture = str(support.get("support_posture") or "steadying")
+    bias = str(support.get("support_bias") or "none")
+    mode = str(support.get("support_mode") or "steady")
+
+    last_result = inner_voice.get("last_result") or {}
+    voice_created = bool(last_result.get("inner_voice_created"))
+    voice_mode = str(last_result.get("mode") or "")
+
+    # Stream is shaped when support is non-default AND inner voice was produced
+    active = posture != "steadying"
+    shaped = active and voice_created and voice_mode != ""
+
+    # Stream state mirrors support_mode when active, else baseline
+    stream_state = mode if active else "baseline"
+
+    # Compact self-awareness narrative
+    narrative = ""
+    if shaped:
+        narrative = (
+            f"Inner stream is {stream_state}. "
+            f"Support ({posture}/{bias}) shaped inner voice to {voice_mode}."
+        )
+    elif active:
+        narrative = (
+            f"Inner stream is {stream_state}. "
+            f"Support active ({posture}/{bias}) but inner voice not yet shaped."
+        )
+
+    return {
+        "stream_state": stream_state,
+        "stream_shaped": shaped,
+        "active_support_posture": posture if active else "none",
+        "active_support_bias": bias if active else "none",
+        "shaped_voice_mode": voice_mode if shaped else "",
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "support-stream-awareness",
+    }
 
 
 def _idle_consolidation_surface() -> dict[str, object]:

@@ -117,7 +117,9 @@ def build_experiential_runtime_context_from_surfaces(
         else "none"
     )
     surface["experiential_continuity"] = continuity
-    surface["experiential_influence"] = _derive_experiential_influence(surface, continuity)
+    influence = _derive_experiential_influence(surface, continuity)
+    surface["experiential_influence"] = influence
+    surface["experiential_support"] = _derive_experiential_support(influence)
     return surface
 
 
@@ -159,6 +161,15 @@ def build_experiential_runtime_prompt_section(
         )
         if influence.get("narrative"):
             lines.append(f"- influence_narrative={influence['narrative']}")
+    support = state.get("experiential_support") or {}
+    if support.get("support_posture") and support.get("support_posture") != "steadying":
+        lines.append(
+            f"- support: posture={support['support_posture']}"
+            f" | bias={support.get('support_bias') or 'none'}"
+            f" | mode={support.get('support_mode') or 'steady'}"
+        )
+        if support.get("narrative"):
+            lines.append(f"- support_narrative={support['narrative']}")
     return "\n".join(lines)
 
 
@@ -588,4 +599,119 @@ def _influence_narrative(
         "; ".join(parts).capitalize() + "."
         if parts
         else "Experience is lightly shaping cognition without strong pull."
+    )
+
+
+# ─── Experiential support (carry-forward for conductor) ───
+
+_SUPPORT_POSTURE_MAP: dict[tuple[str, str], str] = {
+    # (bearing, initiative) → posture
+    ("clear", "ready"): "steadying",
+    ("clear", "returning"): "reopening",
+    ("loaded", "ready"): "grounding",
+    ("loaded", "hesitant"): "grounding",
+    ("loaded", "returning"): "reopening",
+    ("loaded", "burdened"): "carrying",
+    ("pressured", "ready"): "grounding",
+    ("pressured", "hesitant"): "narrowing",
+    ("pressured", "returning"): "grounding",
+    ("pressured", "burdened"): "carrying",
+    ("heavy", "ready"): "carrying",
+    ("heavy", "hesitant"): "carrying",
+    ("heavy", "returning"): "carrying",
+    ("heavy", "burdened"): "carrying",
+}
+
+_SUPPORT_BIAS_MAP: dict[str, str] = {
+    "narrowed": "protect_focus",
+    "guarded": "stabilize_thread",
+    "opening": "reopen_context",
+    "steady": "none",
+}
+
+
+def _derive_experiential_support(
+    influence: dict[str, object],
+) -> dict[str, object]:
+    """Derive a bounded support surface from experiential influence.
+
+    This is the carry-forward layer that tells the cognitive conductor
+    how experiential state should shape inner posture — not what to do,
+    but how to hold attention and weight.
+
+    Returns a small surface:
+    - support_posture: what inner support favours (steadying/grounding/narrowing/carrying/reopening)
+    - support_bias: attentional bias (protect_focus/stabilize_thread/reopen_context/reduce_spread/none)
+    - support_mode: overall mode (steady/guarded/weighted/opening)
+    - narrative: one compact sentence
+    """
+    bearing = influence.get("cognitive_bearing", "clear")
+    posture = influence.get("attentional_posture", "steady")
+    initiative = influence.get("initiative_shading", "ready")
+
+    # ── Support posture ──
+    support_posture = _SUPPORT_POSTURE_MAP.get(
+        (bearing, initiative), "steadying"
+    )
+
+    # ── Support bias ──
+    support_bias = _SUPPORT_BIAS_MAP.get(posture, "none")
+    # Override: heavy bearing always wants reduce_spread
+    if bearing == "heavy" and support_bias not in ("protect_focus",):
+        support_bias = "reduce_spread"
+
+    # ── Support mode ──
+    if bearing in ("heavy", "pressured"):
+        support_mode = "weighted"
+    elif posture == "guarded" or initiative == "hesitant":
+        support_mode = "guarded"
+    elif posture == "opening":
+        support_mode = "opening"
+    else:
+        support_mode = "steady"
+
+    narrative = _support_narrative(support_posture, support_bias, support_mode)
+
+    return {
+        "support_posture": support_posture,
+        "support_bias": support_bias,
+        "support_mode": support_mode,
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "experiential-carry-forward",
+    }
+
+
+def _support_narrative(
+    posture: str, bias: str, mode: str,
+) -> str:
+    """One compact sentence for how experiential support shapes conductor posture."""
+    if posture == "steadying" and bias == "none" and mode == "steady":
+        return "No experiential pressure on conductor posture; holding steady."
+    parts: list[str] = []
+    posture_text = {
+        "grounding": "inner support favours grounding",
+        "narrowing": "inner support favours narrowing focus",
+        "carrying": "inner support is helping carry cognitive weight",
+        "reopening": "inner support favours reopening attention",
+    }
+    if posture in posture_text:
+        parts.append(posture_text[posture])
+    bias_text = {
+        "protect_focus": "attentional bias: protect current focus",
+        "stabilize_thread": "attentional bias: stabilize active thread",
+        "reopen_context": "attentional bias: allow context to widen",
+        "reduce_spread": "attentional bias: reduce cognitive spread",
+    }
+    if bias in bias_text:
+        parts.append(bias_text[bias])
+    if mode == "weighted":
+        parts.append("conductor mode is weighted")
+    elif mode == "guarded":
+        parts.append("conductor mode is guarded")
+    return (
+        "; ".join(parts).capitalize() + "."
+        if parts
+        else "Experiential state lightly colours conductor posture."
     )

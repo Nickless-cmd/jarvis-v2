@@ -220,6 +220,7 @@ def build_cognitive_frame(
         tension_surface = _safe_initiative_tension()
         visible_status = _safe_visible_status()
         liveness = _safe_liveness_snapshot(heartbeat_state=heartbeat_state)
+        experiential_support = _safe_experiential_support()
 
         # --- Extract summaries ---
         brain_excerpts = brain_context.get("excerpts") or []
@@ -308,6 +309,7 @@ def build_cognitive_frame(
         "temporal": temporal,
         "continuity_pressure": continuity_pressure,
         "continuity_mode": continuity_mode,
+        "experiential_support": experiential_support if experiential_support.get("support_posture") else {},
         "active_constraints": constraints_summary,
         "counts": {
             "brain_records": brain_count,
@@ -366,9 +368,18 @@ def build_cognitive_frame_prompt_section() -> str | None:
     continuity_pressure = frame["continuity_pressure"]
     affordances = frame["affordances"]
 
+    experiential_support = frame.get("experiential_support") or {}
+
     lines = [f"Cognitive frame [{mode['mode']}]: {mode['reason']}"]
     lines.append(f"- Time horizon: {temporal['horizon']} — {temporal['reason'][:80]}")
     lines.append(f"- Continuity pressure: {continuity_pressure}")
+
+    if experiential_support.get("support_posture") and experiential_support["support_posture"] != "steadying":
+        lines.append(
+            f"- Experiential support: {experiential_support['support_posture']}"
+            f" | bias={experiential_support.get('support_bias') or 'none'}"
+            f" | mode={experiential_support.get('support_mode') or 'steady'}"
+        )
 
     if salient:
         for item in salient[:3]:
@@ -442,6 +453,18 @@ def _safe_visible_status() -> dict[str, object]:
         return visible_execution_readiness()
     except Exception:
         return {"provider_status": "unknown"}
+
+
+def _safe_experiential_support() -> dict[str, object]:
+    """Read experiential carry-forward support surface."""
+    try:
+        from apps.api.jarvis_api.services.experiential_runtime_context import (
+            build_experiential_runtime_context_surface,
+        )
+        surface = build_experiential_runtime_context_surface()
+        return surface.get("experiential_support") or {}
+    except Exception:
+        return {}
 
 
 def _safe_liveness_snapshot(

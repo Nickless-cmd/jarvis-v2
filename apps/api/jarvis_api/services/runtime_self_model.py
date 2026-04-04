@@ -640,6 +640,7 @@ def build_self_model_prompt_lines() -> list[str]:
     context_pressure_translation = experiential.get("context_pressure_translation") or {}
     experiential_continuity = experiential.get("experiential_continuity") or {}
     experiential_influence = experiential.get("experiential_influence") or {}
+    experiential_support = experiential.get("experiential_support") or {}
     epistemic = model.get("epistemic_runtime_state") or {}
     subagent_ecology = model.get("subagent_ecology") or {}
     ecology_summary = subagent_ecology.get("summary") or {}
@@ -810,6 +811,18 @@ def build_self_model_prompt_lines() -> list[str]:
             lines.append(
                 f"  experiential_influence_narrative: "
                 f"'{experiential_influence['narrative']}'"
+            )
+    if experiential_support.get("support_posture") and experiential_support["support_posture"] != "steadying":
+        lines.append(
+            "  experiential_support: "
+            f"posture={experiential_support['support_posture']}"
+            f" | bias={experiential_support.get('support_bias') or 'none'}"
+            f" | mode={experiential_support.get('support_mode') or 'steady'}"
+        )
+        if experiential_support.get("narrative"):
+            lines.append(
+                f"  experiential_support_narrative: "
+                f"'{experiential_support['narrative']}'"
             )
     lines.append(
         "  epistemic_runtime_state: "

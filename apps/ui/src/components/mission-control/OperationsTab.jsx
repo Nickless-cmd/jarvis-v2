@@ -14,6 +14,12 @@ function humanizeToken(value) {
     .trim()
 }
 
+function gitStewardshipLabel(item) {
+  if (item?.mutatingExecRepoStewardshipDomain !== 'git') return ''
+  if (!item?.mutatingExecGitMutationClass || item?.mutatingExecGitMutationClass === 'none') return ''
+  return `git stewardship · ${humanizeToken(item.mutatingExecGitMutationClass)}`
+}
+
 function approvalTimingLabel(item) {
   if (item?.approvalState === 'pending' && item?.approvalExpiresAt) {
     return `expires ${formatFreshness(item.approvalExpiresAt)}`
@@ -90,6 +96,7 @@ function toolIntentRow(item, onOpen) {
       item.approvalState ? `approval ${humanizeToken(item.approvalState)}` : '',
       item.approvalSource && item.approvalSource !== 'none' ? `source ${humanizeToken(item.approvalSource)}` : '',
       item.intentType ? `type ${humanizeToken(item.intentType)}` : '',
+      item.hasGitRepoStewardshipProposalSurface ? gitStewardshipLabel(item) : '',
       item.hasMutationIntentSurface ? `mutation ${humanizeToken(item.mutationIntentClassification || 'none')}` : '',
       item.hasMutationIntentSurface ? `${item.mutationNear ? 'action-near' : 'non-mutation'}` : '',
       item.executionTarget || item.intentTarget ? `target ${item.executionTarget || item.intentTarget}` : '',
@@ -124,6 +131,7 @@ function toolIntentRow(item, onOpen) {
         {item.hasMutationIntentSurface ? <StatusPill status={item.mutationIntentState || 'idle'} /> : null}
         {item.intentType ? <small>{humanizeToken(item.intentType)}</small> : null}
         {item.hasMutationIntentSurface ? <small>{humanizeToken(item.mutationIntentClassification || 'none')}</small> : null}
+        {item.hasGitRepoStewardshipProposalSurface ? <small>{gitStewardshipLabel(item)}</small> : null}
         {item.executionMode ? <small>{humanizeToken(item.executionMode)}</small> : null}
         {item.urgency ? <small>{humanizeToken(item.urgency)}</small> : null}
         <small>{item.mutationPermitted ? 'mutation allowed' : 'mutation blocked'}</small>
@@ -317,6 +325,13 @@ export function OperationsTab({
                   <strong>{humanizeToken(toolIntent.mutatingExecProposalState || 'none')}</strong>
                   <p className="muted">proposal-only · not executed</p>
                 </div>
+                {toolIntent.hasGitRepoStewardshipProposalSurface ? (
+                  <div className="compact-metric" title="Repo stewardship domain and git mutation class">
+                    <span>Stewardship</span>
+                    <strong>{humanizeToken(toolIntent.mutatingExecGitMutationClass || 'none')}</strong>
+                    <p className="muted">{humanizeToken(toolIntent.mutatingExecRepoStewardshipDomain || 'none')} repo stewardship</p>
+                  </div>
+                ) : null}
                 <div className="compact-metric" title="Mutating exec scope and criticality">
                   <span>Scope</span>
                   <strong>{humanizeToken(toolIntent.mutatingExecProposalScope || 'none')}</strong>
@@ -337,6 +352,12 @@ export function OperationsTab({
                 <strong>Mutating exec proposal</strong>
                 <p>{toolIntent.mutatingExecProposalSummary || toolIntent.mutatingExecProposalReason || 'A mutating exec proposal is present and remains review-only.'}</p>
                 <div className="mc-inline-meta">
+                  {toolIntent.hasGitRepoStewardshipProposalSurface ? (
+                    <>
+                      <span className="mc-meta-pill">domain {humanizeToken(toolIntent.mutatingExecRepoStewardshipDomain || 'none')}</span>
+                      <span className="mc-meta-pill">class {humanizeToken(toolIntent.mutatingExecGitMutationClass || 'none')}</span>
+                    </>
+                  ) : null}
                   <span className="mc-meta-pill">command {toolIntent.mutatingExecProposalCommand || 'none'}</span>
                   <span className="mc-meta-pill">scope {humanizeToken(toolIntent.mutatingExecProposalScope || 'none')}</span>
                   <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresApproval ? 'approval required' : 'approval not required'}</span>
@@ -344,6 +365,18 @@ export function OperationsTab({
                   <span className="mc-meta-pill">not executed</span>
                 </div>
               </article>
+              {toolIntent.hasGitRepoStewardshipProposalSurface ? (
+                <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
+                  <strong>Git repo stewardship</strong>
+                  <p>This proposal is repo stewardship truth, not generic shell mutation. It stays approval-gated and not executed until an explicit approval path acts on it.</p>
+                  <div className="mc-inline-meta">
+                    <span className="mc-meta-pill">git {humanizeToken(toolIntent.mutatingExecGitMutationClass || 'none')}</span>
+                    <span className="mc-meta-pill">approval gated</span>
+                    <span className="mc-meta-pill">proposal only</span>
+                    <span className="mc-meta-pill">not executed</span>
+                  </div>
+                </article>
+              ) : null}
             </>
           ) : null}
           {showSudoExecProposal ? (

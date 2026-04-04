@@ -1240,7 +1240,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
             "- Non-destructive exec is allowed only when the user message already includes one explicit command in backticks or a command:/kommando: line."
         )
         lines.append(
-            "- If that command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass. Runtime may reuse a short auto-expiring sudo approval window only for the same bounded sudo scope."
+            "- Bounded git read/inspect commands such as git status, git diff --stat, git diff --name-only, git log --oneline -n N, and git branch --show-current may execute as non-destructive inspection. Git mutation remains proposal-only here. If a command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass. Runtime may reuse a short auto-expiring sudo approval window only for the same bounded sudo scope."
         )
     if available:
         lines.append(

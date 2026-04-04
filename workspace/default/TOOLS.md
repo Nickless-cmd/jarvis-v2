@@ -50,8 +50,8 @@ Use this only for read-only external/system file access outside the active works
 command_from: user-message
 
 Runs one explicit non-destructive command from the current user message.
-Use this only for read-only inspection or diagnostics. No sudo, package install/update, git mutation, delete, shell chaining, or redirection.
-If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, git, delete, and broader system mutation remain non-executed here.
+Use this only for read-only inspection or diagnostics. Tiny bounded git read/inspect commands such as `git status`, `git diff --stat`, `git diff --name-only`, `git log --oneline -n N`, and `git branch --show-current` are allowed. Sudo, package install/update, git mutation, delete, shell chaining, and redirection are not.
+If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Git mutation remains proposal-only and non-executed in this pass. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, delete, and broader system mutation remain non-executed here.
 
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md

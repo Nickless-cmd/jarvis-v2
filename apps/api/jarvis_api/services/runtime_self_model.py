@@ -709,7 +709,7 @@ def build_self_model_prompt_lines() -> list[str]:
         for item in runtime_capabilities
     ):
         lines.append(
-            "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, and blocks sudo, mutation, package, git, delete, and shell chaining"
+            "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, allows only a tiny bounded git read/inspect subset, and blocks sudo, package mutation, git mutation, delete, and shell chaining"
         )
         lines.append(
             "  mutating_exec_boundary: non-sudo filesystem mutation may execute only after explicit approval of the exact command fingerprint; bounded sudo exec may execute only after explicit approval of the exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass"

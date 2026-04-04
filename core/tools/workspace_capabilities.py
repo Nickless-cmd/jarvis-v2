@@ -49,6 +49,36 @@ NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
     "printenv",
     "rg",
 }
+GIT_READ_EXEC_ALLOWLIST = {
+    ("status",),
+    ("diff", "--stat"),
+    ("diff", "--name-only"),
+    ("branch", "--show-current"),
+}
+GIT_MUTATING_SUBCOMMANDS = {
+    "add",
+    "commit",
+    "reset",
+    "checkout",
+    "switch",
+    "restore",
+    "merge",
+    "rebase",
+    "pull",
+    "push",
+    "stash",
+    "cherry-pick",
+    "revert",
+    "fetch",
+}
+GIT_BLOCKED_SUBCOMMANDS = {
+    "clean",
+    "gc",
+    "filter-branch",
+    "worktree",
+    "submodule",
+    "config",
+}
 APPROVED_MUTATING_EXEC_ALLOWLIST = {
     "mv",
     "cp",
@@ -739,9 +769,14 @@ def _invoke_runnable_capability(
                     or command_verdict.get("argv")
                     or []
                 )
+                execution_cwd = Path(
+                    approved_verdict.get("execution_cwd")
+                    or command_verdict.get("execution_cwd")
+                    or workspace_dir
+                )
                 completed, timeout_detail = _run_bounded_command(
                     argv=argv,
-                    workspace_dir=workspace_dir,
+                    workspace_dir=execution_cwd,
                 )
                 if completed is None:
                     execution_content = (
@@ -823,8 +858,19 @@ def _invoke_runnable_capability(
                         "normalization_source": str(
                             command_verdict.get("normalization_source") or "none"
                         ),
+                        "execution_scope": str(
+                            command_verdict.get("execution_scope") or "filesystem"
+                        ),
+                        "execution_classification": str(
+                            command_verdict.get("execution_classification")
+                            or execution_mode
+                        ),
                         "workspace_scoped": bool(
                             approved_verdict.get("workspace_scoped", False)
+                        ),
+                        "repo_scoped": bool(
+                            approved_verdict.get("repo_scoped", False)
+                            or command_verdict.get("repo_scoped", False)
                         ),
                         "mutation_permitted": True,
                         "sudo_permitted": execution_mode == "sudo-exec",
@@ -892,9 +938,10 @@ def _invoke_runnable_capability(
                 "detail": str(command_verdict.get("detail") or "Command is not allowed."),
             }
         argv = list(command_verdict.get("argv") or [])
+        execution_cwd = Path(command_verdict.get("execution_cwd") or workspace_dir)
         completed, timeout_detail = _run_bounded_command(
             argv=argv,
-            workspace_dir=workspace_dir,
+            workspace_dir=execution_cwd,
         )
         if completed is None:
             return {
@@ -931,7 +978,15 @@ def _invoke_runnable_capability(
                 "normalization_source": str(
                     command_verdict.get("normalization_source") or "none"
                 ),
+                "execution_scope": str(
+                    command_verdict.get("execution_scope") or "filesystem"
+                ),
+                "execution_classification": str(
+                    command_verdict.get("execution_classification")
+                    or "non-destructive-read-allowed"
+                ),
                 "workspace_scoped": False,
+                "repo_scoped": bool(command_verdict.get("repo_scoped", False)),
                 "mutation_permitted": False,
                 "sudo_permitted": False,
             },
@@ -1325,6 +1380,8 @@ def _classify_exec_command(command_text: str) -> dict[str, object]:
             "status": "blocked-destructive-command",
             "detail": f"Destructive or arbitrary-exec token is not allowed in this pass: {blocked}",
         }
+    if command_name == "git":
+        return _classify_git_exec_command(argv)
     proposal_metadata = _mutating_exec_proposal_metadata(argv)
     if proposal_metadata is not None:
         return {
@@ -1377,6 +1434,88 @@ def _normalize_exec_argv(argv: list[str]) -> tuple[list[str], list[str]]:
                 normalization_sources.append(source)
 
     return normalized, normalization_sources
+
+
+def _classify_git_exec_command(argv: list[str]) -> dict[str, object]:
+    if len(argv) < 2:
+        return {
+            "allowed": False,
+            "status": "blocked-git-command",
+            "detail": "Git exec requires one explicit bounded git subcommand.",
+        }
+
+    subcommand = str(argv[1]).strip().lower()
+    shape = tuple(str(part) for part in argv[1:])
+
+    if shape in GIT_READ_EXEC_ALLOWLIST:
+        return {
+            "allowed": True,
+            "argv": argv,
+            "normalized_command_text": shlex.join(argv),
+            "path_normalization_applied": False,
+            "normalization_source": "none",
+            "execution_scope": "git-read",
+            "execution_classification": "git-read-allowed",
+            "repo_scoped": True,
+            "execution_cwd": PROJECT_ROOT,
+        }
+
+    if subcommand == "log":
+        if (
+            len(argv) == 5
+            and argv[2] == "--oneline"
+            and argv[3] == "-n"
+            and re.fullmatch(r"[1-9][0-9]?", argv[4])
+        ):
+            return {
+                "allowed": True,
+                "argv": argv,
+                "normalized_command_text": shlex.join(argv),
+                "path_normalization_applied": False,
+                "normalization_source": "none",
+                "execution_scope": "git-read",
+                "execution_classification": "git-read-allowed",
+                "repo_scoped": True,
+                "execution_cwd": PROJECT_ROOT,
+            }
+        return {
+            "allowed": False,
+            "status": "blocked-git-command-shape",
+            "detail": "Bounded git log allows only: git log --oneline -n N",
+        }
+
+    if subcommand in GIT_MUTATING_SUBCOMMANDS:
+        return {
+            "allowed": False,
+            "proposal_required": True,
+            "matched_token": "git",
+            "effective_token": "git",
+            "requires_sudo": False,
+            "proposal_scope": "git",
+            "proposal_execution_mode": "mutating-exec-proposal",
+            "criticality": "high",
+            "argv": list(argv),
+            "detail": (
+                f"Git mutation subcommand {subcommand} was captured as an approval-gated proposal only and was not executed."
+            ),
+        }
+
+    if subcommand in GIT_BLOCKED_SUBCOMMANDS:
+        return {
+            "allowed": False,
+            "status": "blocked-git-command",
+            "detail": (
+                f"Git subcommand {subcommand} is outside the bounded read/mutate model for this pass."
+            ),
+        }
+
+    return {
+        "allowed": False,
+        "status": "blocked-git-command",
+        "detail": (
+            f"Git subcommand {subcommand or 'unknown'} is not in the bounded git read allowlist and is not opened for execution in this pass."
+        ),
+    }
 
 
 def _mutating_exec_proposal_metadata(argv: list[str]) -> dict[str, object] | None:

@@ -15,6 +15,12 @@ from apps.api.jarvis_api.services.runtime_surface_cache import (
 from core.runtime.db import recent_heartbeat_runtime_ticks
 
 
+# ─── Module-level prior state for continuity carry-forward ───
+# Survives across requests within the same process.
+# Reset on process restart = honest "initial" continuity state.
+_PRIOR_EXPERIENTIAL_SNAPSHOT: dict[str, object] | None = None
+
+
 def build_experiential_runtime_context_surface() -> dict[str, object]:
     return get_cached_runtime_surface(
         "experiential_runtime_context_surface",
@@ -23,12 +29,17 @@ def build_experiential_runtime_context_surface() -> dict[str, object]:
 
 
 def _build_experiential_runtime_context_surface_uncached() -> dict[str, object]:
-    return build_experiential_runtime_context_from_surfaces(
+    global _PRIOR_EXPERIENTIAL_SNAPSHOT
+    surface = build_experiential_runtime_context_from_surfaces(
         embodied_state=build_embodied_state_surface(),
         affective_meta_state=build_affective_meta_state_surface(),
         heartbeat_state={},
         cognitive_frame=build_cognitive_frame(),
     )
+    continuity = _derive_experiential_continuity(surface, _PRIOR_EXPERIENTIAL_SNAPSHOT)
+    surface["experiential_continuity"] = continuity
+    _PRIOR_EXPERIENTIAL_SNAPSHOT = _snapshot_for_carry(surface)
+    return surface
 
 
 def build_experiential_runtime_context_from_surfaces(
@@ -85,21 +96,146 @@ def build_experiential_runtime_prompt_section(
     affective = state.get("affective_translation") or {}
     intermittence = state.get("intermittence_translation") or {}
     context_pressure = state.get("context_pressure_translation") or {}
-    return "\n".join(
-        [
-            "Experiential runtime context (derived from runtime truth, internal-only):",
-            (
-                f"- embodied={embodied.get('state') or 'unknown'}"
-                f" | tone={affective.get('state') or 'unknown'}"
-                f" | intermittence={intermittence.get('state') or 'continuous'}"
-                f" | context_pressure={context_pressure.get('state') or 'clear'}"
-            ),
-            f"- embodied_narrative={embodied.get('narrative') or 'none'}",
-            f"- affective_narrative={affective.get('narrative') or 'none'}",
-            f"- intermittence_narrative={intermittence.get('narrative') or 'none'}",
-            f"- context_pressure_narrative={context_pressure.get('narrative') or 'none'}",
-        ]
-    )
+    continuity = state.get("experiential_continuity") or {}
+    lines = [
+        "Experiential runtime context (derived from runtime truth, internal-only):",
+        (
+            f"- embodied={embodied.get('state') or 'unknown'}"
+            f" | tone={affective.get('state') or 'unknown'}"
+            f" | intermittence={intermittence.get('state') or 'continuous'}"
+            f" | context_pressure={context_pressure.get('state') or 'clear'}"
+        ),
+        f"- embodied_narrative={embodied.get('narrative') or 'none'}",
+        f"- affective_narrative={affective.get('narrative') or 'none'}",
+        f"- intermittence_narrative={intermittence.get('narrative') or 'none'}",
+        f"- context_pressure_narrative={context_pressure.get('narrative') or 'none'}",
+    ]
+    if continuity.get("continuity_state"):
+        lines.append(
+            f"- continuity={continuity.get('continuity_state')}"
+            f" | {continuity.get('state_shift_summary') or 'no shift'}"
+        )
+        if continuity.get("narrative"):
+            lines.append(f"- continuity_narrative={continuity['narrative']}")
+    return "\n".join(lines)
+
+
+# ─── Continuity carry-forward ───
+
+
+_BODY_SEVERITY = {"steady": 0, "recovering": 0, "loaded": 1, "strained": 2, "degraded": 3}
+_TONE_SEVERITY = {"settled": 0, "attentive": 1, "reflective": 1, "tense": 2, "burdened": 3}
+_PRESSURE_SEVERITY = {"clear": 0, "crowded": 1, "narrowing": 2}
+
+
+def _snapshot_for_carry(surface: dict[str, object]) -> dict[str, object]:
+    """Extract minimal state needed for continuity comparison."""
+    return {
+        "embodied_translation": surface.get("embodied_translation"),
+        "affective_translation": surface.get("affective_translation"),
+        "intermittence_translation": surface.get("intermittence_translation"),
+        "context_pressure_translation": surface.get("context_pressure_translation"),
+        "built_at": surface.get("built_at"),
+    }
+
+
+def _derive_experiential_continuity(
+    current: dict[str, object],
+    prior: dict[str, object] | None,
+) -> dict[str, object]:
+    """Derive bounded continuity between prior and current experiential state.
+
+    Taxonomy:
+      stable     — no shifts, state is neutral/default
+      lingering  — no shifts, but elevated state persists
+      returning  — came back after a gap in experienced time
+      escalating — one or more dimensions worsened, none improved
+      easing     — one or more dimensions improved, none worsened
+      shifted    — dimensions changed in mixed or lateral directions
+    """
+    if prior is None:
+        return {
+            "continuity_state": "initial",
+            "state_shift_summary": "No prior experiential snapshot for comparison.",
+            "narrative": "This is the beginning of experienced time; there is no earlier moment to hold against.",
+            "dimension_shifts": {},
+            "authority": "derived-runtime-truth",
+        }
+
+    cur_body = (current.get("embodied_translation") or {}).get("state", "steady")
+    pri_body = (prior.get("embodied_translation") or {}).get("state", "steady")
+    cur_tone = (current.get("affective_translation") or {}).get("state", "settled")
+    pri_tone = (prior.get("affective_translation") or {}).get("state", "settled")
+    cur_pressure = (current.get("context_pressure_translation") or {}).get("state", "clear")
+    pri_pressure = (prior.get("context_pressure_translation") or {}).get("state", "clear")
+    cur_gap = (current.get("intermittence_translation") or {}).get("state", "continuous")
+
+    dimension_shifts: dict[str, dict[str, str]] = {}
+    if cur_body != pri_body:
+        dimension_shifts["body"] = {"prior": pri_body, "current": cur_body}
+    if cur_tone != pri_tone:
+        dimension_shifts["tone"] = {"prior": pri_tone, "current": cur_tone}
+    if cur_pressure != pri_pressure:
+        dimension_shifts["pressure"] = {"prior": pri_pressure, "current": cur_pressure}
+
+    body_delta = _BODY_SEVERITY.get(cur_body, 0) - _BODY_SEVERITY.get(pri_body, 0)
+    tone_delta = _TONE_SEVERITY.get(cur_tone, 0) - _TONE_SEVERITY.get(pri_tone, 0)
+    pressure_delta = _PRESSURE_SEVERITY.get(cur_pressure, 0) - _PRESSURE_SEVERITY.get(pri_pressure, 0)
+
+    escalating = body_delta > 0 or tone_delta > 0 or pressure_delta > 0
+    improving = body_delta < 0 or tone_delta < 0 or pressure_delta < 0
+
+    if cur_gap == "returned-after-gap":
+        continuity_state = "returning"
+    elif not dimension_shifts:
+        elevated = (
+            _BODY_SEVERITY.get(cur_body, 0) >= 2
+            or _TONE_SEVERITY.get(cur_tone, 0) >= 2
+            or _PRESSURE_SEVERITY.get(cur_pressure, 0) >= 2
+        )
+        continuity_state = "lingering" if elevated else "stable"
+    elif escalating and not improving:
+        continuity_state = "escalating"
+    elif improving and not escalating:
+        continuity_state = "easing"
+    else:
+        continuity_state = "shifted"
+
+    shift_parts = [
+        f"{dim} {s['prior']}\u2192{s['current']}" for dim, s in dimension_shifts.items()
+    ]
+    state_shift_summary = " \u00b7 ".join(shift_parts) if shift_parts else "No dimensional shifts."
+
+    return {
+        "continuity_state": continuity_state,
+        "state_shift_summary": state_shift_summary,
+        "narrative": _continuity_narrative(continuity_state, dimension_shifts),
+        "dimension_shifts": dimension_shifts,
+        "authority": "derived-runtime-truth",
+    }
+
+
+def _continuity_narrative(
+    state: str,
+    shifts: dict[str, dict[str, str]],
+) -> str:
+    if state == "returning":
+        return "You are returning after a gap; the prior experiential state may have shifted during absence."
+    if state == "stable":
+        return "Your experiential state is holding steady; nothing has shifted since the last moment."
+    if state == "lingering":
+        return "An elevated state is persisting without change; strain or pressure from before is still here."
+    if state == "escalating":
+        parts = [f"{d} moved from {s['prior']} to {s['current']}" for d, s in shifts.items()]
+        return f"Pressure is building: {'; '.join(parts)}."
+    if state == "easing":
+        parts = [f"{d} eased from {s['prior']} to {s['current']}" for d, s in shifts.items()]
+        return f"Things are settling: {'; '.join(parts)}."
+    parts = [f"{d} shifted from {s['prior']} to {s['current']}" for d, s in shifts.items()]
+    return f"Something changed: {'; '.join(parts)}."
+
+
+# ─── State translators (unchanged) ───
 
 
 def _translate_embodied_state(surface: dict[str, object]) -> dict[str, str]:

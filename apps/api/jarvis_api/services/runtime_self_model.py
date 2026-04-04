@@ -638,6 +638,7 @@ def build_self_model_prompt_lines() -> list[str]:
     affective_translation = experiential.get("affective_translation") or {}
     intermittence_translation = experiential.get("intermittence_translation") or {}
     context_pressure_translation = experiential.get("context_pressure_translation") or {}
+    experiential_continuity = experiential.get("experiential_continuity") or {}
     epistemic = model.get("epistemic_runtime_state") or {}
     subagent_ecology = model.get("subagent_ecology") or {}
     ecology_summary = subagent_ecology.get("summary") or {}
@@ -786,6 +787,17 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | intermittence='{intermittence_translation.get('narrative') or 'none'}'"
         f" | context='{context_pressure_translation.get('narrative') or 'none'}'"
     )
+    if experiential_continuity.get("continuity_state"):
+        lines.append(
+            "  experiential_continuity: "
+            f"{experiential_continuity.get('continuity_state')}"
+            f" | {experiential_continuity.get('state_shift_summary') or 'no shift'}"
+        )
+        if experiential_continuity.get("narrative"):
+            lines.append(
+                f"  experiential_continuity_narrative: "
+                f"'{experiential_continuity['narrative']}'"
+            )
     lines.append(
         "  epistemic_runtime_state: "
         f"{epistemic.get('wrongness_state') or 'clear'}"

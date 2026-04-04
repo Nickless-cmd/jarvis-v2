@@ -347,3 +347,144 @@ def test_experiential_runtime_context_uses_cached_heartbeat_surface_when_present
         result = experiential.build_experiential_runtime_context_surface()
 
     assert result is shared_surface
+
+
+# ─── Experiential influence trace tests ───
+
+
+def test_experiential_influence_clear_when_baseline(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    surface = {
+        "embodied_translation": {"state": "steady", "initiative_gate": "clear"},
+        "affective_translation": {"state": "settled"},
+        "intermittence_translation": {"state": "continuous"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    continuity = {"continuity_state": "stable"}
+    result = experiential._derive_experiential_influence(surface, continuity)
+    assert result["cognitive_bearing"] == "clear"
+    assert result["attentional_posture"] == "steady"
+    assert result["initiative_shading"] == "ready"
+    assert "clear" in result["narrative"]
+    assert result["kind"] == "experiential-influence-trace"
+    assert result["authority"] == "derived-runtime-truth"
+
+
+def test_experiential_influence_heavy_when_strained_escalating(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    surface = {
+        "embodied_translation": {"state": "strained", "initiative_gate": "softened"},
+        "affective_translation": {"state": "tense"},
+        "intermittence_translation": {"state": "continuous"},
+        "context_pressure_translation": {"state": "narrowing"},
+    }
+    continuity = {"continuity_state": "escalating"}
+    result = experiential._derive_experiential_influence(surface, continuity)
+    assert result["cognitive_bearing"] == "heavy"
+    assert result["attentional_posture"] == "narrowed"
+    assert result["initiative_shading"] == "burdened"
+    assert "dampened" in result["narrative"] or "heavy" in result["narrative"]
+
+
+def test_experiential_influence_returning_after_gap(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    surface = {
+        "embodied_translation": {"state": "loaded", "initiative_gate": "watchful"},
+        "affective_translation": {"state": "attentive"},
+        "intermittence_translation": {"state": "returned-after-gap"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    continuity = {"continuity_state": "returning"}
+    result = experiential._derive_experiential_influence(surface, continuity)
+    assert result["initiative_shading"] == "returning"
+    assert "re-establishing" in result["narrative"]
+
+
+def test_experiential_influence_hesitant_when_lingering(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    surface = {
+        "embodied_translation": {"state": "loaded", "initiative_gate": "watchful"},
+        "affective_translation": {"state": "settled"},
+        "intermittence_translation": {"state": "continuous"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    continuity = {"continuity_state": "lingering"}
+    result = experiential._derive_experiential_influence(surface, continuity)
+    assert result["cognitive_bearing"] == "pressured"
+    assert result["initiative_shading"] == "hesitant"
+
+
+def test_experiential_influence_opening_when_easing(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    surface = {
+        "embodied_translation": {"state": "steady", "initiative_gate": "clear"},
+        "affective_translation": {"state": "settled"},
+        "intermittence_translation": {"state": "continuous"},
+        "context_pressure_translation": {"state": "clear"},
+    }
+    continuity = {"continuity_state": "easing"}
+    result = experiential._derive_experiential_influence(surface, continuity)
+    assert result["cognitive_bearing"] == "clear"
+    assert result["attentional_posture"] == "opening"
+    assert result["initiative_shading"] == "ready"
+    assert "open" in result["narrative"]
+
+
+def test_experiential_influence_included_in_surface(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    now = datetime.now(UTC)
+    surface = experiential.build_experiential_runtime_context_from_surfaces(
+        embodied_state={"state": "strained", "primary_state": "strained", "strain_level": "high"},
+        affective_meta_state={"state": "tense", "bearing": "taut", "monitoring_mode": "pressure-watch"},
+        heartbeat_state={"last_tick_at": now.isoformat(), "liveness_state": "alive"},
+        cognitive_frame={"continuity_pressure": "high", "counts": {"salient_items": 4, "gated_affordances": 2, "inner_forces": 3}},
+        now=now,
+    )
+    assert "experiential_influence" in surface
+    influence = surface["experiential_influence"]
+    assert influence["kind"] == "experiential-influence-trace"
+    assert influence["cognitive_bearing"] in ("heavy", "pressured", "loaded", "clear")
+    assert influence["attentional_posture"] in ("narrowed", "guarded", "opening", "steady")
+    assert influence["initiative_shading"] in ("burdened", "returning", "hesitant", "ready")
+    assert len(influence["narrative"]) > 0
+
+
+def test_experiential_prompt_section_includes_influence(
+    isolated_runtime,
+) -> None:
+    experiential = isolated_runtime.experiential_runtime_context
+    section = experiential.build_experiential_runtime_prompt_section(
+        {
+            "embodied_translation": {"state": "strained", "narrative": "heavy"},
+            "affective_translation": {"state": "tense", "narrative": "taut"},
+            "intermittence_translation": {"state": "continuous", "narrative": "continuous"},
+            "context_pressure_translation": {"state": "narrowing", "narrative": "narrowing"},
+            "experiential_continuity": {
+                "continuity_state": "escalating",
+                "state_shift_summary": "body steady→strained",
+                "narrative": "Pressure is building.",
+            },
+            "experiential_influence": {
+                "cognitive_bearing": "heavy",
+                "attentional_posture": "narrowed",
+                "initiative_shading": "burdened",
+                "narrative": "Cognition feels heavy; attention is narrowing; initiative is dampened.",
+            },
+        }
+    )
+    assert "bearing=heavy" in section
+    assert "attention=narrowed" in section
+    assert "initiative=burdened" in section
+    assert "Cognition feels heavy" in section

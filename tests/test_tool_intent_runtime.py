@@ -838,6 +838,13 @@ def test_mutating_exec_proposal_becomes_runtime_truth_without_execution(
     assert surface["mutating_exec_requires_sudo"] is True
     assert surface["mutating_exec_criticality"] == "high"
     assert surface["mutating_exec_command_fingerprint"]
+    assert surface["sudo_exec_proposal_state"] == "approval-required-proposal"
+    assert surface["sudo_exec_proposal_command"] == "sudo ls /root"
+    assert surface["sudo_exec_proposal_scope"] == "system"
+    assert surface["sudo_exec_requires_approval"] is True
+    assert surface["sudo_exec_requires_sudo"] is True
+    assert surface["sudo_exec_criticality"] == "high"
+    assert surface["sudo_exec_command_fingerprint"]
 
 
 def test_approved_non_sudo_mutating_exec_becomes_runtime_truth_and_continuity(

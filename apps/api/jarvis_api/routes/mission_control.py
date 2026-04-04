@@ -584,6 +584,18 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_mutating_exec_criticality": str(
                 tool_intent.get("mutating_exec_criticality") or "none"
             ),
+            "tool_intent_sudo_exec_proposal_state": str(
+                tool_intent.get("sudo_exec_proposal_state") or "none"
+            ),
+            "tool_intent_sudo_exec_proposal_scope": str(
+                tool_intent.get("sudo_exec_proposal_scope") or "none"
+            ),
+            "tool_intent_sudo_exec_requires_sudo": bool(
+                tool_intent.get("sudo_exec_requires_sudo", False)
+            ),
+            "tool_intent_sudo_exec_criticality": str(
+                tool_intent.get("sudo_exec_criticality") or "none"
+            ),
             "tool_intent_action_continuity_state": str(
                 tool_intent.get("action_continuity_state") or "idle"
             ),

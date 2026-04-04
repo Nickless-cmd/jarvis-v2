@@ -1240,7 +1240,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
             "- Non-destructive exec is allowed only when the user message already includes one explicit command in backticks or a command:/kommando: line."
         )
         lines.append(
-            "- If that command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands remain proposal-only and not executed in this pass."
+            "- If that command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may surface as explicit sudo proposals, but remain proposal-only and not executed in this pass."
         )
     if available:
         lines.append(
@@ -1452,6 +1452,10 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | mutating_exec_scope={tool_intent.get('mutating_exec_proposal_scope') or 'none'}"
                 f" | mutating_exec_requires_sudo={tool_intent.get('mutating_exec_requires_sudo', False)}"
                 f" | mutating_exec_fingerprint={tool_intent.get('mutating_exec_command_fingerprint') or 'none'}"
+                f" | sudo_exec_state={tool_intent.get('sudo_exec_proposal_state') or 'none'}"
+                f" | sudo_exec_scope={tool_intent.get('sudo_exec_proposal_scope') or 'none'}"
+                f" | sudo_exec_requires_sudo={tool_intent.get('sudo_exec_requires_sudo', False)}"
+                f" | sudo_exec_fingerprint={tool_intent.get('sudo_exec_command_fingerprint') or 'none'}"
                 f" | execution_summary={tool_intent.get('execution_summary') or 'none'}"
                 f" | continuity={tool_intent.get('action_continuity_state') or 'idle'}"
                 f" | last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}"

@@ -157,6 +157,8 @@ def test_non_destructive_exec_blocks_destructive_and_sudo_commands(
     assert proposal.get("requires_sudo") is True
     assert proposal.get("explicit_approval_required") is True
     assert proposal.get("not_executed") is True
+    assert proposal.get("scope") == "system"
+    assert proposal.get("criticality") == "high"
 
 
 def test_mutating_exec_command_surfaces_as_approval_gated_proposal_only(
@@ -241,6 +243,8 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
     assert "blocks sudo, package mutation, git mutation, delete, shell chaining, and redirection." in template_tools
     assert "exact bounded non-sudo command" in default_tools
     assert "exact bounded non-sudo command" in template_tools
+    assert "explicit sudo proposals" in default_tools
+    assert "explicit sudo proposals" in template_tools
 
 
 def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime) -> None:

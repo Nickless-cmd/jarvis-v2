@@ -228,6 +228,20 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
     mutating_exec_criticality = str(
         intent_surface.get("mutating_exec_criticality") or "none"
     )
+    sudo_exec_proposal_state = str(
+        intent_surface.get("sudo_exec_proposal_state") or "none"
+    )
+    sudo_exec_proposal_command = str(
+        intent_surface.get("sudo_exec_proposal_command") or "none"
+    )
+    sudo_exec_proposal_scope = str(
+        intent_surface.get("sudo_exec_proposal_scope") or "none"
+    )
+    sudo_exec_proposal_reason = str(
+        intent_surface.get("sudo_exec_proposal_reason") or "none"
+    )
+    sudo_exec_requires_sudo = bool(intent_surface.get("sudo_exec_requires_sudo", False))
+    sudo_exec_criticality = str(intent_surface.get("sudo_exec_criticality") or "none")
     return (
         "Intent remains proposal-only until explicitly approved within bounded scope; "
         f"scope={intent_surface.get('approval_scope') or 'repo-read'}; "
@@ -249,6 +263,12 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
         f"mutating_exec_requires_sudo={mutating_exec_requires_sudo}; "
         f"mutating_exec_criticality={mutating_exec_criticality}; "
         f"mutating_exec_proposal_reason={mutating_exec_proposal_reason}; "
+        f"sudo_exec_proposal_state={sudo_exec_proposal_state}; "
+        f"sudo_exec_proposal_scope={sudo_exec_proposal_scope}; "
+        f"sudo_exec_proposal_command={sudo_exec_proposal_command}; "
+        f"sudo_exec_requires_sudo={sudo_exec_requires_sudo}; "
+        f"sudo_exec_criticality={sudo_exec_criticality}; "
+        f"sudo_exec_proposal_reason={sudo_exec_proposal_reason}; "
         f"execution={intent_surface.get('execution_state') or 'not-executed'}."
     )
 

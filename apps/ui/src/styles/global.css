@@ -138,7 +138,21 @@ button { cursor: pointer; }
   font-size: 12px; font-weight: 500; color: #e4e6ed;
 }
 .chat-header-chips { display: flex; gap: 4px; }
-.chat-header-right { display: flex; align-items: center; gap: 8px; }
+.chat-header-right { display: flex; align-items: center; gap: 6px; }
+
+/* Header inline dropdowns */
+.header-select {
+  appearance: none; -webkit-appearance: none;
+  padding: 4px 20px 4px 8px;
+  font-size: 10px; color: #8b909e;
+  background: #1c1f25 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234e5262' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 6px center;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  max-width: 140px; text-overflow: ellipsis;
+}
+.header-select:hover { border-color: rgba(255,255,255,0.16); color: #e4e6ed; }
+.header-select:focus { outline: none; border-color: rgba(104,163,255,0.35); }
+.header-select option { background: #1c1f25; color: #e4e6ed; }
 
 .chat-token-meter {
   display: flex; align-items: center; gap: 5px;

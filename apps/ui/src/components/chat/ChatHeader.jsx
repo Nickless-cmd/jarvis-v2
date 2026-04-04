@@ -1,14 +1,59 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Activity, Search, Settings, RefreshCw } from 'lucide-react'
 import { Chip } from '../shared/Chip'
+
+function formatTokens(n) {
+  if (!n && n !== 0) return '—'
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return String(n)
+}
 
 export function ChatHeader({
   session,
   selection,
+  onSelectionChange,
   onRefresh,
   isRefreshing,
   isStreaming,
+  lastRunTokens,
 }) {
-  const provider = selection.currentProvider || 'unknown'
+  const [provider, setProvider] = useState(selection.currentProvider || '')
+  const [model, setModel] = useState(selection.currentModel || '')
+
+  useEffect(() => {
+    setProvider(selection.currentProvider || '')
+    setModel(selection.currentModel || '')
+  }, [selection.currentProvider, selection.currentModel])
+
+  const providers = useMemo(
+    () => [...new Set((selection.availableConfiguredTargets || []).map((x) => x.provider))],
+    [selection.availableConfiguredTargets]
+  )
+  const models = useMemo(
+    () => (selection.availableConfiguredTargets || []).filter((x) => x.provider === provider),
+    [selection.availableConfiguredTargets, provider]
+  )
+
+  function handleProviderChange(e) {
+    const next = e.target.value
+    setProvider(next)
+    const first = (selection.availableConfiguredTargets || []).find((x) => x.provider === next)
+    if (first) {
+      setModel(first.model)
+      onSelectionChange?.({ provider: next, model: first.model, authProfile: first.authProfile || '' })
+    }
+  }
+
+  function handleModelChange(e) {
+    const next = e.target.value
+    setModel(next)
+    const candidate = models.find((x) => x.model === next)
+    onSelectionChange?.({ provider, model: next, authProfile: candidate?.authProfile || '' })
+  }
+
+  const tokenLabel = lastRunTokens
+    ? `${formatTokens(lastRunTokens.total)} tok`
+    : '— tok'
 
   return (
     <section className="chat-header-bar">
@@ -17,14 +62,31 @@ export function ChatHeader({
         <div className="chat-header-chips">
           <Chip color="#3d8f7c">L3</Chip>
           <Chip color="#d4963a">EXP</Chip>
-          <Chip color="#4e5262">{provider}</Chip>
         </div>
       </div>
 
       <div className="chat-header-right">
-        <div className={`chat-token-meter ${isStreaming ? 'active' : ''}`}>
+        <select
+          className="header-select mono"
+          value={provider}
+          onChange={handleProviderChange}
+          title="Provider"
+        >
+          {providers.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+
+        <select
+          className="header-select mono"
+          value={model}
+          onChange={handleModelChange}
+          title="Model"
+        >
+          {models.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+        </select>
+
+        <div className={`chat-token-meter ${isStreaming ? 'active' : ''}`} title={lastRunTokens ? `In: ${formatTokens(lastRunTokens.input)} / Out: ${formatTokens(lastRunTokens.output)}` : 'No run yet'}>
           <Activity size={9} />
-          <span className="mono">— tok/min</span>
+          <span className="mono">{tokenLabel}</span>
         </div>
 
         <button className="icon-btn" onClick={onRefresh} title="Refresh">

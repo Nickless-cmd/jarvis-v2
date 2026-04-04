@@ -15,6 +15,7 @@ export function ChatPage({
   isStreaming,
   workingSteps,
   jarvisSurface,
+  lastRunTokens,
 }) {
   const [draft, setDraft] = useState('')
   const hero = useMemo(() => ({
@@ -28,9 +29,11 @@ export function ChatPage({
         <ChatHeader
           session={{ title: hero.title }}
           selection={selection}
+          onSelectionChange={onSelectionChange}
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
           isStreaming={isStreaming}
+          lastRunTokens={lastRunTokens}
         />
 
         {error ? <div className="inline-error">{error}</div> : null}

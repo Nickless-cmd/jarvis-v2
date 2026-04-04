@@ -697,6 +697,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "type": "done",
                 "run_id": run.run_id,
                 "status": "completed",
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "total_tokens": total_input_tokens + total_output_tokens,
             },
         )
     finally:

@@ -25,6 +25,9 @@ from apps.api.jarvis_api.services.embodied_state import (
 from apps.api.jarvis_api.services.affective_meta_state import (
     build_affective_meta_state_surface,
 )
+from apps.api.jarvis_api.services.experiential_runtime_context import (
+    build_experiential_runtime_context_from_surfaces,
+)
 from apps.api.jarvis_api.services.epistemic_runtime_state import (
     build_epistemic_runtime_state_surface,
 )
@@ -304,6 +307,12 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
         **merged,
         **liveness,
     }
+    experiential_runtime_context = build_experiential_runtime_context_from_surfaces(
+        embodied_state=embodied_state,
+        affective_meta_state=affective_meta_state,
+        heartbeat_state=merged,
+        cognitive_frame=_build_heartbeat_cognitive_frame(merged_state=merged),
+    )
     _write_heartbeat_state_artifact(
         workspace_dir=ensure_default_workspace(name=name),
         payload={
@@ -325,6 +334,7 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
             "adaptive_learning": adaptive_learning,
             "self_system_code_awareness": self_system_code_awareness,
             "tool_intent": tool_intent,
+            "experiential_runtime_context": experiential_runtime_context,
         },
     )
     return {
@@ -347,6 +357,7 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
         "adaptive_learning": adaptive_learning,
         "self_system_code_awareness": self_system_code_awareness,
         "tool_intent": tool_intent,
+        "experiential_runtime_context": experiential_runtime_context,
         "source": "/mc/jarvis::heartbeat",
     }
 
@@ -1267,6 +1278,26 @@ def _build_influence_trace(
         "tool_intent_last_action_outcome": tool_intent_last_action_outcome,
         "tool_intent_followup_state": tool_intent_followup_state,
     }
+
+
+def _build_heartbeat_cognitive_frame(
+    *, merged_state: dict[str, object]
+) -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+            build_cognitive_frame,
+        )
+
+        return build_cognitive_frame(heartbeat_state=merged_state)
+    except Exception:
+        return {
+            "continuity_pressure": "low",
+            "counts": {
+                "salient_items": 0,
+                "gated_affordances": 0,
+                "inner_forces": 0,
+            },
+        }
 
 
 def _build_heartbeat_liveness_signal(

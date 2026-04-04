@@ -23,6 +23,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "layers" in model
     assert "embodied_state" in model
     assert "affective_meta_state" in model
+    assert "experiential_runtime_context" in model
     assert "epistemic_runtime_state" in model
     assert "subagent_ecology" in model
     assert "council_runtime" in model
@@ -211,6 +212,8 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "self_model_summary" in joined
     assert "embodied_state:" in joined
     assert "affective_meta_state:" in joined
+    assert "experiential_runtime_context:" in joined
+    assert "experiential_narrative:" in joined
     assert "epistemic_runtime_state:" in joined
     assert "subagent_ecology:" in joined
     assert "council_runtime:" in joined

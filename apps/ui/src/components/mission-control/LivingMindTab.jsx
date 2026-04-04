@@ -312,10 +312,12 @@ function experientialRuntimeContextRow(item, onOpen) {
     usageLine ? `used by ${usageLine}` : '',
   ].filter(Boolean).join(' · ')
 
-  const continuityLine = continuity ? [
-    `continuity ${humanizeToken(continuity.continuityState)}`,
-    continuity.stateShiftSummary && continuity.stateShiftSummary !== 'No dimensional shifts.' ? continuity.stateShiftSummary : '',
-  ].filter(Boolean).join(' — ') : null
+  const continuityTag = continuity
+    ? `continuity ${humanizeToken(continuity.continuityState)}`
+    : null
+  const continuityShift = continuity?.stateShiftSummary && continuity.stateShiftSummary !== 'No dimensional shifts.'
+    ? continuity.stateShiftSummary
+    : null
 
   return (
     <button
@@ -330,7 +332,13 @@ function experientialRuntimeContextRow(item, onOpen) {
       <div>
         <strong>Experiential Context</strong>
         <span>{detailText || 'Inspect bounded experiential runtime context'}</span>
-        {continuityLine ? <span className="muted">{continuityLine}</span> : null}
+        {continuityTag ? (
+          <span className="muted">
+            {continuityTag}
+            {continuityShift ? ` — ${continuityShift}` : ''}
+          </span>
+        ) : null}
+        {continuity?.narrative ? <span className="muted">{continuity.narrative}</span> : null}
       </div>
       <div className="mc-row-meta">
         <StatusPill status={embodied.initiativeGate || 'clear'} />

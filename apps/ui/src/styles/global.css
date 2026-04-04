@@ -283,6 +283,19 @@ button { cursor: pointer; }
   text-transform: uppercase; margin-bottom: 10px;
 }
 
+/* Emotion grid (2x2) */
+.emotion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.emotion-card {
+  padding: 8px; background: #1c1f25;
+  border: 1px solid rgba(255,255,255,0.04); border-radius: 8px;
+}
+.emotion-card-header {
+  display: flex; align-items: center; gap: 4px; margin-bottom: 4px;
+}
+.emotion-card-header .mono { font-size: 8px; color: #4e5262; letter-spacing: 0.08em; }
+.emotion-card-value { font-size: 14px; color: #e4e6ed; margin-bottom: 4px; }
+.emotion-card .progress-bar { height: 2px; }
+
 /* Affective state grid (2x2) */
 .rail-affective-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .rail-affective-card {

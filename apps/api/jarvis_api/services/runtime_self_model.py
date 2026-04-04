@@ -318,6 +318,8 @@ def _collect_layers() -> list[dict[str, str]]:
             f"sudo_exec_scope={tool_intent.get('sudo_exec_proposal_scope') or 'none'}; "
             f"sudo_exec_requires_sudo={tool_intent.get('sudo_exec_requires_sudo', False)}; "
             f"sudo_exec_fingerprint={tool_intent.get('sudo_exec_command_fingerprint') or 'none'}; "
+            f"execution_command={tool_intent.get('execution_command') or 'none'}; "
+            f"sudo_permitted={tool_intent.get('sudo_permitted', False)}; "
             f"continuity={tool_intent.get('action_continuity_state') or 'idle'}; "
             f"last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}; "
             f"followup_state={tool_intent.get('followup_state') or 'none'}."
@@ -706,7 +708,7 @@ def build_self_model_prompt_lines() -> list[str]:
             "  exec_boundary: non-destructive exec requires one explicit command in the user message, stays diagnostic-only, and blocks sudo, mutation, package, git, delete, and shell chaining"
         )
         lines.append(
-            "  mutating_exec_boundary: non-sudo filesystem mutation may execute only after explicit approval of the exact command fingerprint; sudo commands surface as explicit sudo proposals and remain non-executable in this pass"
+            "  mutating_exec_boundary: non-sudo filesystem mutation may execute only after explicit approval of the exact command fingerprint; bounded sudo exec may execute only after explicit approval of the exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass"
         )
     if gated_ids:
         lines.append(
@@ -738,7 +740,7 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | external_read={policy.get('external_read', 'allowed')}"
         f" | non_destructive_exec={policy.get('non_destructive_exec', 'allowed')}"
         f" | mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-bounded-non-sudo-only')}"
-        f" | sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-proposal-only')}"
+        f" | sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-bounded-allowlist-only')}"
         f" | workspace_write={policy.get('workspace_write', 'explicit-approval-required')}"
         f" | external_write={policy.get('external_write', 'explicit-approval-required')}"
     )

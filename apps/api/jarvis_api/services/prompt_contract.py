@@ -1240,7 +1240,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
             "- Non-destructive exec is allowed only when the user message already includes one explicit command in backticks or a command:/kommando: line."
         )
         lines.append(
-            "- If that command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may surface as explicit sudo proposals, but remain proposal-only and not executed in this pass."
+            "- If that command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass."
         )
     if available:
         lines.append(
@@ -1275,7 +1275,7 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         f"external_read={policy.get('external_read', 'allowed')} | "
         f"non_destructive_exec={policy.get('non_destructive_exec', 'allowed')} | "
         f"mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-bounded-non-sudo-only')} | "
-        f"sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-proposal-only')} | "
+        f"sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-bounded-allowlist-only')} | "
         f"workspace_write={policy.get('workspace_write', 'explicit-approval-required')} | "
         f"external_write={policy.get('external_write', 'explicit-approval-required')}"
     )
@@ -1456,6 +1456,8 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | sudo_exec_scope={tool_intent.get('sudo_exec_proposal_scope') or 'none'}"
                 f" | sudo_exec_requires_sudo={tool_intent.get('sudo_exec_requires_sudo', False)}"
                 f" | sudo_exec_fingerprint={tool_intent.get('sudo_exec_command_fingerprint') or 'none'}"
+                f" | execution_command={tool_intent.get('execution_command') or 'none'}"
+                f" | sudo_permitted={tool_intent.get('sudo_permitted', False)}"
                 f" | execution_summary={tool_intent.get('execution_summary') or 'none'}"
                 f" | continuity={tool_intent.get('action_continuity_state') or 'idle'}"
                 f" | last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}"

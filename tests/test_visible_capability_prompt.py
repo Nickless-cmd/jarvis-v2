@@ -24,10 +24,10 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
     assert "external_read=allowed" in instruction
     assert "non_destructive_exec=allowed" in instruction
     assert "mutating_exec=explicit-approval-required-bounded-non-sudo-only" in instruction
-    assert "sudo_exec=explicit-approval-required-proposal-only" in instruction
+    assert "sudo_exec=explicit-approval-required-bounded-allowlist-only" in instruction
     assert "workspace_write=explicit-approval-required" in instruction
     assert "exact bounded non-sudo command fingerprint" in instruction
-    assert "explicit sudo proposals" in instruction
+    assert "exact sudo command fingerprint" in instruction
 
 
 def test_visible_prompt_assembly_keeps_text_capability_contract(isolated_runtime) -> None:

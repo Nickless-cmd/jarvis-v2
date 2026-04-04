@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -909,6 +910,76 @@ def test_approved_non_sudo_mutating_exec_becomes_runtime_truth_and_continuity(
     assert surface["action_continuity_state"] == "carrying-forward"
     assert surface["last_action_outcome"] == "mutating-exec-completed"
     assert surface["action_mode"] == "mutating-exec"
+    assert surface["truth"] == "derived-runtime-truth"
+
+
+def test_approved_sudo_exec_becomes_runtime_truth_and_continuity(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    tool_intent_mod = isolated_runtime.tool_intent_runtime
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "")
+    target = workspace_dir / "tool_intent_sudo_exec_target.txt"
+    target.write_text("runtime truth sudo exec\n", encoding="utf-8")
+
+    def _fake_run_bounded_command(*, argv, workspace_dir):
+        return subprocess.CompletedProcess(argv, 0, "", ""), None
+
+    monkeypatch.setattr(caps_mod, "_run_bounded_command", _fake_run_bounded_command)
+    monkeypatch.setattr(
+        tool_intent_mod,
+        "build_self_system_code_awareness_surface",
+        lambda: {
+            "code_awareness_state": "repo-visible",
+            "repo_status": "clean",
+            "local_change_state": "clean",
+            "upstream_awareness": "in-sync",
+            "concern_state": "stable",
+            "source_contributors": ["repo-root", "git-status"],
+            "repo_observation": {
+                "branch_name": "main",
+                "upstream_ref": "origin/main",
+            },
+        },
+    )
+
+    proposed = isolated_runtime.mission_control.mc_invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"sudo chmod 600 {target}",
+    )
+    assert proposed["status"] == "approval-required"
+    request_id = str((isolated_runtime.db.latest_capability_approval_request(
+        execution_mode="sudo-exec-proposal",
+        include_executed=False,
+    ) or {}).get("request_id") or "")
+    assert request_id
+    _ = isolated_runtime.mission_control.mc_approve_capability_request(request_id)
+
+    executed = isolated_runtime.mission_control.mc_execute_capability_request(request_id)
+    assert executed["ok"] is True
+
+    surface = tool_intent_mod.build_tool_intent_runtime_surface()
+
+    assert surface["execution_state"] == "sudo-exec-completed"
+    assert surface["execution_mode"] == "sudo-exec"
+    assert surface["execution_command"] == f"sudo chmod 600 {target}"
+    assert surface["mutation_permitted"] is True
+    assert surface["sudo_permitted"] is True
+    assert surface["workspace_scoped"] is True
+    assert surface["external_mutation_permitted"] is False
+    assert surface["delete_permitted"] is False
+    assert surface["mutating_exec_proposal_state"] == "executed"
+    assert surface["mutating_exec_proposal_command"] == f"sudo chmod 600 {target}"
+    assert surface["mutating_exec_requires_sudo"] is True
+    assert surface["sudo_exec_proposal_state"] == "executed"
+    assert surface["sudo_exec_proposal_command"] == f"sudo chmod 600 {target}"
+    assert surface["sudo_exec_requires_sudo"] is True
+    assert surface["action_continuity_state"] == "carrying-forward"
+    assert surface["last_action_outcome"] == "sudo-exec-completed"
+    assert surface["action_mode"] == "sudo-exec"
     assert surface["truth"] == "derived-runtime-truth"
 
 

@@ -518,8 +518,14 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_execution_mode": str(
                 tool_intent.get("execution_mode") or "read-only"
             ),
+            "tool_intent_execution_command": str(
+                tool_intent.get("execution_command") or "none"
+            ),
             "tool_intent_mutation_permitted": bool(
                 tool_intent.get("mutation_permitted", False)
+            ),
+            "tool_intent_sudo_permitted": bool(
+                tool_intent.get("sudo_permitted", False)
             ),
             "tool_intent_workspace_scoped": bool(
                 tool_intent.get("workspace_scoped", False)
@@ -1413,18 +1419,6 @@ def mc_execute_capability_request(
             "request": request,
             "invocation": None,
         }
-    if str(request.get("execution_mode") or "") == "sudo-exec-proposal":
-        return {
-            "ok": False,
-            "request_id": request_id,
-            "status": "execution-disabled-in-this-pass",
-            "detail": (
-                "Sudo exec proposals remain approval-scoped runtime truth only in this pass and are not executable."
-            ),
-            "request": request,
-            "invocation": None,
-        }
-
     proposed_content = str(request.get("proposal_content") or "")
     proposed_fingerprint = str(request.get("proposal_content_fingerprint") or "")
     final_write_content = write_content
@@ -1432,10 +1426,16 @@ def mc_execute_capability_request(
     if proposed_content and final_write_content is None and final_command_text is None:
         if str(request.get("execution_mode") or "") == "workspace-file-write":
             final_write_content = proposed_content
-        elif str(request.get("execution_mode") or "") == "mutating-exec-proposal":
+        elif str(request.get("execution_mode") or "") in {
+            "mutating-exec-proposal",
+            "sudo-exec-proposal",
+        }:
             final_command_text = proposed_content
     fingerprint_source = final_write_content
-    if str(request.get("execution_mode") or "") == "mutating-exec-proposal":
+    if str(request.get("execution_mode") or "") in {
+        "mutating-exec-proposal",
+        "sudo-exec-proposal",
+    }:
         fingerprint_source = final_command_text
     if proposed_fingerprint and fingerprint_source is not None:
         supplied_fingerprint = sha1(fingerprint_source.encode("utf-8")).hexdigest()[:16]

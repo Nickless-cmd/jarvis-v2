@@ -105,6 +105,14 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
                 "mutating_exec_proposal_scope"
             )
             or "none",
+            "mutating_exec_git_mutation_class": mutating_exec_proposal.get(
+                "mutating_exec_git_mutation_class"
+            )
+            or "none",
+            "mutating_exec_repo_stewardship_domain": mutating_exec_proposal.get(
+                "mutating_exec_repo_stewardship_domain"
+            )
+            or "none",
             "mutating_exec_proposal_reason": mutating_exec_proposal.get(
                 "mutating_exec_proposal_reason"
             )
@@ -322,6 +330,14 @@ def _build_tool_intent_runtime_surface() -> dict[str, object]:
         or "",
         "mutating_exec_proposal_scope": execution.get("mutating_exec_proposal_scope")
         or "none",
+        "mutating_exec_git_mutation_class": execution.get(
+            "mutating_exec_git_mutation_class"
+        )
+        or "none",
+        "mutating_exec_repo_stewardship_domain": execution.get(
+            "mutating_exec_repo_stewardship_domain"
+        )
+        or "none",
         "mutating_exec_proposal_reason": execution.get("mutating_exec_proposal_reason")
         or "",
         "mutating_exec_requires_approval": bool(
@@ -471,6 +487,8 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
         "mutating_exec_proposal_command": "",
         "mutating_exec_proposal_summary": "",
         "mutating_exec_proposal_scope": "none",
+        "mutating_exec_git_mutation_class": "none",
+        "mutating_exec_repo_stewardship_domain": "none",
         "mutating_exec_proposal_reason": "",
         "mutating_exec_requires_approval": False,
         "mutating_exec_requires_sudo": False,
@@ -555,6 +573,12 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
                 proposal_content.get("summary") or command
             ),
             "mutating_exec_proposal_scope": scope,
+            "mutating_exec_git_mutation_class": str(
+                proposal_content.get("git_mutation_class") or "none"
+            ),
+            "mutating_exec_repo_stewardship_domain": str(
+                proposal_content.get("repo_stewardship_domain") or "none"
+            ),
             "mutating_exec_proposal_reason": str(
                 proposal_content.get("reason")
                 or invocation.get("detail")
@@ -606,6 +630,12 @@ def _build_mutating_exec_proposal_surface() -> dict[str, object]:
         "mutating_exec_proposal_command": command,
         "mutating_exec_proposal_summary": str(proposal_content.get("summary") or ""),
         "mutating_exec_proposal_scope": scope,
+        "mutating_exec_git_mutation_class": str(
+            proposal_content.get("git_mutation_class") or "none"
+        ),
+        "mutating_exec_repo_stewardship_domain": str(
+            proposal_content.get("repo_stewardship_domain") or "none"
+        ),
         "mutating_exec_proposal_reason": str(
             proposal_content.get("reason")
             or invocation.get("detail")

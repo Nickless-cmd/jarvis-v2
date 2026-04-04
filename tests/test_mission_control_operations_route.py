@@ -36,6 +36,8 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
                 "write_proposal_content_fingerprint": "feedface12345678",
                 "mutating_exec_proposal_state": "approval-required-proposal",
                 "mutating_exec_proposal_scope": "system",
+                "mutating_exec_git_mutation_class": "git-sync",
+                "mutating_exec_repo_stewardship_domain": "git",
                 "mutating_exec_requires_sudo": True,
                 "mutating_exec_criticality": "high",
                 "sudo_exec_proposal_state": "approval-required-proposal",
@@ -113,6 +115,8 @@ def test_mission_control_operations_route_returns_runtime_runs_approvals_and_ses
     assert payload["summary"]["tool_intent_write_proposal_content_fingerprint"] == "feedface12345678"
     assert payload["summary"]["tool_intent_mutating_exec_proposal_state"] == "approval-required-proposal"
     assert payload["summary"]["tool_intent_mutating_exec_proposal_scope"] == "system"
+    assert payload["summary"]["tool_intent_mutating_exec_git_mutation_class"] == "git-sync"
+    assert payload["summary"]["tool_intent_mutating_exec_repo_stewardship_domain"] == "git"
     assert payload["summary"]["tool_intent_mutating_exec_requires_sudo"] is True
     assert payload["summary"]["tool_intent_mutating_exec_criticality"] == "high"
     assert payload["summary"]["tool_intent_sudo_exec_proposal_state"] == "approval-required-proposal"

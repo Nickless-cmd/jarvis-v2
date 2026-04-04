@@ -36,8 +36,8 @@ This stays read-only and is bounded to paths outside the active workspace root.
 command_from: user-message
 
 Runs one explicit non-destructive command from the current user message.
-This stays diagnostic-only, allows only a tiny bounded git read/inspect subset, and blocks sudo, package mutation, git mutation, delete, shell chaining, and redirection.
-If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Git mutation remains proposal-only and non-executed in this pass. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, delete, and broader system mutation remain non-executed here.
+This stays diagnostic-only, allows only a tiny bounded git read/inspect subset, and blocks sudo, package mutation, git mutation execution, delete, shell chaining, and redirection.
+If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Git mutation remains proposal-only and non-executed in this pass, and runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`. `git clean` stays blocked. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, delete, and broader system mutation remain non-executed here.
 
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md

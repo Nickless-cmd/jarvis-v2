@@ -467,9 +467,10 @@ def test_visible_run_surfaces_mutating_exec_as_proposal_only(
     assert capability_events
     assert capability_events[-1]["status"] == "approval-required"
     assert capability_events[-1]["execution_mode"] == "mutating-exec-proposal"
-    assert any("approval-gated proposal only" in str(item.get("delta") or "") for item in delta_events)
+    assert any("repo stewardship proposal only" in str(item.get("delta") or "") or "git-stage" in str(item.get("delta") or "") for item in delta_events)
     assert last_use.get("argument_source") == "tag-attributes"
     assert (last_use.get("trace") or {}).get("parsed_command_text") == "git add README.md"
+    assert "git-stage" in str(last_use.get("detail") or "")
     assert last_use.get("second_pass_calls") == []
 
 

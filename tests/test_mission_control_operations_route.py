@@ -381,6 +381,128 @@ def test_experiential_runtime_context_route_uses_shared_bundle_cache(
     assert call_count["count"] == 1
 
 
+def test_mission_control_jarvis_reuses_runtime_cache_projection(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+
+    runtime_calls = {"count": 0}
+
+    def fake_runtime_uncached() -> dict:
+        runtime_calls["count"] += 1
+        return {
+            "visible_identity": {"workspace": "default"},
+            "visible_session_continuity": {"latest_text_preview": "preview"},
+            "visible_continuity": {"included_rows": 2},
+            "visible_capability_continuity": {"included_rows": 1},
+            "private_state": {"current": {"confidence": "medium", "frustration": "low"}},
+            "protected_inner_voice": {"current": {"current_pull": "steady"}},
+            "private_inner_interplay": {"current": {"retained_pattern": "pattern"}},
+            "private_initiative_tension": {"current": {"tension_kind": "open-loop", "tension_level": "medium"}},
+            "private_relation_state": {"current": {"relation_pull": "near"}},
+            "private_temporal_curiosity_state": {},
+            "private_temporal_promotion_signal": {"current": {"promotion_target": "none"}},
+            "private_promotion_decision": {"current": {"promotion_target": "none"}},
+            "private_retained_memory_record": {"current": {"retained_value": "memory"}},
+            "private_retained_memory_projection": {"retained_focus": "focus"},
+            "private_self_model": {"current": {"growth_direction": "careful"}},
+            "private_development_state": {"current": {"preferred_direction": "steady"}},
+            "private_growth_note": {},
+            "private_reflective_selection": {},
+            "private_operational_preference": {},
+            "operational_preference_alignment": {},
+            "runtime_development_focuses": {},
+            "runtime_reflective_critics": {},
+            "runtime_self_model_signals": {},
+            "runtime_goal_signals": {},
+            "runtime_reflection_signals": {},
+            "runtime_temporal_recurrence_signals": {},
+            "runtime_witness_signals": {},
+            "runtime_open_loop_signals": {},
+            "runtime_open_loop_closure_proposals": {},
+            "runtime_internal_opposition_signals": {},
+            "runtime_self_review_signals": {},
+            "runtime_self_review_records": {},
+            "runtime_self_review_runs": {},
+            "runtime_self_review_outcomes": {},
+            "runtime_self_review_cadence_signals": {},
+            "runtime_dream_hypothesis_signals": {},
+            "runtime_dream_adoption_candidates": {},
+            "runtime_dream_influence_proposals": {},
+            "runtime_self_authored_prompt_proposals": {},
+            "runtime_prompt_evolution": {},
+            "runtime_user_understanding_signals": {},
+            "runtime_remembered_fact_signals": {},
+            "runtime_private_inner_note_signals": {},
+            "runtime_private_initiative_tension_signals": {},
+            "runtime_private_inner_interplay_signals": {},
+            "runtime_private_state_snapshots": {},
+            "runtime_diary_synthesis_signals": {},
+            "runtime_private_temporal_curiosity_states": {},
+            "runtime_inner_visible_support_signals": {},
+            "runtime_regulation_homeostasis_signals": {},
+            "runtime_relation_state_signals": {},
+            "runtime_relation_continuity_signals": {},
+            "runtime_meaning_significance_signals": {},
+            "runtime_temperament_tendency_signals": {},
+            "runtime_self_narrative_continuity_signals": {},
+            "runtime_metabolism_state_signals": {},
+            "runtime_release_marker_signals": {},
+            "runtime_consolidation_target_signals": {},
+            "runtime_selective_forgetting_candidates": {},
+            "runtime_attachment_topology_signals": {},
+            "runtime_loyalty_gradient_signals": {},
+            "runtime_autonomy_pressure_signals": {},
+            "runtime_proactive_loop_lifecycle_signals": {},
+            "runtime_proactive_question_gates": {},
+            "runtime_webchat_execution_pilot": {},
+            "runtime_self_narrative_self_model_review_bridge": {},
+            "runtime_executive_contradiction_signals": {},
+            "runtime_private_temporal_promotion_signals": {},
+            "runtime_chronicle_consolidation_signals": {},
+            "runtime_chronicle_consolidation_briefs": {},
+            "runtime_chronicle_consolidation_proposals": {},
+            "runtime_user_md_update_proposals": {},
+            "runtime_memory_md_update_proposals": {},
+            "runtime_selfhood_proposals": {},
+            "runtime_world_model_signals": {},
+            "runtime_awareness_signals": {},
+            "runtime_emergent_signals": {"items": [{"short_summary": "emergent"}]},
+            "heartbeat_runtime": {"state": {"source_anchor": "anchor", "liveness_reason": "still live"}},
+        }
+
+    monkeypatch.setattr(mission_control, "_mc_runtime_uncached", fake_runtime_uncached)
+    monkeypatch.setattr(mission_control, "build_private_brain_surface", lambda: {"summary": "brain"})
+    monkeypatch.setattr(mission_control, "build_session_distillation_surface", lambda: {"items": []})
+    monkeypatch.setattr(
+        mission_control,
+        "build_runtime_self_knowledge_map",
+        lambda heartbeat_state=None: {"heartbeat_state": heartbeat_state},
+    )
+    monkeypatch.setattr(
+        mission_control,
+        "build_cognitive_frame",
+        lambda self_knowledge=None, heartbeat_state=None: {
+            "self_knowledge": self_knowledge,
+            "heartbeat_state": heartbeat_state,
+        },
+    )
+    mission_control._MC_ROUTE_CACHE.clear()
+
+    runtime = mission_control.mc_runtime()
+    jarvis = mission_control.mc_jarvis()
+
+    assert runtime_calls["count"] == 1
+    assert jarvis["heartbeat"] == runtime["heartbeat_runtime"]
+    assert jarvis["state"]["visible_identity"] == runtime["visible_identity"]
+    assert jarvis["memory"]["visible_capability_continuity"] == runtime["visible_capability_continuity"]
+    assert jarvis["development"]["open_loop_signals"] == runtime["runtime_open_loop_signals"]
+    assert jarvis["continuity"]["world_model_signals"] == runtime["runtime_world_model_signals"]
+    assert jarvis["self_knowledge"]["heartbeat_state"] == runtime["heartbeat_runtime"]["state"]
+    assert jarvis["cognitive_frame"]["heartbeat_state"] == runtime["heartbeat_runtime"]["state"]
+
+
 def test_mission_control_operations_route_surfaces_sudo_exec_execution_summary(
     isolated_runtime,
     monkeypatch,

@@ -2843,9 +2843,11 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload] = await Promise.all([
+    const [payload, contractPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
+    ])
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3711,12 +3713,10 @@ export const backend = {
   },
 
   async getMissionControlPhaseB({ selection } = {}) {
-    const [overview, operations, observability, jarvis] = await Promise.all([
-      this.getMissionControlOverview({ selection }),
-      this.getMissionControlOperations(),
-      this.getMissionControlObservability(),
-      this.getMissionControlJarvis(),
-    ])
+    const overview = await this.getMissionControlOverview({ selection })
+    const operations = await this.getMissionControlOperations()
+    const observability = await this.getMissionControlObservability()
+    const jarvis = await this.getMissionControlJarvis()
     return { overview, operations, observability, jarvis }
   },
 

@@ -297,13 +297,14 @@ function experientialRuntimeContextRow(item, onOpen) {
   const contextPressure = item.contextPressureTranslation || {}
   const continuity = item.experientialContinuity || null
   const influence = item.experientialInfluence || null
+  const support = item.experientialSupport || null
   const hasNonDefault = (
     embodied.state !== 'steady' ||
     affective.state !== 'settled' ||
     intermittence.state !== 'continuous' ||
     contextPressure.state !== 'clear'
   )
-  if (!hasNonDefault && !item.summary && !continuity && !influence) return null
+  if (!hasNonDefault && !item.summary && !continuity && !influence && !support) return null
   const usageLine = experientialUsageSummary(item)
   const detailText = [
     `body ${humanizeToken(embodied.state || 'steady')}`,
@@ -346,6 +347,12 @@ function experientialRuntimeContextRow(item, onOpen) {
           </span>
         ) : null}
         {influence?.narrative ? <span className="muted">{influence.narrative}</span> : null}
+        {support && support.supportPosture !== 'steadying' ? (
+          <span className="muted">
+            {`support: posture ${humanizeToken(support.supportPosture)} · bias ${humanizeToken(support.supportBias)} · mode ${humanizeToken(support.supportMode)}`}
+          </span>
+        ) : null}
+        {support?.narrative && support.supportPosture !== 'steadying' ? <span className="muted">{support.narrative}</span> : null}
       </div>
       <div className="mc-row-meta">
         <StatusPill status={embodied.initiativeGate || 'clear'} />
@@ -1047,6 +1054,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const experientialPressure = experientialRuntimeContext?.contextPressureTranslation || {}
   const experientialContinuity = experientialRuntimeContext?.experientialContinuity || null
   const experientialInfluence = experientialRuntimeContext?.experientialInfluence || null
+  const experientialSupport = experientialRuntimeContext?.experientialSupport || null
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1054,7 +1062,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
       experientialIntermittence.state !== 'continuous' ||
       experientialPressure.state !== 'clear' ||
       (experientialContinuity && experientialContinuity.continuityState !== 'stable' && experientialContinuity.continuityState !== 'initial') ||
-      (experientialInfluence && experientialInfluence.cognitiveBearing !== 'clear')
+      (experientialInfluence && experientialInfluence.cognitiveBearing !== 'clear') ||
+      (experientialSupport && experientialSupport.supportPosture !== 'steadying')
     ),
   )
   const internalCadence = data?.internalCadence || {}
@@ -1329,6 +1338,11 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           {experientialInfluence ? (
           <small className="muted">
             {`influence: bearing ${humanizeToken(experientialInfluence.cognitiveBearing)} · attention ${humanizeToken(experientialInfluence.attentionalPosture)} · initiative ${humanizeToken(experientialInfluence.initiativeShading)}`}
+          </small>
+          ) : null}
+          {experientialSupport && experientialSupport.supportPosture !== 'steadying' ? (
+          <small className="muted">
+            {`support: posture ${humanizeToken(experientialSupport.supportPosture)} · bias ${humanizeToken(experientialSupport.supportBias)} · mode ${humanizeToken(experientialSupport.supportMode)}`}
           </small>
           ) : null}
         </article>

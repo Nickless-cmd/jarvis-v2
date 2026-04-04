@@ -856,6 +856,7 @@ function normalizeExperientialRuntimeContext(item = {}) {
   const contextPressure = item.context_pressure_translation || {}
   const continuity = item.experiential_continuity || {}
   const influence = item.experiential_influence || {}
+  const support = item.experiential_support || {}
 
   return {
     authority: item.authority || 'derived-runtime-truth',
@@ -900,6 +901,15 @@ function normalizeExperientialRuntimeContext(item = {}) {
       authority: influence.authority || 'derived-runtime-truth',
       visibility: influence.visibility || 'internal-only',
       kind: influence.kind || 'experiential-influence-trace',
+    } : null,
+    experientialSupport: support.support_posture ? {
+      supportPosture: support.support_posture,
+      supportBias: support.support_bias || 'none',
+      supportMode: support.support_mode || 'steady',
+      narrative: support.narrative || '',
+      authority: support.authority || 'derived-runtime-truth',
+      visibility: support.visibility || 'internal-only',
+      kind: support.kind || 'experiential-carry-forward',
     } : null,
     seamUsage: {
       heartbeatRuntimeTruth: Boolean(seamUsage.heartbeat_runtime_truth),

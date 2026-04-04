@@ -59,11 +59,15 @@ function summarizeMutationTargets(item) {
     return `${preview}${remainder}`
   }
 
-  return 'No target files or paths recorded'
+  return 'No mutation targets recorded'
 }
 
 function mutationScopeSummary(item) {
   return [item?.mutationRepoScope, item?.mutationSystemScope].filter(Boolean).join(' · ')
+}
+
+function mutationGuardLabel(item) {
+  return item?.mutationExecutionPermitted ? 'execution permitted' : 'proposal only'
 }
 
 function mutatingExecGuardLabel(item) {
@@ -98,7 +102,7 @@ function toolIntentRow(item, onOpen) {
       item.intentType ? `type ${humanizeToken(item.intentType)}` : '',
       item.hasGitRepoStewardshipProposalSurface ? gitStewardshipLabel(item) : '',
       item.hasMutationIntentSurface ? `mutation ${humanizeToken(item.mutationIntentClassification || 'none')}` : '',
-      item.hasMutationIntentSurface ? `${item.mutationNear ? 'action-near' : 'non-mutation'}` : '',
+      item.hasMutationIntentSurface ? `${item.mutationNear ? 'action-near' : 'not action-near'}` : '',
       item.executionTarget || item.intentTarget ? `target ${item.executionTarget || item.intentTarget}` : '',
       item.approvalScope ? `scope ${humanizeToken(item.approvalScope)}` : '',
     ].filter(Boolean).join(' · '),
@@ -134,7 +138,7 @@ function toolIntentRow(item, onOpen) {
         {item.hasGitRepoStewardshipProposalSurface ? <small>{gitStewardshipLabel(item)}</small> : null}
         {item.executionMode ? <small>{humanizeToken(item.executionMode)}</small> : null}
         {item.urgency ? <small>{humanizeToken(item.urgency)}</small> : null}
-        <small>{item.mutationPermitted ? 'mutation allowed' : 'mutation blocked'}</small>
+        <small>{mutationGuardLabel(item)}</small>
         {timingLabel ? <small>{timingLabel}</small> : null}
         <ChevronRight size={14} />
       </div>
@@ -243,7 +247,7 @@ export function OperationsTab({
           <div className="panel-header">
             <div>
               <h3>Tool Intent</h3>
-              <p className="muted">Bounded operational intent with read-only execution truth and boundary state.</p>
+              <p className="muted">Bounded operational intent with mutation visibility and a proposal-only execution boundary.</p>
             </div>
             <span className="mc-section-hint">Read-only</span>
           </div>
@@ -256,7 +260,7 @@ export function OperationsTab({
             <div className="compact-metric" title="Approval lifecycle state and source">
               <span>Approval</span>
               <strong>{humanizeToken(toolIntent.approvalState || 'none')}</strong>
-              <p className="muted">{humanizeToken(toolIntent.approvalSource || 'none')} · {toolIntent.approvalRequired ? 'required' : 'not required'}</p>
+              <p className="muted">via {humanizeToken(toolIntent.approvalSource || 'none')} · {toolIntent.approvalRequired ? 'required' : 'not required'}</p>
             </div>
             <div className="compact-metric" title="Intent target and urgency">
               <span>Target</span>
@@ -270,7 +274,7 @@ export function OperationsTab({
             </div>
             <div className="compact-metric" title="Boundary and mutation permission">
               <span>Boundary</span>
-              <strong>{toolIntent.mutationPermitted ? 'mutable' : 'read-only'}</strong>
+              <strong>{toolIntent.mutationPermitted ? 'mutable' : 'proposal-only'}</strong>
               <p className="muted">{toolIntent.approvalScope || 'repo-read'} · {toolIntent.approvalLifecycle || 'bounded-approval-surface-light'}</p>
             </div>
             <div className="compact-metric" title="Execution or approval freshness">
@@ -299,8 +303,8 @@ export function OperationsTab({
                 </div>
                 <div className="compact-metric" title="Mutation boundary and execution permission">
                   <span>Guard</span>
-                  <strong>{toolIntent.mutationExecutionPermitted ? 'permitted' : 'proposal-only'}</strong>
-                  <p className="muted">sudo {toolIntent.mutationSudoRequired ? 'required' : 'not-needed'} · {toolIntent.mutationCritical ? 'critical' : 'non-critical'}</p>
+                  <strong>{mutationGuardLabel(toolIntent)}</strong>
+                  <p className="muted">sudo {toolIntent.mutationSudoRequired ? 'required' : 'not needed'} · {toolIntent.mutationCritical ? 'critical' : 'normal risk'}</p>
                 </div>
               </div>
               <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
@@ -308,12 +312,12 @@ export function OperationsTab({
                 <p>{toolIntent.mutationSummary || 'No bounded mutation intent is active.'}</p>
                 <div className="mc-inline-meta">
                   <span className="mc-meta-pill">classification {humanizeToken(toolIntent.mutationIntentClassification || 'none')}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutationNear ? 'mutation_near=true' : 'mutation_near=false'}</span>
-                  <span className="mc-meta-pill">execution_permitted={toolIntent.mutationExecutionPermitted ? 'true' : 'false'}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutationSudoRequired ? 'sudo-needed' : 'sudo-not-needed'}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutationCritical ? 'criticality=critical' : 'criticality=normal'}</span>
-                    {toolIntent.createdAt ? <span className="mc-meta-pill">updated {formatFreshness(toolIntent.createdAt)}</span> : null}
-                  </div>
+                  <span className="mc-meta-pill">{toolIntent.mutationNear ? 'action-near' : 'not action-near'}</span>
+                  <span className="mc-meta-pill">{mutationGuardLabel(toolIntent)}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutationSudoRequired ? 'sudo required' : 'sudo not needed'}</span>
+                  <span className="mc-meta-pill">{toolIntent.mutationCritical ? 'critical change' : 'normal risk'}</span>
+                  {toolIntent.createdAt ? <span className="mc-meta-pill">updated {formatFreshness(toolIntent.createdAt)}</span> : null}
+                </div>
               </article>
             </>
           ) : null}

@@ -29,6 +29,7 @@ def test_runtime_self_model_surfaces_capability_registry_truth(isolated_runtime)
     assert "non_destructive_exec=allowed" in joined
     assert "mutating_exec=explicit-approval-required-bounded-non-sudo-only" in joined
     assert "sudo_exec=explicit-approval-required-bounded-allowlist-with-short-ttl-window" in joined
+    assert "allows only a tiny bounded git read/inspect subset" in joined
     assert "mutating_exec_boundary:" in joined
     assert "sudo_approval_window:" in joined
     assert "sudo_exec_state=" in joined

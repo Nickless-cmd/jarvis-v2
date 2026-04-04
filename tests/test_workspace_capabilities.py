@@ -234,6 +234,58 @@ def test_mutating_exec_command_surfaces_as_approval_gated_proposal_only(
     assert proposal.get("not_executed") is True
 
 
+def test_git_read_exec_commands_are_allowed_as_bounded_inspection(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    status = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="git status",
+    )
+    assert status["status"] == "executed"
+    status_payload = status.get("result") or {}
+    assert status_payload.get("type") == "non-destructive-exec"
+    assert status_payload.get("execution_classification") == "git-read-allowed"
+    assert status_payload.get("execution_scope") == "git-read"
+    assert status_payload.get("repo_scoped") is True
+    assert status_payload.get("mutation_permitted") is False
+
+    diff_stat = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="git diff --stat",
+    )
+    assert diff_stat["status"] == "executed"
+    diff_payload = diff_stat.get("result") or {}
+    assert diff_payload.get("execution_classification") == "git-read-allowed"
+    assert diff_payload.get("execution_scope") == "git-read"
+
+
+def test_git_mutation_and_destructive_git_commands_do_not_execute(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    proposal = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="git pull",
+    )
+    assert proposal["status"] == "approval-required"
+    assert proposal["execution_mode"] == "mutating-exec-proposal"
+    proposal_content = proposal.get("proposal_content") or {}
+    assert proposal_content.get("scope") == "git"
+    assert proposal_content.get("not_executed") is True
+
+    blocked = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="git clean -fd",
+    )
+    assert blocked["status"] == "blocked-git-command"
+    assert blocked["execution_mode"] == "non-destructive-exec"
+
+
 def test_approved_non_sudo_mutating_exec_runs_for_exact_approved_command(
     isolated_runtime,
 ) -> None:
@@ -289,8 +341,10 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
     assert "## EXEC_COMMAND: run non-destructive command" in template_tools
     assert "command_from: user-message" in default_tools
     assert "command_from: user-message" in template_tools
-    assert "No sudo, package install/update, git mutation, delete, shell chaining, or redirection." in default_tools
-    assert "blocks sudo, package mutation, git mutation, delete, shell chaining, and redirection." in template_tools
+    assert "Tiny bounded git read/inspect commands such as `git status`, `git diff --stat`, `git diff --name-only`, `git log --oneline -n N`, and `git branch --show-current` are allowed." in default_tools
+    assert "allows only a tiny bounded git read/inspect subset" in template_tools
+    assert "Git mutation remains proposal-only and non-executed in this pass." in default_tools
+    assert "Git mutation remains proposal-only and non-executed in this pass." in template_tools
     assert "exact bounded non-sudo command" in default_tools
     assert "exact bounded non-sudo command" in template_tools
     assert "tiny bounded sudo allowlist" in default_tools

@@ -473,6 +473,34 @@ def test_visible_run_surfaces_mutating_exec_as_proposal_only(
     assert last_use.get("second_pass_calls") == []
 
 
+def test_visible_run_allows_bounded_git_status_as_non_destructive_exec(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text='<capability-call id="tool:run-non-destructive-command" command_text="git status" />',
+        run_id="visible-cap-git-status",
+        second_pass_text="Jeg læste git-status som bounded inspection og summerede den.",
+        user_message="ja tak",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    delta_events = _parse_sse(chunks, "delta")
+
+    assert capability_events
+    assert capability_events[-1]["status"] == "executed"
+    assert capability_events[-1]["execution_mode"] == "non-destructive-exec"
+    assert any("git-status" in str(item.get("delta") or "") or "bounded inspection" in str(item.get("delta") or "") for item in delta_events)
+    assert (last_use.get("parsed_arguments") or {}).get("command_text") == "git status"
+
+
 def test_visible_run_surfaces_provider_first_pass_error_in_trace(
     isolated_runtime,
     monkeypatch,

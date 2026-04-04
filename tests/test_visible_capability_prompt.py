@@ -26,6 +26,8 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
     assert "mutating_exec=explicit-approval-required-bounded-non-sudo-only" in instruction
     assert "sudo_exec=explicit-approval-required-bounded-allowlist-with-short-ttl-window" in instruction
     assert "workspace_write=explicit-approval-required" in instruction
+    assert "Bounded git read/inspect commands such as git status" in instruction
+    assert "Git mutation remains proposal-only here." in instruction
     assert "exact bounded non-sudo command fingerprint" in instruction
     assert "exact sudo command fingerprint" in instruction
     assert "short auto-expiring sudo approval window" in instruction

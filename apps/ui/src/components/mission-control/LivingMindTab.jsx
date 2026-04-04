@@ -1055,6 +1055,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const experientialContinuity = experientialRuntimeContext?.experientialContinuity || null
   const experientialInfluence = experientialRuntimeContext?.experientialInfluence || null
   const experientialSupport = experientialRuntimeContext?.experientialSupport || null
+  const innerVoiceDaemon = data?.innerVoiceDaemon || null
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1343,6 +1344,14 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           {experientialSupport && experientialSupport.supportPosture !== 'steadying' ? (
           <small className="muted">
             {`support: posture ${humanizeToken(experientialSupport.supportPosture)} · bias ${humanizeToken(experientialSupport.supportBias)} · mode ${humanizeToken(experientialSupport.supportMode)}`}
+          </small>
+          ) : null}
+          {experientialSupport?.narrative && experientialSupport.supportPosture !== 'steadying' ? (
+          <small className="muted">{experientialSupport.narrative}</small>
+          ) : null}
+          {experientialSupport && experientialSupport.supportPosture !== 'steadying' && innerVoiceDaemon?.lastResult?.innerVoiceCreated && innerVoiceDaemon.lastResult.mode ? (
+          <small className="muted">
+            {`shaped inner voice → mode ${humanizeToken(innerVoiceDaemon.lastResult.mode)} · ${humanizeToken(innerVoiceDaemon.lastResult.renderMode)}`}
           </small>
           ) : null}
         </article>

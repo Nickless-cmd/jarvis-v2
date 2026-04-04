@@ -923,6 +923,22 @@ function normalizeExperientialRuntimeContext(item = {}) {
   }
 }
 
+function normalizeInnerVoiceDaemonState(item = {}) {
+  const lastResult = item.last_result || null
+  return {
+    lastRunAt: item.last_run_at || null,
+    cooldownMinutes: Number(item.cooldown_minutes || 0),
+    lastResult: lastResult && lastResult.daemon_ran !== undefined ? {
+      daemonRan: Boolean(lastResult.daemon_ran),
+      innerVoiceCreated: Boolean(lastResult.inner_voice_created),
+      daemonCadenceState: lastResult.daemon_cadence_state || '',
+      mode: lastResult.mode || '',
+      renderMode: lastResult.render_mode || '',
+      trigger: lastResult.trigger || '',
+    } : null,
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -2827,7 +2843,7 @@ export const backend = {
   },
 
   async getMissionControlJarvis() {
-    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload] = await Promise.all([
+    const [payload, contractPayload, attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload] = await Promise.all([
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
       requestJson('/mc/attention-budget').catch(() => null),
@@ -2838,6 +2854,7 @@ export const backend = {
       requestJson('/mc/dream-influence').catch(() => null),
       requestJson('/mc/self-system-code-awareness').catch(() => null),
       requestJson('/mc/experiential-runtime-context').catch(() => null),
+      requestJson('/mc/inner-voice-daemon').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -3675,6 +3692,7 @@ export const backend = {
       adaptiveLearning: normalizeAdaptiveLearning(adaptiveLearningSource || {}),
       selfSystemCodeAwareness: normalizeSelfSystemCodeAwareness(selfSystemCodeAwarenessSource || {}),
       experientialRuntimeContext: normalizeExperientialRuntimeContext(experientialRuntimeContextSource || {}),
+      innerVoiceDaemon: normalizeInnerVoiceDaemonState(innerVoiceDaemonPayload || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

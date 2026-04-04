@@ -168,10 +168,10 @@ export function useMissionControlPhaseA({ active, selection }) {
         jarvis: current.jarvis,
       }))
 
-      void Promise.allSettled([
-        refreshOperations(),
-        refreshObservability(),
-      ])
+      void (async () => {
+        await refreshOperations()
+        await refreshObservability()
+      })()
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
@@ -205,15 +205,12 @@ export function useMissionControlPhaseA({ active, selection }) {
       if (pending.length === 0) return
       setIsRefreshing(true)
       try {
-        await Promise.all(
-          pending.map((tab) => {
-            if (tab === 'overview') return refreshOverview()
-            if (tab === 'operations') return refreshOperations()
-            if (tab === 'observability') return refreshObservability()
-            if (tab === 'jarvis') return refreshJarvis()
-            return Promise.resolve()
-          })
-        )
+        for (const tab of pending) {
+          if (tab === 'overview') await refreshOverview()
+          if (tab === 'operations') await refreshOperations()
+          if (tab === 'observability') await refreshObservability()
+          if (tab === 'jarvis') await refreshJarvis()
+        }
         const completedAt = Date.now()
         pending.forEach((tab) => {
           lastEventRefreshAt.current.set(tab, completedAt)

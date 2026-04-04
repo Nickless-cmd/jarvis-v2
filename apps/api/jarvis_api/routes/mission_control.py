@@ -464,6 +464,136 @@ def _mc_runtime_inspection_bundle() -> dict[str, object]:
     return payload  # type: ignore[return-value]
 
 
+def _mc_runtime_uncached() -> dict:
+    with runtime_surface_cache():
+        settings = load_settings()
+        heartbeat = heartbeat_runtime_surface()
+        payload = {
+            "settings": settings.to_dict(),
+            "heartbeat_runtime": heartbeat,
+            "runtime_embodied_state": build_embodied_state_surface(),
+            "runtime_affective_meta_state": build_affective_meta_state_surface(),
+            "runtime_epistemic_state": build_epistemic_runtime_state_surface(),
+            "runtime_subagent_ecology": build_subagent_ecology_surface(),
+            "runtime_council_runtime": build_council_runtime_surface(),
+            "runtime_adaptive_planner": build_adaptive_planner_runtime_surface(),
+            "runtime_adaptive_reasoning": build_adaptive_reasoning_runtime_surface(),
+            "runtime_guided_learning": build_guided_learning_runtime_surface(),
+            "runtime_adaptive_learning": build_adaptive_learning_runtime_surface(),
+            "runtime_self_system_code_awareness": build_self_system_code_awareness_surface(),
+            "runtime_tool_intent": build_tool_intent_runtime_surface(),
+            "runtime_loop_state": build_loop_runtime_surface(),
+            "runtime_idle_consolidation": build_idle_consolidation_surface(),
+            "runtime_dream_articulation": build_dream_articulation_surface(),
+            "runtime_dream_influence": build_dream_influence_runtime_surface(),
+            "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
+            "visible_execution": visible_execution_readiness(),
+            "visible_identity": load_visible_identity_summary(),
+            "visible_session_continuity": visible_session_continuity_summary(),
+            "visible_continuity": visible_continuity_summary(),
+            "visible_capability_continuity": visible_capability_continuity_summary(),
+            "visible_work": _visible_work_surface(),
+            "visible_work_surface": get_visible_work_surface(),
+            "visible_selected_work_surface": get_visible_selected_work_surface(),
+            "visible_selected_work_item": get_visible_selected_work_item(),
+            "visible_selected_work_note": get_visible_selected_work_note(),
+            "visible_run": _visible_run_surface(),
+            "workspace_capabilities": load_workspace_capabilities(),
+            "provider_router": provider_router_summary(),
+            "cheap_lane_execution": cheap_lane_execution_truth(),
+            "coding_lane_execution": coding_lane_execution_truth(),
+            "local_lane_execution": local_lane_execution_truth(),
+            "capability_invocation": _capability_invocation_surface(),
+            "private_inner_note": _private_inner_note_surface(),
+            "private_growth_note": _private_growth_note_surface(),
+            "private_self_model": _private_self_model_surface(),
+            "private_reflective_selection": _private_reflective_selection_surface(),
+            "private_development_state": _private_development_state_surface(),
+            "private_state": _private_state_surface(),
+            "protected_inner_voice": _protected_inner_voice_surface(),
+            "private_inner_interplay": _private_inner_interplay_surface(),
+            "private_initiative_tension": _private_initiative_tension_surface(),
+            "private_operational_preference": _private_operational_preference_surface(),
+            "operational_preference_alignment": _operational_preference_alignment_surface(),
+            "private_relation_state": _private_relation_state_surface(),
+            "private_temporal_curiosity_state": _private_temporal_curiosity_state_surface(),
+            "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
+            "private_promotion_decision": _private_promotion_decision_surface(),
+            "private_retained_memory_record": _private_retained_memory_record_surface(),
+            "private_retained_memory_projection": _private_retained_memory_projection_surface(),
+            "runtime_development_focuses": build_runtime_development_focus_surface(),
+            "runtime_reflective_critics": build_runtime_reflective_critic_surface(),
+            "runtime_self_model_signals": build_runtime_self_model_signal_surface(),
+            "runtime_goal_signals": build_runtime_goal_signal_surface(),
+            "runtime_reflection_signals": build_runtime_reflection_signal_surface(),
+            "runtime_temporal_recurrence_signals": build_runtime_temporal_recurrence_signal_surface(),
+            "runtime_witness_signals": build_runtime_witness_signal_surface(),
+            "runtime_open_loop_signals": build_runtime_open_loop_signal_surface(),
+            "runtime_open_loop_closure_proposals": build_runtime_open_loop_closure_proposal_surface(),
+            "runtime_internal_opposition_signals": build_runtime_internal_opposition_signal_surface(),
+            "runtime_self_review_signals": build_runtime_self_review_signal_surface(),
+            "runtime_self_review_records": build_runtime_self_review_record_surface(),
+            "runtime_self_review_runs": build_runtime_self_review_run_surface(),
+            "runtime_self_review_outcomes": build_runtime_self_review_outcome_surface(),
+            "runtime_self_review_cadence_signals": build_runtime_self_review_cadence_signal_surface(),
+            "runtime_dream_hypothesis_signals": build_runtime_dream_hypothesis_signal_surface(),
+            "runtime_dream_adoption_candidates": build_runtime_dream_adoption_candidate_surface(),
+            "runtime_dream_influence_proposals": build_runtime_dream_influence_proposal_surface(),
+            "runtime_self_authored_prompt_proposals": build_runtime_self_authored_prompt_proposal_surface(),
+            "runtime_user_understanding_signals": build_runtime_user_understanding_signal_surface(),
+            "runtime_remembered_fact_signals": build_runtime_remembered_fact_signal_surface(),
+            "runtime_private_inner_note_signals": build_runtime_private_inner_note_signal_surface(),
+            "runtime_private_initiative_tension_signals": build_runtime_private_initiative_tension_signal_surface(),
+            "runtime_private_inner_interplay_signals": build_runtime_private_inner_interplay_signal_surface(),
+            "runtime_private_state_snapshots": build_runtime_private_state_snapshot_surface(),
+            "runtime_diary_synthesis_signals": build_diary_synthesis_signal_surface(),
+            "runtime_private_temporal_curiosity_states": build_runtime_private_temporal_curiosity_state_surface(),
+            "runtime_inner_visible_support_signals": build_runtime_inner_visible_support_signal_surface(),
+            "runtime_regulation_homeostasis_signals": build_runtime_regulation_homeostasis_signal_surface(),
+            "runtime_relation_state_signals": build_runtime_relation_state_signal_surface(),
+            "runtime_relation_continuity_signals": build_runtime_relation_continuity_signal_surface(),
+            "runtime_meaning_significance_signals": build_runtime_meaning_significance_signal_surface(),
+            "runtime_temperament_tendency_signals": build_runtime_temperament_tendency_signal_surface(),
+            "runtime_self_narrative_continuity_signals": build_runtime_self_narrative_continuity_signal_surface(),
+            "runtime_metabolism_state_signals": build_runtime_metabolism_state_signal_surface(),
+            "runtime_release_marker_signals": build_runtime_release_marker_signal_surface(),
+            "runtime_consolidation_target_signals": build_runtime_consolidation_target_signal_surface(),
+            "runtime_selective_forgetting_candidates": build_runtime_selective_forgetting_candidate_surface(),
+            "runtime_attachment_topology_signals": build_runtime_attachment_topology_signal_surface(),
+            "runtime_loyalty_gradient_signals": build_runtime_loyalty_gradient_signal_surface(),
+            "runtime_autonomy_pressure_signals": build_runtime_autonomy_pressure_signal_surface(),
+            "runtime_proactive_loop_lifecycle_signals": build_runtime_proactive_loop_lifecycle_surface(),
+            "runtime_proactive_question_gates": build_runtime_proactive_question_gate_surface(),
+            "runtime_webchat_execution_pilot": build_runtime_webchat_execution_pilot_surface(),
+            "runtime_self_narrative_self_model_review_bridge": build_runtime_self_narrative_self_model_review_bridge_surface(),
+            "runtime_executive_contradiction_signals": build_runtime_executive_contradiction_signal_surface(),
+            "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),
+            "runtime_chronicle_consolidation_signals": build_runtime_chronicle_consolidation_signal_surface(),
+            "runtime_chronicle_consolidation_briefs": build_runtime_chronicle_consolidation_brief_surface(),
+            "runtime_chronicle_consolidation_proposals": build_runtime_chronicle_consolidation_proposal_surface(),
+            "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
+            "runtime_memory_md_update_proposals": build_runtime_memory_md_update_proposal_surface(),
+            "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),
+            "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
+            "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
+            "runtime_emergent_signals": build_runtime_emergent_signal_surface(),
+            "runtime_relevance_decisions": build_runtime_relevance_decision_surface(),
+            "runtime_memory_selections": build_runtime_memory_selection_surface(),
+            "runtime_inner_visible_prompt_bridges": build_runtime_inner_visible_prompt_bridge_surface(),
+            "paths": {
+                "config_dir": _path_state(CONFIG_DIR),
+                "settings_file": _path_state(SETTINGS_FILE),
+                "provider_router_file": _path_state(PROVIDER_ROUTER_FILE),
+                "state_dir": _path_state(STATE_DIR),
+                "log_dir": _path_state(LOG_DIR),
+                "cache_dir": _path_state(CACHE_DIR),
+                "auth_dir": _path_state(AUTH_DIR),
+                "workspaces_dir": _path_state(WORKSPACES_DIR),
+            },
+        }
+    return payload
+
+
 @router.get("/overview")
 def mc_overview() -> dict:
     with connect() as conn:
@@ -733,123 +863,97 @@ def mc_jarvis() -> dict:
     if cached is not None:
         return cached  # type: ignore[return-value]
 
-    with runtime_surface_cache():
-        visible_identity = load_visible_identity_summary()
-        visible_session = visible_session_continuity_summary()
-        visible_continuity = visible_continuity_summary()
-        visible_capability = visible_capability_continuity_summary()
-        private_state = _private_state_surface()
-        protected_voice = _protected_inner_voice_surface()
-        inner_interplay = _private_inner_interplay_surface()
-        initiative_tension = _private_initiative_tension_surface()
-        relation_state = _private_relation_state_surface()
-        temporal_curiosity = _private_temporal_curiosity_state_surface()
-        promotion_signal = _private_temporal_promotion_signal_surface()
-        promotion_decision = _private_promotion_decision_surface()
-        retained_record = _private_retained_memory_record_surface()
-        retained_projection = _private_retained_memory_projection_surface()
-        self_model = _private_self_model_surface()
-        development_state = _private_development_state_surface()
-        growth_note = _private_growth_note_surface()
-        reflective = _private_reflective_selection_surface()
-        operational_preference = _private_operational_preference_surface()
-        operational_alignment = _operational_preference_alignment_surface()
-        development_focuses = build_runtime_development_focus_surface()
-        reflective_critics = build_runtime_reflective_critic_surface()
-        self_model_signals = build_runtime_self_model_signal_surface()
-        goal_signals = build_runtime_goal_signal_surface()
-        reflection_signals = build_runtime_reflection_signal_surface()
-        temporal_recurrence_signals = build_runtime_temporal_recurrence_signal_surface()
-        witness_signals = build_runtime_witness_signal_surface()
-        open_loop_signals = build_runtime_open_loop_signal_surface()
-        open_loop_closure_proposals = build_runtime_open_loop_closure_proposal_surface()
-        internal_opposition_signals = build_runtime_internal_opposition_signal_surface()
-        self_review_signals = build_runtime_self_review_signal_surface()
-        self_review_records = build_runtime_self_review_record_surface()
-        self_review_runs = build_runtime_self_review_run_surface()
-        self_review_outcomes = build_runtime_self_review_outcome_surface()
-        self_review_cadence_signals = build_runtime_self_review_cadence_signal_surface()
-        dream_hypothesis_signals = build_runtime_dream_hypothesis_signal_surface()
-        dream_adoption_candidates = build_runtime_dream_adoption_candidate_surface()
-        dream_influence_proposals = build_runtime_dream_influence_proposal_surface()
-        self_authored_prompt_proposals = (
-            build_runtime_self_authored_prompt_proposal_surface()
-        )
-        prompt_evolution = build_prompt_evolution_runtime_surface()
-        user_understanding_signals = build_runtime_user_understanding_signal_surface()
-        remembered_fact_signals = build_runtime_remembered_fact_signal_surface()
-        private_inner_note_signals = build_runtime_private_inner_note_signal_surface()
-        private_initiative_tension_signals = (
-            build_runtime_private_initiative_tension_signal_surface()
-        )
-        private_inner_interplay_signals = (
-            build_runtime_private_inner_interplay_signal_surface()
-        )
-        private_state_snapshots = build_runtime_private_state_snapshot_surface()
-        diary_synthesis_signals = build_diary_synthesis_signal_surface()
-        private_temporal_curiosity_states = (
-            build_runtime_private_temporal_curiosity_state_surface()
-        )
-        inner_visible_support_signals = build_runtime_inner_visible_support_signal_surface()
-        regulation_homeostasis_signals = (
-            build_runtime_regulation_homeostasis_signal_surface()
-        )
-        relation_state_signals = build_runtime_relation_state_signal_surface()
-        relation_continuity_signals = build_runtime_relation_continuity_signal_surface()
-        meaning_significance_signals = build_runtime_meaning_significance_signal_surface()
-        temperament_tendency_signals = build_runtime_temperament_tendency_signal_surface()
-        self_narrative_continuity_signals = (
-            build_runtime_self_narrative_continuity_signal_surface()
-        )
-        metabolism_state_signals = build_runtime_metabolism_state_signal_surface()
-        release_marker_signals = build_runtime_release_marker_signal_surface()
-        consolidation_target_signals = build_runtime_consolidation_target_signal_surface()
-        selective_forgetting_candidates = (
-            build_runtime_selective_forgetting_candidate_surface()
-        )
-        attachment_topology_signals = build_runtime_attachment_topology_signal_surface()
-        loyalty_gradient_signals = build_runtime_loyalty_gradient_signal_surface()
-        autonomy_pressure_signals = build_runtime_autonomy_pressure_signal_surface()
-        proactive_loop_lifecycle_signals = build_runtime_proactive_loop_lifecycle_surface()
-        proactive_question_gates = build_runtime_proactive_question_gate_surface()
-        webchat_execution_pilot = build_runtime_webchat_execution_pilot_surface()
-        self_narrative_self_model_review_bridge = (
-            build_runtime_self_narrative_self_model_review_bridge_surface()
-        )
-        executive_contradiction_signals = (
-            build_runtime_executive_contradiction_signal_surface()
-        )
-        private_temporal_promotion_signals = (
-            build_runtime_private_temporal_promotion_signal_surface()
-        )
-        chronicle_consolidation_signals = (
-            build_runtime_chronicle_consolidation_signal_surface()
-        )
-        chronicle_consolidation_briefs = (
-            build_runtime_chronicle_consolidation_brief_surface()
-        )
-        chronicle_consolidation_proposals = (
-            build_runtime_chronicle_consolidation_proposal_surface()
-        )
-        user_md_update_proposals = build_runtime_user_md_update_proposal_surface()
-        memory_md_update_proposals = build_runtime_memory_md_update_proposal_surface()
-        selfhood_proposals = build_runtime_selfhood_proposal_surface()
-        world_model_signals = build_runtime_world_model_signal_surface()
-        runtime_awareness_signals = build_runtime_awareness_signal_surface()
-        emergent_signals = build_runtime_emergent_signal_surface(limit=8)
-        heartbeat = heartbeat_runtime_surface()
-        private_brain = build_private_brain_surface()
-        session_distillation = build_session_distillation_surface()
-        heartbeat_state = heartbeat.get("state") or {}
-        self_knowledge = build_runtime_self_knowledge_map(
-            heartbeat_state=heartbeat_state
-        )
-        cognitive_frame = build_cognitive_frame(
-            self_knowledge=self_knowledge,
-            heartbeat_state=heartbeat_state,
-        )
+    runtime = mc_runtime()
+    visible_identity = dict(runtime.get("visible_identity") or {})
+    visible_session = dict(runtime.get("visible_session_continuity") or {})
+    visible_continuity = dict(runtime.get("visible_continuity") or {})
+    visible_capability = dict(runtime.get("visible_capability_continuity") or {})
+    private_state = dict(runtime.get("private_state") or {})
+    protected_voice = dict(runtime.get("protected_inner_voice") or {})
+    inner_interplay = dict(runtime.get("private_inner_interplay") or {})
+    initiative_tension = dict(runtime.get("private_initiative_tension") or {})
+    relation_state = dict(runtime.get("private_relation_state") or {})
+    temporal_curiosity = dict(runtime.get("private_temporal_curiosity_state") or {})
+    promotion_signal = dict(runtime.get("private_temporal_promotion_signal") or {})
+    promotion_decision = dict(runtime.get("private_promotion_decision") or {})
+    retained_record = dict(runtime.get("private_retained_memory_record") or {})
+    retained_projection = dict(runtime.get("private_retained_memory_projection") or {})
+    self_model = dict(runtime.get("private_self_model") or {})
+    development_state = dict(runtime.get("private_development_state") or {})
+    growth_note = dict(runtime.get("private_growth_note") or {})
+    reflective = dict(runtime.get("private_reflective_selection") or {})
+    operational_preference = dict(runtime.get("private_operational_preference") or {})
+    operational_alignment = dict(runtime.get("operational_preference_alignment") or {})
+    development_focuses = dict(runtime.get("runtime_development_focuses") or {})
+    reflective_critics = dict(runtime.get("runtime_reflective_critics") or {})
+    self_model_signals = dict(runtime.get("runtime_self_model_signals") or {})
+    goal_signals = dict(runtime.get("runtime_goal_signals") or {})
+    reflection_signals = dict(runtime.get("runtime_reflection_signals") or {})
+    temporal_recurrence_signals = dict(runtime.get("runtime_temporal_recurrence_signals") or {})
+    witness_signals = dict(runtime.get("runtime_witness_signals") or {})
+    open_loop_signals = dict(runtime.get("runtime_open_loop_signals") or {})
+    open_loop_closure_proposals = dict(runtime.get("runtime_open_loop_closure_proposals") or {})
+    internal_opposition_signals = dict(runtime.get("runtime_internal_opposition_signals") or {})
+    self_review_signals = dict(runtime.get("runtime_self_review_signals") or {})
+    self_review_records = dict(runtime.get("runtime_self_review_records") or {})
+    self_review_runs = dict(runtime.get("runtime_self_review_runs") or {})
+    self_review_outcomes = dict(runtime.get("runtime_self_review_outcomes") or {})
+    self_review_cadence_signals = dict(runtime.get("runtime_self_review_cadence_signals") or {})
+    dream_hypothesis_signals = dict(runtime.get("runtime_dream_hypothesis_signals") or {})
+    dream_adoption_candidates = dict(runtime.get("runtime_dream_adoption_candidates") or {})
+    dream_influence_proposals = dict(runtime.get("runtime_dream_influence_proposals") or {})
+    self_authored_prompt_proposals = dict(runtime.get("runtime_self_authored_prompt_proposals") or {})
+    prompt_evolution = dict(runtime.get("runtime_prompt_evolution") or {})
+    user_understanding_signals = dict(runtime.get("runtime_user_understanding_signals") or {})
+    remembered_fact_signals = dict(runtime.get("runtime_remembered_fact_signals") or {})
+    private_inner_note_signals = dict(runtime.get("runtime_private_inner_note_signals") or {})
+    private_initiative_tension_signals = dict(runtime.get("runtime_private_initiative_tension_signals") or {})
+    private_inner_interplay_signals = dict(runtime.get("runtime_private_inner_interplay_signals") or {})
+    private_state_snapshots = dict(runtime.get("runtime_private_state_snapshots") or {})
+    diary_synthesis_signals = dict(runtime.get("runtime_diary_synthesis_signals") or {})
+    private_temporal_curiosity_states = dict(runtime.get("runtime_private_temporal_curiosity_states") or {})
+    inner_visible_support_signals = dict(runtime.get("runtime_inner_visible_support_signals") or {})
+    regulation_homeostasis_signals = dict(runtime.get("runtime_regulation_homeostasis_signals") or {})
+    relation_state_signals = dict(runtime.get("runtime_relation_state_signals") or {})
+    relation_continuity_signals = dict(runtime.get("runtime_relation_continuity_signals") or {})
+    meaning_significance_signals = dict(runtime.get("runtime_meaning_significance_signals") or {})
+    temperament_tendency_signals = dict(runtime.get("runtime_temperament_tendency_signals") or {})
+    self_narrative_continuity_signals = dict(runtime.get("runtime_self_narrative_continuity_signals") or {})
+    metabolism_state_signals = dict(runtime.get("runtime_metabolism_state_signals") or {})
+    release_marker_signals = dict(runtime.get("runtime_release_marker_signals") or {})
+    consolidation_target_signals = dict(runtime.get("runtime_consolidation_target_signals") or {})
+    selective_forgetting_candidates = dict(runtime.get("runtime_selective_forgetting_candidates") or {})
+    attachment_topology_signals = dict(runtime.get("runtime_attachment_topology_signals") or {})
+    loyalty_gradient_signals = dict(runtime.get("runtime_loyalty_gradient_signals") or {})
+    autonomy_pressure_signals = dict(runtime.get("runtime_autonomy_pressure_signals") or {})
+    proactive_loop_lifecycle_signals = dict(runtime.get("runtime_proactive_loop_lifecycle_signals") or {})
+    proactive_question_gates = dict(runtime.get("runtime_proactive_question_gates") or {})
+    webchat_execution_pilot = dict(runtime.get("runtime_webchat_execution_pilot") or {})
+    self_narrative_self_model_review_bridge = dict(runtime.get("runtime_self_narrative_self_model_review_bridge") or {})
+    executive_contradiction_signals = dict(runtime.get("runtime_executive_contradiction_signals") or {})
+    private_temporal_promotion_signals = dict(runtime.get("runtime_private_temporal_promotion_signals") or {})
+    chronicle_consolidation_signals = dict(runtime.get("runtime_chronicle_consolidation_signals") or {})
+    chronicle_consolidation_briefs = dict(runtime.get("runtime_chronicle_consolidation_briefs") or {})
+    chronicle_consolidation_proposals = dict(runtime.get("runtime_chronicle_consolidation_proposals") or {})
+    user_md_update_proposals = dict(runtime.get("runtime_user_md_update_proposals") or {})
+    memory_md_update_proposals = dict(runtime.get("runtime_memory_md_update_proposals") or {})
+    selfhood_proposals = dict(runtime.get("runtime_selfhood_proposals") or {})
+    world_model_signals = dict(runtime.get("runtime_world_model_signals") or {})
+    runtime_awareness_signals = dict(runtime.get("runtime_awareness_signals") or {})
+    emergent_signals = dict(runtime.get("runtime_emergent_signals") or {})
+    heartbeat = dict(runtime.get("heartbeat_runtime") or {})
+    private_brain = build_private_brain_surface()
+    session_distillation = build_session_distillation_surface()
+    heartbeat_state = heartbeat.get("state") or {}
+    self_knowledge = build_runtime_self_knowledge_map(
+        heartbeat_state=heartbeat_state
+    )
+    cognitive_frame = build_cognitive_frame(
+        self_knowledge=self_knowledge,
+        heartbeat_state=heartbeat_state,
+    )
 
-        payload = {
+    payload = {
         "summary": {
             "visible_identity": _jarvis_identity_summary(visible_identity),
             "state_signal": _jarvis_state_signal(
@@ -969,8 +1073,8 @@ def mc_jarvis() -> dict:
         },
         "self_knowledge": self_knowledge,
         "cognitive_frame": cognitive_frame,
-        }
-        return _store_cached_mc_payload("jarvis", 5.0, payload)  # type: ignore[return-value]
+    }
+    return _store_cached_mc_payload("jarvis", 5.0, payload)  # type: ignore[return-value]
 
 
 @router.get("/cognitive-frame")
@@ -1277,137 +1381,12 @@ def mc_apply_runtime_contract_candidate(candidate_id: str) -> dict:
 
 @router.get("/runtime")
 def mc_runtime() -> dict:
-    cached = _get_cached_mc_payload("runtime", 3.0)
-    if cached is not None:
-        return cached  # type: ignore[return-value]
-
-    with runtime_surface_cache():
-        settings = load_settings()
-        heartbeat = heartbeat_runtime_surface()
-        payload = {
-            "settings": settings.to_dict(),
-            "heartbeat_runtime": heartbeat,
-            "runtime_embodied_state": build_embodied_state_surface(),
-            "runtime_affective_meta_state": build_affective_meta_state_surface(),
-            "runtime_epistemic_state": build_epistemic_runtime_state_surface(),
-            "runtime_subagent_ecology": build_subagent_ecology_surface(),
-            "runtime_council_runtime": build_council_runtime_surface(),
-            "runtime_adaptive_planner": build_adaptive_planner_runtime_surface(),
-            "runtime_adaptive_reasoning": build_adaptive_reasoning_runtime_surface(),
-            "runtime_guided_learning": build_guided_learning_runtime_surface(),
-            "runtime_adaptive_learning": build_adaptive_learning_runtime_surface(),
-            "runtime_self_system_code_awareness": build_self_system_code_awareness_surface(),
-            "runtime_tool_intent": build_tool_intent_runtime_surface(),
-            "runtime_loop_state": build_loop_runtime_surface(),
-            "runtime_idle_consolidation": build_idle_consolidation_surface(),
-            "runtime_dream_articulation": build_dream_articulation_surface(),
-            "runtime_dream_influence": build_dream_influence_runtime_surface(),
-            "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
-            "visible_execution": visible_execution_readiness(),
-            "visible_identity": load_visible_identity_summary(),
-            "visible_session_continuity": visible_session_continuity_summary(),
-            "visible_continuity": visible_continuity_summary(),
-            "visible_capability_continuity": visible_capability_continuity_summary(),
-            "visible_work": _visible_work_surface(),
-            "visible_work_surface": get_visible_work_surface(),
-            "visible_selected_work_surface": get_visible_selected_work_surface(),
-            "visible_selected_work_item": get_visible_selected_work_item(),
-            "visible_selected_work_note": get_visible_selected_work_note(),
-            "visible_run": _visible_run_surface(),
-            "workspace_capabilities": load_workspace_capabilities(),
-            "provider_router": provider_router_summary(),
-            "cheap_lane_execution": cheap_lane_execution_truth(),
-            "coding_lane_execution": coding_lane_execution_truth(),
-            "local_lane_execution": local_lane_execution_truth(),
-            "capability_invocation": _capability_invocation_surface(),
-            "private_inner_note": _private_inner_note_surface(),
-            "private_growth_note": _private_growth_note_surface(),
-            "private_self_model": _private_self_model_surface(),
-            "private_reflective_selection": _private_reflective_selection_surface(),
-            "private_development_state": _private_development_state_surface(),
-            "private_state": _private_state_surface(),
-            "protected_inner_voice": _protected_inner_voice_surface(),
-            "private_inner_interplay": _private_inner_interplay_surface(),
-            "private_initiative_tension": _private_initiative_tension_surface(),
-            "private_operational_preference": _private_operational_preference_surface(),
-            "operational_preference_alignment": _operational_preference_alignment_surface(),
-            "private_relation_state": _private_relation_state_surface(),
-            "private_temporal_curiosity_state": _private_temporal_curiosity_state_surface(),
-            "private_temporal_promotion_signal": _private_temporal_promotion_signal_surface(),
-            "private_promotion_decision": _private_promotion_decision_surface(),
-            "private_retained_memory_record": _private_retained_memory_record_surface(),
-            "private_retained_memory_projection": _private_retained_memory_projection_surface(),
-            "runtime_development_focuses": build_runtime_development_focus_surface(),
-            "runtime_reflective_critics": build_runtime_reflective_critic_surface(),
-            "runtime_self_model_signals": build_runtime_self_model_signal_surface(),
-        "runtime_goal_signals": build_runtime_goal_signal_surface(),
-        "runtime_reflection_signals": build_runtime_reflection_signal_surface(),
-        "runtime_temporal_recurrence_signals": build_runtime_temporal_recurrence_signal_surface(),
-        "runtime_witness_signals": build_runtime_witness_signal_surface(),
-        "runtime_open_loop_signals": build_runtime_open_loop_signal_surface(),
-        "runtime_open_loop_closure_proposals": build_runtime_open_loop_closure_proposal_surface(),
-        "runtime_internal_opposition_signals": build_runtime_internal_opposition_signal_surface(),
-        "runtime_self_review_signals": build_runtime_self_review_signal_surface(),
-        "runtime_self_review_records": build_runtime_self_review_record_surface(),
-        "runtime_self_review_runs": build_runtime_self_review_run_surface(),
-        "runtime_self_review_outcomes": build_runtime_self_review_outcome_surface(),
-        "runtime_self_review_cadence_signals": build_runtime_self_review_cadence_signal_surface(),
-        "runtime_dream_hypothesis_signals": build_runtime_dream_hypothesis_signal_surface(),
-        "runtime_dream_adoption_candidates": build_runtime_dream_adoption_candidate_surface(),
-        "runtime_dream_influence_proposals": build_runtime_dream_influence_proposal_surface(),
-        "runtime_self_authored_prompt_proposals": build_runtime_self_authored_prompt_proposal_surface(),
-        "runtime_user_understanding_signals": build_runtime_user_understanding_signal_surface(),
-        "runtime_remembered_fact_signals": build_runtime_remembered_fact_signal_surface(),
-        "runtime_private_inner_note_signals": build_runtime_private_inner_note_signal_surface(),
-        "runtime_private_initiative_tension_signals": build_runtime_private_initiative_tension_signal_surface(),
-        "runtime_private_inner_interplay_signals": build_runtime_private_inner_interplay_signal_surface(),
-        "runtime_private_state_snapshots": build_runtime_private_state_snapshot_surface(),
-        "runtime_diary_synthesis_signals": build_diary_synthesis_signal_surface(),
-        "runtime_private_temporal_curiosity_states": build_runtime_private_temporal_curiosity_state_surface(),
-        "runtime_inner_visible_support_signals": build_runtime_inner_visible_support_signal_surface(),
-        "runtime_regulation_homeostasis_signals": build_runtime_regulation_homeostasis_signal_surface(),
-        "runtime_relation_state_signals": build_runtime_relation_state_signal_surface(),
-        "runtime_relation_continuity_signals": build_runtime_relation_continuity_signal_surface(),
-        "runtime_meaning_significance_signals": build_runtime_meaning_significance_signal_surface(),
-        "runtime_temperament_tendency_signals": build_runtime_temperament_tendency_signal_surface(),
-        "runtime_self_narrative_continuity_signals": build_runtime_self_narrative_continuity_signal_surface(),
-        "runtime_metabolism_state_signals": build_runtime_metabolism_state_signal_surface(),
-        "runtime_release_marker_signals": build_runtime_release_marker_signal_surface(),
-        "runtime_consolidation_target_signals": build_runtime_consolidation_target_signal_surface(),
-        "runtime_selective_forgetting_candidates": build_runtime_selective_forgetting_candidate_surface(),
-        "runtime_attachment_topology_signals": build_runtime_attachment_topology_signal_surface(),
-        "runtime_loyalty_gradient_signals": build_runtime_loyalty_gradient_signal_surface(),
-        "runtime_autonomy_pressure_signals": build_runtime_autonomy_pressure_signal_surface(),
-        "runtime_proactive_loop_lifecycle_signals": build_runtime_proactive_loop_lifecycle_surface(),
-        "runtime_proactive_question_gates": build_runtime_proactive_question_gate_surface(),
-        "runtime_webchat_execution_pilot": build_runtime_webchat_execution_pilot_surface(),
-        "runtime_self_narrative_self_model_review_bridge": build_runtime_self_narrative_self_model_review_bridge_surface(),
-        "runtime_executive_contradiction_signals": build_runtime_executive_contradiction_signal_surface(),
-        "runtime_private_temporal_promotion_signals": build_runtime_private_temporal_promotion_signal_surface(),
-        "runtime_chronicle_consolidation_signals": build_runtime_chronicle_consolidation_signal_surface(),
-        "runtime_chronicle_consolidation_briefs": build_runtime_chronicle_consolidation_brief_surface(),
-        "runtime_chronicle_consolidation_proposals": build_runtime_chronicle_consolidation_proposal_surface(),
-        "runtime_user_md_update_proposals": build_runtime_user_md_update_proposal_surface(),
-        "runtime_memory_md_update_proposals": build_runtime_memory_md_update_proposal_surface(),
-        "runtime_selfhood_proposals": build_runtime_selfhood_proposal_surface(),
-        "runtime_world_model_signals": build_runtime_world_model_signal_surface(),
-        "runtime_awareness_signals": build_runtime_awareness_signal_surface(),
-        "runtime_emergent_signals": build_runtime_emergent_signal_surface(),
-        "runtime_relevance_decisions": build_runtime_relevance_decision_surface(),
-        "runtime_memory_selections": build_runtime_memory_selection_surface(),
-        "runtime_inner_visible_prompt_bridges": build_runtime_inner_visible_prompt_bridge_surface(),
-        "paths": {
-            "config_dir": _path_state(CONFIG_DIR),
-            "settings_file": _path_state(SETTINGS_FILE),
-            "provider_router_file": _path_state(PROVIDER_ROUTER_FILE),
-            "state_dir": _path_state(STATE_DIR),
-            "log_dir": _path_state(LOG_DIR),
-            "cache_dir": _path_state(CACHE_DIR),
-            "auth_dir": _path_state(AUTH_DIR),
-            "workspaces_dir": _path_state(WORKSPACES_DIR),
-        },
-    }
-    return _store_cached_mc_payload("runtime", 3.0, payload)  # type: ignore[return-value]
+    payload = _get_or_build_cached_mc_payload(
+        "runtime",
+        3.0,
+        _mc_runtime_uncached,
+    )
+    return payload  # type: ignore[return-value]
 
 
 @router.get("/visible-execution")

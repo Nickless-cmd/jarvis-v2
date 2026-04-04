@@ -1654,6 +1654,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from apps.api.jarvis_api.services.experiential_runtime_context import (
+            build_experiential_runtime_prompt_section,
+        )
+        experiential = build_experiential_runtime_prompt_section()
+        if experiential:
+            parts.append(experiential)
+    except Exception:
+        pass
+    try:
         from apps.api.jarvis_api.services.epistemic_runtime_state import (
             build_epistemic_runtime_prompt_section,
         )

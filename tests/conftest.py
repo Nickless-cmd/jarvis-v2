@@ -91,6 +91,7 @@ def isolated_runtime(
         "apps.api.jarvis_api.services.internal_cadence",
         "apps.api.jarvis_api.services.embodied_state",
         "apps.api.jarvis_api.services.affective_meta_state",
+        "apps.api.jarvis_api.services.experiential_runtime_context",
         "apps.api.jarvis_api.services.epistemic_runtime_state",
         "apps.api.jarvis_api.services.subagent_ecology",
         "apps.api.jarvis_api.services.council_runtime",
@@ -301,6 +302,9 @@ def isolated_runtime(
         ],
         affective_meta_state=modules[
             "apps.api.jarvis_api.services.affective_meta_state"
+        ],
+        experiential_runtime_context=modules[
+            "apps.api.jarvis_api.services.experiential_runtime_context"
         ],
         epistemic_runtime_state=modules[
             "apps.api.jarvis_api.services.epistemic_runtime_state"

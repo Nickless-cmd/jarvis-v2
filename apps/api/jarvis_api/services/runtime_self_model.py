@@ -53,6 +53,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "workspace_capabilities": load_workspace_capabilities(),
             "embodied_state": _embodied_state_surface(),
             "affective_meta_state": _affective_meta_state_surface(),
+            "experiential_runtime_context": _experiential_runtime_context_surface(),
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -632,6 +633,11 @@ def build_self_model_prompt_lines() -> list[str]:
     summary = model["summary"]
     embodied = model.get("embodied_state") or {}
     affective_meta = model.get("affective_meta_state") or {}
+    experiential = model.get("experiential_runtime_context") or {}
+    embodied_translation = experiential.get("embodied_translation") or {}
+    affective_translation = experiential.get("affective_translation") or {}
+    intermittence_translation = experiential.get("intermittence_translation") or {}
+    context_pressure_translation = experiential.get("context_pressure_translation") or {}
     epistemic = model.get("epistemic_runtime_state") or {}
     subagent_ecology = model.get("subagent_ecology") or {}
     ecology_summary = subagent_ecology.get("summary") or {}
@@ -765,6 +771,20 @@ def build_self_model_prompt_lines() -> list[str]:
         f"{affective_meta.get('state') or 'unknown'}"
         f" | bearing={affective_meta.get('bearing') or 'unknown'}"
         f" | monitoring={affective_meta.get('monitoring_mode') or 'unknown'}"
+    )
+    lines.append(
+        "  experiential_runtime_context: "
+        f"body={embodied_translation.get('state') or 'unknown'}"
+        f" | tone={affective_translation.get('state') or 'unknown'}"
+        f" | intermittence={intermittence_translation.get('state') or 'continuous'}"
+        f" | context_pressure={context_pressure_translation.get('state') or 'clear'}"
+    )
+    lines.append(
+        "  experiential_narrative: "
+        f"body='{embodied_translation.get('narrative') or 'none'}'"
+        f" | tone='{affective_translation.get('narrative') or 'none'}'"
+        f" | intermittence='{intermittence_translation.get('narrative') or 'none'}'"
+        f" | context='{context_pressure_translation.get('narrative') or 'none'}'"
     )
     lines.append(
         "  epistemic_runtime_state: "
@@ -955,6 +975,21 @@ def _affective_meta_state_surface() -> dict[str, object]:
             "state": "unknown",
             "bearing": "unknown",
             "monitoring_mode": "steady-check",
+        }
+
+
+def _experiential_runtime_context_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.experiential_runtime_context import (
+            build_experiential_runtime_context_surface,
+        )
+        return build_experiential_runtime_context_surface()
+    except Exception:
+        return {
+            "embodied_translation": {"state": "unknown", "narrative": "none"},
+            "affective_translation": {"state": "unknown", "narrative": "none"},
+            "intermittence_translation": {"state": "continuous", "narrative": "none"},
+            "context_pressure_translation": {"state": "clear", "narrative": "none"},
         }
 
 

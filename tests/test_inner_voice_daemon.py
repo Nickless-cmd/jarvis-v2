@@ -368,14 +368,14 @@ def test_support_shading_nudges_observing_to_reflective_carry() -> None:
     assert result == "reflective-carry"
 
 
-def test_support_shading_nudges_observing_to_growth_oriented() -> None:
-    """reopen_context bias should nudge 'observing' to 'growth-oriented'."""
+def test_support_shading_nudges_observing_to_wondering() -> None:
+    """reopen_context bias should nudge 'observing' to 'wondering'."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
     result = _apply_support_shading("observing", {
         "experiential_support_bias": "reopen_context",
     })
-    assert result == "growth-oriented"
+    assert result == "wondering"
 
 
 def test_support_shading_nudges_observing_to_held_tension() -> None:
@@ -436,8 +436,9 @@ def test_deterministic_compose_includes_support_narrative() -> None:
 
     assert "Support:" in note["summary"]
     assert "Carrying weight" in note["summary"]
-    # Mode should be shaded from observing → continuity-aware
-    assert note["mode"] == "continuity-aware"
+    # open-loops source sets mode to "questioning"; support shading only
+    # applies to "observing" so the mode stays "questioning" here.
+    assert note["mode"] == "questioning"
 
 
 def test_deterministic_compose_no_support_when_baseline() -> None:

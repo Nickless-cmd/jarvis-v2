@@ -1215,7 +1215,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         '<capability-call id="capability_id" command_text="pwd" />'
     )
     lines.append(
-        "- If you invoke a capability, emit exactly one capability-call line and no surrounding prose."
+        "- When you invoke capabilities, emit the capability-call tags together. "
+        "You may include a brief sentence before or after the tags explaining what you are doing, "
+        "but keep it short — the capability results will speak for themselves."
     )
     lines.append(
         "- For arg-requiring capabilities, the capability-call tag is authoritative. User-message extraction is compatibility fallback only."
@@ -1230,7 +1232,10 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         for item in available
     ):
         lines.append(
-            "- Dynamic external file read is allowed only when the user message already names one explicit /absolute/or ~/path outside the workspace root."
+            "- Dynamic external file read and directory listing can use paths from: "
+            "(1) the user's current message, (2) results from previous capability calls in this turn, "
+            "(3) well-known paths (PROJECT_ROOT, workspace root, home directory). "
+            "You do not need the user to spell out every path — if you know the path from context, use it."
         )
     if any(
         str(item.get("execution_mode") or "") == "non-destructive-exec"
@@ -1238,7 +1243,8 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         for item in available
     ):
         lines.append(
-            "- Non-destructive exec is allowed only when the user message already includes one explicit command in backticks or a command:/kommando: line."
+            "- Non-destructive exec is allowed when the user's intent is clear. "
+            "You do not need the command in backticks — infer the appropriate read-only command from context."
         )
         lines.append(
             "- Bounded git read/inspect commands such as git status, git diff --stat, git diff --name-only, git log --oneline -n N, and git branch --show-current may execute as non-destructive inspection. Git mutation remains proposal-only here and is classified into small repo stewardship classes such as git-stage, git-commit, git-sync, git-branch-switch, git-history-rewrite, git-stash, or git-other-mutate. Git clean stays blocked. If a command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass. Runtime may reuse a short auto-expiring sudo approval window only for the same bounded sudo scope."

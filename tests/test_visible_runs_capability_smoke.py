@@ -191,10 +191,11 @@ def test_visible_run_consumes_prose_plus_capability_without_raw_tag_leakage(
     assert last_use.get("capability_id") == "tool:read-workspace-user-profile"
 
 
-def test_visible_run_selects_first_known_capability_when_multiple_are_emitted(
+def test_visible_run_executes_all_known_capabilities_when_multiple_are_emitted(
     isolated_runtime,
     monkeypatch,
 ) -> None:
+    """All unique known capabilities execute; duplicates are deduped."""
     visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
     visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
@@ -209,17 +210,19 @@ def test_visible_run_selects_first_known_capability_when_multiple_are_emitted(
             '<capability-call id="tool:read-workspace-user-profile" />'
         ),
         run_id="visible-cap-multi",
-        second_pass_text="Jeg fandt brugerprofilen og bruger den som grundlag for svaret.",
+        second_pass_text="Jeg fandt brugerprofilen og readme og bruger dem som grundlag for svaret.",
     )
 
     capability_events = _parse_sse(chunks, "capability")
     delta_events = _parse_sse(chunks, "delta")
 
-    assert len(capability_events) == 1
-    assert capability_events[0]["capability_id"] == "tool:read-workspace-user-profile"
-    assert any("Jeg fandt brugerprofilen" in str(item.get("delta") or "") for item in delta_events)
+    # Both unique capabilities execute (third is deduped)
+    assert len(capability_events) == 2
+    executed_ids = [e["capability_id"] for e in capability_events]
+    assert "tool:read-workspace-user-profile" in executed_ids
+    assert "tool:read-repository-readme" in executed_ids
+    assert any("brugerprofilen og readme" in str(item.get("delta") or "") for item in delta_events)
     assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
-    assert last_use.get("capability_id") == "tool:read-workspace-user-profile"
     assert len(last_use.get("second_pass_calls") or []) == 1
 
 
@@ -542,8 +545,8 @@ def test_extract_capability_plan_returns_all_known_capabilities() -> None:
 
     text = (
         '<capability-call id="tool:read-workspace-user-profile" /> '
-        '<capability-call id="tool:read-workspace-memory" /> '
-        '<capability-call id="tool:read-repository-readme" />'
+        '<capability-call id="tool:read-repository-readme" /> '
+        '<capability-call id="tool:read-workspace-user-profile" />'
     )
     plan = visible_runs._extract_capability_plan(text)
 
@@ -551,10 +554,10 @@ def test_extract_capability_plan_returns_all_known_capabilities() -> None:
     assert plan["had_markup"] is True
     assert plan["multiple"] is True
     all_caps = plan["all_capabilities"]
-    assert len(all_caps) >= 2
+    assert len(all_caps) == 2  # deduped: user-profile + readme
     cap_ids = [c["capability_id"] for c in all_caps]
     assert "tool:read-workspace-user-profile" in cap_ids
-    assert "tool:read-workspace-memory" in cap_ids
+    assert "tool:read-repository-readme" in cap_ids
 
 
 def test_extract_capability_plan_caps_at_max_capabilities() -> None:
@@ -569,3 +572,45 @@ def test_extract_capability_plan_caps_at_max_capabilities() -> None:
     )
     plan = visible_runs._extract_capability_plan(tags)
     assert len(plan["all_capabilities"]) <= visible_runs._MAX_CAPABILITIES_PER_TURN
+
+
+# ---------------------------------------------------------------------------
+# Multi-capability execution tests
+# ---------------------------------------------------------------------------
+
+
+def test_visible_run_executes_all_capabilities_not_just_first(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """When LLM emits multiple capability tags, ALL known capabilities must execute."""
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    # Use two capabilities that are always present in the isolated workspace
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text=(
+            '<capability-call id="tool:read-workspace-user-profile" /> '
+            '<capability-call id="tool:read-repository-readme" />'
+        ),
+        run_id="visible-cap-multi-exec",
+        second_pass_text="Profilen og readme er begge læst.",
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    delta_events = _parse_sse(chunks, "delta")
+
+    # Both capabilities must have been executed
+    assert len(capability_events) == 2
+    executed_ids = [e["capability_id"] for e in capability_events]
+    assert "tool:read-workspace-user-profile" in executed_ids
+    assert "tool:read-repository-readme" in executed_ids
+    # Second pass must have been called with both results
+    assert len(last_use.get("second_pass_calls") or []) == 1
+    second_pass_msg = last_use["second_pass_calls"][0]
+    assert "tool:read-workspace-user-profile" in second_pass_msg
+    assert "tool:read-repository-readme" in second_pass_msg

@@ -498,103 +498,150 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         total_output_tokens = result.output_tokens
         total_cost_usd = result.cost_usd
 
-        if capability_plan["selected_capability_id"]:
-            capability_call = str(capability_plan["selected_capability_id"])
-            resolved_target_path, target_source = _resolve_visible_capability_target_path(
-                capability_id=capability_call,
-                capability_arguments=capability_plan.get("selected_arguments") or {},
-                user_message=run.user_message,
-            )
-            resolved_command_text, command_source = _resolve_visible_capability_command_text(
-                capability_id=capability_call,
-                capability_arguments=capability_plan.get("selected_arguments") or {},
-                user_message=run.user_message,
-            )
-            resolved_write_content = (
-                (capability_plan.get("selected_arguments") or {}).get("write_content")
-                or None
-            )
-            _update_visible_execution_trace(
-                run,
-                {
-                    "parsed_target_path": resolved_target_path,
-                    "parsed_command_text": resolved_command_text,
-                    "argument_source": _merge_argument_sources(target_source, command_source),
-                    "invoke_status": "started",
-                },
-            )
-            capability_result = invoke_workspace_capability(
-                capability_call,
-                run_id=run.run_id,
-                target_path=resolved_target_path,
-                command_text=resolved_command_text,
-                write_content=resolved_write_content,
-            )
-            set_last_visible_capability_use(
-                run,
-                capability_id=capability_call,
-                invocation=capability_result,
-                capability_arguments=capability_plan.get("selected_arguments") or {},
-                argument_source=_merge_argument_sources(target_source, command_source),
-            )
-            _update_visible_execution_trace(
-                run,
-                {
-                    "invoke_status": capability_result.get("status"),
-                    "blocked_reason": capability_result.get("detail"),
-                    "argument_source": _merge_argument_sources(target_source, command_source),
-                    "normalized_command_text": (
-                        ((capability_result.get("result") or {}).get("normalized_command_text"))
-                        or None
-                    ),
-                    "path_normalization_applied": bool(
-                        (capability_result.get("result") or {}).get("path_normalization_applied", False)
-                    ),
-                    "normalization_source": (
-                        ((capability_result.get("result") or {}).get("normalization_source"))
-                        or "none"
-                    ),
-                },
-            )
-            visible_output_text = _capability_visible_text(
-                capability_id=capability_call,
-                invocation=capability_result,
-            )
-            event_bus.publish(
-                "runtime.visible_run_capability_used",
-                {
-                    "run_id": run.run_id,
-                    "lane": run.lane,
-                    "provider": run.provider,
-                    "model": run.model,
-                    "capability_id": capability_call,
-                    "status": capability_result.get("status"),
-                    "execution_mode": capability_result.get("execution_mode"),
-                },
-            )
-            yield _sse("trace", _visible_trace_payload(run))
-            yield _sse(
-                "capability",
-                {
-                    "type": "capability",
-                    "run_id": run.run_id,
-                    "capability_id": capability_call,
-                    "status": capability_result.get("status"),
-                    "execution_mode": capability_result.get("execution_mode"),
-                    "target_path": resolved_target_path or None,
-                    "command_text": resolved_command_text or None,
-                    "capability_name": (
-                        (capability_result.get("capability") or {}).get("name")
-                        or capability_call
-                    ),
-                },
-            )
-            if str(capability_result.get("status") or "") == "executed":
+        all_capabilities = capability_plan.get("all_capabilities") or []
+        if all_capabilities:
+            # --- Execute ALL capabilities sequentially ---
+            capability_results: list[dict[str, object]] = []
+            any_executed = False
+
+            for cap_entry in all_capabilities:
+                cap_id = str(cap_entry["capability_id"])
+                cap_args = dict(cap_entry.get("arguments") or {})
+
+                resolved_target_path, target_source = _resolve_visible_capability_target_path(
+                    capability_id=cap_id,
+                    capability_arguments=cap_args,
+                    user_message=run.user_message,
+                )
+                resolved_command_text, command_source = _resolve_visible_capability_command_text(
+                    capability_id=cap_id,
+                    capability_arguments=cap_args,
+                    user_message=run.user_message,
+                )
+                resolved_write_content = cap_args.get("write_content") or None
+
                 _update_visible_execution_trace(
                     run,
                     {
-                        "provider_second_pass_status": "started",
+                        "parsed_target_path": resolved_target_path,
+                        "parsed_command_text": resolved_command_text,
+                        "argument_source": _merge_argument_sources(target_source, command_source),
+                        "invoke_status": "started",
                     },
+                )
+
+                capability_result = invoke_workspace_capability(
+                    cap_id,
+                    run_id=run.run_id,
+                    target_path=resolved_target_path,
+                    command_text=resolved_command_text,
+                    write_content=resolved_write_content,
+                )
+
+                cap_status = str(capability_result.get("status") or "")
+                cap_exec_mode = str(capability_result.get("execution_mode") or "")
+                cap_result_obj = capability_result.get("result") or {}
+                cap_result_text = ""
+                if isinstance(cap_result_obj, dict):
+                    cap_result_text = str(cap_result_obj.get("text") or "").strip()
+                cap_detail = str(capability_result.get("detail") or "").strip()
+
+                _update_visible_execution_trace(
+                    run,
+                    {
+                        "invoke_status": cap_status,
+                        "blocked_reason": capability_result.get("detail"),
+                        "argument_source": _merge_argument_sources(target_source, command_source),
+                        "normalized_command_text": (
+                            ((capability_result.get("result") or {}).get("normalized_command_text"))
+                            or None
+                        ),
+                        "path_normalization_applied": bool(
+                            (capability_result.get("result") or {}).get("path_normalization_applied", False)
+                        ),
+                        "normalization_source": (
+                            ((capability_result.get("result") or {}).get("normalization_source"))
+                            or "none"
+                        ),
+                    },
+                )
+
+                capability_results.append({
+                    "capability_id": cap_id,
+                    "status": cap_status,
+                    "execution_mode": cap_exec_mode,
+                    "result_text": cap_result_text,
+                    "detail": cap_detail,
+                    "invocation": capability_result,
+                })
+
+                if cap_status == "executed":
+                    any_executed = True
+
+                set_last_visible_capability_use(
+                    run,
+                    capability_id=cap_id,
+                    invocation=capability_result,
+                    capability_arguments=cap_args,
+                    argument_source=_merge_argument_sources(target_source, command_source),
+                )
+
+                event_bus.publish(
+                    "runtime.visible_run_capability_used",
+                    {
+                        "run_id": run.run_id,
+                        "lane": run.lane,
+                        "provider": run.provider,
+                        "model": run.model,
+                        "capability_id": cap_id,
+                        "status": cap_status,
+                        "execution_mode": cap_exec_mode,
+                    },
+                )
+
+                yield _sse(
+                    "capability",
+                    {
+                        "type": "capability",
+                        "run_id": run.run_id,
+                        "capability_id": cap_id,
+                        "status": cap_status,
+                        "execution_mode": cap_exec_mode,
+                        "target_path": resolved_target_path or None,
+                        "command_text": resolved_command_text or None,
+                        "capability_name": (
+                            (capability_result.get("capability") or {}).get("name")
+                            or cap_id
+                        ),
+                    },
+                )
+
+            _update_visible_execution_trace(
+                run,
+                {
+                    "invoke_status": "executed" if any_executed else "not-executed",
+                    "capabilities_executed": sum(
+                        1 for r in capability_results if r["status"] == "executed"
+                    ),
+                    "capabilities_total": len(capability_results),
+                },
+            )
+
+            # Build visible output from all results
+            visible_output_text = "\n\n".join(
+                _capability_visible_text(
+                    capability_id=str(r["capability_id"]),
+                    invocation=r["invocation"],
+                )
+                for r in capability_results
+            )
+
+            yield _sse("trace", _visible_trace_payload(run))
+
+            # --- Second pass grounded in ALL results ---
+            if any_executed:
+                _update_visible_execution_trace(
+                    run, {"provider_second_pass_status": "started"},
                 )
                 yield _sse(
                     "working_step",
@@ -602,15 +649,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         "type": "working_step",
                         "run_id": run.run_id,
                         "action": "thinking",
-                        "detail": "Grounding final response from capability result",
+                        "detail": f"Grounding response from {len(capability_results)} capability results",
                         "step": 1,
                         "status": "running",
                     },
                 )
-                followup_result = _run_grounded_capability_followup(
+                followup_result = _run_grounded_multi_capability_followup(
                     run,
-                    capability_id=capability_call,
-                    invocation=capability_result,
+                    capability_results=capability_results,
                     initial_model_text=_visible_text_without_capability_markup(
                         result.text,
                         had_markup=bool(capability_plan["had_markup"]),
@@ -638,35 +684,20 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         run,
                         {
                             "provider_second_pass_status": "failed",
-                            "provider_error_summary": (
-                                get_last_visible_execution_trace() or {}
-                            ).get("provider_error_summary")
-                            or "second-pass-provider-error",
                             "provider_call_count": 2,
                         },
                     )
                 yield _sse(
                     "delta",
-                    {
-                        "type": "delta",
-                        "run_id": run.run_id,
-                        "delta": visible_output_text,
-                    },
+                    {"type": "delta", "run_id": run.run_id, "delta": visible_output_text},
                 )
             else:
                 _update_visible_execution_trace(
-                    run,
-                    {
-                        "provider_second_pass_status": "skipped",
-                    },
+                    run, {"provider_second_pass_status": "skipped"},
                 )
                 yield _sse(
                     "delta",
-                    {
-                        "type": "delta",
-                        "run_id": run.run_id,
-                        "delta": visible_output_text,
-                    },
+                    {"type": "delta", "run_id": run.run_id, "delta": visible_output_text},
                 )
         else:
             _update_visible_execution_trace(
@@ -1523,6 +1554,72 @@ def _build_grounded_capability_followup_message(
         parts.append(result_text)
     elif detail:
         parts.append(f"Capability result detail: {detail}")
+    return "\n".join(parts)
+
+
+def _run_grounded_multi_capability_followup(
+    run: VisibleRun,
+    *,
+    capability_results: list[dict[str, object]],
+    initial_model_text: str,
+) -> VisibleModelResult | None:
+    followup_message = _build_grounded_multi_capability_followup_message(
+        run,
+        capability_results=capability_results,
+        initial_model_text=initial_model_text,
+    )
+    try:
+        return execute_visible_model(
+            message=followup_message,
+            provider=run.provider,
+            model=run.model,
+            session_id=run.session_id,
+        )
+    except Exception as exc:
+        _update_visible_execution_trace(
+            run,
+            {
+                "provider_second_pass_status": "failed",
+                "provider_error_summary": str(exc) or "second-pass-provider-error",
+            },
+        )
+        return None
+
+
+def _build_grounded_multi_capability_followup_message(
+    run: VisibleRun,
+    *,
+    capability_results: list[dict[str, object]],
+    initial_model_text: str,
+) -> str:
+    n = len(capability_results)
+    parts = [
+        "Second-pass visible response task.",
+        f"You executed {n} capabilit{'y' if n == 1 else 'ies'} this turn. Results are below.",
+        "",
+        "Respond to the user grounded in these results.",
+        "Do not emit any <capability-call ... /> tags in this response.",
+        "",
+        "If the results fully answer the user's question, answer directly.",
+        "If you need more data to fully answer, tell the user what you would read next",
+        "so they can ask you to continue.",
+        "",
+        f"Original user message: {run.user_message}",
+    ]
+    if initial_model_text:
+        parts.append(f"First-pass draft without capability markup: {initial_model_text}")
+    for i, cr in enumerate(capability_results):
+        parts.append("")
+        parts.append(f"--- Capability {i + 1}: {cr['capability_id']} ---")
+        parts.append(f"Status: {cr['status']}")
+        parts.append(f"Execution mode: {cr['execution_mode']}")
+        result_text = str(cr.get("result_text") or "").strip()
+        detail = str(cr.get("detail") or "").strip()
+        if result_text:
+            parts.append("Result:")
+            parts.append(result_text)
+        elif detail:
+            parts.append(f"Detail: {detail}")
     return "\n".join(parts)
 
 

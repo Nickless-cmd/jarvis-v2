@@ -554,7 +554,8 @@ def init_db() -> None:
                 identity_alignment TEXT NOT NULL DEFAULT '',
                 work_signal TEXT NOT NULL DEFAULT '',
                 private_summary TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                enriched INTEGER NOT NULL DEFAULT 0
             )
             """
         )
@@ -572,7 +573,8 @@ def init_db() -> None:
                 helpful_signal TEXT NOT NULL DEFAULT '',
                 identity_signal TEXT NOT NULL DEFAULT '',
                 confidence TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                enriched INTEGER NOT NULL DEFAULT 0
             )
             """
         )
@@ -654,7 +656,8 @@ def init_db() -> None:
                 current_concern TEXT NOT NULL,
                 current_pull TEXT NOT NULL,
                 voice_line TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                enriched INTEGER NOT NULL DEFAULT 0
             )
             """
         )
@@ -811,6 +814,7 @@ def init_db() -> None:
             """
         )
         _ensure_private_inner_note_columns(conn)
+        _ensure_enriched_columns(conn)
         _ensure_private_retained_memory_record_columns(conn)
         _ensure_capability_invocation_approval_columns(conn)
         _ensure_capability_approval_request_columns(conn)
@@ -1936,6 +1940,15 @@ def _ensure_capability_invocation_approval_columns(conn: sqlite3.Connection) -> 
         if name in existing:
             continue
         conn.execute(f"ALTER TABLE capability_invocations ADD COLUMN {name} {spec}")
+
+
+def _ensure_enriched_columns(conn: sqlite3.Connection) -> None:
+    """Add enriched column to private layer tables if missing."""
+    for table in ("private_inner_notes", "private_growth_notes", "protected_inner_voices"):
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        existing = {str(row["name"]) for row in rows}
+        if "enriched" not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN enriched INTEGER NOT NULL DEFAULT 0")
 
 
 def _ensure_private_inner_note_columns(conn: sqlite3.Connection) -> None:

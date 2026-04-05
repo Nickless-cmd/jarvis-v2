@@ -320,6 +320,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
     result = None
     visible_output_text = ""
+    markup_buffer = _CapabilityMarkupBuffer()
     try:
         try:
             # Run the synchronous model stream in a thread so SSE
@@ -357,17 +358,29 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     await thread_future
                     return
                 if isinstance(item, VisibleModelDelta):
-                    yield _sse(
-                        "delta",
-                        {
-                            "type": "delta",
-                            "run_id": run.run_id,
-                            "delta": item.delta,
-                        },
-                    )
+                    safe_text = markup_buffer.feed(item.delta)
+                    if safe_text:
+                        yield _sse(
+                            "delta",
+                            {
+                                "type": "delta",
+                                "run_id": run.run_id,
+                                "delta": safe_text,
+                            },
+                        )
                     continue
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
+                    remaining = markup_buffer.flush()
+                    if remaining:
+                        yield _sse(
+                            "delta",
+                            {
+                                "type": "delta",
+                                "run_id": run.run_id,
+                                "delta": remaining,
+                            },
+                        )
                     _update_visible_execution_trace(
                         run,
                         {
@@ -1344,6 +1357,78 @@ def _capability_call_state(text: str) -> str:
 
 def _strip_capability_markup(text: str) -> str:
     return CAPABILITY_CALL_SCAN_PATTERN.sub("", str(text or ""))
+
+
+class _CapabilityMarkupBuffer:
+    """Buffer that holds back streaming deltas that may be capability-call markup.
+
+    Tokens are fed in via ``feed()``.  The buffer accumulates text while it
+    looks like the start of a ``<capability-call …/>`` or block tag.  When
+    the accumulated text can no longer be a prefix of a capability tag, the
+    buffered content is flushed (returned to the caller for sending).  When
+    a complete tag is detected, it is swallowed (not returned).
+    """
+
+    _OPEN = "<capability-call"
+
+    def __init__(self) -> None:
+        self._buf = ""
+
+    def feed(self, text: str) -> str:
+        """Accept new text; return any content safe to send to the client."""
+        self._buf += text
+        return self._drain()
+
+    def flush(self) -> str:
+        """Return any remaining buffered content (call at end-of-stream)."""
+        out = self._buf
+        self._buf = ""
+        return _strip_capability_markup(out)
+
+    # ------------------------------------------------------------------
+
+    def _drain(self) -> str:
+        """Return sendable prefix, keeping potential markup buffered."""
+        out_parts: list[str] = []
+        while self._buf:
+            tag_start = self._buf.find("<")
+            if tag_start == -1:
+                # No '<' at all — everything is safe.
+                out_parts.append(self._buf)
+                self._buf = ""
+                break
+            if tag_start > 0:
+                # Text before '<' is safe to send.
+                out_parts.append(self._buf[:tag_start])
+                self._buf = self._buf[tag_start:]
+            # self._buf now starts with '<'.
+            # Check if it is (or could become) a capability tag.
+            if self._is_capability_prefix(self._buf):
+                # Could still be a capability tag — check for complete match.
+                m = CAPABILITY_CALL_SCAN_PATTERN.match(self._buf)
+                if m:
+                    # Complete self-closing tag — swallow it.
+                    self._buf = self._buf[m.end():]
+                    continue
+                bm = CAPABILITY_BLOCK_PATTERN.match(self._buf)
+                if bm:
+                    # Complete block tag — swallow it.
+                    self._buf = self._buf[bm.end():]
+                    continue
+                # Incomplete prefix — keep buffering.
+                break
+            else:
+                # '<' is not part of a capability tag — safe to send.
+                out_parts.append(self._buf[0])
+                self._buf = self._buf[1:]
+        return "".join(out_parts)
+
+    @staticmethod
+    def _is_capability_prefix(text: str) -> bool:
+        """True if *text* could be the start of a capability-call tag."""
+        opening = _CapabilityMarkupBuffer._OPEN
+        check_len = min(len(text), len(opening))
+        return text[:check_len] == opening[:check_len]
 
 
 def _visible_text_without_capability_markup(text: str, *, had_markup: bool) -> str:

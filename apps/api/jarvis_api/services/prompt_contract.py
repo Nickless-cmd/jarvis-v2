@@ -716,6 +716,7 @@ def build_prompt_relevance_decision(
     )
 
     if mode == "visible_chat":
+        memory_relevant = True  # always include memory for visible chat
         include_transcript = True
         include_continuity = (not compact) or continuity_relevant
         include_support_signals = (not compact) or support_signals_relevant
@@ -1306,6 +1307,11 @@ def _visible_capability_id_summary() -> str | None:
         "- usage: capabilities that read external paths or list directories "
         'MUST bind target_path in the tag, e.g. <capability-call id="tool:list-external-directory" target_path="/path" />. '
         'For commands, bind command_text similarly.'
+    )
+    lines.append(
+        "- parallel: you can emit multiple capability-call tags in one response. "
+        "Do this when exploring — e.g. list a directory AND read a file in the same turn. "
+        "If one fails, others still execute. Never stop working because one call failed."
     )
     return "\n".join(lines)
 

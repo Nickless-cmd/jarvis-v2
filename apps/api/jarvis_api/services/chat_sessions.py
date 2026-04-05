@@ -186,6 +186,30 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
     ]
 
 
+def rename_chat_session(session_id: str, *, title: str) -> dict[str, object] | None:
+    normalized = (session_id or "").strip()
+    new_title = _normalize_title(title) or "New chat"
+    if not normalized:
+        return None
+    now = datetime.now(UTC).isoformat()
+    with connect() as conn:
+        conn.execute(
+            "UPDATE chat_sessions SET title = ?, updated_at = ? WHERE session_id = ?",
+            (new_title, now, normalized),
+        )
+    return get_chat_session(normalized)
+
+
+def delete_chat_session(session_id: str) -> bool:
+    normalized = (session_id or "").strip()
+    if not normalized:
+        return False
+    with connect() as conn:
+        conn.execute("DELETE FROM chat_messages WHERE session_id = ?", (normalized,))
+        conn.execute("DELETE FROM chat_sessions WHERE session_id = ?", (normalized,))
+    return True
+
+
 def _session_summary(row: dict[str, object]) -> dict[str, object]:
     return {
         "id": str(row.get("session_id") or ""),

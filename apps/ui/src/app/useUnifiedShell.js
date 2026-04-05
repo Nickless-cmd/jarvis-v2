@@ -276,6 +276,29 @@ export function useUnifiedShell() {
     }
   }
 
+  async function handleRenameSession(title) {
+    if (!activeSessionId || !title?.trim()) return
+    try {
+      await backend.renameSession(activeSessionId, title.trim())
+      await loadSession(activeSessionId)
+      await refreshShell()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to rename session')
+    }
+  }
+
+  async function handleDeleteSession() {
+    if (!activeSessionId) return
+    try {
+      await backend.deleteSession(activeSessionId)
+      setActiveSession(null)
+      setActiveSessionId(null)
+      await refreshShell()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete session')
+    }
+  }
+
   async function handleCreateSession() {
     try {
       const session = await backend.createSession('New chat')
@@ -323,6 +346,8 @@ export function useUnifiedShell() {
     handleSelectionChange,
     handleSend,
     handleCancel,
+    handleRenameSession,
+    handleDeleteSession,
     handleCreateSession,
     refreshShell: handleRefresh,
     error,

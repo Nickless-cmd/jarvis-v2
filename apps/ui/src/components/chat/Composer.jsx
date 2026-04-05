@@ -50,6 +50,7 @@ export function Composer({ value, onChange, onSend, onCancel, isStreaming }) {
           </button>
         )}
       </div>
+      <div className="composer-disclaimer">All AI's can make mistakes. Please double-check important information.</div>
     </section>
   )
 }

@@ -292,6 +292,49 @@ button { cursor: pointer; }
 .send-btn.cancel { background: #e05252; color: #fff; cursor: pointer; }
 .send-btn.cancel:hover { transform: translateY(-1px); background: #c94040; box-shadow: 0 12px 26px rgba(0,0,0,.28); }
 .send-btn:disabled { cursor: default; opacity:.58; box-shadow:none; }
+.composer-disclaimer { font-size: 11px; color: #5a6270; text-align: center; padding-top: 6px; }
+
+/* Header dropdown menu */
+.header-menu-anchor { position: relative; }
+.header-dropdown-menu {
+  position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 50;
+  min-width: 150px; background: #1c1f25; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px; box-shadow: 0 10px 22px rgba(0,0,0,.32); padding: 4px;
+}
+.header-dropdown-item {
+  display: block; width: 100%; padding: 7px 10px; border: none; background: none;
+  color: #c9cdd5; font-size: 12px; text-align: left; border-radius: 5px; cursor: pointer;
+}
+.header-dropdown-item:hover { background: rgba(255,255,255,.06); }
+.header-dropdown-item.danger { color: #e05252; }
+.header-dropdown-item.danger:hover { background: rgba(224,82,82,.1); }
+
+/* Chat search bar */
+.chat-search-bar {
+  display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+  background: #14181f; border-bottom: 1px solid rgba(255,255,255,.06);
+  position: relative;
+}
+.chat-search-icon { color: #5a6270; flex-shrink: 0; }
+.chat-search-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  color: #e4e6ed; font-size: 12px; padding: 4px 0;
+}
+.chat-search-input::placeholder { color: #5a6270; }
+.chat-search-results {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 40;
+  max-height: 300px; overflow-y: auto; background: #1c1f25;
+  border: 1px solid rgba(255,255,255,.06); border-top: none;
+  box-shadow: 0 8px 20px rgba(0,0,0,.3);
+}
+.chat-search-empty { padding: 12px; color: #5a6270; font-size: 11px; text-align: center; }
+.chat-search-result {
+  display: flex; gap: 8px; padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,.03);
+  cursor: default;
+}
+.chat-search-result:hover { background: rgba(255,255,255,.03); }
+.chat-search-result-role { font-size: 10px; color: #5ab8a0; flex-shrink: 0; min-width: 36px; }
+.chat-search-result-text { font-size: 11px; color: #8b909e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .chat-support-rail {
   display:flex; flex-direction:column; gap:0; min-height:0; overflow:auto;

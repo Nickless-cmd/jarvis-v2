@@ -39,17 +39,13 @@ export function ChatTranscript({ messages, workingSteps }) {
             {message.content ? (
               <div className="message-content">
                 <MarkdownRenderer content={message.content} />
-                {message.pending && <span className="streaming-cursor" />}
               </div>
             ) : null}
-            {message.pending && !message.content ? (
-              <div className="thinking-indicator">
-                <span className="thinking-dot" />
-                <span className="thinking-dot" />
-                <span className="thinking-dot" />
-                <small>Jarvis is working…</small>
+            {message.pending && (
+              <div className="streaming-indicator">
+                <span className="streaming-cursor" />
               </div>
-            ) : null}
+            )}
           </div>
         </article>
       ))}

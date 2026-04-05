@@ -233,9 +233,12 @@ button { cursor: pointer; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+.streaming-indicator {
+  margin-top: 6px; height: 18px; display: flex; align-items: center;
+}
 .streaming-cursor {
   display: inline-block; width: 2px; height: 14px;
-  background: #5ab8a0; margin-left: 3px; vertical-align: middle;
+  background: #5ab8a0;
   animation: blink 1s step-end infinite;
 }
 .composer-shell {

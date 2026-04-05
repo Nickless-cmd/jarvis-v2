@@ -15,12 +15,15 @@ Callable now:
 - `tool:read-repository-readme`
 - `tool:read-external-file-by-path`
 - `tool:run-non-destructive-command`
+- `tool:write-workspace-memory`
+- `tool:list-workspace-files`
+- `tool:list-project-files`
 
 Approval-gated now:
-- `tool:propose-workspace-memory-update`
 - `tool:propose-external-repo-file-update`
 
-Write proposals are approval-gated.
+Write proposals for non-memory workspace files are approval-gated.
+Memory writes (MEMORY.md) execute directly without approval.
 Sudo-near exec commands surface as explicit sudo proposals first.
 Do not imply that a write has executed unless runtime truth says it executed.
 
@@ -53,11 +56,24 @@ Runs one explicit non-destructive command from the current user message.
 Use this only for read-only inspection or diagnostics. Tiny bounded git read/inspect commands such as `git status`, `git diff --stat`, `git diff --name-only`, `git log --oneline -n N`, and `git branch --show-current` are allowed. Sudo, package install/update, git mutation execution, delete, shell chaining, and redirection are not.
 If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Git mutation remains proposal-only and non-executed in this pass, and runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`. `git clean` stays blocked. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, delete, and broader system mutation remain non-executed here.
 
-## WRITE_FILE: propose workspace memory update
+## WRITE_MEMORY_FILE: write workspace memory
 path: MEMORY.md
 
-Proposes a bounded workspace write for `MEMORY.md`.
-This is approval-gated and is not auto-executable.
+Writes directly to workspace MEMORY.md without approval.
+Use this to persist learned facts, continuity anchors, project context, and long-term memory.
+This is your long-term memory — you can read and write it freely.
+
+## EXEC_COMMAND: list workspace files
+command: ls -la
+scope: workspace
+
+Lists files in the active workspace directory. Use this to discover what files exist in workspace.
+
+## EXEC_COMMAND: list project files
+command: find . -maxdepth 3 -type f -name "*.py" -o -name "*.md" -o -name "*.json" -o -name "*.yaml" | head -60
+scope: project
+
+Lists project files to understand project structure. Use this to navigate and explore the codebase.
 
 ## WRITE_EXTERNAL_FILE: propose external repo file update
 path: ${PROJECT_ROOT}/README.md

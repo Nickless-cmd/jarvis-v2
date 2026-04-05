@@ -23,6 +23,7 @@ SEARCH_FILE_PREFIX = "SEARCH_FILE:"
 READ_EXTERNAL_FILE_PREFIX = "READ_EXTERNAL_FILE:"
 EXEC_COMMAND_PREFIX = "EXEC_COMMAND:"
 WRITE_FILE_PREFIX = "WRITE_FILE:"
+WRITE_MEMORY_FILE_PREFIX = "WRITE_MEMORY_FILE:"
 WRITE_EXTERNAL_FILE_PREFIX = "WRITE_EXTERNAL_FILE:"
 MAX_FILE_OUTPUT_CHARS = 4000
 MAX_SEARCH_MATCHES = 5
@@ -48,6 +49,8 @@ NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
     "env",
     "printenv",
     "rg",
+    "find",
+    "tree",
 }
 GIT_READ_EXEC_ALLOWLIST = {
     ("status",),
@@ -489,6 +492,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         name = heading[len(EXEC_COMMAND_PREFIX) :].strip()
         execution_mode = "non-destructive-exec"
         runnable = exec_spec is not None
+    elif heading.startswith(WRITE_MEMORY_FILE_PREFIX):
+        name = heading[len(WRITE_MEMORY_FILE_PREFIX) :].strip()
+        execution_mode = "workspace-memory-write"
+        runnable = write_target_path is not None
     elif heading.startswith(WRITE_FILE_PREFIX):
         name = heading[len(WRITE_FILE_PREFIX) :].strip()
         execution_mode = "workspace-file-write"
@@ -992,6 +999,58 @@ def _invoke_runnable_capability(
             },
         }
 
+    if summary["execution_mode"] == "workspace-memory-write":
+        target_path = str(summary.get("target_path") or "MEMORY.md").strip()
+        candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
+        if candidate is None:
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"Memory write target is outside workspace scope: {target_path}",
+            }
+        if candidate.name != "MEMORY.md":
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "workspace-memory-write is only allowed for MEMORY.md.",
+            }
+        if write_content is None:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-write-content",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Memory write requires explicit write_content.",
+            }
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        candidate.write_text(write_content, encoding="utf-8")
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=True),
+            "result": {
+                "type": "workspace-memory-write",
+                "path": target_path,
+                "bytes_written": len(write_content.encode("utf-8")),
+                "text": _preview_text(
+                    write_content,
+                    limit=min(MAX_FILE_OUTPUT_CHARS, 400),
+                ),
+                "content_fingerprint": _content_fingerprint(write_content),
+                "content_source": "explicit-write-content",
+                "workspace_scoped": True,
+            },
+            "detail": f"Memory write executed for {target_path}.",
+        }
+
     if summary["execution_mode"] == "workspace-file-write":
         target_path = str(summary.get("target_path") or "").strip()
         candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
@@ -1057,6 +1116,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "workspace-search-read",
         "external-file-read",
         "non-destructive-exec",
+        "workspace-memory-write",
     }:
         return "not-needed"
     if execution_mode in {
@@ -1083,6 +1143,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "workspace-search-read",
         "external-file-read",
         "non-destructive-exec",
+        "workspace-memory-write",
         "guidance-only",
         "declared-only",
         "unsupported",

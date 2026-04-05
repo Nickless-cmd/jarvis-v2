@@ -387,7 +387,7 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
         return None
 
     # Validate mode
-    valid_modes = {"reflective-carry", "held-tension", "growth-oriented", "continuity-aware", "observing"}
+    valid_modes = {"reflective-carry", "held-tension", "growth-oriented", "continuity-aware", "observing", "wondering", "questioning"}
     if mode not in valid_modes:
         mode = "observing"
 
@@ -426,7 +426,7 @@ def _apply_support_shading(
     _BIAS_MODE_MAP = {
         "protect_focus": "continuity-aware",
         "stabilize_thread": "reflective-carry",
-        "reopen_context": "growth-oriented",
+        "reopen_context": "wondering",
         "reduce_spread": "held-tension",
     }
     return _BIAS_MODE_MAP.get(support_bias, base_mode)
@@ -445,6 +445,10 @@ def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
         mode = "growth-oriented"
     elif "private-brain" in sources:
         mode = "continuity-aware"
+    elif "open-loops" in sources:
+        mode = "questioning"
+    elif "experiential-support" in sources:
+        mode = "wondering"
     else:
         mode = "observing"
 

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { Bot, User } from 'lucide-react'
-import { WorkingIndicator } from './WorkingIndicator'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
 export function ChatTranscript({ messages, workingSteps }) {
@@ -33,12 +32,11 @@ export function ChatTranscript({ messages, workingSteps }) {
           </div>
           <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
             <div className="message-meta">
-              <strong>{message.role === 'assistant' ? 'Jarvis' : 'You'}</strong>
+              <strong className={message.pending ? 'name-shimmer' : ''}>
+                {message.role === 'assistant' ? 'Jarvis' : 'You'}
+              </strong>
               <span>{message.ts}</span>
             </div>
-            {message.pending && workingSteps && workingSteps.length > 0 && (
-              <WorkingIndicator steps={workingSteps} />
-            )}
             {message.content ? (
               <div className="message-content">
                 <MarkdownRenderer content={message.content} />

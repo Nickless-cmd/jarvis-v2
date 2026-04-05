@@ -56,16 +56,20 @@ Reads the bounded repository README outside the workspace root.
 ## READ_EXTERNAL_FILE: read external file by path
 path_from: user-message
 
-Reads one explicit external file path from the current user message.
+Reads one explicit external file path.
 Use this only for read-only external/system file access outside the active workspace root.
+Always bind the target_path attribute: `<capability-call id="tool:read-external-file-by-path" target_path="/path/to/file" />`
+If you don't know the path, use `tool:list-external-directory` first to navigate and discover it.
 
 ## LIST_EXTERNAL_DIR: list external directory
 path_from: user-message
 
-Lists files and directories at an explicit external path from the current user message.
+Lists files and directories at an explicit external path.
 Use this to navigate and explore any directory outside the active workspace root.
 Directories are shown with [d] prefix, files with [f]. Sorted directories-first, max 100 entries.
 Use this to discover file paths before reading them with `tool:read-external-file-by-path`.
+Always bind the target_path attribute: `<capability-call id="tool:list-external-directory" target_path="/path/to/dir" />`
+Start from the workspace root, project root, or home directory and navigate deeper.
 
 ## EXEC_COMMAND: run non-destructive command
 command_from: user-message

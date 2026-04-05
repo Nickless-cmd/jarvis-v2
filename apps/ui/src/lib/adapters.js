@@ -2670,6 +2670,7 @@ async function readSseStream(response, handlers = {}) {
         failure = payload.error || 'Chat failed'
         handlers.onFailed?.(failure)
       }
+      if (eventName === 'capability') handlers.onCapability?.(payload)
       if (eventName === 'cancelled') {
         failure = 'Chat cancelled'
         handlers.onFailed?.(failure)

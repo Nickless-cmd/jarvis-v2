@@ -29,6 +29,7 @@ export function useUnifiedShell() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [activeRunId, setActiveRunId] = useState(null)
   const [workingSteps, setWorkingSteps] = useState([])
+  const [capabilityActivity, setCapabilityActivity] = useState([])
   const [lastRunTokens, setLastRunTokens] = useState(null)
   const [streamingTokenEstimate, setStreamingTokenEstimate] = useState(0)
   const [systemHealth, setSystemHealth] = useState({ cpu_pct: 0, ram_pct: 0, disk_free_mb: 0 })
@@ -184,6 +185,7 @@ export function useUnifiedShell() {
     setError('')
     setLastRunTokens(null)
     setStreamingTokenEstimate(0)
+    setCapabilityActivity([])
     setActiveSession((current) =>
       current ? appendMessagesToSession(current, userMessage, pendingAssistantMessage) : current
     )
@@ -194,6 +196,12 @@ export function useUnifiedShell() {
         content,
         onRun: (payload) => {
           if (payload?.run_id) setActiveRunId(payload.run_id)
+        },
+        onCapability: (payload) => {
+          setCapabilityActivity((prev) => [...prev.slice(-7), {
+            ...payload,
+            ts: Date.now(),
+          }])
         },
         onWorkingStep: (step) => {
           setWorkingSteps((prev) => {
@@ -321,6 +329,7 @@ export function useUnifiedShell() {
     isRefreshing,
     isStreaming,
     workingSteps,
+    capabilityActivity,
     systemHealth,
     jarvisSurface,
     lastRunTokens,

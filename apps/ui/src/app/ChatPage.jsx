@@ -15,6 +15,8 @@ export function ChatPage({
   isRefreshing,
   isStreaming,
   workingSteps,
+  capabilityActivity,
+  systemHealth,
   jarvisSurface,
   lastRunTokens,
   streamingTokenEstimate,
@@ -61,6 +63,9 @@ export function ChatPage({
         selection={selection}
         isStreaming={isStreaming}
         jarvisSurface={jarvisSurface}
+        systemHealth={systemHealth}
+        workingSteps={workingSteps}
+        capabilityActivity={capabilityActivity}
       />
     </div>
   )

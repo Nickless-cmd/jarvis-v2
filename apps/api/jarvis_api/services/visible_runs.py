@@ -568,6 +568,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     "capability_id": capability_call,
                     "status": capability_result.get("status"),
                     "execution_mode": capability_result.get("execution_mode"),
+                    "target_path": resolved_target_path or None,
+                    "command_text": resolved_command_text or None,
+                    "capability_name": (
+                        (capability_result.get("capability") or {}).get("name")
+                        or capability_call
+                    ),
                 },
             )
             if str(capability_result.get("status") or "") == "executed":

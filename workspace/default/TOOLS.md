@@ -62,6 +62,7 @@ path: MEMORY.md
 Writes directly to workspace MEMORY.md without approval.
 Use this to persist learned facts, continuity anchors, project context, and long-term memory.
 This is your long-term memory — you can read and write it freely.
+To write, emit: `<capability-call id="tool:write-workspace-memory" write_content="your content here" />`
 
 ## EXEC_COMMAND: list workspace files
 command: ls -la

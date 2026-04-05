@@ -214,7 +214,7 @@ CAPABILITY_ATTR_PATTERN = re.compile(
 )
 CAPABILITY_CALL_PREFIX = '<capability-call id="'
 CAPABILITY_CALL_SUFFIX = '" />'
-VISIBLE_CAPABILITY_ARG_NAMES = {"command_text", "target_path"}
+VISIBLE_CAPABILITY_ARG_NAMES = {"command_text", "target_path", "write_content"}
 
 
 @dataclass(slots=True)
@@ -493,6 +493,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 capability_arguments=capability_plan.get("selected_arguments") or {},
                 user_message=run.user_message,
             )
+            resolved_write_content = (
+                (capability_plan.get("selected_arguments") or {}).get("write_content")
+                or None
+            )
             _update_visible_execution_trace(
                 run,
                 {
@@ -507,6 +511,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 run_id=run.run_id,
                 target_path=resolved_target_path,
                 command_text=resolved_command_text,
+                write_content=resolved_write_content,
             )
             set_last_visible_capability_use(
                 run,

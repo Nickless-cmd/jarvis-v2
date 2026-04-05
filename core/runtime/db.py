@@ -1016,6 +1016,16 @@ def record_private_inner_note(
         conn.commit()
 
 
+def update_private_inner_note_enriched(*, run_id: str, enriched_summary: str) -> None:
+    """Replace template summary with LLM-enriched text."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE private_inner_notes SET private_summary = ?, enriched = 1 WHERE run_id = ?",
+            (enriched_summary, run_id),
+        )
+        conn.commit()
+
+
 def recent_private_inner_notes(limit: int = 5) -> list[dict[str, object]]:
     with connect() as conn:
         rows = conn.execute(
@@ -1105,6 +1115,18 @@ def record_private_growth_note(
                 confidence,
                 created_at,
             ),
+        )
+        conn.commit()
+
+
+def update_private_growth_note_enriched(
+    *, run_id: str, enriched_lesson: str, enriched_helpful_signal: str
+) -> None:
+    """Replace template lesson and helpful_signal with LLM-enriched text."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE private_growth_notes SET lesson = ?, helpful_signal = ?, enriched = 1 WHERE run_id = ?",
+            (enriched_lesson, enriched_helpful_signal, run_id),
         )
         conn.commit()
 
@@ -1554,6 +1576,16 @@ def record_protected_inner_voice(
                 voice_line,
                 created_at,
             ),
+        )
+        conn.commit()
+
+
+def update_protected_inner_voice_enriched(*, run_id: str, enriched_voice_line: str) -> None:
+    """Replace template voice_line with LLM-enriched text."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE protected_inner_voices SET voice_line = ?, enriched = 1 WHERE run_id = ?",
+            (enriched_voice_line, run_id),
         )
         conn.commit()
 

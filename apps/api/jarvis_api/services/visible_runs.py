@@ -329,6 +329,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         yield cancelled_chunk
                     return
                 if isinstance(item, VisibleModelDelta):
+                    yield _sse(
+                        "delta",
+                        {
+                            "type": "delta",
+                            "run_id": run.run_id,
+                            "delta": item.delta,
+                        },
+                    )
                     continue
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
@@ -618,15 +626,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 result.text,
                 had_markup=bool(capability_plan["had_markup"]),
             )
-            if visible_output_text:
-                yield _sse(
-                    "delta",
-                    {
-                        "type": "delta",
-                        "run_id": run.run_id,
-                        "delta": visible_output_text,
-                    },
-                )
+            # Deltas already streamed live — no need to re-send the full text.
 
         record_cost(
             lane=run.lane,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from datetime import UTC, datetime
@@ -317,16 +318,39 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     visible_output_text = ""
     try:
         try:
-            for item in stream_visible_model(
-                message=run.user_message,
-                provider=run.provider,
-                model=run.model,
-                session_id=run.session_id,
-                controller=controller,
-            ):
+            # Run the synchronous model stream in a thread so SSE
+            # frames are flushed to the client as each token arrives.
+            _sentinel = object()
+            queue: asyncio.Queue = asyncio.Queue()
+            loop = asyncio.get_event_loop()
+
+            def _pump_model_stream() -> None:
+                try:
+                    for item in stream_visible_model(
+                        message=run.user_message,
+                        provider=run.provider,
+                        model=run.model,
+                        session_id=run.session_id,
+                        controller=controller,
+                    ):
+                        loop.call_soon_threadsafe(queue.put_nowait, item)
+                except Exception as exc:
+                    loop.call_soon_threadsafe(queue.put_nowait, exc)
+                finally:
+                    loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
+
+            thread_future = loop.run_in_executor(None, _pump_model_stream)
+
+            while True:
+                item = await queue.get()
+                if item is _sentinel:
+                    break
+                if isinstance(item, Exception):
+                    raise item
                 if controller.is_cancelled():
                     for cancelled_chunk in _cancel_visible_run(run):
                         yield cancelled_chunk
+                    await thread_future
                     return
                 if isinstance(item, VisibleModelDelta):
                     yield _sse(
@@ -350,6 +374,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         },
                     )
                     break
+
+            await thread_future
         except VisibleModelStreamCancelled:
             _update_visible_execution_trace(
                 run,

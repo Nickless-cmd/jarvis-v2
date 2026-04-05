@@ -32,11 +32,16 @@ export function ChatTranscript({ messages, workingSteps }) {
           </div>
           <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
             <div className="message-meta">
-              <strong className={message.pending ? 'name-shimmer' : ''}>
-                {message.role === 'assistant' ? 'Jarvis' : 'You'}
-              </strong>
-              <span>{message.ts}</span>
-            </div>
+              <strong>{message.role === 'assistant' ? 'Jarvis' : 'You'}</strong>
+              {message.pending && workingSteps?.length > 0 ? (
+                <span className="working-shimmer">
+                  {workingSteps.find(s => s.status === 'running')?.detail
+                    || workingSteps.find(s => s.status === 'running')?.action
+                    || 'working…'}
+                </span>
+              ) : (
+                <span>{message.ts}</span>
+              )}</div>
             {message.content ? (
               <div className="message-content">
                 <MarkdownRenderer content={message.content} />

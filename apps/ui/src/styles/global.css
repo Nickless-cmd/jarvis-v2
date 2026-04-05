@@ -233,22 +233,23 @@ button { cursor: pointer; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
-.name-shimmer {
+.working-shimmer {
+  font-size: .75rem; font-weight: 400;
   background: linear-gradient(
     90deg,
-    #c9d1d9 0%,
-    #c9d1d9 30%,
-    #5ab8a0 50%,
-    #c9d1d9 70%,
-    #c9d1d9 100%
+    #6e7681 0%,
+    #6e7681 30%,
+    #ffffff 50%,
+    #6e7681 70%,
+    #6e7681 100%
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: nameShimmer 2s ease-in-out infinite;
+  animation: workingShimmer 2s ease-in-out infinite;
 }
-@keyframes nameShimmer {
+@keyframes workingShimmer {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }

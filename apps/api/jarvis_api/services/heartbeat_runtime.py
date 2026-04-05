@@ -130,6 +130,7 @@ _HEARTBEAT_SCHEDULER_STOP = threading.Event()
 _HEARTBEAT_SCHEDULER_THREAD: threading.Thread | None = None
 _HEARTBEAT_SCHEDULER_INTERVAL_SECONDS = 30
 _HEARTBEAT_LAST_SCHEDULE_SNAPSHOT: dict[str, object] = {}
+_LIVENESS_LAST_LOGGED: tuple[str, str, int] | None = None
 _STALE_TICK_RECOVERY_WINDOW_MINUTES = 10
 logger = logging.getLogger("uvicorn.error")
 
@@ -1306,6 +1307,29 @@ def _build_heartbeat_cognitive_frame(
         }
 
 
+def _log_liveness_dedup(signal: dict[str, object], trigger: str) -> None:
+    global _LIVENESS_LAST_LOGGED
+    key = (
+        str(signal.get("liveness_state") or ""),
+        str(signal.get("liveness_pressure") or ""),
+        int(signal.get("liveness_score") or 0),
+    )
+    if key == _LIVENESS_LAST_LOGGED:
+        return
+    _LIVENESS_LAST_LOGGED = key
+    _log_debug(
+        "heartbeat liveness built",
+        trigger=trigger,
+        state=signal.get("liveness_state"),
+        pressure=signal.get("liveness_pressure"),
+        score=signal.get("liveness_score"),
+        signal_count=signal.get("liveness_signal_count"),
+        core_pressure_count=signal.get("liveness_core_pressure_count"),
+        propose_gate_count=signal.get("liveness_propose_gate_count"),
+        primary_reason=signal.get("liveness_reason"),
+    )
+
+
 def _build_heartbeat_liveness_signal(
     *,
     merged_state: dict[str, object],
@@ -1804,16 +1828,7 @@ def _build_heartbeat_liveness_signal(
             "planner_authority_state": "not-planner-authority",
             "canonical_self_state": "not-canonical-self-truth",
         }
-        _log_debug(
-            "heartbeat liveness built",
-            trigger=trigger,
-            state=signal["liveness_state"],
-            pressure=signal["liveness_pressure"],
-            score=signal["liveness_score"],
-            signal_count=signal["liveness_signal_count"],
-            core_pressure_count=signal["liveness_core_pressure_count"],
-            propose_gate_count=signal["liveness_propose_gate_count"],
-        )
+        _log_liveness_dedup(signal, trigger)
         return signal
 
     sorted_reasons = sorted(reason_signals, key=lambda item: item[0], reverse=True)
@@ -1879,17 +1894,7 @@ def _build_heartbeat_liveness_signal(
             "planner_authority_state": "not-planner-authority",
             "canonical_self_state": "not-canonical-self-truth",
         }
-        _log_debug(
-            "heartbeat liveness built",
-            trigger=trigger,
-            state=signal["liveness_state"],
-            pressure=signal["liveness_pressure"],
-            score=signal["liveness_score"],
-            signal_count=signal["liveness_signal_count"],
-            core_pressure_count=signal["liveness_core_pressure_count"],
-            propose_gate_count=signal["liveness_propose_gate_count"],
-            primary_reason=signal["liveness_reason"],
-        )
+        _log_liveness_dedup(signal, trigger)
         return signal
 
     signal = {
@@ -1923,17 +1928,7 @@ def _build_heartbeat_liveness_signal(
         "planner_authority_state": "not-planner-authority",
         "canonical_self_state": "not-canonical-self-truth",
     }
-    _log_debug(
-        "heartbeat liveness built",
-        trigger=trigger,
-        state=signal["liveness_state"],
-        pressure=signal["liveness_pressure"],
-        score=signal["liveness_score"],
-        signal_count=signal["liveness_signal_count"],
-        core_pressure_count=signal["liveness_core_pressure_count"],
-        propose_gate_count=signal["liveness_propose_gate_count"],
-        primary_reason=signal["liveness_reason"],
-    )
+    _log_liveness_dedup(signal, trigger)
     return signal
 
 

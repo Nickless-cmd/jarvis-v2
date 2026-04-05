@@ -95,11 +95,8 @@ def _build_active_capabilities(
     try:
         hb_state = heartbeat_state or {}
         if not hb_state:
-            from apps.api.jarvis_api.services.heartbeat_runtime import (
-                heartbeat_runtime_surface,
-            )
-
-            hb_state = heartbeat_runtime_surface().get("state", {})
+            from core.runtime.db import get_heartbeat_runtime_state
+            hb_state = get_heartbeat_runtime_state() or {}
         enabled = bool(hb_state.get("enabled"))
         items.append({
             "id": "heartbeat-runtime",

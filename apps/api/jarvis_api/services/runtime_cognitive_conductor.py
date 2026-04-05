@@ -456,33 +456,53 @@ def _safe_visible_status() -> dict[str, object]:
 
 
 def _safe_experiential_support() -> dict[str, object]:
-    """Read experiential carry-forward support surface."""
+    """Read experiential carry-forward support surface.
+
+    Peeks at cached surface only to avoid circular dependency:
+    build_cognitive_frame → _safe_experiential_support →
+    build_experiential_runtime_context_surface (uncached) →
+    build_cognitive_frame (circular).
+    """
     try:
-        from apps.api.jarvis_api.services.experiential_runtime_context import (
-            build_experiential_runtime_context_surface,
-        )
-        surface = build_experiential_runtime_context_surface()
-        return surface.get("experiential_support") or {}
+        from apps.api.jarvis_api.services.runtime_surface_cache import peek_cached_runtime_surface
+        cached = peek_cached_runtime_surface("experiential_runtime_context_surface")
+        if cached is not None:
+            return cached.get("experiential_support") or {}
+        # Also check if heartbeat surface has it
+        hb_cached = peek_cached_runtime_surface(("heartbeat_runtime_surface", "default"))
+        if isinstance(hb_cached, dict):
+            exp = hb_cached.get("experiential_runtime_context")
+            if isinstance(exp, dict):
+                return exp.get("experiential_support") or {}
     except Exception:
-        return {}
+        pass
+    return {}
 
 
 def _safe_liveness_snapshot(
     *, heartbeat_state: dict[str, object] | None = None
 ) -> dict[str, object]:
-    """Get a lightweight liveness snapshot without triggering full liveness build."""
-    try:
-        if heartbeat_state is not None:
-            return {
-                "liveness_state": str(heartbeat_state.get("liveness_state") or "quiet"),
-                "liveness_score": int(heartbeat_state.get("liveness_score") or 0),
-            }
-        from apps.api.jarvis_api.services.heartbeat_runtime import heartbeat_runtime_surface
-        surface = heartbeat_runtime_surface()
-        state = surface.get("state") or {}
+    """Get a lightweight liveness snapshot without triggering full liveness build.
+
+    When called without a pre-built heartbeat_state, returns quiet defaults
+    rather than triggering the expensive heartbeat_runtime_surface() chain.
+    The full liveness signal is only meaningful inside heartbeat ticks.
+    """
+    if heartbeat_state is not None:
         return {
-            "liveness_state": str(state.get("liveness_state") or "quiet"),
-            "liveness_score": int(state.get("liveness_score") or 0),
+            "liveness_state": str(heartbeat_state.get("liveness_state") or "quiet"),
+            "liveness_score": int(heartbeat_state.get("liveness_score") or 0),
         }
+    # Avoid triggering full heartbeat surface build — peek at cache only.
+    try:
+        from apps.api.jarvis_api.services.runtime_surface_cache import peek_cached_runtime_surface
+        cached = peek_cached_runtime_surface(("heartbeat_runtime_surface", "default"))
+        if cached is not None:
+            state = cached.get("state") or {}
+            return {
+                "liveness_state": str(state.get("liveness_state") or "quiet"),
+                "liveness_score": int(state.get("liveness_score") or 0),
+            }
     except Exception:
-        return {"liveness_state": "quiet", "liveness_score": 0}
+        pass
+    return {"liveness_state": "quiet", "liveness_score": 0}

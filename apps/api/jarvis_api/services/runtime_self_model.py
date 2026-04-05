@@ -1516,9 +1516,9 @@ def _tool_intent_surface() -> dict[str, object]:
 
 def _heartbeat_role() -> str:
     try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import heartbeat_runtime_surface
-        hb = heartbeat_runtime_surface()
-        return "active" if hb.get("state", {}).get("enabled") else "idle"
+        from core.runtime.db import get_heartbeat_runtime_state
+        persisted = get_heartbeat_runtime_state() or {}
+        return "active" if persisted.get("enabled") else "idle"
     except Exception:
         return "unavailable"
 

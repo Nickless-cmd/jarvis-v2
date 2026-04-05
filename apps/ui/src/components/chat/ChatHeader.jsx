@@ -153,6 +153,8 @@ export function ChatHeader({
             {menuOpen && (
               <div className="header-dropdown-menu">
                 <button className="header-dropdown-item" onClick={handleRename}>Rename</button>
+                <button className="header-dropdown-item" onClick={() => { setMenuOpen(false) }}>Pin</button>
+                <button className="header-dropdown-item" onClick={() => { setMenuOpen(false) }}>Archive</button>
                 <button className="header-dropdown-item danger" onClick={handleDelete}>Delete</button>
               </div>
             )}

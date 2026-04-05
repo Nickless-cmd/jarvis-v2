@@ -261,7 +261,7 @@ button { cursor: pointer; }
 .composer-shell {
   padding:6px 12px 8px; position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
   background: linear-gradient(180deg, transparent, rgba(13,17,23,.72) 20%, rgba(13,17,23,.94));
-  display: flex; justify-content: center;
+  display: flex; flex-direction: column; align-items: center;
 }
 .composer-wrap {
   display:grid; grid-template-columns: auto 1fr auto; align-items:center; gap:6px; padding:6px 10px;

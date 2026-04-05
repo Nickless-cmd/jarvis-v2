@@ -1302,6 +1302,11 @@ def _visible_capability_id_summary() -> str | None:
         lines.append("- callable: " + ", ".join(callable_ids[:6]))
     if gated_ids:
         lines.append("- approval_gated: " + ", ".join(gated_ids[:6]))
+    lines.append(
+        "- usage: capabilities that read external paths or list directories "
+        'MUST bind target_path in the tag, e.g. <capability-call id="tool:list-external-directory" target_path="/path" />. '
+        'For commands, bind command_text similarly.'
+    )
     return "\n".join(lines)
 
 

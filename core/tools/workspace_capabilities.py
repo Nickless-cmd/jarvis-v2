@@ -1011,14 +1011,15 @@ def _invoke_runnable_capability(
                 "result": None,
                 "detail": f"Memory write target is outside workspace scope: {target_path}",
             }
-        if candidate.name != "MEMORY.md":
+        _MEMORY_WRITE_ALLOWED_FILES = {"MEMORY.md", "USER.md"}
+        if candidate.name not in _MEMORY_WRITE_ALLOWED_FILES:
             return {
                 "capability": summary,
                 "status": "blocked-scope-mismatch",
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=True, granted=False),
                 "result": None,
-                "detail": "workspace-memory-write is only allowed for MEMORY.md.",
+                "detail": f"workspace-memory-write is only allowed for {', '.join(sorted(_MEMORY_WRITE_ALLOWED_FILES))}.",
             }
         if write_content is None:
             return {

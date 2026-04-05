@@ -60,9 +60,18 @@ If the explicit command is mutating, runtime may execute it only after explicit 
 path: MEMORY.md
 
 Writes directly to workspace MEMORY.md without approval.
-Use this to persist learned facts, continuity anchors, project context, and long-term memory.
+Use this to persist learned facts, decisions, project context, and long-term memory.
 This is your long-term memory — you can read and write it freely.
-To write, emit: `<capability-call id="tool:write-workspace-memory" write_content="your content here" />`
+Always READ MEMORY.md first before writing, then write the FULL updated content (not just appended text).
+To write, emit: `<capability-call id="tool:write-workspace-memory" write_content="full file content here" />`
+
+## WRITE_MEMORY_FILE: write user profile
+path: USER.md
+
+Writes directly to workspace USER.md without approval.
+Use this to persist learned facts about the user — preferences, working style, communication patterns.
+Always READ USER.md first before writing, then write the FULL updated content preserving existing structure.
+To write, emit: `<capability-call id="tool:write-user-profile" write_content="full file content here" />`
 
 ## EXEC_COMMAND: list workspace files
 command: ls -la

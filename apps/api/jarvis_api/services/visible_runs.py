@@ -1202,7 +1202,19 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
             run_id=run.run_id,
         )
     except Exception:
-        return
+        pass
+    try:
+        from apps.api.jarvis_api.services.end_of_run_memory_consolidation import (
+            consolidate_run_memory,
+        )
+        consolidate_run_memory(
+            session_id=run.session_id,
+            run_id=run.run_id,
+            user_message=run.user_message,
+            assistant_response=assistant_text,
+        )
+    except Exception:
+        pass
 
 
 def _extract_capability_call(text: str) -> str | None:

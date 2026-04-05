@@ -11,11 +11,13 @@ Visible capability contract:
 
 Callable now:
 - `tool:read-workspace-user-profile`
+- `tool:read-workspace-memory`
 - `tool:search-workspace-memory-continuity`
 - `tool:read-repository-readme`
 - `tool:read-external-file-by-path`
 - `tool:run-non-destructive-command`
 - `tool:write-workspace-memory`
+- `tool:write-user-profile`
 - `tool:list-workspace-files`
 - `tool:list-project-files`
 
@@ -30,7 +32,14 @@ Do not imply that a write has executed unless runtime truth says it executed.
 ## READ_FILE: read workspace user profile
 path: USER.md
 
-Reads canonical workspace context from the active workspace root.
+Reads the full USER.md file from the active workspace root.
+Use this before writing to USER.md to see current content.
+
+## READ_FILE: read workspace memory
+path: MEMORY.md
+
+Reads the full MEMORY.md file from the active workspace root.
+Use this before writing to MEMORY.md to see current content.
 
 ## SEARCH_FILE: search workspace memory continuity
 path: MEMORY.md

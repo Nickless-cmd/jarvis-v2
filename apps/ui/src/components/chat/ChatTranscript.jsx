@@ -36,22 +36,18 @@ export function ChatTranscript({ messages, workingSteps }) {
               <strong>{message.role === 'assistant' ? 'Jarvis' : 'You'}</strong>
               <span>{message.ts}</span>
             </div>
-            {message.pending && (
-              <div className="streaming-indicator">
-                <span className="streaming-cursor" />
-              </div>
+            {message.pending && workingSteps && workingSteps.length > 0 && (
+              <WorkingIndicator steps={workingSteps} />
             )}
             {message.content ? (
               <div className="message-content">
                 <MarkdownRenderer content={message.content} />
+                {message.pending && <span className="streaming-cursor" />}
               </div>
             ) : null}
           </div>
         </article>
       ))}
-      {workingSteps && workingSteps.length > 0 && (
-        <WorkingIndicator steps={workingSteps} />
-      )}
     </section>
   )
 }

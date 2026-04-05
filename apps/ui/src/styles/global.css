@@ -233,6 +233,25 @@ button { cursor: pointer; }
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+.name-shimmer {
+  background: linear-gradient(
+    90deg,
+    #c9d1d9 0%,
+    #c9d1d9 30%,
+    #5ab8a0 50%,
+    #c9d1d9 70%,
+    #c9d1d9 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: nameShimmer 2s ease-in-out infinite;
+}
+@keyframes nameShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
 .streaming-cursor {
   display: inline-block; width: 2px; height: 14px;
   background: #5ab8a0; margin-left: 3px; vertical-align: middle;

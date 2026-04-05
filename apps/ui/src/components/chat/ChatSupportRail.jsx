@@ -87,23 +87,11 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
         <div className="rail-system-grid">
           <div className="rail-kv">
             <span className="rail-kv-label">Provider</span>
-            <span className="rail-kv-value mono">{selection?.provider || 'unknown'}</span>
+            <span className="rail-kv-value mono">{selection?.currentProvider || 'unknown'}</span>
           </div>
           <div className="rail-kv">
             <span className="rail-kv-label">Model</span>
-            <span className="rail-kv-value mono">{selection?.model || 'unknown'}</span>
-          </div>
-          <div className="rail-kv">
-            <span className="rail-kv-label">CPU</span>
-            <span className="rail-kv-value mono">{Math.round(health.cpu_pct || 0)}%</span>
-          </div>
-          <div className="rail-kv">
-            <span className="rail-kv-label">RAM</span>
-            <span className="rail-kv-value mono">{Math.round(health.ram_pct || 0)}%</span>
-          </div>
-          <div className="rail-kv">
-            <span className="rail-kv-label">Disk</span>
-            <span className="rail-kv-value mono">{formatDisk(health.disk_free_mb)}</span>
+            <span className="rail-kv-value mono">{selection?.currentModel || 'unknown'}</span>
           </div>
         </div>
       </PanelSection>

@@ -66,6 +66,19 @@ def test_blocks_execution_claim_without_evidence() -> None:
     assert trace.internal_continuation_only is True
 
 
+def test_execution_guard_mentions_write_scoping() -> None:
+    """Execution claim guard text must scope to write/mutating actions, not all actions."""
+    trace = evaluate_self_deception_guard(
+        open_loops=_loops(open_count=1, closed_count=0),
+        conflict_trace=_conflict(outcome="continue_internal"),
+    )
+    exec_constraints = [c for c in trace.constraints if c.claim_type == "execution"]
+    assert len(exec_constraints) > 0
+    guard_text = exec_constraints[0].guard_line
+    assert "write or mutating" in guard_text.lower() or "write" in guard_text.lower()
+    assert "Read-only capability results are factual" in guard_text
+
+
 def test_no_execution_block_when_evidence_present() -> None:
     """When there is execution evidence (closed loops), allow execution claims."""
     trace = evaluate_self_deception_guard(
@@ -121,6 +134,21 @@ def test_no_reframe_when_active_capabilities() -> None:
     cap_reframes = [c for c in trace.constraints if c.claim_type == "capability"]
     assert len(cap_reframes) == 0
     assert trace.capability_state == "active"
+
+
+def test_no_capability_reframe_when_callable_capabilities_exist() -> None:
+    """When callable (non-gated) runtime capabilities exist alongside gated ones, no reframe."""
+    trace = evaluate_self_deception_guard(
+        capability_truth={
+            "active_capabilities": {"items": []},
+            "approval_gated": {"items": [{"label": "gated-0"}]},
+            "runtime_capabilities": [
+                {"capability_id": "tool:read-workspace-memory", "available_now": True},
+            ],
+        },
+    )
+    cap_reframes = [c for c in trace.constraints if c.claim_type == "capability"]
+    assert len(cap_reframes) == 0
 
 
 # ---------------------------------------------------------------------------

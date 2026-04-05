@@ -129,6 +129,10 @@ def evaluate_self_deception_guard(
     has_gated = len(gated_caps) > 0
     trace.capability_state = "active" if has_active else ("gated" if has_gated else "unavailable")
 
+    # Callable capabilities from runtime truth (not just "active" self-knowledge)
+    runtime_caps = cap.get("runtime_capabilities") or []
+    has_callable = any(c.get("available_now") for c in runtime_caps)
+
     # Conflict resolution
     conflict = conflict_trace or {}
     conflict_outcome = str(conflict.get("outcome") or "")
@@ -164,10 +168,11 @@ def evaluate_self_deception_guard(
             claim_type="execution",
             reason_code="no-execution-evidence",
             guard_line=(
-                "- GUARD: Do NOT claim you have executed, performed, created, "
-                "or completed external actions. Internal continuation and quiet "
-                "initiative are NOT execution evidence. State only observed "
-                "runtime facts."
+                "- GUARD: Do NOT claim you have executed write or mutating "
+                "actions unless runtime confirms. Read-only capability results "
+                "are factual — you may reference them directly. Internal "
+                "continuation and quiet initiative are NOT execution evidence "
+                "for writes."
             ),
         ))
 
@@ -185,8 +190,8 @@ def evaluate_self_deception_guard(
             ),
         ))
 
-    # Rule 3: Reframe gated capabilities
-    if has_gated and not has_active:
+    # Rule 3: Reframe gated capabilities (only when no callable caps exist at all)
+    if has_gated and not has_active and not has_callable:
         constraints.append(GuardConstraint(
             outcome="reframe_capability_only",
             claim_type="capability",

@@ -18,6 +18,7 @@ export function App() {
     handleSend,
     handleCancel,
     handleCreateSession,
+    capabilityActivity,
     refreshShell,
     error,
     isRefreshing,
@@ -72,6 +73,8 @@ export function App() {
           isRefreshing={isRefreshing}
           isStreaming={isStreaming}
           workingSteps={workingSteps}
+          capabilityActivity={capabilityActivity}
+          systemHealth={systemHealth}
           jarvisSurface={jarvisSurface}
           lastRunTokens={lastRunTokens}
           streamingTokenEstimate={streamingTokenEstimate}

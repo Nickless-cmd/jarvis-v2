@@ -1,4 +1,4 @@
-import { Activity, Battery, Compass, Eye, Frown, Gauge, Lightbulb, Smile } from 'lucide-react'
+import { Activity, Battery, Compass, Cpu, Eye, Frown, Gauge, HardDrive, Lightbulb, Pencil, Smile, Terminal } from 'lucide-react'
 
 function PanelSection({ title, children }) {
   return (
@@ -9,34 +9,44 @@ function PanelSection({ title, children }) {
   )
 }
 
-/**
- * Derive emotional percentages from the real affective meta state.
- *
- * The backend produces categorical states (settled, attentive, reflective,
- * tense, burdened) and bearings (even, forward, inward, held, taut,
- * compressed).  We map those to four intuitive gauges so the sidebar
- * shows something immediately legible.
- */
+function formatDisk(sizeMb) {
+  if (typeof sizeMb !== 'number' || Number.isNaN(sizeMb)) return '--'
+  if (sizeMb > 1024) return `${(sizeMb / 1024).toFixed(1)} GB`
+  return `${sizeMb.toFixed(0)} MB`
+}
+
+function capabilityIcon(mode) {
+  if (!mode) return Eye
+  if (mode.includes('write') || mode.includes('memory')) return Pencil
+  if (mode.includes('exec')) return Terminal
+  return Eye
+}
+
+function capabilityLabel(item) {
+  if (item.target_path) return item.target_path
+  if (item.command_text) {
+    const cmd = item.command_text
+    return cmd.length > 40 ? cmd.slice(0, 37) + '...' : cmd
+  }
+  return item.capability_name || item.capability_id || 'unknown'
+}
+
 function deriveEmotions(affective) {
   const state = affective.state || 'unknown'
   const bearing = affective.bearing || 'unknown'
   const reflectiveLoad = affective.reflective_load || 'low'
 
-  // Confidence: high when settled/forward, low when burdened
   const confidenceMap = { settled: 0.85, attentive: 0.70, reflective: 0.60, tense: 0.35, burdened: 0.15, unknown: 0.50 }
   const bearingBoost = { even: 0.05, forward: 0.10, inward: -0.05, held: -0.05, taut: -0.10, compressed: -0.15 }
   const confidence = Math.min(1, Math.max(0, (confidenceMap[state] ?? 0.50) + (bearingBoost[bearing] ?? 0)))
 
-  // Curiosity: high when reflective/attentive, low when burdened
   const curiosityMap = { settled: 0.40, attentive: 0.65, reflective: 0.80, tense: 0.30, burdened: 0.10, unknown: 0.30 }
   const loadBoost = { low: 0, medium: 0.10, high: 0.15 }
   const curiosity = Math.min(1, Math.max(0, (curiosityMap[state] ?? 0.30) + (loadBoost[reflectiveLoad] ?? 0)))
 
-  // Frustration: high when tense/burdened
   const frustrationMap = { settled: 0.05, attentive: 0.10, reflective: 0.15, tense: 0.55, burdened: 0.80, unknown: 0.10 }
   const frustration = Math.min(1, Math.max(0, frustrationMap[state] ?? 0.10))
 
-  // Fatigue: derived from reflective load + state
   const fatigueBase = { settled: 0.10, attentive: 0.25, reflective: 0.35, tense: 0.50, burdened: 0.75, unknown: 0.20 }
   const fatigueLoadBoost = { low: 0, medium: 0.10, high: 0.20 }
   const fatigue = Math.min(1, Math.max(0, (fatigueBase[state] ?? 0.20) + (fatigueLoadBoost[reflectiveLoad] ?? 0)))
@@ -44,18 +54,17 @@ function deriveEmotions(affective) {
   return { confidence, curiosity, frustration, fatigue }
 }
 
-export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface }) {
+export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface, systemHealth, workingSteps, capabilityActivity }) {
   const affective = jarvisSurface?.affectiveMetaState || {}
   const summary = jarvisSurface?.summary || {}
   const memorySummary = summary?.retained_memory || {}
+  const health = systemHealth || {}
 
-  // Real affective meta state fields from the API
   const affectiveState = affective.state || 'unknown'
   const bearing = affective.bearing || 'unknown'
   const monitoringMode = affective.monitoring_mode || 'unknown'
   const reflectiveLoad = affective.reflective_load || 'unknown'
 
-  // Derived emotional gauges
   const emotions = deriveEmotions(affective)
   const emotionCards = [
     { label: 'CONF', value: emotions.confidence, color: '#4caf82', icon: Smile },
@@ -64,13 +73,70 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
     { label: 'FATIGUE', value: emotions.fatigue, color: '#4a80c0', icon: Battery },
   ]
 
-  // Inner voice from protected_inner_voice.current
   const voiceData = jarvisSurface?.protectedVoice?.current || {}
   const innerVoiceText = voiceData.voice_line || voiceData.current_concern || 'ingen tanker endnu...'
   const voiceMood = voiceData.mood_tone || null
 
+  const currentStep = (workingSteps || []).find(s => s.status === 'running')
+  const activities = capabilityActivity || []
+
   return (
     <aside className="chat-support-rail">
+      {/* System Panel */}
+      <PanelSection title="System">
+        <div className="rail-system-grid">
+          <div className="rail-kv">
+            <span className="rail-kv-label">Provider</span>
+            <span className="rail-kv-value mono">{selection?.provider || 'unknown'}</span>
+          </div>
+          <div className="rail-kv">
+            <span className="rail-kv-label">Model</span>
+            <span className="rail-kv-value mono">{selection?.model || 'unknown'}</span>
+          </div>
+          <div className="rail-kv">
+            <span className="rail-kv-label">CPU</span>
+            <span className="rail-kv-value mono">{Math.round(health.cpu_pct || 0)}%</span>
+          </div>
+          <div className="rail-kv">
+            <span className="rail-kv-label">RAM</span>
+            <span className="rail-kv-value mono">{Math.round(health.ram_pct || 0)}%</span>
+          </div>
+          <div className="rail-kv">
+            <span className="rail-kv-label">Disk</span>
+            <span className="rail-kv-value mono">{formatDisk(health.disk_free_mb)}</span>
+          </div>
+        </div>
+      </PanelSection>
+
+      {/* Workspace Scan Panel */}
+      <PanelSection title="Workspace Scan">
+        <div className="rail-scan-status">
+          <span className={`rail-scan-dot ${isStreaming ? 'active' : ''}`} />
+          <span className="rail-scan-phase mono">
+            {isStreaming
+              ? (currentStep?.detail || currentStep?.action || 'working...')
+              : 'idle'}
+          </span>
+        </div>
+        {activities.length > 0 ? (
+          <div className="rail-scan-activity">
+            {activities.map((item, i) => {
+              const Icon = capabilityIcon(item.execution_mode)
+              const statusClass = item.status === 'executed' ? 'ok' : item.status === 'approval-required' ? 'gated' : 'blocked'
+              return (
+                <div key={`${item.capability_id}-${item.ts || i}`} className={`rail-scan-item ${statusClass}`}>
+                  <Icon size={11} />
+                  <span className="rail-scan-item-label mono">{capabilityLabel(item)}</span>
+                  <span className={`rail-scan-item-status ${statusClass}`}>{item.status}</span>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="rail-scan-empty mono">No activity yet</div>
+        )}
+      </PanelSection>
+
       <PanelSection title="Emotional State">
         <div className="emotion-grid">
           {emotionCards.map(({ label, value, color, icon: Icon }) => {

@@ -319,6 +319,43 @@ button { cursor: pointer; }
   text-transform: uppercase; margin-bottom: 10px;
 }
 
+/* System panel */
+.rail-system-grid { display: flex; flex-direction: column; gap: 4px; }
+.rail-kv { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
+.rail-kv-label { font-size: 10px; color: #6e7681; }
+.rail-kv-value { font-size: 10px; color: #c9cdd5; }
+
+/* Workspace Scan panel */
+.rail-scan-status { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.rail-scan-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #4e5262; flex-shrink: 0;
+}
+.rail-scan-dot.active {
+  background: #4caf82; box-shadow: 0 0 6px #4caf82;
+  animation: scanPulse 1.2s ease-in-out infinite;
+}
+@keyframes scanPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.rail-scan-phase { font-size: 10px; color: #8b909e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-scan-activity { display: flex; flex-direction: column; gap: 3px; }
+.rail-scan-item {
+  display: flex; align-items: center; gap: 5px; padding: 3px 6px;
+  background: #1c1f25; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);
+  color: #8b909e;
+}
+.rail-scan-item svg { flex-shrink: 0; }
+.rail-scan-item.ok svg { color: #4caf82; }
+.rail-scan-item.gated svg { color: #d4963a; }
+.rail-scan-item.blocked svg { color: #c05050; }
+.rail-scan-item-label { font-size: 9px; color: #c9cdd5; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-scan-item-status { font-size: 8px; letter-spacing: 0.04em; flex-shrink: 0; }
+.rail-scan-item-status.ok { color: #4caf82; }
+.rail-scan-item-status.gated { color: #d4963a; }
+.rail-scan-item-status.blocked { color: #c05050; }
+.rail-scan-empty { font-size: 10px; color: #4e5262; }
+
 /* Emotion grid (2x2) */
 .emotion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .emotion-card {

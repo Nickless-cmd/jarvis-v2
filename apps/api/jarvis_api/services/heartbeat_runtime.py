@@ -2125,8 +2125,8 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
         "stream": False,
         "format": "json",
         "options": {
-            "temperature": 0,
-            "num_predict": 160,
+            "temperature": 0.7,
+            "num_predict": 320,
         },
     }
     req = urllib_request.Request(

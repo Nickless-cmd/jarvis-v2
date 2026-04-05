@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
-import { ArrowUp, LoaderCircle, Paperclip } from 'lucide-react'
+import { ArrowUp, Square, Paperclip } from 'lucide-react'
 
-export function Composer({ value, onChange, onSend, isStreaming }) {
+export function Composer({ value, onChange, onSend, onCancel, isStreaming }) {
   const textareaRef = useRef(null)
   const canSend = Boolean(value.trim()) && !isStreaming
 
@@ -31,14 +31,24 @@ export function Composer({ value, onChange, onSend, isStreaming }) {
           placeholder={isStreaming ? 'Jarvis is responding…' : 'Message Jarvis…'}
           rows={1}
         />
-        <button
-          className={isStreaming ? 'send-btn working' : 'send-btn'}
-          onClick={onSend}
-          disabled={!canSend}
-          title={isStreaming ? 'Jarvis is working' : canSend ? 'Send message' : 'Write a message first'}
-        >
-          {isStreaming ? <LoaderCircle size={16} className="spin" /> : <ArrowUp size={16} />}
-        </button>
+        {isStreaming ? (
+          <button
+            className="send-btn cancel"
+            onClick={onCancel}
+            title="Stop generating"
+          >
+            <Square size={14} />
+          </button>
+        ) : (
+          <button
+            className="send-btn"
+            onClick={onSend}
+            disabled={!canSend}
+            title={canSend ? 'Send message' : 'Write a message first'}
+          >
+            <ArrowUp size={16} />
+          </button>
+        )}
       </div>
     </section>
   )

@@ -16,6 +16,7 @@ export function App() {
     handleSessionSelect,
     handleSelectionChange,
     handleSend,
+    handleCancel,
     handleCreateSession,
     refreshShell,
     error,
@@ -67,6 +68,7 @@ export function App() {
           onSelectionChange={handleSelectionChange}
           onRefresh={refreshShell}
           onSend={handleSend}
+          onCancel={handleCancel}
           isRefreshing={isRefreshing}
           isStreaming={isStreaming}
           workingSteps={workingSteps}

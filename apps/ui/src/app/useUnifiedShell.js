@@ -27,6 +27,7 @@ export function useUnifiedShell() {
   const [error, setError] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [activeRunId, setActiveRunId] = useState(null)
   const [workingSteps, setWorkingSteps] = useState([])
   const [lastRunTokens, setLastRunTokens] = useState(null)
   const [streamingTokenEstimate, setStreamingTokenEstimate] = useState(0)
@@ -179,6 +180,7 @@ export function useUnifiedShell() {
     }
 
     setIsStreaming(true)
+    setActiveRunId(null)
     setError('')
     setLastRunTokens(null)
     setStreamingTokenEstimate(0)
@@ -190,6 +192,9 @@ export function useUnifiedShell() {
       const assistantMessage = await backend.streamMessage({
         sessionId,
         content,
+        onRun: (payload) => {
+          if (payload?.run_id) setActiveRunId(payload.run_id)
+        },
         onWorkingStep: (step) => {
           setWorkingSteps((prev) => {
             if (step.status === 'done') {
@@ -248,8 +253,18 @@ export function useUnifiedShell() {
       setError(failure)
     } finally {
       setIsStreaming(false)
+      setActiveRunId(null)
       setWorkingSteps([])
       setStreamingTokenEstimate(0)
+    }
+  }
+
+  async function handleCancel() {
+    if (!activeRunId) return
+    try {
+      await backend.cancelRun(activeRunId)
+    } catch {
+      // Best-effort cancel
     }
   }
 
@@ -299,6 +314,7 @@ export function useUnifiedShell() {
     handleSessionSelect,
     handleSelectionChange,
     handleSend,
+    handleCancel,
     handleCreateSession,
     refreshShell: handleRefresh,
     error,

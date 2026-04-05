@@ -3839,6 +3839,12 @@ export const backend = {
     return readSseStream(response, { onRun, onDelta, onDone, onFailed, onWorkingStep })
   },
 
+  async cancelRun(runId) {
+    const res = await fetch(`/chat/runs/${runId}/cancel`, { method: 'POST', headers: JSON_HEADERS })
+    if (!res.ok) throw new Error(`Cancel failed: ${res.status}`)
+    return res.json()
+  },
+
   async getSystemHealth() {
     try {
       return await requestJson('/mc/system/health')

@@ -289,6 +289,8 @@ button { cursor: pointer; }
 }
 .send-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0,0,0,.28); }
 .send-btn.working { opacity: .9; background:#3d8f7c; color:#081116; }
+.send-btn.cancel { background: #e05252; color: #fff; cursor: pointer; }
+.send-btn.cancel:hover { transform: translateY(-1px); background: #c94040; box-shadow: 0 12px 26px rgba(0,0,0,.28); }
 .send-btn:disabled { cursor: default; opacity:.58; box-shadow:none; }
 
 .chat-support-rail {

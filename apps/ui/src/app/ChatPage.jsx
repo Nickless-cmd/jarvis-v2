@@ -11,6 +11,7 @@ export function ChatPage({
   onSelectionChange,
   onRefresh,
   onSend,
+  onCancel,
   isRefreshing,
   isStreaming,
   workingSteps,
@@ -51,6 +52,7 @@ export function ChatPage({
             onSend(draft.trim())
             setDraft('')
           }}
+          onCancel={onCancel}
         />
       </main>
 

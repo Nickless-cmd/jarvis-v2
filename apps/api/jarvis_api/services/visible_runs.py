@@ -1462,7 +1462,7 @@ def _resolve_visible_capability_target_path(
     )
     if capability is None:
         return None, "none"
-    if str(capability.get("execution_mode") or "") != "external-file-read":
+    if str(capability.get("execution_mode") or "") not in {"external-file-read", "external-dir-list"}:
         return None, "none"
     if str(capability_arguments.get("target_path") or "").strip():
         return str(capability_arguments.get("target_path") or "").strip(), "tag-attributes"

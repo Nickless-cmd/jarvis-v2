@@ -1247,6 +1247,9 @@ def _extract_capability_call(text: str) -> str | None:
     return str(parsed.get("capability_id") or "")
 
 
+_MAX_CAPABILITIES_PER_TURN = 5
+
+
 def _extract_capability_plan(text: str) -> dict[str, object]:
     raw = str(text or "")
 
@@ -1260,12 +1263,14 @@ def _extract_capability_plan(text: str) -> dict[str, object]:
             arguments = dict(attrs)
             if block_content:
                 arguments["write_content"] = block_content
+            cap_entry = {"capability_id": capability_id, "arguments": arguments}
             return {
                 "selected_capability_id": capability_id,
                 "selected_arguments": arguments,
                 "argument_source": "block-content",
                 "argument_binding_mode": "block-content",
                 "capability_ids": [capability_id],
+                "all_capabilities": [cap_entry],
                 "had_markup": True,
                 "multiple": False,
             }
@@ -1277,9 +1282,9 @@ def _extract_capability_plan(text: str) -> dict[str, object]:
         if (parsed := _parse_capability_call_markup(match.group(0)))
     ]
     matches = [str(item.get("capability_id") or "") for item in parsed_matches]
-    selected: str | None = None
-    selected_arguments: dict[str, str] = {}
-    argument_binding_mode = "id-only"
+
+    # Collect ALL known capabilities (deduplicated, capped)
+    all_capabilities: list[dict[str, object]] = []
     seen: set[str] = set()
     for item in parsed_matches:
         capability_id = str(item.get("capability_id") or "")
@@ -1287,19 +1292,27 @@ def _extract_capability_plan(text: str) -> dict[str, object]:
             continue
         seen.add(capability_id)
         if _is_known_workspace_capability(capability_id):
-            selected = capability_id
-            selected_arguments = dict(item.get("arguments") or {})
-            if selected_arguments:
-                argument_binding_mode = "tag-attributes"
-            break
+            arguments = dict(item.get("arguments") or {})
+            all_capabilities.append({
+                "capability_id": capability_id,
+                "arguments": arguments,
+            })
+            if len(all_capabilities) >= _MAX_CAPABILITIES_PER_TURN:
+                break
+
+    selected = str(all_capabilities[0]["capability_id"]) if all_capabilities else None
+    selected_arguments = dict(all_capabilities[0]["arguments"]) if all_capabilities else {}
+    argument_binding_mode = "tag-attributes" if selected_arguments else "id-only"
+
     return {
         "selected_capability_id": selected,
         "selected_arguments": selected_arguments,
         "argument_source": "tag-attributes" if selected_arguments else "none",
         "argument_binding_mode": argument_binding_mode,
         "capability_ids": matches,
+        "all_capabilities": all_capabilities,
         "had_markup": bool(matches),
-        "multiple": len(matches) > 1,
+        "multiple": len(all_capabilities) > 1,
     }
 
 

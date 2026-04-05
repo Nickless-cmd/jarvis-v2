@@ -528,3 +528,44 @@ def test_visible_run_surfaces_provider_first_pass_error_in_trace(
     assert trace_events[-1]["provider_first_pass_status"] == "failed"
     assert trace_events[-1]["invoke_status"] == "not-invoked"
     assert "no streamed response" in str(trace_events[-1].get("provider_error_summary") or "")
+
+
+# ---------------------------------------------------------------------------
+# Multi-capability extraction tests
+# ---------------------------------------------------------------------------
+
+
+def test_extract_capability_plan_returns_all_known_capabilities() -> None:
+    """_extract_capability_plan must return all known capabilities, not just the first."""
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+
+    text = (
+        '<capability-call id="tool:read-workspace-user-profile" /> '
+        '<capability-call id="tool:read-workspace-memory" /> '
+        '<capability-call id="tool:read-repository-readme" />'
+    )
+    plan = visible_runs._extract_capability_plan(text)
+
+    assert plan["selected_capability_id"] == "tool:read-workspace-user-profile"
+    assert plan["had_markup"] is True
+    assert plan["multiple"] is True
+    all_caps = plan["all_capabilities"]
+    assert len(all_caps) >= 2
+    cap_ids = [c["capability_id"] for c in all_caps]
+    assert "tool:read-workspace-user-profile" in cap_ids
+    assert "tool:read-workspace-memory" in cap_ids
+
+
+def test_extract_capability_plan_caps_at_max_capabilities() -> None:
+    """_extract_capability_plan must not return more than _MAX_CAPABILITIES_PER_TURN."""
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+
+    # All tags have same ID so dedup means only 1 entry, but the cap logic is exercised
+    tags = " ".join(
+        f'<capability-call id="tool:read-workspace-user-profile" target_path="/fake/{i}" />'
+        for i in range(10)
+    )
+    plan = visible_runs._extract_capability_plan(tags)
+    assert len(plan["all_capabilities"]) <= visible_runs._MAX_CAPABILITIES_PER_TURN

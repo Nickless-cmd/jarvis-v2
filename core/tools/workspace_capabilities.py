@@ -21,6 +21,7 @@ RUNTIME_NOTE_PREFIX = "RUNTIME_NOTE:"
 READ_FILE_PREFIX = "READ_FILE:"
 SEARCH_FILE_PREFIX = "SEARCH_FILE:"
 READ_EXTERNAL_FILE_PREFIX = "READ_EXTERNAL_FILE:"
+LIST_EXTERNAL_DIR_PREFIX = "LIST_EXTERNAL_DIR:"
 EXEC_COMMAND_PREFIX = "EXEC_COMMAND:"
 WRITE_FILE_PREFIX = "WRITE_FILE:"
 WRITE_MEMORY_FILE_PREFIX = "WRITE_MEMORY_FILE:"
@@ -198,6 +199,7 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
             "workspace_read": "allowed",
             "workspace_write": "explicit-approval-required",
             "external_read": "allowed",
+            "external_dir_list": "allowed",
             "non_destructive_exec": "allowed",
             "mutating_exec": "explicit-approval-required-bounded-non-sudo-only",
             "sudo_exec": "explicit-approval-required-bounded-allowlist-with-short-ttl-window",
@@ -488,6 +490,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         name = heading[len(READ_EXTERNAL_FILE_PREFIX) :].strip()
         execution_mode = "external-file-read"
         runnable = external_read_spec is not None
+    elif heading.startswith(LIST_EXTERNAL_DIR_PREFIX):
+        name = heading[len(LIST_EXTERNAL_DIR_PREFIX) :].strip()
+        execution_mode = "external-dir-list"
+        runnable = external_read_spec is not None
     elif heading.startswith(EXEC_COMMAND_PREFIX):
         name = heading[len(EXEC_COMMAND_PREFIX) :].strip()
         execution_mode = "non-destructive-exec"
@@ -530,7 +536,7 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         "target_path": read_file_path or external_read_path or write_target_path,
         "target_path_source": (
             (external_read_spec or {}).get("path_source")
-            if execution_mode == "external-file-read"
+            if execution_mode in {"external-file-read", "external-dir-list"}
             else "declared-path"
         ),
         "command_text": (exec_spec or {}).get("command"),
@@ -705,6 +711,75 @@ def _invoke_runnable_capability(
                 "type": "external-file-read",
                 "path": str(candidate),
                 "text": _read_bounded_text(candidate),
+                "target_source": target_path_source or "declared-path",
+                "workspace_scoped": False,
+            },
+        }
+
+    if summary["execution_mode"] == "external-dir-list":
+        declared_target_path = str(summary.get("target_path") or "").strip()
+        target_path_source = str(summary.get("target_path_source") or "").strip()
+        resolved_target_path = (
+            str(target_path or "").strip()
+            if target_path_source == "invocation-argument"
+            else declared_target_path
+        )
+        if not resolved_target_path:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-target-path",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": "External directory list requires an explicit target_path.",
+            }
+        candidate = _resolve_external_path(workspace_dir, resolved_target_path)
+        if candidate is None:
+            return {
+                "capability": summary,
+                "status": "blocked-invalid-target-path",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": f"Declared external directory path is invalid: {resolved_target_path}",
+            }
+        if not candidate.exists() or not candidate.is_dir():
+            return {
+                "capability": summary,
+                "status": "executed",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=True),
+                "result": None,
+                "detail": f"External directory not found or not a directory: {resolved_target_path}",
+            }
+        try:
+            entries = sorted(candidate.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+            lines: list[str] = []
+            for entry in entries[:100]:
+                kind = "d" if entry.is_dir() else "f"
+                lines.append(f"[{kind}] {entry.name}")
+            listing = "\n".join(lines)
+            if len(listing) > MAX_FILE_OUTPUT_CHARS:
+                listing = listing[:MAX_FILE_OUTPUT_CHARS] + "\n…"
+        except PermissionError:
+            return {
+                "capability": summary,
+                "status": "blocked-permission-denied",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": f"Permission denied listing directory: {resolved_target_path}",
+            }
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=True),
+            "result": {
+                "type": "external-dir-list",
+                "path": str(candidate),
+                "text": listing,
+                "entry_count": len(entries),
                 "target_source": target_path_source or "declared-path",
                 "workspace_scoped": False,
             },
@@ -1116,6 +1191,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "workspace-file-read",
         "workspace-search-read",
         "external-file-read",
+        "external-dir-list",
         "non-destructive-exec",
         "workspace-memory-write",
     }:
@@ -1143,6 +1219,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "workspace-file-read",
         "workspace-search-read",
         "external-file-read",
+        "external-dir-list",
         "non-destructive-exec",
         "workspace-memory-write",
         "guidance-only",

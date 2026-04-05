@@ -15,6 +15,7 @@ Callable now:
 - `tool:search-workspace-memory-continuity`
 - `tool:read-repository-readme`
 - `tool:read-external-file-by-path`
+- `tool:list-external-directory`
 - `tool:run-non-destructive-command`
 - `tool:write-workspace-memory`
 - `tool:write-user-profile`
@@ -57,6 +58,14 @@ path_from: user-message
 
 Reads one explicit external file path from the current user message.
 Use this only for read-only external/system file access outside the active workspace root.
+
+## LIST_EXTERNAL_DIR: list external directory
+path_from: user-message
+
+Lists files and directories at an explicit external path from the current user message.
+Use this to navigate and explore any directory outside the active workspace root.
+Directories are shown with [d] prefix, files with [f]. Sorted directories-first, max 100 entries.
+Use this to discover file paths before reading them with `tool:read-external-file-by-path`.
 
 ## EXEC_COMMAND: run non-destructive command
 command_from: user-message

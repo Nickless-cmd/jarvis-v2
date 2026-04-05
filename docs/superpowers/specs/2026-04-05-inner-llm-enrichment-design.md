@@ -67,7 +67,7 @@ Starts a single daemon thread that runs 3 LLM enrichments sequentially (to avoid
 Each enrichment:
 1. Builds a focused prompt from pipeline payload fields + recent chat context
 2. Calls cheapest available model via `resolve_provider_router_target(lane="cheap")`
-3. Makes a synchronous HTTP call (within the daemon thread) using existing provider infrastructure
+3. Makes a synchronous HTTP call (within the daemon thread) — reuses the HTTP/urllib pattern from `visible_model.py` but with non-streaming completion (single response, no SSE)
 4. On success: updates DB record via new `update_*_enriched()` function
 5. On failure: logs warning, template value is preserved
 

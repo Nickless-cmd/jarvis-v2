@@ -209,6 +209,10 @@ CAPABILITY_CALL_PATTERN = re.compile(
 CAPABILITY_CALL_SCAN_PATTERN = re.compile(
     r"<capability-call\s+(?P<attrs>[^<>]*?)\s*/>"
 )
+CAPABILITY_BLOCK_PATTERN = re.compile(
+    r'<capability-call\s+(?P<attrs>[^>]*?)>\s*\n(?P<content>.*?)\n\s*</capability-call>',
+    re.DOTALL,
+)
 CAPABILITY_ATTR_PATTERN = re.compile(
     r'(?P<name>[a-z_]+)="(?P<value>[^"]*)"'
 )
@@ -1226,6 +1230,28 @@ def _extract_capability_call(text: str) -> str | None:
 
 def _extract_capability_plan(text: str) -> dict[str, object]:
     raw = str(text or "")
+
+    # First try block-style: <capability-call id="...">content</capability-call>
+    block_match = CAPABILITY_BLOCK_PATTERN.search(raw)
+    if block_match:
+        attrs = _parse_capability_attrs(block_match.group("attrs"))
+        capability_id = str(attrs.pop("id", "")).strip()
+        block_content = block_match.group("content").strip()
+        if capability_id and re.fullmatch(r"[a-z0-9:-]+", capability_id):
+            arguments = dict(attrs)
+            if block_content:
+                arguments["write_content"] = block_content
+            return {
+                "selected_capability_id": capability_id,
+                "selected_arguments": arguments,
+                "argument_source": "block-content",
+                "argument_binding_mode": "block-content",
+                "capability_ids": [capability_id],
+                "had_markup": True,
+                "multiple": False,
+            }
+
+    # Fall back to self-closing: <capability-call id="..." />
     parsed_matches = [
         parsed
         for match in CAPABILITY_CALL_SCAN_PATTERN.finditer(raw)

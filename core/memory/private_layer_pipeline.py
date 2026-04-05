@@ -16,6 +16,7 @@ from core.memory.private_retained_memory_record import (
 )
 from core.memory.protected_inner_voice import build_protected_inner_voice_payload
 from core.memory.private_self_model import build_private_self_model_payload
+from core.memory.inner_llm_enrichment import enrich_private_layers_async
 from core.runtime.db import (
     record_private_state,
     record_private_development_state,
@@ -134,3 +135,24 @@ def write_private_terminal_layers(
     record_private_temporal_promotion_signal(**private_temporal_promotion_signal)
     record_private_promotion_decision(**private_promotion_decision)
     record_private_retained_memory_record(**private_retained_memory_record)
+
+    # --- async LLM enrichment (fire-and-forget) ---
+    enrich_private_layers_async(
+        run_id=run_id,
+        inner_note_payload=private_inner_note,
+        growth_note_payload=private_growth_note,
+        inner_voice_payload=protected_inner_voice,
+        recent_chat_context=_extract_recent_chat(user_message_preview, work_preview),
+    )
+
+
+def _extract_recent_chat(
+    user_message_preview: str | None, work_preview: str | None
+) -> str:
+    """Build bounded chat context string from available previews."""
+    parts: list[str] = []
+    if user_message_preview:
+        parts.append(f"User: {user_message_preview[:300]}")
+    if work_preview:
+        parts.append(f"Assistant: {work_preview[:300]}")
+    return "\n".join(parts) if parts else ""

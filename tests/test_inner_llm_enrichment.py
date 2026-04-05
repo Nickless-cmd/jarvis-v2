@@ -357,3 +357,100 @@ def test_enrich_private_layers_async_preserves_template_on_failure() -> None:
 
     assert inner[0] == "template summary"
     assert inner[1] == 0
+
+
+# ---------------------------------------------------------------------------
+# Pipeline integration test (Task 6)
+# ---------------------------------------------------------------------------
+
+
+def test_pipeline_calls_enrichment_after_persistence() -> None:
+    """Verify write_private_terminal_layers triggers async enrichment."""
+    with patch(
+        "core.memory.private_layer_pipeline.enrich_private_layers_async"
+    ) as mock_enrich:
+        from core.memory.private_layer_pipeline import write_private_terminal_layers
+
+        jarvis_db.init_db()
+
+        write_private_terminal_layers(
+            run_id="run-integration-1",
+            work_id="work-integration-1",
+            status="completed",
+            started_at=_iso_now(),
+            finished_at=_iso_now(),
+            user_message_preview="find my files",
+            work_preview="Found 3 files in workspace",
+            capability_id="workspace-search",
+        )
+
+        mock_enrich.assert_called_once()
+        call_kwargs = mock_enrich.call_args.kwargs
+        assert call_kwargs["run_id"] == "run-integration-1"
+        assert "inner_note_payload" in call_kwargs
+        assert "growth_note_payload" in call_kwargs
+        assert "inner_voice_payload" in call_kwargs
+        assert "recent_chat_context" in call_kwargs
+
+
+# ---------------------------------------------------------------------------
+# End-to-end smoke test (Task 7)
+# ---------------------------------------------------------------------------
+
+
+def test_full_pipeline_enrichment_end_to_end() -> None:
+    """Full pipeline run: template persist -> async enrich -> DB updated."""
+    jarvis_db.init_db()
+
+    responses = iter([
+        "Arbejdet med filsøgning faldt stille på plads.",
+        "Det var nyttigt at søge bredt først|Den brede søgning gav overblik",
+        "Stille opmærksomhed, rettet mod det næste.",
+    ])
+
+    def fake_llm(system: str, user: str) -> str | None:
+        return next(responses)
+
+    with patch(
+        "core.memory.inner_llm_enrichment._call_cheap_llm", side_effect=fake_llm
+    ):
+        from core.memory.private_layer_pipeline import write_private_terminal_layers
+
+        write_private_terminal_layers(
+            run_id="run-e2e-1",
+            work_id="work-e2e-1",
+            status="completed",
+            started_at=_iso_now(),
+            finished_at=_iso_now(),
+            user_message_preview="find my workspace files",
+            work_preview="Found 5 files matching query",
+            capability_id="workspace-search",
+        )
+
+        # Wait inside patch context so daemon thread sees the mock
+        time.sleep(3)
+
+    conn = jarvis_db.connect()
+    inner = conn.execute(
+        "SELECT private_summary, enriched FROM private_inner_notes WHERE run_id = ?",
+        ("run-e2e-1",),
+    ).fetchone()
+    growth = conn.execute(
+        "SELECT lesson, helpful_signal, enriched FROM private_growth_notes WHERE run_id = ?",
+        ("run-e2e-1",),
+    ).fetchone()
+    voice = conn.execute(
+        "SELECT voice_line, enriched FROM protected_inner_voices WHERE run_id = ?",
+        ("run-e2e-1",),
+    ).fetchone()
+    conn.close()
+
+    assert inner[0] == "Arbejdet med filsøgning faldt stille på plads."
+    assert inner[1] == 1
+
+    assert growth[0] == "Det var nyttigt at søge bredt først"
+    assert growth[1] == "Den brede søgning gav overblik"
+    assert growth[2] == 1
+
+    assert voice[0] == "Stille opmærksomhed, rettet mod det næste."
+    assert voice[1] == 1

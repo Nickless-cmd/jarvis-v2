@@ -7,8 +7,10 @@ from pydantic import BaseModel
 from apps.api.jarvis_api.services.chat_sessions import (
     append_chat_message,
     create_chat_session,
+    delete_chat_session,
     get_chat_session,
     list_chat_sessions,
+    rename_chat_session,
 )
 from apps.api.jarvis_api.services.visible_runs import cancel_visible_run, start_visible_run
 
@@ -22,6 +24,10 @@ class ChatStreamRequest(BaseModel):
 
 class ChatSessionCreateRequest(BaseModel):
     title: str = "New chat"
+
+
+class ChatSessionRenameRequest(BaseModel):
+    title: str
 
 
 @router.get("/sessions")
@@ -40,6 +46,21 @@ async def chat_session(session_id: str) -> dict:
     if session is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
     return {"session": session}
+
+
+@router.put("/sessions/{session_id}/rename")
+async def chat_rename_session(session_id: str, request: ChatSessionRenameRequest) -> dict:
+    session = rename_chat_session(session_id, title=request.title)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    return {"session": session}
+
+
+@router.delete("/sessions/{session_id}")
+async def chat_delete_session(session_id: str) -> dict:
+    if not delete_chat_session(session_id):
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    return {"ok": True, "session_id": session_id}
 
 
 @router.post("/stream")

@@ -17,6 +17,8 @@ export function App() {
     handleSelectionChange,
     handleSend,
     handleCancel,
+    handleRenameSession,
+    handleDeleteSession,
     handleCreateSession,
     capabilityActivity,
     refreshShell,
@@ -70,6 +72,8 @@ export function App() {
           onRefresh={refreshShell}
           onSend={handleSend}
           onCancel={handleCancel}
+          onRename={handleRenameSession}
+          onDelete={handleDeleteSession}
           isRefreshing={isRefreshing}
           isStreaming={isStreaming}
           workingSteps={workingSteps}

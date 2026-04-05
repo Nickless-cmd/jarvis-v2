@@ -3846,6 +3846,17 @@ export const backend = {
     return res.json()
   },
 
+  async renameSession(sessionId, title) {
+    return requestJson(`/chat/sessions/${sessionId}/rename`, {
+      method: 'PUT',
+      body: JSON.stringify({ title }),
+    })
+  },
+
+  async deleteSession(sessionId) {
+    return requestJson(`/chat/sessions/${sessionId}`, { method: 'DELETE' })
+  },
+
   async getSystemHealth() {
     try {
       return await requestJson('/mc/system/health')

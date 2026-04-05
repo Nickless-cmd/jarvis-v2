@@ -12,6 +12,8 @@ export function ChatPage({
   onRefresh,
   onSend,
   onCancel,
+  onRename,
+  onDelete,
   isRefreshing,
   isStreaming,
   workingSteps,
@@ -35,10 +37,13 @@ export function ChatPage({
           selection={selection}
           onSelectionChange={onSelectionChange}
           onRefresh={onRefresh}
+          onRename={onRename}
+          onDelete={onDelete}
           isRefreshing={isRefreshing}
           isStreaming={isStreaming}
           lastRunTokens={lastRunTokens}
           streamingTokenEstimate={streamingTokenEstimate}
+          messages={activeSession?.messages || []}
         />
 
         {error ? <div className="inline-error">{error}</div> : null}

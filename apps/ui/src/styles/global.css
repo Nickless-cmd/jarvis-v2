@@ -125,7 +125,7 @@ button { cursor: pointer; }
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  min-height:48px;
+  min-height:58px;
   background: linear-gradient(180deg, #11161f 0%, #0f141c 100%);
   border-bottom:1px solid rgba(255,255,255,.06);
   flex-shrink: 0;
@@ -135,7 +135,7 @@ button { cursor: pointer; }
   display: flex; align-items: center; gap: 10px;
 }
 .chat-header-session-title {
-  font-size: 12px; font-weight: 500; color: #e4e6ed;
+  font-size: 13px; font-weight: 600; color: #e4e6ed;
 }
 .chat-header-chips { display: flex; gap: 4px; }
 .chat-header-right { display: flex; align-items: center; gap: 6px; }

@@ -94,6 +94,10 @@ ALLOWED_EVENT_FAMILIES = {
     "cognitive_forgetting",
     "cognitive_negotiation",
     "cognitive_state",
+    "cognitive_user_emotion",
+    "cognitive_experiential",
+    "cognitive_absence",
+    "cognitive_life_cycle",
 }
 
 

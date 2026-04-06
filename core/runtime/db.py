@@ -28854,3 +28854,219 @@ def list_cognitive_conversation_signatures(*, limit: int = 10) -> list[dict[str,
         }
         for r in rows
     ]
+
+
+# --- User Emotional States ---
+
+def _ensure_cognitive_user_emotional_states_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_user_emotional_states (
+            state_id TEXT NOT NULL,
+            detected_mood TEXT NOT NULL DEFAULT 'neutral',
+            confidence REAL NOT NULL DEFAULT 0.5,
+            evidence TEXT NOT NULL DEFAULT '',
+            user_message_preview TEXT NOT NULL DEFAULT '',
+            response_adjustment TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (state_id)
+        )
+        """
+    )
+
+
+def insert_cognitive_user_emotional_state(
+    *,
+    state_id: str,
+    detected_mood: str,
+    confidence: float = 0.5,
+    evidence: str = "",
+    user_message_preview: str = "",
+    response_adjustment: str = "",
+    run_id: str = "",
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_user_emotional_states_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO cognitive_user_emotional_states
+               (state_id, detected_mood, confidence, evidence,
+                user_message_preview, response_adjustment, run_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (state_id, detected_mood, confidence, evidence,
+             user_message_preview[:200], response_adjustment, run_id, now),
+        )
+    return {"state_id": state_id, "detected_mood": detected_mood, "created_at": now}
+
+
+def get_latest_cognitive_user_emotional_state() -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_cognitive_user_emotional_states_table(conn)
+        row = conn.execute(
+            "SELECT * FROM cognitive_user_emotional_states ORDER BY created_at DESC LIMIT 1"
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "state_id": row["state_id"],
+        "detected_mood": row["detected_mood"],
+        "confidence": float(row["confidence"]),
+        "evidence": row["evidence"],
+        "user_message_preview": row["user_message_preview"],
+        "response_adjustment": row["response_adjustment"],
+        "run_id": row["run_id"],
+        "created_at": row["created_at"],
+    }
+
+
+def list_cognitive_user_emotional_states(*, limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_user_emotional_states_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM cognitive_user_emotional_states ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "state_id": r["state_id"],
+            "detected_mood": r["detected_mood"],
+            "confidence": float(r["confidence"]),
+            "evidence": r["evidence"],
+            "response_adjustment": r["response_adjustment"],
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+
+
+# --- Experiential Memories ---
+
+def _ensure_cognitive_experiential_memories_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_experiential_memories (
+            memory_id TEXT NOT NULL,
+            session_id TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            narrative TEXT NOT NULL DEFAULT '',
+            user_mood TEXT NOT NULL DEFAULT 'neutral',
+            jarvis_mood TEXT NOT NULL DEFAULT 'neutral',
+            key_lesson TEXT NOT NULL DEFAULT '',
+            emotion_arc TEXT NOT NULL DEFAULT '',
+            topic TEXT NOT NULL DEFAULT '',
+            importance REAL NOT NULL DEFAULT 0.5,
+            decay_score REAL NOT NULL DEFAULT 0.0,
+            reinforcement_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (memory_id)
+        )
+        """
+    )
+
+
+def insert_cognitive_experiential_memory(
+    *,
+    memory_id: str,
+    session_id: str = "",
+    run_id: str = "",
+    narrative: str = "",
+    user_mood: str = "neutral",
+    jarvis_mood: str = "neutral",
+    key_lesson: str = "",
+    emotion_arc: str = "",
+    topic: str = "",
+    importance: float = 0.5,
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_experiential_memories_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO cognitive_experiential_memories
+               (memory_id, session_id, run_id, narrative, user_mood, jarvis_mood,
+                key_lesson, emotion_arc, topic, importance, decay_score,
+                reinforcement_count, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, 0, ?, ?)""",
+            (memory_id, session_id, run_id, narrative[:500], user_mood, jarvis_mood,
+             key_lesson[:200], emotion_arc, topic[:100], importance, now, now),
+        )
+    return {"memory_id": memory_id, "topic": topic, "created_at": now}
+
+
+def get_relevant_experiential_memories(
+    *, context: str, limit: int = 3
+) -> list[dict[str, object]]:
+    """Find experiential memories relevant to the given context."""
+    with connect() as conn:
+        _ensure_cognitive_experiential_memories_table(conn)
+        rows = conn.execute(
+            """SELECT * FROM cognitive_experiential_memories
+               WHERE decay_score < 0.9
+               ORDER BY importance DESC, reinforcement_count DESC, created_at DESC
+               LIMIT ?""",
+            (limit * 3,),
+        ).fetchall()
+    if not rows:
+        return []
+    context_lower = context.lower()
+    context_words = set(w for w in context_lower.split() if len(w) > 3)
+    scored = []
+    for r in rows:
+        text = f"{r['narrative']} {r['topic']} {r['key_lesson']}".lower()
+        overlap = sum(1 for w in context_words if w in text)
+        score = overlap * 0.3 + float(r["importance"]) * 0.4 + float(r["reinforcement_count"]) * 0.1
+        scored.append((score, r))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [
+        {
+            "memory_id": r["memory_id"],
+            "narrative": r["narrative"],
+            "user_mood": r["user_mood"],
+            "key_lesson": r["key_lesson"],
+            "topic": r["topic"],
+            "importance": float(r["importance"]),
+            "decay_score": float(r["decay_score"]),
+            "reinforcement_count": int(r["reinforcement_count"]),
+            "created_at": r["created_at"],
+        }
+        for _, r in scored[:limit]
+    ]
+
+
+def reinforce_experiential_memory(memory_id: str) -> None:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_experiential_memories_table(conn)
+        conn.execute(
+            """UPDATE cognitive_experiential_memories
+               SET reinforcement_count = reinforcement_count + 1,
+                   decay_score = 0.0, updated_at = ?
+               WHERE memory_id = ?""",
+            (now, memory_id),
+        )
+
+
+def list_cognitive_experiential_memories(*, limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_experiential_memories_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM cognitive_experiential_memories ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "memory_id": r["memory_id"],
+            "narrative": r["narrative"],
+            "user_mood": r["user_mood"],
+            "jarvis_mood": r["jarvis_mood"],
+            "key_lesson": r["key_lesson"],
+            "emotion_arc": r["emotion_arc"],
+            "topic": r["topic"],
+            "importance": float(r["importance"]),
+            "decay_score": float(r["decay_score"]),
+            "reinforcement_count": int(r["reinforcement_count"]),
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]

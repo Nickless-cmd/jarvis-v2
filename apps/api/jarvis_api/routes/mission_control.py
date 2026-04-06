@@ -2588,3 +2588,31 @@ def mc_apophenia_guard() -> dict:
     """Return pattern skeptic state."""
     from apps.api.jarvis_api.services.apophenia_guard import build_apophenia_guard_surface
     return build_apophenia_guard_surface()
+
+
+@router.get("/user-emotional-resonance")
+def mc_user_emotional_resonance() -> dict:
+    """Return user mood detection state."""
+    from apps.api.jarvis_api.services.user_emotional_resonance import build_user_emotional_resonance_surface
+    return build_user_emotional_resonance_surface()
+
+
+@router.get("/experiential-memories")
+def mc_experiential_memories() -> dict:
+    """Return experiential memories (lived experiences with emotion)."""
+    from apps.api.jarvis_api.services.experiential_memory import build_experiential_memory_surface
+    return build_experiential_memory_surface()
+
+
+@router.get("/living-heartbeat-cycle")
+def mc_living_heartbeat_cycle() -> dict:
+    """Return current life phase in heartbeat cycle."""
+    from apps.api.jarvis_api.services.living_heartbeat_cycle import build_living_heartbeat_cycle_surface
+    return build_living_heartbeat_cycle_surface()
+
+
+@router.get("/absence-awareness")
+def mc_absence_awareness() -> dict:
+    """Return absence detection and return brief."""
+    from apps.api.jarvis_api.services.absence_awareness import build_absence_awareness_surface
+    return build_absence_awareness_surface()

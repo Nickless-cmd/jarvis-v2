@@ -120,6 +120,43 @@ def build_seed_surface() -> dict[str, object]:
     }
 
 
+def auto_plant_seeds_from_conversation(*, user_message: str) -> list[dict[str, object]]:
+    """Scan user message for future-intent markers and auto-plant seeds."""
+    msg_lower = user_message.lower()
+    planted = []
+
+    _INTENT_MARKERS = [
+        ("vi skal huske", "reminder"),
+        ("husk at", "reminder"),
+        ("bagefter", "deferred_task"),
+        ("næste gang", "future_context"),
+        ("senere", "deferred_task"),
+        ("i morgen", "deferred_task"),
+        ("vi tager det", "deferred_task"),
+        ("todo", "task"),
+    ]
+
+    for marker, seed_type in _INTENT_MARKERS:
+        if marker in msg_lower:
+            # Extract context around the marker
+            idx = msg_lower.index(marker)
+            context = user_message[max(0, idx - 20):idx + len(marker) + 80].strip()
+            if len(context) < 10:
+                continue
+
+            # Extract keywords for activation context
+            words = [w for w in context.split() if len(w) > 4][:5]
+
+            result = plant_seed(
+                title=f"Auto: {context[:60]}",
+                summary=context[:200],
+                activate_on_context=json.dumps(words, ensure_ascii=False),
+            )
+            planted.append(result)
+
+    return planted
+
+
 def _safe_json_list(value) -> list:
     if isinstance(value, list):
         return value

@@ -2680,6 +2680,40 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
+        # --- User emotional resonance ---
+        detected_mood = "neutral"
+        try:
+            from apps.api.jarvis_api.services.user_emotional_resonance import detect_user_mood
+            mood_result = detect_user_mood(
+                user_message=user_message,
+                run_id=run_id,
+            )
+            detected_mood = mood_result.get("detected_mood", "neutral")
+        except Exception:
+            pass
+
+        # --- Experiential memory ---
+        try:
+            from apps.api.jarvis_api.services.experiential_memory import (
+                create_experiential_memory_async,
+            )
+            create_experiential_memory_async(
+                run_id=run_id,
+                user_message=user_message,
+                assistant_response=assistant_response,
+                outcome_status=outcome_status,
+                user_mood=detected_mood,
+            )
+        except Exception:
+            pass
+
+        # --- Auto-seed planting from conversation ---
+        try:
+            from apps.api.jarvis_api.services.seed_system import auto_plant_seeds_from_conversation
+            auto_plant_seeds_from_conversation(user_message=user_message)
+        except Exception:
+            pass
+
     threading.Thread(target=_run, daemon=True).start()
 
 

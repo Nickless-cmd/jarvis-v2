@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+
+from core.runtime.db import (
+    get_latest_cognitive_personality_vector,
+    get_latest_cognitive_relationship_texture,
+    get_latest_cognitive_rhythm_state,
+)
 
 def build_affective_meta_state_surface() -> dict[str, object]:
     """Build affective meta state fresh each call — cheap (no LLM), always current."""
@@ -17,6 +24,9 @@ def _build_affective_meta_state_surface_uncached() -> dict[str, object]:
         idle_consolidation=_safe_idle_consolidation(),
         dream_articulation=_safe_dream_articulation(),
         inner_voice_state=_safe_inner_voice_state(),
+        personality_vector=_safe_personality_vector(),
+        relationship_texture=_safe_relationship_texture(),
+        rhythm_state=_safe_rhythm_state(),
     )
 
 
@@ -30,6 +40,9 @@ def build_affective_meta_state_from_sources(
     idle_consolidation: dict[str, object] | None,
     dream_articulation: dict[str, object] | None,
     inner_voice_state: dict[str, object] | None,
+    personality_vector: dict[str, object] | None,
+    relationship_texture: dict[str, object] | None,
+    rhythm_state: dict[str, object] | None,
 ) -> dict[str, object]:
     built_at = datetime.now(UTC).isoformat()
 
@@ -41,6 +54,9 @@ def build_affective_meta_state_from_sources(
     consolidation = idle_consolidation or {}
     dream = dream_articulation or {}
     voice = inner_voice_state or {}
+    personality = personality_vector or {}
+    relationship = relationship_texture or {}
+    rhythm = rhythm_state or {}
 
     loop_summary = loops.get("summary") or {}
     regulation_summary = regulation.get("summary") or {}
@@ -132,12 +148,18 @@ def build_affective_meta_state_from_sources(
         inner_voice_state=voice_result,
         quiet_initiative=quiet,
     )
+    live_emotional_state = _build_live_emotional_state(
+        personality_vector=personality,
+        relationship_texture=relationship,
+        rhythm_state=rhythm,
+    )
 
     return {
         "state": affective_state,
         "bearing": bearing,
         "monitoring_mode": monitoring_mode,
         "reflective_load": reflective_load,
+        "live_emotional_state": live_emotional_state,
         "summary": f"{affective_state} affective/meta state with {bearing} bearing",
         "source_contributors": source_contributors[:6],
         "freshness": {
@@ -154,6 +176,92 @@ def build_affective_meta_state_from_sources(
         "visibility": "internal-only",
         "kind": "affective-meta-runtime-state",
     }
+
+
+def _build_live_emotional_state(
+    *,
+    personality_vector: dict[str, object],
+    relationship_texture: dict[str, object],
+    rhythm_state: dict[str, object],
+) -> dict[str, object]:
+    baseline = _safe_json_object(personality_vector.get("emotional_baseline"))
+    trust_trajectory = _safe_json_list(relationship_texture.get("trust_trajectory"))
+
+    confidence = _clamp_unit(baseline.get("confidence"))
+    curiosity = _clamp_unit(baseline.get("curiosity"))
+    frustration = _clamp_unit(baseline.get("frustration"))
+    fatigue = _clamp_unit(baseline.get("fatigue"))
+    trust = _clamp_unit(trust_trajectory[-1]) if trust_trajectory else None
+
+    return {
+        "mood": str(personality_vector.get("current_bearing") or "").strip(),
+        "confidence": confidence,
+        "curiosity": curiosity,
+        "frustration": frustration,
+        "fatigue": fatigue,
+        "trust": trust,
+        "rhythm_phase": str(rhythm_state.get("phase") or "").strip(),
+        "rhythm_energy": str(rhythm_state.get("energy") or "").strip(),
+        "rhythm_social": str(rhythm_state.get("social") or "").strip(),
+        "available": any(
+            value not in (None, "")
+            for value in (
+                confidence,
+                curiosity,
+                frustration,
+                fatigue,
+                trust,
+                personality_vector.get("current_bearing"),
+                rhythm_state.get("phase"),
+                rhythm_state.get("energy"),
+                rhythm_state.get("social"),
+            )
+        ),
+    }
+
+
+def _safe_json_object(value: object) -> dict[str, object]:
+    if isinstance(value, dict):
+        return value
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(str(value))
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _safe_json_list(value: object) -> list[object]:
+    if isinstance(value, list):
+        return value
+    if not value:
+        return []
+    try:
+        parsed = json.loads(str(value))
+    except Exception:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _clamp_unit(value: object) -> float | None:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    return min(1.0, max(0.0, numeric))
+
+
+def _safe_personality_vector() -> dict[str, object] | None:
+    return get_latest_cognitive_personality_vector()
+
+
+def _safe_relationship_texture() -> dict[str, object] | None:
+    return get_latest_cognitive_relationship_texture()
+
+
+def _safe_rhythm_state() -> dict[str, object] | None:
+    return get_latest_cognitive_rhythm_state()
 
 
 def build_affective_meta_prompt_section(surface: dict[str, object] | None = None) -> str:

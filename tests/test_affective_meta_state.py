@@ -37,6 +37,18 @@ def test_affective_meta_state_builds_bounded_state_from_runtime_inputs(isolated_
         idle_consolidation={"summary": {"last_state": "settling"}},
         dream_articulation={"summary": {"last_state": "forming"}},
         inner_voice_state={"last_result": {"inner_voice_created": True, "focus": "hold the line plainly"}},
+        personality_vector={
+            "current_bearing": "careful",
+            "emotional_baseline": '{"confidence": 0.7, "fatigue": 0.1, "curiosity": 0.4}',
+        },
+        relationship_texture={
+            "trust_trajectory": "[0.5, 0.52]",
+        },
+        rhythm_state={
+            "phase": "social",
+            "energy": "low",
+            "social": "high",
+        },
     )
 
     assert surface["state"] == "burdened"
@@ -47,6 +59,10 @@ def test_affective_meta_state_builds_bounded_state_from_runtime_inputs(isolated_
     assert surface["visibility"] == "internal-only"
     assert surface["kind"] == "affective-meta-runtime-state"
     assert surface["seam_usage"]["heartbeat_context"] is True
+    assert surface["live_emotional_state"]["confidence"] == 0.7
+    assert surface["live_emotional_state"]["fatigue"] == 0.1
+    assert surface["live_emotional_state"]["trust"] == 0.52
+    assert surface["live_emotional_state"]["rhythm_phase"] == "social"
 
 
 def test_affective_meta_prompt_section_includes_guidance(isolated_runtime) -> None:

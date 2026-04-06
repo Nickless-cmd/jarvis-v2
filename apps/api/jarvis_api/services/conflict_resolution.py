@@ -153,6 +153,7 @@ def resolve_heartbeat_initiative_conflict(
     autonomy_pressure: dict[str, object] | None,
     open_loops: dict[str, object] | None,
     conductor_mode: str = "watch",
+    cognitive_frame: dict[str, object] | None = None,
     policy_allow_propose: bool = False,
     policy_allow_ping: bool = False,
 ) -> ConflictTrace:
@@ -191,6 +192,34 @@ def resolve_heartbeat_initiative_conflict(
     open_count = int(loop_summary.get("open_count") or 0)
     softening_count = int(loop_summary.get("softening_count") or 0)
 
+    frame = cognitive_frame or {}
+    frame_counts = frame.get("counts") or {}
+    continuity_pressure = str(frame.get("continuity_pressure") or "low")
+    salient_count = int(
+        frame_counts.get("salient_items") or len(frame.get("salient_items") or [])
+    )
+    gated_affordances = int(frame_counts.get("gated_affordances") or 0)
+    inner_forces = int(frame_counts.get("inner_forces") or 0)
+    integrated_signal_inputs = int(frame_counts.get("integrated_signal_inputs") or 0)
+    active_constraints = [
+        str(item).strip()
+        for item in (frame.get("active_constraints") or [])
+        if str(item).strip()
+    ]
+
+    frame_crowded = (
+        continuity_pressure == "medium"
+        or salient_count >= 3
+        or inner_forces >= 2
+        or len(active_constraints) >= 1
+    )
+    frame_overloaded = (
+        continuity_pressure == "high"
+        or salient_count >= 4
+        or gated_affordances >= 2
+        or len(active_constraints) >= 2
+    )
+
     # Competing factors
     factors: list[str] = []
     if liveness_pressure in {"medium", "high"}:
@@ -205,6 +234,16 @@ def resolve_heartbeat_initiative_conflict(
         factors.append(f"softening-loops:{softening_count}")
     if conductor_mode not in {"watch", ""}:
         factors.append(f"conductor-mode:{conductor_mode}")
+    if continuity_pressure in {"medium", "high"}:
+        factors.append(f"frame-carry:{continuity_pressure}")
+    if salient_count >= 3:
+        factors.append(f"frame-salient:{salient_count}")
+    if gated_affordances > 0:
+        factors.append(f"frame-gated:{gated_affordances}")
+    if active_constraints:
+        factors.append(f"frame-constraints:{len(active_constraints)}")
+    if integrated_signal_inputs >= 8:
+        factors.append(f"frame-signals:{integrated_signal_inputs}")
     if _quiet_initiative.active:
         factors.append(f"quiet-hold:{_quiet_initiative.hold_count}/{_MAX_HOLD_COUNT}")
 
@@ -217,6 +256,12 @@ def resolve_heartbeat_initiative_conflict(
     trace.input_snapshot["ap_state"] = ap_state
     trace.input_snapshot["open_count"] = open_count
     trace.input_snapshot["softening_count"] = softening_count
+    trace.input_snapshot["frame_continuity_pressure"] = continuity_pressure
+    trace.input_snapshot["frame_salient_count"] = salient_count
+    trace.input_snapshot["frame_gated_affordances"] = gated_affordances
+    trace.input_snapshot["frame_inner_forces"] = inner_forces
+    trace.input_snapshot["frame_active_constraints"] = active_constraints
+    trace.input_snapshot["frame_integrated_signal_inputs"] = integrated_signal_inputs
     trace.input_snapshot["quiet_hold_active"] = _quiet_initiative.active
     trace.input_snapshot["quiet_hold_count"] = _quiet_initiative.hold_count
 
@@ -241,6 +286,20 @@ def resolve_heartbeat_initiative_conflict(
             trace.dominant_factor = f"open-loops:{open_count}+conductor:{conductor_mode}"
             trace.reason_code = "noop-with-internal-pressure"
             trace.summary = "Quiet externally but internal work warranted."
+            return trace
+
+        if frame_overloaded and integrated_signal_inputs >= 8:
+            trace.outcome = "continue_internal"
+            trace.dominant_factor = (
+                f"frame-pressure:{continuity_pressure}"
+                f"+salient:{salient_count}"
+                f"+signals:{integrated_signal_inputs}"
+            )
+            trace.reason_code = "noop-with-frame-pressure"
+            trace.summary = (
+                "Quiet externally but the cognitive frame is crowded enough "
+                "to warrant internal continuation."
+            )
             return trace
 
         trace.outcome = "stay_quiet"
@@ -365,6 +424,23 @@ def resolve_heartbeat_initiative_conflict(
             trace.dominant_factor = f"conductor-mode:{conductor_mode}"
             trace.reason_code = "conductor-prefers-internal"
             trace.summary = f"Conductor in {conductor_mode} mode — internal continuation preferred."
+            return trace
+
+    # Rule 4.5: Broader frame pressure should also bias toward internal work
+    # before user-facing action when no explicit question gate is active.
+    if decision_type in {"propose", "ping"} and not gate_active and liveness_pressure != "high":
+        if frame_overloaded or (frame_crowded and integrated_signal_inputs >= 8):
+            trace.outcome = "continue_internal"
+            trace.dominant_factor = (
+                f"frame-pressure:{continuity_pressure}"
+                f"+salient:{salient_count}"
+                f"+constraints:{len(active_constraints)}"
+            )
+            trace.reason_code = "frame-pressure-prefers-internal"
+            trace.summary = (
+                "Cognitive frame pressure is elevated — internal continuation "
+                "preferred before user-facing action."
+            )
             return trace
 
     # Rule 5: Strong aligned pressure — allow ask_user

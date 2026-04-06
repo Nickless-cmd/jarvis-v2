@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from uuid import uuid4
 
 from apps.api.jarvis_api.services.heartbeat_runtime import heartbeat_runtime_surface
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     local_lane_execution_truth,
 )
+from apps.api.jarvis_api.services.runtime_browser_body import list_browser_bodies
+from apps.api.jarvis_api.services.runtime_flows import list_flows
+from apps.api.jarvis_api.services.runtime_tasks import list_tasks
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
+from core.identity.workspace_bootstrap import workspace_memory_paths
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
+    get_runtime_hook_dispatch,
     list_runtime_awareness_signals,
+    list_runtime_hook_dispatches,
     supersede_runtime_awareness_signals,
     update_runtime_awareness_signal_status,
     upsert_runtime_awareness_signal,
@@ -122,6 +129,26 @@ def _extract_runtime_awareness_candidates() -> list[dict[str, object]]:
     heartbeat_signal = _heartbeat_runtime_signal(heartbeat=heartbeat, readiness=readiness)
     if heartbeat_signal:
         signals.append(heartbeat_signal)
+
+    task_signal = _runtime_task_signal()
+    if task_signal:
+        signals.append(task_signal)
+
+    flow_signal = _runtime_flow_signal()
+    if flow_signal:
+        signals.append(flow_signal)
+
+    hook_signal = _runtime_hook_signal()
+    if hook_signal:
+        signals.append(hook_signal)
+
+    browser_signal = _browser_body_signal()
+    if browser_signal:
+        signals.append(browser_signal)
+
+    memory_signal = _layered_memory_signal()
+    if memory_signal:
+        signals.append(memory_signal)
 
     return signals
 
@@ -256,6 +283,216 @@ def _heartbeat_runtime_signal(*, heartbeat: dict[str, object], readiness: dict[s
         "support_count": 1,
         "session_count": 1,
         "status_reason": f"Recent heartbeat blocked reason: {last_blocked_reason}.",
+    }
+
+
+def _runtime_task_signal() -> dict[str, object] | None:
+    queued = list_tasks(status="queued", limit=12)
+    running = list_tasks(status="running", limit=12)
+    blocked = list_tasks(status="blocked", limit=12)
+    if not (queued or running or blocked):
+        return None
+    latest = next(iter(blocked or running or queued), {})
+    if blocked:
+        return {
+            "signal_type": "runtime-task-backlog",
+            "canonical_key": "runtime-awareness:runtime-task-backlog",
+            "status": "constrained",
+            "title": "Runtime task ledger is carrying blocked work",
+            "summary": "Jarvis is carrying durable runtime tasks that are blocked and need orchestration attention.",
+            "rationale": "Blocked durable work is part of whole-system liveness and should stay visible to Jarvis as runtime awareness.",
+            "source_kind": "runtime-work",
+            "confidence": "high",
+            "evidence_summary": f"queued={len(queued)} running={len(running)} blocked={len(blocked)} latest_goal={str(latest.get('goal') or 'none')[:80]}",
+            "support_summary": "Blocked runtime tasks exist in the durable task ledger.",
+            "support_count": len(blocked),
+            "session_count": 1,
+            "status_reason": "One or more durable runtime tasks are blocked.",
+        }
+    return {
+        "signal_type": "runtime-task-backlog",
+        "canonical_key": "runtime-awareness:runtime-task-backlog",
+        "status": "active",
+        "title": "Runtime task ledger is carrying live work",
+        "summary": "Jarvis currently has durable runtime task work in motion across turns or triggers.",
+        "rationale": "Live durable work is part of Jarvis' runtime liveness, not just chat-local context.",
+        "source_kind": "runtime-work",
+        "confidence": "medium",
+        "evidence_summary": f"queued={len(queued)} running={len(running)} blocked={len(blocked)} latest_goal={str(latest.get('goal') or 'none')[:80]}",
+        "support_summary": "Queued or running runtime tasks exist in the durable task ledger.",
+        "support_count": len(queued) + len(running),
+        "session_count": 1,
+        "status_reason": "Durable runtime task work is currently present.",
+    }
+
+
+def _runtime_flow_signal() -> dict[str, object] | None:
+    queued = list_flows(status="queued", limit=12)
+    running = list_flows(status="running", limit=12)
+    blocked = list_flows(status="blocked", limit=12)
+    if not (queued or running or blocked):
+        return None
+    latest = next(iter(blocked or running or queued), {})
+    if blocked:
+        return {
+            "signal_type": "runtime-flow-orchestration",
+            "canonical_key": "runtime-awareness:runtime-flow-orchestration",
+            "status": "constrained",
+            "title": "Runtime flows are carrying blocked orchestration",
+            "summary": "Jarvis is carrying blocked multi-step runtime flows that need continuation or recovery.",
+            "rationale": "Blocked multi-step work is a direct liveness signal for the orchestration layer.",
+            "source_kind": "runtime-work",
+            "confidence": "high",
+            "evidence_summary": f"queued={len(queued)} running={len(running)} blocked={len(blocked)} current_step={str(latest.get('current_step') or 'none')[:80]}",
+            "support_summary": "Blocked runtime flows exist in the durable flow ledger.",
+            "support_count": len(blocked),
+            "session_count": 1,
+            "status_reason": "One or more runtime flows are blocked.",
+        }
+    return {
+        "signal_type": "runtime-flow-orchestration",
+        "canonical_key": "runtime-awareness:runtime-flow-orchestration",
+        "status": "active",
+        "title": "Runtime flows are carrying live orchestration",
+        "summary": "Jarvis currently has queued or running multi-step flows in motion.",
+        "rationale": "Active multi-step orchestration is part of Jarvis' living runtime, not merely an implementation detail.",
+        "source_kind": "runtime-work",
+        "confidence": "medium",
+        "evidence_summary": f"queued={len(queued)} running={len(running)} blocked={len(blocked)} current_step={str(latest.get('current_step') or 'none')[:80]}",
+        "support_summary": "Queued or running runtime flows exist in the durable flow ledger.",
+        "support_count": len(queued) + len(running),
+        "session_count": 1,
+        "status_reason": "Multi-step runtime flow work is currently present.",
+    }
+
+
+def _runtime_hook_signal() -> dict[str, object] | None:
+    supported = {"heartbeat.initiative_pushed", "heartbeat.tick_completed"}
+    recent_events = [
+        item
+        for item in event_bus.recent(limit=40)
+        if str(item.get("kind") or "") in supported
+    ]
+    if not recent_events:
+        return None
+    pending = [
+        item
+        for item in recent_events
+        if get_runtime_hook_dispatch(int(item.get("id") or 0)) is None
+    ]
+    dispatches = list_runtime_hook_dispatches(limit=12)
+    latest = next(iter(pending or dispatches), {})
+    if pending:
+        return {
+            "signal_type": "runtime-hook-bridge",
+            "canonical_key": "runtime-awareness:runtime-hook-bridge",
+            "status": "constrained",
+            "title": "Runtime hook bridge has unhandled events",
+            "summary": "Jarvis is carrying spontaneous runtime events that have not yet been turned into durable work.",
+            "rationale": "Unconsumed hook events indicate a liveness gap between signal intake and runtime action.",
+            "source_kind": "runtime-hooks",
+            "confidence": "high",
+            "evidence_summary": f"pending={len(pending)} dispatched={len(dispatches)} latest_kind={str(latest.get('kind') or latest.get('event_kind') or 'none')}",
+            "support_summary": "Supported hook events are still unhandled.",
+            "support_count": len(pending),
+            "session_count": 1,
+            "status_reason": "One or more supported hook events have not been dispatched yet.",
+        }
+    return {
+        "signal_type": "runtime-hook-bridge",
+        "canonical_key": "runtime-awareness:runtime-hook-bridge",
+        "status": "active",
+        "title": "Runtime hook bridge is dispatching events into work",
+        "summary": "Jarvis has a live hook bridge turning runtime events into durable tasks and flows.",
+        "rationale": "A functioning hook bridge is a direct sign that Jarvis is operating as a multi-trigger runtime.",
+        "source_kind": "runtime-hooks",
+        "confidence": "medium",
+        "evidence_summary": f"pending=0 dispatched={len(dispatches)} latest_kind={str(latest.get('event_kind') or 'none')}",
+        "support_summary": "Recent supported hook events were dispatched into durable runtime work.",
+        "support_count": len(dispatches),
+        "session_count": 1,
+        "status_reason": "Recent supported hook events are being dispatched.",
+    }
+
+
+def _browser_body_signal() -> dict[str, object] | None:
+    bodies = list_browser_bodies(limit=2)
+    if not bodies:
+        return None
+    body = bodies[0]
+    status = str(body.get("status") or "idle")
+    tab_count = len(body.get("tabs") or [])
+    if status == "blocked":
+        return {
+            "signal_type": "browser-body",
+            "canonical_key": "runtime-awareness:browser-body",
+            "status": "constrained",
+            "title": "Browser body is blocked",
+            "summary": "Jarvis' browser body exists but is currently blocked.",
+            "rationale": "The browser body is an operative organ of the runtime and its blockage materially affects liveness.",
+            "source_kind": "runtime-body",
+            "confidence": "high",
+            "evidence_summary": f"profile={body.get('profile_name') or 'none'} status={status} tabs={tab_count} last_url={body.get('last_url') or 'none'}",
+            "support_summary": "Browser body state is blocked.",
+            "support_count": 1,
+            "session_count": 1,
+            "status_reason": "The browser body is currently blocked.",
+        }
+    return {
+        "signal_type": "browser-body",
+        "canonical_key": "runtime-awareness:browser-body",
+        "status": "active",
+        "title": "Browser body is present",
+        "summary": "Jarvis currently has an operative browser body state available to carry tabs and browser context.",
+        "rationale": "A present browser body is part of Jarvis' embodied runtime awareness.",
+        "source_kind": "runtime-body",
+        "confidence": "medium",
+        "evidence_summary": f"profile={body.get('profile_name') or 'none'} status={status} tabs={tab_count} last_url={body.get('last_url') or 'none'}",
+        "support_summary": "Browser body state exists in the runtime ledger.",
+        "support_count": 1,
+        "session_count": 1,
+        "status_reason": f"Browser body status is {status}.",
+    }
+
+
+def _layered_memory_signal() -> dict[str, object] | None:
+    paths = workspace_memory_paths()
+    curated = Path(paths["curated_memory"])
+    daily = Path(paths["daily_memory"])
+    curated_exists = curated.exists()
+    daily_exists = daily.exists()
+    if not curated_exists and not daily_exists:
+        return None
+    if not curated_exists or not daily_exists:
+        return {
+            "signal_type": "layered-memory",
+            "canonical_key": "runtime-awareness:layered-memory",
+            "status": "constrained",
+            "title": "Layered memory is only partially present",
+            "summary": "Jarvis' layered memory system is missing either curated memory or today's daily memory layer.",
+            "rationale": "Layered memory completeness is part of continuity and liveness, not just filesystem hygiene.",
+            "source_kind": "memory-continuity",
+            "confidence": "high",
+            "evidence_summary": f"curated_exists={str(curated_exists).lower()} daily_exists={str(daily_exists).lower()} daily_file={daily.name}",
+            "support_summary": "One or more layered memory files are missing.",
+            "support_count": 1,
+            "session_count": 1,
+            "status_reason": "Layered memory is incomplete for the current day.",
+        }
+    return {
+        "signal_type": "layered-memory",
+        "canonical_key": "runtime-awareness:layered-memory",
+        "status": "active",
+        "title": "Layered memory is present",
+        "summary": "Jarvis currently has both curated memory and today's daily memory layer available.",
+        "rationale": "A live layered memory stack strengthens continuity and runtime self-carry.",
+        "source_kind": "memory-continuity",
+        "confidence": "medium",
+        "evidence_summary": f"curated_exists=true daily_exists=true daily_file={daily.name}",
+        "support_summary": "Curated and daily memory layers are both present.",
+        "support_count": 2,
+        "session_count": 1,
+        "status_reason": "Layered memory is currently present.",
     }
 
 

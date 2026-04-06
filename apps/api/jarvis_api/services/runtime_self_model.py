@@ -18,8 +18,10 @@ Design constraints:
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 from apps.api.jarvis_api.services.runtime_surface_cache import runtime_surface_cache
+from core.identity.workspace_bootstrap import workspace_memory_paths
 from core.tools.workspace_capabilities import load_workspace_capabilities
 
 
@@ -53,6 +55,12 @@ def build_runtime_self_model() -> dict[str, object]:
         return {
             "layers": layers,
             "workspace_capabilities": load_workspace_capabilities(),
+            "runtime_task_state": _runtime_task_state_surface(),
+            "runtime_flow_state": _runtime_flow_state_surface(),
+            "runtime_hook_state": _runtime_hook_state_surface(),
+            "browser_body_state": _browser_body_state_surface(),
+            "standing_orders_state": _standing_orders_state_surface(),
+            "layered_memory_state": _layered_memory_state_surface(),
             "embodied_state": _embodied_state_surface(),
             "affective_meta_state": _affective_meta_state_surface(),
             "experiential_runtime_context": experiential,
@@ -82,6 +90,12 @@ def build_runtime_self_model() -> dict[str, object]:
 def _collect_layers() -> list[dict[str, str]]:
     """Collect all known layers with type annotations."""
     layers: list[dict[str, str]] = []
+    task_state = _runtime_task_state_surface()
+    flow_state = _runtime_flow_state_surface()
+    hook_state = _runtime_hook_state_surface()
+    browser_body = _browser_body_state_surface()
+    standing_orders = _standing_orders_state_surface()
+    layered_memory = _layered_memory_state_surface()
 
     # --- Runtime truth layers (authoritative) ---
     layers.append({
@@ -353,6 +367,81 @@ def _collect_layers() -> list[dict[str, str]]:
         ),
     })
 
+    layers.append({
+        "id": "runtime-task-ledger",
+        "label": "Runtime task ledger",
+        "kind": "orchestration",
+        "role": (
+            "active"
+            if int(task_state.get("queued_count") or 0) or int(task_state.get("running_count") or 0)
+            else ("gated" if int(task_state.get("blocked_count") or 0) else "idle")
+        ),
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": (
+            f"queued={task_state.get('queued_count') or 0}; "
+            f"running={task_state.get('running_count') or 0}; "
+            f"blocked={task_state.get('blocked_count') or 0}; "
+            f"latest_goal={task_state.get('latest_goal') or 'none'}."
+        ),
+    })
+
+    layers.append({
+        "id": "runtime-flow-ledger",
+        "label": "Runtime flow ledger",
+        "kind": "orchestration",
+        "role": (
+            "active"
+            if int(flow_state.get("queued_count") or 0) or int(flow_state.get("running_count") or 0)
+            else ("gated" if int(flow_state.get("blocked_count") or 0) else "idle")
+        ),
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": (
+            f"queued={flow_state.get('queued_count') or 0}; "
+            f"running={flow_state.get('running_count') or 0}; "
+            f"blocked={flow_state.get('blocked_count') or 0}; "
+            f"step={flow_state.get('current_step') or 'none'}."
+        ),
+    })
+
+    layers.append({
+        "id": "runtime-hook-bridge",
+        "label": "Runtime hook bridge",
+        "kind": "orchestration",
+        "role": (
+            "gated"
+            if int(hook_state.get("pending_count") or 0) > 0
+            else ("active" if int(hook_state.get("dispatched_count") or 0) > 0 else "idle")
+        ),
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": (
+            f"pending={hook_state.get('pending_count') or 0}; "
+            f"dispatched={hook_state.get('dispatched_count') or 0}; "
+            f"latest={hook_state.get('latest_event_kind') or 'none'}."
+        ),
+    })
+
+    layers.append({
+        "id": "browser-body",
+        "label": "Browser body",
+        "kind": "orchestration",
+        "role": (
+            "gated"
+            if str(browser_body.get("status") or "") == "blocked"
+            else ("active" if browser_body.get("exists") else "idle")
+        ),
+        "visibility": "internal-only",
+        "truth": "authoritative",
+        "detail": (
+            f"profile={browser_body.get('profile_name') or 'none'}; "
+            f"status={browser_body.get('status') or 'absent'}; "
+            f"tabs={browser_body.get('tab_count') or 0}; "
+            f"last_url={browser_body.get('last_url') or 'none'}."
+        ),
+    })
+
     consolidation = _idle_consolidation_surface()
     consolidation_summary = consolidation.get("summary") or {}
     layers.append({
@@ -484,12 +573,31 @@ def _collect_layers() -> list[dict[str, str]]:
     # --- Memory layers ---
     layers.append({
         "id": "workspace-memory",
-        "label": "Workspace memory (MEMORY.md)",
+        "label": "Curated workspace memory (MEMORY.md)",
         "kind": "memory",
         "role": "active",
         "visibility": "mixed",
         "truth": "authoritative",
-        "detail": "Persistent cross-session memory. User-visible and LLM-readable.",
+        "detail": "Curated cross-session memory. User-visible and LLM-readable.",
+    })
+
+    layers.append({
+        "id": "layered-memory",
+        "label": "Layered memory",
+        "kind": "memory",
+        "role": (
+            "active"
+            if layered_memory.get("daily_exists") and layered_memory.get("curated_exists")
+            else "gated"
+        ),
+        "visibility": "mixed",
+        "truth": "authoritative",
+        "detail": (
+            f"daily_exists={layered_memory.get('daily_exists', False)}; "
+            f"curated_exists={layered_memory.get('curated_exists', False)}; "
+            f"daily_file={layered_memory.get('daily_file') or 'none'}; "
+            f"freshness={layered_memory.get('freshness') or 'unknown'}."
+        ),
     })
 
     layers.append({
@@ -521,6 +629,21 @@ def _collect_layers() -> list[dict[str, str]]:
         "visibility": "mixed",
         "truth": "authoritative",
         "detail": "Protected core. Defines who Jarvis is. Not mutable by runtime.",
+    })
+
+    layers.append({
+        "id": "standing-orders",
+        "label": "Standing orders",
+        "kind": "permission",
+        "role": "active" if standing_orders.get("exists") else "idle",
+        "visibility": "mixed",
+        "truth": "authoritative",
+        "detail": (
+            f"exists={standing_orders.get('exists', False)}; "
+            f"loaded_by_default={standing_orders.get('loaded_by_default', True)}; "
+            f"line_count={standing_orders.get('line_count') or 0}; "
+            f"preview={standing_orders.get('preview') or 'none'}."
+        ),
     })
 
     # --- Permission / gated layers ---
@@ -575,6 +698,22 @@ def _truth_boundaries() -> dict[str, str]:
         "active_vs_groundwork": (
             "Active layers produce real runtime effects. "
             "Groundwork layers exist as candidates/proposals awaiting promotion or use."
+        ),
+        "task_vs_flow": (
+            "Tasks are durable units of work. Flows are the multi-step path carried by a task. "
+            "Do not confuse a queued task with a completed flow."
+        ),
+        "standing_authority_vs_turn_instruction": (
+            "Standing orders are durable authority carried across turns. "
+            "A single user turn can redirect work, but it does not erase standing authority."
+        ),
+        "layered_memory_vs_curated_memory": (
+            "Layered memory includes daily logs and curated workspace memory. "
+            "MEMORY.md is curated memory, not the whole memory system."
+        ),
+        "browser_body_vs_browserless_reading": (
+            "A browser body is a bounded runtime organ for tabs and observation state. "
+            "It is not omnipresence and does not imply unrestricted browser action."
         ),
     }
 
@@ -660,6 +799,12 @@ def build_self_model_prompt_lines() -> list[str]:
     tool_intent = model.get("tool_intent") or {}
     loop_runtime = model.get("loop_runtime") or {}
     loop_summary = loop_runtime.get("summary") or {}
+    task_state = model.get("runtime_task_state") or {}
+    flow_state = model.get("runtime_flow_state") or {}
+    hook_state = model.get("runtime_hook_state") or {}
+    browser_body = model.get("browser_body_state") or {}
+    standing_orders = model.get("standing_orders_state") or {}
+    layered_memory = model.get("layered_memory_state") or {}
     consolidation = model.get("idle_consolidation") or {}
     consolidation_summary = consolidation.get("summary") or {}
     dream = model.get("dream_articulation") or {}
@@ -768,7 +913,10 @@ def build_self_model_prompt_lines() -> list[str]:
     )
 
     # Key truth boundaries (compact)
-    lines.append(f"  truth_boundary: capability!=permission!=action | memory!=identity | internal!=visible | runtime_truth!=interpretation")
+    lines.append(
+        "  truth_boundary: capability!=permission!=action | memory!=identity | internal!=visible | "
+        "runtime_truth!=interpretation | task!=flow | standing_authority!=one_turn_instruction"
+    )
     lines.append(
         "  embodied_state: "
         f"{embodied.get('state') or 'unknown'}"
@@ -975,6 +1123,45 @@ def build_self_model_prompt_lines() -> list[str]:
         f" | resumed={loop_summary.get('resumed_count') or 0}"
     )
     lines.append(
+        "  runtime_tasks: "
+        f"queued={task_state.get('queued_count') or 0}"
+        f" | running={task_state.get('running_count') or 0}"
+        f" | blocked={task_state.get('blocked_count') or 0}"
+        f" | latest_goal={task_state.get('latest_goal') or 'none'}"
+    )
+    lines.append(
+        "  runtime_flows: "
+        f"queued={flow_state.get('queued_count') or 0}"
+        f" | running={flow_state.get('running_count') or 0}"
+        f" | blocked={flow_state.get('blocked_count') or 0}"
+        f" | step={flow_state.get('current_step') or 'none'}"
+    )
+    lines.append(
+        "  runtime_hooks: "
+        f"pending={hook_state.get('pending_count') or 0}"
+        f" | dispatched={hook_state.get('dispatched_count') or 0}"
+        f" | latest={hook_state.get('latest_event_kind') or 'none'}"
+    )
+    lines.append(
+        "  browser_body: "
+        f"exists={browser_body.get('exists', False)}"
+        f" | status={browser_body.get('status') or 'absent'}"
+        f" | tabs={browser_body.get('tab_count') or 0}"
+        f" | last_url={browser_body.get('last_url') or 'none'}"
+    )
+    lines.append(
+        "  standing_orders: "
+        f"exists={standing_orders.get('exists', False)}"
+        f" | line_count={standing_orders.get('line_count') or 0}"
+        f" | loaded_by_default={standing_orders.get('loaded_by_default', True)}"
+    )
+    lines.append(
+        "  layered_memory: "
+        f"daily_exists={layered_memory.get('daily_exists', False)}"
+        f" | curated_exists={layered_memory.get('curated_exists', False)}"
+        f" | freshness={layered_memory.get('freshness') or 'unknown'}"
+    )
+    lines.append(
         "  idle_consolidation: "
         f"{consolidation_summary.get('last_state') or 'idle'}"
         f" | reason={consolidation_summary.get('last_reason') or 'no-run-yet'}"
@@ -1039,6 +1226,155 @@ def _loop_runtime_surface() -> dict[str, object]:
                 "resumed_count": 0,
                 "closed_count": 0,
             }
+        }
+
+
+def _runtime_task_state_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.runtime_tasks import list_tasks
+
+        queued = list_tasks(status="queued", limit=12)
+        running = list_tasks(status="running", limit=12)
+        blocked = list_tasks(status="blocked", limit=12)
+        latest = next(iter(running or queued or blocked), {})
+        return {
+            "queued_count": len(queued),
+            "running_count": len(running),
+            "blocked_count": len(blocked),
+            "latest_goal": str(latest.get("goal") or "").strip(),
+        }
+    except Exception:
+        return {
+            "queued_count": 0,
+            "running_count": 0,
+            "blocked_count": 0,
+            "latest_goal": "",
+        }
+
+
+def _runtime_flow_state_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.runtime_flows import list_flows
+
+        queued = list_flows(status="queued", limit=12)
+        running = list_flows(status="running", limit=12)
+        blocked = list_flows(status="blocked", limit=12)
+        latest = next(iter(running or queued or blocked), {})
+        return {
+            "queued_count": len(queued),
+            "running_count": len(running),
+            "blocked_count": len(blocked),
+            "current_step": str(latest.get("current_step") or "").strip(),
+        }
+    except Exception:
+        return {
+            "queued_count": 0,
+            "running_count": 0,
+            "blocked_count": 0,
+            "current_step": "",
+        }
+
+
+def _runtime_hook_state_surface() -> dict[str, object]:
+    try:
+        from core.eventbus.bus import event_bus
+        from core.runtime.db import get_runtime_hook_dispatch, list_runtime_hook_dispatches
+
+        supported = {"heartbeat.initiative_pushed", "heartbeat.tick_completed"}
+        recent_events = [
+            item
+            for item in event_bus.recent(limit=40)
+            if str(item.get("kind") or "") in supported
+        ]
+        pending_count = sum(
+            1
+            for item in recent_events
+            if get_runtime_hook_dispatch(int(item.get("id") or 0)) is None
+        )
+        dispatches = list_runtime_hook_dispatches(limit=12)
+        latest = next(iter(dispatches), {})
+        return {
+            "pending_count": pending_count,
+            "dispatched_count": len(dispatches),
+            "latest_event_kind": str(latest.get("event_kind") or "").strip(),
+        }
+    except Exception:
+        return {
+            "pending_count": 0,
+            "dispatched_count": 0,
+            "latest_event_kind": "",
+        }
+
+
+def _browser_body_state_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.runtime_browser_body import list_browser_bodies
+
+        body = next(iter(list_browser_bodies(limit=1)), None)
+        if body is None:
+            return {
+                "exists": False,
+                "profile_name": "",
+                "status": "",
+                "tab_count": 0,
+                "last_url": "",
+            }
+        return {
+            "exists": True,
+            "profile_name": str(body.get("profile_name") or "").strip(),
+            "status": str(body.get("status") or "").strip(),
+            "tab_count": len(body.get("tabs") or []),
+            "last_url": str(body.get("last_url") or "").strip(),
+        }
+    except Exception:
+        return {
+            "exists": False,
+            "profile_name": "",
+            "status": "",
+            "tab_count": 0,
+            "last_url": "",
+        }
+
+
+def _standing_orders_state_surface() -> dict[str, object]:
+    try:
+        workspace_dir = workspace_memory_paths()["workspace_dir"]
+        path = Path(workspace_dir) / "STANDING_ORDERS.md"
+        content = path.read_text(encoding="utf-8") if path.exists() else ""
+        lines = [line.strip() for line in content.splitlines() if line.strip()]
+        return {
+            "exists": path.exists(),
+            "loaded_by_default": True,
+            "line_count": len(lines),
+            "preview": (lines[0][:80] if lines else ""),
+        }
+    except Exception:
+        return {
+            "exists": False,
+            "loaded_by_default": True,
+            "line_count": 0,
+            "preview": "",
+        }
+
+
+def _layered_memory_state_surface() -> dict[str, object]:
+    try:
+        paths = workspace_memory_paths()
+        curated = paths["curated_memory"]
+        daily = paths["daily_memory"]
+        freshness = "fresh" if daily.exists() else "needs-daily-log"
+        return {
+            "daily_exists": daily.exists(),
+            "curated_exists": curated.exists(),
+            "daily_file": daily.name,
+            "freshness": freshness,
+        }
+    except Exception:
+        return {
+            "daily_exists": False,
+            "curated_exists": False,
+            "daily_file": "",
+            "freshness": "unknown",
         }
 
 

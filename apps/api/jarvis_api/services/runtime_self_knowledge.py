@@ -20,6 +20,8 @@ Design constraints:
 """
 from __future__ import annotations
 
+from core.identity.workspace_bootstrap import workspace_memory_paths
+
 from apps.api.jarvis_api.services.runtime_surface_cache import runtime_surface_cache
 
 
@@ -131,6 +133,53 @@ def _build_active_capabilities(
         "mutability": "usable",
         "detail": "Runs at visible run completion",
     })
+
+    items.append({
+        "id": "runtime-task-ledger",
+        "label": "Runtime task ledger",
+        "status": "active",
+        "mutability": "usable",
+        "detail": "Durable work units persist across turns and triggers",
+    })
+
+    items.append({
+        "id": "runtime-flow-ledger",
+        "label": "Runtime flow ledger",
+        "status": "active",
+        "mutability": "usable",
+        "detail": "Multi-step work can continue instead of restarting from chat",
+    })
+
+    items.append({
+        "id": "runtime-hook-bridge",
+        "label": "Runtime hook bridge",
+        "status": "active",
+        "mutability": "usable",
+        "detail": "Spontaneous events can create or resume bounded work",
+    })
+
+    items.append({
+        "id": "layered-memory",
+        "label": "Layered memory system",
+        "status": "active",
+        "mutability": "usable",
+        "detail": "Daily and curated memory layers are both available",
+    })
+
+    try:
+        from apps.api.jarvis_api.services.runtime_browser_body import list_browser_bodies
+
+        bodies = list_browser_bodies(limit=1)
+        status = str((bodies[0] if bodies else {}).get("status") or "idle")
+        items.append({
+            "id": "browser-body",
+            "label": "Browser body",
+            "status": status,
+            "mutability": "usable",
+            "detail": "Bounded browser state can be carried as an active runtime organ",
+        })
+    except Exception:
+        pass
 
     # Cheap lane
     try:
@@ -332,11 +381,11 @@ def _build_structural_constraints() -> dict[str, object]:
             "detail": "All actions are observable and bounded — no hidden side-effects",
         },
         {
-            "id": "prompt-gating",
-            "label": "Prompt-gated cognition",
+            "id": "multi-entry-bounded-runtime",
+            "label": "Multi-entry bounded runtime",
             "status": "structural",
             "mutability": "not-mutable",
-            "detail": "Cognition runs within prompt boundaries — not continuously",
+            "detail": "Work can start from chat, heartbeat, hooks, and flows, but always stays bounded by runtime policy",
         },
         {
             "id": "no-free-identity-writes",
@@ -360,11 +409,39 @@ def _build_structural_constraints() -> dict[str, object]:
             "detail": "MEMORY.md is workspace/project memory, not inner private state",
         },
         {
+            "id": "layered-memory-distinction",
+            "label": "Layered memory ≠ single file",
+            "status": "structural",
+            "mutability": "not-mutable",
+            "detail": "Daily memory, curated memory, and private carry are different memory layers with different roles",
+        },
+        {
             "id": "private-brain-is-private",
             "label": "Private brain is private",
             "status": "structural",
             "mutability": "not-mutable",
             "detail": "Private brain records are inner carry, not shared output",
+        },
+        {
+            "id": "standing-orders-authority",
+            "label": "Standing orders carry durable authority",
+            "status": "structural",
+            "mutability": "not-mutable",
+            "detail": "STANDING_ORDERS.md is canonical runtime authority across turns, not a disposable note",
+        },
+        {
+            "id": "tasks-not-flows",
+            "label": "Tasks are not flows",
+            "status": "structural",
+            "mutability": "not-mutable",
+            "detail": "Tasks are durable work units; flows are the stepwise path those tasks travel",
+        },
+        {
+            "id": "browser-body-is-bounded",
+            "label": "Browser body is bounded",
+            "status": "structural",
+            "mutability": "not-mutable",
+            "detail": "A browser body is an operative runtime surface, not unrestricted omnipresence or free web action",
         },
     ]
 
@@ -455,12 +532,30 @@ def build_self_knowledge_prompt_section() -> str | None:
         gated_labels = [item["label"] for item in gated[:2]]
         lines.append(f"- Approval-gated: {', '.join(gated_labels)}")
 
+    runtime_organs = [
+        item["label"]
+        for item in active
+        if item["id"] in {
+            "runtime-task-ledger",
+            "runtime-flow-ledger",
+            "runtime-hook-bridge",
+            "browser-body",
+            "layered-memory",
+        }
+    ]
+    if runtime_organs:
+        lines.append(f"- Runtime organs: {', '.join(runtime_organs[:4])}")
+
     # Inner forces — compact
     if inner:
         inner_labels = [f"{item['label']} ({item['status']})" for item in inner[:3]]
         lines.append(f"- Inner forces: {', '.join(inner_labels)}")
 
     # Key constraints — always include a few
-    lines.append("- Structural: runtime truth outranks speculation | question-gated ≠ execution-granted | private brain is private")
+    paths = workspace_memory_paths()
+    lines.append(
+        "- Structural: runtime truth outranks speculation | standing orders are durable authority | tasks != flows | "
+        f"layered_memory={paths['daily_dir'].name}+{paths['curated_memory'].name}"
+    )
 
     return "\n".join(lines)

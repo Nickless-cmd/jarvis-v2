@@ -21,6 +21,12 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     model = model_mod.build_runtime_self_model()
 
     assert "layers" in model
+    assert "runtime_task_state" in model
+    assert "runtime_flow_state" in model
+    assert "runtime_hook_state" in model
+    assert "browser_body_state" in model
+    assert "standing_orders_state" in model
+    assert "layered_memory_state" in model
     assert "embodied_state" in model
     assert "affective_meta_state" in model
     assert "experiential_runtime_context" in model
@@ -155,6 +161,9 @@ def test_truth_boundaries_present_and_meaningful(isolated_runtime) -> None:
     assert "internal_vs_visible" in boundaries
     assert "runtime_truth_vs_interpretation" in boundaries
     assert "active_vs_groundwork" in boundaries
+    assert "task_vs_flow" in boundaries
+    assert "standing_authority_vs_turn_instruction" in boundaries
+    assert "layered_memory_vs_curated_memory" in boundaries
 
     # Each boundary should be a non-empty string
     for key, value in boundaries.items():
@@ -238,6 +247,12 @@ def test_prompt_lines_include_self_model(isolated_runtime) -> None:
     assert "continuity=" in joined
     assert "followup_state=" in joined
     assert "loop_runtime:" in joined
+    assert "runtime_tasks:" in joined
+    assert "runtime_flows:" in joined
+    assert "runtime_hooks:" in joined
+    assert "browser_body:" in joined
+    assert "standing_orders:" in joined
+    assert "layered_memory:" in joined
     assert "idle_consolidation:" in joined
     assert "dream_articulation:" in joined
     assert "prompt_evolution:" in joined
@@ -255,6 +270,19 @@ def test_prompt_lines_distinguish_kinds(isolated_runtime) -> None:
 
     # Should have at least active_orchestration or active_capability
     assert "active_" in joined, "Prompt lines should group active layers by kind"
+
+
+def test_self_model_includes_new_runtime_organs(isolated_runtime) -> None:
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+    layer_ids = {layer["id"] for layer in model["layers"]}
+
+    assert "runtime-task-ledger" in layer_ids
+    assert "runtime-flow-ledger" in layer_ids
+    assert "runtime-hook-bridge" in layer_ids
+    assert "browser-body" in layer_ids
+    assert "standing-orders" in layer_ids
+    assert "layered-memory" in layer_ids
 
 
 # ---------------------------------------------------------------------------

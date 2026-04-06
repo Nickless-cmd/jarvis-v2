@@ -105,6 +105,7 @@ from apps.api.jarvis_api.services.runtime_surface_cache import (
 )
 from core.auth.profiles import get_provider_state
 from core.eventbus.bus import event_bus
+from core.identity.runtime_candidates import build_runtime_candidate_workflows
 from core.identity.candidate_workflow import (
     auto_apply_safe_memory_md_candidates,
     auto_apply_safe_user_md_candidates,
@@ -947,10 +948,12 @@ def _build_heartbeat_context(
     council_runtime = build_council_runtime_surface()
     adaptive_planner = build_adaptive_planner_runtime_surface()
     adaptive_reasoning = build_adaptive_reasoning_runtime_surface()
+    dream_influence = build_dream_influence_runtime_surface()
     guided_learning = build_guided_learning_runtime_surface()
     adaptive_learning = build_adaptive_learning_runtime_surface()
     self_system_code_awareness = build_self_system_code_awareness_surface()
     tool_intent = build_tool_intent_runtime_surface()
+    cognitive_frame = _build_heartbeat_cognitive_frame(merged_state=merged_state)
 
     # Initiative queue — pending thought-to-action initiatives
     try:
@@ -1010,6 +1013,7 @@ def _build_heartbeat_context(
         "adaptive_learning": adaptive_learning,
         "self_system_code_awareness": self_system_code_awareness,
         "tool_intent": tool_intent,
+        "cognitive_frame": cognitive_frame,
         "influence_trace": influence_trace,
     }
 

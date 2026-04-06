@@ -59,3 +59,65 @@ def test_merge_runtime_state_recomputes_next_tick_at_from_current_policy_interva
     assert merged["last_tick_at"] == last_tick_at
     assert merged["next_tick_at"] == "2026-04-01T18:07:52.146944+00:00"
     assert merged["due"] is False
+
+
+def test_build_heartbeat_context_includes_cognitive_frame_without_name_errors(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    monkeypatch.setattr(heartbeat_runtime, "build_runtime_candidate_workflows", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "runtime_contract_candidate_counts", lambda: {})
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "recent_runtime_contract_file_writes",
+        lambda limit=3: [],
+    )
+    monkeypatch.setattr(heartbeat_runtime, "visible_session_continuity", lambda: {"active": False})
+    monkeypatch.setattr(heartbeat_runtime, "recent_visible_runs", lambda limit=3: [])
+    monkeypatch.setattr(heartbeat_runtime, "load_workspace_capabilities", lambda: {})
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "visible_execution_readiness",
+        lambda: {"provider_status": "ready"},
+    )
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "_build_heartbeat_liveness_signal",
+        lambda merged_state, trigger: {"liveness_state": "quiet", "liveness_score": 0},
+    )
+    monkeypatch.setattr(heartbeat_runtime.event_bus, "recent", lambda limit=12: [])
+    monkeypatch.setattr(heartbeat_runtime, "build_embodied_state_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_affective_meta_state_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_epistemic_runtime_state_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_loop_runtime_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_prompt_evolution_runtime_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_subagent_ecology_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_council_runtime_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_adaptive_planner_runtime_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_adaptive_reasoning_runtime_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_dream_influence_runtime_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_guided_learning_runtime_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_adaptive_learning_runtime_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_self_system_code_awareness_surface", lambda: {})
+    monkeypatch.setattr(heartbeat_runtime, "build_tool_intent_runtime_surface", lambda: {})
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "_build_heartbeat_cognitive_frame",
+        lambda merged_state: {"mode": {"mode": "watch"}},
+    )
+    monkeypatch.setattr(heartbeat_runtime, "_build_influence_trace", lambda **kwargs: {})
+
+    context = heartbeat_runtime._build_heartbeat_context(
+        policy={
+            "allow_execute": False,
+            "budget_status": "bounded-internal-only",
+            "kill_switch": "enabled",
+        },
+        merged_state={"due": False, "schedule_status": "idle"},
+        trigger="manual",
+    )
+
+    assert context["schedule_status"] == "idle"
+    assert context["cognitive_frame"] == {"mode": {"mode": "watch"}}

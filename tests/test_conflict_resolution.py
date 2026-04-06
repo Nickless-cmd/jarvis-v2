@@ -197,7 +197,61 @@ def test_noop_with_internal_pressure_becomes_continue_internal() -> None:
     assert trace.reason_code == "noop-with-internal-pressure"
 
 
+def test_noop_with_crowded_frame_becomes_continue_internal() -> None:
+    """A noop should continue internally when the broader frame is overloaded."""
+    trace = resolve_heartbeat_initiative_conflict(
+        decision_type="noop",
+        liveness=_liveness(state="watchful", pressure="low", score=2),
+        question_gate=None,
+        autonomy_pressure=None,
+        open_loops=None,
+        cognitive_frame={
+            "continuity_pressure": "high",
+            "active_constraints": [
+                "Stay within active review gate.",
+                "Do not fragment attention further.",
+            ],
+            "counts": {
+                "salient_items": 4,
+
+
+                "gated_affordances": 2,
+                "inner_forces": 1,
+                "integrated_signal_inputs": 12,
+            },
+        },
+    )
+    assert trace.outcome == "continue_internal"
+    assert trace.reason_code == "noop-with-frame-pressure"
+
+
 # ---------------------------------------------------------------------------
+
+def test_crowded_frame_prefers_internal_even_when_mode_is_watch() -> None:
+    """Broader frame pressure should steer propose toward internal continuation."""
+    trace = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="alive-pressure", pressure="medium", score=6),
+        question_gate=None,
+        autonomy_pressure=_autonomy(current_state="initiative-held"),
+        open_loops=_loops(open_count=1),
+        conductor_mode="watch",
+        cognitive_frame={
+            "continuity_pressure": "medium",
+            "active_constraints": ["Need to keep continuity intact."],
+            "counts": {
+                "salient_items": 4,
+                "gated_affordances": 1,
+                "inner_forces": 2,
+                "integrated_signal_inputs": 10,
+            },
+        },
+        policy_allow_propose=True,
+    )
+    assert trace.outcome == "continue_internal"
+    assert trace.reason_code == "frame-pressure-prefers-internal"
+
+
 # Policy gate tests
 # ---------------------------------------------------------------------------
 
@@ -216,6 +270,34 @@ def test_policy_not_allowed_defers() -> None:
     assert trace.outcome == "defer"
     assert trace.reason_code == "policy-blocked"
     assert trace.blocked_by == "policy-gate"
+
+
+def test_trace_captures_frame_pressure_inputs() -> None:
+    """Conflict trace should expose the broader frame inputs used for arbitration."""
+    trace = resolve_heartbeat_initiative_conflict(
+        decision_type="propose",
+        liveness=_liveness(state="alive-pressure", pressure="medium", score=6),
+        question_gate=None,
+        autonomy_pressure=None,
+        open_loops=_loops(open_count=1),
+        cognitive_frame={
+            "continuity_pressure": "medium",
+            "active_constraints": ["Avoid widening the surface."],
+            "counts": {
+                "salient_items": 3,
+                "gated_affordances": 1,
+                "inner_forces": 2,
+                "integrated_signal_inputs": 9,
+            },
+        },
+        policy_allow_propose=True,
+    )
+    assert trace.input_snapshot["frame_continuity_pressure"] == "medium"
+    assert trace.input_snapshot["frame_salient_count"] == 3
+    assert trace.input_snapshot["frame_gated_affordances"] == 1
+    assert trace.input_snapshot["frame_inner_forces"] == 2
+    assert trace.input_snapshot["frame_active_constraints"] == ["Avoid widening the surface."]
+    assert trace.input_snapshot["frame_integrated_signal_inputs"] == 9
 
 
 # ---------------------------------------------------------------------------

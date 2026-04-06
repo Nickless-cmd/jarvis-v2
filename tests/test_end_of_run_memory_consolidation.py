@@ -43,11 +43,15 @@ def test_end_of_run_memory_consolidation_can_auto_apply_explicit_user_preference
 
     workspace = ensure_default_workspace()
     user_md = (workspace / "USER.md").read_text(encoding="utf-8")
+    daily_memory = next((workspace / "memory" / "daily").glob("*.md"))
+    daily_text = daily_memory.read_text(encoding="utf-8")
 
     assert result["consolidated"] is True
     assert result["candidate_count"] == 1
     assert result["user_updated"] is True
+    assert result["daily_memory_logged"] is True
     assert "- Language preference: replies in Danish by default." in user_md
+    assert "[USER.md] Language preference: replies in Danish by default." in daily_text
 
 
 def test_end_of_run_memory_consolidation_reruns_with_full_context_when_model_requests_it(
@@ -97,10 +101,14 @@ def test_end_of_run_memory_consolidation_reruns_with_full_context_when_model_req
 
     workspace = ensure_default_workspace()
     memory_md = (workspace / "MEMORY.md").read_text(encoding="utf-8")
+    daily_memory = next((workspace / "memory" / "daily").glob("*.md"))
+    daily_text = daily_memory.read_text(encoding="utf-8")
 
     assert result["consolidated"] is True
     assert result["used_full_context"] is True
     assert result["memory_updated"] is True
+    assert result["daily_memory_logged"] is True
     assert len(prompts) == 2
     assert "FULL FILE CONTEXT" in prompts[1]
     assert "- Repo context: current collaboration happens in /media/projects/jarvis-v2." in memory_md
+    assert "[MEMORY.md] Repo context: current collaboration happens in /media/projects/jarvis-v2." in daily_text

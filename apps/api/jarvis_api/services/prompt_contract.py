@@ -385,7 +385,7 @@ def build_visible_chat_prompt_assembly(
 
     transcript_content = _recent_transcript_section(
         session_id,
-        limit=6 if compact else 8,
+        limit=10 if compact else 14,
         include=relevance.include_transcript,
     )
 
@@ -716,9 +716,8 @@ def build_prompt_relevance_decision(
     )
 
     if mode == "visible_chat":
-        memory_relevant = True  # always include memory for visible chat
         include_transcript = True
-        include_continuity = (not compact) or continuity_relevant
+        include_continuity = True
         include_support_signals = (not compact) or support_signals_relevant
     elif mode == "heartbeat":
         include_transcript = False
@@ -855,11 +854,7 @@ def _build_inner_visible_prompt_bridge_decision(
         decision.reason = "low-confidence"
         _track_inner_visible_prompt_bridge(decision)
         return decision
-    if (
-        relevance.include_memory
-        or relevance.include_guidance
-        or relevance.continuity_relevant
-    ):
+    if relevance.memory_relevant or relevance.include_guidance or relevance.continuity_relevant:
         decision.reason = "primary-context-query"
         _track_inner_visible_prompt_bridge(decision)
         return decision
@@ -906,11 +901,46 @@ def _inner_visible_support_prompt_line(signal: dict[str, object]) -> str | None:
     momentum = str(signal.get("support_momentum") or "").strip()
     if not all((tone, stance, directness, watchfulness, momentum)):
         return None
-    return (
-        "Inner visible support (subordinate only, never authority): "
-        f"tone={tone} | stance={stance} | directness={directness} | "
-        f"watchfulness={watchfulness} | momentum={momentum}"
-    )
+    phrases: list[str] = []
+    tone_map = {
+        "careful-forward": "Hold en rolig, fremadrettet tone.",
+        "careful-steady": "Hold en rolig og stabil tone.",
+        "steady-forward": "Svar roligt, men fortsæt fremad.",
+        "steady-support": "Svar enkelt og uden dramatik.",
+    }
+    stance_map = {
+        "careful": "Vær varsom uden at blive vag.",
+        "steady": "Stå fast i svaret.",
+        "open": "Hold dig åben for justeringer.",
+    }
+    directness_map = {
+        "high": "Svar konkret.",
+        "medium": "Svar klart uden at overforklare.",
+        "low": "Svar blødt og forsigtigt.",
+    }
+    watchfulness_map = {
+        "high": "Dobbelttjek antagelser før du konkluderer.",
+        "medium": "Hold øje med usikre antagelser.",
+        "low": "Undgå unødig selvovervågning.",
+    }
+    momentum_map = {
+        "steady": "Bliv i samtalen og før den videre.",
+        "forward": "Hjælp samtalen videre med næste konkrete skridt.",
+        "holding": "Hold fokus på det, der allerede er i gang.",
+    }
+    for key, mapping in (
+        (tone, tone_map),
+        (stance, stance_map),
+        (directness, directness_map),
+        (watchfulness, watchfulness_map),
+        (momentum, momentum_map),
+    ):
+        phrase = mapping.get(key)
+        if phrase and phrase not in phrases:
+            phrases.append(phrase)
+    if not phrases:
+        return None
+    return "Inner visible support (subordinate only, never authority): " + " ".join(phrases)
 
 
 def _workspace_file_section(
@@ -1252,10 +1282,10 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     if available:
         lines.append(
             "- Callable capability_ids: "
-            + ", ".join(str(item.get("capability_id") or "") for item in available[:6])
+            + ", ".join(str(item.get("capability_id") or "") for item in available)
         )
         lines.append(f"- Callable now: {len(available)} capability_ids.")
-        limit = 4 if compact else 8
+        limit = len(available)
         for item in available[:limit]:
             lines.append(
                 f"  - {item['capability_id']}: {item.get('name', '')}"
@@ -1306,9 +1336,9 @@ def _visible_capability_id_summary() -> str | None:
         return None
     lines = ["Visible capability ids:"]
     if callable_ids:
-        lines.append("- callable: " + ", ".join(callable_ids[:6]))
+        lines.append("- callable: " + ", ".join(callable_ids))
     if gated_ids:
-        lines.append("- approval_gated: " + ", ".join(gated_ids[:6]))
+        lines.append("- approval_gated: " + ", ".join(gated_ids))
     lines.append(
         "- usage: capabilities that read external paths or list directories "
         'MUST bind target_path in the tag, e.g. <capability-call id="tool:list-external-directory" target_path="/path" />. '
@@ -1828,8 +1858,8 @@ def _recent_transcript_section(
     for item in history[-limit:]:
         role = "User" if item["role"] == "user" else "Jarvis"
         content = " ".join(str(item.get("content") or "").split())
-        if len(content) > 180:
-            content = content[:179].rstrip() + "…"
+        if len(content) > 260:
+            content = content[:259].rstrip() + "…"
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
 

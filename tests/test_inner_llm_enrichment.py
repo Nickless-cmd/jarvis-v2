@@ -248,7 +248,7 @@ def test_call_cheap_llm_returns_text_on_success() -> None:
 def test_call_cheap_llm_returns_none_when_no_cheap_model() -> None:
     mock_target = {"active": False, "provider": None, "model": None}
     with patch(
-        "core.memory.inner_llm_enrichment.resolve_provider_router_target",
+        "core.memory.inner_llm_enrichment._resolve_enrichment_target",
         return_value=mock_target,
     ):
         result = _call_cheap_llm("system", "user")
@@ -266,7 +266,7 @@ def test_call_cheap_llm_returns_none_on_http_error() -> None:
         "credentials_ready": True,
     }
     with patch(
-        "core.memory.inner_llm_enrichment.resolve_provider_router_target",
+        "core.memory.inner_llm_enrichment._resolve_enrichment_target",
         return_value=mock_target,
     ):
         with patch(
@@ -275,6 +275,35 @@ def test_call_cheap_llm_returns_none_on_http_error() -> None:
         ):
             result = _call_cheap_llm("system", "user")
             assert result is None
+
+
+def test_call_cheap_llm_falls_back_to_local_ollama() -> None:
+    mock_target = {
+        "active": True,
+        "provider": "ollama",
+        "model": "gemma4:e2b",
+        "base_url": "http://127.0.0.1:11434",
+        "resolved_lane": "local",
+    }
+    fake_response = json.dumps({
+        "message": {"content": "Lokal beriget tekst"}
+    }).encode("utf-8")
+
+    with patch(
+        "core.memory.inner_llm_enrichment._resolve_enrichment_target",
+        return_value=mock_target,
+    ):
+        with patch(
+            "core.memory.inner_llm_enrichment.urllib_request.urlopen"
+        ) as mock_urlopen:
+            mock_resp = MagicMock()
+            mock_resp.read.return_value = fake_response
+            mock_resp.__enter__ = lambda s: s
+            mock_resp.__exit__ = MagicMock(return_value=False)
+            mock_urlopen.return_value = mock_resp
+
+            result = _call_cheap_llm("system prompt", "user message")
+            assert result == "Lokal beriget tekst"
 
 
 # ---------------------------------------------------------------------------

@@ -48,16 +48,16 @@ class AttentionBudget:
 
 BUDGET_VISIBLE_COMPACT = AttentionBudget(
     profile="visible_compact",
-    total_char_target=1200,
+    total_char_target=1600,
     cognitive_frame=SectionBudget(max_chars=180, max_items=2, must_include=True, priority=1),
     private_brain=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     self_knowledge=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     self_report=SectionBudget(max_chars=400, max_items=4, must_include=False, priority=3),
     support_signals=SectionBudget(max_chars=200, max_items=2, must_include=False, priority=6),
     inner_visible_bridge=SectionBudget(max_chars=120, max_items=1, must_include=False, priority=4),
-    continuity=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=8),
+    continuity=SectionBudget(max_chars=220, max_items=2, must_include=False, priority=5),
     liveness=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
-    capability_truth=SectionBudget(max_chars=200, max_items=3, must_include=True, priority=2),
+    capability_truth=SectionBudget(max_chars=700, max_items=8, must_include=True, priority=2),
 )
 
 BUDGET_VISIBLE_FULL = AttentionBudget(
@@ -69,9 +69,9 @@ BUDGET_VISIBLE_FULL = AttentionBudget(
     self_report=SectionBudget(max_chars=600, max_items=6, must_include=False, priority=3),
     support_signals=SectionBudget(max_chars=400, max_items=4, must_include=False, priority=5),
     inner_visible_bridge=SectionBudget(max_chars=200, max_items=2, must_include=False, priority=4),
-    continuity=SectionBudget(max_chars=300, max_items=3, must_include=False, priority=6),
+    continuity=SectionBudget(max_chars=420, max_items=4, must_include=False, priority=6),
     liveness=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
-    capability_truth=SectionBudget(max_chars=300, max_items=4, must_include=True, priority=1),
+    capability_truth=SectionBudget(max_chars=900, max_items=10, must_include=True, priority=1),
 )
 
 BUDGET_HEARTBEAT = AttentionBudget(

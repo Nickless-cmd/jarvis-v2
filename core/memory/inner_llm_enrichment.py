@@ -24,6 +24,37 @@ logger = logging.getLogger(__name__)
 _MAX_OUTPUT_TOKENS = 100
 
 
+def _resolve_enrichment_target() -> dict[str, object] | None:
+    """Resolve the best available target for private-layer enrichment.
+
+    Preference order:
+    1. cheap lane
+    2. local lane
+    3. visible lane when it is ollama-backed
+    """
+    candidates = ("cheap", "local", "visible")
+    for lane in candidates:
+        try:
+            target = resolve_provider_router_target(lane=lane)
+        except Exception:
+            logger.warning(
+                "inner-llm-enrichment: failed to resolve %s lane target", lane
+            )
+            continue
+        if not bool(target.get("active")):
+            continue
+        provider = str(target.get("provider") or "").strip()
+        if not provider:
+            continue
+        if lane == "visible" and provider != "ollama":
+            continue
+        return {
+            **target,
+            "resolved_lane": lane,
+        }
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Prompt builders
 # ---------------------------------------------------------------------------
@@ -128,30 +159,38 @@ def _resolve_auth_header(target: dict) -> dict[str, str]:
 
 def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
     """Call cheapest available LLM. Returns response text or None on failure."""
-    try:
-        target = resolve_provider_router_target(lane="cheap")
-    except Exception:
-        logger.warning("inner-llm-enrichment: failed to resolve cheap lane target")
-        return None
+    target = _resolve_enrichment_target()
 
-    if not target.get("active") or not str(target.get("provider") or "").strip():
-        logger.debug("inner-llm-enrichment: no cheap model configured, skipping")
+    if not target or not str(target.get("provider") or "").strip():
+        logger.debug(
+            "inner-llm-enrichment: no cheap/local visible fallback model configured, skipping"
+        )
         return None
 
     provider = str(target.get("provider") or "")
     model = str(target.get("model") or "")
     base_url = str(target.get("base_url") or "").rstrip("/")
 
-    payload = json.dumps({
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ],
-        "max_tokens": _MAX_OUTPUT_TOKENS,
-        "temperature": 0.7,
-        "stream": False,
-    }).encode("utf-8")
+    if provider == "ollama":
+        return _call_ollama_chat(
+            model=model,
+            base_url=base_url,
+            system_prompt=system_prompt,
+            user_message=user_message,
+        )
+
+    payload = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            "max_tokens": _MAX_OUTPUT_TOKENS,
+            "temperature": 0.7,
+            "stream": False,
+        }
+    ).encode("utf-8")
 
     if provider == "github-copilot":
         url = f"{base_url or 'https://models.github.ai'}/inference/chat/completions"
@@ -180,6 +219,47 @@ def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
             return text.strip() if text.strip() else None
     except Exception as exc:
         logger.warning("inner-llm-enrichment: LLM call failed: %s", exc)
+        return None
+
+
+def _call_ollama_chat(
+    *,
+    model: str,
+    base_url: str,
+    system_prompt: str,
+    user_message: str,
+) -> str | None:
+    payload = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            "stream": False,
+            "options": {
+                "temperature": 0.7,
+                "num_predict": _MAX_OUTPUT_TOKENS,
+            },
+        }
+    ).encode("utf-8")
+    url = f"{(base_url or 'http://127.0.0.1:11434').rstrip('/')}/api/chat"
+    try:
+        req = urllib_request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib_request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            text = (
+                data.get("message", {})
+                .get("content", "")
+            )
+            return text.strip() if text.strip() else None
+    except Exception as exc:
+        logger.warning("inner-llm-enrichment: ollama chat failed: %s", exc)
         return None
 
 

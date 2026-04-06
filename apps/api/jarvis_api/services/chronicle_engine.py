@@ -70,6 +70,34 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
     return result
 
 
+def compare_self_over_time() -> str | None:
+    """Temporal self-perception — how have I changed?"""
+    try:
+        from core.runtime.db import list_cognitive_personality_vectors
+        vectors = list_cognitive_personality_vectors(limit=10)
+        if len(vectors) < 2:
+            return None
+        latest = vectors[0]
+        oldest = vectors[-1]
+        changes = []
+        # Compare confidence by domain
+        import json
+        latest_conf = json.loads(str(latest.get("confidence_by_domain") or "{}"))
+        oldest_conf = json.loads(str(oldest.get("confidence_by_domain") or "{}"))
+        for domain in latest_conf:
+            new_val = float(latest_conf.get(domain, 0.5))
+            old_val = float(oldest_conf.get(domain, 0.5))
+            diff = new_val - old_val
+            if abs(diff) > 0.1:
+                direction = "steget" if diff > 0 else "faldet"
+                changes.append(f"{domain}: {direction} ({old_val:.1f}→{new_val:.1f})")
+        if not changes:
+            return f"Stabil over {len(vectors)} versioner — ingen store ændringer."
+        return f"Jeg har ændret mig: {'; '.join(changes[:3])}. (v{oldest.get('version', '?')}→v{latest.get('version', '?')})"
+    except Exception:
+        return None
+
+
 def build_chronicle_surface() -> dict[str, object]:
     entries = list_cognitive_chronicle_entries(limit=5)
     return {

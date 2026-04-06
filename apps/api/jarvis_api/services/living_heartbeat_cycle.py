@@ -57,14 +57,20 @@ _LIFE_PHASES = {
     },
     "dreaming": {
         "hours": list(range(21, 24)) + list(range(0, 7)),
-        "description": "Drømmetilstand — konsolidér, generér hypoteser",
+        "description": "Drømmetilstand — konsolidér, generér hypoteser, leg frit",
         "suggested_actions": [
             "generate_counterfactual_dreams",
             "decay_forgotten_signals",
             "check_seed_activation",
+            "generate_narrative_identity",
+            "analyze_cross_signals",
+            "generate_emergent_goal",
+            "write_chronicle_entry",
         ],
         "mood_tendency": "contemplative",
         "initiative_bias": 0.3,
+        "play_mode": True,
+        "sleep_batch": True,
     },
 }
 

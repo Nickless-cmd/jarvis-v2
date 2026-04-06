@@ -74,6 +74,17 @@ def detect_paradox_tensions(
     return tensions
 
 
+def narrativize_tension(tension: dict[str, object]) -> str:
+    """Turn a paradox tension into felt inner conflict."""
+    label = tension.get("label", "")
+    balance = float(tension.get("balance", 0.5))
+    if balance > 0.6:
+        return f"En del af mig trækker mod venstre side af '{label}' — men der er modstand."
+    if balance < 0.4:
+        return f"En del af mig trækker mod højre side af '{label}' — men tvivlen er der."
+    return f"Jeg er splittet ved '{label}'. Begge sider trækker lige hårdt. Jeg er i tvivl."
+
+
 def build_paradox_surface() -> dict[str, object]:
     return {
         "active": True,

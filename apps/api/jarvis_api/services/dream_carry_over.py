@@ -91,6 +91,25 @@ def reject_dream(dream_id: str) -> None:
     _ACTIVE_DREAMS[:] = [d for d in _ACTIVE_DREAMS if d["dream_id"] != dream_id]
 
 
+def promote_confirmed_dream_to_identity(dream_id: str) -> dict[str, object] | None:
+    """Promote a high-confidence confirmed dream to identity evolution proposal."""
+    dream = next((d for d in _ACTIVE_DREAMS if d["dream_id"] == dream_id), None)
+    if not dream or not dream.get("confirmed"):
+        return None
+    if float(dream.get("confidence", 0)) < 0.7:
+        return None
+    try:
+        from apps.api.jarvis_api.services.contract_evolution import propose_identity_change
+        return propose_identity_change(
+            target_file="IDENTITY.md",
+            proposed_addition=f"Bekræftet indsigt: {dream.get('content', '')[:200]}",
+            rationale=f"Dream {dream_id} bekræftet med confidence {dream.get('confidence', 0):.1f}",
+            confidence=float(dream.get("confidence", 0.7)),
+        )
+    except Exception:
+        return None
+
+
 def format_dream_for_prompt(dream: dict[str, object]) -> str:
     """Format a dream for injection into the visible prompt."""
     content = str(dream.get("content") or "")[:200]

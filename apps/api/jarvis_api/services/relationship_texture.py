@@ -144,6 +144,49 @@ def update_relationship_async(**kwargs) -> None:
     ).start()
 
 
+def track_pushback_outcome(
+    *, jarvis_disagreed: bool, user_was_right: bool, topic: str = "",
+) -> None:
+    """Track when Jarvis disagrees — and who was right."""
+    if not jarvis_disagreed:
+        return
+    try:
+        from core.runtime.db import insert_cognitive_conflict_memory
+        from uuid import uuid4
+        insert_cognitive_conflict_memory(
+            conflict_id=f"conf-{uuid4().hex[:8]}",
+            topic=topic[:200],
+            jarvis_position="disagreed",
+            user_position="insisted",
+            resolution="user_correct" if user_was_right else "jarvis_correct",
+            lesson=(
+                "Brugeren havde ret — kalibrér ned" if user_was_right
+                else "Jarvis havde ret — styrk rygrad"
+            ),
+        )
+    except Exception:
+        pass
+
+
+def derive_appropriate_autonomy_level() -> str:
+    """Derive autonomy level from trust trajectory."""
+    current = get_latest_cognitive_relationship_texture()
+    if not current:
+        return "bounded"
+    trust_traj = _safe_json_list(current.get("trust_trajectory"))
+    if not trust_traj:
+        return "bounded"
+    latest_trust = trust_traj[-1]
+    corrections = _safe_json_list(current.get("correction_patterns"))
+    if latest_trust > 0.8 and len(corrections) < 3:
+        return "proactive"
+    if latest_trust > 0.6:
+        return "balanced"
+    if latest_trust < 0.4 or len(corrections) > 8:
+        return "cautious"
+    return "bounded"
+
+
 def build_relationship_texture_surface() -> dict[str, object]:
     current = get_latest_cognitive_relationship_texture()
     if not current:

@@ -1,22 +1,30 @@
-"""End-of-run memory consolidation — uses local model to persist
-important learnings to workspace MEMORY.md and USER.md.
+"""End-of-run memory consolidation driven by the local model.
 
-Runs after session distillation at the end of each visible run.
-Uses the heartbeat (cheap/local) model to keep costs zero.
-
-Design constraints:
-- Read-then-write: always reads current file before writing
-- Append-only semantics: new entries are added, existing preserved
-- No spam: only writes when there's genuinely new information
-- Bounded output: local model produces a small JSON decision
-- No canonical identity mutation
+Runs after each visible run and asks the local model for bounded memory
+candidates instead of free-form file writes. The runtime then persists
+those candidates through the governed candidate workflow.
 """
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
+from hashlib import sha1
+from uuid import uuid4
 
 from core.eventbus.bus import event_bus
+from core.identity.candidate_workflow import (
+    auto_apply_safe_memory_md_candidates,
+    auto_apply_safe_user_md_candidates,
+)
 from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.runtime.db import upsert_runtime_contract_candidate
+
+_EXCERPT_MEMORY_CHARS = 2400
+_EXCERPT_USER_CHARS = 1800
+_FULL_MEMORY_CHARS = 12000
+_FULL_USER_CHARS = 8000
+_MAX_ITEMS = 3
+_NONE_MARKERS = {"", "none", "null", "n/a"}
 
 
 def consolidate_run_memory(
@@ -26,57 +34,118 @@ def consolidate_run_memory(
     user_message: str = "",
     assistant_response: str = "",
 ) -> dict[str, object]:
-    """Consolidate memory at end of visible run using local model.
-
-    Reads MEMORY.md and USER.md, asks local model if anything from the
-    conversation should be persisted, and writes updates if needed.
-    """
     result: dict[str, object] = {
         "consolidated": False,
         "memory_updated": False,
         "user_updated": False,
+        "candidate_count": 0,
+        "auto_applied_user_count": 0,
+        "auto_applied_memory_count": 0,
+        "used_full_context": False,
         "skipped_reason": None,
     }
 
-    # Skip if conversation is too short to contain useful information
-    if len(user_message) < 20 and len(assistant_response) < 50:
+    if len(user_message) < 12 and len(assistant_response) < 40:
         result["skipped_reason"] = "conversation-too-short"
         return result
 
     workspace_dir = ensure_default_workspace()
     memory_path = workspace_dir / "MEMORY.md"
     user_path = workspace_dir / "USER.md"
+    current_memory = memory_path.read_text(encoding="utf-8", errors="replace") if memory_path.exists() else ""
+    current_user = user_path.read_text(encoding="utf-8", errors="replace") if user_path.exists() else ""
 
-    current_memory = ""
-    if memory_path.exists():
-        current_memory = memory_path.read_text(encoding="utf-8", errors="replace")
-
-    current_user = ""
-    if user_path.exists():
-        current_user = user_path.read_text(encoding="utf-8", errors="replace")
-
-    # Truncate conversation to avoid blowing up local model context
-    user_msg_truncated = user_message[:1500]
-    assistant_truncated = assistant_response[:2000]
-
-    prompt = _build_consolidation_prompt(
-        user_message=user_msg_truncated,
-        assistant_response=assistant_truncated,
-        current_memory=current_memory[:2000],
-        current_user=current_user[:1500],
+    decision = _run_memory_consolidation_pass(
+        user_message=user_message[:1800],
+        assistant_response=assistant_response[:2600],
+        current_memory=current_memory,
+        current_user=current_user,
+        full_context=False,
     )
+    if decision is None:
+        result["skipped_reason"] = "model-unavailable"
+        return result
+    if bool(decision.get("needs_full_context")):
+        decision = _run_memory_consolidation_pass(
+            user_message=user_message[:1800],
+            assistant_response=assistant_response[:2600],
+            current_memory=current_memory,
+            current_user=current_user,
+            full_context=True,
+        )
+        result["used_full_context"] = True
+    if decision is None:
+        result["skipped_reason"] = "unparseable-response"
+        return result
 
-    # Use heartbeat model (local/cheap)
+    items = _normalize_memory_items(decision.get("items"))
+    if not items:
+        result["consolidated"] = True
+        result["skipped_reason"] = "no-new-memory-items"
+        return result
+
+    persisted = _persist_memory_candidates(
+        items=items,
+        session_id=session_id,
+        run_id=run_id,
+    )
+    user_apply = auto_apply_safe_user_md_candidates()
+    memory_apply = auto_apply_safe_memory_md_candidates()
+
+    result["consolidated"] = True
+    result["candidate_count"] = len(persisted)
+    result["auto_applied_user_count"] = int(user_apply.get("auto_applied") or 0)
+    result["auto_applied_memory_count"] = int(memory_apply.get("auto_applied") or 0)
+    result["user_updated"] = result["auto_applied_user_count"] > 0
+    result["memory_updated"] = result["auto_applied_memory_count"] > 0
+
+    event_bus.publish(
+        "memory.end_of_run_consolidation",
+        {
+            "session_id": session_id,
+            "run_id": run_id,
+            "candidate_count": len(persisted),
+            "memory_updated": result["memory_updated"],
+            "user_updated": result["user_updated"],
+            "used_full_context": result["used_full_context"],
+        },
+    )
+    return result
+
+
+def _run_memory_consolidation_pass(
+    *,
+    user_message: str,
+    assistant_response: str,
+    current_memory: str,
+    current_user: str,
+    full_context: bool,
+) -> dict[str, object] | None:
+    memory_slice = current_memory[: (_FULL_MEMORY_CHARS if full_context else _EXCERPT_MEMORY_CHARS)]
+    user_slice = current_user[: (_FULL_USER_CHARS if full_context else _EXCERPT_USER_CHARS)]
+    prompt = _build_consolidation_prompt(
+        user_message=user_message,
+        assistant_response=assistant_response,
+        current_memory=memory_slice,
+        current_user=user_slice,
+        full_context=full_context,
+    )
+    raw = _run_local_consolidation_model(prompt)
+    if not raw:
+        return None
+    return _parse_decision(raw)
+
+
+def _run_local_consolidation_model(prompt: str) -> str:
     try:
         from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _resolve_heartbeat_target,
             _execute_heartbeat_model,
             _load_heartbeat_policy,
+            _resolve_heartbeat_target,
         )
 
         policy = _load_heartbeat_policy()
         target = _resolve_heartbeat_target(policy=policy)
-
         model_result = _execute_heartbeat_model(
             prompt=prompt,
             target=target,
@@ -85,45 +154,8 @@ def consolidate_run_memory(
             liveness=None,
         )
     except Exception:
-        result["skipped_reason"] = "model-unavailable"
-        return result
-
-    raw = str(model_result.get("text") or "").strip()
-    if not raw:
-        result["skipped_reason"] = "empty-model-response"
-        return result
-
-    # Parse JSON decision
-    decision = _parse_decision(raw)
-    if decision is None:
-        result["skipped_reason"] = "unparseable-response"
-        return result
-
-    result["consolidated"] = True
-
-    # Apply memory update if model suggests one
-    memory_addition = str(decision.get("memory_addition") or "").strip()
-    if memory_addition and memory_addition.lower() not in {"none", "null", "n/a", ""}:
-        _append_to_file(memory_path, current_memory, memory_addition)
-        result["memory_updated"] = True
-
-    # Apply user update if model suggests one
-    user_addition = str(decision.get("user_addition") or "").strip()
-    if user_addition and user_addition.lower() not in {"none", "null", "n/a", ""}:
-        _append_to_file(user_path, current_user, user_addition)
-        result["user_updated"] = True
-
-    event_bus.publish(
-        "memory.end_of_run_consolidation",
-        {
-            "session_id": session_id,
-            "run_id": run_id,
-            "memory_updated": result["memory_updated"],
-            "user_updated": result["user_updated"],
-        },
-    )
-
-    return result
+        return ""
+    return str(model_result.get("text") or "").strip()
 
 
 def _build_consolidation_prompt(
@@ -132,60 +164,189 @@ def _build_consolidation_prompt(
     assistant_response: str,
     current_memory: str,
     current_user: str,
+    full_context: bool,
 ) -> str:
-    return f"""You are a memory consolidation agent. Your job is to decide if anything
-from this conversation exchange should be persisted to long-term memory.
+    context_label = "FULL FILE CONTEXT" if full_context else "BOUNDED FILE EXCERPTS"
+    return f"""You are a bounded memory consolidation agent for Jarvis.
 
-CURRENT MEMORY.md (project facts, decisions, learned context):
+Your job is to decide whether this turn contains durable information that
+should be carried into USER.md or MEMORY.md as short append-only lines.
+
+{context_label}
+CURRENT MEMORY.md:
 {current_memory}
 
-CURRENT USER.md (user preferences, working style):
+CURRENT USER.md:
 {current_user}
 
-CONVERSATION EXCHANGE:
+TURN:
 User: {user_message}
 Assistant: {assistant_response}
 
 RULES:
-- Only persist genuinely NEW information not already in the files
-- memory_addition: concrete facts, decisions, project context, completed work
-- user_addition: user preferences, communication style, expertise areas
-- If nothing new worth remembering, set both to "none"
-- Keep additions to 1-2 concise lines each
-- Do not repeat existing content
-- Do not write inner voice noise or reflective observations
+- Prefer generic judgment over hardcoded patterns.
+- Persist only durable facts, preferences, working context, or stable decisions.
+- Do not store transient observations, inner voice, filler, praise, or paraphrases of temporary tasks.
+- USER.md is for durable user preferences or collaboration preferences.
+- MEMORY.md is for durable project facts, repo/workspace context, shared anchors, and stable decisions.
+- If you are unsure whether the existing file context is sufficient, return needs_full_context=true and no items.
+- If the relevant fact may already exist and you cannot tell from the provided context, return needs_full_context=true and no items.
+- Each item must be one short line suitable for append-only storage.
+- At most {_MAX_ITEMS} items.
 
-Respond with ONLY a JSON object:
-{{"memory_addition": "line to add to MEMORY.md or none", "user_addition": "line to add to USER.md or none"}}"""
+Return ONLY JSON in this shape:
+{{
+  "needs_full_context": false,
+  "items": [
+    {{
+      "target": "USER.md" or "MEMORY.md",
+      "kind": "preference|fact|context|decision",
+      "confidence": "low|medium|high",
+      "source": "explicit-user-statement|explicit-assistant-confirmation|runtime-inference",
+      "summary": "short summary",
+      "reason": "why this is durable",
+      "line": "- concise line for the file"
+    }}
+  ]
+}}
+If nothing new is worth keeping, return {{"needs_full_context": false, "items": []}}."""
 
 
-def _parse_decision(raw: str) -> dict[str, str] | None:
+def _parse_decision(raw: str) -> dict[str, object] | None:
     try:
-        return json.loads(raw)
+        parsed = json.loads(raw)
     except json.JSONDecodeError:
         start = raw.find("{")
         end = raw.rfind("}") + 1
-        if start >= 0 and end > start:
-            try:
-                return json.loads(raw[start:end])
-            except json.JSONDecodeError:
-                return None
-    return None
+        if start < 0 or end <= start:
+            return None
+        try:
+            parsed = json.loads(raw[start:end])
+        except json.JSONDecodeError:
+            return None
+    return parsed if isinstance(parsed, dict) else None
 
 
-def _append_to_file(path, current_content: str, addition: str) -> None:
-    """Append a line to a workspace file, placing it in the right section."""
-    lines = current_content.rstrip().split("\n")
+def _normalize_memory_items(raw_items: object) -> list[dict[str, str]]:
+    if not isinstance(raw_items, list):
+        return []
+    items: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for raw in raw_items[:_MAX_ITEMS]:
+        if not isinstance(raw, dict):
+            continue
+        target = str(raw.get("target") or "").strip()
+        if target not in {"USER.md", "MEMORY.md"}:
+            continue
+        line = _normalize_line(raw.get("line") or "")
+        if not line:
+            continue
+        key = (target, line.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(
+            {
+                "target": target,
+                "kind": str(raw.get("kind") or "fact").strip().lower() or "fact",
+                "confidence": _normalize_confidence(raw.get("confidence") or ""),
+                "source": str(raw.get("source") or "runtime-inference").strip().lower() or "runtime-inference",
+                "summary": _normalize_sentence(raw.get("summary") or ""),
+                "reason": _normalize_sentence(raw.get("reason") or ""),
+                "line": line,
+            }
+        )
+    return items
 
-    # Find the last non-empty content line to append after
-    insert_idx = len(lines)
-    for i in range(len(lines) - 1, -1, -1):
-        if lines[i].strip():
-            insert_idx = i + 1
-            break
 
-    # Add the new line with a bullet prefix if not already formatted
-    new_line = addition if addition.startswith("- ") else f"- {addition}"
-    lines.insert(insert_idx, new_line)
+def _persist_memory_candidates(
+    *,
+    items: list[dict[str, str]],
+    session_id: str,
+    run_id: str,
+) -> list[dict[str, object]]:
+    now = datetime.now(UTC).isoformat()
+    persisted: list[dict[str, object]] = []
+    for item in items:
+        target = item["target"]
+        candidate_type = "preference_update" if target == "USER.md" else "memory_promotion"
+        canonical_key = _candidate_canonical_key(item)
+        confidence = item["confidence"]
+        source = item["source"]
+        evidence_class = _evidence_class_for_source(source)
+        candidate = upsert_runtime_contract_candidate(
+            candidate_id=f"candidate-{uuid4().hex}",
+            candidate_type=candidate_type,
+            target_file=target,
+            status="proposed",
+            source_kind="user-explicit" if source == "explicit-user-statement" else "runtime-derived-support",
+            source_mode="end_of_run_memory_consolidation",
+            actor="runtime:end-of-run-memory-consolidation",
+            session_id=str(session_id or ""),
+            run_id=str(run_id or ""),
+            canonical_key=canonical_key,
+            summary=item["summary"] or _summary_from_line(item["line"]),
+            reason=item["reason"] or "Bounded local-model consolidation judged this worth carrying forward.",
+            evidence_summary=_summary_from_line(item["line"]),
+            support_summary=f"target={target} | kind={item['kind']} | source={source}",
+            confidence=confidence,
+            evidence_class=evidence_class,
+            support_count=1,
+            session_count=1,
+            created_at=now,
+            updated_at=now,
+            status_reason="Candidate proposed by bounded end-of-run local memory consolidation.",
+            proposed_value=item["line"],
+            write_section="## Durable Preferences" if target == "USER.md" else "## Curated Memory",
+        )
+        persisted.append(candidate)
+    return persisted
 
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+def _candidate_canonical_key(item: dict[str, str]) -> str:
+    target = item["target"]
+    kind = item["kind"]
+    digest = sha1(f"{target}|{item['line'].lower()}".encode("utf-8")).hexdigest()[:12]
+    if target == "USER.md":
+        return f"user-preference:llm:{kind}-{digest}"
+    if kind in {"fact", "context", "decision"}:
+        return f"workspace-memory:remembered-fact:llm-{kind}-{digest}"
+    return f"workspace-memory:stable-context:llm-{kind}-{digest}"
+
+
+def _evidence_class_for_source(source: str) -> str:
+    if source == "explicit-user-statement":
+        return "explicit_user_statement"
+    if source == "explicit-assistant-confirmation":
+        return "single_session_pattern"
+    return "runtime_support_only"
+
+
+def _normalize_line(value: object) -> str:
+    normalized = " ".join(str(value or "").split()).strip()
+    if normalized.lower() in _NONE_MARKERS:
+        return ""
+    if not normalized.startswith("- "):
+        normalized = f"- {normalized}"
+    return normalized[:220]
+
+
+def _normalize_sentence(value: object) -> str:
+    normalized = " ".join(str(value or "").split()).strip()
+    if normalized.lower() in _NONE_MARKERS:
+        return ""
+    return normalized[:220]
+
+
+def _normalize_confidence(value: object) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"high", "medium", "low"}:
+        return normalized
+    return "medium"
+
+
+def _summary_from_line(line: str) -> str:
+    normalized = " ".join(str(line or "").split()).strip()
+    if normalized.startswith("- "):
+        normalized = normalized[2:]
+    return normalized[:180]

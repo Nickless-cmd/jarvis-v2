@@ -42,13 +42,14 @@ class AttentionBudget:
     continuity: SectionBudget
     liveness: SectionBudget
     capability_truth: SectionBudget
+    cognitive_state: SectionBudget = SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9)
 
 
 # Pre-defined budget profiles
 
 BUDGET_VISIBLE_COMPACT = AttentionBudget(
     profile="visible_compact",
-    total_char_target=1600,
+    total_char_target=1850,
     cognitive_frame=SectionBudget(max_chars=180, max_items=2, must_include=True, priority=1),
     private_brain=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     self_knowledge=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
@@ -58,11 +59,12 @@ BUDGET_VISIBLE_COMPACT = AttentionBudget(
     continuity=SectionBudget(max_chars=220, max_items=2, must_include=False, priority=5),
     liveness=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     capability_truth=SectionBudget(max_chars=700, max_items=8, must_include=True, priority=2),
+    cognitive_state=SectionBudget(max_chars=250, max_items=3, must_include=False, priority=3),
 )
 
 BUDGET_VISIBLE_FULL = AttentionBudget(
     profile="visible_full",
-    total_char_target=3000,
+    total_char_target=3500,
     cognitive_frame=SectionBudget(max_chars=500, max_items=4, must_include=True, priority=2),
     private_brain=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     self_knowledge=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
@@ -72,11 +74,12 @@ BUDGET_VISIBLE_FULL = AttentionBudget(
     continuity=SectionBudget(max_chars=420, max_items=4, must_include=False, priority=6),
     liveness=SectionBudget(max_chars=0, max_items=0, must_include=False, priority=9),
     capability_truth=SectionBudget(max_chars=900, max_items=10, must_include=True, priority=1),
+    cognitive_state=SectionBudget(max_chars=500, max_items=6, must_include=False, priority=3),
 )
 
 BUDGET_HEARTBEAT = AttentionBudget(
     profile="heartbeat",
-    total_char_target=2400,
+    total_char_target=2800,
     cognitive_frame=SectionBudget(max_chars=500, max_items=4, must_include=True, priority=2),
     private_brain=SectionBudget(max_chars=400, max_items=4, must_include=False, priority=3),
     self_knowledge=SectionBudget(max_chars=350, max_items=5, must_include=False, priority=4),
@@ -86,6 +89,7 @@ BUDGET_HEARTBEAT = AttentionBudget(
     continuity=SectionBudget(max_chars=300, max_items=3, must_include=False, priority=5),
     liveness=SectionBudget(max_chars=300, max_items=3, must_include=False, priority=5),
     capability_truth=SectionBudget(max_chars=300, max_items=4, must_include=True, priority=1),
+    cognitive_state=SectionBudget(max_chars=400, max_items=5, must_include=False, priority=3),
 )
 
 _PROFILES: dict[str, AttentionBudget] = {
@@ -304,6 +308,7 @@ def select_sections_under_budget(
         "continuity": budget.continuity,
         "liveness": budget.liveness,
         "capability_truth": budget.capability_truth,
+        "cognitive_state": budget.cognitive_state,
     }
 
     # Sort by priority (lowest number = highest priority)

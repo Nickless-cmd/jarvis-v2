@@ -2515,6 +2515,100 @@ def _persist_visible_run_outcome(
         capability_id=capability_id,
     )
 
+    # --- Cognitive Architecture: fire-and-forget post-run updates ---
+    _update_cognitive_systems_async(
+        run_id=run.run_id,
+        user_message=user_message_preview or "",
+        assistant_response=work_preview or "",
+        outcome_status=status,
+    )
+
+
+def _update_cognitive_systems_async(
+    *,
+    run_id: str,
+    user_message: str,
+    assistant_response: str,
+    outcome_status: str,
+) -> None:
+    """Fire-and-forget updates to all cognitive accumulation systems."""
+    import threading
+
+    def _run() -> None:
+        try:
+            from apps.api.jarvis_api.services.personality_vector import (
+                update_personality_vector_async,
+            )
+            update_personality_vector_async(
+                run_id=run_id,
+                user_message=user_message,
+                assistant_response=assistant_response,
+                outcome_status=outcome_status,
+            )
+        except Exception:
+            pass
+
+        try:
+            from apps.api.jarvis_api.services.taste_profile import update_taste_async
+            # Detect correction: user message contains correction markers
+            msg_lower = user_message.lower()
+            was_corrected = any(
+                m in msg_lower
+                for m in ("nej", "forkert", "ikke det", "det er stadig", "prøv igen")
+            )
+            update_taste_async(
+                run_id=run_id,
+                user_message=user_message,
+                was_corrected=was_corrected,
+                outcome_status=outcome_status,
+            )
+        except Exception:
+            pass
+
+        try:
+            from apps.api.jarvis_api.services.relationship_texture import (
+                update_relationship_async,
+            )
+            update_relationship_async(
+                run_id=run_id,
+                user_message=user_message,
+                assistant_response=assistant_response,
+                outcome_status=outcome_status,
+            )
+        except Exception:
+            pass
+
+        try:
+            from apps.api.jarvis_api.services.habit_tracker import track_habit_from_run
+            # Use first 50 chars of user message as task signature
+            sig = user_message[:50].strip() if user_message else ""
+            if sig:
+                track_habit_from_run(
+                    run_id=run_id,
+                    task_signature=sig,
+                    outcome_status=outcome_status,
+                )
+        except Exception:
+            pass
+
+        try:
+            from apps.api.jarvis_api.services.shared_language import scan_for_shared_terms
+            scan_for_shared_terms(
+                user_message=user_message,
+                assistant_response=assistant_response,
+                run_id=run_id,
+            )
+        except Exception:
+            pass
+
+        try:
+            from apps.api.jarvis_api.services.rhythm_engine import update_rhythm_state
+            update_rhythm_state()
+        except Exception:
+            pass
+
+    threading.Thread(target=_run, daemon=True).start()
+
 
 def _start_visible_execution_trace(run: VisibleRun) -> dict[str, object]:
     trace = {

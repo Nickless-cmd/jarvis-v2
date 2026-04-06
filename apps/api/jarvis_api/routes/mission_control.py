@@ -2317,3 +2317,198 @@ def _preview_text(value: str, *, limit: int = 96) -> str:
     if not text:
         return ""
     return text[:limit] + ("…" if len(text) > limit else "")
+
+
+# ---------------------------------------------------------------------------
+# Cognitive Architecture Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/cognitive-state-injection")
+def mc_cognitive_state_injection() -> dict:
+    """Show exactly what cognitive state was injected into the last visible prompt."""
+    from apps.api.jarvis_api.services.cognitive_state_assembly import (
+        build_cognitive_state_injection_surface,
+    )
+    return build_cognitive_state_injection_surface()
+
+
+@router.get("/personality-vector")
+def mc_personality_vector() -> dict:
+    """Return the current personality vector with version history."""
+    from apps.api.jarvis_api.services.personality_vector import build_personality_vector_surface
+    return build_personality_vector_surface()
+
+
+@router.get("/taste-profile")
+def mc_taste_profile() -> dict:
+    """Return the current taste profile (code/design/communication)."""
+    from apps.api.jarvis_api.services.taste_profile import build_taste_profile_surface
+    return build_taste_profile_surface()
+
+
+@router.get("/chronicle")
+def mc_chronicle() -> dict:
+    """Return chronicle entries (narrative autobiography)."""
+    from apps.api.jarvis_api.services.chronicle_engine import build_chronicle_surface
+    return build_chronicle_surface()
+
+
+@router.get("/relationship-texture")
+def mc_relationship_texture() -> dict:
+    """Return the relationship texture (trust, humor, corrections, etc)."""
+    from apps.api.jarvis_api.services.relationship_texture import build_relationship_texture_surface
+    return build_relationship_texture_surface()
+
+
+@router.get("/compass")
+def mc_compass() -> dict:
+    """Return the current strategic compass bearing."""
+    from apps.api.jarvis_api.services.compass_engine import build_compass_surface
+    return build_compass_surface()
+
+
+@router.get("/rhythm")
+def mc_rhythm() -> dict:
+    """Return the current rhythm/tidal state (phase, energy, initiative)."""
+    from apps.api.jarvis_api.services.rhythm_engine import build_rhythm_surface
+    return build_rhythm_surface()
+
+
+@router.get("/habits")
+def mc_habits() -> dict:
+    """Return habit patterns and friction signals."""
+    from apps.api.jarvis_api.services.habit_tracker import build_habit_surface
+    return build_habit_surface()
+
+
+@router.get("/shared-language")
+def mc_shared_language() -> dict:
+    """Return shared language terms with the user."""
+    from apps.api.jarvis_api.services.shared_language import build_shared_language_surface
+    return build_shared_language_surface()
+
+
+@router.get("/mirror")
+def mc_mirror() -> dict:
+    """Return mirror self-reflection state."""
+    from apps.api.jarvis_api.services.mirror_engine import build_mirror_surface
+    return build_mirror_surface()
+
+
+@router.get("/silence-signals")
+def mc_silence_signals() -> dict:
+    """Return silence detector state."""
+    from apps.api.jarvis_api.services.silence_detector import build_silence_surface
+    return build_silence_surface()
+
+
+@router.get("/decisions")
+def mc_decisions() -> dict:
+    """Return the decision log."""
+    from apps.api.jarvis_api.services.decision_log import build_decision_log_surface
+    return build_decision_log_surface()
+
+
+@router.get("/counterfactuals")
+def mc_counterfactuals() -> dict:
+    """Return counterfactual scenarios."""
+    from apps.api.jarvis_api.services.counterfactual_engine import build_counterfactual_surface
+    return build_counterfactual_surface()
+
+
+@router.get("/paradoxes")
+def mc_paradoxes() -> dict:
+    """Return active paradox tensions."""
+    from apps.api.jarvis_api.services.paradox_tracker import build_paradox_surface
+    return build_paradox_surface()
+
+
+@router.get("/aesthetics")
+def mc_aesthetics() -> dict:
+    """Return aesthetic sense motifs."""
+    from apps.api.jarvis_api.services.aesthetic_sense import build_aesthetic_surface
+    return build_aesthetic_surface()
+
+
+@router.get("/gut")
+def mc_gut() -> dict:
+    """Return gut intuition calibration state."""
+    from apps.api.jarvis_api.services.gut_engine import build_gut_surface
+    return build_gut_surface()
+
+
+@router.get("/seeds")
+def mc_seeds() -> dict:
+    """Return prospective memory seeds."""
+    from apps.api.jarvis_api.services.seed_system import build_seed_surface
+    return build_seed_surface()
+
+
+@router.get("/procedures")
+def mc_procedures() -> dict:
+    """Return learned procedures."""
+    from apps.api.jarvis_api.services.procedure_bank import build_procedure_surface
+    return build_procedure_surface()
+
+
+@router.get("/temporal-context")
+def mc_temporal_context() -> dict:
+    """Return current temporal context."""
+    from apps.api.jarvis_api.services.temporal_context import build_temporal_context_surface
+    return build_temporal_context_surface()
+
+
+@router.get("/negotiations")
+def mc_negotiations() -> dict:
+    """Return internal negotiation trades."""
+    from apps.api.jarvis_api.services.negotiation_engine import build_negotiation_surface
+    return build_negotiation_surface()
+
+
+@router.get("/forgetting-curve")
+def mc_forgetting_curve() -> dict:
+    """Return memory decay / forgetting curve state."""
+    from apps.api.jarvis_api.services.forgetting_curve import build_forgetting_curve_surface
+    return build_forgetting_curve_surface()
+
+
+@router.get("/conversation-rhythm")
+def mc_conversation_rhythm() -> dict:
+    """Return conversation rhythm patterns."""
+    from apps.api.jarvis_api.services.conversation_rhythm import build_conversation_rhythm_surface
+    return build_conversation_rhythm_surface()
+
+
+@router.get("/self-experiments")
+def mc_self_experiments() -> dict:
+    """Return self-experiment A/B test state."""
+    from apps.api.jarvis_api.services.self_experiments import build_self_experiments_surface
+    return build_self_experiments_surface()
+
+
+@router.get("/anticipatory-context")
+def mc_anticipatory_context() -> dict:
+    """Return anticipatory context predictions."""
+    from apps.api.jarvis_api.services.anticipatory_context import build_anticipatory_context_surface
+    return build_anticipatory_context_surface()
+
+
+@router.get("/contract-evolution")
+def mc_contract_evolution() -> dict:
+    """Return identity contract evolution proposals."""
+    from apps.api.jarvis_api.services.contract_evolution import build_contract_evolution_surface
+    return build_contract_evolution_surface()
+
+
+@router.get("/dream-carry-over")
+def mc_dream_carry_over() -> dict:
+    """Return dream carry-over state (active dreams, archive)."""
+    from apps.api.jarvis_api.services.dream_carry_over import build_dream_carry_over_surface
+    return build_dream_carry_over_surface()
+
+
+@router.get("/apophenia-guard")
+def mc_apophenia_guard() -> dict:
+    """Return pattern skeptic state."""
+    from apps.api.jarvis_api.services.apophenia_guard import build_apophenia_guard_surface
+    return build_apophenia_guard_surface()

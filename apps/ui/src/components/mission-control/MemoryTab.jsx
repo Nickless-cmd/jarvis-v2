@@ -1,22 +1,23 @@
 import { Search } from 'lucide-react'
-import { SectionTitle } from '../shared/SectionTitle'
+import { s, T, mono } from '../../shared/theme/tokens'
+import { Card, SectionTitle, EmptyState } from './shared'
 
 export function MemoryTab() {
   return (
-    <div className="mc-tab-page">
-      <div className="mc-filter-bar">
-        <div className="mc-search-input">
-          <Search size={11} />
-          <input placeholder="Search memory..." />
+    <div style={s({ display: 'flex', flexDirection: 'column', gap: 16 })}>
+      <div style={s({ display: 'flex', alignItems: 'center', gap: 8 })}>
+        <div style={s({ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '6px 10px', background: T.bgOverlay, border: `1px solid ${T.border1}`, borderRadius: 6 })}>
+          <Search size={11} color={T.text3} />
+          <input
+            placeholder="Search memory..."
+            style={s({ flex: 1, background: 'transparent', border: 'none', color: T.text1, fontSize: 11, ...mono, outline: 'none' })}
+          />
         </div>
       </div>
-      <div className="support-card">
+      <Card>
         <SectionTitle>Memory Items</SectionTitle>
-        <div className="mc-empty-state">
-          <strong>Backend endpoint not connected</strong>
-          <p className="muted">Memory search will be available when /mc/memory is implemented.</p>
-        </div>
-      </div>
+        <EmptyState title="Backend endpoint not connected">Memory search will be available when /mc/memory is implemented.</EmptyState>
+      </Card>
     </div>
   )
 }

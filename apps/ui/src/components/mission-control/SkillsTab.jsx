@@ -1,15 +1,13 @@
-import { SectionTitle } from '../shared/SectionTitle'
+import { s } from '../../shared/theme/tokens'
+import { Card, SectionTitle, EmptyState } from './shared'
 
 export function SkillsTab() {
   return (
-    <div className="mc-tab-page">
-      <div className="support-card">
+    <div style={s({ display: 'flex', flexDirection: 'column', gap: 16 })}>
+      <Card>
         <SectionTitle>Skill Marketplace</SectionTitle>
-        <div className="mc-empty-state">
-          <strong>Backend endpoint not connected</strong>
-          <p className="muted">Skill management will be available when /mc/skills is implemented.</p>
-        </div>
-      </div>
+        <EmptyState title="Backend endpoint not connected">Skill management will be available when /mc/skills is implemented.</EmptyState>
+      </Card>
     </div>
   )
 }

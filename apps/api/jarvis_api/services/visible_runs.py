@@ -210,7 +210,7 @@ CAPABILITY_CALL_SCAN_PATTERN = re.compile(
     r"<capability-call\s+(?P<attrs>[^<>]*?)\s*/>"
 )
 CAPABILITY_BLOCK_PATTERN = re.compile(
-    r'<capability-call\s+(?P<attrs>[^>]*?)>\s*\n(?P<content>.*?)\n\s*</capability-call>',
+    r'<capability-call\s+(?P<attrs>[^<>]*?)(?<!/)>\s*\n(?P<content>.*?)\n\s*</capability-call>',
     re.DOTALL,
 )
 CAPABILITY_ATTR_PATTERN = re.compile(
@@ -1283,51 +1283,64 @@ _MAX_CAPABILITIES_PER_TURN = 5
 
 def _extract_capability_plan(text: str) -> dict[str, object]:
     raw = str(text or "")
+    parsed_matches: list[dict[str, object]] = []
 
-    # First try block-style: <capability-call id="...">content</capability-call>
-    block_match = CAPABILITY_BLOCK_PATTERN.search(raw)
-    if block_match:
-        attrs = _parse_capability_attrs(block_match.group("attrs"))
+    for match in CAPABILITY_BLOCK_PATTERN.finditer(raw):
+        attrs = _parse_capability_attrs(match.group("attrs"))
         capability_id = str(attrs.pop("id", "")).strip()
-        block_content = block_match.group("content").strip()
-        if capability_id and re.fullmatch(r"[a-z0-9:-]+", capability_id):
-            arguments = dict(attrs)
-            if block_content:
-                arguments["write_content"] = block_content
-            cap_entry = {"capability_id": capability_id, "arguments": arguments}
-            return {
-                "selected_capability_id": capability_id,
-                "selected_arguments": arguments,
-                "argument_source": "block-content",
-                "argument_binding_mode": "block-content",
-                "capability_ids": [capability_id],
-                "all_capabilities": [cap_entry],
-                "had_markup": True,
-                "multiple": False,
+        if not capability_id or not re.fullmatch(r"[a-z0-9:-]+", capability_id):
+            continue
+        arguments = dict(attrs)
+        block_content = match.group("content").strip()
+        if block_content:
+            arguments["write_content"] = block_content
+        parsed_matches.append(
+            {
+                "capability_id": capability_id,
+                "arguments": arguments,
+                "_source_order": match.start(),
+                "_binding_mode": "block-content",
             }
+        )
 
-    # Fall back to self-closing: <capability-call id="..." />
-    parsed_matches = [
-        parsed
-        for match in CAPABILITY_CALL_SCAN_PATTERN.finditer(raw)
-        if (parsed := _parse_capability_call_markup(match.group(0)))
-    ]
+    for match in CAPABILITY_CALL_SCAN_PATTERN.finditer(raw):
+        parsed = _parse_capability_call_markup(match.group(0))
+        if not parsed:
+            continue
+        parsed_matches.append(
+            {
+                **parsed,
+                "_source_order": match.start(),
+                "_binding_mode": "tag-attributes" if parsed.get("arguments") else "id-only",
+            }
+        )
+
+    parsed_matches.sort(key=lambda item: int(item.get("_source_order") or 0))
     matches = [str(item.get("capability_id") or "") for item in parsed_matches]
 
-    # Collect ALL known capabilities (deduplicated, capped)
     all_capabilities: list[dict[str, object]] = []
     seen: set[str] = set()
+    selected_binding_mode = "id-only"
     for item in parsed_matches:
         capability_id = str(item.get("capability_id") or "")
-        if capability_id in seen:
-            continue
-        seen.add(capability_id)
         if _is_known_workspace_capability(capability_id):
             arguments = dict(item.get("arguments") or {})
+            dedupe_key = json.dumps(
+                {
+                    "capability_id": capability_id,
+                    "arguments": arguments,
+                },
+                sort_keys=True,
+            )
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
             all_capabilities.append({
                 "capability_id": capability_id,
                 "arguments": arguments,
             })
+            if len(all_capabilities) == 1:
+                selected_binding_mode = str(item.get("_binding_mode") or "id-only")
             if len(all_capabilities) >= _MAX_CAPABILITIES_PER_TURN:
                 break
 
@@ -1346,12 +1359,16 @@ def _extract_capability_plan(text: str) -> dict[str, object]:
 
     selected = str(all_capabilities[0]["capability_id"]) if all_capabilities else None
     selected_arguments = dict(all_capabilities[0]["arguments"]) if all_capabilities else {}
-    argument_binding_mode = "tag-attributes" if selected_arguments else "id-only"
+    argument_binding_mode = (
+        selected_binding_mode if selected else "id-only"
+    )
+    if selected and argument_binding_mode == "id-only" and selected_arguments:
+        argument_binding_mode = "tag-attributes"
 
     return {
         "selected_capability_id": selected,
         "selected_arguments": selected_arguments,
-        "argument_source": "tag-attributes" if selected_arguments else "none",
+        "argument_source": argument_binding_mode if selected else "none",
         "argument_binding_mode": argument_binding_mode,
         "capability_ids": matches,
         "all_capabilities": all_capabilities,

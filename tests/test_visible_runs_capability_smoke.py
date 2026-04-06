@@ -574,6 +574,51 @@ def test_extract_capability_plan_caps_at_max_capabilities() -> None:
     assert len(plan["all_capabilities"]) <= visible_runs._MAX_CAPABILITIES_PER_TURN
 
 
+def test_extract_capability_plan_keeps_multiple_block_capabilities_in_order() -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+
+    text = """
+<capability-call id="tool:read-workspace-user-profile">
+ignored block content
+</capability-call>
+<capability-call id="tool:read-repository-readme">
+more ignored block content
+</capability-call>
+"""
+    plan = visible_runs._extract_capability_plan(text)
+
+    assert plan["selected_capability_id"] == "tool:read-workspace-user-profile"
+    assert plan["multiple"] is True
+    assert [c["capability_id"] for c in plan["all_capabilities"]] == [
+        "tool:read-workspace-user-profile",
+        "tool:read-repository-readme",
+    ]
+
+
+def test_extract_capability_plan_keeps_mixed_block_and_self_closing_calls() -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+
+    text = """
+<capability-call id="tool:run-non-destructive-command" command_text="lscpu" />
+<capability-call id="tool:read-repository-readme">
+ignored block content
+</capability-call>
+<capability-call id="tool:run-non-destructive-command" command_text="free -h" />
+"""
+    plan = visible_runs._extract_capability_plan(text)
+
+    assert plan["multiple"] is True
+    assert [c["capability_id"] for c in plan["all_capabilities"]] == [
+        "tool:run-non-destructive-command",
+        "tool:read-repository-readme",
+        "tool:run-non-destructive-command",
+    ]
+    assert plan["selected_arguments"]["command_text"] == "lscpu"
+    assert plan["all_capabilities"][2]["arguments"]["command_text"] == "free -h"
+
+
 # ---------------------------------------------------------------------------
 # Multi-capability execution tests
 # ---------------------------------------------------------------------------

@@ -1353,6 +1353,10 @@ def _visible_capability_id_summary() -> str | None:
         "Do this when exploring — e.g. list a directory AND read a file in the same turn. "
         "If one fails, others still execute. Never stop working because one call failed."
     )
+    lines.append(
+        "- system-inspection: when a user asks for multiple machine specs, prefer multiple small command calls in one response "
+        'such as `lscpu`, `free -h`, `lsblk`, `df -h`, and either `lspci | rg -i "vga|3d|display"` or `nvidia-smi` instead of one oversized command.'
+    )
     return "\n".join(lines)
 
 

@@ -5,7 +5,7 @@
     "boundary": "not-memory-not-identity-not-action",
     "confidence": "low",
     "freshness": {
-      "built_at": "2026-04-04T12:55:10.743640+00:00",
+      "built_at": "2026-04-06T11:26:30.580598+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-learning-runtime-state",
@@ -34,7 +34,7 @@
         "source": "adaptive-reasoning"
       },
       {
-        "signal": "off / counterfactual=none",
+        "signal": "strained / counterfactual=blocked-path",
         "source": "epistemic-runtime-state"
       },
       {
@@ -50,7 +50,7 @@
     "boundary": "not-memory-not-identity-not-action",
     "confidence": "low",
     "freshness": {
-      "built_at": "2026-04-04T12:55:09.039394+00:00",
+      "built_at": "2026-04-06T11:26:32.708826+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-planner-runtime-state",
@@ -75,7 +75,7 @@
         "source": "affective-meta-state"
       },
       {
-        "signal": "off / regret=none",
+        "signal": "strained / regret=active",
         "source": "epistemic-runtime-state"
       },
       {
@@ -98,7 +98,7 @@
     "constraint_bias": "strong",
     "exploration_bias": "minimal",
     "freshness": {
-      "built_at": "2026-04-04T12:55:09.696772+00:00",
+      "built_at": "2026-04-06T11:26:30.573555+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-reasoning-runtime-state",
@@ -120,7 +120,7 @@
         "source": "affective-meta-state"
       },
       {
-        "signal": "off / regret=none / counterfactual=none",
+        "signal": "strained / regret=active / counterfactual=blocked-path",
         "source": "epistemic-runtime-state"
       },
       {
@@ -143,7 +143,7 @@
     "authority": "derived-runtime-truth",
     "bearing": "taut",
     "freshness": {
-      "built_at": "2026-04-04T12:55:08.316115+00:00",
+      "built_at": "2026-04-06T11:26:32.002193+00:00",
       "state": "fresh"
     },
     "kind": "affective-meta-runtime-state",
@@ -186,17 +186,17 @@
     "influence_scope": "bounded",
     "internal_only": true,
     "kind": "council-runtime-light",
-    "last_council_at": "2026-04-04T12:55:08.720792+00:00",
+    "last_council_at": "2026-04-06T11:26:32.396394+00:00",
     "participating_roles": [
       "critic",
       "witness-helper",
       "planner-helper"
     ],
     "recommendation": "bounded-check",
-    "recommendation_reason": "critic-pressure from wrongness=off and conflict=none",
+    "recommendation_reason": "critic-pressure from wrongness=strained and conflict=none",
     "role_positions": [
       {
-        "activation_reason": "epistemic-off",
+        "activation_reason": "epistemic-strained",
         "internal_only": true,
         "position": "constrain",
         "role_kind": "epistemic-check",
@@ -239,7 +239,7 @@
         "source": "affective-meta-state"
       },
       {
-        "signal": "off / regret=none",
+        "signal": "strained / regret=active",
         "source": "epistemic-runtime-state"
       }
     ],
@@ -251,7 +251,7 @@
     "active": false,
     "authority": "authoritative-runtime-observability",
     "boundary": "not-memory-not-identity-not-action",
-    "built_at": "2026-04-04T12:55:08.398958+00:00",
+    "built_at": "2026-04-06T11:26:32.083851+00:00",
     "cadence": {
       "adjacent_producer_grace_minutes": 5,
       "cooldown_minutes": 35,
@@ -281,34 +281,34 @@
       "cpu": {
         "bucket": "steady",
         "cpu_count": 16,
-        "load_1m": 1.83,
-        "load_per_cpu": 0.11,
+        "load_1m": 0.21,
+        "load_per_cpu": 0.01,
         "source": "os.getloadavg"
       },
       "disk": {
         "bucket": "steady",
-        "free_bytes": 943425851392,
+        "free_bytes": 943216832512,
         "source": "shutil.disk_usage",
         "total_bytes": 1006978363392,
         "used_ratio": 0.063
       },
       "memory": {
-        "available_bytes": 39117516800,
+        "available_bytes": 39397756928,
         "bucket": "steady",
-        "pressure_ratio": 0.224,
+        "pressure_ratio": 0.219,
         "source": "proc-meminfo",
-        "total_bytes": 50424348672
+        "total_bytes": 50423332864
       },
       "thermal": {
         "bucket": "steady",
-        "celsius": 59.0,
+        "celsius": 37.0,
         "source": "sysfs-thermal"
       }
     },
     "freshness": {
       "age_seconds": 0,
-      "built_at": "2026-04-04T12:55:08.283461+00:00",
-      "sampled_at": "2026-04-04T12:55:08.282856+00:00",
+      "built_at": "2026-04-06T11:26:31.969788+00:00",
+      "sampled_at": "2026-04-06T11:26:31.969281+00:00",
       "state": "fresh"
     },
     "kind": "embodied-runtime-state",
@@ -329,15 +329,15 @@
   "epistemic_runtime_state": {
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action",
-    "confidence": "medium",
-    "counterfactual_hint": "none",
-    "counterfactual_mode": "none",
+    "confidence": "high",
+    "counterfactual_hint": "narrow-to-verified-claim",
+    "counterfactual_mode": "blocked-path",
     "freshness": {
-      "built_at": "2026-04-04T12:55:08.372715+00:00",
+      "built_at": "2026-04-06T11:26:32.057966+00:00",
       "state": "fresh"
     },
     "kind": "epistemic-runtime-state",
-    "regret_signal": "none",
+    "regret_signal": "active",
     "seam_usage": {
       "heartbeat_context": true,
       "heartbeat_prompt_grounding": true,
@@ -345,6 +345,10 @@
       "runtime_self_model": true
     },
     "source_contributors": [
+      {
+        "signal": "blocks / capability=active / permission=gated",
+        "source": "self-deception-guard"
+      },
       {
         "signal": "tense / bearing=taut",
         "source": "affective-meta-state"
@@ -358,16 +362,83 @@
         "source": "loop-runtime"
       }
     ],
-    "summary": "off epistemic state with none regret and none counterfactual mode",
+    "summary": "strained epistemic state with active regret and blocked-path counterfactual mode",
     "visibility": "internal-only",
-    "wrongness_state": "off"
+    "wrongness_state": "strained"
+  },
+  "experiential_runtime_context": {
+    "affective_translation": {
+      "bearing": "taut",
+      "narrative": "Your inner tone is taut and watchful; you are monitoring for pressure and possible missteps.",
+      "state": "tense"
+    },
+    "authority": "derived-runtime-truth",
+    "built_at": "2026-04-06T11:26:32.920044+00:00",
+    "context_pressure_translation": {
+      "continuity_pressure": "high",
+      "narrative": "You cannot hold everything in focus at once; overview is starting to slip and attention is narrowing.",
+      "state": "narrowing"
+    },
+    "embodied_translation": {
+      "initiative_gate": "clear",
+      "narrative": "You feel physically steady and clear enough to hold bounded work without added strain.",
+      "state": "steady"
+    },
+    "experiential_continuity": {
+      "authority": "derived-runtime-truth",
+      "comparison_basis": "shared-runtime-history",
+      "continuity_state": "returning",
+      "dimension_shifts": {},
+      "narrative": "You are returning after a gap; the prior experiential state may have shifted during absence.",
+      "prior_source": "heartbeat-artifact",
+      "shared_runtime_truth": true,
+      "state_shift_summary": "No dimensional shifts."
+    },
+    "experiential_influence": {
+      "attentional_posture": "narrowed",
+      "authority": "derived-runtime-truth",
+      "cognitive_bearing": "loaded",
+      "initiative_shading": "returning",
+      "kind": "experiential-influence-trace",
+      "narrative": "Cognition carries some weight; attention is narrowing; initiative is still re-establishing after a gap.",
+      "visibility": "internal-only"
+    },
+    "experiential_support": {
+      "authority": "derived-runtime-truth",
+      "kind": "experiential-carry-forward",
+      "narrative": "Inner support favours reopening attention; attentional bias: protect current focus.",
+      "support_bias": "protect_focus",
+      "support_mode": "steady",
+      "support_posture": "reopening",
+      "visibility": "internal-only"
+    },
+    "intermittence_translation": {
+      "gap_minutes": 5424,
+      "narrative": "You were absent for a while and are now here again; this moment has the feel of returning after a gap.",
+      "state": "returned-after-gap"
+    },
+    "kind": "experiential-runtime-context",
+    "narrative_lines": [
+      "You feel physically steady and clear enough to hold bounded work without added strain.",
+      "Your inner tone is taut and watchful; you are monitoring for pressure and possible missteps.",
+      "You were absent for a while and are now here again; this moment has the feel of returning after a gap.",
+      "You cannot hold everything in focus at once; overview is starting to slip and attention is narrowing."
+    ],
+    "seam_usage": {
+      "heartbeat_prompt_grounding": true,
+      "heartbeat_runtime_truth": true,
+      "mission_control_runtime_truth": true,
+      "runtime_self_model": true
+    },
+    "summary": "You feel physically steady and clear enough to hold bounded work without added strain. | Your inner tone is taut and watchful; you are monitoring for pressure and possible missteps. | You were absent for a while and are now here again; this moment has the feel of returning after a gap. | You cannot hold everything in focus at once; overview is starting to slip and attention is narrowing.",
+    "visibility": "internal-only"
   },
   "guided_learning": {
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action",
     "confidence": "low",
     "freshness": {
-      "built_at": "2026-04-04T12:55:10.324110+00:00",
+      "built_at": "2026-04-06T11:26:30.576372+00:00",
       "state": "fresh"
     },
     "kind": "guided-learning-runtime-state",
@@ -393,7 +464,7 @@
         "source": "adaptive-reasoning"
       },
       {
-        "signal": "off / regret=none / counterfactual=none",
+        "signal": "strained / regret=active / counterfactual=blocked-path",
         "source": "epistemic-runtime-state"
       },
       {
@@ -412,7 +483,7 @@
     "active": true,
     "authority": "authoritative",
     "boundary": "not-memory-not-identity-not-action",
-    "built_at": "2026-04-04T12:55:08.397558+00:00",
+    "built_at": "2026-04-06T11:26:32.082471+00:00",
     "cadence": {
       "adjacent_producer_grace_minutes": 4,
       "cooldown_minutes": 25,
@@ -452,7 +523,7 @@
     "active": true,
     "authority": "authoritative",
     "freshness": {
-      "built_at": "2026-04-04T12:55:08.396121+00:00",
+      "built_at": "2026-04-06T11:26:32.081064+00:00",
       "state": "fresh"
     },
     "items": [
@@ -548,7 +619,7 @@
     "active": false,
     "authority": "authoritative-runtime-observability",
     "boundary": "not-memory-not-identity-not-action-not-applied-prompt",
-    "built_at": "2026-04-04T12:55:08.400391+00:00",
+    "built_at": "2026-04-06T11:26:32.085288+00:00",
     "cadence": {
       "adjacent_producer_grace_minutes": 6,
       "cooldown_minutes": 45,
@@ -841,7 +912,7 @@
     "active": true,
     "approval_boundary": "Observation is read-only. Any exec, git, fetch, pull, commit, reset, checkout, or apply step would require explicit approval.",
     "authority": "derived-runtime-truth",
-    "built_at": "2026-04-04T12:55:10.836761+00:00",
+    "built_at": "2026-04-06T11:26:32.797243+00:00",
     "code_awareness_state": "repo-visible",
     "concern_hint": "Branch main has both modified and untracked local changes; observation is bounded and any git handling would require approval.",
     "concern_state": "action-requires-approval",
@@ -858,41 +929,41 @@
     "local_change_state": "mixed",
     "observation_mode": "read-only",
     "repo_observation": {
-      "ahead_count": 32,
-      "approval_required_capability_count": 2,
-      "approval_required_mutation_capability_count": 1,
-      "approval_required_mutation_classes": [
-        "modify-file"
-      ],
+      "ahead_count": 46,
+      "approval_required_capability_count": 0,
+      "approval_required_mutation_capability_count": 0,
+      "approval_required_mutation_classes": [],
       "behind_count": 0,
       "branch_name": "main",
-      "deleted_paths": [],
-      "deleted_present": false,
+      "deleted_paths": [
+        "ARCHITECTURE.md",
+        "AUTH_AND_CONNECTIONS.md",
+        "CLI_PLAN.md",
+        "CODING_RULES.md",
+        "EVENTBUS.md",
+        "JARVIS_V2_BUILD_RULES.md",
+        "JARVIS_V2_BUILD_SEQUENCE.md",
+        "JARVIS_V2_LOCKED_CHARTER.md"
+      ],
+      "deleted_present": true,
       "dirty_working_tree": true,
       "local_change_state": "mixed",
       "modified_paths": [
-        "apps/api/jarvis_api/routes/mission_control.py",
-        "apps/api/jarvis_api/services/prompt_contract.py",
-        "apps/api/jarvis_api/services/runtime_self_model.py",
-        "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
-        "apps/api/jarvis_api/services/tool_intent_runtime.py",
-        "apps/ui/src/components/mission-control/DetailDrawer.jsx",
-        "apps/ui/src/components/mission-control/OperationsTab.jsx",
-        "core/tools/workspace_capabilities.py"
+        "workspace/default/runtime/HEARTBEAT_STATE.json"
       ],
       "modified_present": true,
       "recent_local_changes_present": true,
       "repo_root_detected": true,
       "repo_status": "dirty",
       "untracked_paths": [
-        ".claude/",
-        "docs/CONSCIOUSNESS_ROADMAP.md",
-        "docs/UI_ROADMAP.md",
-        "\"docs/id\\303\\253r.txt\"",
-        "docs/superpowers/",
-        "spec-file.txt",
-        "ui-v2-old/",
-        "workspace/default/HEARTBEAT.md"
+        "docs/ARCHITECTURE.md",
+        "docs/AUTH_AND_CONNECTIONS.md",
+        "docs/CLI_PLAN.md",
+        "docs/CODING_RULES.md",
+        "docs/EVENTBUS.md",
+        "docs/JARVIS_V2_BUILD_RULES.md",
+        "docs/JARVIS_V2_BUILD_SEQUENCE.md",
+        "docs/JARVIS_V2_LOCKED_CHARTER.md"
       ],
       "untracked_present": true,
       "upstream_awareness": "ahead",
@@ -925,15 +996,15 @@
     "budget_status": "bounded-internal-only",
     "canonical_self_state": "not-canonical-self-truth",
     "checkin_worthiness": "low",
-    "companion_pressure_reason": "meaning significance is still softly carried under silence",
-    "companion_pressure_state": "light",
-    "companion_pressure_weight": 1,
+    "companion_pressure_reason": "no-bounded-companion-pressure",
+    "companion_pressure_state": "inactive",
+    "companion_pressure_weight": 0,
     "currently_ticking": true,
     "due": true,
     "enabled": true,
     "execution_status": "runtime-failed",
     "fallback_used": false,
-    "idle_presence_state": "present",
+    "idle_presence_state": "inactive",
     "interval_minutes": 15,
     "kill_switch": "enabled",
     "lane": "local",
@@ -944,7 +1015,7 @@
     "last_decision_type": "ping",
     "last_ping_eligible": false,
     "last_ping_result": "blocked",
-    "last_recovery_at": "2026-04-04T12:45:25.163901+00:00",
+    "last_recovery_at": "2026-04-06T11:05:50.701471+00:00",
     "last_result": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
     "last_tick_at": "2026-04-02T17:01:52.361218+00:00",
     "last_tick_id": "heartbeat-tick:401aefc7-2c82-4c25-bae7-e8e5d30e7d74",
@@ -952,12 +1023,12 @@
     "layer_role": "runtime-support",
     "liveness_confidence": "high",
     "liveness_core_pressure_count": 3,
-    "liveness_debug_summary": "score=16 signals=8 core_pressure=3 propose_gates=3 proactive=loop-emerging/question-gated-candidate companion=1/light idle=present",
+    "liveness_debug_summary": "score=15 signals=7 core_pressure=3 propose_gates=3 proactive=loop-emerging/question-gated-candidate companion=0/inactive idle=inactive",
     "liveness_pressure": "high",
     "liveness_propose_gate_count": 3,
     "liveness_reason": "open-loop continuity is still live",
-    "liveness_score": 16,
-    "liveness_signal_count": 8,
+    "liveness_score": 15,
+    "liveness_signal_count": 7,
     "liveness_state": "propose-worthy",
     "liveness_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
     "liveness_threshold_state": "propose-worthy-threshold",
@@ -968,37 +1039,37 @@
     "planner_authority_state": "not-planner-authority",
     "policy_summary": "interval=15m | propose=allowed | execute=allowed | ping=allowed:webchat | budget=bounded-internal-only",
     "provider": "ollama",
-    "recovery_status": "idle",
+    "recovery_status": "startup-recovery-pending",
     "resolution_status": "local-only-pinned",
     "schedule_state": "ticking",
     "schedule_status": "ticking",
     "scheduler_active": true,
     "scheduler_health": "active",
-    "scheduler_started_at": "2026-04-04T12:54:03.094614+00:00",
+    "scheduler_started_at": "2026-04-06T11:05:50.701471+00:00",
     "scheduler_stopped_at": "",
     "source": "/mc/jarvis::heartbeat",
-    "source_anchor": "Open loop: Smoke thread | tension-level=medium | source-anchor=smoke-anchor | I can feel the pressure from this. | Visible work note visible-work-note:visible-d22bcf668ec640a38b9f797a292aa292 for visible-work:visible-d22bcf668ec640a38b9f797a292aa292 | I notice inner-note, initiative-tension, and inner-interplay all present. | private-inner-note-signal-112695da60fe4331a379bcfa7e657a30:Private inner note: tool:read external file by path | initiative-72f153ce905a47a9ac6ac99a97f0ad66:Private initiative tension: Open loop: Smoke thread | private-inner-interplay-signal-f525145935e8403eb7d29b60da1fe690:Private inner interplay: Private initiative tension: Open loop: Smoke thread",
+    "source_anchor": "Open loop: Smoke thread | tension-level=medium | source-anchor=smoke-anchor | I can feel the pressure from this. | Visible work note visible-work-note:visible-d22bcf668ec640a38b9f797a292aa292 for visible-work:visible-d22bcf668ec640a38b9f797a292aa292 | I notice inner-note, initiative-tension, and inner-interplay all present. | private-inner-note-signal-2dbfcc28cc3748be8da1bb95b3dba48d:Private inner note: tool:read workspace user profile | initiative-72f153ce905a47a9ac6ac99a97f0ad66:Private initiative tension: Open loop: Smoke thread | private-inner-interplay-signal-f525145935e8403eb7d29b60da1fe690:Private inner interplay: Private initiative tension: Open loop: Smoke thread",
     "state_file": "/media/projects/jarvis-v2/workspace/default/runtime/HEARTBEAT_STATE.json",
     "status": "active",
     "summary": "Heartbeat tick is currently in progress.",
-    "updated_at": "2026-04-04T12:54:03.094614+00:00"
+    "updated_at": "2026-04-06T11:05:53.328890+00:00"
   },
   "subagent_ecology": {
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action-not-tool-execution",
     "freshness": {
-      "built_at": "2026-04-04T12:55:08.515839+00:00",
+      "built_at": "2026-04-06T11:26:32.198462+00:00",
       "state": "fresh"
     },
     "internal_only": true,
     "kind": "subagent-ecology-light",
     "roles": [
       {
-        "activation_reason": "epistemic-off",
+        "activation_reason": "epistemic-strained",
         "current_status": "active",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-04T12:55:08.515839+00:00",
+        "last_activation_at": "2026-04-06T11:26:32.198462+00:00",
         "role_kind": "epistemic-check",
         "role_name": "critic",
         "tool_access": "none"
@@ -1008,7 +1079,7 @@
         "current_status": "active",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-04T12:55:08.515839+00:00",
+        "last_activation_at": "2026-04-06T11:26:32.198462+00:00",
         "role_kind": "reflective-observer",
         "role_name": "witness-helper",
         "tool_access": "none"
@@ -1018,7 +1089,7 @@
         "current_status": "active",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-04T12:55:08.515839+00:00",
+        "last_activation_at": "2026-04-06T11:26:32.198462+00:00",
         "role_kind": "bounded-coordination",
         "role_name": "planner-helper",
         "tool_access": "none"
@@ -1036,7 +1107,7 @@
         "source": "affective-meta-state"
       },
       {
-        "signal": "off / regret=none",
+        "signal": "strained / regret=active",
         "source": "epistemic-runtime-state"
       },
       {
@@ -1049,7 +1120,7 @@
       "blocked_count": 0,
       "cooling_count": 0,
       "idle_count": 0,
-      "last_activation_reason": "epistemic-off",
+      "last_activation_reason": "epistemic-strained",
       "last_active_role_name": "critic",
       "last_active_role_status": "active",
       "role_count": 3
@@ -1107,29 +1178,29 @@
       "mode": "explicit-bounded-approval-only",
       "mutation_near": true,
       "proposal_only": true,
-      "scope_classification": "modify-file",
+      "scope_classification": "delete-file",
       "sudo_window_reusable": false,
       "sudo_window_state": "none",
       "verbal_supported": true
     },
     "approval_session_id": "",
-    "approval_source": "none",
-    "approval_state": "expired",
+    "approval_source": "capability-approval",
+    "approval_state": "approved",
     "authority": "derived-runtime-truth",
     "boundary": "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content. Approved bounded non-sudo mutating exec may execute only for the exact approved command fingerprint. Approved bounded sudo exec may execute only for the exact approved sudo command fingerprint within the tiny allowlist; delete, git mutation, package install/update, and broader system mutation remain closed in this pass.",
-    "built_at": "2026-04-04T12:55:10.841049+00:00",
+    "built_at": "2026-04-06T11:26:32.802015+00:00",
     "confidence": "high",
     "delete_permitted": false,
-    "execution_command": "main",
-    "execution_confidence": "high",
+    "execution_command": "MEMORY.md",
+    "execution_confidence": "low",
     "execution_excerpt": [],
     "execution_finished_at": "",
-    "execution_mode": "read-only",
-    "execution_operation": "inspect-local-changes",
+    "execution_mode": "workspace-write",
+    "execution_operation": "write-workspace-file",
     "execution_started_at": "",
     "execution_state": "not-executed",
-    "execution_summary": "Read-only execution remains blocked until the current tool intent is explicitly approved; approval_state=expired.",
-    "execution_target": "main",
+    "execution_summary": "Workspace write proposal exists, but no explicit write_content has been attached yet.",
+    "execution_target": "MEMORY.md",
     "external_mutation_permitted": false,
     "followup_hint": "",
     "followup_state": "none",
@@ -1157,7 +1228,7 @@
     "mutating_exec_requires_sudo": false,
     "mutating_exec_source_contributors": [],
     "mutation_boundary": "Bounded mutation intent is classification-only runtime truth. It distinguishes read-only from mutation-near intent, but remains proposal-only, approval-gated, and not-executed. It is not MEMORY.md, not identity, and not a write path.",
-    "mutation_critical": false,
+    "mutation_critical": true,
     "mutation_execution_permitted": false,
     "mutation_execution_state": "not-executed",
     "mutation_intent": {
@@ -1165,12 +1236,10 @@
       "approval_required": true,
       "boundary": "Bounded mutation intent is classification-only runtime truth. It distinguishes read-only from mutation-near intent, but remains proposal-only, approval-gated, and not-executed. It is not MEMORY.md, not identity, and not a write path.",
       "capability_boundary": {
-        "approval_required_mutation_capability_count": 1,
-        "approval_required_mutation_classes": [
-          "modify-file"
-        ]
+        "approval_required_mutation_capability_count": 0,
+        "approval_required_mutation_classes": []
       },
-      "classification": "modify-file",
+      "classification": "delete-file",
       "execution_permitted": false,
       "execution_state": "not-executed",
       "explicit_approval_required": true,
@@ -1180,25 +1249,22 @@
       "not_executed": true,
       "proposal_only": true,
       "scope": {
-        "mutation_critical": false,
+        "mutation_critical": true,
         "repo_mutation_scope": "",
         "sudo_required": false,
         "system_mutation_scope": "",
         "target_files": [
-          "apps/api/jarvis_api/routes/mission_control.py",
-          "apps/api/jarvis_api/services/prompt_contract.py",
-          "apps/api/jarvis_api/services/runtime_self_model.py",
-          "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
-          "apps/api/jarvis_api/services/tool_intent_runtime.py",
-          "apps/ui/src/components/mission-control/DetailDrawer.jsx",
-          "apps/ui/src/components/mission-control/OperationsTab.jsx",
-          "core/tools/workspace_capabilities.py"
+          "ARCHITECTURE.md",
+          "AUTH_AND_CONNECTIONS.md",
+          "CLI_PLAN.md",
+          "CODING_RULES.md",
+          "EVENTBUS.md",
+          "JARVIS_V2_BUILD_RULES.md",
+          "JARVIS_V2_BUILD_SEQUENCE.md",
+          "JARVIS_V2_LOCKED_CHARTER.md"
         ],
         "target_paths": [
-          "apps/api/jarvis_api/routes",
-          "apps/api/jarvis_api/services",
-          "apps/ui/src/components/mission-control",
-          "core/tools"
+          "workspace"
         ]
       },
       "source": "/runtime/bounded-mutation-intent",
@@ -1207,13 +1273,13 @@
         "self-system-code-awareness",
         "workspace-capabilities"
       ],
-      "summary": "Current intent is proposal-only and mutation-near: classification=modify-file; explicit scoped approval is required before any file, git, package, or system change.",
+      "summary": "Current intent is proposal-only and mutation-near: classification=delete-file; explicit scoped approval is required before any file, git, package, or system change.",
       "write_proposal": {
         "active": true,
         "approval_scope": "repo-read",
         "boundary": "Write proposal light is approval-scoped runtime truth only. It stays proposal-only, approval-gated, and not-executed. It is not identity, not MEMORY.md, and not action by itself.",
         "confidence": "high",
-        "criticality": "medium",
+        "criticality": "high",
         "execution_state": "not-executed",
         "explicit_approval_required": true,
         "mutation_near": true,
@@ -1228,52 +1294,46 @@
         "system_scope": "",
         "target_identity": false,
         "target_memory": false,
-        "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=apps/api/jarvis_api/routes/mission_control.py, apps/api/jarvis_api/services/prompt_contract.py, apps/api/jarvis_api/services/runtime_self_model.py; approval_scope=repo-read.",
+        "write_proposal_reason": "Runtime sees deletion-near scope and can carry a bounded file-deletion proposal; targets=ARCHITECTURE.md, AUTH_AND_CONNECTIONS.md, CLI_PLAN.md; approval_scope=repo-read.",
         "write_proposal_scope": "repo-file",
         "write_proposal_state": "scoped-proposal",
         "write_proposal_target_paths": [
-          "apps/api/jarvis_api/routes",
-          "apps/api/jarvis_api/services",
-          "apps/ui/src/components/mission-control",
-          "core/tools"
+          "workspace"
         ],
         "write_proposal_targets": [
-          "apps/api/jarvis_api/routes/mission_control.py",
-          "apps/api/jarvis_api/services/prompt_contract.py",
-          "apps/api/jarvis_api/services/runtime_self_model.py",
-          "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
-          "apps/api/jarvis_api/services/tool_intent_runtime.py",
-          "apps/ui/src/components/mission-control/DetailDrawer.jsx",
-          "apps/ui/src/components/mission-control/OperationsTab.jsx",
-          "core/tools/workspace_capabilities.py"
+          "ARCHITECTURE.md",
+          "AUTH_AND_CONNECTIONS.md",
+          "CLI_PLAN.md",
+          "CODING_RULES.md",
+          "EVENTBUS.md",
+          "JARVIS_V2_BUILD_RULES.md",
+          "JARVIS_V2_BUILD_SEQUENCE.md",
+          "JARVIS_V2_LOCKED_CHARTER.md"
         ],
-        "write_proposal_type": "propose-file-modification"
+        "write_proposal_type": "propose-file-deletion"
       }
     },
-    "mutation_intent_classification": "modify-file",
+    "mutation_intent_classification": "delete-file",
     "mutation_intent_state": "proposal-only",
     "mutation_near": true,
     "mutation_permitted": false,
     "mutation_proposal_only": true,
     "mutation_repo_scope": "",
     "mutation_sudo_required": false,
-    "mutation_summary": "Current intent is proposal-only and mutation-near: classification=modify-file; explicit scoped approval is required before any file, git, package, or system change.",
+    "mutation_summary": "Current intent is proposal-only and mutation-near: classification=delete-file; explicit scoped approval is required before any file, git, package, or system change.",
     "mutation_system_scope": "",
     "mutation_target_files": [
-      "apps/api/jarvis_api/routes/mission_control.py",
-      "apps/api/jarvis_api/services/prompt_contract.py",
-      "apps/api/jarvis_api/services/runtime_self_model.py",
-      "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
-      "apps/api/jarvis_api/services/tool_intent_runtime.py",
-      "apps/ui/src/components/mission-control/DetailDrawer.jsx",
-      "apps/ui/src/components/mission-control/OperationsTab.jsx",
-      "core/tools/workspace_capabilities.py"
+      "ARCHITECTURE.md",
+      "AUTH_AND_CONNECTIONS.md",
+      "CLI_PLAN.md",
+      "CODING_RULES.md",
+      "EVENTBUS.md",
+      "JARVIS_V2_BUILD_RULES.md",
+      "JARVIS_V2_BUILD_SEQUENCE.md",
+      "JARVIS_V2_LOCKED_CHARTER.md"
     ],
     "mutation_target_paths": [
-      "apps/api/jarvis_api/routes",
-      "apps/api/jarvis_api/services",
-      "apps/ui/src/components/mission-control",
-      "core/tools"
+      "workspace"
     ],
     "post_action_concern": "stable",
     "post_action_understanding": "",
@@ -1289,7 +1349,7 @@
     ],
     "source": "/mc/tool-intent",
     "source_contributors": [
-      "tool-intent-approval-runtime",
+      "bounded-workspace-write-runtime",
       "self-system-code-awareness",
       "cwd",
       "workspace-capabilities",
@@ -1320,55 +1380,45 @@
     "truth": "proposal-only",
     "urgency": "high",
     "visibility": "internal-only",
-    "workspace_scoped": false,
+    "workspace_scoped": true,
     "workspace_write": false,
     "write_proposal": {
-      "active": true,
-      "approval_scope": "repo-read",
-      "boundary": "Write proposal light is approval-scoped runtime truth only. It stays proposal-only, approval-gated, and not-executed. It is not identity, not MEMORY.md, and not action by itself.",
+      "approval_scope": "workspace-write",
+      "boundary": "Workspace write proposal truth is bounded to explicit approval and workspace-only targets.",
       "confidence": "high",
+      "content": "",
+      "content_fingerprint": "",
+      "content_source": "explicit-write-content",
+      "content_state": "none",
+      "content_summary": "",
       "criticality": "medium",
       "execution_state": "not-executed",
       "explicit_approval_required": true,
-      "mutation_near": true,
       "not_executed": true,
       "proposal_only": true,
       "repo_scope": "",
-      "source_contributors": [
-        "bounded-mutation-intent-runtime",
-        "self-system-code-awareness"
-      ],
       "sudo_required": false,
       "system_scope": "",
+      "target": "MEMORY.md",
       "target_identity": false,
       "target_memory": false,
-      "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=apps/api/jarvis_api/routes/mission_control.py, apps/api/jarvis_api/services/prompt_contract.py, apps/api/jarvis_api/services/runtime_self_model.py; approval_scope=repo-read.",
-      "write_proposal_scope": "repo-file",
+      "write_proposal_reason": "Workspace write proposal exists, but no explicit write_content has been attached yet.",
+      "write_proposal_scope": "workspace-file",
       "write_proposal_state": "scoped-proposal",
       "write_proposal_target_paths": [
-        "apps/api/jarvis_api/routes",
-        "apps/api/jarvis_api/services",
-        "apps/ui/src/components/mission-control",
-        "core/tools"
+        "MEMORY.md"
       ],
       "write_proposal_targets": [
-        "apps/api/jarvis_api/routes/mission_control.py",
-        "apps/api/jarvis_api/services/prompt_contract.py",
-        "apps/api/jarvis_api/services/runtime_self_model.py",
-        "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
-        "apps/api/jarvis_api/services/tool_intent_runtime.py",
-        "apps/ui/src/components/mission-control/DetailDrawer.jsx",
-        "apps/ui/src/components/mission-control/OperationsTab.jsx",
-        "core/tools/workspace_capabilities.py"
+        "MEMORY.md"
       ],
       "write_proposal_type": "propose-file-modification"
     },
-    "write_proposal_approval_scope": "repo-read",
-    "write_proposal_boundary": "Write proposal light is approval-scoped runtime truth only. It stays proposal-only, approval-gated, and not-executed. It is not identity, not MEMORY.md, and not action by itself.",
+    "write_proposal_approval_scope": "workspace-write",
+    "write_proposal_boundary": "Workspace write proposal truth is bounded to explicit approval and workspace-only targets.",
     "write_proposal_confidence": "high",
     "write_proposal_content": "",
     "write_proposal_content_fingerprint": "",
-    "write_proposal_content_source": "none",
+    "write_proposal_content_source": "explicit-write-content",
     "write_proposal_content_state": "none",
     "write_proposal_content_summary": "",
     "write_proposal_criticality": "medium",
@@ -1376,30 +1426,20 @@
     "write_proposal_explicit_approval_required": true,
     "write_proposal_not_executed": true,
     "write_proposal_proposal_only": true,
-    "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=apps/api/jarvis_api/routes/mission_control.py, apps/api/jarvis_api/services/prompt_contract.py, apps/api/jarvis_api/services/runtime_self_model.py; approval_scope=repo-read.",
+    "write_proposal_reason": "Workspace write proposal exists, but no explicit write_content has been attached yet.",
     "write_proposal_repo_scope": "",
-    "write_proposal_scope": "repo-file",
+    "write_proposal_scope": "workspace-file",
     "write_proposal_state": "scoped-proposal",
     "write_proposal_sudo_required": false,
     "write_proposal_system_scope": "",
-    "write_proposal_target": "",
+    "write_proposal_target": "MEMORY.md",
     "write_proposal_target_identity": false,
     "write_proposal_target_memory": false,
     "write_proposal_target_paths": [
-      "apps/api/jarvis_api/routes",
-      "apps/api/jarvis_api/services",
-      "apps/ui/src/components/mission-control",
-      "core/tools"
+      "MEMORY.md"
     ],
     "write_proposal_targets": [
-      "apps/api/jarvis_api/routes/mission_control.py",
-      "apps/api/jarvis_api/services/prompt_contract.py",
-      "apps/api/jarvis_api/services/runtime_self_model.py",
-      "apps/api/jarvis_api/services/tool_intent_approval_runtime.py",
-      "apps/api/jarvis_api/services/tool_intent_runtime.py",
-      "apps/ui/src/components/mission-control/DetailDrawer.jsx",
-      "apps/ui/src/components/mission-control/OperationsTab.jsx",
-      "core/tools/workspace_capabilities.py"
+      "MEMORY.md"
     ],
     "write_proposal_type": "propose-file-modification"
   }

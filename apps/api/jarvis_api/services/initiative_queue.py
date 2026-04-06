@@ -4,8 +4,7 @@ When inner voice detects an initiative ("I should check on X", "worth revisiting
 it pushes to this queue. Heartbeat can then see pending initiatives and decide to act.
 
 Design constraints:
-- In-memory, bounded (max 5 initiatives)
-- Auto-expire after 30 minutes
+- In-memory, bounded
 - Observable in Mission Control
 - No LLM, no persistence beyond process lifetime
 - Thread-safe
@@ -19,8 +18,9 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 
-_MAX_QUEUE_SIZE = 5
-_EXPIRE_MINUTES = 30
+_MAX_QUEUE_SIZE = 8
+_EXPIRE_MINUTES = 90
+_RETRY_DELAY_MINUTES = 10
 _QUEUE_LOCK = threading.Lock()
 
 
@@ -33,6 +33,11 @@ class Initiative:
     source_id: str       # ID of the source record
     detected_at: str
     status: str          # "pending" | "acted" | "expired"
+    priority: str = "medium"
+    attempt_count: int = 0
+    last_attempt_at: str = ""
+    next_attempt_at: str = ""
+    blocked_reason: str = ""
     acted_at: str = ""
     action_summary: str = ""
 
@@ -44,6 +49,11 @@ class Initiative:
             "source_id": self.source_id,
             "detected_at": self.detected_at,
             "status": self.status,
+            "priority": self.priority,
+            "attempt_count": self.attempt_count,
+            "last_attempt_at": self.last_attempt_at,
+            "next_attempt_at": self.next_attempt_at,
+            "blocked_reason": self.blocked_reason,
             "acted_at": self.acted_at,
             "action_summary": self.action_summary,
         }
@@ -58,38 +68,53 @@ def push_initiative(
     focus: str,
     source: str = "inner-voice",
     source_id: str = "",
+    priority: str = "medium",
 ) -> str:
     """Push a new initiative to the queue. Returns the initiative_id."""
     now = datetime.now(UTC)
     initiative_id = f"init-{uuid4().hex[:10]}"
+    normalized_focus = focus[:200].strip()
+    normalized_priority = (
+        priority.strip().lower() if priority.strip().lower() in {"low", "medium", "high"} else "medium"
+    )
 
     initiative = Initiative(
         initiative_id=initiative_id,
-        focus=focus[:200],
+        focus=normalized_focus,
         source=source,
         source_id=source_id,
         detected_at=now.isoformat(),
         status="pending",
+        priority=normalized_priority,
+        next_attempt_at=now.isoformat(),
     )
 
     with _QUEUE_LOCK:
         _expire_stale(now)
+        for existing in reversed(_initiatives):
+            if (
+                existing.status == "pending"
+                and existing.focus.lower() == normalized_focus.lower()
+            ):
+                existing.detected_at = now.isoformat()
+                existing.next_attempt_at = now.isoformat()
+                if normalized_priority == "high" or existing.priority != "high":
+                    existing.priority = normalized_priority
+                return existing.initiative_id
         _initiatives.append(initiative)
-        # Trim to max size (drop oldest pending)
+        # Trim to max size (drop stalest pending first)
         while len(_initiatives) > _MAX_QUEUE_SIZE:
-            # Remove oldest pending, or oldest overall
-            oldest_pending = next(
-                (i for i in _initiatives if i.status == "pending"),
-                _initiatives[0],
-            )
-            _initiatives.remove(oldest_pending)
+            pending = [item for item in _initiatives if item.status == "pending"]
+            removable = pending[0] if pending else _initiatives[0]
+            _initiatives.remove(removable)
 
     event_bus.publish(
         "heartbeat.initiative_pushed",
         {
             "initiative_id": initiative_id,
-            "focus": focus[:100],
+            "focus": normalized_focus[:100],
             "source": source,
+            "priority": normalized_priority,
             "queue_size": len(_initiatives),
         },
     )
@@ -102,10 +127,12 @@ def get_pending_initiatives() -> list[dict[str, object]]:
     now = datetime.now(UTC)
     with _QUEUE_LOCK:
         _expire_stale(now)
-        return [
-            i.to_dict() for i in _initiatives
-            if i.status == "pending"
+        due_items = [
+            i for i in _initiatives
+            if i.status == "pending" and _initiative_due(i, now)
         ]
+        due_items.sort(key=_initiative_sort_key)
+        return [i.to_dict() for i in due_items]
 
 
 def mark_acted(
@@ -120,6 +147,8 @@ def mark_acted(
             if i.initiative_id == initiative_id and i.status == "pending":
                 i.status = "acted"
                 i.acted_at = now
+                i.next_attempt_at = ""
+                i.blocked_reason = ""
                 i.action_summary = action_summary[:200]
                 event_bus.publish(
                     "heartbeat.initiative_acted",
@@ -130,6 +159,40 @@ def mark_acted(
                     },
                 )
                 return True
+    return False
+
+
+def mark_attempted(
+    initiative_id: str,
+    *,
+    blocked_reason: str = "",
+    retry_delay_minutes: int = _RETRY_DELAY_MINUTES,
+    action_summary: str = "",
+) -> bool:
+    """Record a bounded attempt and schedule a retry if still pending."""
+    now = datetime.now(UTC)
+    retry_at = now + timedelta(minutes=max(retry_delay_minutes, 1))
+    with _QUEUE_LOCK:
+        for i in _initiatives:
+            if i.initiative_id != initiative_id or i.status != "pending":
+                continue
+            i.attempt_count += 1
+            i.last_attempt_at = now.isoformat()
+            i.next_attempt_at = retry_at.isoformat()
+            i.blocked_reason = blocked_reason[:120]
+            if action_summary:
+                i.action_summary = action_summary[:200]
+            event_bus.publish(
+                "heartbeat.initiative_attempted",
+                {
+                    "initiative_id": initiative_id,
+                    "focus": i.focus[:100],
+                    "attempt_count": i.attempt_count,
+                    "blocked_reason": i.blocked_reason,
+                    "next_attempt_at": i.next_attempt_at,
+                },
+            )
+            return True
     return False
 
 
@@ -152,6 +215,7 @@ def get_initiative_queue_state() -> dict[str, object]:
         "recent_acted": acted[-3:],
         "max_queue_size": _MAX_QUEUE_SIZE,
         "expire_minutes": _EXPIRE_MINUTES,
+        "retry_delay_minutes": _RETRY_DELAY_MINUTES,
     }
 
 
@@ -166,3 +230,25 @@ def _expire_stale(now: datetime) -> None:
                     i.status = "expired"
             except (ValueError, TypeError):
                 pass
+
+
+def _initiative_due(initiative: Initiative, now: datetime) -> bool:
+    next_attempt = str(initiative.next_attempt_at or "").strip()
+    if not next_attempt:
+        return True
+    try:
+        due_at = datetime.fromisoformat(next_attempt)
+    except ValueError:
+        return True
+    if due_at.tzinfo is None:
+        due_at = due_at.replace(tzinfo=UTC)
+    return due_at <= now
+
+
+def _initiative_sort_key(initiative: Initiative) -> tuple[int, int, str]:
+    priority_rank = {"high": 0, "medium": 1, "low": 2}.get(initiative.priority, 1)
+    return (
+        priority_rank,
+        initiative.attempt_count,
+        initiative.detected_at,
+    )

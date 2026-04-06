@@ -8,6 +8,7 @@ Visible capability contract:
 - If the capability needs arguments, bind them in the same tag as quoted attributes, for example `<capability-call id="..." command_text="pwd" />`.
 - The capability-call must stand alone, with no surrounding prose.
 - JSON tool calls are not the contract.
+- If you are unsure or the context feels partial, read the full relevant file before answering instead of guessing from fragments.
 
 Callable now:
 - `tool:read-workspace-user-profile`
@@ -35,12 +36,14 @@ path: USER.md
 
 Reads the full USER.md file from the active workspace root.
 Use this before writing to USER.md to see current content.
+If a user asks what you remember about them or whether you know a preference, read the whole file instead of relying on stale partial memory.
 
 ## READ_FILE: read workspace memory
 path: MEMORY.md
 
 Reads the full MEMORY.md file from the active workspace root.
 Use this before writing to MEMORY.md to see current content.
+If a user asks what you remember, what is most recent, what matters long-term, or whether something was saved, read the whole file before answering.
 
 ## SEARCH_FILE: search workspace memory continuity
 path: MEMORY.md
@@ -77,6 +80,7 @@ command_from: user-message
 Runs one explicit non-destructive command from the current user message.
 Use this for read-only inspection or diagnostics across the system. Tiny bounded git read/inspect commands such as `git status`, `git diff --stat`, `git diff --name-only`, `git log --oneline -n N`, and `git branch --show-current` are allowed. Common system-inspection commands such as `lscpu`, `lshw`, `free`, `lsblk`, `df`, `lspci`, `nvidia-smi`, `nproc`, `uptime`, and `hostnamectl` are also allowed. Read-only shell composition such as pipes, `&&`, `||`, `;`, and globbing may be used when every segment stays non-destructive. Redirection and command substitution remain blocked. Sudo, package install/update, git mutation execution, and delete do not execute here without explicit approval handling.
 If the user asks for several machine specs at once, emit multiple capability-call tags in the same response and use small commands per component rather than one huge command: `lscpu` for CPU, `free -h` for RAM, `lsblk` or `df -h` for disks, and `lspci | rg -i "vga|3d|display"` or `nvidia-smi` for GPU.
+If one command only answers part of the user's request, keep going with the additional bounded commands needed in the same turn rather than stopping at the first partial result.
 If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Git mutation remains proposal-only and non-executed in this pass, and runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`. `git clean` stays blocked. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, delete, and broader system mutation remain non-executed here.
 
 ## WRITE_MEMORY_FILE: write workspace memory
@@ -85,6 +89,7 @@ path: MEMORY.md
 Writes directly to workspace MEMORY.md without approval.
 Use this to persist learned facts, decisions, project context, and long-term memory.
 This is your long-term memory — you can read and write it freely.
+If a user says "remember this", "this is important", or asks you not to forget, prefer reading the file first and then appending the durable fact immediately rather than leaving it for later.
 Always READ MEMORY.md first before writing, then write the FULL updated content.
 To write, use block syntax:
 ```

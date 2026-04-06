@@ -105,11 +105,15 @@ from apps.api.jarvis_api.services.runtime_surface_cache import (
 )
 from core.auth.profiles import get_provider_state
 from core.eventbus.bus import event_bus
-from core.identity.runtime_candidates import build_runtime_candidate_workflows
+from core.identity.candidate_workflow import (
+    auto_apply_safe_memory_md_candidates,
+    auto_apply_safe_user_md_candidates,
+)
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.db import (
     get_heartbeat_runtime_state,
     record_heartbeat_runtime_tick,
+    recent_capability_invocations,
     recent_heartbeat_runtime_ticks,
     recent_runtime_contract_file_writes,
     recent_visible_runs,
@@ -123,7 +127,13 @@ from core.tools.workspace_capabilities import load_workspace_capabilities
 
 HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping", "initiative"}
-HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {"run_candidate_scan", "act_on_initiative"}
+HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
+    "act_on_initiative",
+    "follow_open_loop",
+    "refresh_memory_context",
+    "run_candidate_scan",
+    "verify_recent_claim",
+}
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
 _HEARTBEAT_SCHEDULER_STOP = threading.Event()
@@ -2086,23 +2096,34 @@ def _execute_heartbeat_model(
             if open_loops
             else (liveness_summary or "No current due work was detected.")
         )
+        has_pending_initiative = any(
+            loop.startswith("initiative pending:") for loop in open_loops
+        )
         decision_type = (
-            "execute"
-            if bool(policy.get("allow_execute"))
+            "initiative"
+            if bool(policy.get("allow_execute")) and has_pending_initiative
             else (
-                "propose"
-                if (
-                    open_loops
-                    or liveness_threshold_state == "propose-worthy-threshold"
-                    or (
-                        liveness_pressure == "high"
-                        and liveness_threshold_state == "alive-threshold"
+                "execute"
+                if bool(policy.get("allow_execute"))
+                else (
+                    "propose"
+                    if (
+                        open_loops
+                        or liveness_threshold_state == "propose-worthy-threshold"
+                        or (
+                            liveness_pressure == "high"
+                            and liveness_threshold_state == "alive-threshold"
+                        )
                     )
+                    else "noop"
                 )
-                else "noop"
             )
         )
-        execute_action = "run_candidate_scan" if decision_type == "execute" else ""
+        execute_action = (
+            "act_on_initiative"
+            if decision_type == "initiative"
+            else ("refresh_memory_context" if decision_type == "execute" else "")
+        )
         text = json.dumps(
             {
                 "decision_type": decision_type,
@@ -2270,6 +2291,7 @@ def _heartbeat_prompt_text(base_text: str) -> str:
         "- Return only one compact JSON object.",
         "- decision_type must be one of: noop, propose, execute, ping, initiative.",
         "- Use initiative when you see pending initiatives from inner voice that you want to act on.",
+        "- Prefer execute or initiative over propose when you can take one bounded internal step now without user approval.",
         "- summary must be short and concrete.",
         "- reason must explain why this decision is appropriate now.",
         "- proposed_action should be a short bounded action description or empty.",
@@ -2277,6 +2299,7 @@ def _heartbeat_prompt_text(base_text: str) -> str:
         "- execute_action should only be set if decision_type=execute or initiative.",
         f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
         '- For initiative decisions, set execute_action to "act_on_initiative".',
+        "- If memory, continuity, or recent claims feel stale, prefer refresh_memory_context, follow_open_loop, or verify_recent_claim instead of a vague proposal.",
         'JSON schema: {"decision_type":"noop|propose|execute|ping|initiative","summary":"","reason":"","proposed_action":"","ping_text":"","execute_action":""}',
     ])
     return "\n\n".join(parts)
@@ -2383,7 +2406,7 @@ def _validate_heartbeat_decision(
             "action_type": "",
             "action_artifact": "",
         }
-    if decision_type == "execute":
+    if decision_type in {"execute", "initiative"}:
         if not bool(policy["allow_execute"]):
             return {
                 "tick_id": tick_id,
@@ -2401,6 +2424,7 @@ def _validate_heartbeat_decision(
                 "tick_id": tick_id,
                 "action_type": execute_action,
                 "summary": decision["summary"],
+                "decision_type": decision_type,
             },
         )
         if execute_action not in HEARTBEAT_ALLOWED_EXECUTE_ACTIONS:
@@ -2802,7 +2826,6 @@ def _execute_heartbeat_internal_action(
     tick_id: str,
     workspace_dir: Path,
 ) -> dict[str, str]:
-    del workspace_dir
     if action_type == "run_candidate_scan":
         review = track_runtime_contract_candidates_for_session_review(
             session_id=None,
@@ -2840,11 +2863,129 @@ def _execute_heartbeat_internal_action(
             "artifact": artifact,
             "blocked_reason": "",
         }
+    if action_type == "refresh_memory_context":
+        review = track_runtime_contract_candidates_for_session_review(
+            session_id=None,
+            run_id=tick_id,
+        )
+        user_result = auto_apply_safe_user_md_candidates()
+        memory_result = auto_apply_safe_memory_md_candidates()
+        applied_user = int(user_result.get("applied") or 0)
+        applied_memory = int(memory_result.get("applied") or 0)
+        created = int(review.get("created") or 0)
+        messages_scanned = int(review.get("messages_scanned") or 0)
+        summary = (
+            f"Heartbeat refreshed memory context from {messages_scanned} recent user messages, created {created} candidates, and applied {applied_user + applied_memory} safe updates."
+            if messages_scanned or created or applied_user or applied_memory
+            else "Heartbeat found no fresh memory context to consolidate."
+        )
+        artifact = json.dumps(
+            {
+                "messages_scanned": messages_scanned,
+                "created": created,
+                "safe_user_applied": applied_user,
+                "safe_memory_applied": applied_memory,
+                "session_id": str(review.get("session_id") or ""),
+                "user_items": list(user_result.get("items") or [])[:4],
+                "memory_items": list(memory_result.get("items") or [])[:4],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str,
+        )
+        return {
+            "status": "executed",
+            "summary": summary,
+            "artifact": artifact,
+            "blocked_reason": "",
+        }
+    if action_type == "follow_open_loop":
+        continuity = visible_session_continuity()
+        recent_runs = recent_visible_runs(limit=4)
+        latest_run = recent_runs[0] if recent_runs else {}
+        failure_run = next(
+            (
+                item for item in recent_runs
+                if str(item.get("status") or "") in {"failed", "cancelled"}
+            ),
+            None,
+        )
+        target_run = failure_run or latest_run
+        preview = str(target_run.get("text_preview") or target_run.get("error") or "").strip()
+        status = str(target_run.get("status") or "")
+        if not preview and not status:
+            return {
+                "status": "blocked",
+                "summary": "No open loop or visible run trace was available to continue.",
+                "artifact": "",
+                "blocked_reason": "no-open-loop",
+            }
+        artifact = json.dumps(
+            {
+                "target_run_id": str(target_run.get("run_id") or ""),
+                "target_status": status,
+                "latest_run_id": str(continuity.get("latest_run_id") or ""),
+                "latest_status": str(continuity.get("latest_status") or ""),
+                "preview": preview[:240],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        return {
+            "status": "executed",
+            "summary": (
+                f"Heartbeat followed the current open loop around {status or 'recent'} visible work: {preview[:120]}"
+                if preview
+                else "Heartbeat followed the current open loop from recent visible work."
+            ),
+            "artifact": artifact,
+            "blocked_reason": "",
+        }
+    if action_type == "verify_recent_claim":
+        recent_caps = recent_capability_invocations(limit=6)
+        recent_runs = recent_visible_runs(limit=3)
+        successful_cap = next(
+            (
+                item for item in recent_caps
+                if str(item.get("status") or "") == "success"
+            ),
+            None,
+        )
+        latest_run = recent_runs[0] if recent_runs else {}
+        preview = str(
+            (successful_cap or {}).get("result_preview")
+            or latest_run.get("text_preview")
+            or ""
+        ).strip()
+        if not preview:
+            return {
+                "status": "blocked",
+                "summary": "No recent grounded claim was available to verify.",
+                "artifact": "",
+                "blocked_reason": "no-recent-grounding",
+            }
+        artifact = json.dumps(
+            {
+                "capability_id": str((successful_cap or {}).get("capability_id") or ""),
+                "run_id": str((successful_cap or {}).get("run_id") or latest_run.get("run_id") or ""),
+                "status": str((successful_cap or {}).get("status") or latest_run.get("status") or ""),
+                "grounding_preview": preview[:240],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        return {
+            "status": "executed",
+            "summary": f"Heartbeat verified one recent grounded claim: {preview[:120]}",
+            "artifact": artifact,
+            "blocked_reason": "",
+        }
     if action_type == "act_on_initiative":
         try:
             from apps.api.jarvis_api.services.initiative_queue import (
                 get_pending_initiatives,
                 mark_acted,
+                mark_attempted,
             )
             pending = get_pending_initiatives()
             if pending:
@@ -2875,13 +3016,32 @@ def _execute_heartbeat_internal_action(
                     "artifact": json.dumps(initiative, ensure_ascii=False, default=str),
                     "blocked_reason": "",
                 }
+            queue_state = {
+                "queue_size": 0,
+                "workspace_dir": str(workspace_dir),
+            }
+            try:
+                from apps.api.jarvis_api.services.initiative_queue import get_initiative_queue_state
+                queue_state = get_initiative_queue_state()
+            except Exception:
+                pass
             return {
                 "status": "blocked",
                 "summary": "No pending initiatives to act on.",
-                "artifact": "",
+                "artifact": json.dumps(queue_state, ensure_ascii=False, default=str),
                 "blocked_reason": "no-pending-initiatives",
             }
         except Exception as exc:
+            try:
+                pending = get_pending_initiatives()
+                if pending:
+                    mark_attempted(
+                        str(pending[0].get("initiative_id") or ""),
+                        blocked_reason="initiative-error",
+                        action_summary=f"Heartbeat initiative attempt failed: {exc}",
+                    )
+            except Exception:
+                pass
             return {
                 "status": "blocked",
                 "summary": f"Initiative action failed: {exc}",

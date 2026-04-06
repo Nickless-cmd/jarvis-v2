@@ -297,7 +297,7 @@ def build_visible_chat_prompt_assembly(
         parts.append(capability_ids_line)
         derived_inputs.append("runtime capability id summary")
 
-    for filename in ("SOUL.md", "IDENTITY.md", "USER.md"):
+    for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,
             label=filename,
@@ -493,7 +493,7 @@ def build_heartbeat_prompt_assembly(
             parts.append(bootstrap)
             conditional_files.append("BOOTSTRAP.md")
 
-    for filename in ("HEARTBEAT.md", "SOUL.md", "IDENTITY.md", "USER.md"):
+    for filename in ("HEARTBEAT.md", "SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,
             label=filename,
@@ -610,7 +610,7 @@ def build_future_agent_task_prompt_assembly(
         parts.append(runtime_truth)
         derived_inputs.append("runtime role, scope, and capability truth")
 
-    for filename in ("SOUL.md", "IDENTITY.md"):
+    for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md"):
         section = _workspace_file_section(
             workspace_dir / filename,
             label=filename,

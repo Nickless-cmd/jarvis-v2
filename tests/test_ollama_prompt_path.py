@@ -94,11 +94,13 @@ def test_ollama_visible_prompt_assembly_uses_canonical_workspace_sections(
 
     assert "SOUL.md:" in assembly.text
     assert "IDENTITY.md:" in assembly.text
+    assert "STANDING_ORDERS.md:" in assembly.text
     assert "USER.md:" in assembly.text
     assert "Visible workspace identity truth:" not in assembly.text
     assert "Stay consistent with this identity truth in visible replies." not in assembly.text
     assert "SOUL.md" in assembly.included_files
     assert "IDENTITY.md" in assembly.included_files
+    assert "STANDING_ORDERS.md" in assembly.included_files
     assert "USER.md" in assembly.included_files
 
 

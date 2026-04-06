@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 
@@ -269,3 +269,62 @@ def test_runtime_failure_becomes_bounded_noop(
     assert decision["decision_type"] == "noop"
     assert "bounded runtime failure" in decision["summary"].lower()
     assert "llama3.1:8b" in decision["reason"]
+
+
+def test_merge_runtime_state_clears_stale_ticking_and_marks_due(
+    isolated_runtime,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    now = datetime.now(UTC)
+    merged = heartbeat_runtime._merge_runtime_state(
+        policy={
+            "enabled": True,
+            "kill_switch": "enabled",
+            "interval_minutes": 15,
+            "budget_status": "bounded-internal-only",
+            "summary": "test-policy",
+            "workspace": "/tmp/test-workspace",
+        },
+        persisted={
+            **heartbeat_runtime._default_persisted_state(),
+            "currently_ticking": True,
+            "last_tick_at": (now - timedelta(days=4)).isoformat(),
+            "updated_at": (now - timedelta(minutes=20)).isoformat(),
+        },
+        now=now,
+    )
+
+    assert merged["currently_ticking"] is False
+    assert merged["schedule_state"] == "due"
+    assert merged["due"] is True
+    assert merged["blocked_reason"] == "stale-ticking-state-cleared"
+
+
+def test_merge_runtime_state_hides_due_while_tick_is_actively_running(
+    isolated_runtime,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    now = datetime.now(UTC)
+    merged = heartbeat_runtime._merge_runtime_state(
+        policy={
+            "enabled": True,
+            "kill_switch": "enabled",
+            "interval_minutes": 15,
+            "budget_status": "bounded-internal-only",
+            "summary": "test-policy",
+            "workspace": "/tmp/test-workspace",
+        },
+        persisted={
+            **heartbeat_runtime._default_persisted_state(),
+            "currently_ticking": True,
+            "last_tick_at": (now - timedelta(days=4)).isoformat(),
+            "updated_at": now.isoformat(),
+        },
+        now=now,
+    )
+
+    assert merged["currently_ticking"] is True
+    assert merged["schedule_state"] == "ticking"
+    assert merged["due"] is False

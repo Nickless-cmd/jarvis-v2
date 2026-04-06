@@ -3441,6 +3441,7 @@ def _merge_runtime_state(
     persisted: dict[str, object],
     now: datetime,
 ) -> dict[str, object]:
+    tick_state = _resolve_tick_activity_state(persisted=persisted, now=now)
     last_tick_at = str(persisted.get("last_tick_at") or "")
     if last_tick_at:
         next_tick_at = _compute_next_tick_at(
@@ -3452,13 +3453,15 @@ def _merge_runtime_state(
         next_tick_at = str(persisted.get("next_tick_at") or "")
     due = False
     if policy["enabled"] and policy["kill_switch"] == "enabled":
-        if not next_tick_at:
+        if tick_state["active"]:
+            due = False
+        elif not next_tick_at:
             due = True
         else:
             due_ts = _parse_dt(next_tick_at)
             due = due_ts is not None and due_ts <= now
     schedule_status = "disabled"
-    if bool(persisted.get("currently_ticking")):
+    if tick_state["active"]:
         schedule_status = "ticking"
     elif policy["enabled"]:
         schedule_status = "due" if due else "scheduled"
@@ -3476,8 +3479,10 @@ def _merge_runtime_state(
         "next_tick_at": next_tick_at,
         "last_decision_type": str(persisted.get("last_decision_type") or ""),
         "last_result": str(persisted.get("last_result") or ""),
-        "blocked_reason": str(persisted.get("blocked_reason") or ""),
-        "currently_ticking": bool(persisted.get("currently_ticking")),
+        "blocked_reason": str(
+            tick_state["blocked_reason"] or persisted.get("blocked_reason") or ""
+        ),
+        "currently_ticking": bool(tick_state["active"]),
         "last_trigger_source": str(persisted.get("last_trigger_source") or ""),
         "scheduler_active": bool(persisted.get("scheduler_active")),
         "scheduler_started_at": str(persisted.get("scheduler_started_at") or ""),
@@ -3532,6 +3537,40 @@ def _compute_next_tick_at(
     parsed = _parse_dt(last_tick_at)
     base = parsed or datetime.now(UTC)
     return (base + timedelta(minutes=max(interval_minutes, 1))).isoformat()
+
+
+def _resolve_tick_activity_state(
+    *,
+    persisted: dict[str, object],
+    now: datetime,
+) -> dict[str, object]:
+    currently_ticking = bool(persisted.get("currently_ticking"))
+    if not currently_ticking:
+        return {
+            "active": False,
+            "stale": False,
+            "blocked_reason": "",
+        }
+    started_or_updated = _parse_dt(
+        str(persisted.get("updated_at") or persisted.get("last_tick_at") or "")
+    )
+    if started_or_updated is None:
+        return {
+            "active": False,
+            "stale": True,
+            "blocked_reason": "stale-ticking-state-cleared",
+        }
+    if started_or_updated <= now - timedelta(minutes=_STALE_TICK_RECOVERY_WINDOW_MINUTES):
+        return {
+            "active": False,
+            "stale": True,
+            "blocked_reason": "stale-ticking-state-cleared",
+        }
+    return {
+        "active": True,
+        "stale": False,
+        "blocked_reason": "",
+    }
 
 
 def _write_heartbeat_state_artifact(
@@ -3864,18 +3903,12 @@ def _prepare_scheduler_startup(*, name: str) -> dict[str, object]:
     recovery_status = "idle"
     blocked_reason = str(persisted.get("blocked_reason") or "")
     last_recovery_at = str(persisted.get("last_recovery_at") or "")
-    currently_ticking = bool(persisted.get("currently_ticking"))
-    if currently_ticking:
-        stale_started = _parse_dt(
-            str(persisted.get("updated_at") or persisted.get("last_tick_at") or "")
-        )
-        if stale_started is None or stale_started <= now - timedelta(
-            minutes=_STALE_TICK_RECOVERY_WINDOW_MINUTES
-        ):
-            currently_ticking = False
-            blocked_reason = "stale-ticking-state-cleared"
-            recovery_status = "stale-ticking-state-cleared"
-            last_recovery_at = now.isoformat()
+    tick_state = _resolve_tick_activity_state(persisted=persisted, now=now)
+    currently_ticking = bool(tick_state["active"])
+    if bool(tick_state["stale"]):
+        blocked_reason = "stale-ticking-state-cleared"
+        recovery_status = "stale-ticking-state-cleared"
+        last_recovery_at = now.isoformat()
 
     startup_state = _persist_runtime_state(
         policy=policy,

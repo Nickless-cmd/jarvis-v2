@@ -12,6 +12,8 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
     assert '<capability-call id="capability_id" command_text="pwd" />' in instruction
     assert "emit the capability-call tags together" in instruction
     assert "capability-call tag is authoritative" in instruction
+    assert "do not stop at README, pyproject, or directory names" in instruction
+    assert "continue autonomously with additional capability calls" in instruction
     assert "Do not emit JSON or pseudo-JSON tool calls." in instruction
     assert "tool:read-workspace-user-profile" in instruction
     assert "tool:search-workspace-memory-continuity" in instruction
@@ -50,3 +52,4 @@ def test_visible_prompt_assembly_keeps_text_capability_contract(isolated_runtime
     assert "tool:read-workspace-user-profile" in assembly.text
     assert "tool:read-external-file-by-path" in assembly.text
     assert "tool:run-non-destructive-command" in assembly.text
+    assert "Never stop working because one call failed." in assembly.text

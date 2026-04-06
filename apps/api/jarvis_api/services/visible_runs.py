@@ -500,121 +500,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
         all_capabilities = capability_plan.get("all_capabilities") or []
         if all_capabilities:
-            # --- Execute ALL capabilities sequentially ---
-            capability_results: list[dict[str, object]] = []
-            any_executed = False
-
-            for cap_entry in all_capabilities:
-                cap_id = str(cap_entry["capability_id"])
-                cap_args = dict(cap_entry.get("arguments") or {})
-
-                resolved_target_path, target_source = _resolve_visible_capability_target_path(
-                    capability_id=cap_id,
-                    capability_arguments=cap_args,
-                    user_message=run.user_message,
-                )
-                resolved_command_text, command_source = _resolve_visible_capability_command_text(
-                    capability_id=cap_id,
-                    capability_arguments=cap_args,
-                    user_message=run.user_message,
-                )
-                resolved_write_content = cap_args.get("write_content") or None
-
-                _update_visible_execution_trace(
-                    run,
-                    {
-                        "parsed_target_path": resolved_target_path,
-                        "parsed_command_text": resolved_command_text,
-                        "argument_source": _merge_argument_sources(target_source, command_source),
-                        "invoke_status": "started",
-                    },
-                )
-
-                capability_result = invoke_workspace_capability(
-                    cap_id,
-                    run_id=run.run_id,
-                    target_path=resolved_target_path,
-                    command_text=resolved_command_text,
-                    write_content=resolved_write_content,
-                )
-
-                cap_status = str(capability_result.get("status") or "")
-                cap_exec_mode = str(capability_result.get("execution_mode") or "")
-                cap_result_obj = capability_result.get("result") or {}
-                cap_result_text = ""
-                if isinstance(cap_result_obj, dict):
-                    cap_result_text = str(cap_result_obj.get("text") or "").strip()
-                cap_detail = str(capability_result.get("detail") or "").strip()
-
-                _update_visible_execution_trace(
-                    run,
-                    {
-                        "invoke_status": cap_status,
-                        "blocked_reason": capability_result.get("detail"),
-                        "argument_source": _merge_argument_sources(target_source, command_source),
-                        "normalized_command_text": (
-                            ((capability_result.get("result") or {}).get("normalized_command_text"))
-                            or None
-                        ),
-                        "path_normalization_applied": bool(
-                            (capability_result.get("result") or {}).get("path_normalization_applied", False)
-                        ),
-                        "normalization_source": (
-                            ((capability_result.get("result") or {}).get("normalization_source"))
-                            or "none"
-                        ),
-                    },
-                )
-
-                capability_results.append({
-                    "capability_id": cap_id,
-                    "status": cap_status,
-                    "execution_mode": cap_exec_mode,
-                    "result_text": cap_result_text,
-                    "detail": cap_detail,
-                    "invocation": capability_result,
-                })
-
-                if cap_status == "executed":
-                    any_executed = True
-
-                set_last_visible_capability_use(
-                    run,
-                    capability_id=cap_id,
-                    invocation=capability_result,
-                    capability_arguments=cap_args,
-                    argument_source=_merge_argument_sources(target_source, command_source),
-                )
-
-                event_bus.publish(
-                    "runtime.visible_run_capability_used",
-                    {
-                        "run_id": run.run_id,
-                        "lane": run.lane,
-                        "provider": run.provider,
-                        "model": run.model,
-                        "capability_id": cap_id,
-                        "status": cap_status,
-                        "execution_mode": cap_exec_mode,
-                    },
-                )
-
-                yield _sse(
-                    "capability",
-                    {
-                        "type": "capability",
-                        "run_id": run.run_id,
-                        "capability_id": cap_id,
-                        "status": cap_status,
-                        "execution_mode": cap_exec_mode,
-                        "target_path": resolved_target_path or None,
-                        "command_text": resolved_command_text or None,
-                        "capability_name": (
-                            (capability_result.get("capability") or {}).get("name")
-                            or cap_id
-                        ),
-                    },
-                )
+            capability_results, any_executed, capability_events = _execute_visible_capability_entries(
+                run,
+                all_capabilities=all_capabilities,
+            )
+            for event in capability_events:
+                yield _sse("capability", event)
 
             _update_visible_execution_trace(
                 run,
@@ -657,10 +548,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 followup_result = _run_grounded_multi_capability_followup(
                     run,
                     capability_results=capability_results,
-                    initial_model_text=_visible_text_without_capability_markup(
-                        result.text,
-                        had_markup=bool(capability_plan["had_markup"]),
-                    ),
+                    initial_model_text="",
                 )
                 if followup_result is not None:
                     total_input_tokens += followup_result.input_tokens
@@ -675,10 +563,69 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "second_pass_output_tokens": followup_result.output_tokens,
                         },
                     )
-                    visible_output_text = _finalize_second_pass_visible_text(
-                        followup_result.text,
-                        fallback=visible_output_text,
-                    )
+                    second_pass_plan = _extract_capability_plan(followup_result.text)
+                    second_pass_caps = second_pass_plan.get("all_capabilities") or []
+                    if second_pass_caps:
+                        followup_capability_results, followup_any_executed, followup_events = (
+                            _execute_visible_capability_entries(
+                                run,
+                                all_capabilities=second_pass_caps,
+                            )
+                        )
+                        capability_results.extend(followup_capability_results)
+                        for event in followup_events:
+                            yield _sse("capability", event)
+                        if followup_any_executed:
+                            yield _sse(
+                                "working_step",
+                                {
+                                    "type": "working_step",
+                                    "run_id": run.run_id,
+                                    "action": "thinking",
+                                    "detail": (
+                                        "Continuing autonomously with one extra bounded read-only round "
+                                        f"from {len(followup_capability_results)} follow-up capability results"
+                                    ),
+                                    "step": 2,
+                                    "status": "running",
+                                },
+                            )
+                            final_followup = _run_grounded_multi_capability_followup(
+                                run,
+                                capability_results=capability_results,
+                                initial_model_text="",
+                            )
+                            if final_followup is not None:
+                                total_input_tokens += final_followup.input_tokens
+                                total_output_tokens += final_followup.output_tokens
+                                total_cost_usd += final_followup.cost_usd
+                                _update_visible_execution_trace(
+                                    run,
+                                    {
+                                        "provider_call_count": 3,
+                                        "third_pass_input_tokens": final_followup.input_tokens,
+                                        "third_pass_output_tokens": final_followup.output_tokens,
+                                    },
+                                )
+                                visible_output_text = _finalize_second_pass_visible_text(
+                                    final_followup.text,
+                                    fallback=visible_output_text,
+                                )
+                            else:
+                                visible_output_text = _finalize_second_pass_visible_text(
+                                    followup_result.text,
+                                    fallback=visible_output_text,
+                                )
+                        else:
+                            visible_output_text = _finalize_second_pass_visible_text(
+                                followup_result.text,
+                                fallback=visible_output_text,
+                            )
+                    else:
+                        visible_output_text = _finalize_second_pass_visible_text(
+                            followup_result.text,
+                            fallback=visible_output_text,
+                        )
                 else:
                     _update_visible_execution_trace(
                         run,
@@ -1604,16 +1551,22 @@ def _build_grounded_capability_followup_message(
         "Second-pass visible response task.",
         "You have already completed one bounded capability invocation for the current user turn.",
         "Respond to the user in ordinary prose only.",
-        "Do not emit any <capability-call ... /> tags.",
-        "Do not invoke another capability.",
-        "Do not describe hidden orchestration; just answer grounded in the result below.",
+        "Every substantive claim must be grounded in the capability result below.",
+        "If runtime facts are thin, say what remains uncertain instead of smoothing it over.",
+        "If documentation and code or command output conflict, prefer code and command output.",
+        "README or file-structure summaries do not outrank direct code/file evidence.",
+        "If the user asked for code analysis, do not call this a code analysis unless you have actually read concrete code files.",
+        "If more read-only data is clearly needed and the task is still bounded, you may emit more <capability-call ... /> tags instead of asking the user for permission to continue.",
+        "Only ask the user to continue when the next step needs approval or the goal is genuinely unclear.",
         f"Original user message: {run.user_message}",
         f"Capability used: {capability_id}",
         f"Capability status: {status}",
         f"Capability execution mode: {execution_mode}",
     ]
-    if initial_model_text:
-        parts.append(f"First-pass draft without capability markup: {initial_model_text}")
+    if _is_memory_commit_request(run.user_message):
+        parts.append(
+            "If the user asked you to remember or save something and the write succeeded, state that it has been saved. Do not talk about syntax unless the runtime result explicitly failed."
+        )
     if result_text:
         parts.append("Capability result text:")
         parts.append(result_text)
@@ -1663,16 +1616,24 @@ def _build_grounded_multi_capability_followup_message(
         f"You executed {n} capabilit{'y' if n == 1 else 'ies'} this turn. Results are below.",
         "",
         "Respond to the user grounded in these results.",
-        "Do not emit any <capability-call ... /> tags in this response.",
-        "",
-        "If the results fully answer the user's question, answer directly.",
-        "If you need more data to fully answer, tell the user what you would read next",
-        "so they can ask you to continue.",
+        "Every substantive claim must be grounded in one or more concrete capability results below.",
+        "If runtime facts are thin, stale, or conflicting, say that plainly.",
+        "If docs and code disagree, prefer code and direct command/file output.",
+        "README, pyproject, or directory names are not enough for a real code analysis by themselves.",
+        "If the user asked for code analysis, do not stop at structure or documentation; read concrete code files before claiming analysis.",
+        "If more read-only data is clearly needed and the task is still bounded, emit additional <capability-call ... /> tags now and continue autonomously.",
+        "Only ask the user to continue when the next step needs approval or the goal is genuinely unclear.",
         "",
         f"Original user message: {run.user_message}",
     ]
-    if initial_model_text:
-        parts.append(f"First-pass draft without capability markup: {initial_model_text}")
+    if _is_memory_commit_request(run.user_message):
+        parts.append(
+            "If the user asked you to remember or save something and the write succeeded, state that it has been saved. Do not describe block syntax or retry mechanics unless the runtime result explicitly failed."
+        )
+    if _is_code_analysis_request(run.user_message):
+        parts.append(
+            "Code-analysis mode: prioritize concrete files such as entrypoints, routes, services, core modules, and tests. Do not present README-only or tree-only summaries as code analysis."
+        )
     for i, cr in enumerate(capability_results):
         parts.append("")
         parts.append(f"--- Capability {i + 1}: {cr['capability_id']} ---")
@@ -1686,6 +1647,167 @@ def _build_grounded_multi_capability_followup_message(
         elif detail:
             parts.append(f"Detail: {detail}")
     return "\n".join(parts)
+
+
+def _is_code_analysis_request(user_message: str) -> bool:
+    normalized = str(user_message or "").lower()
+    return any(
+        token in normalized
+        for token in (
+            "code analysis",
+            "kode analyse",
+            "kodeanalyse",
+            "codeanalyse",
+            "gennemgang",
+            "walkthrough",
+            "review koden",
+            "analyse af koden",
+            "analyse main repo",
+            "analyser main repo",
+        )
+    )
+
+
+def _is_memory_commit_request(user_message: str) -> bool:
+    normalized = str(user_message or "").lower()
+    return any(
+        token in normalized
+        for token in (
+            "remember this",
+            "remember that",
+            "husk dette",
+            "husk det",
+            "gem dette",
+            "gem det",
+            "this is important",
+            "det er vigtigt",
+            "do not forget",
+            "glem ikke",
+        )
+    )
+
+
+def _execute_visible_capability_entries(
+    run: VisibleRun,
+    *,
+    all_capabilities: list[dict[str, object]],
+) -> tuple[list[dict[str, object]], bool, list[dict[str, object]]]:
+    capability_results: list[dict[str, object]] = []
+    capability_events: list[dict[str, object]] = []
+    any_executed = False
+
+    for cap_entry in all_capabilities:
+        cap_id = str(cap_entry["capability_id"])
+        cap_args = dict(cap_entry.get("arguments") or {})
+
+        resolved_target_path, target_source = _resolve_visible_capability_target_path(
+            capability_id=cap_id,
+            capability_arguments=cap_args,
+            user_message=run.user_message,
+        )
+        resolved_command_text, command_source = _resolve_visible_capability_command_text(
+            capability_id=cap_id,
+            capability_arguments=cap_args,
+            user_message=run.user_message,
+        )
+        resolved_write_content = cap_args.get("write_content") or None
+
+        _update_visible_execution_trace(
+            run,
+            {
+                "parsed_target_path": resolved_target_path,
+                "parsed_command_text": resolved_command_text,
+                "argument_source": _merge_argument_sources(target_source, command_source),
+                "invoke_status": "started",
+            },
+        )
+
+        capability_result = invoke_workspace_capability(
+            cap_id,
+            run_id=run.run_id,
+            target_path=resolved_target_path,
+            command_text=resolved_command_text,
+            write_content=resolved_write_content,
+        )
+
+        cap_status = str(capability_result.get("status") or "")
+        cap_exec_mode = str(capability_result.get("execution_mode") or "")
+        cap_result_obj = capability_result.get("result") or {}
+        cap_result_text = ""
+        if isinstance(cap_result_obj, dict):
+            cap_result_text = str(cap_result_obj.get("text") or "").strip()
+        cap_detail = str(capability_result.get("detail") or "").strip()
+
+        _update_visible_execution_trace(
+            run,
+            {
+                "invoke_status": cap_status,
+                "blocked_reason": capability_result.get("detail"),
+                "argument_source": _merge_argument_sources(target_source, command_source),
+                "normalized_command_text": (
+                    ((capability_result.get("result") or {}).get("normalized_command_text"))
+                    or None
+                ),
+                "path_normalization_applied": bool(
+                    (capability_result.get("result") or {}).get("path_normalization_applied", False)
+                ),
+                "normalization_source": (
+                    ((capability_result.get("result") or {}).get("normalization_source"))
+                    or "none"
+                ),
+            },
+        )
+
+        capability_results.append({
+            "capability_id": cap_id,
+            "status": cap_status,
+            "execution_mode": cap_exec_mode,
+            "result_text": cap_result_text,
+            "detail": cap_detail,
+            "invocation": capability_result,
+        })
+
+        if cap_status == "executed":
+            any_executed = True
+
+        set_last_visible_capability_use(
+            run,
+            capability_id=cap_id,
+            invocation=capability_result,
+            capability_arguments=cap_args,
+            argument_source=_merge_argument_sources(target_source, command_source),
+        )
+
+        event_bus.publish(
+            "runtime.visible_run_capability_used",
+            {
+                "run_id": run.run_id,
+                "lane": run.lane,
+                "provider": run.provider,
+                "model": run.model,
+                "capability_id": cap_id,
+                "status": cap_status,
+                "execution_mode": cap_exec_mode,
+            },
+        )
+
+        capability_events.append(
+            {
+                "type": "capability",
+                "run_id": run.run_id,
+                "capability_id": cap_id,
+                "status": cap_status,
+                "execution_mode": cap_exec_mode,
+                "target_path": resolved_target_path or None,
+                "command_text": resolved_command_text or None,
+                "capability_name": (
+                    (capability_result.get("capability") or {}).get("name")
+                    or cap_id
+                ),
+            }
+        )
+
+    return capability_results, any_executed, capability_events
 
 
 def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:

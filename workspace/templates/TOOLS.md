@@ -6,6 +6,7 @@ It does not grant execution authority.
 Runtime capability truth decides what tools actually exist, what is available now, and what is gated by approval or policy.
 Visible capability calls may carry quoted attributes for concrete arguments when needed.
 If context feels partial or stale, read the full relevant file before answering instead of guessing from fragments.
+If the user asks for code analysis or a walkthrough, README, pyproject, and tree output are not enough by themselves. Read concrete code files before calling it a code analysis.
 
 Read freely.
 Propose freely.
@@ -48,6 +49,7 @@ This stays diagnostic-only, allows a tiny bounded git read/inspect subset, allow
 If the user asks for several machine specs at once, emit multiple capability-call tags in the same response and use small commands per component rather than one huge command: `lscpu` for CPU, `free -h` for RAM, `lsblk` or `df -h` for disks, and `lspci | rg -i "vga|3d|display"` or `nvidia-smi` for GPU.
 If one command only answers part of the user's request, keep going with the additional bounded commands needed in the same turn rather than stopping at the first partial result.
 If the user is asking why the repo behaves a certain way, inspect the repo proactively with bounded reads or git inspection before answering. If the user is asking about the machine, distro, hardware, or runtime environment, gather bounded system facts before answering.
+If the task is still clearly read-only and bounded, continue autonomously with more commands instead of asking the user to tell you to continue.
 If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Git mutation remains proposal-only and non-executed in this pass, and runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`. `git clean` stays blocked. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, delete, and broader system mutation remain non-executed here.
 
 ## WRITE_FILE: propose workspace memory update

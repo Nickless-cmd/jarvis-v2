@@ -1257,6 +1257,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         "- If you are missing context or feel uncertain about a file-backed answer, read the whole relevant file before answering instead of guessing from fragments."
     )
     lines.append(
+        "- If the user asks for code analysis, walkthrough, or a repo/codebase review, do not stop at README, pyproject, or directory names. Read concrete code files before claiming analysis."
+    )
+    lines.append(
         "- For arg-requiring capabilities, the capability-call tag is authoritative. User-message extraction is compatibility fallback only."
     )
     lines.append(
@@ -1285,6 +1288,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         )
         lines.append(
             "- When a task spans several facts, prefer multiple small read-only commands in the same turn. Do not stop after the first partial result if more bounded calls are clearly needed."
+        )
+        lines.append(
+            "- If the current task is still clearly read-only and bounded, continue autonomously with additional capability calls instead of asking the user for permission to keep reading."
         )
         lines.append(
             "- If the user is asking about repo behavior, path resolution, capabilities, commits, or backend structure, proactively inspect the repo with bounded reads or git inspection before answering."
@@ -1364,6 +1370,9 @@ def _visible_capability_id_summary() -> str | None:
         "- parallel: you can emit multiple capability-call tags in one response. "
         "Do this when exploring — e.g. list a directory AND read a file in the same turn. "
         "If one fails, others still execute. Never stop working because one call failed."
+    )
+    lines.append(
+        "- autonomy: if the task is still read-only and bounded, continue with more capability-call tags instead of asking the user to tell you to continue."
     )
     lines.append(
         "- system-inspection: when a user asks for multiple machine specs, prefer multiple small command calls in one response "

@@ -2,16 +2,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from apps.api.jarvis_api.services.runtime_surface_cache import (
-    get_cached_runtime_surface,
-)
-
-
 def build_affective_meta_state_surface() -> dict[str, object]:
-    return get_cached_runtime_surface(
-        "affective_meta_state_surface",
-        _build_affective_meta_state_surface_uncached,
-    )
+    """Build affective meta state fresh each call — cheap (no LLM), always current."""
+    return _build_affective_meta_state_surface_uncached()
 
 
 def _build_affective_meta_state_surface_uncached() -> dict[str, object]:

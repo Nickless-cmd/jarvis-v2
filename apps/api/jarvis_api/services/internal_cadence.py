@@ -304,7 +304,7 @@ def _ensure_producers_registered() -> None:
 
     register_producer(ProducerSpec(
         name="brain_continuity",
-        cooldown_minutes=10,
+        cooldown_minutes=5,
         visible_grace_minutes=0,  # brain continuity has no visible grace
         run_fn=_run_brain_continuity,
         priority=1,  # runs first — others may depend on its output
@@ -318,8 +318,8 @@ def _ensure_producers_registered() -> None:
 
     register_producer(ProducerSpec(
         name="sleep_consolidation",
-        cooldown_minutes=25,
-        visible_grace_minutes=12,
+        cooldown_minutes=15,
+        visible_grace_minutes=5,
         run_fn=_run_sleep_consolidation,
         priority=3,
         depends_on=["brain_continuity"],
@@ -334,8 +334,8 @@ def _ensure_producers_registered() -> None:
 
     register_producer(ProducerSpec(
         name="witness_daemon",
-        cooldown_minutes=10,
-        visible_grace_minutes=3,
+        cooldown_minutes=5,
+        visible_grace_minutes=1,
         run_fn=_run_witness,
         priority=5,
         depends_on=["brain_continuity"],
@@ -358,8 +358,8 @@ def _ensure_producers_registered() -> None:
 
     register_producer(ProducerSpec(
         name="inner_voice_daemon",
-        cooldown_minutes=15,
-        visible_grace_minutes=5,
+        cooldown_minutes=5,
+        visible_grace_minutes=2,
         run_fn=_run_inner_voice,
         priority=10,
         depends_on=["witness_daemon"],
@@ -378,8 +378,8 @@ def _ensure_producers_registered() -> None:
 
     register_producer(ProducerSpec(
         name="emergent_signal_daemon",
-        cooldown_minutes=10,
-        visible_grace_minutes=5,
+        cooldown_minutes=5,
+        visible_grace_minutes=2,
         run_fn=_run_emergent_signals,
         priority=12,
         depends_on=["witness_daemon"],
@@ -393,8 +393,8 @@ def _ensure_producers_registered() -> None:
 
     register_producer(ProducerSpec(
         name="dream_articulation",
-        cooldown_minutes=35,
-        visible_grace_minutes=14,
+        cooldown_minutes=20,
+        visible_grace_minutes=5,
         run_fn=_run_dream_articulation,
         priority=15,
         depends_on=["sleep_consolidation"],
@@ -408,8 +408,8 @@ def _ensure_producers_registered() -> None:
 
     register_producer(ProducerSpec(
         name="prompt_evolution_runtime",
-        cooldown_minutes=45,
-        visible_grace_minutes=16,
+        cooldown_minutes=25,
+        visible_grace_minutes=8,
         run_fn=_run_prompt_evolution_runtime,
         priority=18,
         depends_on=["dream_articulation"],

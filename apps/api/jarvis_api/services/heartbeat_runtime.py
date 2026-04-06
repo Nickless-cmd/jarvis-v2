@@ -122,8 +122,8 @@ from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import load_workspace_capabilities
 
 HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
-HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping"}
-HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {"run_candidate_scan"}
+HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping", "initiative"}
+HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {"run_candidate_scan", "act_on_initiative"}
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
 _HEARTBEAT_SCHEDULER_STOP = threading.Event()
@@ -885,6 +885,18 @@ def _build_heartbeat_context(
     adaptive_learning = build_adaptive_learning_runtime_surface()
     self_system_code_awareness = build_self_system_code_awareness_surface()
     tool_intent = build_tool_intent_runtime_surface()
+
+    # Initiative queue — pending thought-to-action initiatives
+    try:
+        from apps.api.jarvis_api.services.initiative_queue import get_pending_initiatives
+        pending_initiatives = get_pending_initiatives()
+    except Exception:
+        pending_initiatives = []
+
+    for init in pending_initiatives[:3]:
+        open_loops.append(
+            f"initiative pending: {str(init.get('focus') or '')[:100]} (from {init.get('source', 'unknown')})"
+        )
 
     # Build bounded influence trace — shows what cognitive inputs were available
     influence_trace = _build_influence_trace(
@@ -2222,21 +2234,52 @@ def _execute_openrouter_prompt(
 
 
 def _heartbeat_prompt_text(base_text: str) -> str:
-    return "\n\n".join(
-        [
-            base_text.strip(),
-            "Heartbeat response contract:",
-            "- Return only one compact JSON object.",
-            "- decision_type must be one of: noop, propose, execute, ping.",
-            "- summary must be short and concrete.",
-            "- reason must explain why this decision is appropriate now.",
-            "- proposed_action should be a short bounded action description or empty.",
-            "- ping_text should only be set if decision_type=ping.",
-            "- execute_action should only be set if decision_type=execute.",
-            f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
-            'JSON schema: {"decision_type":"noop|propose|execute|ping","summary":"","reason":"","proposed_action":"","ping_text":"","execute_action":""}',
+    # Inject affective guidance as active instruction
+    affective_guidance = ""
+    try:
+        from apps.api.jarvis_api.services.affective_meta_state import (
+            build_affective_meta_state_surface,
+            build_affective_meta_prompt_section,
+        )
+        affective = build_affective_meta_state_surface()
+        affective_state = str(affective.get("state") or "settled")
+        affective_guidance_lines = [
+            "Affective state guidance (let this influence your decision):",
         ]
-    )
+        if affective_state == "burdened":
+            affective_guidance_lines.append("- You are burdened. Prefer consolidation and rest over new action.")
+        elif affective_state == "tense":
+            affective_guidance_lines.append("- You are tense. Prefer resolving open loops over starting new things.")
+        elif affective_state == "reflective":
+            affective_guidance_lines.append("- You are reflective. Prefer synthesis and settling over outward push.")
+        elif affective_state == "attentive":
+            affective_guidance_lines.append("- You are attentive. You may act proactively on initiatives.")
+        else:
+            affective_guidance_lines.append("- You are settled. Free to explore, take initiatives, or rest.")
+        affective_guidance = "\n".join(affective_guidance_lines)
+    except Exception:
+        pass
+
+    parts = [
+        base_text.strip(),
+    ]
+    if affective_guidance:
+        parts.append(affective_guidance)
+    parts.extend([
+        "Heartbeat response contract:",
+        "- Return only one compact JSON object.",
+        "- decision_type must be one of: noop, propose, execute, ping, initiative.",
+        "- Use initiative when you see pending initiatives from inner voice that you want to act on.",
+        "- summary must be short and concrete.",
+        "- reason must explain why this decision is appropriate now.",
+        "- proposed_action should be a short bounded action description or empty.",
+        "- ping_text should only be set if decision_type=ping.",
+        "- execute_action should only be set if decision_type=execute or initiative.",
+        f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
+        '- For initiative decisions, set execute_action to "act_on_initiative".',
+        'JSON schema: {"decision_type":"noop|propose|execute|ping|initiative","summary":"","reason":"","proposed_action":"","ping_text":"","execute_action":""}',
+    ])
+    return "\n\n".join(parts)
 
 
 def _parse_heartbeat_decision(raw_text: str) -> dict[str, str]:
@@ -2797,6 +2840,54 @@ def _execute_heartbeat_internal_action(
             "artifact": artifact,
             "blocked_reason": "",
         }
+    if action_type == "act_on_initiative":
+        try:
+            from apps.api.jarvis_api.services.initiative_queue import (
+                get_pending_initiatives,
+                mark_acted,
+            )
+            pending = get_pending_initiatives()
+            if pending:
+                initiative = pending[0]
+                mark_acted(
+                    str(initiative.get("initiative_id") or ""),
+                    action_summary=f"Heartbeat acted on initiative: {str(initiative.get('focus') or '')[:100]}",
+                )
+                # Record as private brain entry for continuity
+                from core.runtime.db import insert_private_brain_record
+                from uuid import uuid4 as _uuid4
+                insert_private_brain_record(
+                    record_id=f"pb-initiative-{_uuid4().hex[:12]}",
+                    record_type="initiative-acted",
+                    layer="private_brain",
+                    session_id="",
+                    run_id=tick_id,
+                    focus=str(initiative.get("focus") or "")[:200],
+                    summary=f"Acted on initiative from {initiative.get('source', 'unknown')}: {str(initiative.get('focus') or '')[:200]}",
+                    detail="Initiative detected by inner voice and acted on by heartbeat.",
+                    source_signals=f"initiative-queue:{initiative.get('initiative_id', '')}",
+                    confidence="medium",
+                    created_at=datetime.now(UTC).isoformat(),
+                )
+                return {
+                    "status": "executed",
+                    "summary": f"Acted on initiative: {str(initiative.get('focus') or '')[:120]}",
+                    "artifact": json.dumps(initiative, ensure_ascii=False, default=str),
+                    "blocked_reason": "",
+                }
+            return {
+                "status": "blocked",
+                "summary": "No pending initiatives to act on.",
+                "artifact": "",
+                "blocked_reason": "no-pending-initiatives",
+            }
+        except Exception as exc:
+            return {
+                "status": "blocked",
+                "summary": f"Initiative action failed: {exc}",
+                "artifact": "",
+                "blocked_reason": "initiative-error",
+            }
     return {
         "status": "blocked",
         "summary": f"Heartbeat execute action {action_type or 'unknown'} is not supported.",

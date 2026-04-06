@@ -160,6 +160,20 @@ def evaluate_self_deception_guard(
 
     # --- Guard rules (deterministic, priority-ordered) ---
 
+    # Rule 0: Internal actions bypass guard entirely.
+    # The guard prevents false *user-facing* claims. Internal actions
+    # (initiative-based, heartbeat-internal, inner voice follow-ups)
+    # don't need execution evidence because they're not claimed to the user.
+    if conflict_outcome == "act_on_initiative":
+        constraints.append(GuardConstraint(
+            outcome="allow",
+            claim_type="internal-initiative",
+            reason_code="initiative-action-is-internal",
+            guard_line="",  # No guard needed for internal work
+        ))
+        trace.constraints = constraints
+        return trace
+
     # Rule 1: Block execution claims when no execution evidence
     # "I did X" / "I have done X" / "I am doing X externally" requires evidence
     if not execution_evidence and internal_only:

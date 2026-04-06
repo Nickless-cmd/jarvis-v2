@@ -22,7 +22,7 @@ from datetime import datetime, UTC
 # Outcome types
 # ---------------------------------------------------------------------------
 
-OUTCOMES = frozenset({"ask_user", "stay_quiet", "continue_internal", "defer", "quiet_hold"})
+OUTCOMES = frozenset({"ask_user", "stay_quiet", "continue_internal", "defer", "quiet_hold", "act_on_initiative"})
 
 
 @dataclass(slots=True)
@@ -249,6 +249,30 @@ def resolve_heartbeat_initiative_conflict(
         trace.summary = "No competing pressures."
         return trace
 
+    # Rule 0.5: Initiative-based action — if pending initiatives exist,
+    # allow internal action without requiring question gate or high liveness.
+    # This is the thought→action bridge: inner voice detects initiative,
+    # heartbeat can act on it without needing user permission (it's internal work).
+    if decision_type == "initiative":
+        try:
+            from apps.api.jarvis_api.services.initiative_queue import get_pending_initiatives
+            pending = get_pending_initiatives()
+            if pending:
+                if _quiet_initiative.active:
+                    _promote_quiet_initiative()
+                trace.outcome = "act_on_initiative"
+                trace.dominant_factor = f"pending-initiatives:{len(pending)}"
+                trace.reason_code = "initiative-detected"
+                trace.summary = f"Acting on {len(pending)} pending initiative(s) from inner voice."
+                return trace
+        except Exception:
+            pass
+        trace.outcome = "continue_internal"
+        trace.dominant_factor = "no-pending-initiatives"
+        trace.reason_code = "initiative-empty"
+        trace.summary = "Initiative decision but no pending initiatives — continuing internal."
+        return trace
+
     # Rule 1: Policy gate — if propose/ping not allowed, defer
     if decision_type in {"propose", "ping"} and not policy_allow_propose and not policy_allow_ping:
         _expire_quiet_initiative("policy-blocked")
@@ -441,6 +465,15 @@ def apply_conflict_resolution(
             **decision,
             "decision_type": "noop",
             "reason": f"conflict-quiet-hold: {trace.reason_code} — {decision.get('reason', '')}",
+            "summary": trace.summary,
+        }
+
+    if trace.outcome == "act_on_initiative":
+        return {
+            **decision,
+            "decision_type": "execute",
+            "execute_action": "act_on_initiative",
+            "reason": f"conflict-initiative: {trace.reason_code} — {decision.get('reason', '')}",
             "summary": trace.summary,
         }
 

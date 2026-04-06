@@ -27,6 +27,7 @@ _LIFE_PHASES = {
         "description": "Dybdearbejde — eksperimentér, analysér, lær",
         "suggested_actions": [
             "evaluate_self_experiments",
+            "generate_curriculum",
             "explore_own_codebase",
             "run_mirror_reflection",
         ],

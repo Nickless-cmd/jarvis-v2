@@ -21,7 +21,7 @@ def cheap_lane_execution_truth() -> dict[str, object]:
     return {
         "active": True,
         "lane": lane,
-        "consumer": "provider-router-cheap-lane",
+        "consumer": "provider-router-internal-fallback-lane",
         "status": status,
         "can_execute": status == "ready",
         "target": target,
@@ -649,14 +649,14 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
 def _load_provider_api_key(*, provider: str, profile: str) -> str:
     state = get_provider_state(profile=profile, provider=provider)
     if state is None:
-        raise RuntimeError(f"{provider} cheap lane not ready: missing-profile")
+        raise RuntimeError(f"{provider} internal fallback lane not ready: missing-profile")
     credentials_path = Path(str(state.get("credentials_path", "")))
     if not credentials_path.exists():
-        raise RuntimeError(f"{provider} cheap lane not ready: missing-credentials")
+        raise RuntimeError(f"{provider} internal fallback lane not ready: missing-credentials")
     credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
     api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
     if not api_key:
-        raise RuntimeError(f"{provider} cheap lane not ready: missing-credentials")
+        raise RuntimeError(f"{provider} internal fallback lane not ready: missing-credentials")
     return api_key
 
 
@@ -709,7 +709,7 @@ def _extract_output_text(data: dict) -> str:
     text = "\n".join(parts).strip()
     if text:
         return text
-    raise RuntimeError("Cheap lane execution returned no output_text")
+    raise RuntimeError("Internal fallback lane execution returned no output_text")
 
 
 def _extract_openrouter_text(data: dict) -> str:
@@ -721,7 +721,7 @@ def _extract_openrouter_text(data: dict) -> str:
         text = str(message.get("content") or "").strip()
         if text:
             return text
-    raise RuntimeError("Cheap lane execution returned no OpenRouter text")
+    raise RuntimeError("Internal fallback lane execution returned no OpenRouter text")
 
 
 def _load_github_copilot_token(*, profile: str) -> str:

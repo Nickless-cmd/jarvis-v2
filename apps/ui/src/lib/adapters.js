@@ -71,7 +71,7 @@ function normalizeMissionControlOperationsPayload(payload = {}) {
     },
     lanes: {
       visible: normalizeLane('Visible', runtime?.visible_execution || {}, providerRouter?.main_agent_target || {}),
-      cheap: normalizeLane('Cheap', runtime?.cheap_lane_execution || {}, providerRouter?.lane_targets?.cheap || {}),
+      cheap: normalizeLane('Internal Fallback', runtime?.cheap_lane_execution || {}, providerRouter?.lane_targets?.cheap || {}),
       coding: normalizeLane('Coding', runtime?.coding_lane_execution || {}, providerRouter?.lane_targets?.coding || {}),
       local: normalizeLane('Local', runtime?.local_lane_execution || {}, providerRouter?.lane_targets?.local || {}),
     },
@@ -2582,7 +2582,7 @@ function buildMissionControl(runtime, visibleExecution, selection) {
     ],
     events: [
       `main agent: ${selection.currentProvider || 'unknown'} / ${selection.currentModel || 'unknown'}`,
-      `cheap lane: ${cheapLane.status || 'unknown'}`,
+      `internal fallback lane: ${cheapLane.status || 'unknown'}`,
       `coding lane: ${codingLane.status || 'unknown'}`,
       `local lane: ${localLane.status || 'unknown'}`,
     ],

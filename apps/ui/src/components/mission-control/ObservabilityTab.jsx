@@ -37,7 +37,7 @@ export function ObservabilityTab({ data, onOpenEvent, onOpenRun }) {
   const tracePresent = hasVisibleTrace(visibleTrace)
   const healthItems = [
     ['Visible', data?.providerHealth?.visible],
-    ['Cheap', data?.providerHealth?.cheap],
+    ['Internal Fallback', data?.providerHealth?.cheap],
     ['Coding', data?.providerHealth?.coding],
     ['Local', data?.providerHealth?.local],
   ]

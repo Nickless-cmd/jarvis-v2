@@ -237,7 +237,7 @@ def test_non_destructive_exec_allows_common_system_inspection_commands(
     caps_mod = importlib.import_module("core.tools.workspace_capabilities")
     caps_mod = importlib.reload(caps_mod)
 
-    for command_text in ("lscpu", "free -h", "lsblk", "df -h", "nproc", "uptime"):
+    for command_text in ("lscpu", "lshw", "free -h", "lsblk", "df -h", "nproc", "uptime"):
         result = caps_mod.invoke_workspace_capability(
             "tool:run-non-destructive-command",
             command_text=command_text,
@@ -431,9 +431,9 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
     assert "command_from: user-message" in default_tools
     assert "command_from: user-message" in template_tools
     assert "Tiny bounded git read/inspect commands such as `git status`, `git diff --stat`, `git diff --name-only`, `git log --oneline -n N`, and `git branch --show-current` are allowed." in default_tools
-    assert "Common system-inspection commands such as `lscpu`, `free`, `lsblk`, `df`, `lspci`, `nvidia-smi`, `nproc`, `uptime`, and `hostnamectl` are also allowed." in default_tools
+    assert "Common system-inspection commands such as `lscpu`, `lshw`, `free`, `lsblk`, `df`, `lspci`, `nvidia-smi`, `nproc`, `uptime`, and `hostnamectl` are also allowed." in default_tools
     assert "allows a tiny bounded git read/inspect subset" in template_tools
-    assert "allows common system-inspection commands such as `lscpu`, `free`, `lsblk`, `df`, `lspci`, `nvidia-smi`, `nproc`, `uptime`, and `hostnamectl`" in template_tools
+    assert "allows common system-inspection commands such as `lscpu`, `lshw`, `free`, `lsblk`, `df`, `lspci`, `nvidia-smi`, `nproc`, `uptime`, and `hostnamectl`" in template_tools
     assert "permits read-only shell composition such as pipes, `&&`, `||`, `;`, and globbing when every segment stays non-destructive" in template_tools
     assert "runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`." in default_tools
     assert "runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`." in template_tools

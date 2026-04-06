@@ -150,6 +150,11 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "generate_counterfactual_dreams",
     "update_anticipatory_context",
     "check_seed_activation",
+    # Project Alive — living heartbeat actions
+    "explore_own_codebase",
+    "review_recent_conversations",
+    "write_growth_journal",
+    "propose_identity_evolution",
 }
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
@@ -3509,6 +3514,81 @@ def _execute_heartbeat_internal_action(
             }
         except Exception as exc:
             return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "seed-error"}
+
+    # --- Project Alive: living heartbeat actions ---
+
+    if action_type == "explore_own_codebase":
+        try:
+            from apps.api.jarvis_api.services.mirror_engine import generate_mirror_insight
+            insight = generate_mirror_insight(
+                open_loop_count=0,
+                top_loop_summary="explore own codebase architecture",
+            )
+            return {
+                "status": "executed",
+                "summary": f"Codebase reflection: {insight.get('insight', '')[:120]}",
+                "artifact": json.dumps(insight, ensure_ascii=False, default=str),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "explore-error"}
+
+    if action_type == "review_recent_conversations":
+        try:
+            from core.runtime.db import (
+                list_cognitive_user_emotional_states,
+                list_cognitive_experiential_memories,
+            )
+            moods = list_cognitive_user_emotional_states(limit=10)
+            memories = list_cognitive_experiential_memories(limit=5)
+            mood_dist = {}
+            for m in moods:
+                mood = m.get("detected_mood", "neutral")
+                mood_dist[mood] = mood_dist.get(mood, 0) + 1
+            topics = list({m.get("topic", "") for m in memories if m.get("topic")})[:5]
+            return {
+                "status": "executed",
+                "summary": f"Reviewed {len(moods)} mood signals, {len(memories)} experiences. Moods: {mood_dist}. Topics: {topics}",
+                "artifact": json.dumps({"moods": mood_dist, "topics": topics}, ensure_ascii=False),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "review-error"}
+
+    if action_type == "write_growth_journal":
+        try:
+            from apps.api.jarvis_api.services.chronicle_engine import maybe_write_chronicle_entry
+            from apps.api.jarvis_api.services.mirror_engine import generate_mirror_insight
+            insight = generate_mirror_insight()
+            chronicle = maybe_write_chronicle_entry()
+            return {
+                "status": "executed",
+                "summary": f"Growth journal: {insight.get('insight', '')[:80]}. Chronicle: {'written' if chronicle else 'current'}.",
+                "artifact": json.dumps({"insight": insight, "chronicle": chronicle}, ensure_ascii=False, default=str),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "journal-error"}
+
+    if action_type == "propose_identity_evolution":
+        try:
+            from apps.api.jarvis_api.services.contract_evolution import maybe_propose_identity_evolution
+            result = maybe_propose_identity_evolution()
+            if result:
+                return {
+                    "status": "executed",
+                    "summary": f"Identity proposal: {result.get('proposal_id', '')} — {result.get('proposed_addition', '')[:80]}",
+                    "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                    "blocked_reason": "",
+                }
+            return {
+                "status": "executed",
+                "summary": "No identity evolution proposal needed right now.",
+                "artifact": "",
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "evolution-error"}
 
     return {
         "status": "blocked",

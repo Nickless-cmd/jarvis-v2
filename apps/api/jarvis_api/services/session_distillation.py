@@ -337,6 +337,12 @@ def distill_session_carry(
         },
     )
 
+    # --- Cognitive architecture: session-level analysis ---
+    _analyze_session_for_cognitive_systems(
+        session_id=session_id,
+        run_id=run_id,
+    )
+
     return {
         "distillation_id": distillation_id,
         "private_brain_count": len(private_items),
@@ -348,6 +354,67 @@ def distill_session_carry(
         "distillation": distillation,
         "summary": distill_summary,
     }
+
+
+def _analyze_session_for_cognitive_systems(
+    *,
+    session_id: str,
+    run_id: str,
+) -> None:
+    """Analyze a completed session for cognitive accumulation systems.
+
+    Fires as part of distill_session_carry — runs the user-facing
+    dimension of session analysis (mood, rhythm, relationship, seeds).
+    """
+    import contextlib
+
+    # 1. Classify conversation rhythm for this session
+    with contextlib.suppress(Exception):
+        from apps.api.jarvis_api.services.conversation_rhythm import track_conversation_rhythm
+        from core.runtime.db import (
+            get_latest_cognitive_user_emotional_state,
+            list_cognitive_user_emotional_states,
+        )
+        recent_moods = list_cognitive_user_emotional_states(limit=10)
+        correction_count = sum(
+            1 for m in recent_moods
+            if m.get("detected_mood") in ("frustrated", "impatient")
+        )
+        track_conversation_rhythm(
+            run_id=run_id,
+            session_id=session_id,
+            correction_count=correction_count,
+            outcome_status="completed",
+        )
+
+    # 2. Create session-level experiential memory
+    with contextlib.suppress(Exception):
+        from apps.api.jarvis_api.services.experiential_memory import (
+            create_experiential_memory_from_run,
+        )
+        from core.runtime.db import get_latest_cognitive_user_emotional_state
+        mood_state = get_latest_cognitive_user_emotional_state()
+        user_mood = str(mood_state.get("detected_mood", "neutral")) if mood_state else "neutral"
+        create_experiential_memory_from_run(
+            run_id=run_id,
+            session_id=session_id,
+            user_message=f"Session distillation for {session_id}",
+            assistant_response="Session completed",
+            outcome_status="completed",
+            user_mood=user_mood,
+        )
+
+    # 3. Update relationship texture with session metrics
+    with contextlib.suppress(Exception):
+        from apps.api.jarvis_api.services.relationship_texture import (
+            update_relationship_from_run,
+        )
+        update_relationship_from_run(
+            run_id=run_id,
+            user_message="session end",
+            assistant_response="",
+            outcome_status="completed",
+        )
 
 
 # ---------------------------------------------------------------------------

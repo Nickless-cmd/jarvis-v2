@@ -1563,8 +1563,35 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | resumed_loops={loop_summary.get('resumed_count') or 0}"
             ),
             "- Heartbeat may only propose or act within runtime-approved scope.",
+            _heartbeat_living_context_line(),
         ]
     )
+
+
+def _heartbeat_living_context_line() -> str:
+    """Add living heartbeat cycle phase + user mood to heartbeat prompt."""
+    parts = []
+    try:
+        from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
+        phase = determine_life_phase()
+        parts.append(
+            f"life_phase={phase.get('phase', 'unknown')}"
+            f" | mood_tendency={phase.get('mood_tendency', 'neutral')}"
+            f" | suggested={','.join(phase.get('suggested_actions', [])[:3])}"
+        )
+    except Exception:
+        parts.append("life_phase=unknown")
+    try:
+        from core.runtime.db import get_latest_cognitive_user_emotional_state
+        mood = get_latest_cognitive_user_emotional_state()
+        if mood:
+            parts.append(
+                f"user_mood={mood.get('detected_mood', 'neutral')}"
+                f" | user_mood_adjustment={mood.get('response_adjustment', '')[:60]}"
+            )
+    except Exception:
+        pass
+    return f"- {' | '.join(parts)}" if parts else ""
 
 
 def _heartbeat_due_summary(context: dict[str, object]) -> str:

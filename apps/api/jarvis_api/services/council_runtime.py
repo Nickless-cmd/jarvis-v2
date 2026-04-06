@@ -143,7 +143,8 @@ def _role_position(
 
     position = "hold"
     if role_name == "critic":
-        if str(epistemic.get("wrongness_state") or "clear") in {"strained", "off"}:
+        # "off" = no active assessment (neutral), only "strained" = actual concern
+        if str(epistemic.get("wrongness_state") or "clear") == "strained":
             position = "constrain"
         elif current_status == "blocked":
             position = "hold"

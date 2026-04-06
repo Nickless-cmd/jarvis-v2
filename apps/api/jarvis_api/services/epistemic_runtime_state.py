@@ -230,7 +230,6 @@ def _derive_wrongness_state(
     if (
         str(conflict_trace.get("outcome") or "none") in {"defer", "quiet_hold"}
         or deception_guard.get("has_reframes")
-        or str(affective_meta_state.get("state") or "settled") == "tense"
     ):
         return "off"
     if (

@@ -74,6 +74,7 @@ def _select_mode(
     brain_count: int,
     open_loop_count: int,
     liveness_state: str,
+    contradiction_active: bool,
 ) -> dict[str, str]:
     """Select the bounded mental mode from runtime state."""
     if visible_active:
@@ -81,6 +82,9 @@ def _select_mode(
 
     if question_gate_active or approval_pending:
         return {"mode": "clarify", "reason": "Question gate or approval gate is active — bounded inquiry mode"}
+
+    if contradiction_active:
+        return {"mode": "clarify", "reason": "Executive contradiction is active — pause and re-check before carrying forward"}
 
     if brain_count > 6 and open_loop_count <= 1:
         return {"mode": "consolidate", "reason": "Heavy brain carry with low loop pressure — time to settle"}
@@ -108,6 +112,16 @@ def _select_salient_items(
     open_loop_items: list[dict[str, object]],
     inner_forces: list[dict[str, object]],
     gate_items: list[dict[str, object]],
+    relation_items: list[dict[str, object]],
+    world_model_items: list[dict[str, object]],
+    remembered_fact_items: list[dict[str, object]],
+    user_understanding_items: list[dict[str, object]],
+    contradiction_items: list[dict[str, object]],
+    meaning_items: list[dict[str, object]],
+    metabolism_items: list[dict[str, object]],
+    release_items: list[dict[str, object]],
+    self_review_items: list[dict[str, object]],
+    dream_items: list[dict[str, object]],
 ) -> list[dict[str, str]]:
     """Select the most salient items across all sources.
 
@@ -122,6 +136,51 @@ def _select_salient_items(
         summary = str(gate.get("summary") or gate.get("question_gate_summary") or "")[:_MAX_SLICE_CHARS]
         if state and summary:
             items.append({"source": "question-gate", "summary": summary, "temporal": "immediate"})
+
+    for contradiction in contradiction_items[:1]:
+        summary = str(
+            contradiction.get("control_summary")
+            or contradiction.get("summary")
+            or contradiction.get("title")
+            or ""
+        )[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "executive-contradiction", "summary": summary, "temporal": "immediate"})
+
+    for world in world_model_items[:1]:
+        summary = str(world.get("summary") or world.get("title") or "")[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "world-model", "summary": summary, "temporal": "current-session"})
+
+    for relation in relation_items[:1]:
+        summary = str(
+            relation.get("relation_summary")
+            or relation.get("summary")
+            or relation.get("title")
+            or ""
+        )[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "relation-continuity", "summary": summary, "temporal": "carried-across-sessions"})
+
+    for user_item in user_understanding_items[:1]:
+        summary = str(
+            user_item.get("signal_summary")
+            or user_item.get("summary")
+            or user_item.get("title")
+            or ""
+        )[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "user-understanding", "summary": summary, "temporal": "carried-across-sessions"})
+
+    for fact in remembered_fact_items[:1]:
+        summary = str(
+            fact.get("fact_summary")
+            or fact.get("summary")
+            or fact.get("title")
+            or ""
+        )[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "remembered-fact", "summary": summary, "temporal": "carried-across-sessions"})
 
     # Open loops — they anchor session continuity
     for loop in open_loop_items[:2]:
@@ -145,6 +204,36 @@ def _select_salient_items(
         if label:
             items.append({"source": "inner-force", "summary": f"{label} ({status})", "temporal": "slow-burn"})
 
+    for meaning in meaning_items[:1]:
+        summary = str(meaning.get("meaning_summary") or meaning.get("summary") or "")[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "meaning-significance", "summary": summary, "temporal": "slow-burn"})
+
+    for self_review in self_review_items[:1]:
+        summary = str(
+            self_review.get("outcome_summary")
+            or self_review.get("summary")
+            or self_review.get("title")
+            or ""
+        )[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "self-review", "summary": summary, "temporal": "slow-burn"})
+
+    for dream in dream_items[:1]:
+        summary = str(dream.get("summary") or dream.get("title") or "")[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "dream-influence", "summary": summary, "temporal": "slow-burn"})
+
+    for metabolism in metabolism_items[:1]:
+        summary = str(metabolism.get("metabolism_summary") or metabolism.get("summary") or "")[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "metabolism", "summary": summary, "temporal": "immediate"})
+
+    for release in release_items[:1]:
+        summary = str(release.get("release_summary") or release.get("summary") or "")[:_MAX_SLICE_CHARS]
+        if summary:
+            items.append({"source": "release-marker", "summary": summary, "temporal": "slow-burn"})
+
     return items[:_MAX_SALIENT_ITEMS]
 
 
@@ -157,6 +246,7 @@ def _select_affordances(
     active_capabilities: list[dict[str, object]],
     gated_items: list[dict[str, object]],
     mode: str,
+    contradiction_active: bool,
 ) -> dict[str, object]:
     """Build the current affordance map — what's possible, appropriate, or gated NOW."""
     available_now = []
@@ -178,12 +268,20 @@ def _select_affordances(
                 appropriate_now.append({"id": cap_id, "label": label})
             elif mode == "consolidate" and cap_id in {"private-brain-continuity", "session-distillation"}:
                 appropriate_now.append({"id": cap_id, "label": label})
+            elif mode == "clarify" and cap_id in {"visible-chat-lane", "runtime-task-ledger", "runtime-flow-ledger"}:
+                appropriate_now.append({"id": cap_id, "label": label})
 
     for item in gated_items:
         gated_now.append({
             "id": str(item.get("id") or ""),
             "label": str(item.get("label") or ""),
             "gate": str(item.get("mutability") or "approval-gated"),
+        })
+
+    if contradiction_active:
+        not_recommended.append({
+            "id": "contradiction-blind-execution",
+            "label": "Blind carry-forward while contradiction is active",
         })
 
     return {
@@ -221,6 +319,22 @@ def build_cognitive_frame(
         visible_status = _safe_visible_status()
         liveness = _safe_liveness_snapshot(heartbeat_state=heartbeat_state)
         experiential_support = _safe_experiential_support()
+        relation_state = _safe_relation_state()
+        relation_continuity = _safe_relation_continuity()
+        self_narrative = _safe_self_narrative_continuity()
+        world_model = _safe_world_model()
+        remembered = _safe_remembered_facts()
+        user_understanding = _safe_user_understanding()
+        contradiction = _safe_executive_contradiction()
+        meaning = _safe_meaning_significance()
+        metabolism = _safe_metabolism()
+        release = _safe_release_markers()
+        attachment = _safe_attachment_topology()
+        loyalty = _safe_loyalty_gradient()
+        diary = _safe_diary_synthesis()
+        chronicle = _safe_chronicle_consolidation()
+        review = _safe_self_review()
+        dream = _safe_dream_family()
 
         # --- Extract summaries ---
         brain_excerpts = brain_context.get("excerpts") or []
@@ -233,6 +347,27 @@ def build_cognitive_frame(
 
         gate_items = gate_surface.get("items") or []
         gate_active = bool(gate_surface.get("active"))
+        contradiction_items = contradiction.get("items") or []
+        contradiction_active = bool(contradiction.get("active"))
+        relation_items = [
+            *((relation_state.get("items") or [])[:1]),
+            *((relation_continuity.get("items") or [])[:1]),
+            *((self_narrative.get("items") or [])[:1]),
+        ]
+        world_items = world_model.get("items") or []
+        remembered_items = remembered.get("items") or []
+        user_items = user_understanding.get("items") or []
+        meaning_items = [
+            *((meaning.get("items") or [])[:1]),
+            *((attachment.get("items") or [])[:1]),
+            *((loyalty.get("items") or [])[:1]),
+            *((diary.get("items") or [])[:1]),
+            *((chronicle.get("items") or [])[:1]),
+        ]
+        metabolism_items = metabolism.get("items") or []
+        release_items = release.get("items") or []
+        self_review_items = review.get("items") or []
+        dream_items = dream.get("items") or []
 
         tension_active = bool(tension_surface.get("active"))
         tension_intensity = str((tension_surface.get("summary") or {}).get("current_intensity") or "low")
@@ -271,6 +406,7 @@ def build_cognitive_frame(
         brain_count=brain_count,
         open_loop_count=open_loop_count,
         liveness_state=liveness_state,
+        contradiction_active=contradiction_active,
     )
 
     salient = _select_salient_items(
@@ -278,12 +414,23 @@ def build_cognitive_frame(
         open_loop_items=loop_items,
         inner_forces=inner_forces,
         gate_items=gate_items,
+        relation_items=relation_items,
+        world_model_items=world_items,
+        remembered_fact_items=remembered_items,
+        user_understanding_items=user_items,
+        contradiction_items=contradiction_items,
+        meaning_items=meaning_items,
+        metabolism_items=metabolism_items,
+        release_items=release_items,
+        self_review_items=self_review_items,
+        dream_items=dream_items,
     )
 
     affordances = _select_affordances(
         active_capabilities=active_capabilities,
         gated_items=gated_items,
         mode=mode["mode"],
+        contradiction_active=contradiction_active,
     )
 
     temporal = _classify_temporal_depth(
@@ -301,6 +448,14 @@ def build_cognitive_frame(
 
     # Active constraints (compact)
     constraints_summary = [str(c.get("label") or "")[:60] for c in constraint_items[:4]]
+    if contradiction_active:
+        constraints_summary = [
+            *[
+                str(item.get("title") or item.get("summary") or "Executive contradiction active")[:60]
+                for item in contradiction_items[:1]
+            ],
+            *constraints_summary,
+        ][:5]
 
     return {
         "mode": mode,
@@ -318,6 +473,18 @@ def build_cognitive_frame(
             "available_affordances": len(affordances["available_now"]),
             "gated_affordances": len(affordances["gated_now"]),
             "inner_forces": len(inner_forces),
+            "integrated_signal_inputs": (
+                len(relation_items)
+                + len(world_items)
+                + len(remembered_items)
+                + len(user_items)
+                + len(contradiction_items)
+                + len(meaning_items)
+                + len(metabolism_items)
+                + len(release_items)
+                + len(self_review_items)
+                + len(dream_items)
+            ),
         },
         "summary": _build_frame_summary(
             mode=mode,
@@ -506,3 +673,257 @@ def _safe_liveness_snapshot(
     except Exception:
         pass
     return {"liveness_state": "quiet", "liveness_score": 0}
+
+
+def _safe_relation_state() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.relation_state_signal_tracking import (
+            build_runtime_relation_state_signal_surface,
+        )
+        return build_runtime_relation_state_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_relation_continuity() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.relation_continuity_signal_tracking import (
+            build_runtime_relation_continuity_signal_surface,
+        )
+        return build_runtime_relation_continuity_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_self_narrative_continuity() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.self_narrative_continuity_signal_tracking import (
+            build_runtime_self_narrative_continuity_signal_surface,
+        )
+        return build_runtime_self_narrative_continuity_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_world_model() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.world_model_signal_tracking import (
+            build_runtime_world_model_signal_surface,
+        )
+        return build_runtime_world_model_signal_surface(limit=3)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_remembered_facts() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.remembered_fact_signal_tracking import (
+            build_runtime_remembered_fact_signal_surface,
+        )
+        return build_runtime_remembered_fact_signal_surface(limit=3)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_user_understanding() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.user_understanding_signal_tracking import (
+            build_runtime_user_understanding_signal_surface,
+        )
+        return build_runtime_user_understanding_signal_surface(limit=3)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_executive_contradiction() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import (
+            build_runtime_executive_contradiction_signal_surface,
+        )
+        return build_runtime_executive_contradiction_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_meaning_significance() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.meaning_significance_signal_tracking import (
+            build_runtime_meaning_significance_signal_surface,
+        )
+        return build_runtime_meaning_significance_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_metabolism() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
+            build_runtime_metabolism_state_signal_surface,
+        )
+        return build_runtime_metabolism_state_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_release_markers() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.release_marker_signal_tracking import (
+            build_runtime_release_marker_signal_surface,
+        )
+        return build_runtime_release_marker_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_attachment_topology() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.attachment_topology_signal_tracking import (
+            build_runtime_attachment_topology_signal_surface,
+        )
+        return build_runtime_attachment_topology_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_loyalty_gradient() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.loyalty_gradient_signal_tracking import (
+            build_runtime_loyalty_gradient_signal_surface,
+        )
+        return build_runtime_loyalty_gradient_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_diary_synthesis() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+            build_diary_synthesis_signal_surface,
+        )
+        return build_diary_synthesis_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_chronicle_consolidation() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.chronicle_consolidation_signal_tracking import (
+            build_runtime_chronicle_consolidation_signal_surface,
+        )
+        return build_runtime_chronicle_consolidation_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_self_review() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.self_review_outcome_tracking import (
+            build_runtime_self_review_outcome_surface,
+        )
+        outcome = build_runtime_self_review_outcome_surface(limit=2)
+    except Exception:
+        outcome = {"active": False, "items": [], "summary": {}}
+    try:
+        from apps.api.jarvis_api.services.self_review_signal_tracking import (
+            build_runtime_self_review_signal_surface,
+        )
+        signal = build_runtime_self_review_signal_surface(limit=2)
+    except Exception:
+        signal = {"active": False, "items": [], "summary": {}}
+    try:
+        from apps.api.jarvis_api.services.self_review_cadence_signal_tracking import (
+            build_runtime_self_review_cadence_signal_surface,
+        )
+        cadence = build_runtime_self_review_cadence_signal_surface(limit=2)
+    except Exception:
+        cadence = {"active": False, "items": [], "summary": {}}
+    try:
+        from apps.api.jarvis_api.services.self_review_record_tracking import (
+            build_runtime_self_review_record_surface,
+        )
+        record = build_runtime_self_review_record_surface(limit=2)
+    except Exception:
+        record = {"active": False, "items": [], "summary": {}}
+    return {
+        "active": any(
+            bool(surface.get("active")) or bool(surface.get("items"))
+            for surface in (outcome, signal, cadence, record)
+        ),
+        "items": [
+            *((outcome.get("items") or [])[:1]),
+            *((signal.get("items") or [])[:1]),
+            *((cadence.get("items") or [])[:1]),
+            *((record.get("items") or [])[:1]),
+        ],
+        "summary": {
+            "sources": [
+                source
+                for source, surface in (
+                    ("outcome", outcome),
+                    ("signal", signal),
+                    ("cadence", cadence),
+                    ("record", record),
+                )
+                if surface.get("active") or surface.get("items")
+            ],
+        },
+    }
+
+
+def _safe_dream_family() -> dict[str, object]:
+    surfaces: list[dict[str, object]] = []
+    try:
+        from apps.api.jarvis_api.services.dream_hypothesis_signal_tracking import (
+            build_runtime_dream_hypothesis_signal_surface,
+        )
+        surfaces.append(build_runtime_dream_hypothesis_signal_surface(limit=2))
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.dream_adoption_candidate_tracking import (
+            build_runtime_dream_adoption_candidate_surface,
+        )
+        surfaces.append(build_runtime_dream_adoption_candidate_surface(limit=2))
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.dream_influence_proposal_tracking import (
+            build_runtime_dream_influence_proposal_surface,
+        )
+        surfaces.append(build_runtime_dream_influence_proposal_surface(limit=2))
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.dream_influence_runtime import (
+            build_dream_influence_runtime_surface,
+        )
+        surfaces.append(build_dream_influence_runtime_surface())
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.dream_carry_over import (
+            build_dream_carry_over_surface,
+        )
+        surfaces.append(build_dream_carry_over_surface())
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.dream_articulation import (
+            build_dream_articulation_surface,
+        )
+        surfaces.append(build_dream_articulation_surface())
+    except Exception:
+        pass
+
+    items: list[dict[str, object]] = []
+    for surface in surfaces:
+        items.extend((surface.get("items") or [])[:1])
+        if not surface.get("items"):
+            summary = surface.get("summary")
+            if isinstance(summary, str) and summary:
+                items.append({"summary": summary, "title": summary})
+    return {
+        "active": any(bool(surface.get("active")) or bool(surface.get("items")) for surface in surfaces),
+        "items": items[:4],
+        "summary": {"sources": len(surfaces)},
+    }

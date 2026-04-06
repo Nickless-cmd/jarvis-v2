@@ -8,6 +8,10 @@ from apps.api.jarvis_api.services.heartbeat_runtime import (
     start_heartbeat_scheduler,
     stop_heartbeat_scheduler,
 )
+from apps.api.jarvis_api.services.runtime_hook_runtime import (
+    start_runtime_hook_runtime,
+    stop_runtime_hook_runtime,
+)
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.live import router as live_router
@@ -37,6 +41,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def on_startup() -> None:
         logger.info("jarvis api startup begin")
+        start_runtime_hook_runtime()
         start_heartbeat_scheduler()
         event_bus.publish("runtime.started", {"component": "api"})
         logger.info("jarvis api startup complete")
@@ -45,6 +50,7 @@ def create_app() -> FastAPI:
     async def on_shutdown() -> None:
         logger.info("jarvis api shutdown begin")
         stop_heartbeat_scheduler()
+        stop_runtime_hook_runtime()
         logger.info("jarvis api shutdown complete")
 
     return app

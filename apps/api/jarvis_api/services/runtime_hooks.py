@@ -33,6 +33,9 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
     event_kind = str(event.get("kind") or "")
     payload = dict(event.get("payload") or {})
     created_at = str(event.get("created_at") or datetime.now(UTC).isoformat())
+    existing = runtime_db.get_runtime_hook_dispatch(event_id)
+    if existing is not None:
+        return existing
 
     if event_kind == "heartbeat.initiative_pushed":
         focus = str(payload.get("focus") or "").strip() or "Follow queued initiative"

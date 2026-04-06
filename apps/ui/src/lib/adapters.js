@@ -3671,6 +3671,43 @@ export const backend = {
           items: (continuity.runtime_awareness_signals?.items || []).map(normalizeRuntimeAwarenessSignal),
           recentHistory: (continuity.runtime_awareness_signals?.recent_history || []).map(normalizeRuntimeAwarenessHistoryItem),
         },
+        runtimeWork: {
+          active: Boolean(continuity.runtime_work?.active),
+          summary: continuity.runtime_work?.summary || {},
+          tasks: {
+            queued: (continuity.runtime_work?.tasks?.queued || []).map((item) => normalizeJarvisItem(item, {
+              source: '/mc/runtime.runtime_work.task',
+              summary: item.goal || item.result_summary || 'Queued runtime task',
+            })),
+            running: (continuity.runtime_work?.tasks?.running || []).map((item) => normalizeJarvisItem(item, {
+              source: '/mc/runtime.runtime_work.task',
+              summary: item.goal || item.result_summary || 'Running runtime task',
+            })),
+            blocked: (continuity.runtime_work?.tasks?.blocked || []).map((item) => normalizeJarvisItem(item, {
+              source: '/mc/runtime.runtime_work.task',
+              summary: item.blocked_reason || item.goal || 'Blocked runtime task',
+            })),
+          },
+          flows: {
+            queued: (continuity.runtime_work?.flows?.queued || []).map((item) => normalizeJarvisItem(item, {
+              source: '/mc/runtime.runtime_work.flow',
+              summary: item.current_step || item.next_action || 'Queued runtime flow',
+            })),
+            running: (continuity.runtime_work?.flows?.running || []).map((item) => normalizeJarvisItem(item, {
+              source: '/mc/runtime.runtime_work.flow',
+              summary: item.current_step || item.next_action || 'Running runtime flow',
+            })),
+            blocked: (continuity.runtime_work?.flows?.blocked || []).map((item) => normalizeJarvisItem(item, {
+              source: '/mc/runtime.runtime_work.flow',
+              summary: item.last_error || item.current_step || 'Blocked runtime flow',
+            })),
+          },
+          browserBody: normalizeJarvisItem(continuity.runtime_work?.browser_body || {}, {
+            source: '/mc/runtime.runtime_work.browser_body',
+            summary: continuity.runtime_work?.browser_body?.last_url || continuity.runtime_work?.browser_body?.status || 'No browser body',
+          }),
+          layeredMemory: continuity.runtime_work?.layered_memory || {},
+        },
         selfSystemCodeAwareness: normalizeSelfSystemCodeAwareness(selfSystemCodeAwarenessSource || {}),
       },
       heartbeat: {

@@ -45,3 +45,28 @@ def test_runtime_tasks_persist_and_update(isolated_runtime) -> None:
 
     tasks = runtime_tasks.list_tasks(status="running")
     assert any(item["task_id"] == task["task_id"] for item in tasks)
+
+
+def test_runtime_tasks_priority_uses_standing_orders_and_daily_memory(isolated_runtime) -> None:
+    runtime_tasks = __import__(
+        "apps.api.jarvis_api.services.runtime_tasks",
+        fromlist=["create_task"],
+    )
+    paths = isolated_runtime.workspace_bootstrap.workspace_memory_paths()
+
+    paths["daily_memory"].unlink(missing_ok=True)
+    standing_orders_path = paths["workspace_dir"] / "STANDING_ORDERS.md"
+    standing_orders_path.write_text(
+        "Maintain memory continuity.\nFollow repo work proactively.\n",
+        encoding="utf-8",
+    )
+
+    task = runtime_tasks.create_task(
+        kind="memory-continuity",
+        goal="Maintain memory continuity for the repo",
+        origin="hook:heartbeat.tick_completed",
+        priority="medium",
+        owner="test",
+    )
+
+    assert task["priority"] == "high"

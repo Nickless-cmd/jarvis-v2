@@ -259,6 +259,15 @@ from apps.api.jarvis_api.services.session_distillation import (
 from apps.api.jarvis_api.services.runtime_self_knowledge import (
     build_runtime_self_knowledge_map,
 )
+from apps.api.jarvis_api.services.runtime_browser_body import (
+    list_browser_bodies,
+)
+from apps.api.jarvis_api.services.runtime_flows import (
+    list_flows,
+)
+from apps.api.jarvis_api.services.runtime_tasks import (
+    list_tasks,
+)
 from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
     build_cognitive_frame,
 )
@@ -287,6 +296,7 @@ from core.identity.candidate_workflow import (
     reject_runtime_contract_candidate,
 )
 from core.identity.visible_identity import load_visible_identity_summary
+from core.identity.workspace_bootstrap import workspace_memory_paths
 from core.memory.private_inner_interplay import build_private_inner_interplay
 from core.memory.private_initiative_tension import build_private_initiative_tension
 from core.memory.private_operational_preference import (
@@ -580,6 +590,7 @@ def _mc_runtime_uncached() -> dict:
             "runtime_relevance_decisions": build_runtime_relevance_decision_surface(),
             "runtime_memory_selections": build_runtime_memory_selection_surface(),
             "runtime_inner_visible_prompt_bridges": build_runtime_inner_visible_prompt_bridge_surface(),
+            "runtime_work": _runtime_work_surface(),
             "paths": {
                 "config_dir": _path_state(CONFIG_DIR),
                 "settings_file": _path_state(SETTINGS_FILE),
@@ -940,6 +951,7 @@ def mc_jarvis() -> dict:
     selfhood_proposals = dict(runtime.get("runtime_selfhood_proposals") or {})
     world_model_signals = dict(runtime.get("runtime_world_model_signals") or {})
     runtime_awareness_signals = dict(runtime.get("runtime_awareness_signals") or {})
+    runtime_work = dict(runtime.get("runtime_work") or {})
     emergent_signals = dict(runtime.get("runtime_emergent_signals") or {})
     heartbeat = dict(runtime.get("heartbeat_runtime") or {})
     private_brain = build_private_brain_surface()
@@ -977,6 +989,7 @@ def mc_jarvis() -> dict:
                 promotion_signal,
                 world_model_signals,
                 runtime_awareness_signals,
+                runtime_work,
             ),
             "emergent": _jarvis_emergent_summary(emergent_signals),
             "heartbeat": _jarvis_heartbeat_summary(heartbeat),
@@ -1065,6 +1078,7 @@ def mc_jarvis() -> dict:
             "remembered_fact_signals": remembered_fact_signals,
             "world_model_signals": world_model_signals,
             "runtime_awareness_signals": runtime_awareness_signals,
+            "runtime_work": runtime_work,
         },
         "heartbeat": heartbeat,
         "brain": {
@@ -2194,11 +2208,13 @@ def _jarvis_continuity_summary(
     promotion_signal: dict,
     world_model_signals: dict | None = None,
     runtime_awareness_signals: dict | None = None,
+    runtime_work: dict | None = None,
 ) -> dict[str, str]:
     relation = relation_state.get("current") or {}
     signal = promotion_signal.get("current") or {}
     world_summary = (world_model_signals or {}).get("summary") or {}
     runtime_awareness_summary = (runtime_awareness_signals or {}).get("summary") or {}
+    runtime_work_summary = (runtime_work or {}).get("summary") or {}
     return {
         "continuity_mode": str(
             relation.get("continuity_mode")
@@ -2227,6 +2243,13 @@ def _jarvis_continuity_summary(
         "current_runtime_awareness": str(
             runtime_awareness_summary.get("current_signal")
             or "No active runtime-awareness signal"
+        ),
+        "runtime_work_count": str(
+            (runtime_work_summary.get("task_count") or 0)
+            + (runtime_work_summary.get("flow_count") or 0)
+        ),
+        "current_runtime_work": str(
+            runtime_work_summary.get("current_focus") or "No active runtime work"
         ),
     }
 
@@ -2277,6 +2300,59 @@ def _jarvis_heartbeat_summary(heartbeat: dict) -> dict[str, str]:
             or dream_summary.get("last_reason")
             or "no-run-yet"
         ),
+    }
+
+
+def _runtime_work_surface() -> dict[str, object]:
+    queued_tasks = list_tasks(status="queued", limit=8)
+    running_tasks = list_tasks(status="running", limit=8)
+    blocked_tasks = list_tasks(status="blocked", limit=8)
+    queued_flows = list_flows(status="queued", limit=8)
+    running_flows = list_flows(status="running", limit=8)
+    blocked_flows = list_flows(status="blocked", limit=8)
+    browser_body = next(iter(list_browser_bodies(limit=2)), {})
+    memory_paths = workspace_memory_paths()
+    daily_exists = memory_paths["daily_memory"].exists()
+    curated_exists = memory_paths["curated_memory"].exists()
+    current_focus = (
+        str((running_tasks or queued_tasks or blocked_tasks or [{}])[0].get("goal") or "").strip()
+        or str((running_flows or queued_flows or blocked_flows or [{}])[0].get("current_step") or "").strip()
+        or "No active runtime work"
+    )
+    return {
+        "active": bool(
+            queued_tasks
+            or running_tasks
+            or blocked_tasks
+            or queued_flows
+            or running_flows
+            or blocked_flows
+        ),
+        "tasks": {
+            "queued": queued_tasks,
+            "running": running_tasks,
+            "blocked": blocked_tasks,
+        },
+        "flows": {
+            "queued": queued_flows,
+            "running": running_flows,
+            "blocked": blocked_flows,
+        },
+        "browser_body": browser_body,
+        "layered_memory": {
+            "daily_memory_path": str(memory_paths["daily_memory"]),
+            "daily_memory_exists": daily_exists,
+            "curated_memory_path": str(memory_paths["curated_memory"]),
+            "curated_memory_exists": curated_exists,
+        },
+        "summary": {
+            "task_count": len(queued_tasks) + len(running_tasks) + len(blocked_tasks),
+            "flow_count": len(queued_flows) + len(running_flows) + len(blocked_flows),
+            "browser_body_status": str(browser_body.get("status") or "absent"),
+            "current_focus": current_focus,
+            "daily_memory_state": "present" if daily_exists else "missing",
+            "curated_memory_state": "present" if curated_exists else "missing",
+        },
     }
 
 

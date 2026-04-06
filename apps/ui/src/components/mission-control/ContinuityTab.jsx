@@ -267,6 +267,7 @@ export function ContinuityTab({ data, onOpenItem }) {
   const worldModelSignals = data?.continuity?.worldModelSignals || { items: [], summary: {} }
   const runtimeAwarenessSignals = data?.continuity?.runtimeAwarenessSignals || { items: [], summary: {} }
   const runtimeAwarenessHistory = runtimeAwarenessSignals?.recentHistory || []
+  const runtimeWork = data?.continuity?.runtimeWork || { summary: {}, tasks: {}, flows: {}, layeredMemory: {} }
   const heartbeat = data?.heartbeat || {}
   const selfSystemCodeAwareness =
     data?.continuity?.selfSystemCodeAwareness ||
@@ -344,6 +345,59 @@ export function ContinuityTab({ data, onOpenItem }) {
           {!(runtimeAwarenessSignals.items || []).length && (
             <div className="mc-empty-state"><strong>No runtime awareness signals</strong></div>
           )}
+        </div>
+      </section>
+
+      <section className="support-card">
+        <div className="panel-header">
+          <div><h3>Runtime Work</h3><p className="muted">Durable tasks, flows, browser body, and layered memory state.</p></div>
+        </div>
+        <div className="mc-list">
+          <button
+            type="button"
+            className="mc-row"
+            onClick={() => onOpenItem?.(runtimeWork)}
+          >
+            <div>
+              <strong>Current Runtime Work</strong>
+              <span>{runtimeWork?.summary?.currentFocus || runtimeWork?.summary?.current_focus || 'No active runtime work'}</span>
+            </div>
+            <div className="mc-row-meta">
+              <StatusPill status={runtimeWork?.active ? 'active' : 'idle'} />
+              <small>
+                {runtimeWork?.summary?.taskCount || runtimeWork?.summary?.task_count || 0} tasks · {runtimeWork?.summary?.flowCount || runtimeWork?.summary?.flow_count || 0} flows
+              </small>
+              <ChevronRight size={14} />
+            </div>
+          </button>
+          <button
+            type="button"
+            className="mc-row"
+            onClick={() => onOpenItem?.(runtimeWork?.browserBody || {})}
+          >
+            <div>
+              <strong>Browser Body</strong>
+              <span>{runtimeWork?.browserBody?.summary || runtimeWork?.browserBody?.last_url || 'No browser body state'}</span>
+            </div>
+            <div className="mc-row-meta">
+              <StatusPill status={runtimeWork?.browserBody?.status || 'idle'} />
+              <ChevronRight size={14} />
+            </div>
+          </button>
+          <button
+            type="button"
+            className="mc-row"
+            onClick={() => onOpenItem?.(runtimeWork?.layeredMemory || {})}
+          >
+            <div>
+              <strong>Layered Memory</strong>
+              <span>Daily memory is {runtimeWork?.layeredMemory?.daily_memory_exists ? 'present' : 'missing'} · Curated memory is {runtimeWork?.layeredMemory?.curated_memory_exists ? 'present' : 'missing'}</span>
+            </div>
+            <div className="mc-row-meta">
+              <StatusPill status={runtimeWork?.layeredMemory?.daily_memory_exists ? 'active' : 'constrained'} />
+              <ChevronRight size={14} />
+            </div>
+          </button>
         </div>
       </section>
 

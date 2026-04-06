@@ -130,6 +130,7 @@ def test_mode_selection_respond_when_visible_active() -> None:
         brain_count=5,
         open_loop_count=2,
         liveness_state="quiet",
+        contradiction_active=False,
     )
     assert result["mode"] == "respond"
 
@@ -145,6 +146,7 @@ def test_mode_selection_clarify_when_gate_active() -> None:
         brain_count=2,
         open_loop_count=1,
         liveness_state="watchful",
+        contradiction_active=False,
     )
     assert result["mode"] == "clarify"
 
@@ -160,6 +162,7 @@ def test_mode_selection_consolidate_when_heavy_brain() -> None:
         brain_count=8,
         open_loop_count=0,
         liveness_state="quiet",
+        contradiction_active=False,
     )
     assert result["mode"] == "consolidate"
 
@@ -175,8 +178,25 @@ def test_mode_selection_watch_default() -> None:
         brain_count=0,
         open_loop_count=0,
         liveness_state="quiet",
+        contradiction_active=False,
     )
     assert result["mode"] == "watch"
+
+
+def test_mode_selection_clarify_when_contradiction_active() -> None:
+    """Executive contradiction should force clarify mode."""
+    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _select_mode
+
+    result = _select_mode(
+        visible_active=False,
+        question_gate_active=False,
+        approval_pending=False,
+        brain_count=1,
+        open_loop_count=0,
+        liveness_state="quiet",
+        contradiction_active=True,
+    )
+    assert result["mode"] == "clarify"
 
 
 # ---------------------------------------------------------------------------
@@ -253,3 +273,53 @@ def test_experiential_support_in_frame() -> None:
         assert support["support_posture"] in ("steadying", "grounding", "narrowing", "carrying", "reopening")
         assert support.get("support_bias") in ("protect_focus", "stabilize_thread", "reopen_context", "reduce_spread", "none")
         assert support.get("support_mode") in ("steady", "guarded", "weighted", "opening")
+
+
+def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:
+    """Relation, world, contradiction, and understanding signals should reach the frame."""
+    from apps.api.jarvis_api.services import runtime_cognitive_conductor as conductor
+
+    monkeypatch.setattr(conductor, "_safe_brain_context", lambda: {"record_count": 0, "excerpts": [], "by_type": {}})
+    monkeypatch.setattr(
+        conductor,
+        "_safe_self_knowledge",
+        lambda heartbeat_state=None: {
+            "active_capabilities": {"items": []},
+            "approval_gated": {"items": []},
+            "passive_inner_forces": {"items": []},
+            "structural_constraints": {"items": []},
+        },
+    )
+    monkeypatch.setattr(conductor, "_safe_open_loops", lambda: {"summary": {"open_count": 0}, "items": []})
+    monkeypatch.setattr(conductor, "_safe_question_gates", lambda: {"active": False, "items": []})
+    monkeypatch.setattr(conductor, "_safe_initiative_tension", lambda: {"active": False, "summary": {}})
+    monkeypatch.setattr(conductor, "_safe_visible_status", lambda: {"provider_status": "idle"})
+    monkeypatch.setattr(conductor, "_safe_liveness_snapshot", lambda heartbeat_state=None: {"liveness_state": "quiet"})
+    monkeypatch.setattr(conductor, "_safe_experiential_support", lambda: {})
+    monkeypatch.setattr(conductor, "_safe_relation_state", lambda: {"items": [{"relation_summary": "Trust is active."}]})
+    monkeypatch.setattr(conductor, "_safe_relation_continuity", lambda: {"items": [{"continuity_summary": "Thread is carried."}]})
+    monkeypatch.setattr(conductor, "_safe_self_narrative_continuity", lambda: {"items": [{"summary": "Narrative stays coherent."}]})
+    monkeypatch.setattr(conductor, "_safe_world_model", lambda: {"items": [{"summary": "Main repo is /media/projects/jarvis-v2."}]})
+    monkeypatch.setattr(conductor, "_safe_remembered_facts", lambda: {"items": [{"fact_summary": "User wants Danish replies."}]})
+    monkeypatch.setattr(conductor, "_safe_user_understanding", lambda: {"items": [{"signal_summary": "User prefers concise direct replies."}]})
+    monkeypatch.setattr(
+        conductor,
+        "_safe_executive_contradiction",
+        lambda: {"active": True, "items": [{"control_summary": "Do not carry a contradiction forward blindly."}]},
+    )
+    monkeypatch.setattr(conductor, "_safe_meaning_significance", lambda: {"items": [{"meaning_summary": "This thread matters."}]})
+    monkeypatch.setattr(conductor, "_safe_metabolism", lambda: {"items": [{"metabolism_summary": "Tempo is rising."}]})
+    monkeypatch.setattr(conductor, "_safe_release_markers", lambda: {"items": [{"release_summary": "A release marker is still open."}]})
+    monkeypatch.setattr(conductor, "_safe_attachment_topology", lambda: {"items": [{"summary": "Attachment is steady."}]})
+    monkeypatch.setattr(conductor, "_safe_loyalty_gradient", lambda: {"items": [{"summary": "Loyalty is deepening."}]})
+    monkeypatch.setattr(conductor, "_safe_diary_synthesis", lambda: {"items": [{"summary": "Diary synthesis is active."}]})
+    monkeypatch.setattr(conductor, "_safe_chronicle_consolidation", lambda: {"items": [{"summary": "Chronicle consolidation is ready."}]})
+    monkeypatch.setattr(conductor, "_safe_self_review", lambda: {"items": [{"outcome_summary": "Self review found drift to correct."}]})
+    monkeypatch.setattr(conductor, "_safe_dream_family", lambda: {"items": [{"summary": "Dream influence is nudging exploration."}]})
+
+    frame = conductor.build_cognitive_frame()
+
+    assert frame["mode"]["mode"] == "clarify"
+    assert frame["counts"]["integrated_signal_inputs"] >= 10
+    assert frame["active_constraints"]
+    assert any(item["source"] == "world-model" for item in frame["salient_items"])

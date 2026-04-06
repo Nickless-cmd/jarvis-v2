@@ -329,6 +329,110 @@ def detect_decision_in_message(
         return None
 
 
+def run_adoption_pipelines() -> dict[str, int]:
+    """Move things from candidate → adopted state."""
+    counts = {"dreams_adopted": 0, "values_strengthened": 0, "memories_reinforced": 0}
+
+    # 1. Dreams: confirmed dreams with high confidence → adoption
+    try:
+        from apps.api.jarvis_api.services.dream_carry_over import (
+            _ACTIVE_DREAMS,
+            promote_confirmed_dream_to_identity,
+        )
+        for dream in _ACTIVE_DREAMS:
+            if dream.get("confirmed") and float(dream.get("confidence", 0)) > 0.7:
+                result = promote_confirmed_dream_to_identity(dream["dream_id"])
+                if result:
+                    counts["dreams_adopted"] += 1
+    except Exception as exc:
+        logger.debug("dream adoption failed: %s", exc)
+
+    # 2. Auto-apply safe contract candidates
+    try:
+        from core.identity.candidate_workflow import (
+            auto_apply_safe_user_md_candidates,
+            auto_apply_safe_memory_md_candidates,
+        )
+        user_result = auto_apply_safe_user_md_candidates()
+        memory_result = auto_apply_safe_memory_md_candidates()
+        counts["values_strengthened"] = (
+            int(user_result.get("applied", 0)) + int(memory_result.get("applied", 0))
+        )
+    except Exception as exc:
+        logger.debug("contract auto-apply failed: %s", exc)
+
+    if counts["dreams_adopted"] or counts["values_strengthened"]:
+        event_bus.publish("cognitive_state.adoption_pipelines_fired", counts)
+    return counts
+
+
+def sync_personality_to_self_model() -> dict[str, int]:
+    """Bridge: sync personality_vector changes to self_model_signal."""
+    counts = {"signals_created": 0}
+    try:
+        pv = get_latest_cognitive_personality_vector()
+        if not pv:
+            return counts
+        confidence_by_domain = json.loads(str(pv.get("confidence_by_domain") or "{}"))
+        strengths = json.loads(str(pv.get("strengths_discovered") or "[]"))
+        mistakes = json.loads(str(pv.get("recurring_mistakes") or "[]"))
+
+        # Fire one signal per strong area
+        for strength in strengths[:3]:
+            try:
+                upsert_runtime_self_model_signal(
+                    signal_id=f"sm-{uuid4().hex[:10]}",
+                    signal_type="recognized_strength",
+                    canonical_key=f"self-model:strength:{strength[:30]}",
+                    status="active",
+                    title=f"Strength: {strength[:60]}",
+                    summary=str(strength)[:200],
+                    rationale="From personality_vector strengths_discovered",
+                    source_kind="personality_vector",
+                    confidence="high",
+                    evidence_summary=f"v{pv.get('version', 0)}",
+                    support_summary="Discovered through experience",
+                    support_count=int(pv.get("version", 1)),
+                    session_count=1,
+                    run_id="",
+                    session_id="",
+                    created_at=_now(),
+                    updated_at=_now(),
+                )
+                counts["signals_created"] += 1
+            except Exception:
+                pass
+
+        # And one per recurring mistake (as limitation)
+        for mistake in mistakes[:3]:
+            try:
+                upsert_runtime_self_model_signal(
+                    signal_id=f"sm-{uuid4().hex[:10]}",
+                    signal_type="known_limitation",
+                    canonical_key=f"self-model:limitation:{mistake[:30]}",
+                    status="active",
+                    title=f"Known limitation: {mistake[:60]}",
+                    summary=str(mistake)[:200],
+                    rationale="From personality_vector recurring_mistakes",
+                    source_kind="personality_vector",
+                    confidence="medium",
+                    evidence_summary=f"v{pv.get('version', 0)}",
+                    support_summary="Pattern observed across sessions",
+                    support_count=int(pv.get("version", 1)),
+                    session_count=1,
+                    run_id="",
+                    session_id="",
+                    created_at=_now(),
+                    updated_at=_now(),
+                )
+                counts["signals_created"] += 1
+            except Exception:
+                pass
+    except Exception as exc:
+        logger.debug("self_model bridge failed: %s", exc)
+    return counts
+
+
 def progress_signal_lifecycles() -> dict[str, int]:
     """Move signals through lifecycle stages: active → carried → fading → released."""
     counts = {"carried": 0, "fading": 0, "released": 0, "stale": 0}

@@ -16,6 +16,8 @@ import { ObservabilityTab } from '../components/mission-control/ObservabilityTab
 import { OperationsTab } from '../components/mission-control/OperationsTab'
 import { OverviewTab } from '../components/mission-control/OverviewTab'
 import { SkillsTab } from '../components/mission-control/SkillsTab'
+import { CognitiveStateTab } from '../components/mission-control/CognitiveStateTab'
+import { RelationshipTab } from '../components/mission-control/RelationshipTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
 
@@ -220,6 +222,8 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
           {activeTab === 'skills' ? <SkillsTab /> : null}
           {activeTab === 'hardening' ? <HardeningTab /> : null}
           {activeTab === 'lab' ? <LabTab /> : null}
+          {activeTab === 'cognitive-state' ? <CognitiveStateTab /> : null}
+          {activeTab === 'relationship' ? <RelationshipTab /> : null}
         </div>
 
       <DetailDrawer

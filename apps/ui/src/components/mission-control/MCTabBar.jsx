@@ -1,4 +1,4 @@
-import { Activity, Eye, Bot, Brain, DollarSign, Layers, Shield, TrendingUp, Database, Package, Lock, FlaskConical } from 'lucide-react'
+import { Activity, Eye, Bot, Brain, DollarSign, Layers, Shield, TrendingUp, Database, Package, Lock, FlaskConical, Fingerprint, Heart } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { s, T } from '../../shared/theme/tokens'
 
@@ -12,6 +12,8 @@ const PRIMARY_TABS = [
 ]
 
 const MORE_TABS = [
+  { id: 'cognitive-state', label: 'Cognitive', icon: Fingerprint },
+  { id: 'relationship', label: 'Relationship', icon: Heart },
   { id: 'self-review', label: 'Self-Review', icon: Shield },
   { id: 'continuity', label: 'Continuity', icon: Layers },
   { id: 'development', label: 'Development', icon: TrendingUp },

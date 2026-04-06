@@ -26,8 +26,14 @@ _CORRECTION_MARKERS = [
 ]
 
 _HUMOR_MARKERS = [
-    "haha", "lol", "😂", "😄", "sjovt", "godt fundet",
-    "den var god", "humor",
+    # Originale
+    "haha", "lol", "😂", "😄", "sjovt", "godt fundet", "den var god", "humor",
+    # Bredere detection
+    ":)", ":-)", ";)", "ha ha", "hihi", "hehe", "morsomt", "ironisk",
+    "absurd", "klovn", "fjollet", "skørt", "kreativ", "hold da op",
+    "du milde", "nårh", "haha ja", "😅", "😆", "🤣", "😉", "😏",
+    "experiment-hatten", "tænke ud af boksen", "ud af boksen",
+    "wow", "fedt fundet", "smart",
 ]
 
 _TRUST_POSITIVE = [
@@ -99,13 +105,30 @@ def update_relationship_from_run(
     productive[hour_key] = productive.get(hour_key, 0) + 1
     changed = True
 
-    # Inside references — detect repeated unique phrases
-    words = [w for w in msg_lower.split() if len(w) > 5]
+    # Inside references — detect distinctive phrases
+    _COMMON_WORDS = {
+        "ikke", "også", "stadig", "andre", "noget", "meget", "altid",
+        "bare", "lidt", "kunne", "skulle", "ville", "have", "været",
+    }
+    # Bigrams (two-word phrases that are distinctive)
+    words = msg_lower.split()
+    for i in range(len(words) - 1):
+        phrase = f"{words[i]} {words[i+1]}".strip(".,:;!?")
+        if len(phrase) < 7:
+            continue
+        if any(w in _COMMON_WORDS for w in phrase.split()):
+            continue
+        # Add to inside_refs if not already there
+        if phrase not in inside_refs and len(inside_refs) < 30:
+            inside_refs.append(phrase)
+            changed = True
+    # Distinctive single words (longer than 7 chars, not common)
     for word in words:
-        # Crude: if a distinctive word appears and isn't common
-        if word not in inside_refs and len(inside_refs) < 20:
-            # Only add if it seems specific (appears again later)
-            pass  # This will be enhanced with frequency tracking
+        word = word.strip(".,:;!?")
+        if len(word) >= 7 and word not in _COMMON_WORDS and word not in inside_refs:
+            if len(inside_refs) < 30:
+                inside_refs.append(word)
+                changed = True
 
     # Conversation rhythm
     if turn_count > 0:

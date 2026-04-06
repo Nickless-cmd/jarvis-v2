@@ -2762,6 +2762,48 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
+        # --- HJERTESLAG: Cadence producers (vække døde signaler) ---
+        try:
+            from apps.api.jarvis_api.services.cadence_producers import (
+                produce_signals_from_run,
+                detect_decision_in_message,
+            )
+            produce_signals_from_run(
+                run_id=run_id,
+                session_id=None,  # session_id not in scope here
+                user_message=user_message,
+                assistant_response=assistant_response,
+                outcome_status=outcome_status,
+                user_mood=detected_mood,
+            )
+            detect_decision_in_message(
+                user_message=user_message,
+                assistant_response=assistant_response,
+                run_id=run_id,
+            )
+        except Exception:
+            pass
+
+        # --- Counterfactual auto-generation (bredere triggers) ---
+        try:
+            from apps.api.jarvis_api.services.counterfactual_engine import generate_counterfactual
+            msg_lower = user_message.lower()
+            was_corrected_local = any(m in msg_lower for m in ("nej", "forkert", "ikke det"))
+            if outcome_status in ("failed", "error"):
+                generate_counterfactual(
+                    trigger_type="failed_run",
+                    anchor=user_message[:80],
+                    confidence=0.6,
+                )
+            elif was_corrected_local:
+                generate_counterfactual(
+                    trigger_type="correction",
+                    anchor=user_message[:80],
+                    confidence=0.5,
+                )
+        except Exception:
+            pass
+
     threading.Thread(target=_run, daemon=True).start()
 
 

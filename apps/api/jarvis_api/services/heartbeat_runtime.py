@@ -163,6 +163,9 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "run_sleep_batch",
     "generate_curriculum",
     "detect_consent_reaction",
+    # Hjerteslag — wake up dead MC fields
+    "produce_emergent_signals",
+    "progress_lifecycles",
 }
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
@@ -3702,6 +3705,34 @@ def _execute_heartbeat_internal_action(
             }
         except Exception as exc:
             return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "curriculum-error"}
+
+    # Hjerteslag: produce emergent signals from history
+    if action_type == "produce_emergent_signals":
+        try:
+            from apps.api.jarvis_api.services.cadence_producers import produce_emergent_signals_from_history
+            result = produce_emergent_signals_from_history()
+            return {
+                "status": "executed",
+                "summary": f"Emergent signals: {result.get('emergent', 0)} active, {result.get('candidates', 0)} candidates",
+                "artifact": json.dumps(result, ensure_ascii=False),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "emergent-error"}
+
+    # Hjerteslag: lifecycle progression for all signal types
+    if action_type == "progress_lifecycles":
+        try:
+            from apps.api.jarvis_api.services.cadence_producers import progress_signal_lifecycles
+            result = progress_signal_lifecycles()
+            return {
+                "status": "executed",
+                "summary": f"Lifecycle progression: {result.get('stale', 0)} stale signals marked",
+                "artifact": json.dumps(result, ensure_ascii=False),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "lifecycle-error"}
 
     # 8.5 Consent/samtykke — detect external changes to workspace files
     if action_type == "detect_consent_reaction":

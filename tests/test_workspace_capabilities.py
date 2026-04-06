@@ -503,6 +503,20 @@ def test_approved_workspace_write_executes_only_with_explicit_content(isolated_r
     assert target.read_text(encoding="utf-8") == "Approved workspace write.\nScoped to MEMORY.md only.\n"
 
 
+def test_workspace_memory_write_merges_without_deleting_existing_content(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    merged = caps_mod._merge_workspace_memory_content(
+        existing_content="## Curated Memory\n\n- Existing fact.\n",
+        incoming_content="- Existing fact.\n- New fact.\n",
+    )
+
+    assert "- Existing fact." in merged
+    assert "- New fact." in merged
+    assert merged.count("- Existing fact.") == 1
+
+
 def test_external_write_capability_stays_closed_even_when_approved(isolated_runtime) -> None:
     caps_mod = importlib.import_module("core.tools.workspace_capabilities")
     caps_mod = importlib.reload(caps_mod)

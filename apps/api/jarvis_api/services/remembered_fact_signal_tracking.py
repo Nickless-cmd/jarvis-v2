@@ -385,6 +385,9 @@ def _is_working_context_fact(message: str) -> bool:
             "jarvis v2-repo",
             "jarvis v2 repo",
             "jarvis-v2",
+            "/media/projects/jarvis-v2",
+            "~/.jarvis-v2/workspaces/default",
+            ".jarvis-v2/workspaces/default",
         ),
     ):
         return False
@@ -397,6 +400,9 @@ def _is_working_context_fact(message: str) -> bool:
             "we are in",
             "repo",
             "repoet",
+            "workspace",
+            "sti",
+            "path",
         ),
     )
 

@@ -1113,7 +1113,16 @@ def _invoke_runnable_capability(
                 "detail": "Memory write requires explicit write_content. Use block syntax: <capability-call id=\"tool:write-workspace-memory\">\\n# MEMORY\\n(full content)\\n</capability-call>",
             }
         candidate.parent.mkdir(parents=True, exist_ok=True)
-        candidate.write_text(write_content, encoding="utf-8")
+        existing_content = (
+            candidate.read_text(encoding="utf-8", errors="replace")
+            if candidate.exists()
+            else ""
+        )
+        merged_content = _merge_workspace_memory_content(
+            existing_content=existing_content,
+            incoming_content=write_content,
+        )
+        candidate.write_text(merged_content, encoding="utf-8")
         return {
             "capability": summary,
             "status": "executed",
@@ -1122,13 +1131,13 @@ def _invoke_runnable_capability(
             "result": {
                 "type": "workspace-memory-write",
                 "path": target_path,
-                "bytes_written": len(write_content.encode("utf-8")),
+                "bytes_written": len(merged_content.encode("utf-8")),
                 "text": _preview_text(
-                    write_content,
+                    merged_content,
                     limit=min(MAX_FILE_OUTPUT_CHARS, 400),
                 ),
-                "content_fingerprint": _content_fingerprint(write_content),
-                "content_source": "explicit-write-content",
+                "content_fingerprint": _content_fingerprint(merged_content),
+                "content_source": "explicit-write-content-merged",
                 "workspace_scoped": True,
             },
             "detail": f"Memory write executed for {target_path}.",
@@ -2357,6 +2366,31 @@ def _preview_text(text: str, limit: int = 120) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[: limit - 1].rstrip() + "…"
+
+
+def _merge_workspace_memory_content(*, existing_content: str, incoming_content: str) -> str:
+    existing_lines = existing_content.splitlines()
+    incoming_lines = incoming_content.splitlines()
+    if not existing_lines:
+        return incoming_content if incoming_content.endswith("\n") else incoming_content + "\n"
+
+    seen = {
+        " ".join(str(line).split()).strip()
+        for line in existing_lines
+        if " ".join(str(line).split()).strip()
+    }
+    appended: list[str] = []
+    for line in incoming_lines:
+        normalized = " ".join(str(line).split()).strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        appended.append(line)
+
+    if not appended:
+        return existing_content if existing_content.endswith("\n") else existing_content + "\n"
+
+    return f"{existing_content.rstrip()}\n" + "\n".join(appended).rstrip() + "\n"
 
 
 def _result_preview(result: object) -> str | None:

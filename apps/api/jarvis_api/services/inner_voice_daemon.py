@@ -123,7 +123,26 @@ def run_inner_voice_daemon(
     )
 
     record_id = record.get("record_id", "")
+    run_id = record.get("run_id", f"voice-daemon-{uuid4().hex[:12]}")
     _voice_last_run_at = now_iso
+
+    # Also write to protected_inner_voices so the UI panel updates
+    try:
+        from core.runtime.db import record_protected_inner_voice
+        record_protected_inner_voice(
+            voice_id=f"voice-{uuid4().hex[:12]}",
+            source="inner-voice-daemon",
+            run_id=run_id,
+            work_id="",
+            mood_tone=note.get("mode", "thinking"),
+            self_position=note.get("focus", "")[:100],
+            current_concern=str(note.get("initiative") or "")[:200],
+            current_pull=note.get("focus", "")[:200],
+            voice_line=note.get("summary", "")[:400],
+            created_at=now_iso,
+        )
+    except Exception:
+        pass
 
     # Initiative detection — check both LLM-returned initiative and text scanning
     initiative = note.get("initiative")

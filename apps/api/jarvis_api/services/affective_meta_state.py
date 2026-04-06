@@ -308,10 +308,12 @@ def _derive_affective_state(
 ) -> str:
     if embodied_state in {"strained", "degraded"} or strain_level == "high":
         return "burdened"
+    # Tense kun ved faktisk pres — ikke ved normalt arbejde med åbne loops
+    active_count = int(loop_summary.get("active_count") or 0)
     if (
-        str(loop_summary.get("current_status") or "none") in {"active", "resumed"}
-        or str(regulation_summary.get("current_pressure") or "low") in {"medium", "high"}
-        or quiet_initiative.get("active")
+        active_count >= 8  # Mange loops = pressure, ikke bare 1
+        or str(regulation_summary.get("current_pressure") or "low") == "high"
+        or (quiet_initiative.get("active") and quiet_initiative.get("hold_count", 0) >= 3)
     ):
         return "tense"
     if (

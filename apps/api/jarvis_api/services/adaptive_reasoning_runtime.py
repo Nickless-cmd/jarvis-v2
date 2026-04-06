@@ -189,10 +189,10 @@ def _derive_reasoning_mode(
         or strain_level == "high"
         or planner_mode == "hold"
         or conflict_outcome in {"defer", "quiet_hold"}
-        or council_recommendation == "bounded-check"
     ):
         return "constrained"
-    if wrongness_state in {"uneasy", "off"} or planner_mode == "cautious-step":
+    # "off" = neutral default, only "uneasy" = actual concern
+    if wrongness_state == "uneasy" or planner_mode == "cautious-step":
         return "careful"
     if affective_state == "reflective" or planner_mode == "reflective-planning" or quiet_initiative.get("active"):
         return "reflective"
@@ -225,7 +225,7 @@ def _derive_certainty_style(
     regret_signal: str,
     council_divergence: str,
 ) -> str:
-    if reasoning_mode in {"constrained", "careful"} or wrongness_state in {"uneasy", "off"} or regret_signal != "none":
+    if reasoning_mode in {"constrained", "careful"} or wrongness_state == "uneasy" or regret_signal != "none":
         return "cautious"
     if reasoning_mode in {"reflective", "exploratory"} or council_divergence != "low":
         return "tentative"

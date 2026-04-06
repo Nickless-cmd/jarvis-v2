@@ -351,6 +351,34 @@ def test_git_read_exec_commands_are_allowed_as_bounded_inspection(
     assert diff_payload.get("execution_scope") == "git-read"
 
 
+def test_git_read_exec_commands_allow_git_c_repo_scoping(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    repo_root = Path("/media/projects/jarvis-v2")
+
+    status = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"git -C {repo_root} status",
+    )
+    assert status["status"] == "executed"
+    status_payload = status.get("result") or {}
+    assert status_payload.get("execution_classification") == "git-read-allowed"
+    assert status_payload.get("execution_scope") == "git-read"
+    assert status_payload.get("repo_scoped") is True
+
+    log_result = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"git -C {repo_root} log --oneline -n 20",
+    )
+    assert log_result["status"] == "executed"
+    log_payload = log_result.get("result") or {}
+    assert log_payload.get("execution_classification") == "git-read-allowed"
+    assert log_payload.get("execution_scope") == "git-read"
+
+
 def test_git_mutation_and_destructive_git_commands_do_not_execute(
     isolated_runtime,
 ) -> None:

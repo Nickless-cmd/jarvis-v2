@@ -503,6 +503,90 @@ def test_mission_control_jarvis_reuses_runtime_cache_projection(
     assert jarvis["cognitive_frame"]["heartbeat_state"] == runtime["heartbeat_runtime"]["state"]
 
 
+def test_mission_control_jarvis_prefers_fresh_daemon_protected_voice(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+
+    db.record_protected_inner_voice(
+        voice_id="voice-daemon",
+        source="inner-voice-daemon",
+        run_id="voice-daemon-run",
+        work_id="",
+        mood_tone="thinking",
+        self_position="repo focus",
+        current_concern="Bevar den levende tråd",
+        current_pull="Hold fast i den aktuelle tanke",
+        voice_line="Jeg er midt i en konkret tanke om næste skridt.",
+        created_at="2026-04-06T10:00:00+00:00",
+    )
+    db.record_protected_inner_voice(
+        voice_id="voice-template",
+        source=(
+            "private-state+private-self-model+private-development-state+"
+            "private-reflective-selection"
+        ),
+        run_id="template-run",
+        work_id="",
+        mood_tone="steady",
+        self_position="visible-work",
+        current_concern="Jeg har nogenlunde fodfæste.",
+        current_pull="Jeg vil holde fast i det, der virker.",
+        voice_line="Jeg står nogenlunde roligt omkring visible work.",
+        created_at="2026-04-06T10:02:00+00:00",
+    )
+
+    mission_control._MC_ROUTE_CACHE.clear()
+    jarvis = mission_control.mc_jarvis()
+    current = jarvis["state"]["protected_inner_voice"]["current"]
+
+    assert current["source"] == "inner-voice-daemon"
+    assert current["voice_line"] == "Jeg er midt i en konkret tanke om næste skridt."
+
+
+def test_mission_control_jarvis_falls_back_when_daemon_voice_is_stale(
+    isolated_runtime,
+) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+
+    db.record_protected_inner_voice(
+        voice_id="voice-daemon-old",
+        source="inner-voice-daemon",
+        run_id="voice-daemon-old-run",
+        work_id="",
+        mood_tone="thinking",
+        self_position="old focus",
+        current_concern="Gammel tanke",
+        current_pull="Gammelt træk",
+        voice_line="Jeg holder en gammel indre linje.",
+        created_at="2026-04-06T10:00:00+00:00",
+    )
+    db.record_protected_inner_voice(
+        voice_id="voice-template-new",
+        source=(
+            "private-state+private-self-model+private-development-state+"
+            "private-reflective-selection"
+        ),
+        run_id="template-new-run",
+        work_id="",
+        mood_tone="steady",
+        self_position="visible-work",
+        current_concern="Nutidig støtte",
+        current_pull="Hold fokus på det synlige arbejde",
+        voice_line="Jeg står nogenlunde roligt omkring visible work.",
+        created_at="2026-04-06T10:30:00+00:00",
+    )
+
+    mission_control._MC_ROUTE_CACHE.clear()
+    jarvis = mission_control.mc_jarvis()
+    current = jarvis["state"]["protected_inner_voice"]["current"]
+
+    assert current["source"].startswith("private-state+")
+    assert current["voice_line"] == "Jeg står nogenlunde roligt omkring visible work."
+
+
 def test_mission_control_operations_route_surfaces_sudo_exec_execution_summary(
     isolated_runtime,
     monkeypatch,

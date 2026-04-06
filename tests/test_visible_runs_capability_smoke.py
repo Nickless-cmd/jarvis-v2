@@ -26,7 +26,7 @@ def _run_visible_stream(
     monkeypatch,
     text: str,
     run_id: str,
-    second_pass_text: str | None = None,
+    second_pass_text: str | list[str] | None = None,
     user_message: str = "smoke",
     stream_error: Exception | None = None,
     second_pass_error: Exception | None = None,
@@ -59,7 +59,10 @@ def _run_visible_stream(
         second_pass_calls.append(message)
         if second_pass_error is not None:
             raise second_pass_error
-        response_text = second_pass_text or "Grounded fallback response."
+        if isinstance(second_pass_text, list):
+            response_text = second_pass_text.pop(0) if second_pass_text else "Grounded fallback response."
+        else:
+            response_text = second_pass_text or "Grounded fallback response."
         return visible_model.VisibleModelResult(
             text=response_text,
             input_tokens=2,
@@ -249,11 +252,12 @@ def test_visible_run_second_pass_strips_capability_markup_and_does_not_loop(
     capability_events = _parse_sse(chunks, "capability")
     delta_events = _parse_sse(chunks, "delta")
 
-    assert len(capability_events) == 1
+    assert len(capability_events) == 2
     assert capability_events[0]["capability_id"] == "tool:read-workspace-user-profile"
-    assert any("Jeg svarer nu grounded." in str(item.get("delta") or "") for item in delta_events)
+    assert capability_events[1]["capability_id"] == "tool:read-repository-readme"
+    assert any("Grounded fallback response." in str(item.get("delta") or "") for item in delta_events)
     assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
-    assert len(last_use.get("second_pass_calls") or []) == 1
+    assert len(last_use.get("second_pass_calls") or []) == 2
 
 
 def test_visible_run_executes_dynamic_external_read_from_user_message_path(
@@ -659,3 +663,67 @@ def test_visible_run_executes_all_capabilities_not_just_first(
     second_pass_msg = last_use["second_pass_calls"][0]
     assert "tool:read-workspace-user-profile" in second_pass_msg
     assert "tool:read-repository-readme" in second_pass_msg
+    assert "Every substantive claim must be grounded" in second_pass_msg
+    assert "If more read-only data is clearly needed" in second_pass_msg
+
+
+def test_visible_run_allows_one_extra_autonomous_read_only_round(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text='<capability-call id="tool:read-workspace-user-profile" />',
+        run_id="visible-cap-extra-round",
+        user_message="Lav en kodeanalyse af main repo og fortsæt selv.",
+        second_pass_text=[
+            '<capability-call id="tool:read-repository-readme" />',
+            "Jeg har nu læst både konkret kodekontekst og readme, og README alene var ikke nok.",
+        ],
+    )
+
+    capability_events = _parse_sse(chunks, "capability")
+    delta_events = _parse_sse(chunks, "delta")
+
+    assert len(capability_events) == 2
+    assert [e["capability_id"] for e in capability_events] == [
+        "tool:read-workspace-user-profile",
+        "tool:read-repository-readme",
+    ]
+    assert len(last_use.get("second_pass_calls") or []) == 2
+    assert any("README alene var ikke nok" in str(item.get("delta") or "") for item in delta_events)
+
+
+def test_visible_run_second_pass_treats_memory_write_as_normal_success(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+
+    chunks, last_use = _run_visible_stream(
+        visible_runs=visible_runs,
+        visible_model=visible_model,
+        monkeypatch=monkeypatch,
+        text=(
+            '<capability-call id="tool:write-workspace-memory">\n'
+            '# MEMORY\nGem at /media/projects/jarvis-v2 er main repo.\n'
+            '</capability-call>'
+        ),
+        run_id="visible-cap-memory-normalized",
+        user_message="Husk dette: /media/projects/jarvis-v2 er main repo.",
+        second_pass_text="Det er gemt i hukommelsen.",
+    )
+
+    second_pass_msg = (last_use.get("second_pass_calls") or [""])[0]
+    assert "state that it has been saved" in second_pass_msg
+    assert "Do not describe block syntax" in second_pass_msg
+    delta_events = _parse_sse(chunks, "delta")
+    assert any("gemt i hukommelsen" in str(item.get("delta") or "") for item in delta_events)

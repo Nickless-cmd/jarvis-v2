@@ -27,6 +27,11 @@ from core.runtime.db import (
     upsert_runtime_witness_signal,
     upsert_runtime_development_focus,
     upsert_runtime_world_model_signal,
+    upsert_runtime_self_narrative_continuity_signal,
+    upsert_runtime_metabolism_state_signal,
+    upsert_runtime_release_marker_signal,
+    upsert_runtime_chronicle_consolidation_brief,
+    upsert_runtime_dream_hypothesis_signal,
     get_latest_cognitive_personality_vector,
     get_latest_cognitive_user_emotional_state,
     get_latest_cognitive_relationship_texture,
@@ -72,7 +77,7 @@ def produce_signals_from_run(
             signal_id=f"wit-{uuid4().hex[:10]}",
             signal_type="visible_run_observed",
             canonical_key=f"witness:run:{run_id}",
-            status="active",
+            status="fresh",
             title=user_message[:80] or "visible run",
             summary=f"Observed: {user_message[:60]} → {outcome_status}",
             rationale="Observation of completed visible run for witness lifecycle",
@@ -364,7 +369,143 @@ def produce_signals_from_run(
     except Exception as exc:
         logger.debug("relationship texture update failed: %s", exc)
 
-    # 13. Counterfactual auto-generation (broader triggers)
+    # 13a. Self-narrative continuity signal
+    try:
+        upsert_runtime_self_narrative_continuity_signal(
+            signal_id=f"snc-{uuid4().hex[:10]}",
+            signal_type="post_run_continuity",
+            canonical_key=f"narrative-continuity:{run_id}",
+            status="active",
+            title=f"Continuity from run {run_id[:12]}",
+            summary=f"Narrative thread continues with mood={user_mood}",
+            rationale="Bounded narrative continuity tracking from visible turn",
+            source_kind="visible_run",
+            confidence="medium",
+            evidence_summary=user_message[:200],
+            support_summary=f"outcome={outcome_status}",
+            support_count=1,
+            session_count=1,
+            run_id=run_id,
+            session_id=str(session_id or ""),
+            created_at=_now(),
+            updated_at=_now(),
+        )
+    except Exception as exc:
+        logger.debug("self narrative continuity failed: %s", exc)
+
+    # 13b. Metabolism state signal
+    try:
+        upsert_runtime_metabolism_state_signal(
+            signal_id=f"met-{uuid4().hex[:10]}",
+            signal_type="post_run_metabolism",
+            canonical_key=f"metabolism:{run_id}",
+            status="active",
+            title=f"Metabolism after run {run_id[:12]}",
+            summary=f"Processing {outcome_status} outcome",
+            rationale="Bounded metabolism tracking",
+            source_kind="visible_run",
+            confidence="medium",
+            evidence_summary=f"mood={user_mood}",
+            support_summary=outcome_status,
+            support_count=1,
+            session_count=1,
+            run_id=run_id,
+            session_id=str(session_id or ""),
+            created_at=_now(),
+            updated_at=_now(),
+        )
+    except Exception as exc:
+        logger.debug("metabolism failed: %s", exc)
+
+    # 13c. Release marker (only on completion)
+    if outcome_status in ("completed", "success"):
+        try:
+            upsert_runtime_release_marker_signal(
+                signal_id=f"rel-{uuid4().hex[:10]}",
+                signal_type="completion_release",
+                canonical_key=f"release:{run_id}",
+                status="active",
+                title=f"Release after {run_id[:12]}",
+                summary=f"Completed: {user_message[:60]}",
+                rationale="Release marker on successful completion",
+                source_kind="visible_run",
+                confidence="medium",
+                evidence_summary=user_message[:200],
+                support_summary="completed",
+                support_count=1,
+                session_count=1,
+                run_id=run_id,
+                session_id=str(session_id or ""),
+                created_at=_now(),
+                updated_at=_now(),
+            )
+        except Exception as exc:
+            logger.debug("release marker failed: %s", exc)
+
+    # 13d. Chronicle consolidation brief (periodic)
+    try:
+        upsert_runtime_chronicle_consolidation_brief(
+            brief_id=f"brief-{uuid4().hex[:10]}",
+            brief_type="post_run_brief",
+            canonical_key=f"chronicle-brief:{run_id}",
+            status="briefed",
+            title=f"Brief: {user_message[:60]}",
+            summary=f"Run brief: {outcome_status}, mood={user_mood}",
+            rationale="Bounded chronicle consolidation brief from visible turn",
+            source_kind="visible_run",
+            confidence="medium",
+            evidence_summary=user_message[:200],
+            support_summary=f"outcome={outcome_status}",
+            support_count=1,
+            session_count=1,
+            run_id=run_id,
+            session_id=str(session_id or ""),
+            created_at=_now(),
+            updated_at=_now(),
+        )
+    except Exception as exc:
+        logger.debug("chronicle brief failed: %s", exc)
+
+    # 13e. Dream hypothesis (during dreaming/reflection phases or randomly)
+    try:
+        from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
+        phase = determine_life_phase()
+        if phase.get("phase") in ("dreaming", "reflection") or (run_id.endswith("0") or run_id.endswith("5")):
+            upsert_runtime_dream_hypothesis_signal(
+                signal_id=f"dh-{uuid4().hex[:10]}",
+                signal_type="post_run_hypothesis",
+                canonical_key=f"dream:{run_id}",
+                status="active",
+                title=f"Hypothesis from {user_message[:40]}",
+                summary=f"What if {user_message[:80]} could be approached differently?",
+                rationale="Bounded dream hypothesis from runtime support",
+                source_kind="visible_run",
+                confidence="low",
+                evidence_summary=user_message[:200],
+                support_summary=f"phase={phase.get('phase', '?')}",
+                support_count=1,
+                session_count=1,
+                run_id=run_id,
+                session_id=str(session_id or ""),
+                created_at=_now(),
+                updated_at=_now(),
+            )
+    except Exception as exc:
+        logger.debug("dream hypothesis failed: %s", exc)
+
+    # 13f. Diary synthesis (now that prerequisites exist)
+    try:
+        from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+            track_diary_synthesis_signals_for_visible_turn,
+        )
+        track_diary_synthesis_signals_for_visible_turn(
+            session_id=str(session_id or ""),
+            run_id=run_id,
+        )
+    except Exception as exc:
+        logger.debug("diary synthesis failed: %s", exc)
+
+    # 14. Counterfactual auto-generation (broader triggers)
     try:
         from apps.api.jarvis_api.services.counterfactual_engine import generate_counterfactual
         if outcome_status in ("failed", "error"):

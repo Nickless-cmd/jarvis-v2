@@ -2696,3 +2696,15 @@ def mc_self_compassion() -> dict:
 def mc_learning_curriculum() -> dict:
     from apps.api.jarvis_api.services.self_experiments import generate_learning_curriculum
     return generate_learning_curriculum()
+
+
+@router.get("/cadence-producers")
+def mc_cadence_producers() -> dict:
+    from apps.api.jarvis_api.services.cadence_producers import build_cadence_producers_surface
+    return build_cadence_producers_surface()
+
+
+@router.get("/idle-thinking")
+def mc_idle_thinking() -> dict:
+    from apps.api.jarvis_api.services.idle_thinking import build_idle_thinking_surface
+    return build_idle_thinking_surface()

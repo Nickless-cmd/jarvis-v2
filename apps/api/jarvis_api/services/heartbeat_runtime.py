@@ -469,9 +469,45 @@ def run_heartbeat_tick(
         _HEARTBEAT_TICK_LOCK.release()
 
 
+_HEARTBEAT_TICK_COUNTER = 0
+
+
 def _run_heartbeat_tick_locked(
     *, name: str = "default", trigger: str = "manual"
 ) -> HeartbeatExecutionResult:
+    global _HEARTBEAT_TICK_COUNTER
+    _HEARTBEAT_TICK_COUNTER += 1
+    tick_count = _HEARTBEAT_TICK_COUNTER
+
+    # Hjerteslag: cadence producers fire on every tick
+    try:
+        from apps.api.jarvis_api.services.cadence_producers import (
+            produce_emergent_signals_from_history,
+            progress_signal_lifecycles,
+            run_adoption_pipelines,
+            sync_personality_to_self_model,
+        )
+        # Every tick: emergent signals
+        produce_emergent_signals_from_history()
+        # Every 2nd tick: sync personality → self_model
+        if tick_count % 2 == 0:
+            sync_personality_to_self_model()
+        # Every 3rd tick: lifecycle progression
+        if tick_count % 3 == 0:
+            progress_signal_lifecycles()
+        # Every 5th tick: adoption pipelines
+        if tick_count % 5 == 0:
+            run_adoption_pipelines()
+        # Every 4th tick: idle thinking (only fires in dreaming/reflection phases)
+        if tick_count % 4 == 0:
+            try:
+                from apps.api.jarvis_api.services.idle_thinking import run_idle_thought
+                run_idle_thought()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     now = datetime.now(UTC)
     workspace_dir = ensure_default_workspace(name=name)
     policy = load_heartbeat_policy(name=name)

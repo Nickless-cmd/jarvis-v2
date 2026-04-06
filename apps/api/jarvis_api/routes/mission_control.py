@@ -2690,3 +2690,9 @@ def mc_user_mental_model() -> dict:
 def mc_self_compassion() -> dict:
     from apps.api.jarvis_api.services.self_compassion import build_self_compassion_surface
     return build_self_compassion_surface()
+
+
+@router.get("/learning-curriculum")
+def mc_learning_curriculum() -> dict:
+    from apps.api.jarvis_api.services.self_experiments import generate_learning_curriculum
+    return generate_learning_curriculum()

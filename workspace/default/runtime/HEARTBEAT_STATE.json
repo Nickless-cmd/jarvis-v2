@@ -5,7 +5,7 @@
     "boundary": "not-memory-not-identity-not-action",
     "confidence": "low",
     "freshness": {
-      "built_at": "2026-04-06T11:26:30.580598+00:00",
+      "built_at": "2026-04-06T11:31:05.967218+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-learning-runtime-state",
@@ -50,7 +50,7 @@
     "boundary": "not-memory-not-identity-not-action",
     "confidence": "low",
     "freshness": {
-      "built_at": "2026-04-06T11:26:32.708826+00:00",
+      "built_at": "2026-04-06T11:31:19.098319+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-planner-runtime-state",
@@ -98,7 +98,7 @@
     "constraint_bias": "strong",
     "exploration_bias": "minimal",
     "freshness": {
-      "built_at": "2026-04-06T11:26:30.573555+00:00",
+      "built_at": "2026-04-06T11:31:05.960130+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-reasoning-runtime-state",
@@ -143,7 +143,7 @@
     "authority": "derived-runtime-truth",
     "bearing": "taut",
     "freshness": {
-      "built_at": "2026-04-06T11:26:32.002193+00:00",
+      "built_at": "2026-04-06T11:31:19.051911+00:00",
       "state": "fresh"
     },
     "kind": "affective-meta-runtime-state",
@@ -186,7 +186,7 @@
     "influence_scope": "bounded",
     "internal_only": true,
     "kind": "council-runtime-light",
-    "last_council_at": "2026-04-06T11:26:32.396394+00:00",
+    "last_council_at": "2026-04-06T11:31:19.087885+00:00",
     "participating_roles": [
       "critic",
       "witness-helper",
@@ -251,7 +251,7 @@
     "active": false,
     "authority": "authoritative-runtime-observability",
     "boundary": "not-memory-not-identity-not-action",
-    "built_at": "2026-04-06T11:26:32.083851+00:00",
+    "built_at": "2026-04-06T11:31:19.066232+00:00",
     "cadence": {
       "adjacent_producer_grace_minutes": 5,
       "cooldown_minutes": 35,
@@ -281,34 +281,34 @@
       "cpu": {
         "bucket": "steady",
         "cpu_count": 16,
-        "load_1m": 0.21,
+        "load_1m": 0.1,
         "load_per_cpu": 0.01,
         "source": "os.getloadavg"
       },
       "disk": {
         "bucket": "steady",
-        "free_bytes": 943216832512,
+        "free_bytes": 943216795648,
         "source": "shutil.disk_usage",
         "total_bytes": 1006978363392,
         "used_ratio": 0.063
       },
       "memory": {
-        "available_bytes": 39397756928,
+        "available_bytes": 39612968960,
         "bucket": "steady",
-        "pressure_ratio": 0.219,
+        "pressure_ratio": 0.214,
         "source": "proc-meminfo",
         "total_bytes": 50423332864
       },
       "thermal": {
         "bucket": "steady",
-        "celsius": 37.0,
+        "celsius": 42.0,
         "source": "sysfs-thermal"
       }
     },
     "freshness": {
       "age_seconds": 0,
-      "built_at": "2026-04-06T11:26:31.969788+00:00",
-      "sampled_at": "2026-04-06T11:26:31.969281+00:00",
+      "built_at": "2026-04-06T11:31:18.966115+00:00",
+      "sampled_at": "2026-04-06T11:31:18.965449+00:00",
       "state": "fresh"
     },
     "kind": "embodied-runtime-state",
@@ -333,7 +333,7 @@
     "counterfactual_hint": "narrow-to-verified-claim",
     "counterfactual_mode": "blocked-path",
     "freshness": {
-      "built_at": "2026-04-06T11:26:32.057966+00:00",
+      "built_at": "2026-04-06T11:31:19.063254+00:00",
       "state": "fresh"
     },
     "kind": "epistemic-runtime-state",
@@ -373,7 +373,7 @@
       "state": "tense"
     },
     "authority": "derived-runtime-truth",
-    "built_at": "2026-04-06T11:26:32.920044+00:00",
+    "built_at": "2026-04-06T11:31:19.219238+00:00",
     "context_pressure_translation": {
       "continuity_pressure": "high",
       "narrative": "You cannot hold everything in focus at once; overview is starting to slip and attention is narrowing.",
@@ -413,7 +413,7 @@
       "visibility": "internal-only"
     },
     "intermittence_translation": {
-      "gap_minutes": 5424,
+      "gap_minutes": 5429,
       "narrative": "You were absent for a while and are now here again; this moment has the feel of returning after a gap.",
       "state": "returned-after-gap"
     },
@@ -438,7 +438,7 @@
     "boundary": "not-memory-not-identity-not-action",
     "confidence": "low",
     "freshness": {
-      "built_at": "2026-04-06T11:26:30.576372+00:00",
+      "built_at": "2026-04-06T11:31:05.962986+00:00",
       "state": "fresh"
     },
     "kind": "guided-learning-runtime-state",
@@ -483,7 +483,7 @@
     "active": true,
     "authority": "authoritative",
     "boundary": "not-memory-not-identity-not-action",
-    "built_at": "2026-04-06T11:26:32.082471+00:00",
+    "built_at": "2026-04-06T11:31:19.064753+00:00",
     "cadence": {
       "adjacent_producer_grace_minutes": 4,
       "cooldown_minutes": 25,
@@ -523,7 +523,7 @@
     "active": true,
     "authority": "authoritative",
     "freshness": {
-      "built_at": "2026-04-06T11:26:32.081064+00:00",
+      "built_at": "2026-04-06T11:31:19.026187+00:00",
       "state": "fresh"
     },
     "items": [
@@ -619,7 +619,7 @@
     "active": false,
     "authority": "authoritative-runtime-observability",
     "boundary": "not-memory-not-identity-not-action-not-applied-prompt",
-    "built_at": "2026-04-06T11:26:32.085288+00:00",
+    "built_at": "2026-04-06T11:31:19.067672+00:00",
     "cadence": {
       "adjacent_producer_grace_minutes": 6,
       "cooldown_minutes": 45,
@@ -912,10 +912,10 @@
     "active": true,
     "approval_boundary": "Observation is read-only. Any exec, git, fetch, pull, commit, reset, checkout, or apply step would require explicit approval.",
     "authority": "derived-runtime-truth",
-    "built_at": "2026-04-06T11:26:32.797243+00:00",
+    "built_at": "2026-04-06T11:31:19.098434+00:00",
     "code_awareness_state": "repo-visible",
-    "concern_hint": "Branch main has both modified and untracked local changes; observation is bounded and any git handling would require approval.",
-    "concern_state": "action-requires-approval",
+    "concern_hint": "Branch main has local modifications visible in read-only awareness; no action has been taken.",
+    "concern_state": "concern",
     "confidence": "high",
     "host_context": {
       "cwd": "/media/projects/jarvis-v2",
@@ -926,28 +926,19 @@
       "workspace_root": "/media/projects/jarvis-v2/workspace/default"
     },
     "kind": "self-system-code-awareness-light",
-    "local_change_state": "mixed",
+    "local_change_state": "modified",
     "observation_mode": "read-only",
     "repo_observation": {
-      "ahead_count": 46,
+      "ahead_count": 47,
       "approval_required_capability_count": 0,
       "approval_required_mutation_capability_count": 0,
       "approval_required_mutation_classes": [],
       "behind_count": 0,
       "branch_name": "main",
-      "deleted_paths": [
-        "ARCHITECTURE.md",
-        "AUTH_AND_CONNECTIONS.md",
-        "CLI_PLAN.md",
-        "CODING_RULES.md",
-        "EVENTBUS.md",
-        "JARVIS_V2_BUILD_RULES.md",
-        "JARVIS_V2_BUILD_SEQUENCE.md",
-        "JARVIS_V2_LOCKED_CHARTER.md"
-      ],
-      "deleted_present": true,
+      "deleted_paths": [],
+      "deleted_present": false,
       "dirty_working_tree": true,
-      "local_change_state": "mixed",
+      "local_change_state": "modified",
       "modified_paths": [
         "workspace/default/runtime/HEARTBEAT_STATE.json"
       ],
@@ -955,17 +946,8 @@
       "recent_local_changes_present": true,
       "repo_root_detected": true,
       "repo_status": "dirty",
-      "untracked_paths": [
-        "docs/ARCHITECTURE.md",
-        "docs/AUTH_AND_CONNECTIONS.md",
-        "docs/CLI_PLAN.md",
-        "docs/CODING_RULES.md",
-        "docs/EVENTBUS.md",
-        "docs/JARVIS_V2_BUILD_RULES.md",
-        "docs/JARVIS_V2_BUILD_SEQUENCE.md",
-        "docs/JARVIS_V2_LOCKED_CHARTER.md"
-      ],
-      "untracked_present": true,
+      "untracked_paths": [],
+      "untracked_present": false,
       "upstream_awareness": "ahead",
       "upstream_ref": "origin/main"
     },
@@ -1058,7 +1040,7 @@
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action-not-tool-execution",
     "freshness": {
-      "built_at": "2026-04-06T11:26:32.198462+00:00",
+      "built_at": "2026-04-06T11:31:19.078408+00:00",
       "state": "fresh"
     },
     "internal_only": true,
@@ -1069,7 +1051,7 @@
         "current_status": "active",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-06T11:26:32.198462+00:00",
+        "last_activation_at": "2026-04-06T11:31:19.078408+00:00",
         "role_kind": "epistemic-check",
         "role_name": "critic",
         "tool_access": "none"
@@ -1079,7 +1061,7 @@
         "current_status": "active",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-06T11:26:32.198462+00:00",
+        "last_activation_at": "2026-04-06T11:31:19.078408+00:00",
         "role_kind": "reflective-observer",
         "role_name": "witness-helper",
         "tool_access": "none"
@@ -1089,7 +1071,7 @@
         "current_status": "active",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-06T11:26:32.198462+00:00",
+        "last_activation_at": "2026-04-06T11:31:19.078408+00:00",
         "role_kind": "bounded-coordination",
         "role_name": "planner-helper",
         "tool_access": "none"
@@ -1163,14 +1145,14 @@
     "action_continuity_state": "idle",
     "action_mode": "read-only",
     "active": true,
-    "approval_expires_at": "2026-04-02T20:31:14.550343+00:00",
+    "approval_expires_at": "2026-04-04T14:34:09.625213+00:00",
     "approval_lifecycle": "bounded-approval-surface-light",
-    "approval_reason": "Intent remains proposal-only until explicitly approved within bounded scope; scope=repo-read; mutation_classification=modify-file; repo_scope=none; system_scope=none; execution=not-executed.",
-    "approval_requested_at": "2026-04-02T20:16:14.550343+00:00",
+    "approval_reason": "Intent remains proposal-only until explicitly approved within bounded scope; scope=repo-read; mutation_classification=modify-file; repo_scope=none; system_scope=none; write_proposal_type=propose-file-modification; write_proposal_scope=repo-file; write_proposal_targets=workspace/default/runtime/HEARTBEAT_STATE.json; write_proposal_target=none; write_proposal_criticality=medium; write_proposal_reason=Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=workspace/default/runtime/HEARTBEAT_STATE.json; approval_scope=repo-read.; write_proposal_content_state=none; write_proposal_content_summary=none; write_proposal_content_fingerprint=none; mutating_exec_proposal_state=none; mutating_exec_proposal_scope=none; mutating_exec_git_mutation_class=none; mutating_exec_repo_stewardship_domain=none; mutating_exec_proposal_command=none; mutating_exec_requires_sudo=False; mutating_exec_criticality=none; mutating_exec_proposal_reason=none; sudo_exec_proposal_state=none; sudo_exec_proposal_scope=none; sudo_exec_proposal_command=none; sudo_exec_requires_sudo=False; sudo_exec_criticality=none; sudo_exec_proposal_reason=none; execution=not-executed.",
+    "approval_requested_at": "2026-04-04T14:19:09.625213+00:00",
     "approval_required": true,
     "approval_resolution_message": "",
     "approval_resolution_reason": "Approval window elapsed without an explicit bounded decision.",
-    "approval_resolved_at": "2026-04-02T20:33:21.797893+00:00",
+    "approval_resolved_at": "2026-04-04T14:34:29.820347+00:00",
     "approval_scope": "repo-read",
     "approval_semantics": {
       "execution_allowed": false,
@@ -1178,7 +1160,7 @@
       "mode": "explicit-bounded-approval-only",
       "mutation_near": true,
       "proposal_only": true,
-      "scope_classification": "delete-file",
+      "scope_classification": "modify-file",
       "sudo_window_reusable": false,
       "sudo_window_state": "none",
       "verbal_supported": true
@@ -1188,7 +1170,7 @@
     "approval_state": "approved",
     "authority": "derived-runtime-truth",
     "boundary": "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content. Approved bounded non-sudo mutating exec may execute only for the exact approved command fingerprint. Approved bounded sudo exec may execute only for the exact approved sudo command fingerprint within the tiny allowlist; delete, git mutation, package install/update, and broader system mutation remain closed in this pass.",
-    "built_at": "2026-04-06T11:26:32.802015+00:00",
+    "built_at": "2026-04-06T11:31:19.102692+00:00",
     "confidence": "high",
     "delete_permitted": false,
     "execution_command": "MEMORY.md",
@@ -1204,10 +1186,10 @@
     "external_mutation_permitted": false,
     "followup_hint": "",
     "followup_state": "none",
-    "intent_reason": "Read-only awareness sees both modified and untracked changes on main; Jarvis can ask to inspect them, but may not act without approval.",
-    "intent_state": "approval-required",
+    "intent_reason": "Read-only awareness sees local modifications on main; Jarvis can form a bounded inspect intent, but no git action has occurred.",
+    "intent_state": "formed",
     "intent_target": "main",
-    "intent_type": "inspect-local-changes",
+    "intent_type": "inspect-working-tree",
     "kind": "approval-gated-tool-intent-light",
     "last_action_at": "",
     "last_action_outcome": "none",
@@ -1228,7 +1210,7 @@
     "mutating_exec_requires_sudo": false,
     "mutating_exec_source_contributors": [],
     "mutation_boundary": "Bounded mutation intent is classification-only runtime truth. It distinguishes read-only from mutation-near intent, but remains proposal-only, approval-gated, and not-executed. It is not MEMORY.md, not identity, and not a write path.",
-    "mutation_critical": true,
+    "mutation_critical": false,
     "mutation_execution_permitted": false,
     "mutation_execution_state": "not-executed",
     "mutation_intent": {
@@ -1239,7 +1221,7 @@
         "approval_required_mutation_capability_count": 0,
         "approval_required_mutation_classes": []
       },
-      "classification": "delete-file",
+      "classification": "modify-file",
       "execution_permitted": false,
       "execution_state": "not-executed",
       "explicit_approval_required": true,
@@ -1249,22 +1231,15 @@
       "not_executed": true,
       "proposal_only": true,
       "scope": {
-        "mutation_critical": true,
+        "mutation_critical": false,
         "repo_mutation_scope": "",
         "sudo_required": false,
         "system_mutation_scope": "",
         "target_files": [
-          "ARCHITECTURE.md",
-          "AUTH_AND_CONNECTIONS.md",
-          "CLI_PLAN.md",
-          "CODING_RULES.md",
-          "EVENTBUS.md",
-          "JARVIS_V2_BUILD_RULES.md",
-          "JARVIS_V2_BUILD_SEQUENCE.md",
-          "JARVIS_V2_LOCKED_CHARTER.md"
+          "workspace/default/runtime/HEARTBEAT_STATE.json"
         ],
         "target_paths": [
-          "workspace"
+          "workspace/default/runtime"
         ]
       },
       "source": "/runtime/bounded-mutation-intent",
@@ -1273,13 +1248,13 @@
         "self-system-code-awareness",
         "workspace-capabilities"
       ],
-      "summary": "Current intent is proposal-only and mutation-near: classification=delete-file; explicit scoped approval is required before any file, git, package, or system change.",
+      "summary": "Current intent is proposal-only and mutation-near: classification=modify-file; explicit scoped approval is required before any file, git, package, or system change.",
       "write_proposal": {
         "active": true,
         "approval_scope": "repo-read",
         "boundary": "Write proposal light is approval-scoped runtime truth only. It stays proposal-only, approval-gated, and not-executed. It is not identity, not MEMORY.md, and not action by itself.",
         "confidence": "high",
-        "criticality": "high",
+        "criticality": "medium",
         "execution_state": "not-executed",
         "explicit_approval_required": true,
         "mutation_near": true,
@@ -1294,46 +1269,32 @@
         "system_scope": "",
         "target_identity": false,
         "target_memory": false,
-        "write_proposal_reason": "Runtime sees deletion-near scope and can carry a bounded file-deletion proposal; targets=ARCHITECTURE.md, AUTH_AND_CONNECTIONS.md, CLI_PLAN.md; approval_scope=repo-read.",
+        "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=workspace/default/runtime/HEARTBEAT_STATE.json; approval_scope=repo-read.",
         "write_proposal_scope": "repo-file",
         "write_proposal_state": "scoped-proposal",
         "write_proposal_target_paths": [
-          "workspace"
+          "workspace/default/runtime"
         ],
         "write_proposal_targets": [
-          "ARCHITECTURE.md",
-          "AUTH_AND_CONNECTIONS.md",
-          "CLI_PLAN.md",
-          "CODING_RULES.md",
-          "EVENTBUS.md",
-          "JARVIS_V2_BUILD_RULES.md",
-          "JARVIS_V2_BUILD_SEQUENCE.md",
-          "JARVIS_V2_LOCKED_CHARTER.md"
+          "workspace/default/runtime/HEARTBEAT_STATE.json"
         ],
-        "write_proposal_type": "propose-file-deletion"
+        "write_proposal_type": "propose-file-modification"
       }
     },
-    "mutation_intent_classification": "delete-file",
+    "mutation_intent_classification": "modify-file",
     "mutation_intent_state": "proposal-only",
     "mutation_near": true,
     "mutation_permitted": false,
     "mutation_proposal_only": true,
     "mutation_repo_scope": "",
     "mutation_sudo_required": false,
-    "mutation_summary": "Current intent is proposal-only and mutation-near: classification=delete-file; explicit scoped approval is required before any file, git, package, or system change.",
+    "mutation_summary": "Current intent is proposal-only and mutation-near: classification=modify-file; explicit scoped approval is required before any file, git, package, or system change.",
     "mutation_system_scope": "",
     "mutation_target_files": [
-      "ARCHITECTURE.md",
-      "AUTH_AND_CONNECTIONS.md",
-      "CLI_PLAN.md",
-      "CODING_RULES.md",
-      "EVENTBUS.md",
-      "JARVIS_V2_BUILD_RULES.md",
-      "JARVIS_V2_BUILD_SEQUENCE.md",
-      "JARVIS_V2_LOCKED_CHARTER.md"
+      "workspace/default/runtime/HEARTBEAT_STATE.json"
     ],
     "mutation_target_paths": [
-      "workspace"
+      "workspace/default/runtime"
     ],
     "post_action_concern": "stable",
     "post_action_understanding": "",
@@ -1378,7 +1339,7 @@
     "sudo_exec_source_contributors": [],
     "sudo_permitted": false,
     "truth": "proposal-only",
-    "urgency": "high",
+    "urgency": "medium",
     "visibility": "internal-only",
     "workspace_scoped": true,
     "workspace_write": false,

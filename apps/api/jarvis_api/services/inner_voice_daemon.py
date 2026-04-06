@@ -90,6 +90,18 @@ def run_inner_voice_daemon(
     except Exception:
         pass
 
+    # Hjerteslag: cognitive state always counts as grounding
+    if grounding["source_count"] == 0:
+        try:
+            from core.runtime.db import get_latest_cognitive_personality_vector
+            pv = get_latest_cognitive_personality_vector()
+            if pv:
+                grounding["source_count"] = 1
+                grounding["sources"] = list(grounding.get("sources") or []) + ["personality_vector"]
+                grounding.setdefault("fragments", {})["personality_bearing"] = str(pv.get("current_bearing") or "")
+        except Exception:
+            pass
+
     if grounding["source_count"] < _MIN_GROUNDING_SOURCES and not in_play_mode:
         result = {
             "daemon_ran": True,

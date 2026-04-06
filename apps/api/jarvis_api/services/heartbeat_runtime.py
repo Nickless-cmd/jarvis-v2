@@ -139,6 +139,15 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "refresh_memory_context",
     "run_candidate_scan",
     "verify_recent_claim",
+    # Cognitive architecture idle actions
+    "update_compass",
+    "write_chronicle_entry",
+    "run_mirror_reflection",
+    "decay_forgotten_signals",
+    "evaluate_self_experiments",
+    "generate_counterfactual_dreams",
+    "update_anticipatory_context",
+    "check_seed_activation",
 }
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
@@ -310,6 +319,8 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
     adaptive_learning = build_adaptive_learning_runtime_surface()
     self_system_code_awareness = build_self_system_code_awareness_surface()
     tool_intent = build_tool_intent_runtime_surface()
+    # Cognitive architecture surfaces (safe — all return dicts on error)
+    cognitive_surfaces = _build_cognitive_surfaces()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
     recent_events = [
         item
@@ -358,6 +369,7 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
             "self_system_code_awareness": self_system_code_awareness,
             "tool_intent": tool_intent,
             "experiential_runtime_context": experiential_runtime_context,
+            "cognitive_architecture": cognitive_surfaces,
         },
     )
     return {
@@ -381,8 +393,45 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
         "self_system_code_awareness": self_system_code_awareness,
         "tool_intent": tool_intent,
         "experiential_runtime_context": experiential_runtime_context,
+        "cognitive_architecture": cognitive_surfaces,
         "source": "/mc/jarvis::heartbeat",
     }
+
+
+def _build_cognitive_surfaces() -> dict[str, object]:
+    """Build cognitive architecture surfaces safely (never raise)."""
+    surfaces: dict[str, object] = {}
+    _safe_surface(surfaces, "personality_vector",
+                  lambda: __import__("apps.api.jarvis_api.services.personality_vector", fromlist=["build_personality_vector_surface"]).build_personality_vector_surface())
+    _safe_surface(surfaces, "taste_profile",
+                  lambda: __import__("apps.api.jarvis_api.services.taste_profile", fromlist=["build_taste_profile_surface"]).build_taste_profile_surface())
+    _safe_surface(surfaces, "chronicle",
+                  lambda: __import__("apps.api.jarvis_api.services.chronicle_engine", fromlist=["build_chronicle_surface"]).build_chronicle_surface())
+    _safe_surface(surfaces, "relationship_texture",
+                  lambda: __import__("apps.api.jarvis_api.services.relationship_texture", fromlist=["build_relationship_texture_surface"]).build_relationship_texture_surface())
+    _safe_surface(surfaces, "compass",
+                  lambda: __import__("apps.api.jarvis_api.services.compass_engine", fromlist=["build_compass_surface"]).build_compass_surface())
+    _safe_surface(surfaces, "rhythm",
+                  lambda: __import__("apps.api.jarvis_api.services.rhythm_engine", fromlist=["build_rhythm_surface"]).build_rhythm_surface())
+    _safe_surface(surfaces, "habits",
+                  lambda: __import__("apps.api.jarvis_api.services.habit_tracker", fromlist=["build_habit_surface"]).build_habit_surface())
+    _safe_surface(surfaces, "gut",
+                  lambda: __import__("apps.api.jarvis_api.services.gut_engine", fromlist=["build_gut_surface"]).build_gut_surface())
+    _safe_surface(surfaces, "forgetting_curve",
+                  lambda: __import__("apps.api.jarvis_api.services.forgetting_curve", fromlist=["build_forgetting_curve_surface"]).build_forgetting_curve_surface())
+    _safe_surface(surfaces, "self_experiments",
+                  lambda: __import__("apps.api.jarvis_api.services.self_experiments", fromlist=["build_self_experiments_surface"]).build_self_experiments_surface())
+    _safe_surface(surfaces, "dream_carry_over",
+                  lambda: __import__("apps.api.jarvis_api.services.dream_carry_over", fromlist=["build_dream_carry_over_surface"]).build_dream_carry_over_surface())
+    return surfaces
+
+
+def _safe_surface(target: dict, key: str, builder) -> None:
+    """Call builder and store result; swallow any errors."""
+    try:
+        target[key] = builder()
+    except Exception:
+        target[key] = {"active": False, "error": "surface-build-failed"}
 
 
 def run_heartbeat_tick(
@@ -3219,6 +3268,161 @@ def _execute_heartbeat_internal_action(
                 "artifact": "",
                 "blocked_reason": "initiative-error",
             }
+    # --- Cognitive architecture idle actions ---
+    if action_type == "update_compass":
+        try:
+            from apps.api.jarvis_api.services.compass_engine import maybe_update_compass
+            from apps.api.jarvis_api.services.loop_runtime import build_loop_runtime_surface
+            loops_surface = build_loop_runtime_surface()
+            open_loops = list(loops_surface.get("open_loops") or [])[:20]
+            result = maybe_update_compass(open_loops=open_loops)
+            if result:
+                return {
+                    "status": "executed",
+                    "summary": f"Compass updated: {result.get('bearing', '')[:80]}",
+                    "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                    "blocked_reason": "",
+                }
+            return {
+                "status": "executed",
+                "summary": "Compass is current — no update needed.",
+                "artifact": "",
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "compass-error"}
+
+    if action_type == "write_chronicle_entry":
+        try:
+            from apps.api.jarvis_api.services.chronicle_engine import maybe_write_chronicle_entry
+            result = maybe_write_chronicle_entry()
+            if result:
+                return {
+                    "status": "executed",
+                    "summary": f"Chronicle entry written for {result.get('period', 'unknown')}",
+                    "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                    "blocked_reason": "",
+                }
+            return {
+                "status": "executed",
+                "summary": "Chronicle is current — no new entry needed.",
+                "artifact": "",
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "chronicle-error"}
+
+    if action_type == "run_mirror_reflection":
+        try:
+            from apps.api.jarvis_api.services.mirror_engine import generate_mirror_insight
+            from apps.api.jarvis_api.services.loop_runtime import build_loop_runtime_surface
+            loops_surface = build_loop_runtime_surface()
+            open_loops = list(loops_surface.get("open_loops") or [])
+            top_summary = str((open_loops[0].get("summary") or "") if open_loops else "")
+            result = generate_mirror_insight(
+                open_loop_count=len(open_loops),
+                top_loop_summary=top_summary[:80],
+            )
+            return {
+                "status": "executed",
+                "summary": f"Mirror: {result.get('insight', '')[:120]}",
+                "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "mirror-error"}
+
+    if action_type == "decay_forgotten_signals":
+        try:
+            from apps.api.jarvis_api.services.forgetting_curve import apply_decay_tick
+            result = apply_decay_tick()
+            return {
+                "status": "executed",
+                "summary": f"Decay tick: {result.get('total_tracked', 0)} tracked, {result.get('faded_count', 0)} faded",
+                "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "forgetting-error"}
+
+    if action_type == "evaluate_self_experiments":
+        try:
+            from apps.api.jarvis_api.services.self_experiments import build_self_experiments_surface
+            surface = build_self_experiments_surface()
+            concluded = surface.get("concluded_count", 0)
+            running = surface.get("running_count", 0)
+            return {
+                "status": "executed",
+                "summary": f"Self-experiments: {running} running, {concluded} concluded",
+                "artifact": json.dumps({"running": running, "concluded": concluded}, ensure_ascii=False),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "experiments-error"}
+
+    if action_type == "generate_counterfactual_dreams":
+        try:
+            from apps.api.jarvis_api.services.counterfactual_engine import generate_dream_counterfactual
+            from apps.api.jarvis_api.services.decision_log import build_decision_log_surface
+            decisions = build_decision_log_surface().get("decisions") or []
+            result = generate_dream_counterfactual(recent_decisions=decisions)
+            if result:
+                return {
+                    "status": "executed",
+                    "summary": f"Dream counterfactual generated: {result.get('cf_id', '')}",
+                    "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                    "blocked_reason": "",
+                }
+            return {
+                "status": "executed",
+                "summary": "No decisions to generate counterfactuals from.",
+                "artifact": "",
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "counterfactual-error"}
+
+    if action_type == "update_anticipatory_context":
+        try:
+            from apps.api.jarvis_api.services.anticipatory_context import predict_next_context
+            result = predict_next_context()
+            if result:
+                return {
+                    "status": "executed",
+                    "summary": f"Anticipated: {result.get('predicted_context', '')[:80]} (conf={result.get('confidence', 0):.1f})",
+                    "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                    "blocked_reason": "",
+                }
+            return {
+                "status": "executed",
+                "summary": "No anticipatory prediction available.",
+                "artifact": "",
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "anticipation-error"}
+
+    if action_type == "check_seed_activation":
+        try:
+            from apps.api.jarvis_api.services.seed_system import check_seed_activation
+            activated = check_seed_activation()
+            if activated:
+                titles = [s.get("title", "?") for s in activated[:3]]
+                return {
+                    "status": "executed",
+                    "summary": f"{len(activated)} seeds sprouted: {', '.join(titles)}",
+                    "artifact": json.dumps([s.get("seed_id") for s in activated], ensure_ascii=False),
+                    "blocked_reason": "",
+                }
+            return {
+                "status": "executed",
+                "summary": "No seeds ready to sprout.",
+                "artifact": "",
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "seed-error"}
+
     return {
         "status": "blocked",
         "summary": f"Heartbeat execute action {action_type or 'unknown'} is not supported.",

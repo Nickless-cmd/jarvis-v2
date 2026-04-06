@@ -3886,4 +3886,55 @@ export const backend = {
       skills: [],
     }
   },
+
+  /** Cognitive Architecture — all 27 endpoints in parallel */
+  async getCognitiveArchitecture() {
+    const [
+      personalityVector, tasteProfile, chronicle, relationshipTexture,
+      compass, rhythm, habits, sharedLanguage, mirror, silenceSignals,
+      decisions, counterfactuals, paradoxes, aesthetics, gut, seeds,
+      procedures, temporalContext, negotiations, forgettingCurve,
+      conversationRhythm, selfExperiments, anticipatoryContext,
+      contractEvolution, dreamCarryOver, apopheniaGuard,
+      cognitiveStateInjection,
+    ] = await Promise.all([
+      requestJson('/mc/personality-vector').catch(() => ({})),
+      requestJson('/mc/taste-profile').catch(() => ({})),
+      requestJson('/mc/chronicle').catch(() => ({})),
+      requestJson('/mc/relationship-texture').catch(() => ({})),
+      requestJson('/mc/compass').catch(() => ({})),
+      requestJson('/mc/rhythm').catch(() => ({})),
+      requestJson('/mc/habits').catch(() => ({})),
+      requestJson('/mc/shared-language').catch(() => ({})),
+      requestJson('/mc/mirror').catch(() => ({})),
+      requestJson('/mc/silence-signals').catch(() => ({})),
+      requestJson('/mc/decisions').catch(() => ({})),
+      requestJson('/mc/counterfactuals').catch(() => ({})),
+      requestJson('/mc/paradoxes').catch(() => ({})),
+      requestJson('/mc/aesthetics').catch(() => ({})),
+      requestJson('/mc/gut').catch(() => ({})),
+      requestJson('/mc/seeds').catch(() => ({})),
+      requestJson('/mc/procedures').catch(() => ({})),
+      requestJson('/mc/temporal-context').catch(() => ({})),
+      requestJson('/mc/negotiations').catch(() => ({})),
+      requestJson('/mc/forgetting-curve').catch(() => ({})),
+      requestJson('/mc/conversation-rhythm').catch(() => ({})),
+      requestJson('/mc/self-experiments').catch(() => ({})),
+      requestJson('/mc/anticipatory-context').catch(() => ({})),
+      requestJson('/mc/contract-evolution').catch(() => ({})),
+      requestJson('/mc/dream-carry-over').catch(() => ({})),
+      requestJson('/mc/apophenia-guard').catch(() => ({})),
+      requestJson('/mc/cognitive-state-injection').catch(() => ({})),
+    ])
+    return {
+      fetchedAt: new Date().toISOString(),
+      personalityVector, tasteProfile, chronicle, relationshipTexture,
+      compass, rhythm, habits, sharedLanguage, mirror, silenceSignals,
+      decisions, counterfactuals, paradoxes, aesthetics, gut, seeds,
+      procedures, temporalContext, negotiations, forgettingCurve,
+      conversationRhythm, selfExperiments, anticipatoryContext,
+      contractEvolution, dreamCarryOver, apopheniaGuard,
+      cognitiveStateInjection,
+    }
+  },
 }

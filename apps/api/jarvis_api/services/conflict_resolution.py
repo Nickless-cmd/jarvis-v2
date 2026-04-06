@@ -342,16 +342,18 @@ def resolve_heartbeat_initiative_conflict(
         trace.summary = "Propose/ping not allowed by policy."
         return trace
 
-    # Rule 2: Question gate is active but send not granted — defer or continue internal
+    # Rule 2: Question gate active but send not granted
+    # PROPOSE → continue internal (don't bother user with proposals)
+    # PING → allow if policy permits (pings are lightweight, don't need send-grant)
     if gate_active and gate_send_permission == "not-granted":
-        if decision_type in {"propose", "ping"}:
-            # Question-gated ≠ execution-granted: downgrade to internal
+        if decision_type == "propose":
             trace.outcome = "continue_internal"
             trace.blocked_by = "question-gate-not-granted"
             trace.dominant_factor = f"question-gate:{gate_state}"
             trace.reason_code = "gate-active-send-not-granted"
-            trace.summary = "Question thread active but send not granted — continue internal."
+            trace.summary = "Question thread active but send not granted — propose continues internal."
             return trace
+        # ping falls through to policy check (rule 1 already verified policy_allow_ping)
 
     # Rule 2.5: Quiet initiative promotion check
     # If we already have a quiet hold and conditions have improved, promote

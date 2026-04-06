@@ -4,7 +4,7 @@ import copy
 from hashlib import sha1
 import threading
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
 
@@ -339,6 +339,7 @@ from core.runtime.db import (
     get_protected_inner_voice,
     get_private_state,
     get_private_self_model,
+    list_recent_protected_inner_voices,
     record_capability_approval_request_execution,
     recent_capability_approval_requests,
     recent_capability_invocations,
@@ -373,6 +374,12 @@ CAPABILITY_INVOCATION_EVENT_KINDS = (
 
 _MC_ROUTE_CACHE_LOCK = threading.Lock()
 _MC_ROUTE_CACHE: dict[str, tuple[float, object]] = {}
+_PROTECTED_VOICE_PRIORITY_WINDOW = timedelta(minutes=15)
+_PREFERRED_PROTECTED_VOICE_SOURCES = {"inner-voice-daemon"}
+_TEMPLATE_PROTECTED_VOICE_SOURCE = (
+    "private-state+private-self-model+private-development-state+"
+    "private-reflective-selection"
+)
 _MC_ROUTE_BUILD_LOCKS: dict[str, threading.Lock] = {}
 
 
@@ -1914,11 +1921,74 @@ def _private_state_surface() -> dict:
 
 
 def _protected_inner_voice_surface() -> dict:
-    voice = get_protected_inner_voice()
+    voice = _select_current_protected_inner_voice(
+        list_recent_protected_inner_voices(limit=8)
+    )
     return {
         "active": bool(voice),
         "current": voice,
     }
+
+
+def _select_current_protected_inner_voice(
+    voices: list[dict[str, object]],
+) -> dict[str, object] | None:
+    if not voices:
+        return None
+    latest = dict(voices[0])
+    latest_created_at = _parse_runtime_iso_datetime(latest.get("created_at"))
+    freshness_floor = (
+        latest_created_at - _PROTECTED_VOICE_PRIORITY_WINDOW
+        if latest_created_at is not None
+        else None
+    )
+    best = latest
+    best_score = _protected_inner_voice_priority(
+        best,
+        freshness_floor=freshness_floor,
+    )
+    for voice in voices[1:]:
+        candidate = dict(voice)
+        candidate_score = _protected_inner_voice_priority(
+            candidate,
+            freshness_floor=freshness_floor,
+        )
+        if candidate_score > best_score:
+            best = candidate
+            best_score = candidate_score
+    return best
+
+
+def _protected_inner_voice_priority(
+    voice: dict[str, object],
+    *,
+    freshness_floor: datetime | None,
+) -> tuple[int, int, int, str, int]:
+    created_at = _parse_runtime_iso_datetime(voice.get("created_at"))
+    is_fresh = (
+        freshness_floor is None or created_at is None or created_at >= freshness_floor
+    )
+    source = str(voice.get("source") or "").strip()
+    preferred = int(is_fresh and source in _PREFERRED_PROTECTED_VOICE_SOURCES)
+    enriched = int(is_fresh and bool(voice.get("enriched")))
+    generic_penalty = int(source == _TEMPLATE_PROTECTED_VOICE_SOURCE)
+    created_sort = created_at.isoformat() if created_at is not None else ""
+    identifier = int(voice.get("id") or 0)
+    return (preferred, enriched, -generic_penalty, created_sort, identifier)
+
+
+def _parse_runtime_iso_datetime(value: object) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    normalized = text.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _private_inner_interplay_surface() -> dict:

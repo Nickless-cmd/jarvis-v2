@@ -2411,6 +2411,50 @@ def get_protected_inner_voice() -> dict[str, object] | None:
     }
 
 
+def list_recent_protected_inner_voices(*, limit: int = 8) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                id,
+                voice_id,
+                source,
+                run_id,
+                work_id,
+                mood_tone,
+                self_position,
+                current_concern,
+                current_pull,
+                voice_line,
+                created_at,
+                enriched
+            FROM protected_inner_voices
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(int(limit), 1),),
+        ).fetchall()
+    items: list[dict[str, object]] = []
+    for row in rows:
+        items.append(
+            {
+                "id": row["id"],
+                "voice_id": row["voice_id"],
+                "source": row["source"],
+                "run_id": row["run_id"],
+                "work_id": row["work_id"],
+                "mood_tone": row["mood_tone"],
+                "self_position": row["self_position"],
+                "current_concern": row["current_concern"],
+                "current_pull": row["current_pull"],
+                "voice_line": row["voice_line"],
+                "created_at": row["created_at"],
+                "enriched": bool(row["enriched"]),
+            }
+        )
+    return items
+
+
 def record_private_temporal_promotion_signal(
     *,
     signal_id: str,

@@ -2714,6 +2714,54 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
+        # --- Self-surprise detection ---
+        try:
+            from apps.api.jarvis_api.services.self_surprise_detection import detect_self_surprise
+            detect_self_surprise(
+                expected_confidence=0.6,  # baseline expectation
+                actual_outcome=outcome_status,
+                domain=user_message[:30],
+                run_id=run_id,
+            )
+        except Exception:
+            pass
+
+        # --- Gratitude tracking ---
+        try:
+            from apps.api.jarvis_api.services.gratitude_tracker import detect_gratitude_from_interaction
+            msg_lower = user_message.lower()
+            was_corrected = any(m in msg_lower for m in ("nej", "forkert", "ikke det"))
+            detect_gratitude_from_interaction(
+                user_mood=detected_mood,
+                outcome_status=outcome_status,
+                was_corrected=was_corrected,
+            )
+        except Exception:
+            pass
+
+        # --- Value formation ---
+        try:
+            from apps.api.jarvis_api.services.value_formation import detect_value_from_outcome
+            detect_value_from_outcome(
+                action_type="visible_run",
+                outcome_status=outcome_status,
+                user_mood=detected_mood,
+            )
+        except Exception:
+            pass
+
+        # --- Flow state update ---
+        try:
+            from apps.api.jarvis_api.services.flow_state_detection import update_flow_detection
+            msg_lower = user_message.lower()
+            corrections = sum(1 for m in ("nej", "forkert", "prøv igen") if m in msg_lower)
+            update_flow_detection(
+                recent_outcomes=[outcome_status],
+                correction_count=corrections,
+            )
+        except Exception:
+            pass
+
     threading.Thread(target=_run, daemon=True).start()
 
 

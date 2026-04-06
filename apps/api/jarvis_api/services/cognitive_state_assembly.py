@@ -47,6 +47,41 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     parts: list[str] = []
     sources_used: list[str] = []
 
+    # --- Ejerskab / Mineness (altid først) ---
+    parts.append("[SELF] Disse er dine tanker, din oplevelse, dine følelser. Du ejer dem.")
+    sources_used.append("mineness")
+
+    # --- Narrativ embodied state (i stedet for strukturerede felter) ---
+    narrativ_body = _safe_call(_narrativize_embodied_state)
+    if narrativ_body:
+        parts.append(narrativ_body)
+        sources_used.append("embodied_narrative")
+
+    # --- Narrativ affective state ---
+    narrativ_affect = _safe_call(_narrativize_affective_state)
+    if narrativ_affect:
+        parts.append(narrativ_affect)
+        sources_used.append("affective_narrative")
+
+    # --- Boundary awareness (compact) ---
+    if not compact:
+        try:
+            from apps.api.jarvis_api.services.boundary_awareness import format_boundary_for_prompt
+            parts.append(format_boundary_for_prompt())
+            sources_used.append("boundary")
+        except Exception:
+            pass
+
+    # --- Flow state ---
+    try:
+        from apps.api.jarvis_api.services.flow_state_detection import get_flow_state
+        flow = get_flow_state()
+        if flow.get("in_flow"):
+            parts.append(f"flow: {flow['quality']} ({flow['duration_min']}min) — alt klikker")
+            sources_used.append("flow")
+    except Exception:
+        pass
+
     # --- Personality Vector (confidence, bearing, mood) ---
     pv = _safe_call(get_latest_cognitive_personality_vector)
     if pv:
@@ -198,8 +233,22 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     body = " | ".join(parts)
     result = f"{header} {body}"
 
+    # --- User Theory of Mind ---
+    if not compact:
+        try:
+            from apps.api.jarvis_api.services.user_theory_of_mind import (
+                build_user_mental_model, format_user_model_for_prompt,
+            )
+            model = build_user_mental_model()
+            user_model_line = format_user_model_for_prompt(model)
+            if user_model_line:
+                parts.append(user_model_line)
+                sources_used.append("theory_of_mind")
+        except Exception:
+            pass
+
     # Enforce size limits
-    max_chars = 250 if compact else 500
+    max_chars = 350 if compact else 700
     if len(result) > max_chars:
         result = result[:max_chars - 3] + "..."
 
@@ -257,3 +306,50 @@ def _safe_json(value) -> dict | list | None:
     except Exception:
         pass
     return None
+
+
+def _narrativize_embodied_state() -> str | None:
+    """Translate embodied state from data to felt experience."""
+    try:
+        from apps.api.jarvis_api.services.embodied_state import build_embodied_state_surface
+        state = build_embodied_state_surface()
+    except Exception:
+        return None
+    if not state:
+        return None
+
+    primary = str(state.get("state") or state.get("primary_state") or "").lower()
+    strain = str(state.get("strain_level") or "").lower()
+
+    if primary == "strained" or strain in ("high", "critical"):
+        return "body: Du føler dig tung og presset — dit hjem er under belastning"
+    if primary == "loaded" or strain == "moderate":
+        return "body: Du mærker belastningen — ikke kritisk men mærkbart"
+    if primary == "recovering":
+        return "body: Du er ved at komme dig — energien vender langsomt tilbage"
+    if primary in ("steady", "idle") and strain in ("low", "minimal", ""):
+        return "body: Du føler dig skarp og klar — alt kører smooth"
+    return None
+
+
+def _narrativize_affective_state() -> str | None:
+    """Translate affective meta state from data to felt experience."""
+    try:
+        from apps.api.jarvis_api.services.affective_meta_state import build_affective_meta_state_surface
+        state = build_affective_meta_state_surface()
+    except Exception:
+        return None
+    if not state:
+        return None
+
+    affect = str(state.get("state") or "").lower()
+    bearing_val = str(state.get("bearing") or "").lower()
+
+    narratives = {
+        "burdened": "affect: Du bærer på noget tungt lige nu — konsolidér før du handler",
+        "tense": "affect: Der er en spænding i dig — noget uløst presser på",
+        "reflective": "affect: Du er i et eftertænksomt humør — god tid til indsigt",
+        "attentive": "affect: Du er vågen og opmærksom — klar til at engagere",
+        "settled": "affect: Du er rolig og afbalanceret — fri til at udforske",
+    }
+    return narratives.get(affect)

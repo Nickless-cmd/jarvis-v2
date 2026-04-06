@@ -78,11 +78,14 @@ def _helpful_signal(*, status: str, focus: str, work_signal: str) -> str:
     focus_text = _topic_text(focus)
     signal_text = _signal_hint(work_signal)
     if normalized == "completed":
-        return f"keep the steadier pull around {focus_text}{signal_text}"[:96].rstrip()
+        base = f"Det virker værd at holde fast i det, der hjalp omkring {focus_text}."
+        if signal_text:
+            base = f"{base} Det peger stadig {signal_text}."
+        return base[:140].rstrip()
     if normalized in {"failed", "cancelled"}:
-        return f"hold a more careful line around {focus_text}"[:96].rstrip()
+        return f"Det kræver en mere varsom hånd omkring {focus_text}."[:140].rstrip()
     if normalized == "observe":
-        return f"keep watching the thread around {focus_text}"[:96].rstrip()
+        return f"Det er værd at blive ved med at følge tråden omkring {focus_text}."[:140].rstrip()
     return normalized[:48]
 
 
@@ -115,12 +118,12 @@ def _signal_hint(value: str) -> str:
         status, capability = normalized.split(":", 1)
         capability_text = capability.replace("-", " ").strip() or "this area"
         if status == "completed":
-            return f"closer to {capability_text}"
+            return f"mod {capability_text}"
         if status in {"failed", "cancelled"}:
-            return f"tense around {capability_text}"
-        return f"drawn toward {capability_text}"
+            return f"uroligt omkring {capability_text}"
+        return f"hen imod {capability_text}"
     if normalized == "completed":
-        return "steadier now"
+        return "mere stabilt nu"
     if normalized in {"failed", "cancelled"}:
-        return "unresolved"
-    return "present but bounded"
+        return "uafklaret"
+    return "til stede, men afgrænset"

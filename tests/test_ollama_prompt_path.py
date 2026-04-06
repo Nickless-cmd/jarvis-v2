@@ -119,7 +119,7 @@ def test_visible_prompt_relevance_interface_keeps_generic_compact_chat_bounded(
     assert decision.include_memory is False
     assert decision.include_guidance is False
     assert decision.include_transcript is True
-    assert decision.include_continuity is False
+    assert decision.include_continuity is True
     assert decision.include_support_signals is False
     assert decision.fallback_used is True
     assert decision.backend_status in {"backend-unavailable", "request-failed", "parse-failed", "prompt-missing"}
@@ -142,7 +142,7 @@ def test_visible_prompt_relevance_interface_keeps_recall_queries_memory_aware(
     assert decision.include_memory is True
     assert decision.include_guidance is False
     assert decision.include_transcript is True
-    assert decision.include_continuity is False
+    assert decision.include_continuity is True
     assert decision.include_support_signals is True
     assert decision.fallback_used is True
 
@@ -788,7 +788,8 @@ def test_ollama_visible_prompt_can_include_tiny_inner_visible_bridge_line(
     item = bridge_surface["items"][0]
 
     assert "Inner visible support (subordinate only, never authority):" in assembly.text
-    assert "tone=careful-forward | stance=careful | directness=medium | watchfulness=medium | momentum=steady" in assembly.text
+    assert "Hold en rolig, fremadrettet tone." in assembly.text
+    assert "Vær varsom uden at blive va" in assembly.text
     assert "bounded inner visible prompt bridge" in assembly.derived_inputs
     assert item["included"] is True
     assert item["reason"] == "included"

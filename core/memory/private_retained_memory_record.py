@@ -57,12 +57,12 @@ def _retained_kind(
     action = str(private_promotion_decision.get("promotion_action") or "").strip()
     learning_kind = str(private_growth_note.get("learning_kind") or "").strip()
     if action == "promote":
-        return "reinforced-pattern"
+        return "reinforced pattern"
     if action == "review":
-        return "reconsidered-pattern"
+        return "reconsidered pattern"
     if learning_kind == "observe":
-        return "observed-pattern"
-    return "held-pattern"
+        return "observed pattern"
+    return "held pattern"
 
 
 def _retention_horizon(

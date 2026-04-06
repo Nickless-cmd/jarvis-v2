@@ -107,12 +107,12 @@ def _current_concern(
     fatigue = str(private_state.get("fatigue") or "low").strip()
     confidence = str(private_state.get("confidence") or "low").strip()
     if fatigue == "medium":
-        return "pace:hold-short"
+        return "Jeg skal holde tempoet nede."
     if frustration == "medium":
-        return "stability:guarded"
+        return "Jeg vil undgå at miste grebet."
     if confidence != "medium":
-        return "stability:watch"
-    return "stability:medium"
+        return "Jeg er ikke helt sikker endnu."
+    return "Jeg har nogenlunde fodfæste."
 
 
 def _current_pull(
@@ -133,8 +133,8 @@ def _current_pull(
 
     curiosity = str(private_state.get("curiosity") or "low").strip()
     if curiosity == "medium":
-        return "observe-current-pattern"
-    return "retain-current-pattern"
+        return "Jeg vil se, om det nuværende mønster holder."
+    return "Jeg vil holde fast i det, der virker."
 
 
 def _voice_line(
@@ -144,10 +144,13 @@ def _voice_line(
     current_concern: str,
     current_pull: str,
 ) -> str:
-    parts = [
-        mood_tone,
-        f"position={self_position}",
-        f"concern={current_concern}",
-        f"pull={current_pull}",
-    ]
-    return " | ".join(parts)[:160].rstrip()
+    position_text = self_position.replace("-", " ").replace(":", " ").strip()
+    tone_map = {
+        "guarded": "Jeg er lidt på vagt",
+        "attentive": "Jeg følger tæt med",
+        "steady": "Jeg står nogenlunde roligt",
+        "quiet": "Jeg holder mig i baggrunden",
+    }
+    lead = tone_map.get(mood_tone, "Jeg prøver at holde mig samlet")
+    text = f"{lead} omkring {position_text}. {current_concern} {current_pull}"
+    return text[:200].rstrip()

@@ -31,6 +31,10 @@ function capabilityLabel(item) {
   return item.capability_name || item.capability_id || 'unknown'
 }
 
+function humanizeToken(value) {
+  return String(value || '').replace(/[-_:]+/g, ' ').trim()
+}
+
 function deriveEmotions(affective) {
   const state = affective.state || 'unknown'
   const bearing = affective.bearing || 'unknown'
@@ -169,8 +173,8 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
 
       <PanelSection title="Memory">
         {[
-          { label: 'Kind', value: memorySummary.kind || 'unknown', color: '#5ab8a0' },
-          { label: 'Focus', value: memorySummary.focus || 'none', color: '#8b909e' },
+          { label: 'Kind', value: humanizeToken(memorySummary.kind || 'unknown'), color: '#5ab8a0' },
+          { label: 'Focus', value: humanizeToken(memorySummary.focus || 'none'), color: '#8b909e' },
         ].map(({ label, value, color }) => (
           <div key={label} className="rail-memory-row">
             <span>{label}</span>
@@ -182,7 +186,7 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
       <PanelSection title="Inner Voice">
         <div className="rail-inner-voice">
           {voiceMood ? (
-            <div className="rail-inner-voice-mood mono">{voiceMood}</div>
+            <div className="rail-inner-voice-mood mono">{humanizeToken(voiceMood)}</div>
           ) : null}
           <span>{innerVoiceText}</span>
         </div>

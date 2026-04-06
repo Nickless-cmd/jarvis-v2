@@ -122,18 +122,17 @@ HARD_BLOCKED_EXEC_TOKENS = {
     "python3",
     "node",
 }
-NON_DESTRUCTIVE_EXEC_BLOCKED_PATTERNS = (
-    ">",
-    "<",
-    "|",
-    "&",
-    ";",
-    "$(",
-    "`",
+NON_DESTRUCTIVE_EXEC_REDIRECTION_PATTERNS = (
     ">>",
     "<<",
-    "*",
-    "?",
+    ">",
+    "<",
+)
+NON_DESTRUCTIVE_EXEC_SEGMENT_SEPARATORS = (
+    "&&",
+    "||",
+    "|",
+    ";",
 )
 
 
@@ -1021,10 +1020,16 @@ def _invoke_runnable_capability(
             }
         argv = list(command_verdict.get("argv") or [])
         execution_cwd = Path(command_verdict.get("execution_cwd") or workspace_dir)
-        completed, timeout_detail = _run_bounded_command(
-            argv=argv,
-            workspace_dir=execution_cwd,
-        )
+        if bool(command_verdict.get("shell_mode")):
+            completed, timeout_detail = _run_bounded_shell_command(
+                command_text=resolved_command,
+                workspace_dir=execution_cwd,
+            )
+        else:
+            completed, timeout_detail = _run_bounded_command(
+                argv=argv,
+                workspace_dir=execution_cwd,
+            )
         if completed is None:
             return {
                 "capability": summary,
@@ -1051,6 +1056,8 @@ def _invoke_runnable_capability(
                     or resolved_command
                 ),
                 "argv": argv,
+                "shell_mode": bool(command_verdict.get("shell_mode")),
+                "shell_segments": list(command_verdict.get("shell_segments") or []),
                 "exit_code": completed.returncode,
                 "text": output_text,
                 "command_source": command_source or "declared-command",
@@ -1475,6 +1482,27 @@ def _run_bounded_command(
     return completed, None
 
 
+def _run_bounded_shell_command(
+    *,
+    command_text: str,
+    workspace_dir: Path,
+) -> tuple[subprocess.CompletedProcess[str] | None, str | None]:
+    try:
+        completed = subprocess.run(
+            ["/bin/bash", "-lc", str(command_text)],
+            cwd=str(workspace_dir),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=MAX_EXEC_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return None, f"Bounded exec exceeded {MAX_EXEC_SECONDS} seconds."
+    return completed, None
+
+
 def _classify_exec_command(command_text: str) -> dict[str, object]:
     normalized = str(command_text or "").strip()
     if not normalized:
@@ -1483,12 +1511,20 @@ def _classify_exec_command(command_text: str) -> dict[str, object]:
             "status": "blocked-missing-command",
             "detail": "Non-destructive exec requires a non-empty command.",
         }
-    if any(pattern in normalized for pattern in NON_DESTRUCTIVE_EXEC_BLOCKED_PATTERNS):
+    if any(pattern in normalized for pattern in NON_DESTRUCTIVE_EXEC_REDIRECTION_PATTERNS):
         return {
             "allowed": False,
-            "status": "blocked-shell-features",
-            "detail": "Shell metacharacters, redirection, globbing, and command chaining are not allowed.",
+            "status": "blocked-shell-redirection",
+            "detail": "Shell redirection is not allowed in non-destructive exec.",
         }
+    if "$(" in normalized or "`" in normalized:
+        return {
+            "allowed": False,
+            "status": "blocked-shell-substitution",
+            "detail": "Command substitution is not allowed in non-destructive exec.",
+        }
+    if any(separator in normalized for separator in NON_DESTRUCTIVE_EXEC_SEGMENT_SEPARATORS):
+        return _classify_shell_composed_exec_command(normalized)
     try:
         argv = shlex.split(normalized, posix=True)
     except ValueError:
@@ -1541,6 +1577,139 @@ def _classify_exec_command(command_text: str) -> dict[str, object]:
         "path_normalization_applied": bool(normalization_sources),
         "normalization_source": "+".join(normalization_sources) if normalization_sources else "none",
     }
+
+
+def _classify_shell_composed_exec_command(command_text: str) -> dict[str, object]:
+    segments = _split_shell_exec_segments(command_text)
+    if not segments:
+        return {
+            "allowed": False,
+            "status": "blocked-invalid-command",
+            "detail": "Command could not be segmented safely.",
+        }
+
+    execution_scope = "filesystem"
+    repo_scoped = False
+    normalized_segments: list[str] = []
+    normalization_sources: list[str] = []
+
+    for segment in segments:
+        verdict = _classify_exec_command_no_shell(segment)
+        if verdict.get("proposal_required"):
+            return {
+                "allowed": False,
+                "proposal_required": True,
+                **{
+                    key: value
+                    for key, value in verdict.items()
+                    if key != "allowed"
+                },
+            }
+        if not verdict.get("allowed"):
+            return verdict
+        normalized_segments.append(
+            str(verdict.get("normalized_command_text") or segment).strip()
+        )
+        if verdict.get("repo_scoped"):
+            repo_scoped = True
+        if str(verdict.get("execution_scope") or "") == "git-read":
+            execution_scope = "git-read"
+        for source in str(verdict.get("normalization_source") or "none").split("+"):
+            normalized_source = source.strip()
+            if (
+                normalized_source
+                and normalized_source != "none"
+                and normalized_source not in normalization_sources
+            ):
+                normalization_sources.append(normalized_source)
+
+    return {
+        "allowed": True,
+        "argv": ["/bin/bash", "-lc", command_text],
+        "shell_mode": True,
+        "normalized_command_text": " ".join(normalized_segments).strip(),
+        "path_normalization_applied": bool(normalization_sources),
+        "normalization_source": (
+            "+".join(normalization_sources) if normalization_sources else "none"
+        ),
+        "execution_scope": execution_scope,
+        "execution_classification": (
+            "git-read-allowed"
+            if execution_scope == "git-read"
+            else "non-destructive-read-allowed"
+        ),
+        "repo_scoped": repo_scoped,
+        "shell_segments": normalized_segments,
+    }
+
+
+def _classify_exec_command_no_shell(command_text: str) -> dict[str, object]:
+    normalized = str(command_text or "").strip()
+    if not normalized:
+        return {
+            "allowed": False,
+            "status": "blocked-missing-command",
+            "detail": "Non-destructive exec requires a non-empty command.",
+        }
+    try:
+        argv = shlex.split(normalized, posix=True)
+    except ValueError:
+        return {
+            "allowed": False,
+            "status": "blocked-invalid-command",
+            "detail": "Command could not be parsed safely.",
+        }
+    if not argv:
+        return {
+            "allowed": False,
+            "status": "blocked-missing-command",
+            "detail": "Non-destructive exec requires a non-empty command.",
+        }
+    normalized_argv, normalization_sources = _normalize_exec_argv(argv)
+    command_name = argv[0]
+    if "/" in command_name:
+        return {
+            "allowed": False,
+            "status": "blocked-command-path",
+            "detail": "Explicit binary paths are not allowed in non-destructive exec.",
+        }
+    lowered = [part.lower() for part in argv]
+    if any(token in HARD_BLOCKED_EXEC_TOKENS for token in lowered):
+        blocked = next(token for token in lowered if token in HARD_BLOCKED_EXEC_TOKENS)
+        return {
+            "allowed": False,
+            "status": "blocked-destructive-command",
+            "detail": f"Destructive or arbitrary-exec token is not allowed in this pass: {blocked}",
+        }
+    if command_name == "git":
+        return _classify_git_exec_command(argv)
+    proposal_metadata = _mutating_exec_proposal_metadata(argv)
+    if proposal_metadata is not None:
+        return {
+            "allowed": False,
+            "proposal_required": True,
+            **proposal_metadata,
+        }
+    if command_name not in NON_DESTRUCTIVE_EXEC_ALLOWLIST:
+        return {
+            "allowed": False,
+            "status": "blocked-command-not-allowlisted",
+            "detail": f"Command is not in the bounded non-destructive allowlist: {command_name}",
+        }
+    return {
+        "allowed": True,
+        "argv": normalized_argv,
+        "normalized_command_text": shlex.join(normalized_argv),
+        "path_normalization_applied": bool(normalization_sources),
+        "normalization_source": (
+            "+".join(normalization_sources) if normalization_sources else "none"
+        ),
+    }
+
+
+def _split_shell_exec_segments(command_text: str) -> list[str]:
+    parts = re.split(r"\s*(?:\&\&|\|\||\||;)\s*", str(command_text or "").strip())
+    return [part.strip() for part in parts if part.strip()]
 
 
 def _normalize_exec_argv(argv: list[str]) -> tuple[list[str], list[str]]:

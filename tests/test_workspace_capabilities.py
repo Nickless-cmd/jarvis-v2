@@ -207,8 +207,47 @@ def test_non_destructive_exec_blocks_destructive_and_sudo_commands(
         "tool:run-non-destructive-command",
         command_text="ls $HOME && pwd",
     )
-    assert shell_features["status"] == "blocked-shell-features"
+    assert shell_features["status"] == "executed"
     assert shell_features["execution_mode"] == "non-destructive-exec"
+    shell_payload = shell_features.get("result") or {}
+    assert shell_payload.get("shell_mode") is True
+    assert shell_payload.get("shell_segments") == [f"ls {Path.home()}", "pwd"]
+
+
+def test_non_destructive_exec_allows_read_only_pipes_and_globbing(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="find /media/projects/jarvis-v2 -maxdepth 1 -name '*.md' | head",
+    )
+
+    assert result["status"] == "executed"
+    payload = result.get("result") or {}
+    assert payload.get("shell_mode") is True
+    assert payload.get("mutation_permitted") is False
+
+
+def test_non_destructive_exec_still_blocks_redirection_and_substitution(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    redirected = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="pwd > /tmp/out.txt",
+    )
+    assert redirected["status"] == "blocked-shell-redirection"
+
+    substituted = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="echo $(pwd)",
+    )
+    assert substituted["status"] == "blocked-shell-substitution"
 
 
 def test_mutating_exec_command_surfaces_as_approval_gated_proposal_only(
@@ -376,7 +415,8 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
     assert "command_from: user-message" in default_tools
     assert "command_from: user-message" in template_tools
     assert "Tiny bounded git read/inspect commands such as `git status`, `git diff --stat`, `git diff --name-only`, `git log --oneline -n N`, and `git branch --show-current` are allowed." in default_tools
-    assert "allows only a tiny bounded git read/inspect subset" in template_tools
+    assert "allows a tiny bounded git read/inspect subset" in template_tools
+    assert "permits read-only shell composition such as pipes, `&&`, `||`, `;`, and globbing when every segment stays non-destructive" in template_tools
     assert "runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`." in default_tools
     assert "runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`." in template_tools
     assert "`git clean` stays blocked." in default_tools

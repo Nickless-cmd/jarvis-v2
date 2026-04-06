@@ -10,7 +10,7 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
     assert "Runtime capability truth:" in instruction
     assert '<capability-call id="capability_id" />' in instruction
     assert '<capability-call id="capability_id" command_text="pwd" />' in instruction
-    assert "emit exactly one capability-call line and no surrounding prose" in instruction
+    assert "emit the capability-call tags together" in instruction
     assert "capability-call tag is authoritative" in instruction
     assert "Do not emit JSON or pseudo-JSON tool calls." in instruction
     assert "tool:read-workspace-user-profile" in instruction

@@ -81,7 +81,16 @@ def run_inner_voice_daemon(
     # Gather grounding material
     grounding = _gather_grounding()
 
-    if grounding["source_count"] < _MIN_GROUNDING_SOURCES:
+    # 5.8 Play mode — bypass grounding requirement during dreaming phase
+    in_play_mode = False
+    try:
+        from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
+        phase = determine_life_phase()
+        in_play_mode = bool(phase.get("play_mode"))
+    except Exception:
+        pass
+
+    if grounding["source_count"] < _MIN_GROUNDING_SOURCES and not in_play_mode:
         result = {
             "daemon_ran": True,
             "daemon_blocked_reason": "",

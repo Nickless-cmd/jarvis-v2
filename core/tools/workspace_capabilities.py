@@ -1575,7 +1575,13 @@ def _classify_exec_command(command_text: str) -> dict[str, object]:
             "detail": f"Destructive or arbitrary-exec token is not allowed in this pass: {blocked}",
         }
     if command_name == "git":
-        return _classify_git_exec_command(argv)
+        return _classify_git_exec_command(
+            normalized_argv,
+            path_normalization_applied=bool(normalization_sources),
+            normalization_source=(
+                "+".join(normalization_sources) if normalization_sources else "none"
+            ),
+        )
     proposal_metadata = _mutating_exec_proposal_metadata(argv)
     if proposal_metadata is not None:
         return {
@@ -1763,47 +1769,55 @@ def _normalize_exec_argv(argv: list[str]) -> tuple[list[str], list[str]]:
     return normalized, normalization_sources
 
 
-def _classify_git_exec_command(argv: list[str]) -> dict[str, object]:
-    if len(argv) < 2:
+def _classify_git_exec_command(
+    argv: list[str],
+    *,
+    path_normalization_applied: bool = False,
+    normalization_source: str = "none",
+) -> dict[str, object]:
+    subcommand_index, execution_cwd, option_error = _resolve_git_exec_context(argv)
+    if option_error:
+        return option_error
+    if len(argv) <= subcommand_index:
         return {
             "allowed": False,
             "status": "blocked-git-command",
             "detail": "Git exec requires one explicit bounded git subcommand.",
         }
 
-    subcommand = str(argv[1]).strip().lower()
-    shape = tuple(str(part) for part in argv[1:])
+    subcommand = str(argv[subcommand_index]).strip().lower()
+    shape = tuple(str(part) for part in argv[subcommand_index:])
 
     if shape in GIT_READ_EXEC_ALLOWLIST:
         return {
             "allowed": True,
             "argv": argv,
             "normalized_command_text": shlex.join(argv),
-            "path_normalization_applied": False,
-            "normalization_source": "none",
+            "path_normalization_applied": path_normalization_applied,
+            "normalization_source": normalization_source,
             "execution_scope": "git-read",
             "execution_classification": "git-read-allowed",
             "repo_scoped": True,
-            "execution_cwd": PROJECT_ROOT,
+            "execution_cwd": execution_cwd,
         }
 
     if subcommand == "log":
         if (
-            len(argv) == 5
-            and argv[2] == "--oneline"
-            and argv[3] == "-n"
-            and re.fullmatch(r"[1-9][0-9]?", argv[4])
+            len(argv) == subcommand_index + 4
+            and argv[subcommand_index + 1] == "--oneline"
+            and argv[subcommand_index + 2] == "-n"
+            and re.fullmatch(r"[1-9][0-9]?", argv[subcommand_index + 3])
         ):
             return {
                 "allowed": True,
                 "argv": argv,
                 "normalized_command_text": shlex.join(argv),
-                "path_normalization_applied": False,
-                "normalization_source": "none",
+                "path_normalization_applied": path_normalization_applied,
+                "normalization_source": normalization_source,
                 "execution_scope": "git-read",
                 "execution_classification": "git-read-allowed",
                 "repo_scoped": True,
-                "execution_cwd": PROJECT_ROOT,
+                "execution_cwd": execution_cwd,
             }
         return {
             "allowed": False,
@@ -1853,6 +1867,33 @@ def _classify_git_exec_command(argv: list[str]) -> dict[str, object]:
             f"Git subcommand {subcommand or 'unknown'} is not in the bounded git read allowlist and is not opened for execution in this pass."
         ),
     }
+
+
+def _resolve_git_exec_context(
+    argv: list[str],
+) -> tuple[int, Path, dict[str, object] | None]:
+    execution_cwd = PROJECT_ROOT
+    index = 1
+    while index < len(argv):
+        token = str(argv[index]).strip()
+        if token != "-C":
+            break
+        if index + 1 >= len(argv):
+            return index, execution_cwd, {
+                "allowed": False,
+                "status": "blocked-git-command",
+                "detail": "Git -C requires one explicit directory path.",
+            }
+        candidate = Path(str(argv[index + 1])).expanduser()
+        if not candidate.exists() or not candidate.is_dir():
+            return index, execution_cwd, {
+                "allowed": False,
+                "status": "blocked-git-command",
+                "detail": f"Git -C target is not an existing directory: {candidate}",
+            }
+        execution_cwd = candidate
+        index += 2
+    return index, execution_cwd, None
 
 
 def _classify_git_mutation_subcommand(subcommand: str) -> str:

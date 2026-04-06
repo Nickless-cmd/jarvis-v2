@@ -39,8 +39,16 @@ def test_daemon_runs_and_returns_result(isolated_runtime) -> None:
     assert result["trigger"] == "test"
 
 
-def test_daemon_insufficient_grounding_when_db_empty(isolated_runtime) -> None:
-    """Without runtime signals, daemon should run but find insufficient grounding."""
+def test_daemon_insufficient_grounding_when_no_stronger_stream_exists(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """Without any grounded runtime stream, daemon should stay in insufficient-grounding fallback."""
+    monkeypatch.setattr(
+        iv_module,
+        "_gather_grounding",
+        lambda: {"source_count": 0, "sources": [], "fragments": {}},
+    )
     result = run_inner_voice_daemon(trigger="test")
     assert result["daemon_ran"] is True
     assert result["daemon_cadence_state"] == "ran-insufficient-grounding"
@@ -102,7 +110,7 @@ def test_daemon_runs_after_visible_grace_expires(isolated_runtime) -> None:
 
 def test_daemon_blocked_by_recent_witness_daemon(isolated_runtime) -> None:
     """Inner voice should not run if witness daemon ran very recently."""
-    recent_witness = (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
+    recent_witness = (datetime.now(UTC) - timedelta(seconds=30)).isoformat()
     result = run_inner_voice_daemon(
         trigger="test",
         witness_daemon_last_run_at=recent_witness,
@@ -183,7 +191,7 @@ def test_daemon_produces_voice_note_with_sufficient_grounding(isolated_runtime) 
     assert result["inner_voice_created"] is True
     assert result["daemon_cadence_state"] == "ran-produced"
     assert result["record_id"] != ""
-    assert result["mode"] in {"reflective-carry", "held-tension", "growth-oriented", "continuity-aware", "observing"}
+    assert result["mode"] in {"searching", "circling", "carrying", "pulled", "witness-steady", "work-steady"}
     assert result["render_mode"] in {"llm-rendered", "deterministic-fallback"}
 
 
@@ -253,7 +261,7 @@ def test_deterministic_fallback_produces_valid_note(isolated_runtime) -> None:
     }
     note = _deterministic_compose(grounding)
 
-    assert note["mode"] in {"reflective-carry", "held-tension", "growth-oriented", "continuity-aware", "observing"}
+    assert note["mode"] in {"searching", "circling", "carrying", "pulled", "witness-steady", "work-steady"}
     assert note["focus"]
     assert note["summary"]
     assert note["confidence"] in {"low", "medium", "high"}
@@ -286,7 +294,7 @@ def test_workspace_inner_voice_template_exists() -> None:
     template = Path("workspace/templates/INNER_VOICE.md")
     assert template.exists(), "INNER_VOICE.md template missing from workspace/templates/"
     content = template.read_text()
-    assert "inner voice" in content.lower()
+    assert "thinking to yourself" in content.lower()
     assert "JSON" in content or "json" in content
 
 
@@ -348,51 +356,51 @@ def test_render_mode_is_observable_in_daemon_result(isolated_runtime) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_support_shading_nudges_observing_to_continuity_aware() -> None:
-    """protect_focus bias should nudge 'observing' mode to 'continuity-aware'."""
+def test_support_shading_nudges_witness_steady_to_work_steady() -> None:
+    """protect_focus bias should nudge the weak witness mode toward work-steady."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
-    result = _apply_support_shading("observing", {
+    result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "protect_focus",
     })
-    assert result == "continuity-aware"
+    assert result == "work-steady"
 
 
-def test_support_shading_nudges_observing_to_reflective_carry() -> None:
-    """stabilize_thread bias should nudge 'observing' to 'reflective-carry'."""
+def test_support_shading_nudges_witness_steady_to_carrying() -> None:
+    """stabilize_thread bias should nudge the weak witness mode to carrying."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
-    result = _apply_support_shading("observing", {
+    result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "stabilize_thread",
     })
-    assert result == "reflective-carry"
+    assert result == "carrying"
 
 
-def test_support_shading_nudges_observing_to_wondering() -> None:
-    """reopen_context bias should nudge 'observing' to 'wondering'."""
+def test_support_shading_nudges_witness_steady_to_circling() -> None:
+    """reopen_context bias should nudge the weak witness mode to circling."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
-    result = _apply_support_shading("observing", {
+    result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "reopen_context",
     })
-    assert result == "wondering"
+    assert result == "circling"
 
 
-def test_support_shading_nudges_observing_to_held_tension() -> None:
-    """reduce_spread bias should nudge 'observing' to 'held-tension'."""
+def test_support_shading_keeps_witness_steady_for_reduce_spread() -> None:
+    """reduce_spread should keep the weak witness mode bounded rather than turn it action-like."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
-    result = _apply_support_shading("observing", {
+    result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "reduce_spread",
     })
-    assert result == "held-tension"
+    assert result == "witness-steady"
 
 
 def test_support_shading_does_not_override_strong_mode() -> None:
     """Support shading must not override grounding-based modes."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
-    for strong_mode in ("reflective-carry", "held-tension", "growth-oriented", "continuity-aware"):
+    for strong_mode in ("searching", "circling", "carrying", "pulled", "work-steady"):
         result = _apply_support_shading(strong_mode, {
             "experiential_support_bias": "protect_focus",
         })
@@ -403,18 +411,18 @@ def test_support_shading_noop_when_bias_is_none() -> None:
     """No shading when support_bias is 'none'."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
-    result = _apply_support_shading("observing", {
+    result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "none",
     })
-    assert result == "observing"
+    assert result == "witness-steady"
 
 
 def test_support_shading_noop_when_no_fragments() -> None:
     """No shading when fragments have no support data."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
-    result = _apply_support_shading("observing", {})
-    assert result == "observing"
+    result = _apply_support_shading("witness-steady", {})
+    assert result == "witness-steady"
 
 
 def test_deterministic_compose_includes_support_narrative() -> None:
@@ -434,11 +442,9 @@ def test_deterministic_compose_includes_support_narrative() -> None:
     }
     note = _deterministic_compose(grounding)
 
-    assert "Support:" in note["summary"]
     assert "Carrying weight" in note["summary"]
-    # open-loops source sets mode to "questioning"; support shading only
-    # applies to "observing" so the mode stays "questioning" here.
-    assert note["mode"] == "questioning"
+    assert note["mode"] == "work-steady"
+    assert note["initiative"] is None
 
 
 def test_deterministic_compose_no_support_when_baseline() -> None:
@@ -456,3 +462,46 @@ def test_deterministic_compose_no_support_when_baseline() -> None:
     note = _deterministic_compose(grounding)
 
     assert "Support:" not in note["summary"]
+
+
+def test_deterministic_compose_allows_searching_candidate_without_action() -> None:
+    """Half-formed experiential pulls should stay as candidate thought instead of collapsing into action."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["experiential-continuity", "private-brain"],
+        "fragments": {
+            "brain_top_focus": "an old line of thought",
+            "brain_continuity": "the shape of a longer unresolved thread",
+            "experiential_continuity_state": "lingering",
+            "experiential_initiative_shading": "hesitant",
+            "experiential_influence_narrative": "Cognition carries some weight; initiative feels hesitant.",
+        },
+    }
+
+    note = _deterministic_compose(grounding)
+
+    assert note["mode"] in {"searching", "circling", "carrying"}
+    assert note["initiative"] is None
+    assert "candidate thought" in note["summary"].lower() or "hesitant" in note["summary"].lower()
+
+
+def test_deterministic_compose_keeps_open_loop_non_actionable_without_clarify_pressure() -> None:
+    """Open loops alone should not auto-create initiative anymore."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["open-loops", "witness"],
+        "fragments": {
+            "open_loop_signal": "a loose unresolved thread",
+            "witness_signal": "a small witness trace",
+            "conductor_mode": "watch",
+        },
+    }
+
+    note = _deterministic_compose(grounding)
+
+    assert note["mode"] in {"work-steady", "witness-steady", "circling"}
+    assert note["initiative"] is None

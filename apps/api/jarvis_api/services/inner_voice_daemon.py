@@ -29,6 +29,14 @@ _VOICE_COOLDOWN_MINUTES = 5     # Min minutes between inner voice runs
 _VOICE_VISIBLE_GRACE_MINUTES = 2  # Don't run if visible activity this recent
 _VOICE_WITNESS_GRACE_MINUTES = 1  # Don't run if witness daemon ran this recently
 _MIN_GROUNDING_SOURCES = 1       # One source is enough for a thought
+_INNER_VOICE_LIVING_MODES = {
+    "searching",
+    "circling",
+    "carrying",
+    "pulled",
+    "witness-steady",
+    "work-steady",
+}
 
 # Module-level state (in-memory)
 _voice_last_run_at: str = ""
@@ -90,14 +98,13 @@ def run_inner_voice_daemon(
     except Exception:
         pass
 
-    # Hjerteslag: cognitive state always counts as grounding
+    # Personality bearing may tint an existing thought, but is too weak to
+    # justify producing an inner voice note on its own.
     if grounding["source_count"] == 0:
         try:
             from core.runtime.db import get_latest_cognitive_personality_vector
             pv = get_latest_cognitive_personality_vector()
             if pv:
-                grounding["source_count"] = 1
-                grounding["sources"] = list(grounding.get("sources") or []) + ["personality_vector"]
                 grounding.setdefault("fragments", {})["personality_bearing"] = str(pv.get("current_bearing") or "")
         except Exception:
             pass
@@ -293,9 +300,10 @@ def _gather_grounding() -> dict[str, object]:
         )
         frame = build_cognitive_frame()
         mode = frame.get("mode", {}).get("mode", "watch")
+        if mode:
+            fragments["conductor_mode"] = str(mode)
         if mode != "watch":
             sources.append("conductor-mode")
-            fragments["conductor_mode"] = mode
         salient = frame.get("salient_items") or []
         if salient:
             fragments["salient_top"] = str(salient[0].get("summary") or "")[:100]
@@ -334,7 +342,30 @@ def _gather_grounding() -> dict[str, object]:
             build_experiential_runtime_context_surface,
         )
         exp_surface = build_experiential_runtime_context_surface()
+        continuity = exp_surface.get("experiential_continuity") or {}
+        influence = exp_surface.get("experiential_influence") or {}
         exp_support = exp_surface.get("experiential_support") or {}
+        continuity_state = str(continuity.get("continuity_state") or "")
+        if continuity_state and continuity_state not in {"stable", "none"}:
+            sources.append("experiential-continuity")
+            fragments["experiential_continuity_state"] = continuity_state
+            if continuity.get("narrative"):
+                fragments["experiential_continuity_narrative"] = str(
+                    continuity["narrative"]
+                )[:120]
+        influence_posture = str(influence.get("attentional_posture") or "")
+        initiative_shading = str(influence.get("initiative_shading") or "")
+        cognitive_bearing = str(influence.get("cognitive_bearing") or "")
+        if influence_posture:
+            fragments["experiential_attentional_posture"] = influence_posture
+        if initiative_shading:
+            fragments["experiential_initiative_shading"] = initiative_shading
+        if cognitive_bearing:
+            fragments["experiential_cognitive_bearing"] = cognitive_bearing
+        if influence.get("narrative"):
+            fragments["experiential_influence_narrative"] = str(
+                influence["narrative"]
+            )[:120]
         if exp_support.get("support_posture") and exp_support["support_posture"] != "steadying":
             sources.append("experiential-support")
             fragments["experiential_support_posture"] = exp_support["support_posture"]
@@ -413,6 +444,15 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
     except Exception:
         pass
 
+    context_lines.extend(
+        [
+            "- Inner voice may remain unresolved; candidate thoughts and half-formed pulls are allowed.",
+            "- Do not default to steady/support/work-stabilization unless the grounding clearly warrants it.",
+            "- If there is no real next-step pull, set initiative to null.",
+            "- Optional mode field may be one of: searching, circling, carrying, pulled, witness-steady, work-steady.",
+        ]
+    )
+
     full_prompt = f"{voice_prompt}\n\n{chr(10).join(context_lines)}"
 
     # Use heartbeat model execution (cheap/local model)
@@ -458,6 +498,7 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
     initiative = parsed.get("initiative")
     if isinstance(initiative, str):
         initiative = initiative.strip() or None
+    requested_mode = _normalize_inner_voice_mode(parsed.get("mode"))
 
     # Back-compat: also accept old format
     if not thought:
@@ -465,17 +506,23 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
     if not thought:
         return None
 
-    # Derive a short focus from thought
-    focus = thought[:120]
+    mode = requested_mode or _select_inner_voice_mode(grounding, thought=thought)
+    focus = _derive_inner_voice_focus(grounding, thought=thought)
+    initiative = _normalize_inner_voice_initiative(
+        initiative,
+        grounding=grounding,
+        mode=mode,
+        thought=thought,
+    )
 
     source_count = grounding.get("source_count", 0)
     confidence = "high" if source_count >= 4 else ("medium" if source_count >= 2 else "low")
 
     return {
-        "mode": "thinking",
+        "mode": mode,
         "focus": focus,
         "summary": thought,
-        "detail": f"Sources: {', '.join(sources)}. LLM-rendered from INNER_VOICE.md.",
+        "detail": f"Sources: {', '.join(sources)}. LLM-rendered from INNER_VOICE.md with mode={mode}.",
         "confidence": confidence,
         "initiative": initiative,
     }
@@ -497,15 +544,15 @@ def _apply_support_shading(
     if support_bias == "none":
         return base_mode
 
-    # Only shade "observing" (default/weak) mode
-    if base_mode != "observing":
+    # Only shade the weak/default witness mode.
+    if base_mode != "witness-steady":
         return base_mode
 
     _BIAS_MODE_MAP = {
-        "protect_focus": "continuity-aware",
-        "stabilize_thread": "reflective-carry",
-        "reopen_context": "wondering",
-        "reduce_spread": "held-tension",
+        "protect_focus": "work-steady",
+        "stabilize_thread": "carrying",
+        "reopen_context": "circling",
+        "reduce_spread": "witness-steady",
     }
     return _BIAS_MODE_MAP.get(support_bias, base_mode)
 
@@ -518,50 +565,169 @@ def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
     fragments = grounding.get("fragments") or {}
     sources = grounding.get("sources") or []
 
-    focus = (
-        fragments.get("brain_top_focus")
-        or fragments.get("dev_focus")
-        or fragments.get("open_loop_signal")
-        or fragments.get("witness_signal")
-        or "quiet moment"
+    mode = _select_inner_voice_mode(grounding)
+    focus = _derive_inner_voice_focus(grounding)
+    thought = _compose_living_inner_voice_thought(mode=mode, fragments=fragments, focus=focus)
+    initiative = _normalize_inner_voice_initiative(
+        None,
+        grounding=grounding,
+        mode=mode,
+        thought=thought,
     )
-
-    # Build a natural thought from available fragments
-    parts: list[str] = []
-    if fragments.get("brain_continuity"):
-        parts.append(f"Still thinking about {fragments['brain_continuity'][:80]}")
-    if fragments.get("open_loop_signal"):
-        parts.append(f"something unresolved around {fragments['open_loop_signal'][:60]}")
-    if fragments.get("witness_signal"):
-        parts.append(f"noticed {fragments['witness_signal'][:60]}")
-    if fragments.get("conflict_outcome"):
-        parts.append(f"that last conflict landed on {fragments['conflict_outcome']}")
-    if fragments.get("experiential_support_narrative"):
-        parts.append(fragments["experiential_support_narrative"][:80])
-
-    if parts:
-        thought = ". ".join(parts) + "."
-        # Capitalize first letter
-        thought = thought[0].upper() + thought[1:]
-    else:
-        thought = f"Quiet moment. {focus} is on my mind but nothing pressing."
-
-    # Check for initiative signal
-    initiative = None
-    if fragments.get("open_loop_signal"):
-        initiative = f"revisit {fragments['open_loop_signal'][:60]}"
 
     source_count = grounding.get("source_count", 0)
     confidence = "high" if source_count >= 4 else ("medium" if source_count >= 2 else "low")
 
     return {
-        "mode": "thinking",
+        "mode": mode,
         "focus": focus,
         "summary": thought,
-        "detail": f"Sources: {', '.join(sources)}. Deterministic fallback.",
+        "detail": f"Sources: {', '.join(sources)}. Deterministic fallback with mode={mode}.",
         "confidence": confidence,
         "initiative": initiative,
     }
+
+
+def _normalize_inner_voice_mode(value: object) -> str | None:
+    mode = str(value or "").strip().lower()
+    if mode in _INNER_VOICE_LIVING_MODES:
+        return mode
+    return None
+
+
+def _select_inner_voice_mode(
+    grounding: dict[str, object],
+    *,
+    thought: str = "",
+) -> str:
+    fragments = grounding.get("fragments") or {}
+    lowered = str(thought or "").strip().lower()
+    conductor_mode = str(fragments.get("conductor_mode") or "watch")
+    initiative_shading = str(fragments.get("experiential_initiative_shading") or "")
+    continuity_state = str(fragments.get("experiential_continuity_state") or "")
+    has_open_loop = bool(fragments.get("open_loop_signal"))
+    has_brain = bool(fragments.get("brain_continuity") or fragments.get("brain_top_focus"))
+    has_witness = bool(fragments.get("witness_signal"))
+    has_conflict = bool(fragments.get("conflict_outcome") or fragments.get("conflict_reason"))
+    has_focus = bool(fragments.get("dev_focus"))
+    has_salient = bool(fragments.get("salient_top"))
+
+    if has_conflict or conductor_mode == "clarify":
+        base_mode = "pulled"
+    elif initiative_shading in {"hesitant", "returning"} and (has_salient or has_open_loop):
+        base_mode = "circling"
+    elif has_brain and not has_open_loop and not has_focus:
+        base_mode = "carrying"
+    elif any(token in lowered for token in ("curious", "unclear", "not sure", "can't tell", "cannot tell", "half-formed", "edge of")):
+        base_mode = "searching"
+    elif continuity_state in {"returning", "lingering"} and not has_open_loop:
+        base_mode = "searching"
+    elif has_open_loop or has_focus:
+        base_mode = "work-steady"
+    elif has_witness or conductor_mode == "watch":
+        base_mode = "witness-steady"
+    elif has_brain:
+        base_mode = "carrying"
+    else:
+        base_mode = "witness-steady"
+
+    return _apply_support_shading(base_mode, fragments)
+
+
+def _derive_inner_voice_focus(
+    grounding: dict[str, object],
+    *,
+    thought: str = "",
+) -> str:
+    fragments = grounding.get("fragments") or {}
+    focus = (
+        fragments.get("salient_top")
+        or fragments.get("brain_top_focus")
+        or fragments.get("open_loop_signal")
+        or fragments.get("dev_focus")
+        or fragments.get("witness_signal")
+        or fragments.get("personality_bearing")
+        or str(thought or "")[:120]
+        or "quiet moment"
+    )
+    return str(focus)[:120]
+
+
+def _compose_living_inner_voice_thought(
+    *,
+    mode: str,
+    fragments: dict[str, str],
+    focus: str,
+) -> str:
+    anchor = _mode_anchor(fragments, focus)
+    second = _secondary_inner_voice_line(fragments)
+    if mode == "searching":
+        first = f"Something about {anchor} keeps tugging at the edge of my attention, but it has not resolved into a clear thread yet."
+    elif mode == "circling":
+        first = f"I keep circling back to {anchor} without finding a clean handle on what it wants from me yet."
+    elif mode == "carrying":
+        first = f"I am still carrying {anchor}; it has not turned into a decision, but it has not gone quiet either."
+    elif mode == "pulled":
+        first = f"There is a live pull around {anchor}, more like a pressure or question than an action I can justify yet."
+    elif mode == "work-steady":
+        first = f"{anchor} is still the active thread, and I am holding it in view without forcing it into motion too quickly."
+    else:
+        first = f"I am keeping light watch around {anchor}; nothing needs to harden into a move yet."
+    return f"{first} {second}".strip()
+
+
+def _mode_anchor(fragments: dict[str, str], focus: str) -> str:
+    return (
+        fragments.get("salient_top")
+        or fragments.get("open_loop_signal")
+        or fragments.get("brain_top_focus")
+        or fragments.get("dev_focus")
+        or focus
+    )[:90]
+
+
+def _secondary_inner_voice_line(fragments: dict[str, str]) -> str:
+    for key in (
+        "experiential_influence_narrative",
+        "experiential_continuity_narrative",
+        "brain_continuity",
+        "witness_signal",
+        "conflict_reason",
+        "experiential_support_narrative",
+    ):
+        value = str(fragments.get(key) or "").strip()
+        if not value:
+            continue
+        if key == "brain_continuity":
+            return f"The carry still feels tied to {value[:90]}."
+        if key == "witness_signal":
+            return f"I am also noticing {value[:90]}."
+        return value[:110].rstrip(".") + "."
+    return "It can stay a candidate thought for now."
+
+
+def _normalize_inner_voice_initiative(
+    initiative: object,
+    *,
+    grounding: dict[str, object],
+    mode: str,
+    thought: str,
+) -> str | None:
+    if isinstance(initiative, str):
+        cleaned = initiative.strip()
+        if cleaned:
+            return cleaned[:200]
+    fragments = grounding.get("fragments") or {}
+    if mode not in {"work-steady", "pulled"}:
+        return None
+    if str(fragments.get("conductor_mode") or "") != "clarify":
+        return None
+    open_loop = str(fragments.get("open_loop_signal") or "").strip()
+    if open_loop:
+        return f"revisit {open_loop[:60]}"
+    if _thought_contains_initiative(thought):
+        return _extract_initiative_from_thought(thought)
+    return None
 
 
 # ---------------------------------------------------------------------------

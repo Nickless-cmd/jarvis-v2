@@ -500,6 +500,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
         all_capabilities = capability_plan.get("all_capabilities") or []
         if all_capabilities:
+            for planned_step in _planned_visible_capability_steps(
+                run,
+                all_capabilities=all_capabilities,
+                step_offset=100,
+            ):
+                yield _sse("working_step", planned_step)
             capability_results, any_executed, capability_events = _execute_visible_capability_entries(
                 run,
                 all_capabilities=all_capabilities,
@@ -566,6 +572,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     second_pass_plan = _extract_capability_plan(followup_result.text)
                     second_pass_caps = second_pass_plan.get("all_capabilities") or []
                     if second_pass_caps:
+                        for planned_step in _planned_visible_capability_steps(
+                            run,
+                            all_capabilities=second_pass_caps,
+                            step_offset=200,
+                        ):
+                            yield _sse("working_step", planned_step)
                         followup_capability_results, followup_any_executed, followup_events = (
                             _execute_visible_capability_entries(
                                 run,
@@ -1808,6 +1820,67 @@ def _execute_visible_capability_entries(
         )
 
     return capability_results, any_executed, capability_events
+
+
+def _planned_visible_capability_steps(
+    run: VisibleRun,
+    *,
+    all_capabilities: list[dict[str, object]],
+    step_offset: int,
+) -> list[dict[str, object]]:
+    planned_steps: list[dict[str, object]] = []
+
+    for index, cap_entry in enumerate(all_capabilities, start=1):
+        cap_id = str(cap_entry.get("capability_id") or "")
+        cap_args = dict(cap_entry.get("arguments") or {})
+        resolved_target_path, _target_source = _resolve_visible_capability_target_path(
+            capability_id=cap_id,
+            capability_arguments=cap_args,
+            user_message=run.user_message,
+        )
+        resolved_command_text, _command_source = _resolve_visible_capability_command_text(
+            capability_id=cap_id,
+            capability_arguments=cap_args,
+            user_message=run.user_message,
+        )
+        action, detail = _visible_capability_step_description(
+            capability_id=cap_id,
+            target_path=resolved_target_path,
+            command_text=resolved_command_text,
+        )
+        planned_steps.append(
+            {
+                "type": "working_step",
+                "run_id": run.run_id,
+                "action": action,
+                "detail": detail,
+                "step": step_offset + index,
+                "status": "running",
+            }
+        )
+
+    return planned_steps
+
+
+def _visible_capability_step_description(
+    *,
+    capability_id: str,
+    target_path: str | None,
+    command_text: str | None,
+) -> tuple[str, str]:
+    normalized_id = capability_id.lower()
+    normalized_command = str(command_text or "").strip()
+    normalized_target = str(target_path or "").strip()
+
+    if normalized_target and any(token in normalized_id for token in ("write", "edit", "patch", "memory")):
+        return "editing", f"Editing {normalized_target}"
+    if normalized_target and any(token in normalized_id for token in ("list", "dir", "folder")):
+        return "browsing", f"Browsing {normalized_target}"
+    if normalized_target:
+        return "reading", f"Reading {normalized_target}"
+    if normalized_command:
+        return "running", f"Running {normalized_command}"
+    return "tool", f"Using {capability_id}"
 
 
 def _finalize_second_pass_visible_text(text: str, *, fallback: str) -> str:

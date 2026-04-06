@@ -44,6 +44,10 @@ def test_structural_constraints_are_always_populated() -> None:
     assert "no-free-identity-writes" in constraint_ids
     assert "question-gated-not-execution" in constraint_ids
     assert "workspace-memory-separation" in constraint_ids
+    assert "multi-entry-bounded-runtime" in constraint_ids
+    assert "standing-orders-authority" in constraint_ids
+    assert "tasks-not-flows" in constraint_ids
+    assert "layered-memory-distinction" in constraint_ids
 
     # All constraints must be not-mutable
     for item in constraints:
@@ -61,6 +65,10 @@ def test_active_capabilities_always_includes_core() -> None:
     active_ids = {item["id"] for item in active}
 
     assert "session-distillation" in active_ids
+    assert "runtime-task-ledger" in active_ids
+    assert "runtime-flow-ledger" in active_ids
+    assert "runtime-hook-bridge" in active_ids
+    assert "layered-memory" in active_ids
 
 
 def test_approval_gated_includes_soul_identity() -> None:

@@ -325,8 +325,16 @@ def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
     if str(candidate.get("confidence") or "") != "high":
         return False
     canonical_key = str(candidate.get("canonical_key") or "")
+    source_mode = str(candidate.get("source_mode") or "")
+    source_kind = str(candidate.get("source_kind") or "")
+    evidence_class = str(candidate.get("evidence_class") or "")
     if canonical_key not in _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS:
-        return False
+        if not (
+            source_mode == "end_of_run_memory_consolidation"
+            and source_kind == "user-explicit"
+            and evidence_class == "explicit_user_statement"
+        ):
+            return False
     readiness = candidate_apply_readiness(candidate)
     if str(readiness.get("apply_readiness") or "") != "high":
         return False
@@ -358,6 +366,9 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
     if str(candidate.get("confidence") or "") != "high":
         return False
     canonical_key = str(candidate.get("canonical_key") or "")
+    source_mode = str(candidate.get("source_mode") or "")
+    source_kind = str(candidate.get("source_kind") or "")
+    evidence_class = str(candidate.get("evidence_class") or "")
     readiness = candidate_apply_readiness(candidate)
     if canonical_key.startswith(_AUTO_APPLY_SAFE_MEMORY_MD_PREFIX):
         if str(readiness.get("apply_readiness") or "") != "medium":
@@ -365,6 +376,16 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
         if str(readiness.get("apply_reason") or "") != "needs-review":
             return False
     elif canonical_key in _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS:
+        if str(readiness.get("apply_readiness") or "") != "medium":
+            return False
+        if str(readiness.get("apply_reason") or "") != "factual-memory":
+            return False
+    elif (
+        canonical_key.startswith("workspace-memory:remembered-fact:llm-")
+        and source_mode == "end_of_run_memory_consolidation"
+        and source_kind == "user-explicit"
+        and evidence_class == "explicit_user_statement"
+    ):
         if str(readiness.get("apply_readiness") or "") != "medium":
             return False
         if str(readiness.get("apply_reason") or "") != "factual-memory":

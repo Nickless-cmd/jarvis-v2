@@ -381,6 +381,17 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
     for key, value in fragments.items():
         context_lines.append(f"- {key}: {value}")
 
+    # 1.5 Inner voice chaining — feed previous thought
+    try:
+        from core.runtime.db import get_protected_inner_voice
+        prev_voice = get_protected_inner_voice()
+        if prev_voice:
+            prev = str(prev_voice.get("enriched_voice_line") or prev_voice.get("voice_line") or "")[:200]
+            if prev:
+                context_lines.append(f"- Previous thought: {prev}")
+    except Exception:
+        pass
+
     full_prompt = f"{voice_prompt}\n\n{chr(10).join(context_lines)}"
 
     # Use heartbeat model execution (cheap/local model)

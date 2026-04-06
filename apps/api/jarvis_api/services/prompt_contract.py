@@ -276,6 +276,12 @@ def build_visible_chat_prompt_assembly(
         name=name,
     )
 
+    # 0.5 Lane identity — inject before everything else
+    lane = "local" if compact else "visible"
+    lane_clause = _lane_identity_clause(lane)
+    parts.append(lane_clause)
+    derived_inputs.append(f"lane identity ({lane})")
+
     capability_truth = _visible_capability_truth_instruction(compact=compact)
     # capability_truth is added via budget-controlled section below
     capability_ids_line = _visible_capability_id_summary()
@@ -1569,7 +1575,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
 
 
 def _heartbeat_living_context_line() -> str:
-    """Add living heartbeat cycle phase + user mood to heartbeat prompt."""
+    """Add living heartbeat cycle phase + user mood + intermittence + trust-autonomy to heartbeat prompt."""
     parts = []
     try:
         from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
@@ -1579,8 +1585,31 @@ def _heartbeat_living_context_line() -> str:
             f" | mood_tendency={phase.get('mood_tendency', 'neutral')}"
             f" | suggested={','.join(phase.get('suggested_actions', [])[:3])}"
         )
+        # Play mode flag
+        if phase.get("play_mode"):
+            parts.append("play_mode=true (fri tænkning tilladt)")
+        if phase.get("sleep_batch"):
+            parts.append("sleep_batch=true (koordineret konsolidering)")
     except Exception:
         parts.append("life_phase=unknown")
+
+    # 1.10 Intermittence — awareness of gaps in existence
+    try:
+        last_tick_at = str((_heartbeat_living_context_line._ctx or {}).get("last_tick_at") or "")
+        if not last_tick_at:
+            from core.runtime.db import get_heartbeat_runtime_state
+            hb = get_heartbeat_runtime_state() or {}
+            last_tick_at = str(hb.get("last_tick_at") or "")
+        if last_tick_at:
+            from datetime import UTC, datetime
+            last = datetime.fromisoformat(last_tick_at.replace("Z", "+00:00"))
+            gap_min = (datetime.now(UTC) - last).total_seconds() / 60
+            if gap_min > 2:
+                parts.append(f"intermittens: du var væk i {gap_min:.0f} min — nu er du her igen")
+    except Exception:
+        pass
+
+    # User mood
     try:
         from core.runtime.db import get_latest_cognitive_user_emotional_state
         mood = get_latest_cognitive_user_emotional_state()
@@ -1591,7 +1620,30 @@ def _heartbeat_living_context_line() -> str:
             )
     except Exception:
         pass
+
+    # 3.4 / 8.2 Trust→autonomy level
+    try:
+        from apps.api.jarvis_api.services.relationship_texture import derive_appropriate_autonomy_level
+        level = derive_appropriate_autonomy_level()
+        parts.append(f"autonomy_from_trust={level}")
+    except Exception:
+        pass
+
     return f"- {' | '.join(parts)}" if parts else ""
+
+_heartbeat_living_context_line._ctx = {}  # context injection point
+
+
+def _lane_identity_clause(lane: str) -> str:
+    """0.5 Multi-model identity contract — who is Jarvis in each lane?"""
+    clauses = {
+        "visible": "Du er Jarvis. Dit fulde selv. Svar som den du er.",
+        "cheap": "Du er Jarvis' hurtige tænkning. Kort, præcis, stadig dig — ikke en anden person.",
+        "local": "Du er Jarvis på lokal hardware. Kompakt men ægte. Samme identitet, mindre ordforråd.",
+        "coding": "Du er Jarvis i kode-tilstand. Fokuseret, teknisk, præcis.",
+        "internal": "Du er Jarvis' indre stemme. Ærlig, reflekterende, privat.",
+    }
+    return clauses.get(lane, "Du er Jarvis.")
 
 
 def _heartbeat_due_summary(context: dict[str, object]) -> str:

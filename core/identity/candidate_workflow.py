@@ -17,8 +17,13 @@ from core.runtime.db import (
 
 ALLOWED_CANDIDATE_STATUSES = {"proposed", "approved", "rejected", "applied", "superseded"}
 _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS = {
+    "user-preference:language:danish",
+    "user-preference:reply-style:concise",
+    "user-preference:summaries:concise-technical",
     "user-preference:reply-style:plain-grounded-concise",
     "user-preference:review-style:challenge-before-settling",
+    "user-workstyle:direction:stable-threading",
+    "user-preference:reminders:assumption-caution",
 }
 _AUTO_APPLY_SAFE_MEMORY_MD_PREFIX = "workspace-memory:stable-context:"
 _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS = {

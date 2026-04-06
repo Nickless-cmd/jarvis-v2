@@ -836,3 +836,41 @@ def test_ollama_visible_prompt_does_not_dump_memory_for_irrelevant_generic_query
     )
 
     assert "MEMORY.md:" in assembly.text
+
+
+def test_visible_session_continuity_instruction_carries_multiple_recent_runs(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        isolated_runtime.prompt_contract,
+        "visible_session_continuity",
+        lambda: {
+            "active": True,
+            "latest_status": "completed",
+            "latest_finished_at": "2026-04-06T15:00:00+00:00",
+            "latest_capability_id": "tool:run-non-destructive-command",
+            "latest_text_preview": "latest preview",
+            "recent_run_summaries": [
+                {
+                    "status": "completed",
+                    "finished_at": "2026-04-06T15:00:00+00:00",
+                    "capability_id": "tool:run-non-destructive-command",
+                    "text_preview": "latest preview",
+                },
+                {
+                    "status": "completed",
+                    "finished_at": "2026-04-06T14:58:00+00:00",
+                    "capability_id": "tool:read-repository-readme",
+                    "text_preview": "previous preview",
+                },
+            ],
+        },
+    )
+
+    text = isolated_runtime.prompt_contract._visible_session_continuity_instruction()
+
+    assert "Visible session continuity:" in str(text)
+    assert "Recent visible carry-over:" in str(text)
+    assert "capability=tool:read-repository-readme" in str(text)
+    assert "preview=previous preview" in str(text)

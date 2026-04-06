@@ -101,7 +101,7 @@ def test_safe_user_md_candidate_can_auto_apply_via_existing_workflow(isolated_ru
     assert contract["write_history"]["total"] >= 1
 
 
-def test_user_md_candidate_outside_safe_subset_does_not_auto_apply(isolated_runtime) -> None:
+def test_workstyle_user_md_candidate_now_auto_applies(isolated_runtime) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.candidate_tracking
     mission_control = isolated_runtime.mission_control
@@ -125,10 +125,52 @@ def test_user_md_candidate_outside_safe_subset_does_not_auto_apply(isolated_runt
     candidates = db.list_runtime_contract_candidates(target_file="USER.md", limit=8)
     contract = mission_control.mc_runtime_contract()
 
-    assert apply_result["auto_applied"] == 0
-    assert candidates[0]["status"] == "proposed"
-    assert contract["pending_writes"]["preference_updates"]["pending_count"] >= 1
-    assert contract["write_history"]["total"] == 0
+    assert apply_result["auto_applied"] == 1
+    assert candidates[0]["status"] == "applied"
+    assert contract["pending_writes"]["preference_updates"]["applied_count"] >= 1
+    assert contract["write_history"]["total"] >= 1
+
+
+def test_explicit_danish_preference_candidate_now_auto_applies(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    tracking = isolated_runtime.candidate_tracking
+
+    now = datetime.now(UTC).isoformat()
+    db.upsert_runtime_contract_candidate(
+        candidate_id=f"candidate-{uuid4().hex}",
+        candidate_type="preference_update",
+        target_file="USER.md",
+        status="proposed",
+        source_kind="user-explicit",
+        source_mode="visible_chat",
+        actor="runtime:test",
+        session_id="test-session",
+        run_id="test-run",
+        canonical_key="user-preference:language:danish",
+        summary="User prefers replies in Danish.",
+        reason="Explicit durable language preference stated in chat.",
+        evidence_summary="Jeg vil gerne have svar på dansk.",
+        support_summary="Candidate only. No USER.md write has been applied.",
+        confidence="high",
+        evidence_class="explicit_user_statement",
+        support_count=1,
+        session_count=1,
+        created_at=now,
+        updated_at=now,
+        status_reason="Validation candidate status",
+        proposed_value="- Language preference: replies in Danish by default.",
+        write_section="## Durable Preferences",
+    )
+
+    apply_result = tracking.auto_apply_safe_user_md_candidates_for_visible_turn(
+        session_id="test-session",
+        run_id="test-run",
+    )
+    candidates = db.list_runtime_contract_candidates(target_file="USER.md", limit=8)
+
+    assert apply_result["auto_applied"] == 1
+    assert candidates[0]["canonical_key"] == "user-preference:language:danish"
+    assert candidates[0]["status"] == "applied"
 
 
 def test_prompt_candidates_are_not_auto_applied_as_side_effect(isolated_runtime) -> None:

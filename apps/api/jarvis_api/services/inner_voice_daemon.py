@@ -25,10 +25,10 @@ from core.runtime.db import insert_private_brain_record
 # Cadence configuration
 # ---------------------------------------------------------------------------
 
-_VOICE_COOLDOWN_MINUTES = 15    # Min minutes between inner voice runs
-_VOICE_VISIBLE_GRACE_MINUTES = 5  # Don't run if visible activity this recent
-_VOICE_WITNESS_GRACE_MINUTES = 3  # Don't run if witness daemon ran this recently
-_MIN_GROUNDING_SOURCES = 2       # Min distinct grounding sources required
+_VOICE_COOLDOWN_MINUTES = 5     # Min minutes between inner voice runs
+_VOICE_VISIBLE_GRACE_MINUTES = 2  # Don't run if visible activity this recent
+_VOICE_WITNESS_GRACE_MINUTES = 1  # Don't run if witness daemon ran this recently
+_MIN_GROUNDING_SOURCES = 1       # One source is enough for a thought
 
 # Module-level state (in-memory)
 _voice_last_run_at: str = ""
@@ -125,6 +125,26 @@ def run_inner_voice_daemon(
     record_id = record.get("record_id", "")
     _voice_last_run_at = now_iso
 
+    # Initiative detection — check both LLM-returned initiative and text scanning
+    initiative = note.get("initiative")
+    initiative_detected = bool(initiative)
+    if not initiative_detected:
+        initiative_detected = _thought_contains_initiative(note.get("summary") or "")
+        if initiative_detected:
+            initiative = _extract_initiative_from_thought(note.get("summary") or "")
+
+    # Push to initiative queue if detected
+    if initiative_detected and initiative:
+        try:
+            from apps.api.jarvis_api.services.initiative_queue import push_initiative
+            push_initiative(
+                focus=str(initiative)[:200],
+                source="inner-voice",
+                source_id=record_id,
+            )
+        except Exception:
+            pass
+
     result = {
         "daemon_ran": True,
         "daemon_blocked_reason": "",
@@ -136,6 +156,8 @@ def run_inner_voice_daemon(
         "render_mode": render_mode,
         "grounding_sources": grounding["source_count"],
         "trigger": trigger,
+        "initiative_detected": initiative_detected,
+        "initiative": str(initiative or "")[:200],
     }
     _voice_last_result = result
 
@@ -149,6 +171,8 @@ def run_inner_voice_daemon(
             "render_mode": render_mode,
             "focus": note["focus"][:100],
             "grounding_sources": grounding["source_count"],
+            "initiative_detected": initiative_detected,
+            "initiative": str(initiative or "")[:100],
         },
     )
 
@@ -379,27 +403,30 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
         else:
             return None
 
-    focus = str(parsed.get("focus") or "")[:200].strip()
-    note_text = str(parsed.get("note") or "")[:400].strip()
-    mode = str(parsed.get("mode") or "observing")[:40].strip()
+    thought = str(parsed.get("thought") or parsed.get("note") or "")[:400].strip()
+    initiative = parsed.get("initiative")
+    if isinstance(initiative, str):
+        initiative = initiative.strip() or None
 
-    if not focus or not note_text:
+    # Back-compat: also accept old format
+    if not thought:
+        thought = str(parsed.get("focus") or "")[:400].strip()
+    if not thought:
         return None
 
-    # Validate mode
-    valid_modes = {"reflective-carry", "held-tension", "growth-oriented", "continuity-aware", "observing", "wondering", "questioning"}
-    if mode not in valid_modes:
-        mode = "observing"
+    # Derive a short focus from thought
+    focus = thought[:120]
 
     source_count = grounding.get("source_count", 0)
     confidence = "high" if source_count >= 4 else ("medium" if source_count >= 2 else "low")
 
     return {
-        "mode": mode,
+        "mode": "thinking",
         "focus": focus,
-        "summary": f"[inner-voice:{mode}] {note_text}",
+        "summary": thought,
         "detail": f"Sources: {', '.join(sources)}. LLM-rendered from INNER_VOICE.md.",
         "confidence": confidence,
+        "initiative": initiative,
     }
 
 
@@ -433,58 +460,111 @@ def _apply_support_shading(
 
 
 def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
-    """Deterministic fallback composition when LLM is unavailable."""
+    """Deterministic fallback composition when LLM is unavailable.
+
+    Produces natural-language inner thoughts rather than machine labels.
+    """
     fragments = grounding.get("fragments") or {}
     sources = grounding.get("sources") or []
-
-    if "witness" in sources and "private-brain" in sources:
-        mode = "reflective-carry"
-    elif "open-loops" in sources and "conflict-resolution" in sources:
-        mode = "held-tension"
-    elif "development-focus" in sources:
-        mode = "growth-oriented"
-    elif "private-brain" in sources:
-        mode = "continuity-aware"
-    elif "open-loops" in sources:
-        mode = "questioning"
-    elif "experiential-support" in sources:
-        mode = "wondering"
-    else:
-        mode = "observing"
-
-    # Apply experiential support shading to mode selection
-    mode = _apply_support_shading(mode, fragments)
 
     focus = (
         fragments.get("brain_top_focus")
         or fragments.get("dev_focus")
         or fragments.get("open_loop_signal")
         or fragments.get("witness_signal")
-        or "quiet inner observation"
+        or "quiet moment"
     )
 
-    parts: list[str] = [f"[inner-voice:{mode}]"]
+    # Build a natural thought from available fragments
+    parts: list[str] = []
     if fragments.get("brain_continuity"):
-        parts.append(f"Carrying: {fragments['brain_continuity'][:80]}")
-    if fragments.get("witness_signal"):
-        parts.append(f"Witnessed: {fragments['witness_signal'][:60]}")
+        parts.append(f"Still thinking about {fragments['brain_continuity'][:80]}")
     if fragments.get("open_loop_signal"):
-        parts.append(f"Holding: {fragments['open_loop_signal'][:60]}")
+        parts.append(f"something unresolved around {fragments['open_loop_signal'][:60]}")
+    if fragments.get("witness_signal"):
+        parts.append(f"noticed {fragments['witness_signal'][:60]}")
     if fragments.get("conflict_outcome"):
-        parts.append(f"Resolved: {fragments['conflict_outcome']}")
+        parts.append(f"that last conflict landed on {fragments['conflict_outcome']}")
     if fragments.get("experiential_support_narrative"):
-        parts.append(f"Support: {fragments['experiential_support_narrative'][:80]}")
+        parts.append(fragments["experiential_support_narrative"][:80])
+
+    if parts:
+        thought = ". ".join(parts) + "."
+        # Capitalize first letter
+        thought = thought[0].upper() + thought[1:]
+    else:
+        thought = f"Quiet moment. {focus} is on my mind but nothing pressing."
+
+    # Check for initiative signal
+    initiative = None
+    if fragments.get("open_loop_signal"):
+        initiative = f"revisit {fragments['open_loop_signal'][:60]}"
 
     source_count = grounding.get("source_count", 0)
     confidence = "high" if source_count >= 4 else ("medium" if source_count >= 2 else "low")
 
     return {
-        "mode": mode,
+        "mode": "thinking",
         "focus": focus,
-        "summary": ". ".join(parts),
+        "summary": thought,
         "detail": f"Sources: {', '.join(sources)}. Deterministic fallback.",
         "confidence": confidence,
+        "initiative": initiative,
     }
+
+
+# ---------------------------------------------------------------------------
+# Initiative detection (inspired by old Jarvis cognition/inner_voice.py)
+# ---------------------------------------------------------------------------
+
+_INITIATIVE_TOKENS = (
+    "i should",
+    "i will",
+    "i could",
+    "next",
+    "follow up",
+    "plan",
+    "start",
+    "remember to",
+    "it would make sense",
+    "maybe i could",
+    "worth checking",
+    "curious about",
+    "want to",
+    "need to revisit",
+    "should check",
+    "might be worth",
+)
+
+
+def _thought_contains_initiative(text: str) -> bool:
+    """Detect if a thought text contains initiative signals."""
+    normalized = str(text or "").strip().lower()
+    if not normalized:
+        return False
+    return any(token in normalized for token in _INITIATIVE_TOKENS)
+
+
+def _extract_initiative_from_thought(text: str) -> str | None:
+    """Extract a short initiative description from a thought.
+
+    Finds the sentence containing the initiative token and returns it.
+    """
+    normalized = str(text or "").strip().lower()
+    if not normalized:
+        return None
+    for token in _INITIATIVE_TOKENS:
+        idx = normalized.find(token)
+        if idx >= 0:
+            # Find the sentence boundary
+            start = max(0, normalized.rfind(".", 0, idx) + 1)
+            end = normalized.find(".", idx)
+            if end < 0:
+                end = len(normalized)
+            sentence = text[start:end].strip()
+            if sentence:
+                return sentence[:200]
+    return None
 
 
 # ---------------------------------------------------------------------------

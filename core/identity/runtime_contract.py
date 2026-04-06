@@ -24,6 +24,8 @@ CANONICAL_WORKSPACE_FILES = (
 )
 
 DERIVED_RUNTIME_FILES = (
+    "memory/daily/",
+    "memory/curated/",
     "runtime/RUNTIME_CAPABILITIES.md",
     "runtime/RUNTIME_FEEDBACK.md",
     "runtime/CHRONICLE.md",
@@ -224,7 +226,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
         "write_history": write_history,
         "roles": {
             "canonical": "Workspace truth intended to shape behavior directly.",
-            "derived": "Runtime-generated artifacts that are inspectable but not canonical identity truth.",
+            "derived": "Runtime-generated artifacts and layered memory logs that are inspectable but not canonical identity truth.",
             "reference-only": "Reference material retained for study and contract design, not runtime prompt input.",
         },
     }

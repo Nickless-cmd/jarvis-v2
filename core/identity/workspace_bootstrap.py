@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from core.runtime.config import WORKSPACES_DIR, WORKSPACE_TEMPLATES_DIR
@@ -44,6 +45,37 @@ def ensure_default_workspace(name: str = "default") -> Path:
     return bootstrap_workspace(name=name).workspace_dir
 
 
+def ensure_layered_memory_dirs(name: str = "default") -> dict[str, Path]:
+    workspace_dir = Path(WORKSPACES_DIR) / name
+    workspace_dir.mkdir(parents=True, exist_ok=True)
+    memory_dir = workspace_dir / "memory"
+    daily_dir = memory_dir / "daily"
+    curated_dir = memory_dir / "curated"
+    daily_dir.mkdir(parents=True, exist_ok=True)
+    curated_dir.mkdir(parents=True, exist_ok=True)
+    return {
+        "workspace_dir": workspace_dir,
+        "memory_dir": memory_dir,
+        "daily_dir": daily_dir,
+        "curated_dir": curated_dir,
+    }
+
+
+def workspace_memory_paths(name: str = "default") -> dict[str, Path]:
+    dirs = ensure_layered_memory_dirs(name=name)
+    workspace_dir = dirs["workspace_dir"]
+    today = datetime.now(UTC).date().isoformat()
+    return {
+        "workspace_dir": workspace_dir,
+        "user": workspace_dir / "USER.md",
+        "curated_memory": workspace_dir / "MEMORY.md",
+        "daily_memory": dirs["daily_dir"] / f"{today}.md",
+        "memory_dir": dirs["memory_dir"],
+        "daily_dir": dirs["daily_dir"],
+        "curated_dir": dirs["curated_dir"],
+    }
+
+
 def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
     workspace_dir = Path(WORKSPACES_DIR) / name
     workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -76,6 +108,8 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
 
         shutil.copy2(src, dest)
         created_files.append(filename)
+
+    ensure_layered_memory_dirs(name=name)
 
     return WorkspaceBootstrapResult(
         workspace_dir=workspace_dir,

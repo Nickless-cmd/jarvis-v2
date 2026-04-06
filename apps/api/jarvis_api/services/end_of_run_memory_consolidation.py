@@ -16,7 +16,7 @@ from core.identity.candidate_workflow import (
     auto_apply_safe_memory_md_candidates,
     auto_apply_safe_user_md_candidates,
 )
-from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.identity.workspace_bootstrap import workspace_memory_paths
 from core.runtime.db import upsert_runtime_contract_candidate
 
 _EXCERPT_MEMORY_CHARS = 2400
@@ -42,6 +42,7 @@ def consolidate_run_memory(
         "auto_applied_user_count": 0,
         "auto_applied_memory_count": 0,
         "used_full_context": False,
+        "daily_memory_logged": False,
         "skipped_reason": None,
     }
 
@@ -49,9 +50,9 @@ def consolidate_run_memory(
         result["skipped_reason"] = "conversation-too-short"
         return result
 
-    workspace_dir = ensure_default_workspace()
-    memory_path = workspace_dir / "MEMORY.md"
-    user_path = workspace_dir / "USER.md"
+    memory_paths = workspace_memory_paths()
+    memory_path = memory_paths["curated_memory"]
+    user_path = memory_paths["user"]
     current_memory = memory_path.read_text(encoding="utf-8", errors="replace") if memory_path.exists() else ""
     current_user = user_path.read_text(encoding="utf-8", errors="replace") if user_path.exists() else ""
 
@@ -89,6 +90,14 @@ def consolidate_run_memory(
         session_id=session_id,
         run_id=run_id,
     )
+    logged_daily = _append_daily_memory_log(
+        daily_memory_path=memory_paths["daily_memory"],
+        session_id=session_id,
+        run_id=run_id,
+        user_message=user_message,
+        assistant_response=assistant_response,
+        items=items,
+    )
     user_apply = auto_apply_safe_user_md_candidates()
     memory_apply = auto_apply_safe_memory_md_candidates()
 
@@ -98,6 +107,7 @@ def consolidate_run_memory(
     result["auto_applied_memory_count"] = int(memory_apply.get("auto_applied") or 0)
     result["user_updated"] = result["auto_applied_user_count"] > 0
     result["memory_updated"] = result["auto_applied_memory_count"] > 0
+    result["daily_memory_logged"] = logged_daily
 
     event_bus.publish(
         "memory.end_of_run_consolidation",
@@ -107,6 +117,7 @@ def consolidate_run_memory(
             "candidate_count": len(persisted),
             "memory_updated": result["memory_updated"],
             "user_updated": result["user_updated"],
+            "daily_memory_logged": logged_daily,
             "used_full_context": result["used_full_context"],
         },
     )
@@ -314,6 +325,38 @@ def _candidate_canonical_key(item: dict[str, str]) -> str:
     return f"workspace-memory:stable-context:llm-{kind}-{digest}"
 
 
+def _append_daily_memory_log(
+    *,
+    daily_memory_path,
+    session_id: str,
+    run_id: str,
+    user_message: str,
+    assistant_response: str,
+    items: list[dict[str, str]],
+) -> bool:
+    if not items:
+        return False
+    daily_memory_path.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(UTC).isoformat()
+    lines: list[str] = [
+        f"## {now}",
+        f"- session_id: {str(session_id or '').strip() or 'none'}",
+        f"- run_id: {str(run_id or '').strip() or 'none'}",
+        f"- user: {_daily_excerpt(user_message, limit=220)}",
+        f"- assistant: {_daily_excerpt(assistant_response, limit=220)}",
+        "- carried:",
+    ]
+    for item in items:
+        lines.append(
+            f"  - [{item['target']}] {item['line'][2:] if item['line'].startswith('- ') else item['line']}"
+        )
+    lines.append("")
+    with daily_memory_path.open("a", encoding="utf-8") as handle:
+        handle.write("\n".join(lines))
+        handle.write("\n")
+    return True
+
+
 def _evidence_class_for_source(source: str) -> str:
     if source == "explicit-user-statement":
         return "explicit_user_statement"
@@ -350,3 +393,10 @@ def _summary_from_line(line: str) -> str:
     if normalized.startswith("- "):
         normalized = normalized[2:]
     return normalized[:180]
+
+
+def _daily_excerpt(value: str, *, limit: int) -> str:
+    normalized = " ".join(str(value or "").split()).strip()
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 1].rstrip() + "…"

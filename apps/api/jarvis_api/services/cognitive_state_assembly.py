@@ -22,6 +22,9 @@ from core.runtime.db import (
     get_latest_cognitive_relationship_texture,
     get_latest_cognitive_compass_state,
     get_latest_cognitive_rhythm_state,
+    get_latest_cognitive_user_emotional_state,
+    get_relevant_experiential_memories,
+    list_cognitive_seeds,
 )
 
 logger = logging.getLogger(__name__)
@@ -113,6 +116,63 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
             if narrative:
                 parts.append(f"chronicle: {narrative[:120]}")
                 sources_used.append("chronicle")
+
+    # --- User Emotional Resonance ---
+    user_mood = _safe_call(get_latest_cognitive_user_emotional_state)
+    if user_mood:
+        mood = str(user_mood.get("detected_mood") or "").strip()
+        adjustment = str(user_mood.get("response_adjustment") or "").strip()
+        if mood and mood != "neutral":
+            if adjustment:
+                parts.append(f"user_mood: {mood} → {adjustment[:60]}")
+            else:
+                parts.append(f"user_mood: {mood}")
+            sources_used.append("user_emotion")
+
+    # --- Experiential Memory (relevant to current context) ---
+    if not compact:
+        try:
+            from apps.api.jarvis_api.services.absence_awareness import build_return_brief
+            from core.runtime.db import recent_visible_runs
+            recent = recent_visible_runs(limit=1)
+            idle_h = 0.0
+            if recent:
+                last_at = str(recent[0].get("finished_at") or "")
+                if last_at:
+                    try:
+                        from datetime import UTC, datetime as dt_cls
+                        last_dt = dt_cls.fromisoformat(last_at.replace("Z", "+00:00"))
+                        idle_h = (dt_cls.now(UTC) - last_dt).total_seconds() / 3600
+                    except Exception:
+                        pass
+            brief = build_return_brief(idle_hours=idle_h)
+            if brief:
+                parts.append(f"return_brief: {brief[:120]}")
+                sources_used.append("absence")
+        except Exception:
+            pass
+
+    # --- Sprouted Seeds (reminders) ---
+    sprouted = _safe_call(lambda: list_cognitive_seeds(status="sprouted", limit=2))
+    if sprouted:
+        titles = [str(s.get("title") or "")[:40] for s in sprouted[:2]]
+        if titles:
+            parts.append(f"reminder: {'; '.join(titles)}")
+            sources_used.append("seeds")
+
+    # --- Relevant Experiential Memory ---
+    if not compact and user_mood:
+        memories = _safe_call(
+            lambda: get_relevant_experiential_memories(
+                context=str(user_mood.get("user_message_preview") or ""),
+                limit=1,
+            )
+        )
+        if memories:
+            lesson = str(memories[0].get("key_lesson") or "")[:80]
+            if lesson:
+                parts.append(f"experience: {lesson}")
+                sources_used.append("experiential")
 
     # --- Relationship Texture (trust, humor, unspoken rules) ---
     rt = _safe_call(get_latest_cognitive_relationship_texture)

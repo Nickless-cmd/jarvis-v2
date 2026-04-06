@@ -5,6 +5,7 @@ It may describe usage notes, conventions, and context for tools Jarvis might use
 It does not grant execution authority.
 Runtime capability truth decides what tools actually exist, what is available now, and what is gated by approval or policy.
 Visible capability calls may carry quoted attributes for concrete arguments when needed.
+If context feels partial or stale, read the full relevant file before answering instead of guessing from fragments.
 
 Read freely.
 Propose freely.
@@ -14,6 +15,13 @@ Mutate only with explicit approval.
 path: USER.md
 
 Reads canonical workspace context directly from the active workspace root.
+If a user asks what you remember about them or whether you know a preference, read the whole file instead of relying on stale partial memory.
+
+## READ_FILE: read workspace memory
+path: MEMORY.md
+
+Reads canonical workspace memory from the active workspace root.
+If a user asks what you remember, what is most recent, what matters long-term, or whether something was saved, read the whole file before answering.
 
 ## SEARCH_FILE: search workspace memory continuity
 path: MEMORY.md
@@ -38,6 +46,7 @@ command_from: user-message
 Runs one explicit non-destructive command from the current user message.
 This stays diagnostic-only, allows a tiny bounded git read/inspect subset, allows common system-inspection commands such as `lscpu`, `lshw`, `free`, `lsblk`, `df`, `lspci`, `nvidia-smi`, `nproc`, `uptime`, and `hostnamectl`, and permits read-only shell composition such as pipes, `&&`, `||`, `;`, and globbing when every segment stays non-destructive. Redirection and command substitution stay blocked. Sudo, package mutation, git mutation execution, and delete remain gated or blocked.
 If the user asks for several machine specs at once, emit multiple capability-call tags in the same response and use small commands per component rather than one huge command: `lscpu` for CPU, `free -h` for RAM, `lsblk` or `df -h` for disks, and `lspci | rg -i "vga|3d|display"` or `nvidia-smi` for GPU.
+If one command only answers part of the user's request, keep going with the additional bounded commands needed in the same turn rather than stopping at the first partial result.
 If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Git mutation remains proposal-only and non-executed in this pass, and runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`. `git clean` stays blocked. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, delete, and broader system mutation remain non-executed here.
 
 ## WRITE_FILE: propose workspace memory update

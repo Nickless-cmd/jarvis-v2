@@ -1254,6 +1254,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         "but keep it short — the capability results will speak for themselves."
     )
     lines.append(
+        "- If you are missing context or feel uncertain about a file-backed answer, read the whole relevant file before answering instead of guessing from fragments."
+    )
+    lines.append(
         "- For arg-requiring capabilities, the capability-call tag is authoritative. User-message extraction is compatibility fallback only."
     )
     lines.append(
@@ -1279,6 +1282,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         lines.append(
             "- Non-destructive exec is allowed when the user's intent is clear. "
             "You do not need the command in backticks — infer the appropriate read-only command from context."
+        )
+        lines.append(
+            "- When a task spans several facts, prefer multiple small read-only commands in the same turn. Do not stop after the first partial result if more bounded calls are clearly needed."
         )
         lines.append(
             "- Bounded git read/inspect commands such as git status, git diff --stat, git diff --name-only, git log --oneline -n N, and git branch --show-current may execute as non-destructive inspection. Git mutation remains proposal-only here and is classified into small repo stewardship classes such as git-stage, git-commit, git-sync, git-branch-switch, git-history-rewrite, git-stash, or git-other-mutate. Git clean stays blocked. If a command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass. Runtime may reuse a short auto-expiring sudo approval window only for the same bounded sudo scope."

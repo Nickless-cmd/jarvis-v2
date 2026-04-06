@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 
@@ -197,3 +198,95 @@ def test_follow_open_loop_routes_repo_threads_to_repo_inspection(
 
     assert result["status"] == "executed"
     assert seen == ["inspect_repo_context"]
+
+
+def test_manage_runtime_work_orchestrates_hooks_tasks_flows_and_browser_body(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "_heartbeat_runtime_bias_from_recent_work",
+        lambda kind: False,
+    )
+
+    dispatched = [{"event_id": 1, "task_id": "task-hook", "flow_id": "flow-hook"}]
+    queued_tasks = [{"task_id": "task-1"}]
+    queued_flows = [{"flow_id": "flow-1", "attempt_count": 0}]
+    running_flows = [{"flow_id": "flow-running"}]
+    task_updates: list[dict[str, object]] = []
+    flow_updates: list[dict[str, object]] = []
+
+    monkeypatch.setitem(
+        sys.modules,
+        "apps.api.jarvis_api.services.runtime_hooks",
+        type(
+            "RuntimeHooksStub",
+            (),
+            {"dispatch_unhandled_hook_events": staticmethod(lambda limit=4: dispatched)},
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "apps.api.jarvis_api.services.runtime_tasks",
+        type(
+            "RuntimeTasksStub",
+            (),
+            {
+                "list_tasks": staticmethod(
+                    lambda status=None, limit=4: queued_tasks if status == "queued" else []
+                ),
+                "update_task": staticmethod(
+                    lambda task_id, **kwargs: task_updates.append({"task_id": task_id, **kwargs})
+                    or {"task_id": task_id}
+                ),
+            },
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "apps.api.jarvis_api.services.runtime_flows",
+        type(
+            "RuntimeFlowsStub",
+            (),
+            {
+                "list_flows": staticmethod(
+                    lambda status=None, limit=4: (
+                        queued_flows
+                        if status == "queued"
+                        else (running_flows if status == "running" else [])
+                    )
+                ),
+                "update_flow": staticmethod(
+                    lambda flow_id, **kwargs: flow_updates.append({"flow_id": flow_id, **kwargs})
+                    or {"flow_id": flow_id}
+                ),
+            },
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "apps.api.jarvis_api.services.runtime_browser_body",
+        type(
+            "RuntimeBrowserBodyStub",
+            (),
+            {
+                "ensure_browser_body": staticmethod(
+                    lambda **kwargs: {"body_id": "browser-1", **kwargs}
+                )
+            },
+        ),
+    )
+
+    result = heartbeat_runtime._execute_heartbeat_internal_action(
+        action_type="manage_runtime_work",
+        tick_id="heartbeat-tick:test",
+        workspace_dir=Path("/tmp/test-workspace"),
+    )
+
+    assert result["status"] == "executed"
+    assert "hook dispatches" in result["summary"]
+    assert task_updates[0]["task_id"] == "task-1"
+    assert flow_updates[0]["flow_id"] == "flow-1"

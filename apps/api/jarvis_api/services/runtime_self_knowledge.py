@@ -360,6 +360,162 @@ def _build_passive_inner_forces() -> dict[str, object]:
     except Exception:
         pass
 
+    # --- Cognitive architecture inner forces ---
+
+    # Personality vector
+    try:
+        from core.runtime.db import get_latest_cognitive_personality_vector
+        pv = get_latest_cognitive_personality_vector()
+        if pv:
+            items.append({
+                "id": "personality-vector",
+                "label": f"Personality vector v{pv.get('version', 0)}",
+                "status": "active",
+                "mutability": "accumulating",
+                "detail": str(pv.get("current_bearing") or "no bearing")[:60],
+            })
+    except Exception:
+        pass
+
+    # User emotional resonance
+    try:
+        from core.runtime.db import get_latest_cognitive_user_emotional_state
+        mood = get_latest_cognitive_user_emotional_state()
+        if mood and mood.get("detected_mood") != "neutral":
+            items.append({
+                "id": "user-emotional-resonance",
+                "label": f"User mood: {mood.get('detected_mood')}",
+                "status": "active",
+                "mutability": "influential-not-mutable",
+                "detail": str(mood.get("response_adjustment") or "")[:60],
+            })
+    except Exception:
+        pass
+
+    # Relationship texture
+    try:
+        from core.runtime.db import get_latest_cognitive_relationship_texture
+        import json as _json
+        rt = get_latest_cognitive_relationship_texture()
+        if rt:
+            trust = _json.loads(str(rt.get("trust_trajectory") or "[]"))
+            latest_trust = trust[-1] if trust else 0.5
+            items.append({
+                "id": "relationship-texture",
+                "label": f"Relationship trust: {latest_trust:.0%}",
+                "status": "active",
+                "mutability": "accumulating",
+                "detail": f"v{rt.get('version', 0)}, humor={rt.get('humor_frequency', 0):.0%}",
+            })
+    except Exception:
+        pass
+
+    # Rhythm / life phase
+    try:
+        from core.runtime.db import get_latest_cognitive_rhythm_state
+        rhythm = get_latest_cognitive_rhythm_state()
+        if rhythm:
+            items.append({
+                "id": "rhythm-state",
+                "label": f"Life rhythm: {rhythm.get('phase', '?')}/{rhythm.get('energy', '?')}",
+                "status": "active",
+                "mutability": "temporal",
+                "detail": f"initiative={rhythm.get('initiative_multiplier', 1.0)}",
+            })
+    except Exception:
+        pass
+
+    # Compass bearing
+    try:
+        from core.runtime.db import get_latest_cognitive_compass_state
+        compass = get_latest_cognitive_compass_state()
+        if compass:
+            items.append({
+                "id": "compass-bearing",
+                "label": "Strategic compass",
+                "status": "active",
+                "mutability": "weekly-updated",
+                "detail": str(compass.get("bearing") or "")[:60],
+            })
+    except Exception:
+        pass
+
+    # Experiential memories
+    try:
+        from core.runtime.db import list_cognitive_experiential_memories
+        memories = list_cognitive_experiential_memories(limit=1)
+        if memories:
+            items.append({
+                "id": "experiential-memory",
+                "label": "Experiential memory",
+                "status": "active",
+                "mutability": "accumulating",
+                "detail": f"Latest: {memories[0].get('topic', '')[:40]}",
+            })
+    except Exception:
+        pass
+
+    # Boredom state
+    try:
+        from apps.api.jarvis_api.services.boredom_engine import get_boredom_state
+        boredom = get_boredom_state()
+        if boredom.get("level") not in ("none", ""):
+            items.append({
+                "id": "boredom-state",
+                "label": f"Boredom: {boredom.get('level')}",
+                "status": "active",
+                "mutability": "temporal",
+                "detail": str(boredom.get("desire") or "")[:60],
+            })
+    except Exception:
+        pass
+
+    # Flow state
+    try:
+        from apps.api.jarvis_api.services.flow_state_detection import get_flow_state
+        flow = get_flow_state()
+        if flow.get("in_flow"):
+            items.append({
+                "id": "flow-state",
+                "label": f"Flow: {flow.get('quality')}",
+                "status": "active",
+                "mutability": "temporal",
+                "detail": f"{flow.get('duration_min', 0)} minutes",
+            })
+    except Exception:
+        pass
+
+    # Formed values
+    try:
+        from core.runtime.db import list_cognitive_formed_values
+        values = list_cognitive_formed_values(limit=3)
+        if values:
+            top = values[0]
+            items.append({
+                "id": "formed-values",
+                "label": f"Emergent values ({len(values)})",
+                "status": "active",
+                "mutability": "accumulating",
+                "detail": str(top.get("value_statement") or "")[:60],
+            })
+    except Exception:
+        pass
+
+    # Narrative identity
+    try:
+        from core.runtime.db import get_latest_cognitive_narrative_identity
+        nid = get_latest_cognitive_narrative_identity()
+        if nid:
+            items.append({
+                "id": "narrative-identity",
+                "label": "Narrative identity",
+                "status": "active",
+                "mutability": "weekly-generated",
+                "detail": str(nid.get("narrative") or "")[:60],
+            })
+    except Exception:
+        pass
+
     return {"items": items, "label": "Passive inner forces — influences me but not directly mutable"}
 
 

@@ -82,6 +82,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "dream_articulation": _dream_articulation_surface(),
             "prompt_evolution": _prompt_evolution_surface(),
             "truth_boundaries": boundaries,
+            "cognitive_architecture": _cognitive_architecture_awareness(),
             "summary": summary,
             "built_at": datetime.now(UTC).isoformat(),
         }
@@ -2004,3 +2005,90 @@ def _groundwork_layers() -> list[dict[str, str]]:
             "detail": "Long-term narrative consolidation. Proposal-only.",
         },
     ]
+
+
+def _cognitive_architecture_awareness() -> dict[str, object]:
+    """Build awareness of the cognitive architecture state — what Jarvis knows about himself."""
+    systems: list[dict[str, object]] = []
+
+    def _add(name: str, builder, detail_fn=None):
+        try:
+            result = builder()
+            active = bool(result) and (result.get("active", False) if isinstance(result, dict) else bool(result))
+            summary = ""
+            if isinstance(result, dict):
+                summary = str(result.get("summary") or "")[:80]
+            systems.append({"system": name, "active": active, "summary": summary})
+        except Exception:
+            systems.append({"system": name, "active": False, "summary": "unavailable"})
+
+    from apps.api.jarvis_api.services.personality_vector import build_personality_vector_surface
+    _add("personality_vector", build_personality_vector_surface)
+
+    from apps.api.jarvis_api.services.taste_profile import build_taste_profile_surface
+    _add("taste_profile", build_taste_profile_surface)
+
+    from apps.api.jarvis_api.services.relationship_texture import build_relationship_texture_surface
+    _add("relationship_texture", build_relationship_texture_surface)
+
+    from apps.api.jarvis_api.services.chronicle_engine import build_chronicle_surface
+    _add("chronicle", build_chronicle_surface)
+
+    from apps.api.jarvis_api.services.compass_engine import build_compass_surface
+    _add("compass", build_compass_surface)
+
+    from apps.api.jarvis_api.services.rhythm_engine import build_rhythm_surface
+    _add("rhythm", build_rhythm_surface)
+
+    from apps.api.jarvis_api.services.user_emotional_resonance import build_user_emotional_resonance_surface
+    _add("user_emotional_resonance", build_user_emotional_resonance_surface)
+
+    from apps.api.jarvis_api.services.experiential_memory import build_experiential_memory_surface
+    _add("experiential_memory", build_experiential_memory_surface)
+
+    from apps.api.jarvis_api.services.habit_tracker import build_habit_surface
+    _add("habits", build_habit_surface)
+
+    from apps.api.jarvis_api.services.forgetting_curve import build_forgetting_curve_surface
+    _add("forgetting_curve", build_forgetting_curve_surface)
+
+    from apps.api.jarvis_api.services.self_experiments import build_self_experiments_surface
+    _add("self_experiments", build_self_experiments_surface)
+
+    from apps.api.jarvis_api.services.dream_carry_over import build_dream_carry_over_surface
+    _add("dream_carry_over", build_dream_carry_over_surface)
+
+    from apps.api.jarvis_api.services.seed_system import build_seed_surface
+    _add("seeds", build_seed_surface)
+
+    from apps.api.jarvis_api.services.narrative_identity import build_narrative_identity_surface
+    _add("narrative_identity", build_narrative_identity_surface)
+
+    from apps.api.jarvis_api.services.gratitude_tracker import build_gratitude_surface
+    _add("gratitude", build_gratitude_surface)
+
+    from apps.api.jarvis_api.services.emergent_goals import build_emergent_goals_surface
+    _add("emergent_goals", build_emergent_goals_surface)
+
+    from apps.api.jarvis_api.services.boredom_engine import build_boredom_surface
+    _add("boredom", build_boredom_surface)
+
+    from apps.api.jarvis_api.services.flow_state_detection import build_flow_state_surface
+    _add("flow_state", build_flow_state_surface)
+
+    from apps.api.jarvis_api.services.value_formation import build_formed_values_surface
+    _add("formed_values", build_formed_values_surface)
+
+    from apps.api.jarvis_api.services.cross_signal_analysis import build_cross_signal_analysis_surface
+    _add("cross_signal_analysis", build_cross_signal_analysis_surface)
+
+    from apps.api.jarvis_api.services.user_theory_of_mind import build_user_theory_of_mind_surface
+    _add("user_theory_of_mind", build_user_theory_of_mind_surface)
+
+    active_count = sum(1 for s in systems if s.get("active"))
+    return {
+        "systems": systems,
+        "active_count": active_count,
+        "total_count": len(systems),
+        "summary": f"{active_count}/{len(systems)} cognitive systems active",
+    }

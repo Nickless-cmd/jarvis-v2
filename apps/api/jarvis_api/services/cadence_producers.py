@@ -23,8 +23,10 @@ from core.runtime.db import (
     upsert_runtime_self_review_record,
     upsert_runtime_self_review_run,
     upsert_runtime_self_review_outcome,
+    upsert_runtime_self_review_signal,
     upsert_runtime_witness_signal,
     upsert_runtime_development_focus,
+    upsert_runtime_world_model_signal,
     get_latest_cognitive_personality_vector,
     get_latest_cognitive_user_emotional_state,
     get_latest_cognitive_relationship_texture,
@@ -56,6 +58,7 @@ def produce_signals_from_run(
         "self_model": 0, "reflective_critic": 0, "reflection": 0,
         "self_review_record": 0, "self_review_run": 0, "witness": 0,
         "development_focus": 0, "self_review_outcome": 0,
+        "world_model": 0, "self_review_signal": 0, "conversation_rhythm": 0,
     }
 
     msg_lower = user_message.lower()
@@ -278,6 +281,116 @@ def produce_signals_from_run(
                 counts["development_focus"] += 1
     except Exception as exc:
         logger.debug("development focus failed: %s", exc)
+
+    # 9. World model signal — derive from message context
+    try:
+        upsert_runtime_world_model_signal(
+            signal_id=f"wm-{uuid4().hex[:10]}",
+            signal_type="conversational_context",
+            canonical_key=f"world-model:run:{run_id}",
+            status="active",
+            title=user_message[:80],
+            summary=f"Context: {user_message[:120]}",
+            rationale="Bounded situational context from visible turn",
+            source_kind="visible_run",
+            confidence="medium",
+            evidence_summary=user_message[:200],
+            support_summary=f"outcome={outcome_status}",
+            support_count=1,
+            session_count=1,
+            run_id=run_id,
+            session_id=str(session_id or ""),
+            created_at=_now(),
+            updated_at=_now(),
+        )
+        counts["world_model"] += 1
+    except Exception as exc:
+        logger.debug("world model signal failed: %s", exc)
+
+    # 10. Self-review need signal (different from records — these are trigger signals)
+    try:
+        upsert_runtime_self_review_signal(
+            signal_id=f"srs-{uuid4().hex[:10]}",
+            signal_type="post_run_review_need",
+            canonical_key=f"self-review-need:{run_id}",
+            status="active",
+            title=f"Review needed for run {run_id[:12]}",
+            summary=f"Outcome: {outcome_status}, mood: {user_mood}",
+            rationale="Auto-fired post-run for review tracking",
+            source_kind="cadence_producer",
+            confidence="medium",
+            evidence_summary=user_message[:200],
+            support_summary=f"outcome={outcome_status}",
+            support_count=1,
+            session_count=1,
+            run_id=run_id,
+            session_id=str(session_id or ""),
+            created_at=_now(),
+            updated_at=_now(),
+        )
+        counts["self_review_signal"] += 1
+    except Exception as exc:
+        logger.debug("self review signal failed: %s", exc)
+
+    # 11. Conversation rhythm tracking
+    try:
+        from apps.api.jarvis_api.services.conversation_rhythm import track_conversation_rhythm
+        was_corrected = any(m in msg_lower for m in (
+            "nej", "forkert", "ikke det", "stadig samme", "prøv igen", "hold nu"
+        ))
+        track_conversation_rhythm(
+            run_id=run_id,
+            session_id=str(session_id or ""),
+            turn_count=1,
+            correction_count=1 if was_corrected else 0,
+            avg_message_length=len(user_message),
+            duration_minutes=1.0,
+            outcome_status=outcome_status,
+        )
+        counts["conversation_rhythm"] += 1
+    except Exception as exc:
+        logger.debug("conversation rhythm failed: %s", exc)
+
+    # 12. Update relationship texture (humor + trust + corrections)
+    try:
+        from apps.api.jarvis_api.services.relationship_texture import update_relationship_from_run
+        update_relationship_from_run(
+            run_id=run_id,
+            user_message=user_message,
+            assistant_response=assistant_response,
+            outcome_status=outcome_status,
+            turn_count=1,
+        )
+    except Exception as exc:
+        logger.debug("relationship texture update failed: %s", exc)
+
+    # 13. Counterfactual auto-generation (broader triggers)
+    try:
+        from apps.api.jarvis_api.services.counterfactual_engine import generate_counterfactual
+        if outcome_status in ("failed", "error"):
+            generate_counterfactual(
+                trigger_type="failed_run",
+                anchor=user_message[:80],
+                source="auto",
+                confidence=0.5,
+            )
+        elif was_corrected:
+            generate_counterfactual(
+                trigger_type="correction",
+                anchor=user_message[:80],
+                source="auto",
+                confidence=0.4,
+            )
+        elif outcome_status in ("completed", "success") and len(user_message) > 100:
+            # Even successful long messages: speculate about alternatives
+            generate_counterfactual(
+                trigger_type="decision",
+                anchor=user_message[:80],
+                source="auto",
+                confidence=0.3,
+            )
+    except Exception as exc:
+        logger.debug("counterfactual failed: %s", exc)
 
     event_bus.publish("cognitive_state.cadence_producers_fired",
                      {"run_id": run_id, "counts": counts})

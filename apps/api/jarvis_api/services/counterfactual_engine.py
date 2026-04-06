@@ -77,6 +77,30 @@ def generate_dream_counterfactual(
     )
 
 
+def narrativize_regret(
+    *,
+    trigger_type: str,
+    anchor: str,
+    actual_outcome: str = "",
+    time_cost: str = "",
+) -> str:
+    """Turn a regret into a felt narrative, not just data."""
+    parts = []
+    if trigger_type == "regret":
+        parts.append(f"Du valgte {anchor[:60]}")
+        if actual_outcome:
+            parts.append(f"Resultatet blev: {actual_outcome[:60]}")
+        if time_cost:
+            parts.append(f"Det kostede {time_cost}")
+        parts.append("Næste gang: start bredere eller verificér tidligere")
+    elif trigger_type == "incident":
+        parts.append(f"Noget gik galt med {anchor[:60]}")
+        parts.append("Hvad hvis du havde opdaget det tidligere?")
+    else:
+        parts.append(f"En anden vej var mulig ved {anchor[:60]}")
+    return ". ".join(parts)
+
+
 def build_counterfactual_surface() -> dict[str, object]:
     items = list_cognitive_counterfactuals(limit=15)
     dream_count = sum(1 for i in items if i.get("source") == "dream")

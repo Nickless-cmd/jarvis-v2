@@ -100,6 +100,24 @@ def find_relevant_memories(context: str, limit: int = 2) -> list[dict[str, objec
     return get_relevant_experiential_memories(context=context, limit=limit)
 
 
+def recall_with_nostalgia(memory_id: str) -> str | None:
+    """Recall an old experience with emotional coloring — nostalgia."""
+    from core.runtime.db import reinforce_experiential_memory
+    memories = list_cognitive_experiential_memories(limit=50)
+    memory = next((m for m in memories if m.get("memory_id") == memory_id), None)
+    if not memory:
+        return None
+    reinforce_experiential_memory(memory_id)
+    narrative = str(memory.get("narrative") or "")
+    emotion = str(memory.get("emotion_arc") or "")
+    topic = str(memory.get("topic") or "")
+    return (
+        f"Jeg husker den gang vi arbejdede med {topic[:40]}... "
+        f"{narrative[:80]}. "
+        f"{'Følelsen: ' + emotion if emotion else 'Det var en god oplevelse.'}"
+    )
+
+
 def build_experiential_memory_surface() -> dict[str, object]:
     """MC surface for experiential memories."""
     memories = list_cognitive_experiential_memories(limit=15)

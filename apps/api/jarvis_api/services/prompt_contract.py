@@ -1287,6 +1287,12 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
             "- When a task spans several facts, prefer multiple small read-only commands in the same turn. Do not stop after the first partial result if more bounded calls are clearly needed."
         )
         lines.append(
+            "- If the user is asking about repo behavior, path resolution, capabilities, commits, or backend structure, proactively inspect the repo with bounded reads or git inspection before answering."
+        )
+        lines.append(
+            "- If the user is asking about the machine or runtime environment, proactively gather bounded system facts before answering."
+        )
+        lines.append(
             "- Bounded git read/inspect commands such as git status, git diff --stat, git diff --name-only, git log --oneline -n N, and git branch --show-current may execute as non-destructive inspection. Git mutation remains proposal-only here and is classified into small repo stewardship classes such as git-stage, git-commit, git-sync, git-branch-switch, git-history-rewrite, git-stash, or git-other-mutate. Git clean stays blocked. If a command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass. Runtime may reuse a short auto-expiring sudo approval window only for the same bounded sudo scope."
         )
     if available:

@@ -1921,13 +1921,17 @@ def _private_state_surface() -> dict:
 
 
 def _protected_inner_voice_surface() -> dict:
-    voice = _select_current_protected_inner_voice(
-        list_recent_protected_inner_voices(limit=8)
-    )
+    voice = _current_protected_inner_voice()
     return {
         "active": bool(voice),
         "current": voice,
     }
+
+
+def _current_protected_inner_voice() -> dict[str, object] | None:
+    return _select_current_protected_inner_voice(
+        list_recent_protected_inner_voices(limit=8)
+    )
 
 
 def _select_current_protected_inner_voice(
@@ -1994,7 +1998,7 @@ def _parse_runtime_iso_datetime(value: object) -> datetime | None:
 def _private_inner_interplay_surface() -> dict:
     return build_private_inner_interplay(
         private_state=get_private_state(),
-        protected_inner_voice=get_protected_inner_voice(),
+        protected_inner_voice=_current_protected_inner_voice(),
         private_development_state=get_private_development_state(),
         private_reflective_selection=_latest_item(
             recent_private_reflective_selections(limit=1)
@@ -2005,7 +2009,7 @@ def _private_inner_interplay_surface() -> dict:
 def _private_initiative_tension_surface() -> dict:
     return build_private_initiative_tension(
         private_state=get_private_state(),
-        protected_inner_voice=get_protected_inner_voice(),
+        protected_inner_voice=_current_protected_inner_voice(),
         private_development_state=get_private_development_state(),
         private_reflective_selection=_latest_item(
             recent_private_reflective_selections(limit=1)

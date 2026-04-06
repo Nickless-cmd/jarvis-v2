@@ -1331,6 +1331,19 @@ def _extract_capability_plan(text: str) -> dict[str, object]:
             if len(all_capabilities) >= _MAX_CAPABILITIES_PER_TURN:
                 break
 
+    # For memory-write self-closing tags without write_content,
+    # try to find markdown content after the tag in the LLM response.
+    # This handles the common case where the LLM uses self-closing syntax
+    # and puts the content below instead of inside a block tag.
+    for cap in all_capabilities:
+        cap_id = str(cap.get("capability_id") or "")
+        cap_args = cap.get("arguments") or {}
+        if "write-workspace-memory" in cap_id or "write-user-profile" in cap_id:
+            if not cap_args.get("write_content"):
+                content_after = _extract_content_after_capability_tag(raw, cap_id)
+                if content_after:
+                    cap["arguments"] = {**cap_args, "write_content": content_after}
+
     selected = str(all_capabilities[0]["capability_id"]) if all_capabilities else None
     selected_arguments = dict(all_capabilities[0]["arguments"]) if all_capabilities else {}
     argument_binding_mode = "tag-attributes" if selected_arguments else "id-only"
@@ -1364,6 +1377,41 @@ def _parse_capability_call_markup(text: str) -> dict[str, object] | None:
         "capability_id": capability_id,
         "arguments": arguments,
     }
+
+
+def _extract_content_after_capability_tag(raw: str, capability_id: str) -> str | None:
+    """Extract markdown/text content after a self-closing capability tag.
+
+    When LLMs use <capability-call id="..." /> (self-closing) and then write
+    the intended content below the tag, this function extracts that content.
+    Only used for memory-write capabilities where write_content is expected.
+    """
+    # Find the self-closing tag
+    pattern = re.compile(
+        rf'<capability-call\s[^>]*id="{re.escape(capability_id)}"[^>]*/>\s*\n',
+        re.IGNORECASE,
+    )
+    match = pattern.search(raw)
+    if not match:
+        return None
+
+    after = raw[match.end():].strip()
+    if not after:
+        return None
+
+    # Look for markdown content (starting with # or containing structured text)
+    # Stop at the next capability-call tag or end of text
+    next_tag = re.search(r'<capability-call\s', after)
+    if next_tag:
+        after = after[:next_tag.start()].strip()
+
+    # Only accept if it looks like memory content (has a heading or substantial text)
+    if len(after) < 20:
+        return None
+    if after.startswith("#") or after.startswith("- ") or "\n" in after:
+        return after
+
+    return None
 
 
 def _parse_capability_attrs(attrs_text: str) -> dict[str, str]:

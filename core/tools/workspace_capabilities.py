@@ -1103,7 +1103,7 @@ def _invoke_runnable_capability(
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=True, granted=False),
                 "result": None,
-                "detail": "Memory write requires explicit write_content.",
+                "detail": "Memory write requires explicit write_content. Use block syntax: <capability-call id=\"tool:write-workspace-memory\">\\n# MEMORY\\n(full content)\\n</capability-call>",
             }
         candidate.parent.mkdir(parents=True, exist_ok=True)
         candidate.write_text(write_content, encoding="utf-8")

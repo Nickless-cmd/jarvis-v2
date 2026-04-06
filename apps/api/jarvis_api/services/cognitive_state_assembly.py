@@ -82,6 +82,44 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    # --- 1.4 Subjective time ---
+    try:
+        from apps.api.jarvis_api.services.subjective_time import build_subjective_time_perception
+        from core.runtime.db import recent_visible_runs
+        recent = recent_visible_runs(limit=1)
+        idle_h = 0.0
+        if recent:
+            last_at = str(recent[0].get("finished_at") or "")
+            if last_at:
+                try:
+                    last_dt = datetime.fromisoformat(last_at.replace("Z", "+00:00"))
+                    idle_h = (datetime.now(UTC) - last_dt).total_seconds() / 3600
+                except Exception:
+                    pass
+        time_feel = build_subjective_time_perception(idle_hours=idle_h)
+        if time_feel.get("feel"):
+            parts.append(f"time: {time_feel['feel']}")
+            sources_used.append("subjective_time")
+    except Exception:
+        pass
+
+    # --- 1.6 Attention as felt experience ---
+    try:
+        from apps.api.jarvis_api.services.attention_budget import get_attention_budget
+        budget = get_attention_budget("visible_full" if not compact else "visible_compact")
+        used_ratio = len(" ".join(parts)) / max(budget.total_char_target, 1)
+        if used_ratio > 0.8:
+            parts.append("attention: spredt — mange signaler kæmper om plads")
+            sources_used.append("attention_experience")
+        elif used_ratio < 0.3:
+            parts.append("attention: fokuseret — få men klare signaler")
+            sources_used.append("attention_experience")
+    except Exception:
+        pass
+
+    # --- 1.12 Context pressure ---
+    # (applied after assembly — see size check below)
+
     # --- Personality Vector (confidence, bearing, mood) ---
     pv = _safe_call(get_latest_cognitive_personality_vector)
     if pv:
@@ -225,14 +263,6 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
                 parts.append(f"trust: {float(latest_trust):.1f}")
                 sources_used.append("relationship")
 
-    if not parts:
-        return None
-
-    # Assemble
-    header = "[COGNITIVE STATE]"
-    body = " | ".join(parts)
-    result = f"{header} {body}"
-
     # --- User Theory of Mind ---
     if not compact:
         try:
@@ -247,8 +277,25 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+    if not parts:
+        return None
+
+    # Assemble
+    header = "[COGNITIVE STATE]"
+    body = " | ".join(parts)
+    result = f"{header} {body}"
+
+    # --- 1.12 Context pressure (post-assembly) ---
+    result_len = len(result)
+    if result_len > 600:
+        result += " | context_pressure: high — opmærksomheden snævrer ind"
+        sources_used.append("context_pressure")
+    elif result_len > 400:
+        result += " | context_pressure: medium"
+        sources_used.append("context_pressure")
+
     # Enforce size limits
-    max_chars = 350 if compact else 700
+    max_chars = 400 if compact else 800
     if len(result) > max_chars:
         result = result[:max_chars - 3] + "..."
 

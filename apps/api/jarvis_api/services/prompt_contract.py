@@ -1836,12 +1836,27 @@ def _visible_session_continuity_instruction() -> str | None:
         parts.append(f"latest_capability={continuity['latest_capability_id']}")
     if continuity.get("latest_text_preview"):
         parts.append(f"latest_preview={continuity['latest_text_preview']}")
-    return "\n".join(
-        [
-            "Visible session continuity:",
-            "- " + " | ".join(parts),
-        ]
-    )
+    lines = [
+        "Visible session continuity:",
+        "- " + " | ".join(parts),
+    ]
+    recent_runs = list(continuity.get("recent_run_summaries") or [])[:3]
+    if recent_runs:
+        lines.append("Recent visible carry-over:")
+        for item in recent_runs:
+            run_parts = [
+                f"status={item.get('status') or 'unknown'}",
+                f"finished_at={item.get('finished_at') or 'unknown'}",
+            ]
+            if item.get("capability_id"):
+                run_parts.append(f"capability={item.get('capability_id')}")
+            preview = " ".join(str(item.get("text_preview") or "").split()).strip()
+            if preview:
+                if len(preview) > 140:
+                    preview = preview[:139].rstrip() + "…"
+                run_parts.append(f"preview={preview}")
+            lines.append("- " + " | ".join(run_parts))
+    return "\n".join(lines)
 
 
 def _recent_transcript_section(

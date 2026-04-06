@@ -2000,13 +2000,23 @@ def _ensure_private_inner_note_columns(conn: sqlite3.Connection) -> None:
 
 
 def visible_session_continuity() -> dict[str, object]:
-    recent_runs = recent_visible_runs(limit=1)
+    recent_runs = recent_visible_runs(limit=3)
     recent_invocations = recent_capability_invocations(limit=2)
     latest_run = recent_runs[0] if recent_runs else {}
     recent_capability_ids = [
         capability_id
         for item in recent_invocations
         if (capability_id := str(item.get("capability_id") or "").strip())
+    ]
+    recent_run_summaries = [
+        {
+            "run_id": item.get("run_id"),
+            "status": item.get("status"),
+            "finished_at": item.get("finished_at"),
+            "capability_id": item.get("capability_id"),
+            "text_preview": item.get("text_preview"),
+        }
+        for item in recent_runs
     ]
     return {
         "active": bool(latest_run or recent_invocations),
@@ -2017,6 +2027,7 @@ def visible_session_continuity() -> dict[str, object]:
         "latest_text_preview": latest_run.get("text_preview"),
         "latest_capability_id": latest_run.get("capability_id"),
         "recent_capability_ids": recent_capability_ids,
+        "recent_run_summaries": recent_run_summaries,
         "included_run_rows": len(recent_runs),
         "included_capability_rows": len(recent_invocations),
     }

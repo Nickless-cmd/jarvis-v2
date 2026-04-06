@@ -274,6 +274,9 @@ def normalize_visible_session_continuity(
         "recent_capability_ids": list(
             visible_session_continuity.get("recent_capability_ids") or []
         ),
+        "recent_run_summaries": list(
+            visible_session_continuity.get("recent_run_summaries") or []
+        ),
         "included_run_rows": visible_session_continuity.get("included_run_rows"),
         "included_capability_rows": visible_session_continuity.get(
             "included_capability_rows"

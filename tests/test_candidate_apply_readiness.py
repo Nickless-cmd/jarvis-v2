@@ -61,10 +61,10 @@ def test_user_md_candidate_gets_bounded_apply_readiness(isolated_runtime) -> Non
     candidate = workflow["items"][0]
 
     assert candidate["status"] == "proposed"
-    assert candidate["apply_readiness"] == "medium"
+    assert candidate["apply_readiness"] == "high"
     assert candidate["apply_reason"] == "bounded-safe"
-    assert workflow["current_apply_readiness"] == "medium"
-    assert workflow["apply_readiness_medium_count"] >= 1
+    assert workflow["current_apply_readiness"] == "high"
+    assert workflow["apply_readiness_high_count"] >= 1
 
 
 def test_prompt_candidate_stays_low_readiness_and_never_auto_applies(
@@ -292,7 +292,7 @@ def test_memory_md_remembered_fact_and_user_md_stay_separated(isolated_runtime) 
 
     assert memory_candidate["apply_readiness"] == "medium"
     assert memory_candidate["apply_reason"] == "factual-memory"
-    assert user_candidate["apply_readiness"] == "medium"
+    assert user_candidate["apply_readiness"] == "high"
     assert user_candidate["apply_reason"] == "bounded-safe"
 
     assert memory_candidate["target_file"] == "MEMORY.md"

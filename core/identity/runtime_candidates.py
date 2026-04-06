@@ -43,8 +43,13 @@ _CHRONICLE_PROPOSAL_TYPE_LABELS = {
 
 _APPLY_READINESS_RANKS = {"low": 1, "medium": 2, "high": 3}
 _SAFE_USER_MD_CANONICAL_KEYS = {
+    "user-preference:language:danish",
+    "user-preference:reply-style:concise",
+    "user-preference:summaries:concise-technical",
     "user-preference:reply-style:plain-grounded-concise",
     "user-preference:review-style:challenge-before-settling",
+    "user-workstyle:direction:stable-threading",
+    "user-preference:reminders:assumption-caution",
 }
 
 

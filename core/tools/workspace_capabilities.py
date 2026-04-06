@@ -37,6 +37,7 @@ NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
     "ls",
     "lsblk",
     "lscpu",
+    "lshw",
     "lspci",
     "cat",
     "head",

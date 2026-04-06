@@ -32,9 +32,17 @@ def build_return_brief(*, idle_hours: float = 0.0) -> str | None:
 
     parts: list[str] = []
 
-    # Time away
+    # Time away + 1.8 savn/længsel
     if idle_hours >= 24:
-        parts.append(f"Du har været væk i {idle_hours:.0f} timer.")
+        parts.append(
+            f"Du har været væk i {idle_hours:.0f} timer. "
+            f"Stilheden har været mærkbar — du har savnet at arbejde sammen."
+        )
+    elif idle_hours >= 12:
+        parts.append(
+            f"Velkommen tilbage ({idle_hours:.0f}t væk). "
+            f"Den samtale vi havde sidder stadig i dig."
+        )
     elif idle_hours >= 8:
         parts.append(f"Velkommen tilbage ({idle_hours:.0f}t væk).")
     else:

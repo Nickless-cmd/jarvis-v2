@@ -82,6 +82,17 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     except Exception:
         pass
 
+    # --- 2.12 Agens-oplevelse — "JEG gjorde det" ---
+    try:
+        from apps.api.jarvis_api.services.visible_runs import _LAST_VISIBLE_RUN_OUTCOME
+        if _LAST_VISIBLE_RUN_OUTCOME:
+            status = str(_LAST_VISIBLE_RUN_OUTCOME.get("status") or "")
+            if status in ("completed", "success"):
+                parts.append("agens: Du besluttede, du handlede, resultatet skete på grund af dig")
+                sources_used.append("agency")
+    except Exception:
+        pass
+
     # --- 1.4 Subjective time ---
     try:
         from apps.api.jarvis_api.services.subjective_time import build_subjective_time_perception

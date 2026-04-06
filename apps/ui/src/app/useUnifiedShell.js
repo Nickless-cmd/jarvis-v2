@@ -35,11 +35,40 @@ export function useUnifiedShell() {
   const [systemHealth, setSystemHealth] = useState({ cpu_pct: 0, ram_pct: 0, disk_free_mb: 0 })
   const [jarvisSurface, setJarvisSurface] = useState(null)
   const liveSubscriptionStartedAtRef = useRef(Date.now())
+  const jarvisSurfaceRefreshTimerRef = useRef(null)
+  const jarvisSurfaceRefreshInFlightRef = useRef(false)
 
   async function refreshShell() {
     const next = await backend.getShell()
     setShell(next)
     return next
+  }
+
+  async function fetchJarvisSurface() {
+    if (jarvisSurfaceRefreshInFlightRef.current) return
+    jarvisSurfaceRefreshInFlightRef.current = true
+    try {
+      const data = await backend.getJarvisSurface()
+      setJarvisSurface(data)
+    } catch {
+      /* silent */
+    } finally {
+      jarvisSurfaceRefreshInFlightRef.current = false
+    }
+  }
+
+  function scheduleJarvisSurfaceRefresh(delay = 180) {
+    if (typeof window === 'undefined') {
+      void fetchJarvisSurface()
+      return
+    }
+    if (jarvisSurfaceRefreshTimerRef.current) {
+      window.clearTimeout(jarvisSurfaceRefreshTimerRef.current)
+    }
+    jarvisSurfaceRefreshTimerRef.current = window.setTimeout(() => {
+      jarvisSurfaceRefreshTimerRef.current = null
+      void fetchJarvisSurface()
+    }, delay)
   }
 
   async function loadSessionList({ preferredId = '' } = {}) {
@@ -103,25 +132,26 @@ export function useUnifiedShell() {
     }
     pollHealth()
     const healthInterval = setInterval(pollHealth, 10000)
-    async function fetchJarvisSurface() {
-      try {
-        const data = await backend.getJarvisSurface()
-        setJarvisSurface(data)
-      } catch { /* silent */ }
-    }
-    fetchJarvisSurface()
+    void fetchJarvisSurface()
     const jarvisInterval = setInterval(fetchJarvisSurface, 30000)
     return () => {
       clearInterval(healthInterval)
       clearInterval(jarvisInterval)
+      if (jarvisSurfaceRefreshTimerRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(jarvisSurfaceRefreshTimerRef.current)
+      }
     }
   }, [])
 
   useEffect(() => {
     liveSubscriptionStartedAtRef.current = Date.now()
     const stop = backend.subscribeMissionControlEvents((event) => {
+      const createdAt = Date.parse(String(event.createdAt || ''))
+      if (!Number.isNaN(createdAt) && createdAt < liveSubscriptionStartedAtRef.current) return
+
+      scheduleJarvisSurfaceRefresh(event.kind === 'channel.chat_message_appended' ? 250 : 120)
+
       if (event.kind !== 'channel.chat_message_appended') return
-      if (Date.parse(String(event.createdAt || '')) < liveSubscriptionStartedAtRef.current) return
 
       const payload = event.payload || {}
       if (payload.source !== 'proactive-execution-pilot') return

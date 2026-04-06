@@ -103,6 +103,35 @@ def test_remembered_fact_surface_forms_small_bounded_signals_from_recent_interac
     assert items_by_kind["repo-context"]["status"] == "softening"
 
 
+def test_remembered_fact_surface_recognizes_explicit_repo_path_context(
+    isolated_runtime,
+) -> None:
+    tracking = isolated_runtime.remembered_fact_signal_tracking
+    chat_sessions = __import__(
+        "apps.api.jarvis_api.services.chat_sessions",
+        fromlist=["create_chat_session", "append_chat_message"],
+    )
+
+    session = chat_sessions.create_chat_session(title="Repo path context")
+    message = "Husk at vi arbejder i /media/projects/jarvis-v2 og bruger ~/.jarvis-v2/workspaces/default som workspace."
+    chat_sessions.append_chat_message(
+        session_id=str(session["id"]),
+        role="user",
+        content=message,
+    )
+
+    result = tracking.track_runtime_remembered_fact_signals_for_visible_turn(
+        session_id=str(session["id"]),
+        run_id="test-run",
+        user_message=message,
+    )
+    surface = tracking.build_runtime_remembered_fact_signal_surface(limit=8)
+    items_by_kind = {item["fact_kind"]: item for item in surface["items"]}
+
+    assert result["created"] >= 1
+    assert items_by_kind["repo-context"]["signal_type"] == "explicit-working-context-fact"
+
+
 def test_remembered_fact_surface_and_mc_shapes_remain_bounded(isolated_runtime) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.remembered_fact_signal_tracking

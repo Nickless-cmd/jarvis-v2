@@ -304,6 +304,9 @@ def _preference_candidates(message: str) -> list[dict[str, str]]:
             "i prefer",
             "jeg vil gerne have",
             "please remember i prefer",
+            "please remember",
+            "svar på",
+            "reply in",
         )
     )
     candidates: list[dict[str, str]] = []
@@ -516,7 +519,49 @@ def _memory_candidates(message: str) -> list[dict[str, str]]:
                 confidence="high",
             )
         )
+    if _is_explicit_repo_context_memory(message):
+        proposed_value = _repo_context_memory_line(message)
+        candidates.append(
+            _candidate(
+                candidate_type="memory_promotion",
+                target_file="MEMORY.md",
+                source_kind="user-explicit",
+                canonical_key="workspace-memory:remembered-fact:repo-context",
+                summary="The current collaboration is explicitly anchored in the Jarvis v2 repo context.",
+                reason="Explicit working-context statement phrased as durable context worth remembering.",
+                evidence_summary=_quote(message),
+                support_summary="Candidate only. No MEMORY.md write has been applied.",
+                proposed_value=proposed_value,
+                write_section="## Curated Memory",
+                confidence="high",
+            )
+        )
     return _dedupe_candidates(candidates)
+
+
+def _is_explicit_repo_context_memory(message: str) -> bool:
+    lower = str(message or "").lower()
+    if not any(token in lower for token in ("husk", "remember", "vigtigt", "important", "arbejder vi i", "working in", "repo", "workspace")):
+        return False
+    return any(
+        token in lower
+        for token in (
+            "jarvis-v2",
+            "jarvis v2",
+            "/media/projects/jarvis-v2",
+            "~/.jarvis-v2/workspaces/default",
+            ".jarvis-v2/workspaces/default",
+        )
+    )
+
+
+def _repo_context_memory_line(message: str) -> str:
+    normalized = " ".join(str(message or "").split()).strip()
+    if "/media/projects/jarvis-v2" in normalized:
+        return "- Repo context: current collaboration happens in /media/projects/jarvis-v2."
+    if "~/.jarvis-v2/workspaces/default" in normalized or ".jarvis-v2/workspaces/default" in normalized:
+        return "- Workspace context: active runtime workspace is ~/.jarvis-v2/workspaces/default."
+    return "- Repo context: current collaboration happens in the Jarvis v2 repo."
 
 
 def _candidate_from_user_md_update_proposal(proposal: dict[str, object]) -> dict[str, str] | None:

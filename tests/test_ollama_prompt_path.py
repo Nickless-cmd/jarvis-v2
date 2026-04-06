@@ -116,7 +116,7 @@ def test_visible_prompt_relevance_interface_keeps_generic_compact_chat_bounded(
     assert decision.guidance_relevant is False
     assert decision.transcript_relevant is False
     assert decision.continuity_relevant is False
-    assert decision.include_memory is False
+    assert decision.include_memory is True
     assert decision.include_guidance is False
     assert decision.include_transcript is True
     assert decision.include_continuity is True
@@ -835,4 +835,4 @@ def test_ollama_visible_prompt_does_not_dump_memory_for_irrelevant_generic_query
         session_id="test-session",
     )
 
-    assert "MEMORY.md:" not in assembly.text
+    assert "MEMORY.md:" in assembly.text

@@ -716,18 +716,22 @@ def build_prompt_relevance_decision(
     )
 
     if mode == "visible_chat":
+        include_memory = True
         include_transcript = True
         include_continuity = True
         include_support_signals = (not compact) or support_signals_relevant
     elif mode == "heartbeat":
+        include_memory = True
         include_transcript = False
         include_continuity = continuity_relevant
         include_support_signals = support_signals_relevant
     elif mode == "future_agent_task":
+        include_memory = memory_relevant
         include_transcript = False
         include_continuity = continuity_relevant
         include_support_signals = support_signals_relevant
     else:
+        include_memory = memory_relevant
         include_transcript = False
         include_continuity = False
         include_support_signals = False
@@ -738,7 +742,7 @@ def build_prompt_relevance_decision(
         guidance_relevant=guidance_relevant,
         transcript_relevant=transcript_relevant,
         continuity_relevant=continuity_relevant,
-        include_memory=memory_relevant,
+        include_memory=include_memory,
         include_guidance=guidance_relevant,
         include_transcript=include_transcript,
         include_continuity=include_continuity,

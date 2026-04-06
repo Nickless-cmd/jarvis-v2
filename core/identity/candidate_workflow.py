@@ -24,6 +24,7 @@ _AUTO_APPLY_SAFE_MEMORY_MD_PREFIX = "workspace-memory:stable-context:"
 _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS = {
     "workspace-memory:remembered-fact:project-anchor",
     "workspace-memory:remembered-fact:repo-context",
+    "workspace-memory:remembered-fact:workspace-context",
 }
 
 

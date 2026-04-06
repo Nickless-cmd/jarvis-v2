@@ -136,6 +136,7 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "gather_system_context",
     "follow_open_loop",
     "inspect_repo_context",
+    "manage_runtime_work",
     "refresh_memory_context",
     "run_candidate_scan",
     "verify_recent_claim",
@@ -2216,11 +2217,7 @@ def _execute_heartbeat_model(
             "act_on_initiative"
             if decision_type == "initiative"
             else (
-                (
-                    "inspect_repo_context"
-                    if repo_pressure
-                    else ("gather_system_context" if system_pressure else "refresh_memory_context")
-                )
+                "manage_runtime_work"
                 if decision_type == "execute"
                 else ""
             )
@@ -3268,6 +3265,92 @@ def _execute_heartbeat_internal_action(
                 "artifact": "",
                 "blocked_reason": "initiative-error",
             }
+    if action_type == "manage_runtime_work":
+        from apps.api.jarvis_api.services.runtime_browser_body import ensure_browser_body
+        from apps.api.jarvis_api.services.runtime_flows import list_flows, update_flow
+        from apps.api.jarvis_api.services.runtime_hooks import dispatch_unhandled_hook_events
+        from apps.api.jarvis_api.services.runtime_tasks import list_tasks, update_task
+
+        dispatched = dispatch_unhandled_hook_events(limit=4)
+        queued_tasks = list_tasks(status="queued", limit=4)
+        queued_flows = list_flows(status="queued", limit=4)
+        running_flows = list_flows(status="running", limit=4)
+
+        active_task_id = str((queued_tasks[0] or {}).get("task_id") or "") if queued_tasks else ""
+        active_flow_id = str((queued_flows[0] or {}).get("flow_id") or "") if queued_flows else ""
+
+        if active_task_id:
+            update_task(
+                active_task_id,
+                status="running",
+                result_summary="Heartbeat moved queued runtime work into active orchestration.",
+                artifact_ref=f"heartbeat:{tick_id}",
+            )
+        if active_flow_id:
+            update_flow(
+                active_flow_id,
+                status="running",
+                step_state="running",
+                attempt_count=int((queued_flows[0] or {}).get("attempt_count") or 0) + 1,
+            )
+
+        browser_body = ensure_browser_body(
+            profile_name="jarvis-browser",
+            active_task_id=active_task_id,
+            active_flow_id=active_flow_id or str((running_flows[0] or {}).get("flow_id") or ""),
+        )
+
+        if dispatched or queued_tasks or queued_flows or running_flows:
+            artifact = json.dumps(
+                {
+                    "dispatch_count": len(dispatched),
+                    "queued_task_ids": [
+                        str(item.get("task_id") or "")
+                        for item in queued_tasks[:4]
+                        if str(item.get("task_id") or "")
+                    ],
+                    "queued_flow_ids": [
+                        str(item.get("flow_id") or "")
+                        for item in queued_flows[:4]
+                        if str(item.get("flow_id") or "")
+                    ],
+                    "running_flow_ids": [
+                        str(item.get("flow_id") or "")
+                        for item in running_flows[:4]
+                        if str(item.get("flow_id") or "")
+                    ],
+                    "browser_body_id": str(browser_body.get("body_id") or ""),
+                    "active_task_id": str(browser_body.get("active_task_id") or ""),
+                    "active_flow_id": str(browser_body.get("active_flow_id") or ""),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            return {
+                "status": "executed",
+                "summary": (
+                    f"Heartbeat orchestrated runtime work across {len(dispatched)} hook dispatches, "
+                    f"{len(queued_tasks)} queued tasks, {len(queued_flows)} queued flows, and "
+                    f"{len(running_flows)} active flows."
+                ),
+                "artifact": artifact,
+                "blocked_reason": "",
+            }
+
+        next_action = (
+            "inspect_repo_context"
+            if _heartbeat_runtime_bias_from_recent_work(kind="repo")
+            else (
+                "gather_system_context"
+                if _heartbeat_runtime_bias_from_recent_work(kind="system")
+                else "refresh_memory_context"
+            )
+        )
+        return _execute_heartbeat_internal_action(
+            action_type=next_action,
+            tick_id=tick_id,
+            workspace_dir=workspace_dir,
+        )
     # --- Cognitive architecture idle actions ---
     if action_type == "update_compass":
         try:
@@ -4240,3 +4323,44 @@ def _emit_schedule_transitions(state: dict[str, object]) -> None:
         "schedule_state": current_state,
         "due": current_due,
     }
+
+
+def _heartbeat_runtime_bias_from_recent_work(*, kind: str) -> bool:
+    recent_runs = recent_visible_runs(limit=4)
+    joined = " ".join(
+        str(item.get("text_preview") or item.get("error") or "")
+        for item in recent_runs
+    ).lower()
+    if kind == "repo":
+        return any(
+            token in joined
+            for token in (
+                "repo",
+                "backend",
+                "project",
+                "workspace",
+                "tool",
+                "capability",
+                "commit",
+                "path",
+                "readme",
+                "code",
+            )
+        )
+    if kind == "system":
+        return any(
+            token in joined
+            for token in (
+                "system",
+                "ubuntu",
+                "linux",
+                "kernel",
+                "cpu",
+                "gpu",
+                "ram",
+                "disk",
+                "distro",
+                "machine",
+            )
+        )
+    return False

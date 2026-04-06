@@ -389,9 +389,19 @@ def build_visible_chat_prompt_assembly(
         include=relevance.include_transcript,
     )
 
+    # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
+    try:
+        from apps.api.jarvis_api.services.cognitive_state_assembly import (
+            build_cognitive_state_for_prompt,
+        )
+        cognitive_state_content = build_cognitive_state_for_prompt(compact=compact)
+    except Exception:
+        cognitive_state_content = None
+
     raw_sections = {
         "capability_truth": capability_truth,
         "cognitive_frame": frame_content,
+        "cognitive_state": cognitive_state_content,
         "self_report": self_report_content,
         "inner_visible_bridge": bridge_content,
         "support_signals": support_content,
@@ -414,13 +424,15 @@ def build_visible_chat_prompt_assembly(
             "micro cognitive frame (compact)" if compact
             else "bounded cognitive frame (mode, salience, affordances)"
         ),
+        "cognitive_state": "accumulated cognitive state (personality, bearing, taste, rhythm)",
         "self_report": "grounded runtime self-report support",
         "inner_visible_bridge": "bounded inner visible prompt bridge",
         "support_signals": "bounded runtime support signals",
         "continuity": "bounded session continuity",
     }
-    for sec_name in ("capability_truth", "cognitive_frame", "self_report",
-                      "inner_visible_bridge", "support_signals", "continuity"):
+    for sec_name in ("capability_truth", "cognitive_frame", "cognitive_state",
+                      "self_report", "inner_visible_bridge", "support_signals",
+                      "continuity"):
         content = selected.get(sec_name)
         if content:
             parts.append(content)

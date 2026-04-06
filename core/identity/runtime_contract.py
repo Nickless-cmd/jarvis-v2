@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL_WORKSPACE_FILES = (
     "SOUL.md",
     "IDENTITY.md",
+    "STANDING_ORDERS.md",
     "USER.md",
     "TOOLS.md",
     "SKILLS.md",
@@ -43,6 +44,7 @@ VISIBLE_CHAT_ORDER = (
     "runtime capability and safety truth",
     "SOUL.md",
     "IDENTITY.md",
+    "STANDING_ORDERS.md",
     "USER.md",
     "MEMORY.md (retrieved slice only)",
     "TOOLS.md / SKILLS.md (relevant slice only)",
@@ -57,6 +59,7 @@ HEARTBEAT_ORDER = (
     "HEARTBEAT.md",
     "SOUL.md",
     "IDENTITY.md",
+    "STANDING_ORDERS.md",
     "USER.md",
     "MEMORY.md (relevant slice only)",
     "due schedules and open-loop summary",
@@ -68,6 +71,7 @@ FUTURE_AGENT_ORDER = (
     "runtime role, scope, and capability truth",
     "SOUL.md",
     "IDENTITY.md",
+    "STANDING_ORDERS.md",
     "USER.md (task-relevant only)",
     "delegated task brief",
     "MEMORY.md (relevant slice only)",
@@ -83,7 +87,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
             workspace_dir / filename,
             name=filename,
             role="canonical",
-            loaded_by_default=filename in {"SOUL.md", "IDENTITY.md", "USER.md"},
+            loaded_by_default=filename in {"SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"},
             activation=_canonical_activation(filename),
             writer=_canonical_writer(filename),
         )
@@ -124,7 +128,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
             "status": "active",
             "implementation_state": "loader-implemented",
             "load_order": list(VISIBLE_CHAT_ORDER),
-            "always_loaded": ["SOUL.md", "IDENTITY.md", "USER.md"],
+            "always_loaded": ["SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"],
             "conditional_files": ["MEMORY.md", "TOOLS.md", "SKILLS.md"],
             "derived_inputs": [
                 "bounded session continuity",
@@ -146,7 +150,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
             "status": "active",
             "implementation_state": "runtime-implemented",
             "load_order": list(HEARTBEAT_ORDER),
-            "always_loaded": ["HEARTBEAT.md", "SOUL.md", "IDENTITY.md", "USER.md"],
+            "always_loaded": ["HEARTBEAT.md", "SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"],
             "conditional_files": ["MEMORY.md"],
             "derived_inputs": [
                 "schedule truth",
@@ -169,7 +173,7 @@ def build_runtime_contract_state(name: str = "default") -> dict[str, object]:
             "status": "declared",
             "implementation_state": "loader-implemented",
             "load_order": list(FUTURE_AGENT_ORDER),
-            "always_loaded": ["SOUL.md", "IDENTITY.md"],
+            "always_loaded": ["SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md"],
             "conditional_files": ["USER.md", "MEMORY.md", "TOOLS.md", "SKILLS.md"],
             "derived_inputs": [
                 "delegated scope truth",
@@ -282,7 +286,7 @@ def _file_state(
 
 
 def _canonical_activation(filename: str) -> str:
-    if filename in {"SOUL.md", "IDENTITY.md", "USER.md"}:
+    if filename in {"SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"}:
         return "always-active"
     if filename == "HEARTBEAT.md":
         return "heartbeat-only"

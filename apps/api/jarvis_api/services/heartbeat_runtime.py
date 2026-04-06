@@ -110,6 +110,7 @@ from core.identity.candidate_workflow import (
     auto_apply_safe_user_md_candidates,
 )
 from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.runtime.config import PROJECT_ROOT
 from core.runtime.db import (
     get_heartbeat_runtime_state,
     record_heartbeat_runtime_tick,
@@ -123,13 +124,18 @@ from core.runtime.db import (
 )
 from core.runtime.provider_router import resolve_provider_router_target
 from core.runtime.settings import load_settings
-from core.tools.workspace_capabilities import load_workspace_capabilities
+from core.tools.workspace_capabilities import (
+    invoke_workspace_capability,
+    load_workspace_capabilities,
+)
 
 HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping", "initiative"}
 HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "act_on_initiative",
+    "gather_system_context",
     "follow_open_loop",
+    "inspect_repo_context",
     "refresh_memory_context",
     "run_candidate_scan",
     "verify_recent_claim",
@@ -2099,6 +2105,44 @@ def _execute_heartbeat_model(
         has_pending_initiative = any(
             loop.startswith("initiative pending:") for loop in open_loops
         )
+        repo_pressure = any(
+            any(
+                token in loop.lower()
+                for token in (
+                    "repo",
+                    "backend",
+                    "project",
+                    "workspace",
+                    "tool",
+                    "capability",
+                    "commit",
+                    "path",
+                    "memory.md",
+                    "user.md",
+                    "readme",
+                    "code",
+                )
+            )
+            for loop in open_loops
+        )
+        system_pressure = any(
+            any(
+                token in loop.lower()
+                for token in (
+                    "system",
+                    "ubuntu",
+                    "linux",
+                    "kernel",
+                    "cpu",
+                    "gpu",
+                    "ram",
+                    "disk",
+                    "distro",
+                    "machine",
+                )
+            )
+            for loop in open_loops
+        )
         decision_type = (
             "initiative"
             if bool(policy.get("allow_execute")) and has_pending_initiative
@@ -2122,7 +2166,15 @@ def _execute_heartbeat_model(
         execute_action = (
             "act_on_initiative"
             if decision_type == "initiative"
-            else ("refresh_memory_context" if decision_type == "execute" else "")
+            else (
+                (
+                    "inspect_repo_context"
+                    if repo_pressure
+                    else ("gather_system_context" if system_pressure else "refresh_memory_context")
+                )
+                if decision_type == "execute"
+                else ""
+            )
         )
         text = json.dumps(
             {
@@ -2299,6 +2351,8 @@ def _heartbeat_prompt_text(base_text: str) -> str:
         "- execute_action should only be set if decision_type=execute or initiative.",
         f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
         '- For initiative decisions, set execute_action to "act_on_initiative".',
+        "- Prefer inspect_repo_context when the active thread is about code, repo structure, paths, commits, backend shape, or why a capability behaved a certain way.",
+        "- Prefer gather_system_context when the active thread is about the machine, distro, hardware, runtime environment, or host diagnostics.",
         "- If memory, continuity, or recent claims feel stale, prefer refresh_memory_context, follow_open_loop, or verify_recent_claim instead of a vague proposal.",
         'JSON schema: {"decision_type":"noop|propose|execute|ping|initiative","summary":"","reason":"","proposed_action":"","ping_text":"","execute_action":""}',
     ])
@@ -2899,6 +2953,80 @@ def _execute_heartbeat_internal_action(
             "artifact": artifact,
             "blocked_reason": "",
         }
+    if action_type == "inspect_repo_context":
+        invocations = [
+            invoke_workspace_capability(
+                "tool:list-project-files",
+                run_id=tick_id,
+                name="default",
+            ),
+            invoke_workspace_capability(
+                "tool:read-repository-readme",
+                run_id=tick_id,
+                name="default",
+            ),
+            invoke_workspace_capability(
+                "tool:run-non-destructive-command",
+                run_id=tick_id,
+                name="default",
+                command_text=(
+                    f"git -C {PROJECT_ROOT} status --short; "
+                    f"git -C {PROJECT_ROOT} branch --show-current; "
+                    f"git -C {PROJECT_ROOT} log --oneline -n 5"
+                ),
+            ),
+        ]
+        summarized = _summarize_heartbeat_capability_invocations(invocations)
+        if not summarized["executed_count"]:
+            return {
+                "status": "blocked",
+                "summary": "Heartbeat could not inspect repo context with the current capability runtime.",
+                "artifact": summarized["artifact"],
+                "blocked_reason": "repo-inspection-blocked",
+            }
+        return {
+            "status": "executed",
+            "summary": (
+                "Heartbeat inspected repo context across project files, README, and git state."
+            ),
+            "artifact": summarized["artifact"],
+            "blocked_reason": "",
+        }
+    if action_type == "gather_system_context":
+        invocations = [
+            invoke_workspace_capability(
+                "tool:run-non-destructive-command",
+                run_id=tick_id,
+                name="default",
+                command_text="hostnamectl",
+            ),
+            invoke_workspace_capability(
+                "tool:run-non-destructive-command",
+                run_id=tick_id,
+                name="default",
+                command_text="lscpu",
+            ),
+            invoke_workspace_capability(
+                "tool:run-non-destructive-command",
+                run_id=tick_id,
+                name="default",
+                command_text="free -h; df -h /",
+            ),
+        ]
+        summarized = _summarize_heartbeat_capability_invocations(invocations)
+        if not summarized["executed_count"]:
+            return {
+                "status": "blocked",
+                "summary": "Heartbeat could not gather system context with the current capability runtime.",
+                "artifact": summarized["artifact"],
+                "blocked_reason": "system-inspection-blocked",
+            }
+        return {
+            "status": "executed",
+            "summary": "Heartbeat gathered bounded host context across machine identity, CPU, memory, and disk.",
+            "artifact": summarized["artifact"],
+            "blocked_reason": "",
+        }
     if action_type == "follow_open_loop":
         continuity = visible_session_continuity()
         recent_runs = recent_visible_runs(limit=4)
@@ -2920,6 +3048,49 @@ def _execute_heartbeat_internal_action(
                 "artifact": "",
                 "blocked_reason": "no-open-loop",
             }
+        lower_preview = f"{status} {preview}".lower()
+        if any(
+            token in lower_preview
+            for token in (
+                "repo",
+                "backend",
+                "project",
+                "workspace",
+                "tool",
+                "capability",
+                "commit",
+                "path",
+                "memory.md",
+                "user.md",
+                "readme",
+                "code",
+            )
+        ):
+            return _execute_heartbeat_internal_action(
+                action_type="inspect_repo_context",
+                tick_id=tick_id,
+                workspace_dir=workspace_dir,
+            )
+        if any(
+            token in lower_preview
+            for token in (
+                "system",
+                "ubuntu",
+                "linux",
+                "kernel",
+                "cpu",
+                "gpu",
+                "ram",
+                "disk",
+                "distro",
+                "machine",
+            )
+        ):
+            return _execute_heartbeat_internal_action(
+                action_type="gather_system_context",
+                tick_id=tick_id,
+                workspace_dir=workspace_dir,
+            )
         artifact = json.dumps(
             {
                 "target_run_id": str(target_run.get("run_id") or ""),
@@ -3053,6 +3224,46 @@ def _execute_heartbeat_internal_action(
         "summary": f"Heartbeat execute action {action_type or 'unknown'} is not supported.",
         "artifact": "",
         "blocked_reason": "unsupported-execute-action",
+    }
+
+
+def _summarize_heartbeat_capability_invocations(
+    invocations: list[dict[str, object]],
+) -> dict[str, object]:
+    items: list[dict[str, object]] = []
+    executed_count = 0
+    for item in invocations:
+        capability = dict(item.get("capability") or {})
+        result_obj = dict(item.get("result") or {})
+        text = str(result_obj.get("text") or "").strip()
+        detail = str(item.get("detail") or "").strip()
+        status = str(item.get("status") or "")
+        if status == "executed":
+            executed_count += 1
+        items.append(
+            {
+                "capability_id": str(capability.get("capability_id") or ""),
+                "status": status,
+                "execution_mode": str(item.get("execution_mode") or ""),
+                "command_text": str(result_obj.get("command_text") or ""),
+                "path": str(result_obj.get("path") or ""),
+                "preview": (text or detail)[:240],
+            }
+        )
+    artifact = json.dumps(
+        {
+            "executed_count": executed_count,
+            "invocation_count": len(invocations),
+            "items": items,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+    )
+    return {
+        "executed_count": executed_count,
+        "items": items,
+        "artifact": artifact,
     }
 
 

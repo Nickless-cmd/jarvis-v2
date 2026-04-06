@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 
@@ -103,3 +104,96 @@ def test_initiative_queue_retries_blocked_attempts(isolated_runtime) -> None:
     assert refreshed["blocked_reason"] == "waiting-for-clearer-grounding"
     assert refreshed["next_attempt_at"]
 
+
+def test_inspect_repo_context_invokes_bounded_repo_capabilities(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+
+    calls: list[tuple[str, str]] = []
+
+    def _invoke(capability_id: str, *, command_text=None, **kwargs):
+        calls.append((capability_id, str(command_text or "")))
+        return {
+            "capability": {"capability_id": capability_id},
+            "status": "executed",
+            "execution_mode": "non-destructive-exec" if command_text else "workspace-file-read",
+            "result": {
+                "text": "ok",
+                "command_text": command_text or "",
+                "path": "",
+            },
+            "detail": "",
+        }
+
+    monkeypatch.setattr(heartbeat_runtime, "invoke_workspace_capability", _invoke)
+
+    result = heartbeat_runtime._execute_heartbeat_internal_action(
+        action_type="inspect_repo_context",
+        tick_id="heartbeat-tick:test",
+        workspace_dir=Path("/tmp/test-workspace"),
+    )
+
+    assert result["status"] == "executed"
+    assert calls[0][0] == "tool:list-project-files"
+    assert calls[1][0] == "tool:read-repository-readme"
+    assert calls[2][0] == "tool:run-non-destructive-command"
+    assert "git -C" in calls[2][1]
+
+
+def test_follow_open_loop_routes_repo_threads_to_repo_inspection(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+    original_execute = heartbeat_runtime._execute_heartbeat_internal_action
+
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "visible_session_continuity",
+        lambda: {"latest_run_id": "run-1", "latest_status": "success"},
+    )
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "recent_visible_runs",
+        lambda limit=4: [
+            {
+                "run_id": "run-1",
+                "status": "failed",
+                "text_preview": "Repo capability and backend path handling still look wrong.",
+                "error": "",
+            }
+        ],
+    )
+    seen: list[str] = []
+
+    def _wrapped_execute(*, action_type, tick_id, workspace_dir):
+        if action_type != "follow_open_loop":
+            seen.append(action_type)
+            return {
+                "status": "executed",
+                "summary": action_type,
+                "artifact": json.dumps({"action_type": action_type}),
+                "blocked_reason": "",
+            }
+        return original_execute(
+            action_type=action_type,
+            tick_id=tick_id,
+            workspace_dir=workspace_dir,
+        )
+
+    monkeypatch.setattr(
+        heartbeat_runtime,
+        "_execute_heartbeat_internal_action",
+        _wrapped_execute,
+    )
+
+    result = original_execute(
+        action_type="follow_open_loop",
+        tick_id="heartbeat-tick:test",
+        workspace_dir=Path("/tmp/test-workspace"),
+    )
+
+    assert result["status"] == "executed"
+    assert seen == ["inspect_repo_context"]

@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+from apps.api.jarvis_api.services import runtime_flows, runtime_tasks
+from core.eventbus.bus import event_bus
+from core.runtime import db as runtime_db
+
+_SUPPORTED_EVENT_KINDS = {
+    "heartbeat.initiative_pushed",
+    "heartbeat.tick_completed",
+}
+
+
+def dispatch_unhandled_hook_events(*, limit: int = 20) -> list[dict[str, object]]:
+    recent_events = list(reversed(event_bus.recent(limit=max(limit * 4, 20))))
+    processed: list[dict[str, object]] = []
+    for event in recent_events:
+        if len(processed) >= max(limit, 1):
+            break
+        event_id = int(event.get("id") or 0)
+        event_kind = str(event.get("kind") or "")
+        if event_id <= 0 or event_kind not in _SUPPORTED_EVENT_KINDS:
+            continue
+        if runtime_db.get_runtime_hook_dispatch(event_id) is not None:
+            continue
+        processed.append(dispatch_hook_event(event))
+    return processed
+
+
+def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
+    event_id = int(event.get("id") or 0)
+    event_kind = str(event.get("kind") or "")
+    payload = dict(event.get("payload") or {})
+    created_at = str(event.get("created_at") or datetime.now(UTC).isoformat())
+
+    if event_kind == "heartbeat.initiative_pushed":
+        focus = str(payload.get("focus") or "").strip() or "Follow queued initiative"
+        priority = str(payload.get("priority") or "medium").strip().lower()
+        task = runtime_tasks.create_task(
+            kind="initiative-followup",
+            goal=focus,
+            origin=f"hook:{event_kind}",
+            scope=focus,
+            priority=priority,
+            owner="runtime-hook",
+        )
+        flow = runtime_flows.create_flow(
+            task_id=task["task_id"],
+            current_step="review-initiative",
+            step_state="queued",
+            plan=[
+                {"step": "review-initiative", "status": "queued"},
+                {"step": "take-bounded-next-step", "status": "pending"},
+            ],
+            next_action="Inspect the initiative focus and choose the next bounded action.",
+        )
+        return runtime_db.record_runtime_hook_dispatch(
+            event_id=event_id,
+            event_kind=event_kind,
+            status="dispatched",
+            task_id=task["task_id"],
+            flow_id=flow["flow_id"],
+            summary=f"Created initiative follow-up task for: {focus[:120]}",
+            created_at=created_at,
+        )
+
+    if event_kind == "heartbeat.tick_completed":
+        action_status = str(payload.get("action_status") or "").strip().lower()
+        summary = str(payload.get("summary") or "").strip()
+        if action_status not in {"blocked", "failed"}:
+            return runtime_db.record_runtime_hook_dispatch(
+                event_id=event_id,
+                event_kind=event_kind,
+                status="ignored",
+                summary="Heartbeat tick completed without a blocked/failed follow-up condition.",
+                created_at=created_at,
+            )
+        task = runtime_tasks.create_task(
+            kind="heartbeat-followup",
+            goal=summary or "Investigate blocked heartbeat action",
+            origin=f"hook:{event_kind}",
+            scope=str(payload.get("action_type") or "").strip(),
+            priority="medium",
+            run_id=str(payload.get("tick_id") or "").strip(),
+            owner="runtime-hook",
+        )
+        flow = runtime_flows.create_flow(
+            task_id=task["task_id"],
+            current_step="inspect-heartbeat-block",
+            step_state="queued",
+            plan=[
+                {"step": "inspect-heartbeat-block", "status": "queued"},
+                {"step": "resume-bounded-work", "status": "pending"},
+            ],
+            next_action="Inspect the blocked heartbeat path and prepare the next bounded continuation.",
+        )
+        return runtime_db.record_runtime_hook_dispatch(
+            event_id=event_id,
+            event_kind=event_kind,
+            status="dispatched",
+            task_id=task["task_id"],
+            flow_id=flow["flow_id"],
+            summary=summary[:200] or "Created heartbeat follow-up task from blocked tick.",
+            created_at=created_at,
+        )
+
+    return runtime_db.record_runtime_hook_dispatch(
+        event_id=event_id,
+        event_kind=event_kind,
+        status="ignored",
+        summary="Event kind is not supported by runtime hook dispatch.",
+        created_at=created_at,
+    )

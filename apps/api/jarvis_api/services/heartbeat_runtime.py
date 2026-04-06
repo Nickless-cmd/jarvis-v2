@@ -155,6 +155,11 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "review_recent_conversations",
     "write_growth_journal",
     "propose_identity_evolution",
+    # Consciousness roadmap actions
+    "analyze_cross_signals",
+    "generate_narrative_identity",
+    "update_boredom_state",
+    "generate_emergent_goal",
 }
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
@@ -3589,6 +3594,62 @@ def _execute_heartbeat_internal_action(
             }
         except Exception as exc:
             return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "evolution-error"}
+
+    if action_type == "analyze_cross_signals":
+        try:
+            from apps.api.jarvis_api.services.cross_signal_analysis import analyze_signal_patterns
+            patterns = analyze_signal_patterns()
+            return {
+                "status": "executed",
+                "summary": f"{len(patterns)} cross-signal patterns found",
+                "artifact": json.dumps([p.get("pattern") for p in patterns], ensure_ascii=False),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "cross-signal-error"}
+
+    if action_type == "generate_narrative_identity":
+        try:
+            from apps.api.jarvis_api.services.narrative_identity import generate_narrative_identity
+            result = generate_narrative_identity()
+            if result:
+                return {
+                    "status": "executed",
+                    "summary": f"Narrative identity generated: {result.get('identity_id', '')}",
+                    "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                    "blocked_reason": "",
+                }
+            return {"status": "executed", "summary": "Not enough data for narrative identity yet", "artifact": "", "blocked_reason": ""}
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "narrative-error"}
+
+    if action_type == "update_boredom_state":
+        try:
+            from apps.api.jarvis_api.services.boredom_engine import update_boredom_state
+            result = update_boredom_state()
+            return {
+                "status": "executed",
+                "summary": f"Boredom: {result.get('level', 'none')} ({result.get('restlessness', 0):.0%})",
+                "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "boredom-error"}
+
+    if action_type == "generate_emergent_goal":
+        try:
+            from apps.api.jarvis_api.services.emergent_goals import generate_emergent_goal_from_experience
+            result = generate_emergent_goal_from_experience(curiosity_level=0.6)
+            if result:
+                return {
+                    "status": "executed",
+                    "summary": f"Goal: {result.get('desire', '')[:80]}",
+                    "artifact": json.dumps(result, ensure_ascii=False, default=str),
+                    "blocked_reason": "",
+                }
+            return {"status": "executed", "summary": "No emergent goal generated", "artifact": "", "blocked_reason": ""}
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "goal-error"}
 
     return {
         "status": "blocked",

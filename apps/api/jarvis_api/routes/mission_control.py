@@ -2616,3 +2616,77 @@ def mc_absence_awareness() -> dict:
     """Return absence detection and return brief."""
     from apps.api.jarvis_api.services.absence_awareness import build_absence_awareness_surface
     return build_absence_awareness_surface()
+
+
+# --- Consciousness Roadmap endpoints ---
+
+@router.get("/flow-state")
+def mc_flow_state() -> dict:
+    from apps.api.jarvis_api.services.flow_state_detection import build_flow_state_surface
+    return build_flow_state_surface()
+
+
+@router.get("/cross-signal-patterns")
+def mc_cross_signal_patterns() -> dict:
+    from apps.api.jarvis_api.services.cross_signal_analysis import build_cross_signal_analysis_surface
+    return build_cross_signal_analysis_surface()
+
+
+@router.get("/self-surprises")
+def mc_self_surprises() -> dict:
+    from apps.api.jarvis_api.services.self_surprise_detection import build_self_surprise_surface
+    return build_self_surprise_surface()
+
+
+@router.get("/narrative-identity")
+def mc_narrative_identity() -> dict:
+    from apps.api.jarvis_api.services.narrative_identity import build_narrative_identity_surface
+    return build_narrative_identity_surface()
+
+
+@router.get("/gratitude")
+def mc_gratitude() -> dict:
+    from apps.api.jarvis_api.services.gratitude_tracker import build_gratitude_surface
+    return build_gratitude_surface()
+
+
+@router.get("/boundary-model")
+def mc_boundary_model() -> dict:
+    from apps.api.jarvis_api.services.boundary_awareness import build_boundary_awareness_surface
+    return build_boundary_awareness_surface()
+
+
+@router.get("/emergent-goals")
+def mc_emergent_goals() -> dict:
+    from apps.api.jarvis_api.services.emergent_goals import build_emergent_goals_surface
+    return build_emergent_goals_surface()
+
+
+@router.get("/jarvis-agenda")
+def mc_jarvis_agenda() -> dict:
+    from apps.api.jarvis_api.services.emergent_goals import build_jarvis_agenda
+    return {"agenda": build_jarvis_agenda()}
+
+
+@router.get("/boredom")
+def mc_boredom() -> dict:
+    from apps.api.jarvis_api.services.boredom_engine import build_boredom_surface
+    return build_boredom_surface()
+
+
+@router.get("/formed-values")
+def mc_formed_values() -> dict:
+    from apps.api.jarvis_api.services.value_formation import build_formed_values_surface
+    return build_formed_values_surface()
+
+
+@router.get("/user-mental-model")
+def mc_user_mental_model() -> dict:
+    from apps.api.jarvis_api.services.user_theory_of_mind import build_user_theory_of_mind_surface
+    return build_user_theory_of_mind_surface()
+
+
+@router.get("/self-compassion")
+def mc_self_compassion() -> dict:
+    from apps.api.jarvis_api.services.self_compassion import build_self_compassion_surface
+    return build_self_compassion_surface()

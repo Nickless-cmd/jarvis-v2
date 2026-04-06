@@ -29070,3 +29070,329 @@ def list_cognitive_experiential_memories(*, limit: int = 20) -> list[dict[str, o
         }
         for r in rows
     ]
+
+
+# --- Self-Surprises ---
+
+def _ensure_cognitive_self_surprises_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_self_surprises (
+            surprise_id TEXT NOT NULL,
+            surprise_type TEXT NOT NULL DEFAULT 'positive',
+            narrative TEXT NOT NULL DEFAULT '',
+            expected_confidence REAL NOT NULL DEFAULT 0.5,
+            actual_outcome TEXT NOT NULL DEFAULT '',
+            domain TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (surprise_id)
+        )
+        """
+    )
+
+
+def insert_cognitive_self_surprise(
+    *, surprise_id: str, surprise_type: str, narrative: str,
+    expected_confidence: float = 0.5, actual_outcome: str = "",
+    domain: str = "", run_id: str = "",
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_self_surprises_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO cognitive_self_surprises
+               (surprise_id, surprise_type, narrative, expected_confidence,
+                actual_outcome, domain, run_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (surprise_id, surprise_type, narrative[:300], expected_confidence,
+             actual_outcome, domain, run_id, now),
+        )
+    return {"surprise_id": surprise_id, "surprise_type": surprise_type, "created_at": now}
+
+
+def list_cognitive_self_surprises(*, limit: int = 15) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_self_surprises_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM cognitive_self_surprises ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "surprise_id": r["surprise_id"], "surprise_type": r["surprise_type"],
+            "narrative": r["narrative"], "expected_confidence": float(r["expected_confidence"]),
+            "actual_outcome": r["actual_outcome"], "domain": r["domain"],
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+
+
+# --- Narrative Identities ---
+
+def _ensure_cognitive_narrative_identities_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_narrative_identities (
+            identity_id TEXT NOT NULL,
+            narrative TEXT NOT NULL DEFAULT '',
+            key_changes TEXT NOT NULL DEFAULT '[]',
+            personality_version INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (identity_id)
+        )
+        """
+    )
+
+
+def insert_cognitive_narrative_identity(
+    *, identity_id: str, narrative: str, key_changes: str = "[]",
+    personality_version: int = 0,
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_narrative_identities_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO cognitive_narrative_identities
+               (identity_id, narrative, key_changes, personality_version, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (identity_id, narrative[:600], key_changes, personality_version, now),
+        )
+    return {"identity_id": identity_id, "created_at": now}
+
+
+def get_latest_cognitive_narrative_identity() -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_cognitive_narrative_identities_table(conn)
+        row = conn.execute(
+            "SELECT * FROM cognitive_narrative_identities ORDER BY created_at DESC LIMIT 1"
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "identity_id": row["identity_id"], "narrative": row["narrative"],
+        "key_changes": row["key_changes"],
+        "personality_version": int(row["personality_version"]),
+        "created_at": row["created_at"],
+    }
+
+
+def list_cognitive_narrative_identities(*, limit: int = 10) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_narrative_identities_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM cognitive_narrative_identities ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [{"identity_id": r["identity_id"], "narrative": r["narrative"],
+             "personality_version": int(r["personality_version"]),
+             "created_at": r["created_at"]} for r in rows]
+
+
+# --- Gratitude Signals ---
+
+def _ensure_cognitive_gratitude_signals_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_gratitude_signals (
+            gratitude_id TEXT NOT NULL,
+            trigger_event TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            intensity REAL NOT NULL DEFAULT 0.5,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (gratitude_id)
+        )
+        """
+    )
+
+
+def insert_cognitive_gratitude_signal(
+    *, gratitude_id: str, trigger_event: str, detail: str = "",
+    intensity: float = 0.5,
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_gratitude_signals_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO cognitive_gratitude_signals
+               (gratitude_id, trigger_event, detail, intensity, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (gratitude_id, trigger_event, detail[:300], intensity, now),
+        )
+    return {"gratitude_id": gratitude_id, "created_at": now}
+
+
+def list_cognitive_gratitude_signals(*, limit: int = 15) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_gratitude_signals_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM cognitive_gratitude_signals ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [{"gratitude_id": r["gratitude_id"], "trigger_event": r["trigger_event"],
+             "detail": r["detail"], "intensity": float(r["intensity"]),
+             "created_at": r["created_at"]} for r in rows]
+
+
+# --- Emergent Goals ---
+
+def _ensure_cognitive_emergent_goals_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_emergent_goals (
+            goal_id TEXT NOT NULL,
+            desire TEXT NOT NULL DEFAULT '',
+            source TEXT NOT NULL DEFAULT '',
+            intensity REAL NOT NULL DEFAULT 0.5,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (goal_id)
+        )
+        """
+    )
+
+
+def upsert_cognitive_emergent_goal(
+    *, goal_id: str, desire: str, source: str = "", intensity: float = 0.5,
+    status: str = "active",
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_emergent_goals_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO cognitive_emergent_goals
+               (goal_id, desire, source, intensity, status, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (goal_id, desire[:300], source, intensity, status, now, now),
+        )
+    return {"goal_id": goal_id, "desire": desire, "status": status, "created_at": now}
+
+
+def list_cognitive_emergent_goals(*, status: str = "", limit: int = 15) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_emergent_goals_table(conn)
+        if status:
+            rows = conn.execute(
+                "SELECT * FROM cognitive_emergent_goals WHERE status = ? ORDER BY intensity DESC LIMIT ?",
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM cognitive_emergent_goals ORDER BY intensity DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+    return [{"goal_id": r["goal_id"], "desire": r["desire"], "source": r["source"],
+             "intensity": float(r["intensity"]), "status": r["status"],
+             "created_at": r["created_at"]} for r in rows]
+
+
+# --- Formed Values ---
+
+def _ensure_cognitive_formed_values_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_formed_values (
+            value_id TEXT NOT NULL,
+            value_statement TEXT NOT NULL DEFAULT '',
+            source_experience TEXT NOT NULL DEFAULT '',
+            conviction REAL NOT NULL DEFAULT 0.5,
+            evidence_count INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (value_id)
+        )
+        """
+    )
+
+
+def upsert_cognitive_formed_value(
+    *, value_id: str, value_statement: str, source_experience: str = "",
+    conviction: float = 0.5,
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_formed_values_table(conn)
+        existing = conn.execute(
+            "SELECT * FROM cognitive_formed_values WHERE value_id = ?", (value_id,)
+        ).fetchone()
+        if existing:
+            new_count = int(existing["evidence_count"]) + 1
+            new_conviction = min(1.0, float(existing["conviction"]) + 0.05)
+            conn.execute(
+                """UPDATE cognitive_formed_values SET evidence_count = ?, conviction = ?,
+                   updated_at = ? WHERE value_id = ?""",
+                (new_count, new_conviction, now, value_id),
+            )
+            return {"value_id": value_id, "conviction": new_conviction, "evidence_count": new_count}
+        conn.execute(
+            """INSERT INTO cognitive_formed_values
+               (value_id, value_statement, source_experience, conviction,
+                evidence_count, created_at, updated_at)
+               VALUES (?, ?, ?, ?, 1, ?, ?)""",
+            (value_id, value_statement[:300], source_experience[:200], conviction, now, now),
+        )
+    return {"value_id": value_id, "conviction": conviction, "created_at": now}
+
+
+def list_cognitive_formed_values(*, limit: int = 15) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_formed_values_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM cognitive_formed_values ORDER BY conviction DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [{"value_id": r["value_id"], "value_statement": r["value_statement"],
+             "conviction": float(r["conviction"]), "evidence_count": int(r["evidence_count"]),
+             "created_at": r["created_at"]} for r in rows]
+
+
+# --- Conflict Memories ---
+
+def _ensure_cognitive_conflict_memories_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_conflict_memories (
+            conflict_id TEXT NOT NULL,
+            topic TEXT NOT NULL DEFAULT '',
+            jarvis_position TEXT NOT NULL DEFAULT '',
+            user_position TEXT NOT NULL DEFAULT '',
+            resolution TEXT NOT NULL DEFAULT '',
+            lesson TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (conflict_id)
+        )
+        """
+    )
+
+
+def insert_cognitive_conflict_memory(
+    *, conflict_id: str, topic: str, jarvis_position: str = "",
+    user_position: str = "", resolution: str = "", lesson: str = "",
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_conflict_memories_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO cognitive_conflict_memories
+               (conflict_id, topic, jarvis_position, user_position,
+                resolution, lesson, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (conflict_id, topic[:200], jarvis_position[:200],
+             user_position[:200], resolution[:200], lesson[:200], now),
+        )
+    return {"conflict_id": conflict_id, "topic": topic, "created_at": now}
+
+
+def list_cognitive_conflict_memories(*, limit: int = 15) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_conflict_memories_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM cognitive_conflict_memories ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [{"conflict_id": r["conflict_id"], "topic": r["topic"],
+             "jarvis_position": r["jarvis_position"], "user_position": r["user_position"],
+             "resolution": r["resolution"], "lesson": r["lesson"],
+             "created_at": r["created_at"]} for r in rows]

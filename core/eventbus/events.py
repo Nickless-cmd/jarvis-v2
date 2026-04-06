@@ -98,6 +98,19 @@ ALLOWED_EVENT_FAMILIES = {
     "cognitive_experiential",
     "cognitive_absence",
     "cognitive_life_cycle",
+    "cognitive_flow",
+    "cognitive_surprise",
+    "cognitive_gratitude_signal",
+    "cognitive_emergent_goal",
+    "cognitive_value",
+    "cognitive_conflict_memory",
+    "cognitive_boredom",
+    "cognitive_narrative_identity",
+    "cognitive_boundary",
+    "cognitive_theory_of_mind",
+    "cognitive_completion",
+    "cognitive_compassion",
+    "cognitive_cross_signal",
 }
 
 

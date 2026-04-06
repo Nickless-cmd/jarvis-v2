@@ -231,6 +231,28 @@ def test_non_destructive_exec_allows_read_only_pipes_and_globbing(
     assert payload.get("mutation_permitted") is False
 
 
+def test_non_destructive_exec_allows_cd_navigation_in_shell_flow(
+    isolated_runtime,
+) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text="cd /media/projects/jarvis-v2 && git log -20 --oneline",
+    )
+
+    assert result["status"] == "executed"
+    payload = result.get("result") or {}
+    assert payload.get("shell_mode") is True
+    assert payload.get("execution_scope") == "git-read"
+    assert payload.get("repo_scoped") is True
+    assert payload.get("shell_segments") == [
+        "cd /media/projects/jarvis-v2",
+        "git log -20 --oneline",
+    ]
+
+
 def test_non_destructive_exec_allows_common_system_inspection_commands(
     isolated_runtime,
 ) -> None:
@@ -377,6 +399,30 @@ def test_git_read_exec_commands_allow_git_c_repo_scoping(
     log_payload = log_result.get("result") or {}
     assert log_payload.get("execution_classification") == "git-read-allowed"
     assert log_payload.get("execution_scope") == "git-read"
+
+    short_log = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"git -C {repo_root} log -20 --oneline",
+    )
+    assert short_log["status"] == "executed"
+    short_log_payload = short_log.get("result") or {}
+    assert short_log_payload.get("execution_classification") == "git-read-allowed"
+
+    show_stat = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"git -C {repo_root} show --stat -n 1",
+    )
+    assert show_stat["status"] == "executed"
+    show_payload = show_stat.get("result") or {}
+    assert show_payload.get("execution_classification") == "git-read-allowed"
+
+    top_level = caps_mod.invoke_workspace_capability(
+        "tool:run-non-destructive-command",
+        command_text=f"git -C {repo_root} rev-parse --show-toplevel",
+    )
+    assert top_level["status"] == "executed"
+    top_level_payload = top_level.get("result") or {}
+    assert top_level_payload.get("execution_classification") == "git-read-allowed"
 
 
 def test_git_mutation_and_destructive_git_commands_do_not_execute(

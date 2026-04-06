@@ -33,6 +33,7 @@ MAX_EXEC_OUTPUT_CHARS = 4000
 MAX_EXEC_SECONDS = 8
 _LAST_CAPABILITY_INVOCATION: dict[str, object] | None = None
 NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
+    "cd",
     "pwd",
     "ls",
     "lsblk",
@@ -68,6 +69,8 @@ GIT_READ_EXEC_ALLOWLIST = {
     ("diff", "--stat"),
     ("diff", "--name-only"),
     ("branch", "--show-current"),
+    ("rev-parse", "--show-toplevel"),
+    ("show", "--stat", "-n", "1"),
 }
 GIT_MUTATING_SUBCOMMANDS = {
     "add",
@@ -1559,7 +1562,7 @@ def _classify_exec_command(command_text: str) -> dict[str, object]:
             "detail": "Non-destructive exec requires a non-empty command.",
         }
     normalized_argv, normalization_sources = _normalize_exec_argv(argv)
-    command_name = argv[0]
+    command_name = normalized_argv[0]
     if "/" in command_name:
         return {
             "allowed": False,
@@ -1574,6 +1577,14 @@ def _classify_exec_command(command_text: str) -> dict[str, object]:
             "status": "blocked-destructive-command",
             "detail": f"Destructive or arbitrary-exec token is not allowed in this pass: {blocked}",
         }
+    if command_name == "cd":
+        return _classify_cd_exec_command(
+            normalized_argv,
+            path_normalization_applied=bool(normalization_sources),
+            normalization_source=(
+                "+".join(normalization_sources) if normalization_sources else "none"
+            ),
+        )
     if command_name == "git":
         return _classify_git_exec_command(
             normalized_argv,
@@ -1691,7 +1702,7 @@ def _classify_exec_command_no_shell(command_text: str) -> dict[str, object]:
             "detail": "Non-destructive exec requires a non-empty command.",
         }
     normalized_argv, normalization_sources = _normalize_exec_argv(argv)
-    command_name = argv[0]
+    command_name = normalized_argv[0]
     if "/" in command_name:
         return {
             "allowed": False,
@@ -1706,8 +1717,22 @@ def _classify_exec_command_no_shell(command_text: str) -> dict[str, object]:
             "status": "blocked-destructive-command",
             "detail": f"Destructive or arbitrary-exec token is not allowed in this pass: {blocked}",
         }
+    if command_name == "cd":
+        return _classify_cd_exec_command(
+            normalized_argv,
+            path_normalization_applied=bool(normalization_sources),
+            normalization_source=(
+                "+".join(normalization_sources) if normalization_sources else "none"
+            ),
+        )
     if command_name == "git":
-        return _classify_git_exec_command(argv)
+        return _classify_git_exec_command(
+            normalized_argv,
+            path_normalization_applied=bool(normalization_sources),
+            normalization_source=(
+                "+".join(normalization_sources) if normalization_sources else "none"
+            ),
+        )
     proposal_metadata = _mutating_exec_proposal_metadata(argv)
     if proposal_metadata is not None:
         return {
@@ -1802,12 +1827,7 @@ def _classify_git_exec_command(
         }
 
     if subcommand == "log":
-        if (
-            len(argv) == subcommand_index + 4
-            and argv[subcommand_index + 1] == "--oneline"
-            and argv[subcommand_index + 2] == "-n"
-            and re.fullmatch(r"[1-9][0-9]?", argv[subcommand_index + 3])
-        ):
+        if _is_allowed_bounded_git_log_args(list(argv[subcommand_index + 1 :])):
             return {
                 "allowed": True,
                 "argv": argv,
@@ -1822,7 +1842,7 @@ def _classify_git_exec_command(
         return {
             "allowed": False,
             "status": "blocked-git-command-shape",
-            "detail": "Bounded git log allows only: git log --oneline -n N",
+            "detail": "Bounded git log allows only: git log --oneline -n N or git log -N --oneline",
         }
 
     if subcommand in GIT_MUTATING_SUBCOMMANDS:
@@ -1894,6 +1914,45 @@ def _resolve_git_exec_context(
         execution_cwd = candidate
         index += 2
     return index, execution_cwd, None
+
+
+def _is_allowed_bounded_git_log_args(log_args: list[str]) -> bool:
+    if len(log_args) == 3 and log_args[0] == "--oneline" and log_args[1] == "-n":
+        return bool(re.fullmatch(r"[1-9][0-9]?", log_args[2]))
+    if len(log_args) == 2 and re.fullmatch(r"-[1-9][0-9]?", log_args[0]) and log_args[1] == "--oneline":
+        return True
+    return False
+
+
+def _classify_cd_exec_command(
+    argv: list[str],
+    *,
+    path_normalization_applied: bool = False,
+    normalization_source: str = "none",
+) -> dict[str, object]:
+    if len(argv) != 2:
+        return {
+            "allowed": False,
+            "status": "blocked-command-shape",
+            "detail": "Bounded cd allows only one explicit target directory.",
+        }
+    candidate = Path(str(argv[1])).expanduser()
+    if not candidate.exists() or not candidate.is_dir():
+        return {
+            "allowed": False,
+            "status": "blocked-invalid-target-path",
+            "detail": f"cd target is not an existing directory: {candidate}",
+        }
+    return {
+        "allowed": True,
+        "argv": argv,
+        "normalized_command_text": shlex.join(argv),
+        "path_normalization_applied": path_normalization_applied,
+        "normalization_source": normalization_source,
+        "execution_scope": "filesystem",
+        "execution_classification": "non-destructive-navigation-allowed",
+        "repo_scoped": str(candidate.resolve()).startswith(str(PROJECT_ROOT.resolve())),
+    }
 
 
 def _classify_git_mutation_subcommand(subcommand: str) -> str:

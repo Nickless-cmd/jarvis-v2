@@ -160,6 +160,9 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "generate_narrative_identity",
     "update_boredom_state",
     "generate_emergent_goal",
+    "run_sleep_batch",
+    "generate_curriculum",
+    "detect_consent_reaction",
 }
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
@@ -435,6 +438,12 @@ def _build_cognitive_surfaces() -> dict[str, object]:
                   lambda: __import__("apps.api.jarvis_api.services.self_experiments", fromlist=["build_self_experiments_surface"]).build_self_experiments_surface())
     _safe_surface(surfaces, "dream_carry_over",
                   lambda: __import__("apps.api.jarvis_api.services.dream_carry_over", fromlist=["build_dream_carry_over_surface"]).build_dream_carry_over_surface())
+    # Living heartbeat cycle awareness
+    _safe_surface(surfaces, "life_phase",
+                  lambda: __import__("apps.api.jarvis_api.services.living_heartbeat_cycle", fromlist=["determine_life_phase"]).determine_life_phase())
+    # Curriculum
+    _safe_surface(surfaces, "learning_curriculum",
+                  lambda: __import__("apps.api.jarvis_api.services.self_experiments", fromlist=["generate_learning_curriculum"]).generate_learning_curriculum())
     return surfaces
 
 
@@ -3650,6 +3659,84 @@ def _execute_heartbeat_internal_action(
             return {"status": "executed", "summary": "No emergent goal generated", "artifact": "", "blocked_reason": ""}
         except Exception as exc:
             return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "goal-error"}
+
+    # 4.10 Sleep batch — coordinated consolidation cycle
+    if action_type == "run_sleep_batch":
+        try:
+            from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
+            phase = determine_life_phase()
+            if not phase.get("sleep_batch"):
+                return {"status": "executed", "summary": f"Not in dreaming phase (current: {phase.get('phase')})", "artifact": "", "blocked_reason": ""}
+            # Run all dreaming-phase actions in sequence
+            batch_results = []
+            batch_actions = phase.get("suggested_actions") or []
+            for batch_action in batch_actions[:5]:
+                try:
+                    sub_result = _execute_heartbeat_internal_action(
+                        action_type=batch_action,
+                        tick_id=tick_id,
+                        workspace_dir=workspace_dir,
+                    )
+                    batch_results.append(f"{batch_action}: {sub_result.get('status', '?')}")
+                except Exception:
+                    batch_results.append(f"{batch_action}: error")
+            return {
+                "status": "executed",
+                "summary": f"Sleep batch: {len(batch_results)} actions — {'; '.join(batch_results[:3])}",
+                "artifact": json.dumps(batch_results, ensure_ascii=False),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "sleep-batch-error"}
+
+    # 3.8 Curriculum learning
+    if action_type == "generate_curriculum":
+        try:
+            from apps.api.jarvis_api.services.self_experiments import generate_learning_curriculum
+            curriculum = generate_learning_curriculum()
+            return {
+                "status": "executed",
+                "summary": curriculum.get("summary", "No curriculum")[:120],
+                "artifact": json.dumps(curriculum, ensure_ascii=False, default=str),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "curriculum-error"}
+
+    # 8.5 Consent/samtykke — detect external changes to workspace files
+    if action_type == "detect_consent_reaction":
+        try:
+            from pathlib import Path
+            from core.identity.workspace_bootstrap import ensure_default_workspace
+            ws = ensure_default_workspace()
+            identity_path = Path(ws) / "IDENTITY.md"
+            soul_path = Path(ws) / "SOUL.md"
+            changes_detected = []
+            for fpath, label in [(identity_path, "IDENTITY.md"), (soul_path, "SOUL.md")]:
+                if fpath.exists():
+                    mtime = fpath.stat().st_mtime
+                    # Simple check: if modified recently (last hour)
+                    import time
+                    if time.time() - mtime < 3600:
+                        changes_detected.append(label)
+            if changes_detected:
+                from apps.api.jarvis_api.services.contract_evolution import propose_identity_change
+                for changed_file in changes_detected:
+                    propose_identity_change(
+                        target_file=changed_file,
+                        proposed_addition=f"[SAMTYKKE-CHECK] {changed_file} blev ændret udefra. Passer det til mig?",
+                        rationale="Detected external modification — consent review needed",
+                        confidence=0.5,
+                    )
+                return {
+                    "status": "executed",
+                    "summary": f"Consent check: {', '.join(changes_detected)} changed externally — review proposed",
+                    "artifact": json.dumps(changes_detected, ensure_ascii=False),
+                    "blocked_reason": "",
+                }
+            return {"status": "executed", "summary": "No external workspace changes detected", "artifact": "", "blocked_reason": ""}
+        except Exception as exc:
+            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "consent-error"}
 
     return {
         "status": "blocked",

@@ -127,6 +127,79 @@ def _evaluate_experiment(cohorts: dict) -> tuple[str, str]:
     return json.dumps(result, ensure_ascii=False), status
 
 
+def generate_learning_curriculum() -> dict[str, object]:
+    """3.8 Curriculum learning — analyze weaknesses, generate learning plan.
+
+    Reads self-model weaknesses (low confidence domains) and concluded
+    experiments to derive a focused learning direction.
+    """
+    curriculum: list[dict[str, object]] = []
+
+    # From personality vector — low confidence domains
+    try:
+        from core.runtime.db import get_latest_cognitive_personality_vector
+        pv = get_latest_cognitive_personality_vector()
+        if pv:
+            import json as _json
+            domains = _json.loads(str(pv.get("confidence_by_domain") or "{}"))
+            weak = [(d, float(v)) for d, v in domains.items() if float(v) < 0.5]
+            weak.sort(key=lambda x: x[1])
+            for domain, conf in weak[:3]:
+                curriculum.append({
+                    "focus": domain,
+                    "type": "weakness",
+                    "current_confidence": conf,
+                    "suggestion": f"Bliv bedre til {domain} — confidence er kun {conf:.0%}",
+                    "priority": 1.0 - conf,
+                })
+    except Exception:
+        pass
+
+    # From concluded experiments — apply learnings
+    concluded = list_cognitive_experiments(status="concluded", limit=5)
+    for exp in concluded:
+        try:
+            import json as _json
+            result = _json.loads(str(exp.get("result") or "{}"))
+            best = result.get("best_cohort", "")
+            if best and result.get("significant"):
+                curriculum.append({
+                    "focus": exp.get("hypothesis", "")[:60],
+                    "type": "experiment_conclusion",
+                    "suggestion": f"Anvend: {best} er bedre (diff={result.get('difference', 0):.0%})",
+                    "priority": 0.6,
+                })
+        except Exception:
+            pass
+
+    # From recurring mistakes
+    try:
+        from core.runtime.db import get_latest_cognitive_personality_vector
+        pv = get_latest_cognitive_personality_vector()
+        if pv:
+            import json as _json
+            mistakes = _json.loads(str(pv.get("recurring_mistakes") or "[]"))
+            for mistake in mistakes[:2]:
+                curriculum.append({
+                    "focus": str(mistake)[:60],
+                    "type": "mistake_pattern",
+                    "suggestion": f"Undgå: {mistake[:60]}",
+                    "priority": 0.7,
+                })
+    except Exception:
+        pass
+
+    curriculum.sort(key=lambda x: float(x.get("priority", 0)), reverse=True)
+    return {
+        "curriculum": curriculum[:6],
+        "focus_count": len(curriculum),
+        "summary": (
+            f"{len(curriculum)} learning focuses: {', '.join(c['focus'][:20] for c in curriculum[:3])}"
+            if curriculum else "No curriculum generated yet"
+        ),
+    }
+
+
 def build_self_experiments_surface() -> dict[str, object]:
     ensure_default_experiments()
     experiments = list_cognitive_experiments(limit=10)

@@ -61,3 +61,33 @@ def test_runtime_hooks_dispatch_blocked_heartbeat_ticks_into_followup_work(isola
     assert task is not None
     assert task["kind"] == "heartbeat-followup"
     assert task["run_id"] == "heartbeat-tick:abc"
+
+
+def test_runtime_hooks_dispatch_tick_blocked_events_into_followup_work(isolated_runtime) -> None:
+    runtime_hooks = __import__(
+        "apps.api.jarvis_api.services.runtime_hooks",
+        fromlist=["dispatch_unhandled_hook_events"],
+    )
+
+    event_bus.publish(
+        "heartbeat.tick_blocked",
+        {
+            "tick_id": "heartbeat-tick:def",
+            "blocked_reason": "kill-switch-disabled",
+            "trigger": "scheduled",
+        },
+    )
+
+    dispatches = runtime_hooks.dispatch_unhandled_hook_events(
+        event_kinds={"heartbeat.tick_blocked"}
+    )
+
+    assert len(dispatches) == 1
+    dispatch = dispatches[0]
+    assert dispatch["event_kind"] == "heartbeat.tick_blocked"
+    assert dispatch["status"] == "dispatched"
+
+    task = isolated_runtime.db.get_runtime_task(dispatch["task_id"])
+    assert task is not None
+    assert task["kind"] == "heartbeat-followup"
+    assert task["run_id"] == "heartbeat-tick:def"

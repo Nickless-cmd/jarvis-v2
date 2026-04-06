@@ -181,17 +181,17 @@ def _build_active_capabilities(
     except Exception:
         pass
 
-    # Cheap lane
+    # Internal fallback lane
     try:
         from apps.api.jarvis_api.services.non_visible_lane_execution import cheap_lane_execution_truth
         cheap = cheap_lane_execution_truth()
         if cheap.get("can_execute"):
             items.append({
-                "id": "cheap-lane",
-                "label": "Cheap model lane (internal jobs)",
+                "id": "internal-fallback-lane",
+                "label": "Internal fallback model lane",
                 "status": "ready",
                 "mutability": "usable",
-                "detail": "For runtime-internal small tasks",
+                "detail": "Fallback lane for bounded runtime-internal jobs",
             })
     except Exception:
         pass

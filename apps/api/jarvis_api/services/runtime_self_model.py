@@ -529,13 +529,13 @@ def _collect_layers() -> list[dict[str, str]]:
     })
 
     layers.append({
-        "id": "cheap-lane",
-        "label": "Cheap model lane",
+        "id": "internal-fallback-lane",
+        "label": "Internal fallback model lane",
         "kind": "capability",
         "role": _cheap_lane_role(),
         "visibility": "internal-only",
         "truth": "authoritative",
-        "detail": "Low-cost model for internal small jobs.",
+        "detail": "Fallback model lane for bounded internal jobs when the local lane is unavailable.",
     })
 
     layers.append({

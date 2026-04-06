@@ -1,6 +1,6 @@
 """Personality Vector — cumulative personality that grows over time.
 
-After each visible run, the cheap-lane LLM analyzes the conversation
+After each visible run, the local-lane LLM analyzes the conversation
 and updates the personality vector. Version increments with each update.
 The vector is injected into the visible prompt via cognitive_state_assembly.
 """
@@ -54,7 +54,7 @@ def update_personality_vector_from_run(
     """Update the personality vector based on a visible run.
 
     Called fire-and-forget after write_private_terminal_layers.
-    Uses the cheap lane for LLM analysis.
+    Uses the local lane for LLM analysis, with an internal fallback lane only when needed.
     """
     current = get_latest_cognitive_personality_vector()
     current_json = json.dumps(current, ensure_ascii=False) if current else "{}"
@@ -68,7 +68,7 @@ def update_personality_vector_from_run(
     )
 
     try:
-        target = _resolve_cheap_target()
+        target = _resolve_local_llm_target()
         if not target:
             return _deterministic_update(outcome_status, current)
         response_text = _call_llm(target, _UPDATE_PROMPT, user_prompt)
@@ -229,8 +229,8 @@ def _safe_json_field(value, default):
     return default
 
 
-def _resolve_cheap_target() -> dict[str, object] | None:
-    for lane in ("cheap", "local"):
+def _resolve_local_llm_target() -> dict[str, object] | None:
+    for lane in ("local", "cheap"):
         try:
             target = resolve_provider_router_target(lane=lane)
             if bool(target.get("active")):

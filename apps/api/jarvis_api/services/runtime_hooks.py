@@ -9,18 +9,28 @@ from core.runtime import db as runtime_db
 _SUPPORTED_EVENT_KINDS = {
     "heartbeat.initiative_pushed",
     "heartbeat.tick_completed",
+    "heartbeat.tick_blocked",
 }
 
 
-def dispatch_unhandled_hook_events(*, limit: int = 20) -> list[dict[str, object]]:
+def dispatch_unhandled_hook_events(
+    *,
+    limit: int = 20,
+    event_kinds: set[str] | None = None,
+) -> list[dict[str, object]]:
     recent_events = list(reversed(event_bus.recent(limit=max(limit * 4, 20))))
     processed: list[dict[str, object]] = []
+    allowed_event_kinds = (
+        {kind for kind in event_kinds if kind in _SUPPORTED_EVENT_KINDS}
+        if event_kinds
+        else _SUPPORTED_EVENT_KINDS
+    )
     for event in recent_events:
         if len(processed) >= max(limit, 1):
             break
         event_id = int(event.get("id") or 0)
         event_kind = str(event.get("kind") or "")
-        if event_id <= 0 or event_kind not in _SUPPORTED_EVENT_KINDS:
+        if event_id <= 0 or event_kind not in allowed_event_kinds:
             continue
         if runtime_db.get_runtime_hook_dispatch(event_id) is not None:
             continue
@@ -68,20 +78,21 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
             created_at=created_at,
         )
 
-    if event_kind == "heartbeat.tick_completed":
+    if event_kind in {"heartbeat.tick_completed", "heartbeat.tick_blocked"}:
         action_status = str(payload.get("action_status") or "").strip().lower()
         summary = str(payload.get("summary") or "").strip()
-        if action_status not in {"blocked", "failed"}:
+        blocked_reason = str(payload.get("blocked_reason") or "").strip()
+        if action_status not in {"blocked", "failed"} and not blocked_reason:
             return runtime_db.record_runtime_hook_dispatch(
                 event_id=event_id,
                 event_kind=event_kind,
                 status="ignored",
-                summary="Heartbeat tick completed without a blocked/failed follow-up condition.",
+                summary="Heartbeat tick had no blocked or failed follow-up condition.",
                 created_at=created_at,
             )
         task = runtime_tasks.create_task(
             kind="heartbeat-followup",
-            goal=summary or "Investigate blocked heartbeat action",
+            goal=summary or blocked_reason or "Investigate blocked heartbeat action",
             origin=f"hook:{event_kind}",
             scope=str(payload.get("action_type") or "").strip(),
             priority="medium",
@@ -104,7 +115,8 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
             status="dispatched",
             task_id=task["task_id"],
             flow_id=flow["flow_id"],
-            summary=summary[:200] or "Created heartbeat follow-up task from blocked tick.",
+            summary=(summary or blocked_reason)[:200]
+            or "Created heartbeat follow-up task from blocked tick.",
             created_at=created_at,
         )
 

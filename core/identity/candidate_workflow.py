@@ -31,6 +31,12 @@ _AUTO_APPLY_SAFE_REMEMBERED_FACT_CANONICAL_KEYS = {
     "workspace-memory:remembered-fact:repo-context",
     "workspace-memory:remembered-fact:workspace-context",
 }
+_APPROVED_RUNTIME_CONTRACT_TARGET_FILES = {
+    "USER.md",
+    "MEMORY.md",
+    "SOUL.md",
+    "IDENTITY.md",
+}
 
 
 def approve_runtime_contract_candidate(
@@ -277,6 +283,52 @@ def auto_apply_safe_memory_md_candidates() -> dict[str, object]:
             f"Auto-applied {auto_applied} safe MEMORY.md candidates."
             if auto_applied
             else "No safe MEMORY.md candidates were eligible for auto-apply."
+        ),
+    }
+
+
+def apply_approved_runtime_contract_candidates(
+    *,
+    target_files: set[str] | None = None,
+    limit: int = 12,
+) -> dict[str, object]:
+    allowed_targets = target_files or _APPROVED_RUNTIME_CONTRACT_TARGET_FILES
+    considered = 0
+    applied = 0
+    skipped = 0
+    items: list[dict[str, object]] = []
+
+    approved_candidates = list_runtime_contract_candidates(
+        status="approved",
+        limit=max(limit * 3, 24),
+    )
+    for candidate in approved_candidates:
+        if applied >= max(limit, 1):
+            break
+        if str(candidate.get("target_file") or "") not in allowed_targets:
+            continue
+        considered += 1
+        try:
+            result = apply_runtime_contract_candidate(str(candidate["candidate_id"]))
+        except Exception:
+            skipped += 1
+            continue
+        applied_candidate = dict(result.get("candidate") or {})
+        items.append(applied_candidate)
+        if str(applied_candidate.get("status") or "") == "applied":
+            applied += 1
+        else:
+            skipped += 1
+
+    return {
+        "considered": considered,
+        "applied": applied,
+        "skipped": skipped,
+        "items": items,
+        "summary": (
+            f"Applied {applied} approved runtime contract candidates."
+            if applied
+            else "No approved runtime contract candidates were ready to apply."
         ),
     }
 

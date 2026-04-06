@@ -138,6 +138,7 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "follow_open_loop",
     "inspect_repo_context",
     "manage_runtime_work",
+    "process_contract_writes",
     "refresh_memory_context",
     "run_candidate_scan",
     "verify_recent_claim",
@@ -596,6 +597,10 @@ def _run_heartbeat_tick_locked(
                 "trigger": trigger,
             },
         )
+        _dispatch_runtime_hook_events_safely(
+            event_kinds={"heartbeat.tick_blocked"},
+            limit=2,
+        )
         return HeartbeatExecutionResult(
             state=heartbeat_runtime_surface(name=name)["state"],
             tick=tick,
@@ -775,6 +780,10 @@ def _run_heartbeat_tick_locked(
                 "parse_status": parse_status,
             },
         )
+        _dispatch_runtime_hook_events_safely(
+            event_kinds={"heartbeat.tick_blocked"},
+            limit=2,
+        )
     else:
         event_bus.publish(
             "heartbeat.tick_completed",
@@ -822,6 +831,10 @@ def _run_heartbeat_tick_locked(
                 "execution_status": execution_status,
                 "parse_status": parse_status,
             },
+        )
+        _dispatch_runtime_hook_events_safely(
+            event_kinds={"heartbeat.tick_completed"},
+            limit=2,
         )
 
     # Run non-visible inner producers through the internal cadence layer.
@@ -2214,7 +2227,15 @@ def _execute_heartbeat_model(
             if open_loops
             else (liveness_summary or "No current due work was detected.")
         )
-        has_pending_initiative = any(
+        try:
+            from apps.api.jarvis_api.services.initiative_queue import (
+                get_pending_initiatives,
+            )
+
+            pending_initiatives = get_pending_initiatives()
+        except Exception:
+            pending_initiatives = []
+        has_pending_initiative = bool(pending_initiatives) or any(
             loop.startswith("initiative pending:") for loop in open_loops
         )
         repo_pressure = any(
@@ -2275,20 +2296,52 @@ def _execute_heartbeat_model(
                 )
             )
         )
+        contract_candidate_counts = runtime_contract_candidate_counts()
+        has_contract_write_work = any(
+            int(contract_candidate_counts.get(key) or 0) > 0
+            for key in (
+                "preference_update:proposed",
+                "preference_update:approved",
+                "memory_promotion:proposed",
+                "memory_promotion:approved",
+                "soul_update:approved",
+                "identity_update:approved",
+            )
+        )
         execute_action = (
             "act_on_initiative"
             if decision_type == "initiative"
             else (
-                "manage_runtime_work"
-                if decision_type == "execute"
-                else ""
+                "process_contract_writes"
+                if decision_type == "execute" and has_contract_write_work
+                else (
+                    "manage_runtime_work"
+                    if decision_type == "execute"
+                    else ""
+                )
+            )
+        )
+        if decision_type == "initiative" and pending_initiatives:
+            summary = str(
+                (pending_initiatives[0] or {}).get("focus")
+                or "Act on pending initiative"
+            )
+        elif decision_type == "execute" and execute_action == "process_contract_writes":
+            summary = "Process ready contract writes for governed workspace files."
+        reason = (
+            "Phase1 fallback heartbeat used pending initiatives as bounded internal work."
+            if decision_type == "initiative"
+            else (
+                "Phase1 fallback heartbeat used ready contract write work as bounded internal action."
+                if execute_action == "process_contract_writes"
+                else "Phase1 fallback heartbeat used bounded runtime context without provider-backed execution."
             )
         )
         text = json.dumps(
             {
                 "decision_type": decision_type,
                 "summary": summary,
-                "reason": "Phase1 fallback heartbeat used bounded runtime context without provider-backed execution.",
+                "reason": reason,
                 "proposed_action": summary if decision_type == "propose" else "",
                 "ping_text": "",
                 "execute_action": execute_action,
@@ -2308,7 +2361,6 @@ def _execute_heartbeat_model(
     if provider == "openrouter":
         return _execute_openrouter_prompt(prompt=prompt, target=target)
     raise RuntimeError(f"Heartbeat provider not supported: {provider}")
-
 
 def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, object]:
     base_url = target["base_url"] or "http://127.0.0.1:11434"
@@ -2740,6 +2792,23 @@ def _validate_heartbeat_decision(
             "action_type": "",
             "action_artifact": "",
         }
+    if decision_type == "propose":
+        proposal_result = _deliver_heartbeat_proposal(
+            policy=policy,
+            tick_id=tick_id,
+            summary=str(decision.get("summary") or ""),
+            proposed_action=str(decision.get("proposed_action") or ""),
+        )
+        return {
+            "tick_id": tick_id,
+            "blocked_reason": str(proposal_result["blocked_reason"]),
+            "ping_eligible": False,
+            "ping_result": "not-applicable",
+            "action_status": str(proposal_result["status"]),
+            "action_summary": str(proposal_result["summary"]),
+            "action_type": str(proposal_result["action_type"]),
+            "action_artifact": str(proposal_result["artifact"]),
+        }
     return {
         "tick_id": tick_id,
         "blocked_reason": "",
@@ -2752,6 +2821,116 @@ def _validate_heartbeat_decision(
         "action_type": "",
         "action_artifact": "",
     }
+
+
+def _deliver_heartbeat_proposal(
+    *,
+    policy: dict[str, object],
+    tick_id: str,
+    summary: str,
+    proposed_action: str,
+) -> dict[str, str]:
+    message_text = proposed_action.strip() or summary.strip()
+    if not message_text:
+        return {
+            "status": "blocked",
+            "summary": "Heartbeat propose decision had no user-facing text to deliver.",
+            "action_type": "",
+            "artifact": "",
+            "blocked_reason": "missing-proposal-text",
+        }
+
+    ping_channel = str(policy.get("ping_channel") or "none").strip() or "none"
+    if ping_channel != "webchat":
+        return {
+            "status": "recorded",
+            "summary": message_text,
+            "action_type": "",
+            "artifact": "",
+            "blocked_reason": "",
+        }
+
+    from apps.api.jarvis_api.services.chat_sessions import (
+        append_chat_message,
+        get_chat_session,
+        list_chat_sessions,
+    )
+
+    sessions = list_chat_sessions()
+    session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
+    if not session_id or get_chat_session(session_id) is None:
+        event_bus.publish(
+            "heartbeat.propose_blocked",
+            {
+                "tick_id": tick_id,
+                "blocked_reason": "missing-webchat-session",
+            },
+        )
+        return {
+            "status": "blocked",
+            "summary": "No webchat session is available for bounded propose delivery.",
+            "action_type": "webchat-heartbeat-proposal",
+            "artifact": "",
+            "blocked_reason": "missing-webchat-session",
+        }
+
+    message = append_chat_message(
+        session_id=session_id,
+        role="assistant",
+        content=message_text,
+    )
+    event_bus.publish(
+        "channel.chat_message_appended",
+        {
+            "session_id": session_id,
+            "message": message,
+            "source": "heartbeat-propose-bridge",
+        },
+    )
+    event_bus.publish(
+        "heartbeat.propose_delivered",
+        {
+            "tick_id": tick_id,
+            "session_id": session_id,
+            "message_id": str(message.get("id") or ""),
+            "summary": summary,
+        },
+    )
+    return {
+        "status": "sent",
+        "summary": "Heartbeat delivered one bounded proposal to webchat.",
+        "action_type": "webchat-heartbeat-proposal",
+        "artifact": json.dumps(
+            {
+                "session_id": session_id,
+                "message_id": str(message.get("id") or ""),
+                "delivery_channel": "webchat",
+            },
+            ensure_ascii=False,
+            default=str,
+        ),
+        "blocked_reason": "",
+    }
+
+
+def _dispatch_runtime_hook_events_safely(
+    *,
+    event_kinds: set[str] | None = None,
+    limit: int = 4,
+) -> list[dict[str, object]]:
+    try:
+        from apps.api.jarvis_api.services.runtime_hooks import (
+            dispatch_unhandled_hook_events,
+        )
+
+        return dispatch_unhandled_hook_events(limit=limit, event_kinds=event_kinds)
+    except Exception as exc:
+        logger.warning(
+            "heartbeat hook dispatch failed event_kinds=%s error=%s",
+            sorted(event_kinds) if event_kinds else [],
+            exc,
+        )
+        return []
 
 
 def _recover_bounded_heartbeat_liveness_decision(
@@ -3032,8 +3211,8 @@ def _execute_heartbeat_internal_action(
         )
         user_result = auto_apply_safe_user_md_candidates()
         memory_result = auto_apply_safe_memory_md_candidates()
-        applied_user = int(user_result.get("applied") or 0)
-        applied_memory = int(memory_result.get("applied") or 0)
+        applied_user = int(user_result.get("auto_applied") or user_result.get("applied") or 0)
+        applied_memory = int(memory_result.get("auto_applied") or memory_result.get("applied") or 0)
         created = int(review.get("created") or 0)
         messages_scanned = int(review.get("messages_scanned") or 0)
         summary = (
@@ -3048,6 +3227,101 @@ def _execute_heartbeat_internal_action(
                 "safe_user_applied": applied_user,
                 "safe_memory_applied": applied_memory,
                 "session_id": str(review.get("session_id") or ""),
+                "user_items": list(user_result.get("items") or [])[:4],
+                "memory_items": list(memory_result.get("items") or [])[:4],
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str,
+        )
+        return {
+            "status": "executed",
+            "summary": summary,
+            "artifact": artifact,
+            "blocked_reason": "",
+        }
+    if action_type == "process_contract_writes":
+        from apps.api.jarvis_api.services.candidate_tracking import (
+            track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn,
+            track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn,
+            track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn,
+        )
+        from apps.api.jarvis_api.services.memory_md_update_proposal_tracking import (
+            track_runtime_memory_md_update_proposals_for_visible_turn,
+        )
+        from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
+            track_runtime_selfhood_proposals_for_visible_turn,
+        )
+        from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
+            track_runtime_user_md_update_proposals_for_visible_turn,
+        )
+        from core.identity.candidate_workflow import (
+            apply_approved_runtime_contract_candidates,
+        )
+
+        user_proposals = track_runtime_user_md_update_proposals_for_visible_turn(
+            session_id=None,
+            run_id=tick_id,
+        )
+        memory_proposals = track_runtime_memory_md_update_proposals_for_visible_turn(
+            session_id=None,
+            run_id=tick_id,
+        )
+        selfhood_proposals = track_runtime_selfhood_proposals_for_visible_turn(
+            session_id=None,
+            run_id=tick_id,
+        )
+        user_candidates = track_runtime_contract_candidates_from_user_md_update_proposals_for_visible_turn(
+            session_id=None,
+            run_id=tick_id,
+        )
+        memory_candidates = track_runtime_contract_candidates_from_memory_md_update_proposals_for_visible_turn(
+            session_id=None,
+            run_id=tick_id,
+        )
+        selfhood_candidates = track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn(
+            session_id=None,
+            run_id=tick_id,
+        )
+        user_result = auto_apply_safe_user_md_candidates()
+        memory_result = auto_apply_safe_memory_md_candidates()
+        approved_result = apply_approved_runtime_contract_candidates(
+            target_files={"USER.md", "MEMORY.md", "SOUL.md", "IDENTITY.md"},
+        )
+
+        safe_user_applied = int(user_result.get("auto_applied") or user_result.get("applied") or 0)
+        safe_memory_applied = int(memory_result.get("auto_applied") or memory_result.get("applied") or 0)
+        approved_applied = int(approved_result.get("applied") or 0)
+        drafted_candidates = sum(
+            int(item.get("created") or 0)
+            for item in (
+                user_candidates,
+                memory_candidates,
+                selfhood_candidates,
+            )
+        )
+        proposal_count = sum(
+            int(item.get("created") or 0)
+            for item in (
+                user_proposals,
+                memory_proposals,
+                selfhood_proposals,
+            )
+        )
+        total_applied = safe_user_applied + safe_memory_applied + approved_applied
+        summary = (
+            f"Heartbeat processed contract writes: drafted {drafted_candidates} candidates, auto-applied {safe_user_applied + safe_memory_applied} safe updates, and applied {approved_applied} approved contract updates."
+            if drafted_candidates or proposal_count or total_applied
+            else "Heartbeat found no governed contract writes ready to process."
+        )
+        artifact = json.dumps(
+            {
+                "proposal_count": proposal_count,
+                "drafted_candidates": drafted_candidates,
+                "safe_user_applied": safe_user_applied,
+                "safe_memory_applied": safe_memory_applied,
+                "approved_applied": approved_applied,
+                "approved_items": list(approved_result.get("items") or [])[:6],
                 "user_items": list(user_result.get("items") or [])[:4],
                 "memory_items": list(memory_result.get("items") or [])[:4],
             },
@@ -3261,38 +3535,83 @@ def _execute_heartbeat_internal_action(
         }
     if action_type == "act_on_initiative":
         try:
+            from apps.api.jarvis_api.services import runtime_flows, runtime_tasks
             from apps.api.jarvis_api.services.initiative_queue import (
                 get_pending_initiatives,
                 mark_acted,
                 mark_attempted,
             )
+
             pending = get_pending_initiatives()
             if pending:
                 initiative = pending[0]
-                mark_acted(
-                    str(initiative.get("initiative_id") or ""),
-                    action_summary=f"Heartbeat acted on initiative: {str(initiative.get('focus') or '')[:100]}",
+                initiative_id = str(initiative.get("initiative_id") or "")
+                focus = str(initiative.get("focus") or "")[:200]
+                priority = str(initiative.get("priority") or "medium").strip().lower() or "medium"
+                task = runtime_tasks.create_task(
+                    kind="initiative-followup",
+                    goal=focus,
+                    origin="heartbeat:initiative",
+                    scope=focus,
+                    priority=priority,
+                    run_id=tick_id,
+                    owner="heartbeat-runtime",
                 )
-                # Record as private brain entry for continuity
+                flow = runtime_flows.create_flow(
+                    task_id=str(task.get("task_id") or ""),
+                    current_step="review-initiative",
+                    step_state="queued",
+                    plan=[
+                        {"step": "review-initiative", "status": "queued"},
+                        {"step": "take-bounded-next-step", "status": "pending"},
+                    ],
+                    next_action="Inspect the initiative focus and choose the next bounded action.",
+                )
+                mark_acted(
+                    initiative_id,
+                    action_summary=(
+                        f"Heartbeat materialized initiative into task {task.get('task_id')} and flow {flow.get('flow_id')}."
+                    ),
+                )
                 from core.runtime.db import insert_private_brain_record
                 from uuid import uuid4 as _uuid4
+
                 insert_private_brain_record(
                     record_id=f"pb-initiative-{_uuid4().hex[:12]}",
                     record_type="initiative-acted",
                     layer="private_brain",
                     session_id="",
                     run_id=tick_id,
-                    focus=str(initiative.get("focus") or "")[:200],
-                    summary=f"Acted on initiative from {initiative.get('source', 'unknown')}: {str(initiative.get('focus') or '')[:200]}",
+                    focus=focus,
+                    summary=f"Acted on initiative from {initiative.get('source', 'unknown')}: {focus}",
                     detail="Initiative detected by inner voice and acted on by heartbeat.",
-                    source_signals=f"initiative-queue:{initiative.get('initiative_id', '')}",
+                    source_signals=f"initiative-queue:{initiative_id}",
                     confidence="medium",
                     created_at=datetime.now(UTC).isoformat(),
                 )
+                event_bus.publish(
+                    "heartbeat.initiative_materialized",
+                    {
+                        "tick_id": tick_id,
+                        "initiative_id": initiative_id,
+                        "focus": focus[:120],
+                        "task_id": str(task.get("task_id") or ""),
+                        "flow_id": str(flow.get("flow_id") or ""),
+                        "priority": priority,
+                    },
+                )
                 return {
                     "status": "executed",
-                    "summary": f"Acted on initiative: {str(initiative.get('focus') or '')[:120]}",
-                    "artifact": json.dumps(initiative, ensure_ascii=False, default=str),
+                    "summary": f"Acted on initiative: {focus[:120]}",
+                    "artifact": json.dumps(
+                        {
+                            **initiative,
+                            "task_id": str(task.get("task_id") or ""),
+                            "flow_id": str(flow.get("flow_id") or ""),
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
                     "blocked_reason": "",
                 }
             queue_state = {
@@ -3301,6 +3620,7 @@ def _execute_heartbeat_internal_action(
             }
             try:
                 from apps.api.jarvis_api.services.initiative_queue import get_initiative_queue_state
+
                 queue_state = get_initiative_queue_state()
             except Exception:
                 pass
@@ -3333,6 +3653,37 @@ def _execute_heartbeat_internal_action(
         from apps.api.jarvis_api.services.runtime_hooks import dispatch_unhandled_hook_events
         from apps.api.jarvis_api.services.runtime_tasks import list_tasks, update_task
 
+        experiment_observation = {
+            "observed": 0,
+            "running": 0,
+            "skipped": 0,
+            "items": [],
+            "summary": "",
+        }
+        curriculum_materialization = {
+            "created": 0,
+            "skipped": 0,
+            "task_ids": [],
+            "flow_ids": [],
+            "items": [],
+            "summary": "",
+        }
+        try:
+            from apps.api.jarvis_api.services.self_experiments import (
+                materialize_learning_curriculum_tasks,
+                observe_recent_visible_runs_for_self_experiments,
+            )
+
+            experiment_observation = observe_recent_visible_runs_for_self_experiments(limit=6)
+            curriculum_materialization = materialize_learning_curriculum_tasks(
+                limit=3,
+                origin="heartbeat:curriculum",
+                owner="heartbeat-runtime",
+                run_id=tick_id,
+            )
+        except Exception:
+            pass
+
         dispatched = dispatch_unhandled_hook_events(limit=4)
         queued_tasks = list_tasks(status="queued", limit=4)
         queued_flows = list_flows(status="queued", limit=4)
@@ -3362,10 +3713,19 @@ def _execute_heartbeat_internal_action(
             active_flow_id=active_flow_id or str((running_flows[0] or {}).get("flow_id") or ""),
         )
 
-        if dispatched or queued_tasks or queued_flows or running_flows:
+        if (
+            dispatched
+            or queued_tasks
+            or queued_flows
+            or running_flows
+            or int(experiment_observation.get("observed") or 0) > 0
+            or int(curriculum_materialization.get("created") or 0) > 0
+        ):
             artifact = json.dumps(
                 {
                     "dispatch_count": len(dispatched),
+                    "experiment_observation": experiment_observation,
+                    "curriculum_materialization": curriculum_materialization,
                     "queued_task_ids": [
                         str(item.get("task_id") or "")
                         for item in queued_tasks[:4]
@@ -3392,6 +3752,8 @@ def _execute_heartbeat_internal_action(
                 "status": "executed",
                 "summary": (
                     f"Heartbeat orchestrated runtime work across {len(dispatched)} hook dispatches, "
+                    f"{int(experiment_observation.get('observed') or 0)} experiment observations, "
+                    f"{int(curriculum_materialization.get('created') or 0)} curriculum tasks, "
                     f"{len(queued_tasks)} queued tasks, {len(queued_flows)} queued flows, and "
                     f"{len(running_flows)} active flows."
                 ),
@@ -3492,14 +3854,29 @@ def _execute_heartbeat_internal_action(
 
     if action_type == "evaluate_self_experiments":
         try:
-            from apps.api.jarvis_api.services.self_experiments import build_self_experiments_surface
+            from apps.api.jarvis_api.services.self_experiments import (
+                build_self_experiments_surface,
+                observe_recent_visible_runs_for_self_experiments,
+            )
+
+            observation = observe_recent_visible_runs_for_self_experiments(limit=6)
             surface = build_self_experiments_surface()
             concluded = surface.get("concluded_count", 0)
             running = surface.get("running_count", 0)
             return {
                 "status": "executed",
-                "summary": f"Self-experiments: {running} running, {concluded} concluded",
-                "artifact": json.dumps({"running": running, "concluded": concluded}, ensure_ascii=False),
+                "summary": (
+                    f"Self-experiments: {running} running, {concluded} concluded, "
+                    f"{int(observation.get('observed') or 0)} new observations"
+                ),
+                "artifact": json.dumps(
+                    {
+                        "running": running,
+                        "concluded": concluded,
+                        "observation": observation,
+                    },
+                    ensure_ascii=False,
+                ),
                 "blocked_reason": "",
             }
         except Exception as exc:
@@ -3731,8 +4108,14 @@ def _execute_heartbeat_internal_action(
     # 3.8 Curriculum learning
     if action_type == "generate_curriculum":
         try:
-            from apps.api.jarvis_api.services.self_experiments import generate_learning_curriculum
-            curriculum = generate_learning_curriculum()
+            from apps.api.jarvis_api.services.self_experiments import materialize_learning_curriculum_tasks
+
+            curriculum = materialize_learning_curriculum_tasks(
+                limit=3,
+                origin="heartbeat:curriculum",
+                owner="heartbeat-runtime",
+                run_id=tick_id,
+            )
             return {
                 "status": "executed",
                 "summary": curriculum.get("summary", "No curriculum")[:120],

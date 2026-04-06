@@ -28,11 +28,11 @@ def _resolve_enrichment_target() -> dict[str, object] | None:
     """Resolve the best available target for private-layer enrichment.
 
     Preference order:
-    1. cheap lane
-    2. local lane
+    1. local lane
+    2. internal fallback lane
     3. visible lane when it is ollama-backed
     """
-    candidates = ("cheap", "local", "visible")
+    candidates = ("local", "cheap", "visible")
     for lane in candidates:
         try:
             target = resolve_provider_router_target(lane=lane)

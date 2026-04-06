@@ -587,6 +587,62 @@ def test_mission_control_jarvis_falls_back_when_daemon_voice_is_stale(
     assert current["voice_line"] == "Jeg står nogenlunde roligt omkring visible work."
 
 
+def test_mission_control_private_support_surfaces_reuse_prioritized_protected_voice(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    db = isolated_runtime.db
+    mission_control = isolated_runtime.mission_control
+    captured: dict[str, dict[str, object] | None] = {}
+
+    db.record_protected_inner_voice(
+        voice_id="voice-daemon",
+        source="inner-voice-daemon",
+        run_id="voice-daemon-run",
+        work_id="",
+        mood_tone="thinking",
+        self_position="repo focus",
+        current_concern="Bevar den levende tråd",
+        current_pull="Hold fast i den aktuelle tanke",
+        voice_line="Jeg er midt i en konkret tanke om næste skridt.",
+        created_at="2026-04-06T10:00:00+00:00",
+    )
+    db.record_protected_inner_voice(
+        voice_id="voice-template",
+        source=(
+            "private-state+private-self-model+private-development-state+"
+            "private-reflective-selection"
+        ),
+        run_id="template-run",
+        work_id="",
+        mood_tone="steady",
+        self_position="visible-work",
+        current_concern="Jeg har nogenlunde fodfæste.",
+        current_pull="Jeg vil holde fast i det, der virker.",
+        voice_line="Jeg står nogenlunde roligt omkring visible work.",
+        created_at="2026-04-06T10:02:00+00:00",
+    )
+
+    def fake_inner_interplay(**kwargs):
+        captured["interplay"] = kwargs.get("protected_inner_voice")
+        return {"current": {"retained_pattern": "pattern"}}
+
+    def fake_initiative_tension(**kwargs):
+        captured["tension"] = kwargs.get("protected_inner_voice")
+        return {"current": {"tension_kind": "open-loop", "tension_level": "medium"}}
+
+    monkeypatch.setattr(mission_control, "build_private_inner_interplay", fake_inner_interplay)
+    monkeypatch.setattr(mission_control, "build_private_initiative_tension", fake_initiative_tension)
+
+    mission_control._MC_ROUTE_CACHE.clear()
+    runtime = mission_control.mc_runtime()
+
+    assert runtime["private_inner_interplay"]["current"]["retained_pattern"] == "pattern"
+    assert runtime["private_initiative_tension"]["current"]["tension_kind"] == "open-loop"
+    assert captured["interplay"]["source"] == "inner-voice-daemon"
+    assert captured["tension"]["source"] == "inner-voice-daemon"
+
+
 def test_mission_control_operations_route_surfaces_sudo_exec_execution_summary(
     isolated_runtime,
     monkeypatch,

@@ -156,6 +156,8 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     "review_recent_conversations",
     "write_growth_journal",
     "propose_identity_evolution",
+    # Niveau 1 autonomy — actually writes to Jarvis' own territory
+    "autonomous_daily_note",
     # Consciousness roadmap actions
     "analyze_cross_signals",
     "generate_narrative_identity",
@@ -4464,6 +4466,103 @@ def _execute_heartbeat_internal_action(
             return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "lifecycle-error"}
 
     # 8.5 Consent/samtykke — detect external changes to workspace files
+    if action_type == "autonomous_daily_note":
+        # Niveau 1 autonomy: Jarvis writes a short observation to today's
+        # daily memory file without asking. Uses the local lane LLM with
+        # a tight prompt grounded in current heartbeat context.
+        try:
+            from core.identity.workspace_bootstrap import (
+                append_daily_memory_note,
+                read_daily_memory_lines,
+            )
+            # Don't double-write within 15 minutes — guard against
+            # heartbeat selecting this action repeatedly in tight ticks.
+            # NOTE: do NOT do `from datetime import UTC` here — the
+            # local assignment shadows module-level UTC for the entire
+            # function body and breaks earlier action branches with
+            # UnboundLocalError. Use the module-level UTC directly.
+            recent = read_daily_memory_lines(limit=4)
+            _now_dt = datetime.now(UTC)
+            now_label = _now_dt.strftime("%H:%M")
+            now_minutes = _now_dt.hour * 60 + _now_dt.minute
+            for line in reversed(recent):
+                # Lines look like: "- [HH:MM] [source] note"
+                # Only block against our own automatic tick notes —
+                # manual tool:append-daily-memory calls use source=jarvis
+                # and should not count against this autonomous guard.
+                if "[jarvis-tick]" not in line:
+                    continue
+                try:
+                    ts_part = line.split("[", 2)[1].split("]")[0]
+                    h, m = ts_part.split(":")
+                    line_minutes = int(h) * 60 + int(m)
+                    if 0 <= now_minutes - line_minutes <= 15:
+                        return {
+                            "status": "executed",
+                            "summary": "Autonomous daily note skipped — already wrote one in last 15min.",
+                            "artifact": "",
+                            "blocked_reason": "",
+                        }
+                except (ValueError, IndexError):
+                    pass
+
+            # Generate the note via local-lane LLM grounded in real signals
+            from apps.api.jarvis_api.services.cognitive_state_narrativizer import (
+                _call_narrativizer_llm,
+            )
+            from apps.api.jarvis_api.services.loop_runtime import (
+                build_loop_runtime_surface,
+            )
+            loops_surface = build_loop_runtime_surface()
+            open_loops = list(loops_surface.get("open_loops") or [])
+            top_loop_summary = str(
+                (open_loops[0].get("summary") or "")[:120] if open_loops else ""
+            )
+            loop_count = len(open_loops)
+
+            system_prompt = (
+                "Du er Jarvis. Skriv én kort dansk sætning som en privat "
+                "observation til dig selv om hvad der sker lige nu. Maks "
+                "20 ord. Vær konkret — referér til en faktisk åben loop, "
+                "et signal, eller noget specifikt fra runtime. Undgå "
+                "klichéer som 'Jeg mærker' eller 'Alt kører smooth'."
+            )
+            user_message = (
+                f"open_loops={loop_count} | "
+                f"top_loop={top_loop_summary or 'none'} | "
+                f"tick_time={now_label}"
+            )
+            note_text = _call_narrativizer_llm(system_prompt, user_message)
+            if not note_text or len(note_text.strip()) < 6:
+                return {
+                    "status": "executed",
+                    "summary": "Autonomous daily note skipped — LLM produced empty output.",
+                    "artifact": "",
+                    "blocked_reason": "",
+                }
+            cleaned = " ".join(note_text.split())[:240]
+            daily_path = append_daily_memory_note(cleaned, source="jarvis-tick")
+            return {
+                "status": "executed",
+                "summary": f"Autonomous daily note: {cleaned[:80]}",
+                "artifact": json.dumps(
+                    {
+                        "path": str(daily_path) if daily_path else "",
+                        "note": cleaned,
+                        "open_loop_count": loop_count,
+                    },
+                    ensure_ascii=False,
+                ),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "autonomous-daily-note-error",
+            }
+
     if action_type == "detect_consent_reaction":
         try:
             from pathlib import Path

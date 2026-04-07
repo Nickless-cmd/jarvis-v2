@@ -928,7 +928,183 @@ def init_db() -> None:
         _ensure_runtime_remembered_fact_signal_table(conn)
         _ensure_runtime_memory_md_update_proposal_table(conn)
         _ensure_runtime_selfhood_proposal_table(conn)
+        _ensure_autonomy_proposals_table(conn)
         conn.commit()
+
+
+def _ensure_autonomy_proposals_table(conn: sqlite3.Connection) -> None:
+    """Niveau 2 autonomy: pending proposals from Jarvis awaiting Bjørn approval.
+
+    A proposal is a structured request for a bounded action that Jarvis
+    cannot execute on his own (memory rewrite, source edit, task run,
+    etc). Each proposal has:
+      - proposal_id: unique
+      - kind: memory-rewrite | source-edit | task-run | tool-add | ...
+      - title: short human-readable
+      - rationale: why Jarvis wants this
+      - payload_json: structured body (diff, new content, command, args)
+      - status: pending | approved | rejected | executed | expired | cancelled
+      - created_at / updated_at / resolved_at
+      - created_by: heartbeat-tick | visible-run | inner-voice | ...
+      - resolved_by: bjorn | timeout | superseded | ...
+      - resolution_note: explicit reason
+      - execution_result_json: set when status=executed
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS autonomy_proposals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            proposal_id TEXT NOT NULL UNIQUE,
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            rationale TEXT NOT NULL DEFAULT '',
+            payload_json TEXT NOT NULL DEFAULT '{}',
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            resolved_at TEXT,
+            created_by TEXT NOT NULL DEFAULT '',
+            resolved_by TEXT NOT NULL DEFAULT '',
+            resolution_note TEXT NOT NULL DEFAULT '',
+            execution_result_json TEXT NOT NULL DEFAULT '',
+            session_id TEXT NOT NULL DEFAULT '',
+            run_id TEXT NOT NULL DEFAULT '',
+            tick_id TEXT NOT NULL DEFAULT '',
+            canonical_key TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_autonomy_proposals_status
+        ON autonomy_proposals(status, id DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_autonomy_proposals_kind_canonical
+        ON autonomy_proposals(kind, canonical_key, id DESC)
+        """
+    )
+
+
+def create_autonomy_proposal(
+    *,
+    proposal_id: str,
+    kind: str,
+    title: str,
+    rationale: str = "",
+    payload: dict | None = None,
+    created_by: str = "",
+    session_id: str = "",
+    run_id: str = "",
+    tick_id: str = "",
+    canonical_key: str = "",
+) -> dict[str, object]:
+    import json as _json
+    from datetime import UTC, datetime as _dt
+    now = _dt.now(UTC).isoformat()
+    payload_str = _json.dumps(payload or {}, ensure_ascii=False, sort_keys=True)
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO autonomy_proposals (
+                proposal_id, kind, title, rationale, payload_json, status,
+                created_at, updated_at, created_by, session_id, run_id,
+                tick_id, canonical_key
+            ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                proposal_id, kind, title, rationale, payload_str,
+                now, now, created_by, session_id, run_id, tick_id, canonical_key,
+            ),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM autonomy_proposals WHERE proposal_id = ?",
+            (proposal_id,),
+        ).fetchone()
+    return _autonomy_proposal_from_row(row) if row else {}
+
+
+def list_autonomy_proposals(
+    *,
+    status: str | None = None,
+    kind: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, object]]:
+    query = "SELECT * FROM autonomy_proposals"
+    params: list = []
+    where: list[str] = []
+    if status:
+        where.append("status = ?")
+        params.append(status)
+    if kind:
+        where.append("kind = ?")
+        params.append(kind)
+    if where:
+        query += " WHERE " + " AND ".join(where)
+    query += " ORDER BY id DESC LIMIT ?"
+    params.append(max(int(limit), 1))
+    with connect() as conn:
+        rows = conn.execute(query, params).fetchall()
+    return [_autonomy_proposal_from_row(row) for row in rows]
+
+
+def get_autonomy_proposal(proposal_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM autonomy_proposals WHERE proposal_id = ?",
+            (proposal_id,),
+        ).fetchone()
+    return _autonomy_proposal_from_row(row) if row else None
+
+
+def resolve_autonomy_proposal(
+    proposal_id: str,
+    *,
+    status: str,
+    resolved_by: str = "",
+    resolution_note: str = "",
+    execution_result: dict | None = None,
+) -> dict[str, object] | None:
+    import json as _json
+    from datetime import UTC, datetime as _dt
+    now = _dt.now(UTC).isoformat()
+    exec_json = _json.dumps(execution_result or {}, ensure_ascii=False, sort_keys=True) if execution_result else ""
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE autonomy_proposals
+            SET status = ?, resolved_at = ?, updated_at = ?,
+                resolved_by = ?, resolution_note = ?, execution_result_json = ?
+            WHERE proposal_id = ?
+            """,
+            (status, now, now, resolved_by, resolution_note, exec_json, proposal_id),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM autonomy_proposals WHERE proposal_id = ?",
+            (proposal_id,),
+        ).fetchone()
+    return _autonomy_proposal_from_row(row) if row else None
+
+
+def _autonomy_proposal_from_row(row) -> dict[str, object]:
+    import json as _json
+    if row is None:
+        return {}
+    data = dict(row)
+    for key in ("payload_json", "execution_result_json"):
+        raw = data.get(key) or ""
+        if not raw:
+            data[key.replace("_json", "")] = {}
+            continue
+        try:
+            data[key.replace("_json", "")] = _json.loads(raw)
+        except Exception:
+            data[key.replace("_json", "")] = {}
+    return data
 
 
 def _ensure_private_retained_memory_record_columns(conn: sqlite3.Connection) -> None:

@@ -26,6 +26,7 @@ EXEC_COMMAND_PREFIX = "EXEC_COMMAND:"
 WRITE_FILE_PREFIX = "WRITE_FILE:"
 WRITE_MEMORY_FILE_PREFIX = "WRITE_MEMORY_FILE:"
 REWRITE_MEMORY_FILE_PREFIX = "REWRITE_MEMORY_FILE:"
+APPEND_DAILY_MEMORY_PREFIX = "APPEND_DAILY_MEMORY:"
 WRITE_EXTERNAL_FILE_PREFIX = "WRITE_EXTERNAL_FILE:"
 RUNTIME_INSPECT_PREFIX = "RUNTIME_INSPECT:"
 MAX_FILE_OUTPUT_CHARS = 8000
@@ -524,6 +525,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         name = heading[len(REWRITE_MEMORY_FILE_PREFIX) :].strip()
         execution_mode = "workspace-memory-rewrite"
         runnable = write_target_path is not None
+    elif heading.startswith(APPEND_DAILY_MEMORY_PREFIX):
+        name = heading[len(APPEND_DAILY_MEMORY_PREFIX) :].strip()
+        execution_mode = "workspace-daily-memory-append"
+        runnable = True
     elif heading.startswith(WRITE_FILE_PREFIX):
         name = heading[len(WRITE_FILE_PREFIX) :].strip()
         execution_mode = "workspace-file-write"
@@ -1205,6 +1210,61 @@ def _invoke_runnable_capability(
             ),
         }
 
+    if summary["execution_mode"] == "workspace-daily-memory-append":
+        # Daily memory is Jarvis' own territory — no approval needed.
+        # The note comes from either write_content (block syntax) or
+        # from an inline user_message arg.
+        note_text = ""
+        if write_content is not None:
+            note_text = str(write_content).strip()
+        if not note_text:
+            raw_args = summary.get("arguments") or {}
+            if isinstance(raw_args, dict):
+                note_text = str(raw_args.get("note") or raw_args.get("text") or "").strip()
+        if not note_text:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-note",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Daily memory append requires explicit note text in the capability body.",
+            }
+        # Bounded: one line, ~240 chars max
+        note_text = " ".join(note_text.split())
+        if len(note_text) > 240:
+            note_text = note_text[:239].rstrip() + "…"
+        try:
+            from core.identity.workspace_bootstrap import (
+                append_daily_memory_note,
+                read_daily_memory_lines,
+            )
+            daily_path = append_daily_memory_note(note_text, source="jarvis")
+            recent_lines = read_daily_memory_lines(limit=6)
+        except Exception as exc:
+            return {
+                "capability": summary,
+                "status": "error",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=True),
+                "result": None,
+                "detail": f"Daily memory append failed: {exc}",
+            }
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=True),
+            "result": {
+                "type": "workspace-daily-memory-append",
+                "path": str(daily_path) if daily_path else "",
+                "note": note_text,
+                "recent_lines": recent_lines[-6:],
+                "workspace_scoped": True,
+            },
+            "detail": f"Daily memory note appended ({len(note_text)} chars).",
+        }
+
     if summary["execution_mode"] == "workspace-memory-rewrite":
         target_path = str(summary.get("target_path") or "MEMORY.md").strip()
         candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
@@ -1374,6 +1434,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "external-dir-list",
         "non-destructive-exec",
         "workspace-memory-write",
+        "workspace-daily-memory-append",
         "runtime-event-read",
     }:
         return "not-needed"
@@ -1404,6 +1465,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "external-dir-list",
         "non-destructive-exec",
         "workspace-memory-write",
+        "workspace-daily-memory-append",
         "runtime-event-read",
         "guidance-only",
         "declared-only",

@@ -1786,7 +1786,12 @@ def _execute_visible_capability_entries(
             if write_kind in {"workspace-memory-write", "workspace-file-write"}:
                 write_path = str(cap_result_obj.get("path") or "").strip()
                 bytes_written = cap_result_obj.get("bytes_written")
+                bytes_before = cap_result_obj.get("bytes_before")
+                bytes_delta = cap_result_obj.get("bytes_delta")
                 fingerprint = str(cap_result_obj.get("content_fingerprint") or "").strip()
+                fingerprint_before = str(cap_result_obj.get("content_fingerprint_before") or "").strip()
+                readback_match = cap_result_obj.get("readback_match")
+                readback_fp = str(cap_result_obj.get("readback_fingerprint") or "").strip()
                 line_count: int | None = None
                 if cap_result_text:
                     line_count = cap_result_text.count("\n") + 1
@@ -1794,11 +1799,28 @@ def _execute_visible_capability_entries(
                     f"WRITE_CONFIRMED path={write_path or 'unknown'}",
                     f"bytes={int(bytes_written) if isinstance(bytes_written, (int, float)) else 'unknown'}",
                 ]
+                if isinstance(bytes_before, (int, float)):
+                    header_parts.append(f"bytes_before={int(bytes_before)}")
+                if isinstance(bytes_delta, (int, float)):
+                    header_parts.append(f"bytes_delta={int(bytes_delta):+d}")
                 if line_count is not None:
                     header_parts.append(f"preview_lines={line_count}")
                 if fingerprint:
                     header_parts.append(f"fingerprint={fingerprint[:16]}")
-                header_parts.append("status=persisted")
+                if fingerprint_before and fingerprint_before != fingerprint:
+                    header_parts.append(f"fingerprint_before={fingerprint_before[:16]}")
+                # Readback verification — Jarvis can see disk truth, not
+                # just a write-side claim. If readback failed, this
+                # surfaces the mismatch loudly.
+                if readback_match is True:
+                    header_parts.append("readback=verified")
+                elif readback_match is False:
+                    header_parts.append("readback=MISMATCH")
+                    if readback_fp:
+                        header_parts.append(f"readback_fingerprint={readback_fp[:16]}")
+                header_parts.append(
+                    "status=persisted" if readback_match is not False else "status=persisted-but-mismatched"
+                )
                 confirmation_header = " | ".join(header_parts)
                 cap_result_text = (
                     f"{confirmation_header}\n--- preview ---\n{cap_result_text}"

@@ -226,25 +226,60 @@ def _build_execution_candidate(
         ),
         None,
     )
-    if question_gate is None or question_loop is None or question_pressure is None:
+    # Loosened from strict 3-AND to "at least one signal" because the
+    # original AND requirement permanently blocked execution: it is
+    # statistically unlikely that all three independent producers
+    # converge on the same tick. Bjørn observed Jarvis stuck in
+    # ask-loops because the pilot kept returning
+    # "no-valid-execution-candidate". A single active signal is
+    # enough to justify a bounded webchat clarification — the LLM
+    # still has to provide concrete ping_text, and the kill-switch
+    # plus heartbeat policy still bound it.
+    active_signals = [
+        item
+        for item in (question_gate, question_loop, question_pressure)
+        if item is not None
+    ]
+    if not active_signals:
         return None
 
+    # Use empty dicts as safe placeholders so all the .get() calls
+    # below work whether or not a particular signal was present.
+    safe_gate = question_gate or {}
+    safe_loop = question_loop or {}
+    safe_pressure = question_pressure or {}
+
     focus = _execution_focus(
-        question_gate=question_gate,
-        question_loop=question_loop,
-        question_pressure=question_pressure,
+        question_gate=safe_gate,
+        question_loop=safe_loop,
+        question_pressure=safe_pressure,
     )
     confidence = _stronger_confidence(
-        str(question_gate.get("question_gate_confidence") or "low"),
-        str(question_loop.get("loop_confidence") or "low"),
-        str(question_pressure.get("autonomy_pressure_confidence") or "low"),
+        str(safe_gate.get("question_gate_confidence") or "low"),
+        str(safe_loop.get("loop_confidence") or "low"),
+        str(safe_pressure.get("autonomy_pressure_confidence") or "low"),
     )
-    reason = str(question_gate.get("question_gate_reason") or "bounded-question-candidate")
+    reason = str(safe_gate.get("question_gate_reason") or "bounded-question-candidate")
     source_anchor = _merge_fragments(
-        str(question_gate.get("source_anchor") or ""),
-        str(question_loop.get("source_anchor") or ""),
-        str(question_pressure.get("source_anchor") or ""),
+        str(safe_gate.get("source_anchor") or ""),
+        str(safe_loop.get("source_anchor") or ""),
+        str(safe_pressure.get("source_anchor") or ""),
     )
+    # Track which signals were active so MC and downstream consumers
+    # can see whether this was a 1-of-3, 2-of-3, or full 3-of-3
+    # alignment. Lets us tighten policy later if loose triggering
+    # turns out to be too noisy.
+    signal_alignment = "+".join(
+        sorted(
+            name
+            for name, item in (
+                ("question-gate", question_gate),
+                ("question-loop", question_loop),
+                ("question-pressure", question_pressure),
+            )
+            if item is not None
+        )
+    ) or "none"
     message_text = _message_text(focus=focus, ping_text=ping_text)
     return {
         "canonical_key": f"tiny-webchat-execution:{_slug(focus)}:proactive-clarification-question",
@@ -255,14 +290,15 @@ def _build_execution_candidate(
             "This is not planner authority, not broad autonomy, and not canonical intention truth."
         ),
         "rationale": (
-            "Execution is allowed only when a proactive-question gate already exists, the loop is question-worthy, "
-            "and heartbeat policy still allows a bounded webchat ping."
+            "Execution is allowed when at least one proactive-question signal "
+            "(gate, loop, or pressure) is active and heartbeat policy still "
+            "permits a bounded webchat ping."
         ),
         "confidence": confidence,
         "evidence_summary": _merge_fragments(
-            str(question_gate.get("question_gate_summary") or ""),
-            str(question_loop.get("loop_summary") or ""),
-            str(question_pressure.get("autonomy_pressure_summary") or ""),
+            str(safe_gate.get("question_gate_summary") or ""),
+            str(safe_loop.get("loop_summary") or ""),
+            str(safe_pressure.get("autonomy_pressure_summary") or ""),
             decision_summary,
         ),
         "support_summary": _merge_fragments(
@@ -270,15 +306,16 @@ def _build_execution_candidate(
             "execution-type=proactive-clarification-question",
             f"execution-reason={reason}",
             f"execution-confidence={confidence}",
+            f"signal-alignment={signal_alignment}",
             "send-permission-state=gated-candidate-only",
             f"source-anchor={source_anchor}",
             f"heartbeat-tick-id={heartbeat_tick_id}",
             f"loop-focus={focus}",
         ),
         "support_count": max(
-            int(question_gate.get("support_count") or 1),
-            int(question_loop.get("support_count") or 1),
-            int(question_pressure.get("support_count") or 1),
+            int(safe_gate.get("support_count") or 1),
+            int(safe_loop.get("support_count") or 1),
+            int(safe_pressure.get("support_count") or 1),
             1,
         ),
         "message_text": message_text,

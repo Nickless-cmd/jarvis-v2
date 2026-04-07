@@ -24,8 +24,28 @@ def track_runtime_self_review_cadence_signals_for_visible_turn(
     session_id: str | None,
     run_id: str,
 ) -> dict[str, object]:
+    # Deduplicate candidates per domain_key BEFORE we persist. Without
+    # this, multiple candidates mapping to the same domain end up
+    # superseding each other inside a single 100ms window (created →
+    # superseded → created → superseded …). Keep the first occurrence
+    # for each (canonical_key, domain_key) tuple — downstream cadence
+    # state is already computed per candidate, so taking the first one
+    # is stable.
+    raw_candidates = _extract_self_review_cadence_candidates()
+    seen_keys: set[tuple[str, str]] = set()
+    deduped: list[dict[str, object]] = []
+    for candidate in raw_candidates:
+        key = (
+            str(candidate.get("canonical_key") or ""),
+            str(candidate.get("domain_key") or ""),
+        )
+        if key in seen_keys or not key[1]:
+            continue
+        seen_keys.add(key)
+        deduped.append(candidate)
+
     items = _persist_self_review_cadence_signals(
-        signals=_extract_self_review_cadence_candidates(),
+        signals=deduped,
         session_id=str(session_id or "").strip(),
         run_id=run_id,
     )
@@ -162,7 +182,14 @@ def _persist_self_review_cadence_signals(
 ) -> list[dict[str, object]]:
     now = datetime.now(UTC).isoformat()
     persisted: list[dict[str, object]] = []
+    # Defensive: track domains we've already processed in this batch
+    # so we don't supersede sibling rows we just created.
+    processed_domains: set[str] = set()
     for signal in signals:
+        signal_domain = str(signal.get("domain_key") or "")
+        if signal_domain in processed_domains:
+            continue
+        processed_domains.add(signal_domain)
         persisted_item = upsert_runtime_self_review_cadence_signal(
             signal_id=f"self-review-cadence-{uuid4().hex}",
             signal_type=str(signal.get("signal_type") or "review-cadence"),

@@ -685,6 +685,34 @@ def test_append_daily_memory_reports_expected_workspace_paths(isolated_runtime) 
     assert payload.get("workspace_root") == str(workspace_dir)
     assert str(payload.get("resolved_path") or "").startswith(str(workspace_dir))
     assert str(payload.get("workspace_relative_path") or "").startswith("memory/daily/")
+    assert payload.get("persisted") is True
+
+
+def test_append_daily_memory_fails_soft_when_persistence_breaks(isolated_runtime, monkeypatch) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+    bootstrap = importlib.import_module("core.identity.workspace_bootstrap")
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("disk offline")
+
+    monkeypatch.setattr(bootstrap, "append_daily_memory_note", _boom)
+    monkeypatch.setattr(bootstrap, "read_daily_memory_lines", _boom)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:append-daily-memory",
+        write_content="This should degrade softly.",
+    )
+
+    assert result["status"] == "executed"
+    assert result["ok"] is True
+    payload = result.get("result") or {}
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "").resolve()
+    assert payload.get("persisted") is False
+    assert payload.get("workspace_root") == str(workspace_dir)
+    assert str(payload.get("resolved_path") or "").startswith(str(workspace_dir))
+    assert str(payload.get("workspace_relative_path") or "").startswith("memory/daily/")
+    assert "could not be persisted" in str(result.get("detail") or "")
 
 
 def test_workspace_memory_rewrite_reports_resolved_workspace_paths(isolated_runtime) -> None:

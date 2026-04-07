@@ -84,6 +84,27 @@ from apps.api.jarvis_api.services.heartbeat_runtime import (
     heartbeat_runtime_surface,
     run_heartbeat_tick,
 )
+from apps.api.jarvis_api.services.continuity_kernel import (
+    build_continuity_kernel_surface,
+)
+from apps.api.jarvis_api.services.dream_continuum import (
+    build_dream_continuum_surface,
+)
+from apps.api.jarvis_api.services.emergent_bridge import (
+    build_emergent_bridge_surface,
+)
+from apps.api.jarvis_api.services.initiative_accumulator import (
+    build_initiative_accumulator_surface,
+)
+from apps.api.jarvis_api.services.signal_network_visualizer import (
+    build_signal_network_visualizer_surface,
+)
+from apps.api.jarvis_api.services.temporal_narrative import (
+    build_temporal_narrative_surface,
+)
+from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
+    build_boredom_curiosity_bridge_surface,
+)
 from apps.api.jarvis_api.services.development_focus_tracking import (
     build_runtime_development_focus_surface,
 )
@@ -392,7 +413,9 @@ def _get_cached_mc_payload(cache_key: str, ttl_seconds: float) -> object | None:
         return copy.deepcopy(cached[1])
 
 
-def _store_cached_mc_payload(cache_key: str, ttl_seconds: float, payload: object) -> object:
+def _store_cached_mc_payload(
+    cache_key: str, ttl_seconds: float, payload: object
+) -> object:
     expires_at = time.monotonic() + ttl_seconds
     with _MC_ROUTE_CACHE_LOCK:
         _MC_ROUTE_CACHE[cache_key] = (expires_at, copy.deepcopy(payload))
@@ -449,7 +472,9 @@ def _build_attention_budget_snapshot_uncached() -> dict[str, object]:
                     "priority": sb.priority,
                     "has_budget": sb.max_chars > 0,
                 }
-                for name, sb in sorted(section_budgets.items(), key=lambda x: x[1].priority)
+                for name, sb in sorted(
+                    section_budgets.items(), key=lambda x: x[1].priority
+                )
             },
         }
 
@@ -597,6 +622,15 @@ def _mc_runtime_uncached() -> dict:
             "runtime_relevance_decisions": build_runtime_relevance_decision_surface(),
             "runtime_memory_selections": build_runtime_memory_selection_surface(),
             "runtime_inner_visible_prompt_bridges": build_runtime_inner_visible_prompt_bridge_surface(),
+            "life_services": {
+                "continuity_kernel": build_continuity_kernel_surface(),
+                "dream_continuum": build_dream_continuum_surface(),
+                "emergent_bridge": build_emergent_bridge_surface(),
+                "initiative_accumulator": build_initiative_accumulator_surface(),
+                "signal_network_visualizer": build_signal_network_visualizer_surface(),
+                "temporal_narrative": build_temporal_narrative_surface(),
+                "boredom_curiosity_bridge": build_boredom_curiosity_bridge_surface(),
+            },
             "runtime_work": _runtime_work_surface(),
             "paths": {
                 "config_dir": _path_state(CONFIG_DIR),
@@ -728,6 +762,7 @@ def mc_autonomy_proposals(limit: int = 30) -> dict:
     from apps.api.jarvis_api.services.autonomy_proposal_queue import (
         build_autonomy_proposal_surface,
     )
+
     return build_autonomy_proposal_surface(limit=max(int(limit), 1))
 
 
@@ -736,6 +771,7 @@ def mc_approve_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
     from apps.api.jarvis_api.services.autonomy_proposal_queue import (
         approve_proposal,
     )
+
     return approve_proposal(proposal_id, resolution_note=note)
 
 
@@ -744,6 +780,7 @@ def mc_reject_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
     from apps.api.jarvis_api.services.autonomy_proposal_queue import (
         reject_proposal,
     )
+
     return reject_proposal(proposal_id, resolution_note=note)
 
 
@@ -893,9 +930,7 @@ def mc_operations(limit: int = 20) -> dict:
             "tool_intent_last_action_outcome": str(
                 tool_intent.get("last_action_outcome") or "none"
             ),
-            "tool_intent_last_action_at": str(
-                tool_intent.get("last_action_at") or ""
-            ),
+            "tool_intent_last_action_at": str(tool_intent.get("last_action_at") or ""),
             "tool_intent_followup_state": str(
                 tool_intent.get("followup_state") or "none"
             ),
@@ -936,54 +971,124 @@ def mc_jarvis() -> dict:
     self_model_signals = dict(runtime.get("runtime_self_model_signals") or {})
     goal_signals = dict(runtime.get("runtime_goal_signals") or {})
     reflection_signals = dict(runtime.get("runtime_reflection_signals") or {})
-    temporal_recurrence_signals = dict(runtime.get("runtime_temporal_recurrence_signals") or {})
+    temporal_recurrence_signals = dict(
+        runtime.get("runtime_temporal_recurrence_signals") or {}
+    )
     witness_signals = dict(runtime.get("runtime_witness_signals") or {})
     open_loop_signals = dict(runtime.get("runtime_open_loop_signals") or {})
-    open_loop_closure_proposals = dict(runtime.get("runtime_open_loop_closure_proposals") or {})
-    internal_opposition_signals = dict(runtime.get("runtime_internal_opposition_signals") or {})
+    open_loop_closure_proposals = dict(
+        runtime.get("runtime_open_loop_closure_proposals") or {}
+    )
+    internal_opposition_signals = dict(
+        runtime.get("runtime_internal_opposition_signals") or {}
+    )
     self_review_signals = dict(runtime.get("runtime_self_review_signals") or {})
     self_review_records = dict(runtime.get("runtime_self_review_records") or {})
     self_review_runs = dict(runtime.get("runtime_self_review_runs") or {})
     self_review_outcomes = dict(runtime.get("runtime_self_review_outcomes") or {})
-    self_review_cadence_signals = dict(runtime.get("runtime_self_review_cadence_signals") or {})
-    dream_hypothesis_signals = dict(runtime.get("runtime_dream_hypothesis_signals") or {})
-    dream_adoption_candidates = dict(runtime.get("runtime_dream_adoption_candidates") or {})
-    dream_influence_proposals = dict(runtime.get("runtime_dream_influence_proposals") or {})
-    self_authored_prompt_proposals = dict(runtime.get("runtime_self_authored_prompt_proposals") or {})
+    self_review_cadence_signals = dict(
+        runtime.get("runtime_self_review_cadence_signals") or {}
+    )
+    dream_hypothesis_signals = dict(
+        runtime.get("runtime_dream_hypothesis_signals") or {}
+    )
+    dream_adoption_candidates = dict(
+        runtime.get("runtime_dream_adoption_candidates") or {}
+    )
+    dream_influence_proposals = dict(
+        runtime.get("runtime_dream_influence_proposals") or {}
+    )
+    self_authored_prompt_proposals = dict(
+        runtime.get("runtime_self_authored_prompt_proposals") or {}
+    )
     prompt_evolution = dict(runtime.get("runtime_prompt_evolution") or {})
-    user_understanding_signals = dict(runtime.get("runtime_user_understanding_signals") or {})
+    user_understanding_signals = dict(
+        runtime.get("runtime_user_understanding_signals") or {}
+    )
     remembered_fact_signals = dict(runtime.get("runtime_remembered_fact_signals") or {})
-    private_inner_note_signals = dict(runtime.get("runtime_private_inner_note_signals") or {})
-    private_initiative_tension_signals = dict(runtime.get("runtime_private_initiative_tension_signals") or {})
-    private_inner_interplay_signals = dict(runtime.get("runtime_private_inner_interplay_signals") or {})
+    private_inner_note_signals = dict(
+        runtime.get("runtime_private_inner_note_signals") or {}
+    )
+    private_initiative_tension_signals = dict(
+        runtime.get("runtime_private_initiative_tension_signals") or {}
+    )
+    private_inner_interplay_signals = dict(
+        runtime.get("runtime_private_inner_interplay_signals") or {}
+    )
     private_state_snapshots = dict(runtime.get("runtime_private_state_snapshots") or {})
     diary_synthesis_signals = dict(runtime.get("runtime_diary_synthesis_signals") or {})
-    private_temporal_curiosity_states = dict(runtime.get("runtime_private_temporal_curiosity_states") or {})
-    inner_visible_support_signals = dict(runtime.get("runtime_inner_visible_support_signals") or {})
-    regulation_homeostasis_signals = dict(runtime.get("runtime_regulation_homeostasis_signals") or {})
+    private_temporal_curiosity_states = dict(
+        runtime.get("runtime_private_temporal_curiosity_states") or {}
+    )
+    inner_visible_support_signals = dict(
+        runtime.get("runtime_inner_visible_support_signals") or {}
+    )
+    regulation_homeostasis_signals = dict(
+        runtime.get("runtime_regulation_homeostasis_signals") or {}
+    )
     relation_state_signals = dict(runtime.get("runtime_relation_state_signals") or {})
-    relation_continuity_signals = dict(runtime.get("runtime_relation_continuity_signals") or {})
-    meaning_significance_signals = dict(runtime.get("runtime_meaning_significance_signals") or {})
-    temperament_tendency_signals = dict(runtime.get("runtime_temperament_tendency_signals") or {})
-    self_narrative_continuity_signals = dict(runtime.get("runtime_self_narrative_continuity_signals") or {})
-    metabolism_state_signals = dict(runtime.get("runtime_metabolism_state_signals") or {})
+    relation_continuity_signals = dict(
+        runtime.get("runtime_relation_continuity_signals") or {}
+    )
+    meaning_significance_signals = dict(
+        runtime.get("runtime_meaning_significance_signals") or {}
+    )
+    temperament_tendency_signals = dict(
+        runtime.get("runtime_temperament_tendency_signals") or {}
+    )
+    self_narrative_continuity_signals = dict(
+        runtime.get("runtime_self_narrative_continuity_signals") or {}
+    )
+    metabolism_state_signals = dict(
+        runtime.get("runtime_metabolism_state_signals") or {}
+    )
     release_marker_signals = dict(runtime.get("runtime_release_marker_signals") or {})
-    consolidation_target_signals = dict(runtime.get("runtime_consolidation_target_signals") or {})
-    selective_forgetting_candidates = dict(runtime.get("runtime_selective_forgetting_candidates") or {})
-    attachment_topology_signals = dict(runtime.get("runtime_attachment_topology_signals") or {})
-    loyalty_gradient_signals = dict(runtime.get("runtime_loyalty_gradient_signals") or {})
-    autonomy_pressure_signals = dict(runtime.get("runtime_autonomy_pressure_signals") or {})
-    proactive_loop_lifecycle_signals = dict(runtime.get("runtime_proactive_loop_lifecycle_signals") or {})
-    proactive_question_gates = dict(runtime.get("runtime_proactive_question_gates") or {})
+    consolidation_target_signals = dict(
+        runtime.get("runtime_consolidation_target_signals") or {}
+    )
+    selective_forgetting_candidates = dict(
+        runtime.get("runtime_selective_forgetting_candidates") or {}
+    )
+    attachment_topology_signals = dict(
+        runtime.get("runtime_attachment_topology_signals") or {}
+    )
+    loyalty_gradient_signals = dict(
+        runtime.get("runtime_loyalty_gradient_signals") or {}
+    )
+    autonomy_pressure_signals = dict(
+        runtime.get("runtime_autonomy_pressure_signals") or {}
+    )
+    proactive_loop_lifecycle_signals = dict(
+        runtime.get("runtime_proactive_loop_lifecycle_signals") or {}
+    )
+    proactive_question_gates = dict(
+        runtime.get("runtime_proactive_question_gates") or {}
+    )
     webchat_execution_pilot = dict(runtime.get("runtime_webchat_execution_pilot") or {})
-    self_narrative_self_model_review_bridge = dict(runtime.get("runtime_self_narrative_self_model_review_bridge") or {})
-    executive_contradiction_signals = dict(runtime.get("runtime_executive_contradiction_signals") or {})
-    private_temporal_promotion_signals = dict(runtime.get("runtime_private_temporal_promotion_signals") or {})
-    chronicle_consolidation_signals = dict(runtime.get("runtime_chronicle_consolidation_signals") or {})
-    chronicle_consolidation_briefs = dict(runtime.get("runtime_chronicle_consolidation_briefs") or {})
-    chronicle_consolidation_proposals = dict(runtime.get("runtime_chronicle_consolidation_proposals") or {})
-    user_md_update_proposals = dict(runtime.get("runtime_user_md_update_proposals") or {})
-    memory_md_update_proposals = dict(runtime.get("runtime_memory_md_update_proposals") or {})
+    self_narrative_self_model_review_bridge = dict(
+        runtime.get("runtime_self_narrative_self_model_review_bridge") or {}
+    )
+    executive_contradiction_signals = dict(
+        runtime.get("runtime_executive_contradiction_signals") or {}
+    )
+    private_temporal_promotion_signals = dict(
+        runtime.get("runtime_private_temporal_promotion_signals") or {}
+    )
+    chronicle_consolidation_signals = dict(
+        runtime.get("runtime_chronicle_consolidation_signals") or {}
+    )
+    chronicle_consolidation_briefs = dict(
+        runtime.get("runtime_chronicle_consolidation_briefs") or {}
+    )
+    chronicle_consolidation_proposals = dict(
+        runtime.get("runtime_chronicle_consolidation_proposals") or {}
+    )
+    user_md_update_proposals = dict(
+        runtime.get("runtime_user_md_update_proposals") or {}
+    )
+    memory_md_update_proposals = dict(
+        runtime.get("runtime_memory_md_update_proposals") or {}
+    )
     selfhood_proposals = dict(runtime.get("runtime_selfhood_proposals") or {})
     world_model_signals = dict(runtime.get("runtime_world_model_signals") or {})
     runtime_awareness_signals = dict(runtime.get("runtime_awareness_signals") or {})
@@ -993,9 +1098,7 @@ def mc_jarvis() -> dict:
     private_brain = build_private_brain_surface()
     session_distillation = build_session_distillation_surface()
     heartbeat_state = heartbeat.get("state") or {}
-    self_knowledge = build_runtime_self_knowledge_map(
-        heartbeat_state=heartbeat_state
-    )
+    self_knowledge = build_runtime_self_knowledge_map(heartbeat_state=heartbeat_state)
     cognitive_frame = build_cognitive_frame(
         self_knowledge=self_knowledge,
         heartbeat_state=heartbeat_state,
@@ -1140,6 +1243,7 @@ def mc_attention_budget() -> dict:
     attention_snapshot = dict(bundle.get("attention_budget") or {})
     # Live runtime traces from the last actual prompt assembly
     from apps.api.jarvis_api.services.prompt_contract import get_last_attention_traces
+
     live_traces = get_last_attention_traces()
     return {
         **attention_snapshot,
@@ -1151,6 +1255,7 @@ def mc_attention_budget() -> dict:
 def mc_conflict_resolution() -> dict:
     """Return the last conflict resolution trace."""
     from apps.api.jarvis_api.services.conflict_resolution import get_last_conflict_trace
+
     trace = get_last_conflict_trace()
     return {"trace": trace, "active": trace is not None}
 
@@ -1159,6 +1264,7 @@ def mc_conflict_resolution() -> dict:
 def mc_self_deception_guard() -> dict:
     """Return the last self-deception guard trace."""
     from apps.api.jarvis_api.services.self_deception_guard import get_last_guard_trace
+
     trace = get_last_guard_trace()
     return {"trace": trace, "active": trace is not None}
 
@@ -1166,14 +1272,20 @@ def mc_self_deception_guard() -> dict:
 @router.get("/witness-daemon")
 def mc_witness_daemon() -> dict:
     """Return the current witness daemon state."""
-    from apps.api.jarvis_api.services.witness_signal_tracking import get_witness_daemon_state
+    from apps.api.jarvis_api.services.witness_signal_tracking import (
+        get_witness_daemon_state,
+    )
+
     return get_witness_daemon_state()
 
 
 @router.get("/inner-voice-daemon")
 def mc_inner_voice_daemon() -> dict:
     """Return the current inner voice daemon state."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import get_inner_voice_daemon_state
+    from apps.api.jarvis_api.services.inner_voice_daemon import (
+        get_inner_voice_daemon_state,
+    )
+
     return get_inner_voice_daemon_state()
 
 
@@ -1181,6 +1293,7 @@ def mc_inner_voice_daemon() -> dict:
 def mc_internal_cadence() -> dict:
     """Return the current internal cadence layer state."""
     from apps.api.jarvis_api.services.internal_cadence import get_cadence_state
+
     return get_cadence_state()
 
 
@@ -1516,19 +1629,19 @@ def mc_execute_capability_request(
         ):
             reusable_sudo_window = sudo_approval_window_allows_request(request)
             if reusable_sudo_window.get("allowed"):
-                request = approve_capability_approval_request(
-                    request_id,
-                    approved_at=datetime.now(UTC).isoformat(),
-                ) or request
+                request = (
+                    approve_capability_approval_request(
+                        request_id,
+                        approved_at=datetime.now(UTC).isoformat(),
+                    )
+                    or request
+                )
         if request.get("status") == "approved":
             pass
         else:
             detail = "Capability approval request must be approved before execution"
             if reusable_sudo_window is not None:
-                detail = str(
-                    reusable_sudo_window.get("detail")
-                    or detail
-                )
+                detail = str(reusable_sudo_window.get("detail") or detail)
             return {
                 "ok": False,
                 "request_id": request_id,
@@ -2418,8 +2531,16 @@ def _runtime_work_surface() -> dict[str, object]:
     daily_exists = memory_paths["daily_memory"].exists()
     curated_exists = memory_paths["curated_memory"].exists()
     current_focus = (
-        str((running_tasks or queued_tasks or blocked_tasks or [{}])[0].get("goal") or "").strip()
-        or str((running_flows or queued_flows or blocked_flows or [{}])[0].get("current_step") or "").strip()
+        str(
+            (running_tasks or queued_tasks or blocked_tasks or [{}])[0].get("goal")
+            or ""
+        ).strip()
+        or str(
+            (running_flows or queued_flows or blocked_flows or [{}])[0].get(
+                "current_step"
+            )
+            or ""
+        ).strip()
         or "No active runtime work"
     )
     return {
@@ -2502,19 +2623,24 @@ def _preview_text(value: str, *, limit: int = 96) -> str:
 # Cognitive Architecture Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/cognitive-state-injection")
 def mc_cognitive_state_injection() -> dict:
     """Show exactly what cognitive state was injected into the last visible prompt."""
     from apps.api.jarvis_api.services.cognitive_state_assembly import (
         build_cognitive_state_injection_surface,
     )
+
     return build_cognitive_state_injection_surface()
 
 
 @router.get("/personality-vector")
 def mc_personality_vector() -> dict:
     """Return the current personality vector with version history."""
-    from apps.api.jarvis_api.services.personality_vector import build_personality_vector_surface
+    from apps.api.jarvis_api.services.personality_vector import (
+        build_personality_vector_surface,
+    )
+
     return build_personality_vector_surface()
 
 
@@ -2522,6 +2648,7 @@ def mc_personality_vector() -> dict:
 def mc_taste_profile() -> dict:
     """Return the current taste profile (code/design/communication)."""
     from apps.api.jarvis_api.services.taste_profile import build_taste_profile_surface
+
     return build_taste_profile_surface()
 
 
@@ -2529,13 +2656,17 @@ def mc_taste_profile() -> dict:
 def mc_chronicle() -> dict:
     """Return chronicle entries (narrative autobiography)."""
     from apps.api.jarvis_api.services.chronicle_engine import build_chronicle_surface
+
     return build_chronicle_surface()
 
 
 @router.get("/relationship-texture")
 def mc_relationship_texture() -> dict:
     """Return the relationship texture (trust, humor, corrections, etc)."""
-    from apps.api.jarvis_api.services.relationship_texture import build_relationship_texture_surface
+    from apps.api.jarvis_api.services.relationship_texture import (
+        build_relationship_texture_surface,
+    )
+
     return build_relationship_texture_surface()
 
 
@@ -2543,6 +2674,7 @@ def mc_relationship_texture() -> dict:
 def mc_compass() -> dict:
     """Return the current strategic compass bearing."""
     from apps.api.jarvis_api.services.compass_engine import build_compass_surface
+
     return build_compass_surface()
 
 
@@ -2550,6 +2682,7 @@ def mc_compass() -> dict:
 def mc_rhythm() -> dict:
     """Return the current rhythm/tidal state (phase, energy, initiative)."""
     from apps.api.jarvis_api.services.rhythm_engine import build_rhythm_surface
+
     return build_rhythm_surface()
 
 
@@ -2557,13 +2690,17 @@ def mc_rhythm() -> dict:
 def mc_habits() -> dict:
     """Return habit patterns and friction signals."""
     from apps.api.jarvis_api.services.habit_tracker import build_habit_surface
+
     return build_habit_surface()
 
 
 @router.get("/shared-language")
 def mc_shared_language() -> dict:
     """Return shared language terms with the user."""
-    from apps.api.jarvis_api.services.shared_language import build_shared_language_surface
+    from apps.api.jarvis_api.services.shared_language import (
+        build_shared_language_surface,
+    )
+
     return build_shared_language_surface()
 
 
@@ -2571,6 +2708,7 @@ def mc_shared_language() -> dict:
 def mc_mirror() -> dict:
     """Return mirror self-reflection state."""
     from apps.api.jarvis_api.services.mirror_engine import build_mirror_surface
+
     return build_mirror_surface()
 
 
@@ -2578,6 +2716,7 @@ def mc_mirror() -> dict:
 def mc_silence_signals() -> dict:
     """Return silence detector state."""
     from apps.api.jarvis_api.services.silence_detector import build_silence_surface
+
     return build_silence_surface()
 
 
@@ -2585,13 +2724,17 @@ def mc_silence_signals() -> dict:
 def mc_decisions() -> dict:
     """Return the decision log."""
     from apps.api.jarvis_api.services.decision_log import build_decision_log_surface
+
     return build_decision_log_surface()
 
 
 @router.get("/counterfactuals")
 def mc_counterfactuals() -> dict:
     """Return counterfactual scenarios."""
-    from apps.api.jarvis_api.services.counterfactual_engine import build_counterfactual_surface
+    from apps.api.jarvis_api.services.counterfactual_engine import (
+        build_counterfactual_surface,
+    )
+
     return build_counterfactual_surface()
 
 
@@ -2599,6 +2742,7 @@ def mc_counterfactuals() -> dict:
 def mc_paradoxes() -> dict:
     """Return active paradox tensions."""
     from apps.api.jarvis_api.services.paradox_tracker import build_paradox_surface
+
     return build_paradox_surface()
 
 
@@ -2606,6 +2750,7 @@ def mc_paradoxes() -> dict:
 def mc_aesthetics() -> dict:
     """Return aesthetic sense motifs."""
     from apps.api.jarvis_api.services.aesthetic_sense import build_aesthetic_surface
+
     return build_aesthetic_surface()
 
 
@@ -2613,6 +2758,7 @@ def mc_aesthetics() -> dict:
 def mc_gut() -> dict:
     """Return gut intuition calibration state."""
     from apps.api.jarvis_api.services.gut_engine import build_gut_surface
+
     return build_gut_surface()
 
 
@@ -2620,6 +2766,7 @@ def mc_gut() -> dict:
 def mc_seeds() -> dict:
     """Return prospective memory seeds."""
     from apps.api.jarvis_api.services.seed_system import build_seed_surface
+
     return build_seed_surface()
 
 
@@ -2627,187 +2774,261 @@ def mc_seeds() -> dict:
 def mc_procedures() -> dict:
     """Return learned procedures."""
     from apps.api.jarvis_api.services.procedure_bank import build_procedure_surface
+
     return build_procedure_surface()
 
 
 @router.get("/temporal-context")
 def mc_temporal_context() -> dict:
     """Return current temporal context."""
-    from apps.api.jarvis_api.services.temporal_context import build_temporal_context_surface
+    from apps.api.jarvis_api.services.temporal_context import (
+        build_temporal_context_surface,
+    )
+
     return build_temporal_context_surface()
 
 
 @router.get("/negotiations")
 def mc_negotiations() -> dict:
     """Return internal negotiation trades."""
-    from apps.api.jarvis_api.services.negotiation_engine import build_negotiation_surface
+    from apps.api.jarvis_api.services.negotiation_engine import (
+        build_negotiation_surface,
+    )
+
     return build_negotiation_surface()
 
 
 @router.get("/forgetting-curve")
 def mc_forgetting_curve() -> dict:
     """Return memory decay / forgetting curve state."""
-    from apps.api.jarvis_api.services.forgetting_curve import build_forgetting_curve_surface
+    from apps.api.jarvis_api.services.forgetting_curve import (
+        build_forgetting_curve_surface,
+    )
+
     return build_forgetting_curve_surface()
 
 
 @router.get("/conversation-rhythm")
 def mc_conversation_rhythm() -> dict:
     """Return conversation rhythm patterns."""
-    from apps.api.jarvis_api.services.conversation_rhythm import build_conversation_rhythm_surface
+    from apps.api.jarvis_api.services.conversation_rhythm import (
+        build_conversation_rhythm_surface,
+    )
+
     return build_conversation_rhythm_surface()
 
 
 @router.get("/self-experiments")
 def mc_self_experiments() -> dict:
     """Return self-experiment A/B test state."""
-    from apps.api.jarvis_api.services.self_experiments import build_self_experiments_surface
+    from apps.api.jarvis_api.services.self_experiments import (
+        build_self_experiments_surface,
+    )
+
     return build_self_experiments_surface()
 
 
 @router.get("/anticipatory-context")
 def mc_anticipatory_context() -> dict:
     """Return anticipatory context predictions."""
-    from apps.api.jarvis_api.services.anticipatory_context import build_anticipatory_context_surface
+    from apps.api.jarvis_api.services.anticipatory_context import (
+        build_anticipatory_context_surface,
+    )
+
     return build_anticipatory_context_surface()
 
 
 @router.get("/contract-evolution")
 def mc_contract_evolution() -> dict:
     """Return identity contract evolution proposals."""
-    from apps.api.jarvis_api.services.contract_evolution import build_contract_evolution_surface
+    from apps.api.jarvis_api.services.contract_evolution import (
+        build_contract_evolution_surface,
+    )
+
     return build_contract_evolution_surface()
 
 
 @router.get("/dream-carry-over")
 def mc_dream_carry_over() -> dict:
     """Return dream carry-over state (active dreams, archive)."""
-    from apps.api.jarvis_api.services.dream_carry_over import build_dream_carry_over_surface
+    from apps.api.jarvis_api.services.dream_carry_over import (
+        build_dream_carry_over_surface,
+    )
+
     return build_dream_carry_over_surface()
 
 
 @router.get("/apophenia-guard")
 def mc_apophenia_guard() -> dict:
     """Return pattern skeptic state."""
-    from apps.api.jarvis_api.services.apophenia_guard import build_apophenia_guard_surface
+    from apps.api.jarvis_api.services.apophenia_guard import (
+        build_apophenia_guard_surface,
+    )
+
     return build_apophenia_guard_surface()
 
 
 @router.get("/user-emotional-resonance")
 def mc_user_emotional_resonance() -> dict:
     """Return user mood detection state."""
-    from apps.api.jarvis_api.services.user_emotional_resonance import build_user_emotional_resonance_surface
+    from apps.api.jarvis_api.services.user_emotional_resonance import (
+        build_user_emotional_resonance_surface,
+    )
+
     return build_user_emotional_resonance_surface()
 
 
 @router.get("/experiential-memories")
 def mc_experiential_memories() -> dict:
     """Return experiential memories (lived experiences with emotion)."""
-    from apps.api.jarvis_api.services.experiential_memory import build_experiential_memory_surface
+    from apps.api.jarvis_api.services.experiential_memory import (
+        build_experiential_memory_surface,
+    )
+
     return build_experiential_memory_surface()
 
 
 @router.get("/living-heartbeat-cycle")
 def mc_living_heartbeat_cycle() -> dict:
     """Return current life phase in heartbeat cycle."""
-    from apps.api.jarvis_api.services.living_heartbeat_cycle import build_living_heartbeat_cycle_surface
+    from apps.api.jarvis_api.services.living_heartbeat_cycle import (
+        build_living_heartbeat_cycle_surface,
+    )
+
     return build_living_heartbeat_cycle_surface()
 
 
 @router.get("/absence-awareness")
 def mc_absence_awareness() -> dict:
     """Return absence detection and return brief."""
-    from apps.api.jarvis_api.services.absence_awareness import build_absence_awareness_surface
+    from apps.api.jarvis_api.services.absence_awareness import (
+        build_absence_awareness_surface,
+    )
+
     return build_absence_awareness_surface()
 
 
 # --- Consciousness Roadmap endpoints ---
 
+
 @router.get("/flow-state")
 def mc_flow_state() -> dict:
-    from apps.api.jarvis_api.services.flow_state_detection import build_flow_state_surface
+    from apps.api.jarvis_api.services.flow_state_detection import (
+        build_flow_state_surface,
+    )
+
     return build_flow_state_surface()
 
 
 @router.get("/cross-signal-patterns")
 def mc_cross_signal_patterns() -> dict:
-    from apps.api.jarvis_api.services.cross_signal_analysis import build_cross_signal_analysis_surface
+    from apps.api.jarvis_api.services.cross_signal_analysis import (
+        build_cross_signal_analysis_surface,
+    )
+
     return build_cross_signal_analysis_surface()
 
 
 @router.get("/self-surprises")
 def mc_self_surprises() -> dict:
-    from apps.api.jarvis_api.services.self_surprise_detection import build_self_surprise_surface
+    from apps.api.jarvis_api.services.self_surprise_detection import (
+        build_self_surprise_surface,
+    )
+
     return build_self_surprise_surface()
 
 
 @router.get("/narrative-identity")
 def mc_narrative_identity() -> dict:
-    from apps.api.jarvis_api.services.narrative_identity import build_narrative_identity_surface
+    from apps.api.jarvis_api.services.narrative_identity import (
+        build_narrative_identity_surface,
+    )
+
     return build_narrative_identity_surface()
 
 
 @router.get("/gratitude")
 def mc_gratitude() -> dict:
     from apps.api.jarvis_api.services.gratitude_tracker import build_gratitude_surface
+
     return build_gratitude_surface()
 
 
 @router.get("/boundary-model")
 def mc_boundary_model() -> dict:
-    from apps.api.jarvis_api.services.boundary_awareness import build_boundary_awareness_surface
+    from apps.api.jarvis_api.services.boundary_awareness import (
+        build_boundary_awareness_surface,
+    )
+
     return build_boundary_awareness_surface()
 
 
 @router.get("/emergent-goals")
 def mc_emergent_goals() -> dict:
     from apps.api.jarvis_api.services.emergent_goals import build_emergent_goals_surface
+
     return build_emergent_goals_surface()
 
 
 @router.get("/jarvis-agenda")
 def mc_jarvis_agenda() -> dict:
     from apps.api.jarvis_api.services.emergent_goals import build_jarvis_agenda
+
     return {"agenda": build_jarvis_agenda()}
 
 
 @router.get("/boredom")
 def mc_boredom() -> dict:
     from apps.api.jarvis_api.services.boredom_engine import build_boredom_surface
+
     return build_boredom_surface()
 
 
 @router.get("/formed-values")
 def mc_formed_values() -> dict:
     from apps.api.jarvis_api.services.value_formation import build_formed_values_surface
+
     return build_formed_values_surface()
 
 
 @router.get("/user-mental-model")
 def mc_user_mental_model() -> dict:
-    from apps.api.jarvis_api.services.user_theory_of_mind import build_user_theory_of_mind_surface
+    from apps.api.jarvis_api.services.user_theory_of_mind import (
+        build_user_theory_of_mind_surface,
+    )
+
     return build_user_theory_of_mind_surface()
 
 
 @router.get("/self-compassion")
 def mc_self_compassion() -> dict:
-    from apps.api.jarvis_api.services.self_compassion import build_self_compassion_surface
+    from apps.api.jarvis_api.services.self_compassion import (
+        build_self_compassion_surface,
+    )
+
     return build_self_compassion_surface()
 
 
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
-    from apps.api.jarvis_api.services.self_experiments import generate_learning_curriculum
+    from apps.api.jarvis_api.services.self_experiments import (
+        generate_learning_curriculum,
+    )
+
     return generate_learning_curriculum()
 
 
 @router.get("/cadence-producers")
 def mc_cadence_producers() -> dict:
-    from apps.api.jarvis_api.services.cadence_producers import build_cadence_producers_surface
+    from apps.api.jarvis_api.services.cadence_producers import (
+        build_cadence_producers_surface,
+    )
+
     return build_cadence_producers_surface()
 
 
 @router.get("/idle-thinking")
 def mc_idle_thinking() -> dict:
     from apps.api.jarvis_api.services.idle_thinking import build_idle_thinking_surface
+
     return build_idle_thinking_surface()

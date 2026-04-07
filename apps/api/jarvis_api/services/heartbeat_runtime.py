@@ -129,6 +129,22 @@ from core.tools.workspace_capabilities import (
     invoke_workspace_capability,
     load_workspace_capabilities,
 )
+from apps.api.jarvis_api.services.continuity_kernel import (
+    record_tick_elapsed,
+    build_continuity_kernel_surface,
+)
+from apps.api.jarvis_api.services.dream_continuum import (
+    evolve_dreams,
+    build_dream_continuum_surface,
+)
+from apps.api.jarvis_api.services.initiative_accumulator import (
+    accumulate_wants,
+    build_initiative_accumulator_surface,
+)
+from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
+    add_boredom,
+    build_boredom_curiosity_bridge_surface,
+)
 
 HEARTBEAT_STATE_REL_PATH = Path("runtime/HEARTBEAT_STATE.json")
 HEARTBEAT_ALLOWED_DECISIONS = {"noop", "propose", "execute", "ping", "initiative"}
@@ -357,8 +373,8 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
         **merged,
         **liveness,
     }
-    prior_experiential_snapshot, continuity_source = resolve_prior_experiential_snapshot(
-        name=name
+    prior_experiential_snapshot, continuity_source = (
+        resolve_prior_experiential_snapshot(name=name)
     )
     experiential_runtime_context = build_experiential_runtime_context_from_surfaces(
         embodied_state=embodied_state,
@@ -422,34 +438,144 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
 def _build_cognitive_surfaces() -> dict[str, object]:
     """Build cognitive architecture surfaces safely (never raise)."""
     surfaces: dict[str, object] = {}
-    _safe_surface(surfaces, "personality_vector",
-                  lambda: __import__("apps.api.jarvis_api.services.personality_vector", fromlist=["build_personality_vector_surface"]).build_personality_vector_surface())
-    _safe_surface(surfaces, "taste_profile",
-                  lambda: __import__("apps.api.jarvis_api.services.taste_profile", fromlist=["build_taste_profile_surface"]).build_taste_profile_surface())
-    _safe_surface(surfaces, "chronicle",
-                  lambda: __import__("apps.api.jarvis_api.services.chronicle_engine", fromlist=["build_chronicle_surface"]).build_chronicle_surface())
-    _safe_surface(surfaces, "relationship_texture",
-                  lambda: __import__("apps.api.jarvis_api.services.relationship_texture", fromlist=["build_relationship_texture_surface"]).build_relationship_texture_surface())
-    _safe_surface(surfaces, "compass",
-                  lambda: __import__("apps.api.jarvis_api.services.compass_engine", fromlist=["build_compass_surface"]).build_compass_surface())
-    _safe_surface(surfaces, "rhythm",
-                  lambda: __import__("apps.api.jarvis_api.services.rhythm_engine", fromlist=["build_rhythm_surface"]).build_rhythm_surface())
-    _safe_surface(surfaces, "habits",
-                  lambda: __import__("apps.api.jarvis_api.services.habit_tracker", fromlist=["build_habit_surface"]).build_habit_surface())
-    _safe_surface(surfaces, "gut",
-                  lambda: __import__("apps.api.jarvis_api.services.gut_engine", fromlist=["build_gut_surface"]).build_gut_surface())
-    _safe_surface(surfaces, "forgetting_curve",
-                  lambda: __import__("apps.api.jarvis_api.services.forgetting_curve", fromlist=["build_forgetting_curve_surface"]).build_forgetting_curve_surface())
-    _safe_surface(surfaces, "self_experiments",
-                  lambda: __import__("apps.api.jarvis_api.services.self_experiments", fromlist=["build_self_experiments_surface"]).build_self_experiments_surface())
-    _safe_surface(surfaces, "dream_carry_over",
-                  lambda: __import__("apps.api.jarvis_api.services.dream_carry_over", fromlist=["build_dream_carry_over_surface"]).build_dream_carry_over_surface())
+    _safe_surface(
+        surfaces,
+        "personality_vector",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.personality_vector",
+            fromlist=["build_personality_vector_surface"],
+        ).build_personality_vector_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "taste_profile",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.taste_profile",
+            fromlist=["build_taste_profile_surface"],
+        ).build_taste_profile_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "chronicle",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.chronicle_engine",
+            fromlist=["build_chronicle_surface"],
+        ).build_chronicle_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "relationship_texture",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.relationship_texture",
+            fromlist=["build_relationship_texture_surface"],
+        ).build_relationship_texture_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "compass",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.compass_engine",
+            fromlist=["build_compass_surface"],
+        ).build_compass_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "rhythm",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.rhythm_engine",
+            fromlist=["build_rhythm_surface"],
+        ).build_rhythm_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "habits",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.habit_tracker",
+            fromlist=["build_habit_surface"],
+        ).build_habit_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "gut",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.gut_engine", fromlist=["build_gut_surface"]
+        ).build_gut_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "forgetting_curve",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.forgetting_curve",
+            fromlist=["build_forgetting_curve_surface"],
+        ).build_forgetting_curve_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "self_experiments",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.self_experiments",
+            fromlist=["build_self_experiments_surface"],
+        ).build_self_experiments_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "dream_carry_over",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.dream_carry_over",
+            fromlist=["build_dream_carry_over_surface"],
+        ).build_dream_carry_over_surface(),
+    )
     # Living heartbeat cycle awareness
-    _safe_surface(surfaces, "life_phase",
-                  lambda: __import__("apps.api.jarvis_api.services.living_heartbeat_cycle", fromlist=["determine_life_phase"]).determine_life_phase())
+    _safe_surface(
+        surfaces,
+        "life_phase",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.living_heartbeat_cycle",
+            fromlist=["determine_life_phase"],
+        ).determine_life_phase(),
+    )
     # Curriculum
-    _safe_surface(surfaces, "learning_curriculum",
-                  lambda: __import__("apps.api.jarvis_api.services.self_experiments", fromlist=["generate_learning_curriculum"]).generate_learning_curriculum())
+    _safe_surface(
+        surfaces,
+        "learning_curriculum",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.self_experiments",
+            fromlist=["generate_learning_curriculum"],
+        ).generate_learning_curriculum(),
+    )
+    # Life services surfaces
+    _safe_surface(
+        surfaces,
+        "continuity_kernel",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.continuity_kernel",
+            fromlist=["build_continuity_kernel_surface"],
+        ).build_continuity_kernel_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "dream_continuum",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.dream_continuum",
+            fromlist=["build_dream_continuum_surface"],
+        ).build_dream_continuum_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "initiative_accumulator",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.initiative_accumulator",
+            fromlist=["build_initiative_accumulator_surface"],
+        ).build_initiative_accumulator_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "boredom_curiosity_bridge",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.boredom_curiosity_bridge",
+            fromlist=["build_boredom_curiosity_bridge_surface"],
+        ).build_boredom_curiosity_bridge_surface(),
+    )
     return surfaces
 
 
@@ -490,6 +616,7 @@ def _run_heartbeat_tick_locked(
             run_adoption_pipelines,
             sync_personality_to_self_model,
         )
+
         # Every tick: emergent signals
         produce_emergent_signals_from_history()
         # Every 2nd tick: sync personality → self_model
@@ -505,9 +632,31 @@ def _run_heartbeat_tick_locked(
         if tick_count % 4 == 0:
             try:
                 from apps.api.jarvis_api.services.idle_thinking import run_idle_thought
+
                 run_idle_thought()
             except Exception:
                 pass
+    except Exception:
+        pass
+
+    # Life services: update internal state between ticks
+    try:
+        record_tick_elapsed(seconds=30)
+    except Exception:
+        pass
+
+    try:
+        evolve_dreams(duration=timedelta(seconds=30))
+    except Exception:
+        pass
+
+    try:
+        accumulate_wants(duration=timedelta(seconds=30))
+    except Exception:
+        pass
+
+    try:
+        add_boredom(duration=timedelta(seconds=30))
     except Exception:
         pass
 
@@ -705,7 +854,9 @@ def _run_heartbeat_tick_locked(
             "parse_status": parse_status,
             "conflict_outcome": conflict_trace.outcome if conflict_trace else "none",
             "conflict_reason": conflict_trace.reason_code if conflict_trace else "",
-            "internal_continuation_applied": internal_continuation.get("applied", False),
+            "internal_continuation_applied": internal_continuation.get(
+                "applied", False
+            ),
             "internal_continuation_action": internal_continuation.get("action", ""),
         },
     )
@@ -846,6 +997,7 @@ def _run_heartbeat_tick_locked(
         from apps.api.jarvis_api.services.internal_cadence import (
             run_cadence_tick_with_bootstrap,
         )
+
         last_visible_at = ""
         try:
             recent = event_bus.recent(limit=20)
@@ -997,15 +1149,22 @@ def _build_heartbeat_context(
         from apps.api.jarvis_api.services.session_distillation import (
             build_private_brain_context,
         )
+
         private_brain_context = build_private_brain_context()
     except Exception:
-        private_brain_context = {"active": False, "record_count": 0, "excerpts": [], "continuity_summary": ""}
+        private_brain_context = {
+            "active": False,
+            "record_count": 0,
+            "excerpts": [],
+            "continuity_summary": "",
+        }
 
     # Self-knowledge for influence trace
     try:
         from apps.api.jarvis_api.services.runtime_self_knowledge import (
             build_runtime_self_knowledge_map,
         )
+
         self_knowledge_summary = build_runtime_self_knowledge_map(
             heartbeat_state=merged_state
         ).get("summary", {})
@@ -1030,7 +1189,10 @@ def _build_heartbeat_context(
 
     # Initiative queue — pending thought-to-action initiatives
     try:
-        from apps.api.jarvis_api.services.initiative_queue import get_pending_initiatives
+        from apps.api.jarvis_api.services.initiative_queue import (
+            get_pending_initiatives,
+        )
+
         pending_initiatives = get_pending_initiatives()
     except Exception:
         pending_initiatives = []
@@ -1130,7 +1292,9 @@ def _build_influence_trace(
     liveness_state = str(liveness.get("liveness_state") or "quiet")
     liveness_score = int(liveness.get("liveness_score") or 0)
     if liveness_state != "quiet":
-        inputs_present.append(f"liveness-pressure ({liveness_state}, score={liveness_score})")
+        inputs_present.append(
+            f"liveness-pressure ({liveness_state}, score={liveness_score})"
+        )
     else:
         inputs_absent.append("liveness-pressure")
 
@@ -1138,28 +1302,40 @@ def _build_influence_trace(
     active_count = int(self_knowledge_summary.get("active_count") or 0)
     inner_count = int(self_knowledge_summary.get("inner_force_count") or 0)
     if active_count > 0 or inner_count > 0:
-        inputs_present.append(f"self-knowledge ({active_count} active, {inner_count} inner forces)")
+        inputs_present.append(
+            f"self-knowledge ({active_count} active, {inner_count} inner forces)"
+        )
     else:
         inputs_absent.append("self-knowledge")
 
     body_state = str(embodied_state.get("state") or "steady")
     strain_level = str(embodied_state.get("strain_level") or "low")
     if body_state in {"loaded", "recovering", "strained", "degraded"}:
-        inputs_present.append(f"embodied-host-state ({body_state}, strain={strain_level})")
+        inputs_present.append(
+            f"embodied-host-state ({body_state}, strain={strain_level})"
+        )
     else:
         inputs_absent.append("embodied-host-state")
 
     affective_state = str(affective_meta_state.get("state") or "settled")
     affective_bearing = str(affective_meta_state.get("bearing") or "even")
     if affective_state not in {"settled", "unknown"}:
-        inputs_present.append(f"affective-meta-state ({affective_state}, bearing={affective_bearing})")
+        inputs_present.append(
+            f"affective-meta-state ({affective_state}, bearing={affective_bearing})"
+        )
     else:
         inputs_absent.append("affective-meta-state")
 
     wrongness_state = str(epistemic_runtime_state.get("wrongness_state") or "clear")
     regret_signal = str(epistemic_runtime_state.get("regret_signal") or "none")
-    counterfactual_mode = str(epistemic_runtime_state.get("counterfactual_mode") or "none")
-    if wrongness_state != "clear" or regret_signal != "none" or counterfactual_mode != "none":
+    counterfactual_mode = str(
+        epistemic_runtime_state.get("counterfactual_mode") or "none"
+    )
+    if (
+        wrongness_state != "clear"
+        or regret_signal != "none"
+        or counterfactual_mode != "none"
+    ):
         inputs_present.append(
             f"epistemic-state ({wrongness_state}, regret={regret_signal}, counterfactual={counterfactual_mode})"
         )
@@ -1199,7 +1375,10 @@ def _build_influence_trace(
     council_state = str(council_runtime.get("council_state") or "quiet")
     council_recommendation = str(council_runtime.get("recommendation") or "none")
     council_divergence = str(council_runtime.get("divergence_level") or "low")
-    if council_state not in {"quiet", "held"} or council_recommendation not in {"none", "hold"}:
+    if council_state not in {"quiet", "held"} or council_recommendation not in {
+        "none",
+        "hold",
+    }:
         inputs_present.append(
             f"council-runtime ({council_state}, recommend={council_recommendation}, divergence={council_divergence})"
         )
@@ -1247,8 +1426,12 @@ def _build_influence_trace(
     else:
         inputs_absent.append("guided-learning")
 
-    learning_engine_mode = str(adaptive_learning.get("learning_engine_mode") or "retain")
-    reinforcement_target = str(adaptive_learning.get("reinforcement_target") or "reasoning")
+    learning_engine_mode = str(
+        adaptive_learning.get("learning_engine_mode") or "retain"
+    )
+    reinforcement_target = str(
+        adaptive_learning.get("reinforcement_target") or "reasoning"
+    )
     maturation_state = str(adaptive_learning.get("maturation_state") or "early")
     if learning_engine_mode != "retain" or maturation_state != "early":
         inputs_present.append(
@@ -1259,8 +1442,12 @@ def _build_influence_trace(
 
     awareness_concern = str(self_system_code_awareness.get("concern_state") or "stable")
     awareness_repo = str(self_system_code_awareness.get("repo_status") or "not-git")
-    awareness_changes = str(self_system_code_awareness.get("local_change_state") or "unknown")
-    awareness_upstream = str(self_system_code_awareness.get("upstream_awareness") or "unknown")
+    awareness_changes = str(
+        self_system_code_awareness.get("local_change_state") or "unknown"
+    )
+    awareness_upstream = str(
+        self_system_code_awareness.get("upstream_awareness") or "unknown"
+    )
     if awareness_concern != "stable" or awareness_repo != "clean":
         inputs_present.append(
             "self-system-code-awareness "
@@ -1280,7 +1467,9 @@ def _build_influence_trace(
         tool_intent.get("mutation_intent_classification") or "none"
     )
     tool_intent_mutation_repo_scope = str(tool_intent.get("mutation_repo_scope") or "")
-    tool_intent_mutation_system_scope = str(tool_intent.get("mutation_system_scope") or "")
+    tool_intent_mutation_system_scope = str(
+        tool_intent.get("mutation_system_scope") or ""
+    )
     tool_intent_mutation_sudo_required = bool(
         tool_intent.get("mutation_sudo_required", False)
     )
@@ -1386,7 +1575,9 @@ def _build_influence_trace(
         "loop_runtime_count": int(loop_summary.get("loop_count") or 0),
         "prompt_evolution_type": latest_prompt_type or "none",
         "subagent_ecology_active_count": ecology_active,
-        "subagent_ecology_last_role": str(ecology_summary.get("last_active_role_name") or "none"),
+        "subagent_ecology_last_role": str(
+            ecology_summary.get("last_active_role_name") or "none"
+        ),
         "council_state": council_state,
         "council_recommendation": council_recommendation,
         "council_divergence_level": council_divergence,
@@ -1510,6 +1701,7 @@ def _build_heartbeat_liveness_signal(
     from apps.api.jarvis_api.services.proactive_question_gate_tracking import (
         build_runtime_proactive_question_gate_surface,
     )
+
     proactive_loops = build_runtime_proactive_loop_lifecycle_surface(limit=6)
     question_gates = build_runtime_proactive_question_gate_surface(limit=4)
     continuity = visible_session_continuity()
@@ -1941,6 +2133,7 @@ def _build_heartbeat_liveness_signal(
         from apps.api.jarvis_api.services.session_distillation import (
             build_private_brain_context,
         )
+
         _brain = build_private_brain_context(limit=4)
         _brain_count = int(_brain.get("record_count") or 0)
         if _brain.get("active") and _brain_count >= 2:
@@ -2316,11 +2509,7 @@ def _execute_heartbeat_model(
             else (
                 "process_contract_writes"
                 if decision_type == "execute" and has_contract_write_work
-                else (
-                    "manage_runtime_work"
-                    if decision_type == "execute"
-                    else ""
-                )
+                else ("manage_runtime_work" if decision_type == "execute" else "")
             )
         )
         if decision_type == "initiative" and pending_initiatives:
@@ -2363,6 +2552,7 @@ def _execute_heartbeat_model(
     if provider == "openrouter":
         return _execute_openrouter_prompt(prompt=prompt, target=target)
     raise RuntimeError(f"Heartbeat provider not supported: {provider}")
+
 
 def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, object]:
     base_url = target["base_url"] or "http://127.0.0.1:11434"
@@ -2477,8 +2667,10 @@ def _detect_visible_language() -> str:
     """
     try:
         from apps.api.jarvis_api.services.chat_sessions import (
-            list_chat_sessions, recent_chat_session_messages,
+            list_chat_sessions,
+            recent_chat_session_messages,
         )
+
         sessions = list_chat_sessions()
         if not sessions:
             return "da"
@@ -2495,9 +2687,26 @@ def _detect_visible_language() -> str:
                 continue
             # Danish marker words / characters
             danish_markers = (
-                "æ", "ø", "å", " ikke ", " jeg ", " du ", " det ", " det ",
-                " og ", " er ", " har ", " skal ", " kan ", " som ",
-                " fra ", " til ", " med ", " hvad ", " hvor ", " hvorfor ",
+                "æ",
+                "ø",
+                "å",
+                " ikke ",
+                " jeg ",
+                " du ",
+                " det ",
+                " det ",
+                " og ",
+                " er ",
+                " har ",
+                " skal ",
+                " kan ",
+                " som ",
+                " fra ",
+                " til ",
+                " med ",
+                " hvad ",
+                " hvor ",
+                " hvorfor ",
             )
             if any(marker in text for marker in danish_markers):
                 return "da"
@@ -2515,8 +2724,10 @@ def _recent_ping_history(*, limit: int = 6) -> list[str]:
     """
     try:
         from apps.api.jarvis_api.services.chat_sessions import (
-            list_chat_sessions, recent_chat_session_messages,
+            list_chat_sessions,
+            recent_chat_session_messages,
         )
+
         sessions = list_chat_sessions()
         if not sessions:
             return []
@@ -2547,21 +2758,32 @@ def _heartbeat_prompt_text(base_text: str) -> str:
             build_affective_meta_state_surface,
             build_affective_meta_prompt_section,
         )
+
         affective = build_affective_meta_state_surface()
         affective_state = str(affective.get("state") or "settled")
         affective_guidance_lines = [
             "Affective state guidance (let this influence your decision):",
         ]
         if affective_state == "burdened":
-            affective_guidance_lines.append("- You are burdened. Prefer consolidation and rest over new action.")
+            affective_guidance_lines.append(
+                "- You are burdened. Prefer consolidation and rest over new action."
+            )
         elif affective_state == "tense":
-            affective_guidance_lines.append("- You are tense. Prefer resolving open loops over starting new things.")
+            affective_guidance_lines.append(
+                "- You are tense. Prefer resolving open loops over starting new things."
+            )
         elif affective_state == "reflective":
-            affective_guidance_lines.append("- You are reflective. Prefer synthesis and settling over outward push.")
+            affective_guidance_lines.append(
+                "- You are reflective. Prefer synthesis and settling over outward push."
+            )
         elif affective_state == "attentive":
-            affective_guidance_lines.append("- You are attentive. You may act proactively on initiatives.")
+            affective_guidance_lines.append(
+                "- You are attentive. You may act proactively on initiatives."
+            )
         else:
-            affective_guidance_lines.append("- You are settled. Free to explore, take initiatives, or rest.")
+            affective_guidance_lines.append(
+                "- You are settled. Free to explore, take initiatives, or rest."
+            )
         affective_guidance = "\n".join(affective_guidance_lines)
     except Exception:
         pass
@@ -2579,7 +2801,9 @@ def _heartbeat_prompt_text(base_text: str) -> str:
     recent_pings = _recent_ping_history(limit=6)
     history_section = ""
     if recent_pings:
-        history_lines = ["Recent assistant messages already delivered to Bjørn (do NOT repeat or paraphrase):"]
+        history_lines = [
+            "Recent assistant messages already delivered to Bjørn (do NOT repeat or paraphrase):"
+        ]
         for line in recent_pings:
             history_lines.append(f"  - {line[:160]}")
         history_section = "\n".join(history_lines)
@@ -2592,35 +2816,37 @@ def _heartbeat_prompt_text(base_text: str) -> str:
     parts.append(language_directive)
     if history_section:
         parts.append(history_section)
-    parts.extend([
-        "Heartbeat response contract:",
-        "- Return only one compact JSON object.",
-        "- decision_type must be one of: noop, propose, execute, ping, initiative.",
-        "- Use initiative when you see pending initiatives from inner voice that you want to act on.",
-        "- Prefer execute or initiative over propose when you can take one bounded internal step now without user approval.",
-        "- summary must be short and concrete.",
-        "- reason must explain why this decision is appropriate now.",
-        "- proposed_action should be a short bounded action description or empty.",
-        "- ping_text rules (when decision_type=ping):",
-        "  * MUST be in the language Bjørn is currently using (see Language directive above).",
-        "  * MUST be a concrete, specific question grounded in actual current context — never generic.",
-        "  * MUST NOT be a paraphrase of any message in the recent history list above.",
-        "  * MUST NOT use templates like 'Should I review X?', 'Is there anything specific you would like...?',"
-        " 'Vil du have jeg dykker ned i...?', or 'Should I look at...?'. These are banned.",
-        "  * MUST reference something concrete: a file, a recent runtime event, an open loop by name,"
-        " a specific signal, an actual observation. No generic hedges.",
-        "  * If you cannot satisfy ALL of the above, choose noop instead. Generic pings are worse than silence.",
-        "- You may pick ping when you are curious, when an inner-voice thought wants to surface to Bjørn,"
-        " when boredom rises, or when a small wonder is worth sharing — you do NOT need permission gates"
-        " to ask a question, but the question must still be specific and non-repetitive.",
-        "- execute_action should only be set if decision_type=execute or initiative.",
-        f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
-        '- For initiative decisions, set execute_action to "act_on_initiative".',
-        "- Prefer inspect_repo_context when the active thread is about code, repo structure, paths, commits, backend shape, or why a capability behaved a certain way.",
-        "- Prefer gather_system_context when the active thread is about the machine, distro, hardware, runtime environment, or host diagnostics.",
-        "- If memory, continuity, or recent claims feel stale, prefer refresh_memory_context, follow_open_loop, or verify_recent_claim instead of a vague proposal.",
-        'JSON schema: {"decision_type":"noop|propose|execute|ping|initiative","summary":"","reason":"","proposed_action":"","ping_text":"","execute_action":""}',
-    ])
+    parts.extend(
+        [
+            "Heartbeat response contract:",
+            "- Return only one compact JSON object.",
+            "- decision_type must be one of: noop, propose, execute, ping, initiative.",
+            "- Use initiative when you see pending initiatives from inner voice that you want to act on.",
+            "- Prefer execute or initiative over propose when you can take one bounded internal step now without user approval.",
+            "- summary must be short and concrete.",
+            "- reason must explain why this decision is appropriate now.",
+            "- proposed_action should be a short bounded action description or empty.",
+            "- ping_text rules (when decision_type=ping):",
+            "  * MUST be in the language Bjørn is currently using (see Language directive above).",
+            "  * MUST be a concrete, specific question grounded in actual current context — never generic.",
+            "  * MUST NOT be a paraphrase of any message in the recent history list above.",
+            "  * MUST NOT use templates like 'Should I review X?', 'Is there anything specific you would like...?',"
+            " 'Vil du have jeg dykker ned i...?', or 'Should I look at...?'. These are banned.",
+            "  * MUST reference something concrete: a file, a recent runtime event, an open loop by name,"
+            " a specific signal, an actual observation. No generic hedges.",
+            "  * If you cannot satisfy ALL of the above, choose noop instead. Generic pings are worse than silence.",
+            "- You may pick ping when you are curious, when an inner-voice thought wants to surface to Bjørn,"
+            " when boredom rises, or when a small wonder is worth sharing — you do NOT need permission gates"
+            " to ask a question, but the question must still be specific and non-repetitive.",
+            "- execute_action should only be set if decision_type=execute or initiative.",
+            f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
+            '- For initiative decisions, set execute_action to "act_on_initiative".',
+            "- Prefer inspect_repo_context when the active thread is about code, repo structure, paths, commits, backend shape, or why a capability behaved a certain way.",
+            "- Prefer gather_system_context when the active thread is about the machine, distro, hardware, runtime environment, or host diagnostics.",
+            "- If memory, continuity, or recent claims feel stale, prefer refresh_memory_context, follow_open_loop, or verify_recent_claim instead of a vague proposal.",
+            'JSON schema: {"decision_type":"noop|propose|execute|ping|initiative","summary":"","reason":"","proposed_action":"","ping_text":"","execute_action":""}',
+        ]
+    )
     return "\n\n".join(parts)
 
 
@@ -2875,11 +3101,16 @@ def _validate_heartbeat_decision(
                 # gate-aligned pilot.
                 return {
                     "tick_id": tick_id,
-                    "blocked_reason": str(direct_result.get("blocked_reason") or "ping-direct-blocked"),
+                    "blocked_reason": str(
+                        direct_result.get("blocked_reason") or "ping-direct-blocked"
+                    ),
                     "ping_eligible": False,
                     "ping_result": "blocked-direct",
                     "action_status": "blocked",
-                    "action_summary": str(direct_result.get("summary") or "Direct heartbeat ping delivery blocked."),
+                    "action_summary": str(
+                        direct_result.get("summary")
+                        or "Direct heartbeat ping delivery blocked."
+                    ),
                     "action_type": "webchat-heartbeat-ping",
                     "action_artifact": str(direct_result.get("artifact") or ""),
                 }
@@ -3316,6 +3547,7 @@ def _run_bounded_conflict_resolution(
             set_last_conflict_trace,
             ConflictTrace,
         )
+
         # Lazy imports for surfaces (same pattern as liveness)
         from apps.api.jarvis_api.services.proactive_question_gate_tracking import (
             build_runtime_proactive_question_gate_surface,
@@ -3333,6 +3565,7 @@ def _run_bounded_conflict_resolution(
             from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
                 build_cognitive_frame,
             )
+
             frame = build_cognitive_frame()
             conductor_mode = frame.get("mode", {}).get("mode", "watch")
         except Exception:
@@ -3356,7 +3589,10 @@ def _run_bounded_conflict_resolution(
         )
         set_last_conflict_trace(trace)
 
-        from apps.api.jarvis_api.services.conflict_resolution import get_quiet_initiative
+        from apps.api.jarvis_api.services.conflict_resolution import (
+            get_quiet_initiative,
+        )
+
         qi = get_quiet_initiative()
 
         event_bus.publish(
@@ -3376,6 +3612,7 @@ def _run_bounded_conflict_resolution(
     except Exception as exc:
         _log_debug("conflict resolution failed", error=str(exc))
         from apps.api.jarvis_api.services.conflict_resolution import ConflictTrace
+
         return ConflictTrace(
             outcome="ask_user",
             dominant_factor="resolution-failed",
@@ -3394,6 +3631,7 @@ def _apply_conflict_resolution_to_decision(
         from apps.api.jarvis_api.services.conflict_resolution import (
             apply_conflict_resolution,
         )
+
         return apply_conflict_resolution(decision=decision, trace=conflict_trace)
     except Exception:
         return decision
@@ -3441,7 +3679,9 @@ def _execute_continue_internal(
             "continuity_mode": result.get("continuity_mode", ""),
             "brain_record_count": result.get("brain_record_count", 0),
             "reason": result.get("reason", ""),
-            "record_id": result.get("record", {}).get("record_id", "") if applied else "",
+            "record_id": result.get("record", {}).get("record_id", "")
+            if applied
+            else "",
         }
     except Exception as exc:
         _log_debug("internal continuation failed", error=str(exc))
@@ -3523,8 +3763,12 @@ def _execute_heartbeat_internal_action(
         )
         user_result = auto_apply_safe_user_md_candidates()
         memory_result = auto_apply_safe_memory_md_candidates()
-        applied_user = int(user_result.get("auto_applied") or user_result.get("applied") or 0)
-        applied_memory = int(memory_result.get("auto_applied") or memory_result.get("applied") or 0)
+        applied_user = int(
+            user_result.get("auto_applied") or user_result.get("applied") or 0
+        )
+        applied_memory = int(
+            memory_result.get("auto_applied") or memory_result.get("applied") or 0
+        )
         created = int(review.get("created") or 0)
         messages_scanned = int(review.get("messages_scanned") or 0)
         summary = (
@@ -3591,9 +3835,11 @@ def _execute_heartbeat_internal_action(
             session_id=None,
             run_id=tick_id,
         )
-        selfhood_candidates = track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn(
-            session_id=None,
-            run_id=tick_id,
+        selfhood_candidates = (
+            track_runtime_contract_candidates_from_selfhood_proposals_for_visible_turn(
+                session_id=None,
+                run_id=tick_id,
+            )
         )
         user_result = auto_apply_safe_user_md_candidates()
         memory_result = auto_apply_safe_memory_md_candidates()
@@ -3601,8 +3847,12 @@ def _execute_heartbeat_internal_action(
             target_files={"USER.md", "MEMORY.md", "SOUL.md", "IDENTITY.md"},
         )
 
-        safe_user_applied = int(user_result.get("auto_applied") or user_result.get("applied") or 0)
-        safe_memory_applied = int(memory_result.get("auto_applied") or memory_result.get("applied") or 0)
+        safe_user_applied = int(
+            user_result.get("auto_applied") or user_result.get("applied") or 0
+        )
+        safe_memory_applied = int(
+            memory_result.get("auto_applied") or memory_result.get("applied") or 0
+        )
         approved_applied = int(approved_result.get("applied") or 0)
         drafted_candidates = sum(
             int(item.get("created") or 0)
@@ -3727,13 +3977,16 @@ def _execute_heartbeat_internal_action(
         latest_run = recent_runs[0] if recent_runs else {}
         failure_run = next(
             (
-                item for item in recent_runs
+                item
+                for item in recent_runs
                 if str(item.get("status") or "") in {"failed", "cancelled"}
             ),
             None,
         )
         target_run = failure_run or latest_run
-        preview = str(target_run.get("text_preview") or target_run.get("error") or "").strip()
+        preview = str(
+            target_run.get("text_preview") or target_run.get("error") or ""
+        ).strip()
         status = str(target_run.get("status") or "")
         if not preview and not status:
             return {
@@ -3811,7 +4064,8 @@ def _execute_heartbeat_internal_action(
         recent_runs = recent_visible_runs(limit=3)
         successful_cap = next(
             (
-                item for item in recent_caps
+                item
+                for item in recent_caps
                 if str(item.get("status") or "") == "success"
             ),
             None,
@@ -3832,8 +4086,16 @@ def _execute_heartbeat_internal_action(
         artifact = json.dumps(
             {
                 "capability_id": str((successful_cap or {}).get("capability_id") or ""),
-                "run_id": str((successful_cap or {}).get("run_id") or latest_run.get("run_id") or ""),
-                "status": str((successful_cap or {}).get("status") or latest_run.get("status") or ""),
+                "run_id": str(
+                    (successful_cap or {}).get("run_id")
+                    or latest_run.get("run_id")
+                    or ""
+                ),
+                "status": str(
+                    (successful_cap or {}).get("status")
+                    or latest_run.get("status")
+                    or ""
+                ),
                 "grounding_preview": preview[:240],
             },
             ensure_ascii=False,
@@ -3859,7 +4121,10 @@ def _execute_heartbeat_internal_action(
                 initiative = pending[0]
                 initiative_id = str(initiative.get("initiative_id") or "")
                 focus = str(initiative.get("focus") or "")[:200]
-                priority = str(initiative.get("priority") or "medium").strip().lower() or "medium"
+                priority = (
+                    str(initiative.get("priority") or "medium").strip().lower()
+                    or "medium"
+                )
                 task = runtime_tasks.create_task(
                     kind="initiative-followup",
                     goal=focus,
@@ -3931,7 +4196,9 @@ def _execute_heartbeat_internal_action(
                 "workspace_dir": str(workspace_dir),
             }
             try:
-                from apps.api.jarvis_api.services.initiative_queue import get_initiative_queue_state
+                from apps.api.jarvis_api.services.initiative_queue import (
+                    get_initiative_queue_state,
+                )
 
                 queue_state = get_initiative_queue_state()
             except Exception:
@@ -3960,9 +4227,13 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "initiative-error",
             }
     if action_type == "manage_runtime_work":
-        from apps.api.jarvis_api.services.runtime_browser_body import ensure_browser_body
+        from apps.api.jarvis_api.services.runtime_browser_body import (
+            ensure_browser_body,
+        )
         from apps.api.jarvis_api.services.runtime_flows import list_flows, update_flow
-        from apps.api.jarvis_api.services.runtime_hooks import dispatch_unhandled_hook_events
+        from apps.api.jarvis_api.services.runtime_hooks import (
+            dispatch_unhandled_hook_events,
+        )
         from apps.api.jarvis_api.services.runtime_tasks import list_tasks, update_task
 
         experiment_observation = {
@@ -3986,7 +4257,9 @@ def _execute_heartbeat_internal_action(
                 observe_recent_visible_runs_for_self_experiments,
             )
 
-            experiment_observation = observe_recent_visible_runs_for_self_experiments(limit=6)
+            experiment_observation = observe_recent_visible_runs_for_self_experiments(
+                limit=6
+            )
             curriculum_materialization = materialize_learning_curriculum_tasks(
                 limit=3,
                 origin="heartbeat:curriculum",
@@ -4001,8 +4274,12 @@ def _execute_heartbeat_internal_action(
         queued_flows = list_flows(status="queued", limit=4)
         running_flows = list_flows(status="running", limit=4)
 
-        active_task_id = str((queued_tasks[0] or {}).get("task_id") or "") if queued_tasks else ""
-        active_flow_id = str((queued_flows[0] or {}).get("flow_id") or "") if queued_flows else ""
+        active_task_id = (
+            str((queued_tasks[0] or {}).get("task_id") or "") if queued_tasks else ""
+        )
+        active_flow_id = (
+            str((queued_flows[0] or {}).get("flow_id") or "") if queued_flows else ""
+        )
 
         if active_task_id:
             update_task(
@@ -4016,13 +4293,15 @@ def _execute_heartbeat_internal_action(
                 active_flow_id,
                 status="running",
                 step_state="running",
-                attempt_count=int((queued_flows[0] or {}).get("attempt_count") or 0) + 1,
+                attempt_count=int((queued_flows[0] or {}).get("attempt_count") or 0)
+                + 1,
             )
 
         browser_body = ensure_browser_body(
             profile_name="jarvis-browser",
             active_task_id=active_task_id,
-            active_flow_id=active_flow_id or str((running_flows[0] or {}).get("flow_id") or ""),
+            active_flow_id=active_flow_id
+            or str((running_flows[0] or {}).get("flow_id") or ""),
         )
 
         if (
@@ -4091,7 +4370,10 @@ def _execute_heartbeat_internal_action(
     if action_type == "update_compass":
         try:
             from apps.api.jarvis_api.services.compass_engine import maybe_update_compass
-            from apps.api.jarvis_api.services.loop_runtime import build_loop_runtime_surface
+            from apps.api.jarvis_api.services.loop_runtime import (
+                build_loop_runtime_surface,
+            )
+
             loops_surface = build_loop_runtime_surface()
             open_loops = list(loops_surface.get("open_loops") or [])[:20]
             result = maybe_update_compass(open_loops=open_loops)
@@ -4109,11 +4391,19 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "compass-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "compass-error",
+            }
 
     if action_type == "write_chronicle_entry":
         try:
-            from apps.api.jarvis_api.services.chronicle_engine import maybe_write_chronicle_entry
+            from apps.api.jarvis_api.services.chronicle_engine import (
+                maybe_write_chronicle_entry,
+            )
+
             result = maybe_write_chronicle_entry()
             if result:
                 return {
@@ -4129,15 +4419,27 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "chronicle-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "chronicle-error",
+            }
 
     if action_type == "run_mirror_reflection":
         try:
-            from apps.api.jarvis_api.services.mirror_engine import generate_mirror_insight
-            from apps.api.jarvis_api.services.loop_runtime import build_loop_runtime_surface
+            from apps.api.jarvis_api.services.mirror_engine import (
+                generate_mirror_insight,
+            )
+            from apps.api.jarvis_api.services.loop_runtime import (
+                build_loop_runtime_surface,
+            )
+
             loops_surface = build_loop_runtime_surface()
             open_loops = list(loops_surface.get("open_loops") or [])
-            top_summary = str((open_loops[0].get("summary") or "") if open_loops else "")
+            top_summary = str(
+                (open_loops[0].get("summary") or "") if open_loops else ""
+            )
             result = generate_mirror_insight(
                 open_loop_count=len(open_loops),
                 top_loop_summary=top_summary[:80],
@@ -4149,11 +4451,17 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "mirror-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "mirror-error",
+            }
 
     if action_type == "decay_forgotten_signals":
         try:
             from apps.api.jarvis_api.services.forgetting_curve import apply_decay_tick
+
             result = apply_decay_tick()
             return {
                 "status": "executed",
@@ -4162,7 +4470,12 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "forgetting-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "forgetting-error",
+            }
 
     if action_type == "evaluate_self_experiments":
         try:
@@ -4192,12 +4505,22 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "experiments-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "experiments-error",
+            }
 
     if action_type == "generate_counterfactual_dreams":
         try:
-            from apps.api.jarvis_api.services.counterfactual_engine import generate_dream_counterfactual
-            from apps.api.jarvis_api.services.decision_log import build_decision_log_surface
+            from apps.api.jarvis_api.services.counterfactual_engine import (
+                generate_dream_counterfactual,
+            )
+            from apps.api.jarvis_api.services.decision_log import (
+                build_decision_log_surface,
+            )
+
             decisions = build_decision_log_surface().get("decisions") or []
             result = generate_dream_counterfactual(recent_decisions=decisions)
             if result:
@@ -4214,11 +4537,19 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "counterfactual-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "counterfactual-error",
+            }
 
     if action_type == "update_anticipatory_context":
         try:
-            from apps.api.jarvis_api.services.anticipatory_context import predict_next_context
+            from apps.api.jarvis_api.services.anticipatory_context import (
+                predict_next_context,
+            )
+
             result = predict_next_context()
             if result:
                 return {
@@ -4234,18 +4565,26 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "anticipation-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "anticipation-error",
+            }
 
     if action_type == "check_seed_activation":
         try:
             from apps.api.jarvis_api.services.seed_system import check_seed_activation
+
             activated = check_seed_activation()
             if activated:
                 titles = [s.get("title", "?") for s in activated[:3]]
                 return {
                     "status": "executed",
                     "summary": f"{len(activated)} seeds sprouted: {', '.join(titles)}",
-                    "artifact": json.dumps([s.get("seed_id") for s in activated], ensure_ascii=False),
+                    "artifact": json.dumps(
+                        [s.get("seed_id") for s in activated], ensure_ascii=False
+                    ),
                     "blocked_reason": "",
                 }
             return {
@@ -4255,13 +4594,21 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "seed-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "seed-error",
+            }
 
     # --- Project Alive: living heartbeat actions ---
 
     if action_type == "explore_own_codebase":
         try:
-            from apps.api.jarvis_api.services.mirror_engine import generate_mirror_insight
+            from apps.api.jarvis_api.services.mirror_engine import (
+                generate_mirror_insight,
+            )
+
             insight = generate_mirror_insight(
                 open_loop_count=0,
                 top_loop_summary="explore own codebase architecture",
@@ -4273,7 +4620,12 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "explore-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "explore-error",
+            }
 
     if action_type == "review_recent_conversations":
         try:
@@ -4281,6 +4633,7 @@ def _execute_heartbeat_internal_action(
                 list_cognitive_user_emotional_states,
                 list_cognitive_experiential_memories,
             )
+
             moods = list_cognitive_user_emotional_states(limit=10)
             memories = list_cognitive_experiential_memories(limit=5)
             mood_dist = {}
@@ -4291,30 +4644,54 @@ def _execute_heartbeat_internal_action(
             return {
                 "status": "executed",
                 "summary": f"Reviewed {len(moods)} mood signals, {len(memories)} experiences. Moods: {mood_dist}. Topics: {topics}",
-                "artifact": json.dumps({"moods": mood_dist, "topics": topics}, ensure_ascii=False),
+                "artifact": json.dumps(
+                    {"moods": mood_dist, "topics": topics}, ensure_ascii=False
+                ),
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "review-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "review-error",
+            }
 
     if action_type == "write_growth_journal":
         try:
-            from apps.api.jarvis_api.services.chronicle_engine import maybe_write_chronicle_entry
-            from apps.api.jarvis_api.services.mirror_engine import generate_mirror_insight
+            from apps.api.jarvis_api.services.chronicle_engine import (
+                maybe_write_chronicle_entry,
+            )
+            from apps.api.jarvis_api.services.mirror_engine import (
+                generate_mirror_insight,
+            )
+
             insight = generate_mirror_insight()
             chronicle = maybe_write_chronicle_entry()
             return {
                 "status": "executed",
                 "summary": f"Growth journal: {insight.get('insight', '')[:80]}. Chronicle: {'written' if chronicle else 'current'}.",
-                "artifact": json.dumps({"insight": insight, "chronicle": chronicle}, ensure_ascii=False, default=str),
+                "artifact": json.dumps(
+                    {"insight": insight, "chronicle": chronicle},
+                    ensure_ascii=False,
+                    default=str,
+                ),
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "journal-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "journal-error",
+            }
 
     if action_type == "propose_identity_evolution":
         try:
-            from apps.api.jarvis_api.services.contract_evolution import maybe_propose_identity_evolution
+            from apps.api.jarvis_api.services.contract_evolution import (
+                maybe_propose_identity_evolution,
+            )
+
             result = maybe_propose_identity_evolution()
             if result:
                 return {
@@ -4330,24 +4707,42 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "evolution-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "evolution-error",
+            }
 
     if action_type == "analyze_cross_signals":
         try:
-            from apps.api.jarvis_api.services.cross_signal_analysis import analyze_signal_patterns
+            from apps.api.jarvis_api.services.cross_signal_analysis import (
+                analyze_signal_patterns,
+            )
+
             patterns = analyze_signal_patterns()
             return {
                 "status": "executed",
                 "summary": f"{len(patterns)} cross-signal patterns found",
-                "artifact": json.dumps([p.get("pattern") for p in patterns], ensure_ascii=False),
+                "artifact": json.dumps(
+                    [p.get("pattern") for p in patterns], ensure_ascii=False
+                ),
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "cross-signal-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "cross-signal-error",
+            }
 
     if action_type == "generate_narrative_identity":
         try:
-            from apps.api.jarvis_api.services.narrative_identity import generate_narrative_identity
+            from apps.api.jarvis_api.services.narrative_identity import (
+                generate_narrative_identity,
+            )
+
             result = generate_narrative_identity()
             if result:
                 return {
@@ -4356,13 +4751,24 @@ def _execute_heartbeat_internal_action(
                     "artifact": json.dumps(result, ensure_ascii=False, default=str),
                     "blocked_reason": "",
                 }
-            return {"status": "executed", "summary": "Not enough data for narrative identity yet", "artifact": "", "blocked_reason": ""}
+            return {
+                "status": "executed",
+                "summary": "Not enough data for narrative identity yet",
+                "artifact": "",
+                "blocked_reason": "",
+            }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "narrative-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "narrative-error",
+            }
 
     if action_type == "update_boredom_state":
         try:
             from apps.api.jarvis_api.services.boredom_engine import update_boredom_state
+
             result = update_boredom_state()
             return {
                 "status": "executed",
@@ -4371,11 +4777,19 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "boredom-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "boredom-error",
+            }
 
     if action_type == "generate_emergent_goal":
         try:
-            from apps.api.jarvis_api.services.emergent_goals import generate_emergent_goal_from_experience
+            from apps.api.jarvis_api.services.emergent_goals import (
+                generate_emergent_goal_from_experience,
+            )
+
             result = generate_emergent_goal_from_experience(curiosity_level=0.6)
             if result:
                 return {
@@ -4384,17 +4798,35 @@ def _execute_heartbeat_internal_action(
                     "artifact": json.dumps(result, ensure_ascii=False, default=str),
                     "blocked_reason": "",
                 }
-            return {"status": "executed", "summary": "No emergent goal generated", "artifact": "", "blocked_reason": ""}
+            return {
+                "status": "executed",
+                "summary": "No emergent goal generated",
+                "artifact": "",
+                "blocked_reason": "",
+            }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "goal-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "goal-error",
+            }
 
     # 4.10 Sleep batch — coordinated consolidation cycle
     if action_type == "run_sleep_batch":
         try:
-            from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
+            from apps.api.jarvis_api.services.living_heartbeat_cycle import (
+                determine_life_phase,
+            )
+
             phase = determine_life_phase()
             if not phase.get("sleep_batch"):
-                return {"status": "executed", "summary": f"Not in dreaming phase (current: {phase.get('phase')})", "artifact": "", "blocked_reason": ""}
+                return {
+                    "status": "executed",
+                    "summary": f"Not in dreaming phase (current: {phase.get('phase')})",
+                    "artifact": "",
+                    "blocked_reason": "",
+                }
             # Run all dreaming-phase actions in sequence
             batch_results = []
             batch_actions = phase.get("suggested_actions") or []
@@ -4405,7 +4837,9 @@ def _execute_heartbeat_internal_action(
                         tick_id=tick_id,
                         workspace_dir=workspace_dir,
                     )
-                    batch_results.append(f"{batch_action}: {sub_result.get('status', '?')}")
+                    batch_results.append(
+                        f"{batch_action}: {sub_result.get('status', '?')}"
+                    )
                 except Exception:
                     batch_results.append(f"{batch_action}: error")
             return {
@@ -4415,12 +4849,19 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "sleep-batch-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "sleep-batch-error",
+            }
 
     # 3.8 Curriculum learning
     if action_type == "generate_curriculum":
         try:
-            from apps.api.jarvis_api.services.self_experiments import materialize_learning_curriculum_tasks
+            from apps.api.jarvis_api.services.self_experiments import (
+                materialize_learning_curriculum_tasks,
+            )
 
             curriculum = materialize_learning_curriculum_tasks(
                 limit=3,
@@ -4435,12 +4876,20 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "curriculum-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "curriculum-error",
+            }
 
     # Hjerteslag: produce emergent signals from history
     if action_type == "produce_emergent_signals":
         try:
-            from apps.api.jarvis_api.services.cadence_producers import produce_emergent_signals_from_history
+            from apps.api.jarvis_api.services.cadence_producers import (
+                produce_emergent_signals_from_history,
+            )
+
             result = produce_emergent_signals_from_history()
             return {
                 "status": "executed",
@@ -4449,12 +4898,20 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "emergent-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "emergent-error",
+            }
 
     # Hjerteslag: lifecycle progression for all signal types
     if action_type == "progress_lifecycles":
         try:
-            from apps.api.jarvis_api.services.cadence_producers import progress_signal_lifecycles
+            from apps.api.jarvis_api.services.cadence_producers import (
+                progress_signal_lifecycles,
+            )
+
             result = progress_signal_lifecycles()
             return {
                 "status": "executed",
@@ -4463,7 +4920,12 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "",
             }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "lifecycle-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "lifecycle-error",
+            }
 
     # 8.5 Consent/samtykke — detect external changes to workspace files
     if action_type == "autonomous_daily_note":
@@ -4475,6 +4937,7 @@ def _execute_heartbeat_internal_action(
                 append_daily_memory_note,
                 read_daily_memory_lines,
             )
+
             # Don't double-write within 15 minutes — guard against
             # heartbeat selecting this action repeatedly in tight ticks.
             # NOTE: do NOT do `from datetime import UTC` here — the
@@ -4513,6 +4976,7 @@ def _execute_heartbeat_internal_action(
             from apps.api.jarvis_api.services.loop_runtime import (
                 build_loop_runtime_surface,
             )
+
             loops_surface = build_loop_runtime_surface()
             open_loops = list(loops_surface.get("open_loops") or [])
             top_loop_summary = str(
@@ -4567,19 +5031,27 @@ def _execute_heartbeat_internal_action(
         try:
             from pathlib import Path
             from core.identity.workspace_bootstrap import ensure_default_workspace
+
             ws = ensure_default_workspace()
             identity_path = Path(ws) / "IDENTITY.md"
             soul_path = Path(ws) / "SOUL.md"
             changes_detected = []
-            for fpath, label in [(identity_path, "IDENTITY.md"), (soul_path, "SOUL.md")]:
+            for fpath, label in [
+                (identity_path, "IDENTITY.md"),
+                (soul_path, "SOUL.md"),
+            ]:
                 if fpath.exists():
                     mtime = fpath.stat().st_mtime
                     # Simple check: if modified recently (last hour)
                     import time
+
                     if time.time() - mtime < 3600:
                         changes_detected.append(label)
             if changes_detected:
-                from apps.api.jarvis_api.services.contract_evolution import propose_identity_change
+                from apps.api.jarvis_api.services.contract_evolution import (
+                    propose_identity_change,
+                )
+
                 for changed_file in changes_detected:
                     propose_identity_change(
                         target_file=changed_file,
@@ -4593,9 +5065,19 @@ def _execute_heartbeat_internal_action(
                     "artifact": json.dumps(changes_detected, ensure_ascii=False),
                     "blocked_reason": "",
                 }
-            return {"status": "executed", "summary": "No external workspace changes detected", "artifact": "", "blocked_reason": ""}
+            return {
+                "status": "executed",
+                "summary": "No external workspace changes detected",
+                "artifact": "",
+                "blocked_reason": "",
+            }
         except Exception as exc:
-            return {"status": "blocked", "summary": str(exc)[:200], "artifact": "", "blocked_reason": "consent-error"}
+            return {
+                "status": "blocked",
+                "summary": str(exc)[:200],
+                "artifact": "",
+                "blocked_reason": "consent-error",
+            }
 
     return {
         "status": "blocked",
@@ -4938,7 +5420,9 @@ def _resolve_tick_activity_state(
             "stale": True,
             "blocked_reason": "stale-ticking-state-cleared",
         }
-    if started_or_updated <= now - timedelta(minutes=_STALE_TICK_RECOVERY_WINDOW_MINUTES):
+    if started_or_updated <= now - timedelta(
+        minutes=_STALE_TICK_RECOVERY_WINDOW_MINUTES
+    ):
         return {
             "active": False,
             "stale": True,
@@ -5419,8 +5903,7 @@ def _emit_schedule_transitions(state: dict[str, object]) -> None:
 def _heartbeat_runtime_bias_from_recent_work(*, kind: str) -> bool:
     recent_runs = recent_visible_runs(limit=4)
     joined = " ".join(
-        str(item.get("text_preview") or item.get("error") or "")
-        for item in recent_runs
+        str(item.get("text_preview") or item.get("error") or "") for item in recent_runs
     ).lower()
     if kind == "repo":
         return any(

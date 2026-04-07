@@ -20,6 +20,8 @@ def test_cognitive_frame_has_required_keys() -> None:
     assert "affordances" in frame
     assert "temporal" in frame
     assert "continuity_pressure" in frame
+    assert "private_signal_pressure" in frame
+    assert "private_signal_items" in frame
     assert "continuity_mode" in frame
     assert "active_constraints" in frame
     assert "experiential_support" in frame
@@ -255,6 +257,7 @@ def test_counts_are_populated() -> None:
     assert "available_affordances" in counts
     assert "gated_affordances" in counts
     assert "inner_forces" in counts
+    assert "private_signals" in counts
     assert all(isinstance(v, int) for v in counts.values())
 
 
@@ -323,3 +326,66 @@ def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:
     assert frame["counts"]["integrated_signal_inputs"] >= 10
     assert frame["active_constraints"]
     assert any(item["source"] == "world-model" for item in frame["salient_items"])
+
+
+def test_cognitive_frame_elevates_private_signal_pressure(monkeypatch) -> None:
+    from apps.api.jarvis_api.services import runtime_cognitive_conductor as conductor
+
+    monkeypatch.setattr(conductor, "_safe_brain_context", lambda: {"record_count": 0, "excerpts": [], "by_type": {}})
+    monkeypatch.setattr(
+        conductor,
+        "_safe_self_knowledge",
+        lambda heartbeat_state=None: {
+            "active_capabilities": {"items": []},
+            "approval_gated": {"items": []},
+            "passive_inner_forces": {"items": []},
+            "structural_constraints": {"items": []},
+        },
+    )
+    monkeypatch.setattr(conductor, "_safe_open_loops", lambda: {"summary": {"open_count": 0}, "items": []})
+    monkeypatch.setattr(conductor, "_safe_question_gates", lambda: {"active": False, "items": []})
+    monkeypatch.setattr(
+        conductor,
+        "_safe_initiative_tension",
+        lambda: {
+            "active": True,
+            "items": [{"source_anchor": "stalled-work", "summary": "Bounded pull stays active."}],
+            "summary": {"active_count": 1, "current_intensity": "medium"},
+        },
+    )
+    monkeypatch.setattr(
+        conductor,
+        "_safe_private_state",
+        lambda: {
+            "active": True,
+            "items": [{"source_anchor": "carry-thread", "summary": "Private state remains loaded."}],
+            "summary": {"active_count": 1, "current_pressure": "high"},
+        },
+    )
+    monkeypatch.setattr(conductor, "_safe_visible_status", lambda: {"provider_status": "idle"})
+    monkeypatch.setattr(conductor, "_safe_liveness_snapshot", lambda heartbeat_state=None: {"liveness_state": "quiet"})
+    monkeypatch.setattr(conductor, "_safe_experiential_support", lambda: {})
+    monkeypatch.setattr(conductor, "_safe_relation_state", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_relation_continuity", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_self_narrative_continuity", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_world_model", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_remembered_facts", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_user_understanding", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_executive_contradiction", lambda: {"active": False, "items": []})
+    monkeypatch.setattr(conductor, "_safe_meaning_significance", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_metabolism", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_release_markers", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_attachment_topology", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_loyalty_gradient", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_diary_synthesis", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_chronicle_consolidation", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_self_review", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_dream_family", lambda: {"items": []})
+
+    frame = conductor.build_cognitive_frame()
+
+    assert frame["private_signal_pressure"] == "high"
+    assert frame["counts"]["private_signals"] >= 2
+    assert any(item["source"] == "initiative-tension" for item in frame["salient_items"])
+    assert any(item["source"] == "private-state" for item in frame["private_signal_items"])
+    assert "Private: high" in frame["summary"]

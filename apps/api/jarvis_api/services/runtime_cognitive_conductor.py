@@ -110,6 +110,7 @@ def _select_salient_items(
     *,
     brain_excerpts: list[dict[str, object]],
     open_loop_items: list[dict[str, object]],
+    private_signal_items: list[dict[str, str]],
     inner_forces: list[dict[str, object]],
     gate_items: list[dict[str, object]],
     relation_items: list[dict[str, object]],
@@ -125,7 +126,7 @@ def _select_salient_items(
 ) -> list[dict[str, str]]:
     """Select the most salient items across all sources.
 
-    Priority order: active gates > open loops > brain carry > inner forces.
+    Priority order: active gates > open loops > private pressure > brain carry > inner forces.
     Returns at most _MAX_SALIENT_ITEMS items.
     """
     items: list[dict[str, str]] = []
@@ -189,6 +190,13 @@ def _select_salient_items(
         if title and status in {"active", "softening"}:
             items.append({"source": "open-loop", "summary": f"{title} ({status})", "temporal": "current-session"})
 
+    for signal in private_signal_items[:2]:
+        source = str(signal.get("source") or "").strip()
+        summary = str(signal.get("summary") or "").strip()[:_MAX_SLICE_CHARS]
+        temporal = str(signal.get("temporal") or "current-session").strip() or "current-session"
+        if source and summary:
+            items.append({"source": source, "summary": summary, "temporal": temporal})
+
     # Brain carry — persistent inner threads
     for excerpt in brain_excerpts[:2]:
         focus = str(excerpt.get("focus") or "")[:40]
@@ -235,6 +243,48 @@ def _select_salient_items(
             items.append({"source": "release-marker", "summary": summary, "temporal": "slow-burn"})
 
     return items[:_MAX_SALIENT_ITEMS]
+
+
+def _collect_private_signal_items(
+    *,
+    tension_surface: dict[str, object],
+    private_state: dict[str, object],
+) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+
+    tension_summary = tension_surface.get("summary") or {}
+    tension_items = tension_surface.get("items") or []
+    tension_intensity = str(tension_summary.get("current_intensity") or "low")
+    if int(tension_summary.get("active_count") or 0) > 0:
+        anchor = str(
+            (tension_items[0] or {}).get("source_anchor")
+            or (tension_items[0] or {}).get("title")
+            or (tension_items[0] or {}).get("summary")
+            or "initiative tension"
+        )[:80]
+        items.append({
+            "source": "initiative-tension",
+            "summary": f"Private initiative tension is {tension_intensity} around {anchor}",
+            "temporal": "current-session",
+        })
+
+    private_summary = private_state.get("summary") or {}
+    private_items = private_state.get("items") or []
+    current_pressure = str(private_summary.get("current_pressure") or "low")
+    if int(private_summary.get("active_count") or 0) > 0 and current_pressure in {"medium", "high"}:
+        anchor = str(
+            (private_items[0] or {}).get("source_anchor")
+            or (private_items[0] or {}).get("title")
+            or (private_items[0] or {}).get("summary")
+            or "private state"
+        )[:80]
+        items.append({
+            "source": "private-state",
+            "summary": f"Private state pressure is {current_pressure} around {anchor}",
+            "temporal": "current-session",
+        })
+
+    return items[:2]
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +366,7 @@ def build_cognitive_frame(
         loop_surface = _safe_open_loops()
         gate_surface = _safe_question_gates()
         tension_surface = _safe_initiative_tension()
+        private_state = _safe_private_state()
         visible_status = _safe_visible_status()
         liveness = _safe_liveness_snapshot(heartbeat_state=heartbeat_state)
         experiential_support = _safe_experiential_support()
@@ -371,6 +422,11 @@ def build_cognitive_frame(
 
         tension_active = bool(tension_surface.get("active"))
         tension_intensity = str((tension_surface.get("summary") or {}).get("current_intensity") or "low")
+        private_pressure = str((private_state.get("summary") or {}).get("current_pressure") or "low")
+        private_signal_items = _collect_private_signal_items(
+            tension_surface=tension_surface,
+            private_state=private_state,
+        )
 
         visible_active = str(visible_status.get("provider_status") or "") in {"ready", "live-verified"}
 
@@ -412,6 +468,7 @@ def build_cognitive_frame(
     salient = _select_salient_items(
         brain_excerpts=brain_excerpts,
         open_loop_items=loop_items,
+        private_signal_items=private_signal_items,
         inner_forces=inner_forces,
         gate_items=gate_items,
         relation_items=relation_items,
@@ -446,6 +503,12 @@ def build_cognitive_frame(
     elif brain_count >= 2 or open_loop_count >= 1:
         continuity_pressure = "medium"
 
+    private_signal_pressure = "low"
+    if tension_intensity == "medium" or private_pressure == "high":
+        private_signal_pressure = "high"
+    elif tension_active or private_pressure == "medium" or private_signal_items:
+        private_signal_pressure = "medium"
+
     # Active constraints (compact)
     constraints_summary = [str(c.get("label") or "")[:60] for c in constraint_items[:4]]
     if contradiction_active:
@@ -463,6 +526,8 @@ def build_cognitive_frame(
         "affordances": affordances,
         "temporal": temporal,
         "continuity_pressure": continuity_pressure,
+        "private_signal_pressure": private_signal_pressure,
+        "private_signal_items": private_signal_items[:2],
         "continuity_mode": continuity_mode,
         "experiential_support": experiential_support if experiential_support.get("support_posture") else {},
         "active_constraints": constraints_summary,
@@ -473,6 +538,7 @@ def build_cognitive_frame(
             "available_affordances": len(affordances["available_now"]),
             "gated_affordances": len(affordances["gated_now"]),
             "inner_forces": len(inner_forces),
+            "private_signals": len(private_signal_items),
             "integrated_signal_inputs": (
                 len(relation_items)
                 + len(world_items)
@@ -491,6 +557,7 @@ def build_cognitive_frame(
             salient=salient,
             temporal=temporal,
             continuity_pressure=continuity_pressure,
+            private_signal_pressure=private_signal_pressure,
             brain_count=brain_count,
             open_loop_count=open_loop_count,
         ),
@@ -503,6 +570,7 @@ def _build_frame_summary(
     salient: list[dict[str, str]],
     temporal: dict[str, str],
     continuity_pressure: str,
+    private_signal_pressure: str,
     brain_count: int,
     open_loop_count: int,
 ) -> str:
@@ -513,6 +581,7 @@ def _build_frame_summary(
         f"[{mode['mode']}] {mode['reason']}. "
         f"Temporal: {temporal['horizon']}. "
         f"Carry: {continuity_pressure} ({brain_count} brain, {open_loop_count} loops). "
+        f"Private: {private_signal_pressure}. "
         f"Salient: {salient_str}"
     )
 
@@ -533,6 +602,7 @@ def build_cognitive_frame_prompt_section() -> str | None:
     salient = frame["salient_items"]
     temporal = frame["temporal"]
     continuity_pressure = frame["continuity_pressure"]
+    private_signal_pressure = str(frame.get("private_signal_pressure") or "low")
     affordances = frame["affordances"]
 
     experiential_support = frame.get("experiential_support") or {}
@@ -540,6 +610,8 @@ def build_cognitive_frame_prompt_section() -> str | None:
     lines = [f"Cognitive frame [{mode['mode']}]: {mode['reason']}"]
     lines.append(f"- Time horizon: {temporal['horizon']} — {temporal['reason'][:80]}")
     lines.append(f"- Continuity pressure: {continuity_pressure}")
+    if private_signal_pressure != "low":
+        lines.append(f"- Private signal pressure: {private_signal_pressure}")
 
     if experiential_support.get("support_posture") and experiential_support["support_posture"] != "steadying":
         lines.append(
@@ -610,6 +682,14 @@ def _safe_initiative_tension() -> dict[str, object]:
     try:
         from apps.api.jarvis_api.services.private_initiative_tension_signal_tracking import build_runtime_private_initiative_tension_signal_surface
         return build_runtime_private_initiative_tension_signal_surface(limit=2)
+    except Exception:
+        return {"active": False, "items": [], "summary": {}}
+
+
+def _safe_private_state() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.private_state_snapshot_tracking import build_runtime_private_state_snapshot_surface
+        return build_runtime_private_state_snapshot_surface(limit=2)
     except Exception:
         return {"active": False, "items": [], "summary": {}}
 

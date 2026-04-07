@@ -221,9 +221,15 @@ def _derive_wrongness_state(
     loop_summary: dict[str, object],
     quiet_initiative: dict[str, object],
 ) -> str:
+    # Note: deception_guard.has_blocks is essentially always true at baseline
+    # because the preventive rules ("don't claim X without evidence") fire on
+    # the default no-execution-evidence state. Treating that alone as strain
+    # creates a permanent epistemic alarm, which cascades into council /
+    # adaptive reasoning / guided learning as a constrained-everything
+    # pressure spiral. Only treat blocks as strain when they coincide with
+    # actual embodied or affective friction.
     if (
-        deception_guard.get("has_blocks")
-        or str(embodied_state.get("state") or "steady") in {"strained", "degraded"}
+        str(embodied_state.get("state") or "steady") in {"strained", "degraded"}
         or str(affective_meta_state.get("state") or "settled") == "burdened"
     ):
         return "strained"

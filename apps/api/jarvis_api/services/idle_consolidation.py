@@ -12,10 +12,10 @@ from uuid import uuid4
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record, list_private_brain_records
 
-_CONSOLIDATION_COOLDOWN_MINUTES = 25
-_CONSOLIDATION_VISIBLE_GRACE_MINUTES = 12
-_ADJACENT_PRODUCER_GRACE_MINUTES = 4
-_MIN_SOURCE_INPUTS = 3
+_CONSOLIDATION_COOLDOWN_MINUTES = 12
+_CONSOLIDATION_VISIBLE_GRACE_MINUTES = 6
+_ADJACENT_PRODUCER_GRACE_MINUTES = 1
+_MIN_SOURCE_INPUTS = 2
 _DUPLICATE_WINDOW = 8
 
 _last_run_at: str = ""

@@ -37,8 +37,12 @@ def test_council_runtime_builds_from_subagent_ecology(isolated_runtime) -> None:
             "bearing": "inward",
         },
         epistemic_runtime_state={
-            "wrongness_state": "off",
-            "regret_signal": "slight",
+            # Use "strained" — only actual epistemic strain triggers
+            # critic.constrain → bounded-check. "off" is treated as a
+            # neutral no-active-assessment state per council_runtime
+            # _role_position semantics.
+            "wrongness_state": "strained",
+            "regret_signal": "active",
         },
         conflict_trace={
             "outcome": "quiet_hold",

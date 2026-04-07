@@ -91,6 +91,51 @@ def refresh_runtime_self_model_signal_statuses() -> dict[str, int]:
     return {"stale_marked": refreshed}
 
 
+def build_self_model_signal_prompt_section(*, limit: int = 4) -> str | None:
+    """Compact prompt-line of active self-model signals.
+
+    Jarvis previously had no visible signal of his own
+    limitations / strengths / domain confidence baselines in his
+    prompts — the data lived in self_model_signal_tracking but no
+    section ever rendered it. This builder closes that gap.
+    """
+    surface = build_runtime_self_model_signal_surface(limit=max(limit, 1))
+    items = list(surface.get("items") or [])[: max(limit, 1)]
+    if not items:
+        return None
+
+    summary = surface.get("summary") or {}
+    active_count = int(summary.get("active_count") or 0)
+    if active_count == 0:
+        return None
+
+    rendered: list[str] = []
+    for item in items:
+        if str(item.get("status") or "") != "active":
+            continue
+        title = str(item.get("title") or "").strip()
+        confidence = str(item.get("confidence") or "").strip()
+        if not title:
+            continue
+        if confidence:
+            rendered.append(f"{title} ({confidence})")
+        else:
+            rendered.append(title)
+        if len(rendered) >= limit:
+            break
+
+    if not rendered:
+        return None
+
+    return "\n".join(
+        [
+            "Self-model signals (derived from your own track record, internal-only):",
+            *[f"- {line}" for line in rendered],
+            "Use these as bounded self-knowledge — visible runtime truth still outranks them.",
+        ]
+    )
+
+
 def build_runtime_self_model_signal_surface(*, limit: int = 8) -> dict[str, object]:
     refresh_runtime_self_model_signal_statuses()
     items = list_runtime_self_model_signals(limit=max(limit, 1))

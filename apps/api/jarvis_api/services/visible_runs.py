@@ -1750,6 +1750,33 @@ def _execute_visible_capability_entries(
             cap_result_text = str(cap_result_obj.get("text") or "").strip()
         cap_detail = str(capability_result.get("detail") or "").strip()
 
+        # Surface detailed error context when a capability fails. Jarvis
+        # previously only saw the short cap_detail string ("blocked-X"),
+        # which made it hard to debug what went wrong. Now error results
+        # include exit_code, normalized command, stderr preview, and
+        # block reason as part of the result_text the LLM sees.
+        if cap_status and cap_status != "executed":
+            error_lines: list[str] = [f"TOOL_ERROR status={cap_status}"]
+            if isinstance(cap_result_obj, dict):
+                exit_code = cap_result_obj.get("exit_code")
+                if exit_code is not None:
+                    error_lines.append(f"exit_code={exit_code}")
+                normalized_cmd = str(cap_result_obj.get("normalized_command_text") or "").strip()
+                if normalized_cmd:
+                    error_lines.append(f"normalized_command={normalized_cmd[:200]}")
+                target_path_field = str(cap_result_obj.get("target_path") or cap_result_obj.get("path") or "").strip()
+                if target_path_field:
+                    error_lines.append(f"target_path={target_path_field[:200]}")
+            if cap_detail:
+                error_lines.append(f"detail={cap_detail[:400]}")
+            error_header = " | ".join(error_lines)
+            if cap_result_text:
+                cap_result_text = (
+                    f"{error_header}\n--- captured output ---\n{cap_result_text}"
+                )
+            else:
+                cap_result_text = error_header
+
         # Echo confirmation header for memory/file writes so the LLM gets
         # explicit feedback that the write succeeded — Jarvis previously
         # only saw the merged preview text and could not tell whether the

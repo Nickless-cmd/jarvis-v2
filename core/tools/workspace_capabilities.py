@@ -1143,11 +1143,34 @@ def _invoke_runnable_capability(
             if candidate.exists()
             else ""
         )
+        existing_fingerprint = (
+            _content_fingerprint(existing_content) if existing_content else ""
+        )
+        existing_bytes = len(existing_content.encode("utf-8"))
         merged_content = _merge_workspace_memory_content(
             existing_content=existing_content,
             incoming_content=write_content,
         )
         candidate.write_text(merged_content, encoding="utf-8")
+        # Read-back verification: re-read the file from disk so we can
+        # confirm the bytes Jarvis sees actually match what was written.
+        # If the readback differs (filesystem race, encoding issue,
+        # external mutation), we surface that explicitly so Jarvis is
+        # not lied to about persistence success.
+        try:
+            readback_content = candidate.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            readback_content = ""
+        readback_fingerprint = (
+            _content_fingerprint(readback_content) if readback_content else ""
+        )
+        merged_fingerprint = _content_fingerprint(merged_content)
+        readback_match = bool(
+            readback_fingerprint
+            and readback_fingerprint == merged_fingerprint
+        )
+        merged_bytes = len(merged_content.encode("utf-8"))
+        bytes_delta = merged_bytes - existing_bytes
         return {
             "capability": summary,
             "status": "executed",
@@ -1156,16 +1179,25 @@ def _invoke_runnable_capability(
             "result": {
                 "type": "workspace-memory-write",
                 "path": target_path,
-                "bytes_written": len(merged_content.encode("utf-8")),
+                "bytes_written": merged_bytes,
+                "bytes_before": existing_bytes,
+                "bytes_delta": bytes_delta,
                 "text": _preview_text(
                     merged_content,
                     limit=min(MAX_FILE_OUTPUT_CHARS, 400),
                 ),
-                "content_fingerprint": _content_fingerprint(merged_content),
+                "content_fingerprint": merged_fingerprint,
+                "content_fingerprint_before": existing_fingerprint,
+                "readback_fingerprint": readback_fingerprint,
+                "readback_match": readback_match,
                 "content_source": "explicit-write-content-merged",
                 "workspace_scoped": True,
             },
-            "detail": f"Memory write executed for {target_path}.",
+            "detail": (
+                f"Memory write executed for {target_path}. "
+                f"{bytes_delta:+d} bytes, "
+                f"readback={'verified' if readback_match else 'MISMATCH'}."
+            ),
         }
 
     if summary["execution_mode"] == "workspace-file-write":

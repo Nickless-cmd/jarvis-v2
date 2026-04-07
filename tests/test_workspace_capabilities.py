@@ -30,7 +30,9 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert "tool:read-repository-readme" in runtime_capabilities
     assert "tool:read-external-file-by-path" in runtime_capabilities
     assert "tool:run-non-destructive-command" in runtime_capabilities
+    assert "tool:append-daily-memory" in runtime_capabilities
     assert "tool:propose-workspace-memory-update" in runtime_capabilities
+    assert "tool:rewrite-workspace-memory" in runtime_capabilities
     assert "tool:propose-external-repo-file-update" in runtime_capabilities
 
     assert runtime_capabilities["tool:read-workspace-user-profile"]["available_now"] is True
@@ -38,7 +40,9 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert runtime_capabilities["tool:read-repository-readme"]["available_now"] is True
     assert runtime_capabilities["tool:read-external-file-by-path"]["available_now"] is True
     assert runtime_capabilities["tool:run-non-destructive-command"]["available_now"] is True
+    assert runtime_capabilities["tool:append-daily-memory"]["available_now"] is True
     assert runtime_capabilities["tool:propose-workspace-memory-update"]["runtime_status"] == "approval-required"
+    assert runtime_capabilities["tool:rewrite-workspace-memory"]["runtime_status"] == "approval-required"
     assert runtime_capabilities["tool:propose-workspace-memory-update"]["available_now"] is False
 
     contract = capabilities.get("contract") or {}
@@ -644,6 +648,61 @@ def test_workspace_memory_write_merges_without_deleting_existing_content(isolate
     assert "- Existing fact." in merged
     assert "- New fact." in merged
     assert merged.count("- Existing fact.") == 1
+
+
+def test_workspace_memory_write_reports_resolved_workspace_paths(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:write-workspace-memory",
+        write_content="- Durable fact for path diagnostics.\n",
+    )
+
+    assert result["status"] == "executed"
+    payload = result.get("result") or {}
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "").resolve()
+    assert payload.get("workspace_root") == str(workspace_dir)
+    assert payload.get("resolved_path") == str((workspace_dir / "MEMORY.md").resolve())
+    assert payload.get("workspace_relative_path") == "MEMORY.md"
+
+
+def test_append_daily_memory_reports_expected_workspace_paths(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    blocked = caps_mod.invoke_workspace_capability("tool:append-daily-memory")
+    assert blocked["status"] == "blocked-missing-note"
+    assert "memory/daily/" in str(blocked["detail"])
+
+    executed = caps_mod.invoke_workspace_capability(
+        "tool:append-daily-memory",
+        write_content="Path diagnostics note.",
+    )
+    assert executed["status"] == "executed"
+    payload = executed.get("result") or {}
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "").resolve()
+    assert payload.get("workspace_root") == str(workspace_dir)
+    assert str(payload.get("resolved_path") or "").startswith(str(workspace_dir))
+    assert str(payload.get("workspace_relative_path") or "").startswith("memory/daily/")
+
+
+def test_workspace_memory_rewrite_reports_resolved_workspace_paths(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:rewrite-workspace-memory",
+        approved=True,
+        write_content="# MEMORY\n\n## Curated Memory\n\n- Rewritten durable fact.\n",
+    )
+
+    assert result["status"] == "executed"
+    payload = result.get("result") or {}
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "").resolve()
+    assert payload.get("workspace_root") == str(workspace_dir)
+    assert payload.get("resolved_path") == str((workspace_dir / "MEMORY.md").resolve())
+    assert payload.get("workspace_relative_path") == "MEMORY.md"
 
 
 def test_external_write_capability_stays_closed_even_when_approved(isolated_runtime) -> None:

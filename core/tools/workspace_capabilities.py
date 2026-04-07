@@ -1180,7 +1180,10 @@ def _invoke_runnable_capability(
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=True, granted=False),
                 "result": None,
-                "detail": f"Memory write target is outside workspace scope: {target_path}",
+                "detail": (
+                    f"Memory write target is outside workspace scope: {target_path}. "
+                    f"Active workspace root: {workspace_dir.resolve()}"
+                ),
             }
         _MEMORY_WRITE_ALLOWED_FILES = {"MEMORY.md", "USER.md"}
         if candidate.name not in _MEMORY_WRITE_ALLOWED_FILES:
@@ -1190,7 +1193,10 @@ def _invoke_runnable_capability(
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=True, granted=False),
                 "result": None,
-                "detail": f"workspace-memory-write is only allowed for {', '.join(sorted(_MEMORY_WRITE_ALLOWED_FILES))}.",
+                "detail": (
+                    f"workspace-memory-write is only allowed for {', '.join(sorted(_MEMORY_WRITE_ALLOWED_FILES))}. "
+                    f"Active workspace root: {workspace_dir.resolve()}"
+                ),
             }
         if write_content is None:
             return {
@@ -1243,6 +1249,9 @@ def _invoke_runnable_capability(
             "result": {
                 "type": "workspace-memory-write",
                 "path": target_path,
+                "resolved_path": str(candidate.resolve()),
+                "workspace_relative_path": target_path,
+                "workspace_root": str(workspace_dir.resolve()),
                 "bytes_written": merged_bytes,
                 "bytes_before": existing_bytes,
                 "bytes_delta": bytes_delta,
@@ -1258,7 +1267,7 @@ def _invoke_runnable_capability(
                 "workspace_scoped": True,
             },
             "detail": (
-                f"Memory write executed for {target_path}. "
+                f"Memory write executed for {target_path} at {candidate.resolve()}. "
                 f"{bytes_delta:+d} bytes, "
                 f"readback={'verified' if readback_match else 'MISMATCH'}."
             ),
@@ -1282,7 +1291,11 @@ def _invoke_runnable_capability(
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=True, granted=False),
                 "result": None,
-                "detail": "Daily memory append requires explicit note text in the capability body.",
+                "detail": (
+                    "Daily memory append requires explicit note text in the capability body. "
+                    f"Active workspace root: {workspace_dir.resolve()}. "
+                    f"Expected daily target: {(workspace_dir / 'memory' / 'daily' / (datetime.now(UTC).date().isoformat() + '.md')).resolve()}"
+                ),
             }
         # Bounded: one line, ~240 chars max
         note_text = " ".join(note_text.split())
@@ -1312,11 +1325,20 @@ def _invoke_runnable_capability(
             "result": {
                 "type": "workspace-daily-memory-append",
                 "path": str(daily_path) if daily_path else "",
+                "resolved_path": str(Path(daily_path).resolve()) if daily_path else "",
+                "workspace_relative_path": (
+                    str(Path(daily_path).resolve().relative_to(workspace_dir.resolve()))
+                    if daily_path else ""
+                ),
+                "workspace_root": str(workspace_dir.resolve()),
                 "note": note_text,
                 "recent_lines": recent_lines[-6:],
                 "workspace_scoped": True,
             },
-            "detail": f"Daily memory note appended ({len(note_text)} chars).",
+            "detail": (
+                f"Daily memory note appended ({len(note_text)} chars) to "
+                f"{Path(daily_path).resolve() if daily_path else (workspace_dir / 'memory' / 'daily').resolve()}."
+            ),
         }
 
     if summary["execution_mode"] == "workspace-memory-rewrite":
@@ -1329,7 +1351,10 @@ def _invoke_runnable_capability(
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=True, granted=False),
                 "result": None,
-                "detail": f"Memory rewrite target is outside workspace scope: {target_path}",
+                "detail": (
+                    f"Memory rewrite target is outside workspace scope: {target_path}. "
+                    f"Active workspace root: {workspace_dir.resolve()}"
+                ),
             }
         _MEMORY_REWRITE_ALLOWED_FILES = {"MEMORY.md", "USER.md"}
         if candidate.name not in _MEMORY_REWRITE_ALLOWED_FILES:
@@ -1339,7 +1364,10 @@ def _invoke_runnable_capability(
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=True, granted=False),
                 "result": None,
-                "detail": f"workspace-memory-rewrite is only allowed for {', '.join(sorted(_MEMORY_REWRITE_ALLOWED_FILES))}.",
+                "detail": (
+                    f"workspace-memory-rewrite is only allowed for {', '.join(sorted(_MEMORY_REWRITE_ALLOWED_FILES))}. "
+                    f"Active workspace root: {workspace_dir.resolve()}"
+                ),
             }
         if not approved:
             return {
@@ -1395,6 +1423,9 @@ def _invoke_runnable_capability(
             "result": {
                 "type": "workspace-memory-rewrite",
                 "path": target_path,
+                "resolved_path": str(candidate.resolve()),
+                "workspace_relative_path": target_path,
+                "workspace_root": str(workspace_dir.resolve()),
                 "bytes_written": new_bytes,
                 "bytes_before": existing_bytes,
                 "bytes_delta": new_bytes - existing_bytes,
@@ -1413,7 +1444,7 @@ def _invoke_runnable_capability(
                 "workspace_scoped": True,
             },
             "detail": (
-                f"Memory rewrite executed for {target_path}. "
+                f"Memory rewrite executed for {target_path} at {candidate.resolve()}. "
                 f"{new_bytes - existing_bytes:+d} bytes, "
                 f"{len(filtered_lines)} lines kept, "
                 f"{len(rejected_lines)} noise lines rejected, "

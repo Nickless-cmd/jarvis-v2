@@ -595,6 +595,43 @@ def test_approved_workspace_write_executes_only_with_explicit_content(isolated_r
     assert target.read_text(encoding="utf-8") == "Approved workspace write.\nScoped to MEMORY.md only.\n"
 
 
+def test_capability_results_are_normalized_for_success_and_approval(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    executed = caps_mod.invoke_workspace_capability(
+        "tool:read-workspace-memory",
+    )
+    assert executed["status"] == "executed"
+    assert executed["ok"] is True
+    assert executed["error"] is False
+    assert executed["status_family"] == "success"
+    assert executed["message"] == executed["detail"]
+    assert str(executed["detail"]).strip()
+
+    approval = caps_mod.invoke_workspace_capability("tool:propose-workspace-memory-update")
+    assert approval["status"] == "approval-required"
+    assert approval["ok"] is False
+    assert approval["error"] is False
+    assert approval["status_family"] == "approval"
+    assert approval["message"] == approval["detail"]
+    assert "approval" in str(approval["detail"]).lower()
+
+
+def test_capability_results_are_normalized_for_missing_capabilities(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    missing = caps_mod.invoke_workspace_capability("tool:does-not-exist")
+
+    assert missing["status"] == "not-found"
+    assert missing["ok"] is False
+    assert missing["error"] is True
+    assert missing["status_family"] == "missing"
+    assert missing["message"] == missing["detail"]
+    assert str(missing["detail"]).strip()
+
+
 def test_workspace_memory_write_merges_without_deleting_existing_content(isolated_runtime) -> None:
     caps_mod = importlib.import_module("core.tools.workspace_capabilities")
     caps_mod = importlib.reload(caps_mod)

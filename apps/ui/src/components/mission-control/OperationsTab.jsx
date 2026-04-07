@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { MainAgentPanel } from '../shared/MainAgentPanel'
+import { AutonomyProposalsPanel } from './AutonomyProposalsPanel'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 function StatusPill({ status }) {
@@ -199,6 +200,10 @@ export function OperationsTab({
   return (
     <div className="mc-tab-page">
       <section className="mc-section-grid mc-operations-grid">
+        <article className="support-card" id="autonomy-proposals" style={{ gridColumn: '1 / -1' }}>
+          <AutonomyProposalsPanel />
+        </article>
+
         <article className="support-card" id="execution-authority" title={sectionTitleWithMeta({
           source: '/mc/main-agent-selection',
           fetchedAt: data?.fetchedAt,

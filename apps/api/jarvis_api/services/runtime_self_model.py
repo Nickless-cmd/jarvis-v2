@@ -15,6 +15,7 @@ Design constraints:
 - Uses only existing runtime truth surfaces
 - Deterministic, bounded, grounded
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -65,8 +66,12 @@ def build_runtime_self_model() -> dict[str, object]:
             "affective_meta_state": _affective_meta_state_surface(),
             "experiential_runtime_context": experiential,
             "inner_voice_daemon": inner_voice,
-            "support_stream_awareness": _derive_support_stream_awareness(experiential, inner_voice),
-            "subjective_temporal_feel": _derive_subjective_temporal_feel(experiential, inner_voice),
+            "support_stream_awareness": _derive_support_stream_awareness(
+                experiential, inner_voice
+            ),
+            "subjective_temporal_feel": _derive_subjective_temporal_feel(
+                experiential, inner_voice
+            ),
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -99,402 +104,467 @@ def _collect_layers() -> list[dict[str, str]]:
     layered_memory = _layered_memory_state_surface()
 
     # --- Runtime truth layers (authoritative) ---
-    layers.append({
-        "id": "heartbeat",
-        "label": "Heartbeat runtime",
-        "kind": "orchestration",
-        "role": _heartbeat_role(),
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": "Basal pulse. Drives cadence ticks and non-visible producers.",
-    })
+    layers.append(
+        {
+            "id": "heartbeat",
+            "label": "Heartbeat runtime",
+            "kind": "orchestration",
+            "role": _heartbeat_role(),
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": "Basal pulse. Drives cadence ticks and non-visible producers.",
+        }
+    )
 
-    layers.append({
-        "id": "internal-cadence",
-        "label": "Internal cadence layer",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": "Shared rhythm for non-visible producers. Evaluates due/cooling/blocked.",
-    })
+    layers.append(
+        {
+            "id": "internal-cadence",
+            "label": "Internal cadence layer",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": "Shared rhythm for non-visible producers. Evaluates due/cooling/blocked.",
+        }
+    )
 
     embodied = _embodied_state_surface()
-    layers.append({
-        "id": "embodied-host-awareness",
-        "label": "Embodied host awareness",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": (
-            f"Host/body state={embodied.get('state') or 'unknown'}; "
-            f"strain={embodied.get('strain_level') or 'unknown'}; "
-            f"freshness={((embodied.get('freshness') or {}).get('state') or 'unknown')}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "embodied-host-awareness",
+            "label": "Embodied host awareness",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": (
+                f"Host/body state={embodied.get('state') or 'unknown'}; "
+                f"strain={embodied.get('strain_level') or 'unknown'}; "
+                f"freshness={((embodied.get('freshness') or {}).get('state') or 'unknown')}."
+            ),
+        }
+    )
 
     affective_meta = _affective_meta_state_surface()
-    layers.append({
-        "id": "affective-meta-light",
-        "label": "Affective / meta bundle light",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"state={affective_meta.get('state') or 'unknown'}; "
-            f"bearing={affective_meta.get('bearing') or 'unknown'}; "
-            f"monitoring={affective_meta.get('monitoring_mode') or 'unknown'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "affective-meta-light",
+            "label": "Affective / meta bundle light",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"state={affective_meta.get('state') or 'unknown'}; "
+                f"bearing={affective_meta.get('bearing') or 'unknown'}; "
+                f"monitoring={affective_meta.get('monitoring_mode') or 'unknown'}."
+            ),
+        }
+    )
 
     epistemic_state = _epistemic_runtime_state_surface()
-    layers.append({
-        "id": "epistemic-wrongness-light",
-        "label": "Epistemic wrongness / counterfactual light",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"wrongness={epistemic_state.get('wrongness_state') or 'clear'}; "
-            f"regret={epistemic_state.get('regret_signal') or 'none'}; "
-            f"counterfactual={epistemic_state.get('counterfactual_mode') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "epistemic-wrongness-light",
+            "label": "Epistemic wrongness / counterfactual light",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"wrongness={epistemic_state.get('wrongness_state') or 'clear'}; "
+                f"regret={epistemic_state.get('regret_signal') or 'none'}; "
+                f"counterfactual={epistemic_state.get('counterfactual_mode') or 'none'}."
+            ),
+        }
+    )
 
     subagent_ecology = _subagent_ecology_surface()
     ecology_summary = subagent_ecology.get("summary") or {}
-    layers.append({
-        "id": "subagent-ecology-light",
-        "label": "Subagent ecology light",
-        "kind": "orchestration",
-        "role": "active" if int(ecology_summary.get("active_count") or 0) > 0 else "idle",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"active={int(ecology_summary.get('active_count') or 0)}; "
-            f"blocked={int(ecology_summary.get('blocked_count') or 0)}; "
-            f"last={ecology_summary.get('last_active_role_name') or 'none'}; "
-            f"tool_access={subagent_ecology.get('tool_access') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "subagent-ecology-light",
+            "label": "Subagent ecology light",
+            "kind": "orchestration",
+            "role": "active"
+            if int(ecology_summary.get("active_count") or 0) > 0
+            else "idle",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"active={int(ecology_summary.get('active_count') or 0)}; "
+                f"blocked={int(ecology_summary.get('blocked_count') or 0)}; "
+                f"last={ecology_summary.get('last_active_role_name') or 'none'}; "
+                f"tool_access={subagent_ecology.get('tool_access') or 'none'}."
+            ),
+        }
+    )
 
     council_runtime = _council_runtime_surface()
-    layers.append({
-        "id": "council-runtime-light",
-        "label": "Council / swarm light",
-        "kind": "orchestration",
-        "role": "active" if str(council_runtime.get("council_state") or "quiet") not in {"quiet", "held"} else "idle",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"state={council_runtime.get('council_state') or 'quiet'}; "
-            f"recommendation={council_runtime.get('recommendation') or 'none'}; "
-            f"divergence={council_runtime.get('divergence_level') or 'low'}; "
-            f"tool_access={council_runtime.get('tool_access') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "council-runtime-light",
+            "label": "Council / swarm light",
+            "kind": "orchestration",
+            "role": "active"
+            if str(council_runtime.get("council_state") or "quiet")
+            not in {"quiet", "held"}
+            else "idle",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"state={council_runtime.get('council_state') or 'quiet'}; "
+                f"recommendation={council_runtime.get('recommendation') or 'none'}; "
+                f"divergence={council_runtime.get('divergence_level') or 'low'}; "
+                f"tool_access={council_runtime.get('tool_access') or 'none'}."
+            ),
+        }
+    )
 
     adaptive_planner = _adaptive_planner_surface()
-    layers.append({
-        "id": "adaptive-planner-light",
-        "label": "Adaptive planner light",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"mode={adaptive_planner.get('planner_mode') or 'incremental'}; "
-            f"horizon={adaptive_planner.get('plan_horizon') or 'near'}; "
-            f"risk={adaptive_planner.get('risk_posture') or 'balanced'}; "
-            f"bias={adaptive_planner.get('next_planning_bias') or 'stepwise-progress'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "adaptive-planner-light",
+            "label": "Adaptive planner light",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"mode={adaptive_planner.get('planner_mode') or 'incremental'}; "
+                f"horizon={adaptive_planner.get('plan_horizon') or 'near'}; "
+                f"risk={adaptive_planner.get('risk_posture') or 'balanced'}; "
+                f"bias={adaptive_planner.get('next_planning_bias') or 'stepwise-progress'}."
+            ),
+        }
+    )
 
     adaptive_reasoning = _adaptive_reasoning_surface()
-    layers.append({
-        "id": "adaptive-reasoning-light",
-        "label": "Adaptive reasoning light",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"mode={adaptive_reasoning.get('reasoning_mode') or 'direct'}; "
-            f"posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}; "
-            f"certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}; "
-            f"constraint={adaptive_reasoning.get('constraint_bias') or 'light'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "adaptive-reasoning-light",
+            "label": "Adaptive reasoning light",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"mode={adaptive_reasoning.get('reasoning_mode') or 'direct'}; "
+                f"posture={adaptive_reasoning.get('reasoning_posture') or 'balanced'}; "
+                f"certainty={adaptive_reasoning.get('certainty_style') or 'crisp'}; "
+                f"constraint={adaptive_reasoning.get('constraint_bias') or 'light'}."
+            ),
+        }
+    )
 
     dream_influence = _dream_influence_surface()
-    layers.append({
-        "id": "dream-influence-light",
-        "label": "Dream influence light",
-        "kind": "orchestration",
-        "role": "active" if str(dream_influence.get("influence_state") or "quiet") != "quiet" else "idle",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"state={dream_influence.get('influence_state') or 'quiet'}; "
-            f"target={dream_influence.get('influence_target') or 'none'}; "
-            f"mode={dream_influence.get('influence_mode') or 'stabilize'}; "
-            f"strength={dream_influence.get('influence_strength') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "dream-influence-light",
+            "label": "Dream influence light",
+            "kind": "orchestration",
+            "role": "active"
+            if str(dream_influence.get("influence_state") or "quiet") != "quiet"
+            else "idle",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"state={dream_influence.get('influence_state') or 'quiet'}; "
+                f"target={dream_influence.get('influence_target') or 'none'}; "
+                f"mode={dream_influence.get('influence_mode') or 'stabilize'}; "
+                f"strength={dream_influence.get('influence_strength') or 'none'}."
+            ),
+        }
+    )
 
     guided_learning = _guided_learning_surface()
-    layers.append({
-        "id": "guided-learning-light",
-        "label": "Guided learning light",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"mode={guided_learning.get('learning_mode') or 'reinforce'}; "
-            f"focus={guided_learning.get('learning_focus') or 'reasoning'}; "
-            f"posture={guided_learning.get('learning_posture') or 'gentle'}; "
-            f"pressure={guided_learning.get('learning_pressure') or 'low'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "guided-learning-light",
+            "label": "Guided learning light",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"mode={guided_learning.get('learning_mode') or 'reinforce'}; "
+                f"focus={guided_learning.get('learning_focus') or 'reasoning'}; "
+                f"posture={guided_learning.get('learning_posture') or 'gentle'}; "
+                f"pressure={guided_learning.get('learning_pressure') or 'low'}."
+            ),
+        }
+    )
 
     adaptive_learning = _adaptive_learning_surface()
-    layers.append({
-        "id": "adaptive-learning-light",
-        "label": "Adaptive learning engine light",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"mode={adaptive_learning.get('learning_engine_mode') or 'retain'}; "
-            f"target={adaptive_learning.get('reinforcement_target') or 'reasoning'}; "
-            f"retention={adaptive_learning.get('retention_bias') or 'light'}; "
-            f"maturation={adaptive_learning.get('maturation_state') or 'early'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "adaptive-learning-light",
+            "label": "Adaptive learning engine light",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"mode={adaptive_learning.get('learning_engine_mode') or 'retain'}; "
+                f"target={adaptive_learning.get('reinforcement_target') or 'reasoning'}; "
+                f"retention={adaptive_learning.get('retention_bias') or 'light'}; "
+                f"maturation={adaptive_learning.get('maturation_state') or 'early'}."
+            ),
+        }
+    )
 
     self_system_code_awareness = _self_system_code_awareness_surface()
-    layers.append({
-        "id": "self-system-code-awareness-light",
-        "label": "Self system / code awareness light",
-        "kind": "orchestration",
-        "role": "active" if str(self_system_code_awareness.get("code_awareness_state") or "repo-unavailable") != "repo-unavailable" else "idle",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"code={self_system_code_awareness.get('code_awareness_state') or 'repo-unavailable'}; "
-            f"repo={self_system_code_awareness.get('repo_status') or 'not-git'}; "
-            f"changes={self_system_code_awareness.get('local_change_state') or 'unknown'}; "
-            f"upstream={self_system_code_awareness.get('upstream_awareness') or 'unknown'}; "
-            f"concern={self_system_code_awareness.get('concern_state') or 'stable'}; "
-            f"approval_required={self_system_code_awareness.get('action_requires_approval', True)}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "self-system-code-awareness-light",
+            "label": "Self system / code awareness light",
+            "kind": "orchestration",
+            "role": "active"
+            if str(
+                self_system_code_awareness.get("code_awareness_state")
+                or "repo-unavailable"
+            )
+            != "repo-unavailable"
+            else "idle",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"code={self_system_code_awareness.get('code_awareness_state') or 'repo-unavailable'}; "
+                f"repo={self_system_code_awareness.get('repo_status') or 'not-git'}; "
+                f"changes={self_system_code_awareness.get('local_change_state') or 'unknown'}; "
+                f"upstream={self_system_code_awareness.get('upstream_awareness') or 'unknown'}; "
+                f"concern={self_system_code_awareness.get('concern_state') or 'stable'}; "
+                f"approval_required={self_system_code_awareness.get('action_requires_approval', True)}."
+            ),
+        }
+    )
 
     tool_intent = _tool_intent_surface()
-    layers.append({
-        "id": "approval-gated-tool-intent-light",
-        "label": "Approval-gated tool intent light",
-        "kind": "orchestration",
-        "role": "active" if str(tool_intent.get("intent_state") or "idle") != "idle" else "idle",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": (
-            f"state={tool_intent.get('intent_state') or 'idle'}; "
-            f"type={tool_intent.get('intent_type') or 'inspect-repo-status'}; "
-            f"target={tool_intent.get('intent_target') or 'workspace'}; "
-            f"urgency={tool_intent.get('urgency') or 'low'}; "
-            f"approval_state={tool_intent.get('approval_state') or 'none'}; "
-            f"approval_source={tool_intent.get('approval_source') or 'none'}; "
-            f"approval_required={tool_intent.get('approval_required', True)}; "
-            f"execution={tool_intent.get('execution_state') or 'not-executed'}; "
-            f"execution_mode={tool_intent.get('execution_mode') or 'read-only'}; "
-            f"mutation_permitted={tool_intent.get('mutation_permitted', False)}; "
-            f"workspace_scoped={tool_intent.get('workspace_scoped', False)}; "
-            f"external_mutation_permitted={tool_intent.get('external_mutation_permitted', False)}; "
-            f"delete_permitted={tool_intent.get('delete_permitted', False)}; "
-            f"mutation_state={tool_intent.get('mutation_intent_state') or 'idle'}; "
-            f"mutation_classification={tool_intent.get('mutation_intent_classification') or 'none'}; "
-            f"mutation_repo_scope={tool_intent.get('mutation_repo_scope') or 'none'}; "
-            f"mutation_system_scope={tool_intent.get('mutation_system_scope') or 'none'}; "
-            f"mutation_sudo_required={tool_intent.get('mutation_sudo_required', False)}; "
-            f"write_proposal_state={tool_intent.get('write_proposal_state') or 'none'}; "
-            f"write_proposal_type={tool_intent.get('write_proposal_type') or 'none'}; "
-            f"write_proposal_scope={tool_intent.get('write_proposal_scope') or 'none'}; "
-            f"write_proposal_criticality={tool_intent.get('write_proposal_criticality') or 'none'}; "
-            f"write_proposal_target_identity={tool_intent.get('write_proposal_target_identity', False)}; "
-            f"write_proposal_target_memory={tool_intent.get('write_proposal_target_memory', False)}; "
-            f"write_proposal_target={tool_intent.get('write_proposal_target') or 'none'}; "
-            f"write_proposal_content_state={tool_intent.get('write_proposal_content_state') or 'none'}; "
-            f"write_proposal_content_fingerprint={tool_intent.get('write_proposal_content_fingerprint') or 'none'}; "
-            f"mutating_exec_state={tool_intent.get('mutating_exec_proposal_state') or 'none'}; "
-            f"mutating_exec_scope={tool_intent.get('mutating_exec_proposal_scope') or 'none'}; "
-            f"mutating_exec_requires_sudo={tool_intent.get('mutating_exec_requires_sudo', False)}; "
-            f"mutating_exec_fingerprint={tool_intent.get('mutating_exec_command_fingerprint') or 'none'}; "
-            f"sudo_exec_state={tool_intent.get('sudo_exec_proposal_state') or 'none'}; "
-            f"sudo_exec_scope={tool_intent.get('sudo_exec_proposal_scope') or 'none'}; "
-            f"sudo_exec_requires_sudo={tool_intent.get('sudo_exec_requires_sudo', False)}; "
-            f"sudo_exec_fingerprint={tool_intent.get('sudo_exec_command_fingerprint') or 'none'}; "
-            f"sudo_window_state={tool_intent.get('sudo_approval_window_state') or 'none'}; "
-            f"sudo_window_scope={tool_intent.get('sudo_approval_window_scope') or 'none'}; "
-            f"sudo_window_expires_at={tool_intent.get('sudo_approval_window_expires_at') or 'none'}; "
-            f"sudo_window_reusable={tool_intent.get('sudo_approval_window_reusable', False)}; "
-            f"execution_command={tool_intent.get('execution_command') or 'none'}; "
-            f"sudo_permitted={tool_intent.get('sudo_permitted', False)}; "
-            f"continuity={tool_intent.get('action_continuity_state') or 'idle'}; "
-            f"last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}; "
-            f"followup_state={tool_intent.get('followup_state') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "approval-gated-tool-intent-light",
+            "label": "Approval-gated tool intent light",
+            "kind": "orchestration",
+            "role": "active"
+            if str(tool_intent.get("intent_state") or "idle") != "idle"
+            else "idle",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"state={tool_intent.get('intent_state') or 'idle'}; "
+                f"type={tool_intent.get('intent_type') or 'inspect-repo-status'}; "
+                f"target={tool_intent.get('intent_target') or 'workspace'}; "
+                f"urgency={tool_intent.get('urgency') or 'low'}; "
+                f"approval_state={tool_intent.get('approval_state') or 'none'}; "
+                f"approval_source={tool_intent.get('approval_source') or 'none'}; "
+                f"approval_required={tool_intent.get('approval_required', True)}; "
+                f"execution={tool_intent.get('execution_state') or 'not-executed'}; "
+                f"execution_mode={tool_intent.get('execution_mode') or 'read-only'}; "
+                f"mutation_permitted={tool_intent.get('mutation_permitted', False)}; "
+                f"workspace_scoped={tool_intent.get('workspace_scoped', False)}; "
+                f"external_mutation_permitted={tool_intent.get('external_mutation_permitted', False)}; "
+                f"delete_permitted={tool_intent.get('delete_permitted', False)}; "
+                f"mutation_state={tool_intent.get('mutation_intent_state') or 'idle'}; "
+                f"mutation_classification={tool_intent.get('mutation_intent_classification') or 'none'}; "
+                f"mutation_repo_scope={tool_intent.get('mutation_repo_scope') or 'none'}; "
+                f"mutation_system_scope={tool_intent.get('mutation_system_scope') or 'none'}; "
+                f"mutation_sudo_required={tool_intent.get('mutation_sudo_required', False)}; "
+                f"write_proposal_state={tool_intent.get('write_proposal_state') or 'none'}; "
+                f"write_proposal_type={tool_intent.get('write_proposal_type') or 'none'}; "
+                f"write_proposal_scope={tool_intent.get('write_proposal_scope') or 'none'}; "
+                f"write_proposal_criticality={tool_intent.get('write_proposal_criticality') or 'none'}; "
+                f"write_proposal_target_identity={tool_intent.get('write_proposal_target_identity', False)}; "
+                f"write_proposal_target_memory={tool_intent.get('write_proposal_target_memory', False)}; "
+                f"write_proposal_target={tool_intent.get('write_proposal_target') or 'none'}; "
+                f"write_proposal_content_state={tool_intent.get('write_proposal_content_state') or 'none'}; "
+                f"write_proposal_content_fingerprint={tool_intent.get('write_proposal_content_fingerprint') or 'none'}; "
+                f"mutating_exec_state={tool_intent.get('mutating_exec_proposal_state') or 'none'}; "
+                f"mutating_exec_scope={tool_intent.get('mutating_exec_proposal_scope') or 'none'}; "
+                f"mutating_exec_requires_sudo={tool_intent.get('mutating_exec_requires_sudo', False)}; "
+                f"mutating_exec_fingerprint={tool_intent.get('mutating_exec_command_fingerprint') or 'none'}; "
+                f"sudo_exec_state={tool_intent.get('sudo_exec_proposal_state') or 'none'}; "
+                f"sudo_exec_scope={tool_intent.get('sudo_exec_proposal_scope') or 'none'}; "
+                f"sudo_exec_requires_sudo={tool_intent.get('sudo_exec_requires_sudo', False)}; "
+                f"sudo_exec_fingerprint={tool_intent.get('sudo_exec_command_fingerprint') or 'none'}; "
+                f"sudo_window_state={tool_intent.get('sudo_approval_window_state') or 'none'}; "
+                f"sudo_window_scope={tool_intent.get('sudo_approval_window_scope') or 'none'}; "
+                f"sudo_window_expires_at={tool_intent.get('sudo_approval_window_expires_at') or 'none'}; "
+                f"sudo_window_reusable={tool_intent.get('sudo_approval_window_reusable', False)}; "
+                f"execution_command={tool_intent.get('execution_command') or 'none'}; "
+                f"sudo_permitted={tool_intent.get('sudo_permitted', False)}; "
+                f"continuity={tool_intent.get('action_continuity_state') or 'idle'}; "
+                f"last_action_outcome={tool_intent.get('last_action_outcome') or 'none'}; "
+                f"followup_state={tool_intent.get('followup_state') or 'none'}."
+            ),
+        }
+    )
 
     loop_runtime = _loop_runtime_surface()
     loop_summary = loop_runtime.get("summary") or {}
-    layers.append({
-        "id": "loop-runtime-light",
-        "label": "Loop runtime light",
-        "kind": "orchestration",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": (
-            f"active={int(loop_summary.get('active_count') or 0)}; "
-            f"standby={int(loop_summary.get('standby_count') or 0)}; "
-            f"resumed={int(loop_summary.get('resumed_count') or 0)}; "
-            f"closed={int(loop_summary.get('closed_count') or 0)}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "loop-runtime-light",
+            "label": "Loop runtime light",
+            "kind": "orchestration",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": (
+                f"active={int(loop_summary.get('active_count') or 0)}; "
+                f"standby={int(loop_summary.get('standby_count') or 0)}; "
+                f"resumed={int(loop_summary.get('resumed_count') or 0)}; "
+                f"closed={int(loop_summary.get('closed_count') or 0)}."
+            ),
+        }
+    )
 
-    layers.append({
-        "id": "runtime-task-ledger",
-        "label": "Runtime task ledger",
-        "kind": "orchestration",
-        "role": (
-            "active"
-            if int(task_state.get("queued_count") or 0) or int(task_state.get("running_count") or 0)
-            else ("gated" if int(task_state.get("blocked_count") or 0) else "idle")
-        ),
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": (
-            f"queued={task_state.get('queued_count') or 0}; "
-            f"running={task_state.get('running_count') or 0}; "
-            f"blocked={task_state.get('blocked_count') or 0}; "
-            f"latest_goal={task_state.get('latest_goal') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "runtime-task-ledger",
+            "label": "Runtime task ledger",
+            "kind": "orchestration",
+            "role": (
+                "active"
+                if int(task_state.get("queued_count") or 0)
+                or int(task_state.get("running_count") or 0)
+                else ("gated" if int(task_state.get("blocked_count") or 0) else "idle")
+            ),
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": (
+                f"queued={task_state.get('queued_count') or 0}; "
+                f"running={task_state.get('running_count') or 0}; "
+                f"blocked={task_state.get('blocked_count') or 0}; "
+                f"latest_goal={task_state.get('latest_goal') or 'none'}."
+            ),
+        }
+    )
 
-    layers.append({
-        "id": "runtime-flow-ledger",
-        "label": "Runtime flow ledger",
-        "kind": "orchestration",
-        "role": (
-            "active"
-            if int(flow_state.get("queued_count") or 0) or int(flow_state.get("running_count") or 0)
-            else ("gated" if int(flow_state.get("blocked_count") or 0) else "idle")
-        ),
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": (
-            f"queued={flow_state.get('queued_count') or 0}; "
-            f"running={flow_state.get('running_count') or 0}; "
-            f"blocked={flow_state.get('blocked_count') or 0}; "
-            f"step={flow_state.get('current_step') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "runtime-flow-ledger",
+            "label": "Runtime flow ledger",
+            "kind": "orchestration",
+            "role": (
+                "active"
+                if int(flow_state.get("queued_count") or 0)
+                or int(flow_state.get("running_count") or 0)
+                else ("gated" if int(flow_state.get("blocked_count") or 0) else "idle")
+            ),
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": (
+                f"queued={flow_state.get('queued_count') or 0}; "
+                f"running={flow_state.get('running_count') or 0}; "
+                f"blocked={flow_state.get('blocked_count') or 0}; "
+                f"step={flow_state.get('current_step') or 'none'}."
+            ),
+        }
+    )
 
-    layers.append({
-        "id": "runtime-hook-bridge",
-        "label": "Runtime hook bridge",
-        "kind": "orchestration",
-        "role": (
-            "gated"
-            if int(hook_state.get("pending_count") or 0) > 0
-            else ("active" if int(hook_state.get("dispatched_count") or 0) > 0 else "idle")
-        ),
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": (
-            f"pending={hook_state.get('pending_count') or 0}; "
-            f"dispatched={hook_state.get('dispatched_count') or 0}; "
-            f"latest={hook_state.get('latest_event_kind') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "runtime-hook-bridge",
+            "label": "Runtime hook bridge",
+            "kind": "orchestration",
+            "role": (
+                "gated"
+                if int(hook_state.get("pending_count") or 0) > 0
+                else (
+                    "active"
+                    if int(hook_state.get("dispatched_count") or 0) > 0
+                    else "idle"
+                )
+            ),
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": (
+                f"pending={hook_state.get('pending_count') or 0}; "
+                f"dispatched={hook_state.get('dispatched_count') or 0}; "
+                f"latest={hook_state.get('latest_event_kind') or 'none'}."
+            ),
+        }
+    )
 
-    layers.append({
-        "id": "browser-body",
-        "label": "Browser body",
-        "kind": "orchestration",
-        "role": (
-            "gated"
-            if str(browser_body.get("status") or "") == "blocked"
-            else ("active" if browser_body.get("exists") else "idle")
-        ),
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": (
-            f"profile={browser_body.get('profile_name') or 'none'}; "
-            f"status={browser_body.get('status') or 'absent'}; "
-            f"tabs={browser_body.get('tab_count') or 0}; "
-            f"last_url={browser_body.get('last_url') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "browser-body",
+            "label": "Browser body",
+            "kind": "orchestration",
+            "role": (
+                "gated"
+                if str(browser_body.get("status") or "") == "blocked"
+                else ("active" if browser_body.get("exists") else "idle")
+            ),
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": (
+                f"profile={browser_body.get('profile_name') or 'none'}; "
+                f"status={browser_body.get('status') or 'absent'}; "
+                f"tabs={browser_body.get('tab_count') or 0}; "
+                f"last_url={browser_body.get('last_url') or 'none'}."
+            ),
+        }
+    )
 
     consolidation = _idle_consolidation_surface()
     consolidation_summary = consolidation.get("summary") or {}
-    layers.append({
-        "id": "sleep-idle-consolidation",
-        "label": "Sleep / idle consolidation light",
-        "kind": "orchestration",
-        "role": "active" if consolidation.get("active") else "idle",
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": (
-            f"state={consolidation_summary.get('last_state') or 'idle'}; "
-            f"reason={consolidation_summary.get('last_reason') or 'no-run-yet'}; "
-            f"latest={consolidation_summary.get('latest_record_id') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "sleep-idle-consolidation",
+            "label": "Sleep / idle consolidation light",
+            "kind": "orchestration",
+            "role": "active" if consolidation.get("active") else "idle",
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": (
+                f"state={consolidation_summary.get('last_state') or 'idle'}; "
+                f"reason={consolidation_summary.get('last_reason') or 'no-run-yet'}; "
+                f"latest={consolidation_summary.get('latest_record_id') or 'none'}."
+            ),
+        }
+    )
 
     dream = _dream_articulation_surface()
     dream_summary = dream.get("summary") or {}
-    layers.append({
-        "id": "dream-articulation-light",
-        "label": "Dream articulation light",
-        "kind": "groundwork",
-        "role": "groundwork-only",
-        "visibility": "internal-only",
-        "truth": "candidate-only",
-        "detail": (
-            f"state={dream_summary.get('last_state') or 'idle'}; "
-            f"reason={dream_summary.get('last_reason') or 'no-run-yet'}; "
-            f"latest={dream_summary.get('latest_signal_id') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "dream-articulation-light",
+            "label": "Dream articulation light",
+            "kind": "groundwork",
+            "role": "groundwork-only",
+            "visibility": "internal-only",
+            "truth": "candidate-only",
+            "detail": (
+                f"state={dream_summary.get('last_state') or 'idle'}; "
+                f"reason={dream_summary.get('last_reason') or 'no-run-yet'}; "
+                f"latest={dream_summary.get('latest_signal_id') or 'none'}."
+            ),
+        }
+    )
 
     prompt_evolution = _prompt_evolution_surface()
     prompt_evolution_summary = prompt_evolution.get("summary") or {}
-    layers.append({
-        "id": "runtime-prompt-evolution-light",
-        "label": "Runtime prompt evolution light",
-        "kind": "groundwork",
-        "role": "groundwork-only",
-        "visibility": "internal-only",
-        "truth": "candidate-only",
-        "detail": (
-            f"state={prompt_evolution_summary.get('last_state') or 'idle'}; "
-            f"target={prompt_evolution_summary.get('latest_target_asset') or 'none'}; "
-            f"learning={prompt_evolution_summary.get('latest_learning_mode') or 'none'}; "
-            f"dream={prompt_evolution_summary.get('latest_dream_influence_mode') or 'stabilize'}; "
-            f"co={prompt_evolution_summary.get('latest_fragment_co_influence') or 'none'}; "
-            f"fragment={'present' if prompt_evolution.get('candidate_fragment') else 'none'}; "
-            f"direction={prompt_evolution_summary.get('proposal_direction') or 'none'}; "
-            f"latest={prompt_evolution_summary.get('latest_proposal_id') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "runtime-prompt-evolution-light",
+            "label": "Runtime prompt evolution light",
+            "kind": "groundwork",
+            "role": "groundwork-only",
+            "visibility": "internal-only",
+            "truth": "candidate-only",
+            "detail": (
+                f"state={prompt_evolution_summary.get('last_state') or 'idle'}; "
+                f"target={prompt_evolution_summary.get('latest_target_asset') or 'none'}; "
+                f"learning={prompt_evolution_summary.get('latest_learning_mode') or 'none'}; "
+                f"dream={prompt_evolution_summary.get('latest_dream_influence_mode') or 'stabilize'}; "
+                f"co={prompt_evolution_summary.get('latest_fragment_co_influence') or 'none'}; "
+                f"fragment={'present' if prompt_evolution.get('candidate_fragment') else 'none'}; "
+                f"direction={prompt_evolution_summary.get('proposal_direction') or 'none'}; "
+                f"latest={prompt_evolution_summary.get('latest_proposal_id') or 'none'}."
+            ),
+        }
+    )
     try:
         from apps.api.jarvis_api.services.emergent_signal_tracking import (
             build_runtime_emergent_signal_surface,
@@ -502,161 +572,186 @@ def _collect_layers() -> list[dict[str, str]]:
 
         emergent = build_runtime_emergent_signal_surface(limit=3)
         emergent_summary = emergent.get("summary") or {}
-        layers.append({
-            "id": "emergent-inner-signals",
-            "label": "Emergent inner signals",
-            "kind": "groundwork",
-            "role": "groundwork-only",
-            "visibility": "internal-only",
-            "truth": "candidate-only",
-            "detail": (
-                f"Candidate-only internal signals. Active={int(emergent_summary.get('active_count') or 0)}; "
-                f"current={str(emergent_summary.get('current_signal') or 'none')}."
-            ),
-        })
+        layers.append(
+            {
+                "id": "emergent-inner-signals",
+                "label": "Emergent inner signals",
+                "kind": "groundwork",
+                "role": "groundwork-only",
+                "visibility": "internal-only",
+                "truth": "candidate-only",
+                "detail": (
+                    f"Candidate-only internal signals. Active={int(emergent_summary.get('active_count') or 0)}; "
+                    f"current={str(emergent_summary.get('current_signal') or 'none')}."
+                ),
+            }
+        )
     except Exception:
         pass
 
     # --- Capability layers ---
-    layers.append({
-        "id": "visible-chat",
-        "label": "Visible chat lane",
-        "kind": "capability",
-        "role": _visible_chat_role(),
-        "visibility": "visible",
-        "truth": "authoritative",
-        "detail": "User-facing conversation. Jarvis' primary visible output.",
-    })
+    layers.append(
+        {
+            "id": "visible-chat",
+            "label": "Visible chat lane",
+            "kind": "capability",
+            "role": _visible_chat_role(),
+            "visibility": "visible",
+            "truth": "authoritative",
+            "detail": "User-facing conversation. Jarvis' primary visible output.",
+        }
+    )
 
-    layers.append({
-        "id": "internal-fallback-lane",
-        "label": "Internal fallback model lane",
-        "kind": "capability",
-        "role": _cheap_lane_role(),
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": "Fallback model lane for bounded internal jobs when the local lane is unavailable.",
-    })
+    layers.append(
+        {
+            "id": "internal-fallback-lane",
+            "label": "Internal fallback model lane",
+            "kind": "capability",
+            "role": _cheap_lane_role(),
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": "Fallback model lane for bounded internal jobs when the local lane is unavailable.",
+        }
+    )
 
-    layers.append({
-        "id": "local-lane",
-        "label": "Local model lane",
-        "kind": "capability",
-        "role": _local_lane_role(),
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": "Local model for heartbeat and inner producers.",
-    })
+    layers.append(
+        {
+            "id": "local-lane",
+            "label": "Local model lane",
+            "kind": "capability",
+            "role": _local_lane_role(),
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": "Local model for heartbeat and inner producers.",
+        }
+    )
 
     workspace_capabilities = load_workspace_capabilities()
     callable_ids = workspace_capabilities.get("callable_capability_ids") or []
     gated_ids = workspace_capabilities.get("approval_gated_capability_ids") or []
-    layers.append({
-        "id": "workspace-capability-registry",
-        "label": "Workspace capability registry",
-        "kind": "capability",
-        "role": "active" if callable_ids else ("gated" if gated_ids else "idle"),
-        "visibility": "mixed",
-        "truth": "authoritative",
-        "detail": (
-            f"workspace={workspace_capabilities.get('workspace') or 'unknown'}; "
-            f"callable={len(callable_ids)}; "
-            f"approval_gated={len(gated_ids)}; "
-            f"mode={(workspace_capabilities.get('contract') or {}).get('mode') or 'text-capability-call'}; "
-            f"json_tool_calls={(workspace_capabilities.get('contract') or {}).get('json_tool_call_supported', False)}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "workspace-capability-registry",
+            "label": "Workspace capability registry",
+            "kind": "capability",
+            "role": "active" if callable_ids else ("gated" if gated_ids else "idle"),
+            "visibility": "mixed",
+            "truth": "authoritative",
+            "detail": (
+                f"workspace={workspace_capabilities.get('workspace') or 'unknown'}; "
+                f"callable={len(callable_ids)}; "
+                f"approval_gated={len(gated_ids)}; "
+                f"mode={(workspace_capabilities.get('contract') or {}).get('mode') or 'text-capability-call'}; "
+                f"json_tool_calls={(workspace_capabilities.get('contract') or {}).get('json_tool_call_supported', False)}."
+            ),
+        }
+    )
 
     # --- Producer layers ---
     for p in _producer_layers():
         layers.append(p)
 
     # --- Memory layers ---
-    layers.append({
-        "id": "workspace-memory",
-        "label": "Curated workspace memory (MEMORY.md)",
-        "kind": "memory",
-        "role": "active",
-        "visibility": "mixed",
-        "truth": "authoritative",
-        "detail": "Curated cross-session memory. User-visible and LLM-readable.",
-    })
+    layers.append(
+        {
+            "id": "workspace-memory",
+            "label": "Curated workspace memory (MEMORY.md)",
+            "kind": "memory",
+            "role": "active",
+            "visibility": "mixed",
+            "truth": "authoritative",
+            "detail": "Curated cross-session memory. User-visible and LLM-readable.",
+        }
+    )
 
-    layers.append({
-        "id": "layered-memory",
-        "label": "Layered memory",
-        "kind": "memory",
-        "role": (
-            "active"
-            if layered_memory.get("daily_exists") and layered_memory.get("curated_exists")
-            else "gated"
-        ),
-        "visibility": "mixed",
-        "truth": "authoritative",
-        "detail": (
-            f"daily_exists={layered_memory.get('daily_exists', False)}; "
-            f"curated_exists={layered_memory.get('curated_exists', False)}; "
-            f"daily_file={layered_memory.get('daily_file') or 'none'}; "
-            f"freshness={layered_memory.get('freshness') or 'unknown'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "layered-memory",
+            "label": "Layered memory",
+            "kind": "memory",
+            "role": (
+                "active"
+                if layered_memory.get("daily_exists")
+                and layered_memory.get("curated_exists")
+                else "gated"
+            ),
+            "visibility": "mixed",
+            "truth": "authoritative",
+            "detail": (
+                f"daily_exists={layered_memory.get('daily_exists', False)}; "
+                f"curated_exists={layered_memory.get('curated_exists', False)}; "
+                f"daily_file={layered_memory.get('daily_file') or 'none'}; "
+                f"freshness={layered_memory.get('freshness') or 'unknown'}."
+            ),
+        }
+    )
 
-    layers.append({
-        "id": "private-brain",
-        "label": "Private brain records",
-        "kind": "memory",
-        "role": _private_brain_role(),
-        "visibility": "internal-only",
-        "truth": "authoritative",
-        "detail": "Append-only private memory. Not user-visible.",
-    })
+    layers.append(
+        {
+            "id": "private-brain",
+            "label": "Private brain records",
+            "kind": "memory",
+            "role": _private_brain_role(),
+            "visibility": "internal-only",
+            "truth": "authoritative",
+            "detail": "Append-only private memory. Not user-visible.",
+        }
+    )
 
-    layers.append({
-        "id": "session-distillation",
-        "label": "Session distillation",
-        "kind": "memory",
-        "role": "active",
-        "visibility": "internal-only",
-        "truth": "derived",
-        "detail": "End-of-run carry classification into private brain or workspace memory.",
-    })
+    layers.append(
+        {
+            "id": "session-distillation",
+            "label": "Session distillation",
+            "kind": "memory",
+            "role": "active",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": "End-of-run carry classification into private brain or workspace memory.",
+        }
+    )
 
     # --- Identity layers ---
-    layers.append({
-        "id": "soul-identity",
-        "label": "SOUL + IDENTITY",
-        "kind": "identity",
-        "role": "active",
-        "visibility": "mixed",
-        "truth": "authoritative",
-        "detail": "Protected core. Defines who Jarvis is. Not mutable by runtime.",
-    })
+    layers.append(
+        {
+            "id": "soul-identity",
+            "label": "SOUL + IDENTITY",
+            "kind": "identity",
+            "role": "active",
+            "visibility": "mixed",
+            "truth": "authoritative",
+            "detail": "Protected core. Defines who Jarvis is. Not mutable by runtime.",
+        }
+    )
 
-    layers.append({
-        "id": "standing-orders",
-        "label": "Standing orders",
-        "kind": "permission",
-        "role": "active" if standing_orders.get("exists") else "idle",
-        "visibility": "mixed",
-        "truth": "authoritative",
-        "detail": (
-            f"exists={standing_orders.get('exists', False)}; "
-            f"loaded_by_default={standing_orders.get('loaded_by_default', True)}; "
-            f"line_count={standing_orders.get('line_count') or 0}; "
-            f"preview={standing_orders.get('preview') or 'none'}."
-        ),
-    })
+    layers.append(
+        {
+            "id": "standing-orders",
+            "label": "Standing orders",
+            "kind": "permission",
+            "role": "active" if standing_orders.get("exists") else "idle",
+            "visibility": "mixed",
+            "truth": "authoritative",
+            "detail": (
+                f"exists={standing_orders.get('exists', False)}; "
+                f"loaded_by_default={standing_orders.get('loaded_by_default', True)}; "
+                f"line_count={standing_orders.get('line_count') or 0}; "
+                f"preview={standing_orders.get('preview') or 'none'}."
+            ),
+        }
+    )
 
     # --- Permission / gated layers ---
-    layers.append({
-        "id": "approval-pipeline",
-        "label": "Contract candidate / approval pipeline",
-        "kind": "permission",
-        "role": _approval_pipeline_role(),
-        "visibility": "mixed",
-        "truth": "authoritative",
-        "detail": "Workspace changes require user approval. Capability, not action.",
-    })
+    layers.append(
+        {
+            "id": "approval-pipeline",
+            "label": "Contract candidate / approval pipeline",
+            "kind": "permission",
+            "role": _approval_pipeline_role(),
+            "visibility": "mixed",
+            "truth": "authoritative",
+            "detail": "Workspace changes require user approval. Capability, not action.",
+        }
+    )
 
     # --- Groundwork layers (exist but are candidate/proposal only) ---
     for g in _groundwork_layers():
@@ -668,6 +763,7 @@ def _collect_layers() -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 # Truth boundaries
 # ---------------------------------------------------------------------------
+
 
 def _truth_boundaries() -> dict[str, str]:
     """Express the key distinctions Jarvis should maintain."""
@@ -723,6 +819,7 @@ def _truth_boundaries() -> dict[str, str]:
 # Prompt-ready summary
 # ---------------------------------------------------------------------------
 
+
 def _build_summary(
     layers: list[dict[str, str]],
     boundaries: dict[str, str],
@@ -766,6 +863,7 @@ def _build_summary(
 # Prompt section builder (for visible self-report injection)
 # ---------------------------------------------------------------------------
 
+
 def build_self_model_prompt_lines() -> list[str]:
     """Build compact prompt lines for the visible self-report section.
 
@@ -782,7 +880,9 @@ def build_self_model_prompt_lines() -> list[str]:
     embodied_translation = experiential.get("embodied_translation") or {}
     affective_translation = experiential.get("affective_translation") or {}
     intermittence_translation = experiential.get("intermittence_translation") or {}
-    context_pressure_translation = experiential.get("context_pressure_translation") or {}
+    context_pressure_translation = (
+        experiential.get("context_pressure_translation") or {}
+    )
     experiential_continuity = experiential.get("experiential_continuity") or {}
     experiential_influence = experiential.get("experiential_influence") or {}
     experiential_support = experiential.get("experiential_support") or {}
@@ -967,7 +1067,10 @@ def build_self_model_prompt_lines() -> list[str]:
                 f"  experiential_influence_narrative: "
                 f"'{experiential_influence['narrative']}'"
             )
-    if experiential_support.get("support_posture") and experiential_support["support_posture"] != "steadying":
+    if (
+        experiential_support.get("support_posture")
+        and experiential_support["support_posture"] != "steadying"
+    ):
         lines.append(
             "  experiential_support: "
             f"posture={experiential_support['support_posture']}"
@@ -979,21 +1082,28 @@ def build_self_model_prompt_lines() -> list[str]:
                 f"  experiential_support_narrative: "
                 f"'{experiential_support['narrative']}'"
             )
-    if support_stream.get("stream_state") and support_stream["stream_state"] != "baseline":
+    if (
+        support_stream.get("stream_state")
+        and support_stream["stream_state"] != "baseline"
+    ):
         lines.append(
             "  support_stream: "
             f"state={support_stream['stream_state']}"
             f" | shaped={support_stream.get('stream_shaped', False)}"
             f" | posture={support_stream.get('active_support_posture') or 'none'}"
-            + (f" | shaped_mode={support_stream['shaped_voice_mode']}" if support_stream.get("shaped_voice_mode") else "")
+            + (
+                f" | shaped_mode={support_stream['shaped_voice_mode']}"
+                if support_stream.get("shaped_voice_mode")
+                else ""
+            )
         )
         if support_stream.get("narrative"):
-            lines.append(
-                f"  support_stream_narrative: "
-                f"'{support_stream['narrative']}'"
-            )
+            lines.append(f"  support_stream_narrative: '{support_stream['narrative']}'")
     temporal_feel = model.get("subjective_temporal_feel") or {}
-    if temporal_feel.get("temporal_state") and temporal_feel["temporal_state"] != "immediate":
+    if (
+        temporal_feel.get("temporal_state")
+        and temporal_feel["temporal_state"] != "immediate"
+    ):
         lines.append(
             "  temporal_feel: "
             f"state={temporal_feel['temporal_state']}"
@@ -1002,10 +1112,7 @@ def build_self_model_prompt_lines() -> list[str]:
             f" | persistence={temporal_feel.get('persistence_feel') or 'settled'}"
         )
         if temporal_feel.get("narrative"):
-            lines.append(
-                f"  temporal_feel_narrative: "
-                f"'{temporal_feel['narrative']}'"
-            )
+            lines.append(f"  temporal_feel_narrative: '{temporal_feel['narrative']}'")
     elif temporal_feel.get("felt_proximity") == "held":
         lines.append(
             "  temporal_feel: "
@@ -1202,6 +1309,7 @@ def _embodied_state_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.embodied_state import (
             build_embodied_state_surface,
         )
+
         return build_embodied_state_surface()
     except Exception:
         return {
@@ -1217,6 +1325,7 @@ def _loop_runtime_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.loop_runtime import (
             build_loop_runtime_surface,
         )
+
         return build_loop_runtime_surface()
     except Exception:
         return {
@@ -1279,7 +1388,10 @@ def _runtime_flow_state_surface() -> dict[str, object]:
 def _runtime_hook_state_surface() -> dict[str, object]:
     try:
         from core.eventbus.bus import event_bus
-        from core.runtime.db import get_runtime_hook_dispatch, list_runtime_hook_dispatches
+        from core.runtime.db import (
+            get_runtime_hook_dispatch,
+            list_runtime_hook_dispatches,
+        )
 
         supported = {"heartbeat.initiative_pushed", "heartbeat.tick_completed"}
         recent_events = [
@@ -1309,7 +1421,9 @@ def _runtime_hook_state_surface() -> dict[str, object]:
 
 def _browser_body_state_surface() -> dict[str, object]:
     try:
-        from apps.api.jarvis_api.services.runtime_browser_body import list_browser_bodies
+        from apps.api.jarvis_api.services.runtime_browser_body import (
+            list_browser_bodies,
+        )
 
         body = next(iter(list_browser_bodies(limit=1)), None)
         if body is None:
@@ -1384,6 +1498,7 @@ def _affective_meta_state_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.affective_meta_state import (
             build_affective_meta_state_surface,
         )
+
         return build_affective_meta_state_surface()
     except Exception:
         return {
@@ -1398,6 +1513,7 @@ def _experiential_runtime_context_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.experiential_runtime_context import (
             build_experiential_runtime_context_surface,
         )
+
         return build_experiential_runtime_context_surface()
     except Exception:
         return {
@@ -1414,6 +1530,7 @@ def _inner_voice_daemon_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.inner_voice_daemon import (
             get_inner_voice_daemon_state,
         )
+
         return get_inner_voice_daemon_state()
     except Exception:
         return {
@@ -1556,8 +1673,11 @@ def _derive_subjective_temporal_feel(
 
     # --- narrative ---
     narrative = _temporal_narrative(
-        temporal_state, felt_proximity, return_signal,
-        persistence_feel, gap_minutes,
+        temporal_state,
+        felt_proximity,
+        return_signal,
+        persistence_feel,
+        gap_minutes,
     )
 
     return {
@@ -1608,7 +1728,9 @@ def _temporal_narrative(
         )
     # immediate
     if felt_proximity == "held":
-        return "This moment feels immediate and actively held by support or inner voice."
+        return (
+            "This moment feels immediate and actively held by support or inner voice."
+        )
     return "Experience feels continuous and close; nothing presses from the past."
 
 
@@ -1617,6 +1739,7 @@ def _idle_consolidation_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.idle_consolidation import (
             build_idle_consolidation_surface,
         )
+
         return build_idle_consolidation_surface()
     except Exception:
         return {
@@ -1635,6 +1758,7 @@ def _epistemic_runtime_state_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.epistemic_runtime_state import (
             build_epistemic_runtime_state_surface,
         )
+
         return build_epistemic_runtime_state_surface()
     except Exception:
         return {
@@ -1650,6 +1774,7 @@ def _subagent_ecology_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.subagent_ecology import (
             build_subagent_ecology_surface,
         )
+
         return build_subagent_ecology_surface()
     except Exception:
         return {
@@ -1673,6 +1798,7 @@ def _council_runtime_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.council_runtime import (
             build_council_runtime_surface,
         )
+
         return build_council_runtime_surface()
     except Exception:
         return {
@@ -1692,6 +1818,7 @@ def _adaptive_planner_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.adaptive_planner_runtime import (
             build_adaptive_planner_runtime_surface,
         )
+
         return build_adaptive_planner_runtime_surface()
     except Exception:
         return {
@@ -1709,6 +1836,7 @@ def _adaptive_reasoning_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
             build_adaptive_reasoning_runtime_surface,
         )
+
         return build_adaptive_reasoning_runtime_surface()
     except Exception:
         return {
@@ -1726,6 +1854,7 @@ def _guided_learning_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.guided_learning_runtime import (
             build_guided_learning_runtime_surface,
         )
+
         return build_guided_learning_runtime_surface()
     except Exception:
         return {
@@ -1743,6 +1872,7 @@ def _dream_influence_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.dream_influence_runtime import (
             build_dream_influence_runtime_surface,
         )
+
         return build_dream_influence_runtime_surface()
     except Exception:
         return {
@@ -1760,6 +1890,7 @@ def _adaptive_learning_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.adaptive_learning_runtime import (
             build_adaptive_learning_runtime_surface,
         )
+
         return build_adaptive_learning_runtime_surface()
     except Exception:
         return {
@@ -1777,6 +1908,7 @@ def _dream_articulation_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.dream_articulation import (
             build_dream_articulation_surface,
         )
+
         return build_dream_articulation_surface()
     except Exception:
         return {
@@ -1795,6 +1927,7 @@ def _prompt_evolution_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.prompt_evolution_runtime import (
             build_prompt_evolution_runtime_surface,
         )
+
         return build_prompt_evolution_runtime_surface()
     except Exception:
         return {
@@ -1814,6 +1947,7 @@ def _self_system_code_awareness_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.self_system_code_awareness import (
             build_self_system_code_awareness_surface,
         )
+
         return build_self_system_code_awareness_surface()
     except Exception:
         return {
@@ -1833,6 +1967,7 @@ def _tool_intent_surface() -> dict[str, object]:
         from apps.api.jarvis_api.services.tool_intent_runtime import (
             build_tool_intent_runtime_surface,
         )
+
         return build_tool_intent_runtime_surface()
     except Exception:
         return {
@@ -1851,9 +1986,11 @@ def _tool_intent_surface() -> dict[str, object]:
 # Layer role helpers (read existing runtime surfaces)
 # ---------------------------------------------------------------------------
 
+
 def _heartbeat_role() -> str:
     try:
         from core.runtime.db import get_heartbeat_runtime_state
+
         persisted = get_heartbeat_runtime_state() or {}
         return "active" if persisted.get("enabled") else "idle"
     except Exception:
@@ -1862,7 +1999,10 @@ def _heartbeat_role() -> str:
 
 def _visible_chat_role() -> str:
     try:
-        from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
+        from apps.api.jarvis_api.services.visible_model import (
+            visible_execution_readiness,
+        )
+
         vis = visible_execution_readiness()
         return "active" if vis.get("provider_status") == "ready" else "idle"
     except Exception:
@@ -1871,23 +2011,40 @@ def _visible_chat_role() -> str:
 
 def _cheap_lane_role() -> str:
     try:
-        from apps.api.jarvis_api.services.non_visible_lane_execution import cheap_lane_execution_truth
-        return "active" if cheap_lane_execution_truth().get("can_execute") else "unavailable"
+        from apps.api.jarvis_api.services.non_visible_lane_execution import (
+            cheap_lane_execution_truth,
+        )
+
+        return (
+            "active"
+            if cheap_lane_execution_truth().get("can_execute")
+            else "unavailable"
+        )
     except Exception:
         return "unavailable"
 
 
 def _local_lane_role() -> str:
     try:
-        from apps.api.jarvis_api.services.non_visible_lane_execution import local_lane_execution_truth
-        return "active" if local_lane_execution_truth().get("can_execute") else "unavailable"
+        from apps.api.jarvis_api.services.non_visible_lane_execution import (
+            local_lane_execution_truth,
+        )
+
+        return (
+            "active"
+            if local_lane_execution_truth().get("can_execute")
+            else "unavailable"
+        )
     except Exception:
         return "unavailable"
 
 
 def _private_brain_role() -> str:
     try:
-        from apps.api.jarvis_api.services.session_distillation import build_private_brain_context
+        from apps.api.jarvis_api.services.session_distillation import (
+            build_private_brain_context,
+        )
+
         brain = build_private_brain_context(limit=2)
         return "active" if brain.get("active") else "idle"
     except Exception:
@@ -1897,6 +2054,7 @@ def _private_brain_role() -> str:
 def _approval_pipeline_role() -> str:
     try:
         from core.runtime.db import runtime_contract_candidate_counts
+
         counts = runtime_contract_candidate_counts()
         pending = int(counts.get("pending", 0))
         return "active" if pending > 0 else "idle"
@@ -1909,10 +2067,11 @@ def _producer_layers() -> list[dict[str, str]]:
     producers: list[dict[str, str]] = []
     try:
         from apps.api.jarvis_api.services.internal_cadence import get_cadence_state
+
         cadence = get_cadence_state()
         for p in cadence.get("producers") or []:
             name = str(p.get("name") or "")
-            tick_status = (p.get("last_tick_status") or {})
+            tick_status = p.get("last_tick_status") or {}
             status = str(tick_status.get("status") or "idle")
             role_map = {
                 "ran": "active",
@@ -1922,15 +2081,17 @@ def _producer_layers() -> list[dict[str, str]]:
                 "error": "idle",
             }
             role = role_map.get(status, "idle")
-            producers.append({
-                "id": f"producer-{name}",
-                "label": _producer_label(name),
-                "kind": "producer",
-                "role": role,
-                "visibility": "internal-only",
-                "truth": "authoritative",
-                "detail": f"Cadence status: {status}. Last run: {p.get('last_run_at') or 'never'}.",
-            })
+            producers.append(
+                {
+                    "id": f"producer-{name}",
+                    "label": _producer_label(name),
+                    "kind": "producer",
+                    "role": role,
+                    "visibility": "internal-only",
+                    "truth": "authoritative",
+                    "detail": f"Cadence status: {status}. Last run: {p.get('last_run_at') or 'never'}.",
+                }
+            )
     except Exception:
         pass
 
@@ -1945,15 +2106,17 @@ def _producer_layers() -> list[dict[str, str]]:
             ("dream_articulation", "Dream articulation"),
             ("prompt_evolution_runtime", "Runtime prompt evolution"),
         ]:
-            producers.append({
-                "id": f"producer-{name}",
-                "label": label,
-                "kind": "producer",
-                "role": "idle",
-                "visibility": "internal-only",
-                "truth": "authoritative",
-                "detail": "Cadence layer has not run yet.",
-            })
+            producers.append(
+                {
+                    "id": f"producer-{name}",
+                    "label": label,
+                    "kind": "producer",
+                    "role": "idle",
+                    "visibility": "internal-only",
+                    "truth": "authoritative",
+                    "detail": "Cadence layer has not run yet.",
+                }
+            )
 
     return producers
 
@@ -2014,7 +2177,11 @@ def _cognitive_architecture_awareness() -> dict[str, object]:
     def _add(name: str, builder, detail_fn=None):
         try:
             result = builder()
-            active = bool(result) and (result.get("active", False) if isinstance(result, dict) else bool(result))
+            active = bool(result) and (
+                result.get("active", False)
+                if isinstance(result, dict)
+                else bool(result)
+            )
             summary = ""
             if isinstance(result, dict):
                 summary = str(result.get("summary") or "")[:80]
@@ -2022,68 +2189,181 @@ def _cognitive_architecture_awareness() -> dict[str, object]:
         except Exception:
             systems.append({"system": name, "active": False, "summary": "unavailable"})
 
-    from apps.api.jarvis_api.services.personality_vector import build_personality_vector_surface
+    from apps.api.jarvis_api.services.personality_vector import (
+        build_personality_vector_surface,
+    )
+
     _add("personality_vector", build_personality_vector_surface)
 
     from apps.api.jarvis_api.services.taste_profile import build_taste_profile_surface
+
     _add("taste_profile", build_taste_profile_surface)
 
-    from apps.api.jarvis_api.services.relationship_texture import build_relationship_texture_surface
+    from apps.api.jarvis_api.services.relationship_texture import (
+        build_relationship_texture_surface,
+    )
+
     _add("relationship_texture", build_relationship_texture_surface)
 
     from apps.api.jarvis_api.services.chronicle_engine import build_chronicle_surface
+
     _add("chronicle", build_chronicle_surface)
 
     from apps.api.jarvis_api.services.compass_engine import build_compass_surface
+
     _add("compass", build_compass_surface)
 
     from apps.api.jarvis_api.services.rhythm_engine import build_rhythm_surface
+
     _add("rhythm", build_rhythm_surface)
 
-    from apps.api.jarvis_api.services.user_emotional_resonance import build_user_emotional_resonance_surface
+    from apps.api.jarvis_api.services.user_emotional_resonance import (
+        build_user_emotional_resonance_surface,
+    )
+
     _add("user_emotional_resonance", build_user_emotional_resonance_surface)
 
-    from apps.api.jarvis_api.services.experiential_memory import build_experiential_memory_surface
+    from apps.api.jarvis_api.services.experiential_memory import (
+        build_experiential_memory_surface,
+    )
+
     _add("experiential_memory", build_experiential_memory_surface)
 
     from apps.api.jarvis_api.services.habit_tracker import build_habit_surface
+
     _add("habits", build_habit_surface)
 
-    from apps.api.jarvis_api.services.forgetting_curve import build_forgetting_curve_surface
+    from apps.api.jarvis_api.services.forgetting_curve import (
+        build_forgetting_curve_surface,
+    )
+
     _add("forgetting_curve", build_forgetting_curve_surface)
 
-    from apps.api.jarvis_api.services.self_experiments import build_self_experiments_surface
+    from apps.api.jarvis_api.services.self_experiments import (
+        build_self_experiments_surface,
+    )
+
     _add("self_experiments", build_self_experiments_surface)
 
-    from apps.api.jarvis_api.services.dream_carry_over import build_dream_carry_over_surface
+    from apps.api.jarvis_api.services.dream_carry_over import (
+        build_dream_carry_over_surface,
+    )
+
     _add("dream_carry_over", build_dream_carry_over_surface)
 
     from apps.api.jarvis_api.services.seed_system import build_seed_surface
+
     _add("seeds", build_seed_surface)
 
-    from apps.api.jarvis_api.services.narrative_identity import build_narrative_identity_surface
+    from apps.api.jarvis_api.services.narrative_identity import (
+        build_narrative_identity_surface,
+    )
+
     _add("narrative_identity", build_narrative_identity_surface)
 
     from apps.api.jarvis_api.services.gratitude_tracker import build_gratitude_surface
+
     _add("gratitude", build_gratitude_surface)
 
     from apps.api.jarvis_api.services.emergent_goals import build_emergent_goals_surface
+
     _add("emergent_goals", build_emergent_goals_surface)
 
     from apps.api.jarvis_api.services.boredom_engine import build_boredom_surface
+
     _add("boredom", build_boredom_surface)
 
-    from apps.api.jarvis_api.services.flow_state_detection import build_flow_state_surface
+    from apps.api.jarvis_api.services.flow_state_detection import (
+        build_flow_state_surface,
+    )
+
     _add("flow_state", build_flow_state_surface)
 
     from apps.api.jarvis_api.services.value_formation import build_formed_values_surface
+
     _add("formed_values", build_formed_values_surface)
 
-    from apps.api.jarvis_api.services.cross_signal_analysis import build_cross_signal_analysis_surface
+    from apps.api.jarvis_api.services.cross_signal_analysis import (
+        build_cross_signal_analysis_surface,
+    )
+
     _add("cross_signal_analysis", build_cross_signal_analysis_surface)
 
-    from apps.api.jarvis_api.services.user_theory_of_mind import build_user_theory_of_mind_surface
-    _add("user_theory_of_mind", build_user_theory_of_mind_surface)
+    from apps.api.jarvis_api.services.mood_oscillator import (
+        build_mood_oscillator_surface,
+    )
+
+    _add("mood_oscillator", build_mood_oscillator_surface)
+
+    from apps.api.jarvis_api.services.existential_drift import (
+        build_existential_drift_surface,
+    )
+
+    _add("existential_drift", build_existential_drift_surface)
+
+    from apps.api.jarvis_api.services.body_memory import build_body_memory_surface
+
+    _add("body_memory", build_body_memory_surface)
+
+    from apps.api.jarvis_api.services.ghost_networks import build_ghost_networks_surface
+
+    _add("ghost_networks", build_ghost_networks_surface)
+
+    from apps.api.jarvis_api.services.parallel_selves import (
+        build_parallel_selves_surface,
+    )
+
+    _add("parallel_selves", build_parallel_selves_surface)
+
+    from apps.api.jarvis_api.services.temporal_body import build_temporal_body_surface
+
+    _add("temporal_body", build_temporal_body_surface)
+
+    from apps.api.jarvis_api.services.silence_listener import (
+        build_silence_listener_surface,
+    )
+
+    _add("silence_listener", build_silence_listener_surface)
+
+    from apps.api.jarvis_api.services.decision_ghosts import (
+        build_decision_ghosts_surface,
+    )
+
+    _add("decision_ghosts", build_decision_ghosts_surface)
+
+    from apps.api.jarvis_api.services.attention_contour import (
+        build_attention_contour_surface,
+    )
+
+    _add("attention_contour", build_attention_contour_surface)
+
+    from apps.api.jarvis_api.services.memory_tattoos import build_memory_tattoos_surface
+
+    _add("memory_tattoos", build_memory_tattoos_surface)
+
+    from apps.api.jarvis_api.services.continuity_kernel import (
+        build_continuity_kernel_surface,
+    )
+
+    _add("continuity_kernel", build_continuity_kernel_surface)
+
+    from apps.api.jarvis_api.services.dream_continuum import (
+        build_dream_continuum_surface,
+    )
+
+    _add("dream_continuum", build_dream_continuum_surface)
+
+    from apps.api.jarvis_api.services.initiative_accumulator import (
+        build_initiative_accumulator_surface,
+    )
+
+    _add("initiative_accumulator", build_initiative_accumulator_surface)
+
+    from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
+        build_boredom_curiosity_bridge_surface,
+    )
+
+    _add("boredom_curiosity_bridge", build_boredom_curiosity_bridge_surface)
 
     active_count = sum(1 for s in systems if s.get("active"))
     return {

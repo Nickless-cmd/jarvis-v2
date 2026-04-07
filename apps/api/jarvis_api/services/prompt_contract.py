@@ -1905,6 +1905,64 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    try:
+        from apps.api.jarvis_api.services.body_memory import format_body_for_prompt
+
+        body = format_body_for_prompt()
+        if body:
+            parts.append(body)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.ghost_networks import format_ghost_for_prompt
+
+        ghost = format_ghost_for_prompt()
+        if ghost:
+            parts.append(ghost)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.parallel_selves import format_self_for_prompt
+
+        selves = format_self_for_prompt()
+        if selves:
+            parts.append(selves)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.silence_listener import (
+            format_silence_for_prompt,
+        )
+
+        silence = format_silence_for_prompt()
+        if silence:
+            parts.append(silence)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.decision_ghosts import (
+            format_decision_ghost_for_prompt,
+        )
+
+        decision = format_decision_ghost_for_prompt()
+        if decision:
+            parts.append(decision)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.memory_tattoos import format_tattoo_for_prompt
+
+        tattoo = format_tattoo_for_prompt()
+        if tattoo:
+            parts.append(tattoo)
+    except Exception:
+        pass
+
     return f"- {' | '.join(parts)}" if parts else ""
 
 

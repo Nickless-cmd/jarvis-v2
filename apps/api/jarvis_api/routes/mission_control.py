@@ -552,9 +552,15 @@ def _mc_runtime_uncached() -> dict:
     with runtime_surface_cache():
         settings = load_settings()
         heartbeat = heartbeat_runtime_surface()
+        from apps.api.jarvis_api.services.heartbeat_runtime import (
+            _build_cognitive_surfaces,
+        )
+
+        cognitive_architecture = _build_cognitive_surfaces()
         payload = {
             "settings": settings.to_dict(),
             "heartbeat_runtime": heartbeat,
+            "cognitive_architecture": cognitive_architecture,
             "runtime_embodied_state": build_embodied_state_surface(),
             "runtime_affective_meta_state": build_affective_meta_state_surface(),
             "runtime_epistemic_state": build_epistemic_runtime_state_surface(),

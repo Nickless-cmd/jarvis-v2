@@ -80,6 +80,17 @@ Use block syntax:
 </capability-call>
 ```
 
+## DELETE_MEMORY_LINE: delete workspace memory line
+path: MEMORY.md
+
+Deletes one exact durable bullet line from MEMORY.md without rewriting the whole file.
+Use this when stale long-term memory should be removed entirely.
+`command_text` must be the exact old `- ...` line already present in MEMORY.md.
+Use self-closing syntax:
+```
+<capability-call id="tool:delete-workspace-memory-line" command_text="- stale durable fact" />
+```
+
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md
 

@@ -2829,8 +2829,15 @@ def _ensure_private_inner_note_columns(conn: sqlite3.Connection) -> None:
 
 
 def visible_session_continuity() -> dict[str, object]:
-    recent_runs = recent_visible_runs(limit=3)
+    # Use visible_work_notes (which carry both user_message_preview AND
+    # work_preview) instead of plain visible_runs (which only have the
+    # assistant text). This makes the recent_run_summaries actually
+    # carry the dialog context between sessions instead of being a
+    # one-sided assistant log.
+    recent_notes = recent_visible_work_notes(limit=3)
+    recent_runs = recent_visible_runs(limit=3) if not recent_notes else []
     recent_invocations = recent_capability_invocations(limit=2)
+    latest_note = recent_notes[0] if recent_notes else {}
     latest_run = recent_runs[0] if recent_runs else {}
     recent_capability_ids = [
         capability_id
@@ -2843,21 +2850,37 @@ def visible_session_continuity() -> dict[str, object]:
             "status": item.get("status"),
             "finished_at": item.get("finished_at"),
             "capability_id": item.get("capability_id"),
+            "user_message_preview": item.get("user_message_preview"),
+            "text_preview": item.get("work_preview"),
+        }
+        for item in recent_notes
+    ] or [
+        {
+            "run_id": item.get("run_id"),
+            "status": item.get("status"),
+            "finished_at": item.get("finished_at"),
+            "capability_id": item.get("capability_id"),
+            "user_message_preview": None,
             "text_preview": item.get("text_preview"),
         }
         for item in recent_runs
     ]
+    latest_payload = latest_note or latest_run or {}
     return {
-        "active": bool(latest_run or recent_invocations),
-        "source": "persisted-visible-runs+capability-invocations",
-        "latest_run_id": latest_run.get("run_id"),
-        "latest_status": latest_run.get("status"),
-        "latest_finished_at": latest_run.get("finished_at"),
-        "latest_text_preview": latest_run.get("text_preview"),
-        "latest_capability_id": latest_run.get("capability_id"),
+        "active": bool(latest_payload or recent_invocations),
+        "source": "persisted-visible-work-notes+capability-invocations"
+        if recent_notes
+        else "persisted-visible-runs+capability-invocations",
+        "latest_run_id": latest_payload.get("run_id"),
+        "latest_status": latest_payload.get("status"),
+        "latest_finished_at": latest_payload.get("finished_at"),
+        "latest_text_preview": latest_payload.get("work_preview")
+        or latest_payload.get("text_preview"),
+        "latest_user_message_preview": latest_payload.get("user_message_preview"),
+        "latest_capability_id": latest_payload.get("capability_id"),
         "recent_capability_ids": recent_capability_ids,
         "recent_run_summaries": recent_run_summaries,
-        "included_run_rows": len(recent_runs),
+        "included_run_rows": len(recent_notes) or len(recent_runs),
         "included_capability_rows": len(recent_invocations),
     }
 

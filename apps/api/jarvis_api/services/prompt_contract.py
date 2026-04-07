@@ -1953,33 +1953,47 @@ def _visible_session_continuity_instruction() -> str | None:
     continuity = visible_session_continuity()
     if not continuity["active"]:
         return None
+
+    def _trim(text: str | None, *, limit: int) -> str:
+        cleaned = " ".join(str(text or "").split()).strip()
+        if not cleaned:
+            return ""
+        if len(cleaned) > limit:
+            return cleaned[: limit - 1].rstrip() + "…"
+        return cleaned
+
     parts = [
         f"latest_status={continuity.get('latest_status') or 'unknown'}",
         f"latest_finished_at={continuity.get('latest_finished_at') or 'unknown'}",
     ]
     if continuity.get("latest_capability_id"):
         parts.append(f"latest_capability={continuity['latest_capability_id']}")
-    if continuity.get("latest_text_preview"):
-        parts.append(f"latest_preview={continuity['latest_text_preview']}")
+    latest_user = _trim(continuity.get("latest_user_message_preview"), limit=120)
+    if latest_user:
+        parts.append(f"latest_user={latest_user}")
+    latest_assistant = _trim(continuity.get("latest_text_preview"), limit=140)
+    if latest_assistant:
+        parts.append(f"latest_assistant={latest_assistant}")
     lines = [
         "Visible session continuity:",
         "- " + " | ".join(parts),
     ]
     recent_runs = list(continuity.get("recent_run_summaries") or [])[:3]
     if recent_runs:
-        lines.append("Recent visible carry-over:")
+        lines.append("Recent visible carry-over (newest first):")
         for item in recent_runs:
             run_parts = [
                 f"status={item.get('status') or 'unknown'}",
                 f"finished_at={item.get('finished_at') or 'unknown'}",
             ]
             if item.get("capability_id"):
-                run_parts.append(f"capability={item.get('capability_id')}")
-            preview = " ".join(str(item.get("text_preview") or "").split()).strip()
-            if preview:
-                if len(preview) > 140:
-                    preview = preview[:139].rstrip() + "…"
-                run_parts.append(f"preview={preview}")
+                run_parts.append(f"cap={item.get('capability_id')}")
+            user_preview = _trim(item.get("user_message_preview"), limit=110)
+            if user_preview:
+                run_parts.append(f"user={user_preview}")
+            assistant_preview = _trim(item.get("text_preview"), limit=130)
+            if assistant_preview:
+                run_parts.append(f"assistant={assistant_preview}")
             lines.append("- " + " | ".join(run_parts))
     return "\n".join(lines)
 

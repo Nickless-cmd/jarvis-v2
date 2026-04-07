@@ -30,6 +30,7 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert "tool:read-repository-readme" in runtime_capabilities
     assert "tool:read-external-file-by-path" in runtime_capabilities
     assert "tool:run-non-destructive-command" in runtime_capabilities
+    assert "tool:replace-workspace-memory-line" in runtime_capabilities
     assert "tool:append-daily-memory" in runtime_capabilities
     assert "tool:propose-workspace-memory-update" in runtime_capabilities
     assert "tool:rewrite-workspace-memory" in runtime_capabilities
@@ -40,6 +41,7 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert runtime_capabilities["tool:read-repository-readme"]["available_now"] is True
     assert runtime_capabilities["tool:read-external-file-by-path"]["available_now"] is True
     assert runtime_capabilities["tool:run-non-destructive-command"]["available_now"] is True
+    assert runtime_capabilities["tool:replace-workspace-memory-line"]["available_now"] is True
     assert runtime_capabilities["tool:append-daily-memory"]["available_now"] is True
     assert runtime_capabilities["tool:propose-workspace-memory-update"]["runtime_status"] == "approval-required"
     assert runtime_capabilities["tool:rewrite-workspace-memory"]["runtime_status"] == "approval-required"
@@ -731,6 +733,49 @@ def test_workspace_memory_rewrite_reports_resolved_workspace_paths(isolated_runt
     assert payload.get("workspace_root") == str(workspace_dir)
     assert payload.get("resolved_path") == str((workspace_dir / "MEMORY.md").resolve())
     assert payload.get("workspace_relative_path") == "MEMORY.md"
+
+
+def test_workspace_memory_replace_line_updates_exact_durable_fact(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "")
+    target = workspace_dir / "MEMORY.md"
+    target.write_text(
+        "# MEMORY\n\n## Curated Memory\n\n- Stale loop fact.\n- Keep this fact.\n",
+        encoding="utf-8",
+    )
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:replace-workspace-memory-line",
+        command_text="- Stale loop fact.",
+        write_content="- Corrected loop fact.",
+    )
+
+    assert result["status"] == "executed"
+    payload = result.get("result") or {}
+    assert payload.get("type") == "workspace-memory-replace"
+    assert payload.get("match_count") == 1
+    assert payload.get("workspace_relative_path") == "MEMORY.md"
+    text = target.read_text(encoding="utf-8")
+    assert "- Corrected loop fact." in text
+    assert "- Stale loop fact." not in text
+    assert "- Keep this fact." in text
+
+
+def test_workspace_memory_replace_line_requires_exact_durable_lines(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    missing = caps_mod.invoke_workspace_capability("tool:replace-workspace-memory-line")
+    assert missing["status"] == "blocked-missing-replace-content"
+
+    invalid = caps_mod.invoke_workspace_capability(
+        "tool:replace-workspace-memory-line",
+        command_text="not a durable bullet",
+        write_content="- New durable fact.",
+    )
+    assert invalid["status"] == "blocked-invalid-replace-old-line"
 
 
 def test_external_write_capability_stays_closed_even_when_approved(isolated_runtime) -> None:

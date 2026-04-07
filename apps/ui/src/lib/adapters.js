@@ -2815,6 +2815,24 @@ export const backend = {
     })
   },
 
+  async getAutonomyProposals(limit = 30) {
+    return requestJson(`/mc/autonomy/proposals?limit=${encodeURIComponent(limit)}`)
+  },
+
+  async approveAutonomyProposal(proposalId, note = '') {
+    const query = note ? `?note=${encodeURIComponent(note)}` : ''
+    return requestJson(`/mc/autonomy/proposals/${encodeURIComponent(proposalId)}/approve${query}`, {
+      method: 'POST',
+    })
+  },
+
+  async rejectAutonomyProposal(proposalId, note = '') {
+    const query = note ? `?note=${encodeURIComponent(note)}` : ''
+    return requestJson(`/mc/autonomy/proposals/${encodeURIComponent(proposalId)}/reject${query}`, {
+      method: 'POST',
+    })
+  },
+
   async getMissionControlObservability() {
     const [events, costs, operations] = await Promise.all([
       requestJson('/mc/events?limit=80'),

@@ -21,6 +21,7 @@ Callable now:
 - `tool:run-non-destructive-command`
 - `tool:write-workspace-memory`
 - `tool:replace-workspace-memory-line`
+- `tool:delete-workspace-memory-line`
 - `tool:append-daily-memory`
 - `tool:write-user-profile`
 - `tool:list-workspace-files`
@@ -119,6 +120,17 @@ Use block syntax:
 <capability-call id="tool:replace-workspace-memory-line" command_text="- old durable fact">
 - new durable fact
 </capability-call>
+```
+
+## DELETE_MEMORY_LINE: delete workspace memory line
+path: MEMORY.md
+
+Deletes one exact durable bullet line from MEMORY.md without rewriting the whole file.
+Use this when stale long-term memory should be removed entirely.
+`command_text` must be the exact old `- ...` line already present in MEMORY.md.
+Use self-closing syntax:
+```
+<capability-call id="tool:delete-workspace-memory-line" command_text="- stale durable fact" />
 ```
 
 ## APPEND_DAILY_MEMORY: append daily memory

@@ -31,6 +31,7 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert "tool:read-external-file-by-path" in runtime_capabilities
     assert "tool:run-non-destructive-command" in runtime_capabilities
     assert "tool:replace-workspace-memory-line" in runtime_capabilities
+    assert "tool:delete-workspace-memory-line" in runtime_capabilities
     assert "tool:append-daily-memory" in runtime_capabilities
     assert "tool:propose-workspace-memory-update" in runtime_capabilities
     assert "tool:rewrite-workspace-memory" in runtime_capabilities
@@ -42,6 +43,7 @@ def test_workspace_capabilities_bind_to_runtime_workspace_and_populate(isolated_
     assert runtime_capabilities["tool:read-external-file-by-path"]["available_now"] is True
     assert runtime_capabilities["tool:run-non-destructive-command"]["available_now"] is True
     assert runtime_capabilities["tool:replace-workspace-memory-line"]["available_now"] is True
+    assert runtime_capabilities["tool:delete-workspace-memory-line"]["available_now"] is True
     assert runtime_capabilities["tool:append-daily-memory"]["available_now"] is True
     assert runtime_capabilities["tool:propose-workspace-memory-update"]["runtime_status"] == "approval-required"
     assert runtime_capabilities["tool:rewrite-workspace-memory"]["runtime_status"] == "approval-required"
@@ -776,6 +778,46 @@ def test_workspace_memory_replace_line_requires_exact_durable_lines(isolated_run
         write_content="- New durable fact.",
     )
     assert invalid["status"] == "blocked-invalid-replace-old-line"
+
+
+def test_workspace_memory_delete_line_removes_exact_durable_fact(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    workspace_dir = Path(caps_mod.load_workspace_capabilities().get("workspace") or "")
+    target = workspace_dir / "MEMORY.md"
+    target.write_text(
+        "# MEMORY\n\n## Curated Memory\n\n- Remove this stale fact.\n- Keep this fact.\n- Remove this stale fact.\n",
+        encoding="utf-8",
+    )
+
+    result = caps_mod.invoke_workspace_capability(
+        "tool:delete-workspace-memory-line",
+        command_text="- Remove this stale fact.",
+    )
+
+    assert result["status"] == "executed"
+    payload = result.get("result") or {}
+    assert payload.get("type") == "workspace-memory-delete"
+    assert payload.get("match_count") == 2
+    assert payload.get("workspace_relative_path") == "MEMORY.md"
+    text = target.read_text(encoding="utf-8")
+    assert "- Remove this stale fact." not in text
+    assert "- Keep this fact." in text
+
+
+def test_workspace_memory_delete_line_requires_exact_durable_line(isolated_runtime) -> None:
+    caps_mod = importlib.import_module("core.tools.workspace_capabilities")
+    caps_mod = importlib.reload(caps_mod)
+
+    missing = caps_mod.invoke_workspace_capability("tool:delete-workspace-memory-line")
+    assert missing["status"] == "blocked-missing-delete-line"
+
+    invalid = caps_mod.invoke_workspace_capability(
+        "tool:delete-workspace-memory-line",
+        command_text="not a durable bullet",
+    )
+    assert invalid["status"] == "blocked-invalid-delete-line"
 
 
 def test_external_write_capability_stays_closed_even_when_approved(isolated_runtime) -> None:

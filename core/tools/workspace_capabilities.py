@@ -26,6 +26,7 @@ EXEC_COMMAND_PREFIX = "EXEC_COMMAND:"
 WRITE_FILE_PREFIX = "WRITE_FILE:"
 WRITE_MEMORY_FILE_PREFIX = "WRITE_MEMORY_FILE:"
 REPLACE_MEMORY_LINE_PREFIX = "REPLACE_MEMORY_LINE:"
+DELETE_MEMORY_LINE_PREFIX = "DELETE_MEMORY_LINE:"
 REWRITE_MEMORY_FILE_PREFIX = "REWRITE_MEMORY_FILE:"
 APPEND_DAILY_MEMORY_PREFIX = "APPEND_DAILY_MEMORY:"
 PROPOSE_SOURCE_EDIT_PREFIX = "PROPOSE_SOURCE_EDIT:"
@@ -575,6 +576,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
     elif heading.startswith(REPLACE_MEMORY_LINE_PREFIX):
         name = heading[len(REPLACE_MEMORY_LINE_PREFIX) :].strip()
         execution_mode = "workspace-memory-replace"
+        runnable = write_target_path is not None
+    elif heading.startswith(DELETE_MEMORY_LINE_PREFIX):
+        name = heading[len(DELETE_MEMORY_LINE_PREFIX) :].strip()
+        execution_mode = "workspace-memory-delete"
         runnable = write_target_path is not None
     elif heading.startswith(REWRITE_MEMORY_FILE_PREFIX):
         name = heading[len(REWRITE_MEMORY_FILE_PREFIX) :].strip()
@@ -1522,6 +1527,111 @@ def _invoke_runnable_capability(
             ),
         }
 
+    if summary["execution_mode"] == "workspace-memory-delete":
+        target_path = str(summary.get("target_path") or "MEMORY.md").strip()
+        candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
+        if candidate is None:
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": (
+                    f"Memory delete target is outside workspace scope: {target_path}. "
+                    f"Active workspace root: {workspace_dir.resolve()}"
+                ),
+            }
+        if candidate.name != "MEMORY.md":
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": (
+                    "workspace-memory-delete is only allowed for MEMORY.md. "
+                    f"Active workspace root: {workspace_dir.resolve()}"
+                ),
+            }
+        delete_line = " ".join(str(command_text or "").split()).strip()
+        if not delete_line:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-delete-line",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Memory delete requires command_text with the exact durable line to remove.",
+            }
+        if not delete_line.startswith("- ") or not _is_durable_memory_line(delete_line):
+            return {
+                "capability": summary,
+                "status": "blocked-invalid-delete-line",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Memory delete only supports exact durable bullet lines from MEMORY.md.",
+            }
+        if not candidate.exists():
+            return {
+                "capability": summary,
+                "status": "blocked-missing-target-file",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"Memory delete target file does not exist: {candidate.resolve()}",
+            }
+        existing_content = candidate.read_text(encoding="utf-8", errors="replace")
+        existing_lines = existing_content.splitlines()
+        kept_lines = [line for line in existing_lines if line.strip() != delete_line]
+        match_count = len(existing_lines) - len(kept_lines)
+        if match_count <= 0:
+            return {
+                "capability": summary,
+                "status": "blocked-no-match",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": (
+                    f"Memory delete could not find the exact line in {candidate.resolve()}: {delete_line}"
+                ),
+            }
+        updated_content = "\n".join(kept_lines).rstrip() + "\n"
+        existing_bytes = len(existing_content.encode("utf-8"))
+        candidate.write_text(updated_content, encoding="utf-8")
+        try:
+            readback_content = candidate.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            readback_content = ""
+        new_fingerprint = _content_fingerprint(updated_content)
+        readback_fingerprint = _content_fingerprint(readback_content) if readback_content else ""
+        readback_match = bool(readback_fingerprint and readback_fingerprint == new_fingerprint)
+        new_bytes = len(updated_content.encode("utf-8"))
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=True),
+            "result": {
+                "type": "workspace-memory-delete",
+                "path": target_path,
+                "resolved_path": str(candidate.resolve()),
+                "workspace_relative_path": target_path,
+                "workspace_root": str(workspace_dir.resolve()),
+                "match_count": match_count,
+                "deleted_line": _preview_text(delete_line, limit=160),
+                "bytes_written": new_bytes,
+                "bytes_before": existing_bytes,
+                "bytes_delta": new_bytes - existing_bytes,
+                "readback_match": readback_match,
+                "content_fingerprint": new_fingerprint,
+            },
+            "detail": (
+                f"Memory delete executed for {match_count} exact line(s) in {candidate.resolve()}."
+            ),
+        }
+
     if summary["execution_mode"] == "workspace-memory-rewrite":
         target_path = str(summary.get("target_path") or "MEMORY.md").strip()
         candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
@@ -1878,6 +1988,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "non-destructive-exec",
         "workspace-memory-write",
         "workspace-memory-replace",
+        "workspace-memory-delete",
         "workspace-daily-memory-append",
         "autonomy-proposal-source-edit",
         "runtime-event-read",
@@ -1886,6 +1997,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
     if execution_mode in {
         "workspace-file-write",
         "workspace-memory-replace",
+        "workspace-memory-delete",
         "workspace-memory-rewrite",
         "external-file-write",
         "workspace-file-delete",
@@ -1912,6 +2024,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "non-destructive-exec",
         "workspace-memory-write",
         "workspace-memory-replace",
+        "workspace-memory-delete",
         "workspace-daily-memory-append",
         "autonomy-proposal-source-edit",
         "runtime-event-read",

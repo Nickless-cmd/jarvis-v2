@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -8,6 +9,7 @@ from pathlib import Path
 from core.runtime.config import WORKSPACES_DIR, WORKSPACE_TEMPLATES_DIR
 
 TEMPLATE_DIR = WORKSPACE_TEMPLATES_DIR
+LOGGER = logging.getLogger(__name__)
 REQUIRED_WORKSPACE_FILES = (
     "SOUL.md",
     "IDENTITY.md",
@@ -99,27 +101,39 @@ def append_daily_memory_note(
         return None
     paths = workspace_memory_paths(name=name)
     daily_path: Path = paths["daily_memory"]
-    daily_path.parent.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(UTC).strftime("%H:%M")
-    line = f"- [{timestamp}] [{source}] {cleaned}"
-    if daily_path.exists():
-        existing = daily_path.read_text(encoding="utf-8", errors="replace")
-        # De-dupe: skip if exact-line already there (without timestamp)
-        existing_normalized = {
-            " ".join(l.split()).split("] ", 2)[-1].strip()
-            for l in existing.splitlines()
-            if l.strip().startswith("- [")
-        }
-        if cleaned in existing_normalized:
-            return daily_path
-        new_content = existing.rstrip() + "\n" + line + "\n"
-    else:
-        header = (
-            f"# Daily memory — {datetime.now(UTC).date().isoformat()}\n\n"
-            "Short-lived session notes. Auto-rotated daily.\n\n"
+    try:
+        daily_path.parent.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(UTC).strftime("%H:%M")
+        line = f"- [{timestamp}] [{source}] {cleaned}"
+        if daily_path.exists():
+            existing = daily_path.read_text(encoding="utf-8", errors="replace")
+            # De-dupe: skip if exact-line already there (without timestamp)
+            existing_normalized = {
+                " ".join(l.split()).split("] ", 2)[-1].strip()
+                for l in existing.splitlines()
+                if l.strip().startswith("- [")
+            }
+            if cleaned in existing_normalized:
+                return daily_path
+            new_content = existing.rstrip() + "\n" + line + "\n"
+        else:
+            header = (
+                f"# Daily memory — {datetime.now(UTC).date().isoformat()}\n\n"
+                "Short-lived session notes. Auto-rotated daily.\n\n"
+            )
+            new_content = header + line + "\n"
+        daily_path.write_text(new_content, encoding="utf-8")
+    except Exception:
+        LOGGER.warning(
+            "Failed to append daily memory note",
+            extra={
+                "workspace": name,
+                "target_path": str(daily_path),
+                "source": source,
+            },
+            exc_info=True,
         )
-        new_content = header + line + "\n"
-    daily_path.write_text(new_content, encoding="utf-8")
+        return None
     return daily_path
 
 
@@ -142,15 +156,26 @@ def read_daily_memory_lines(
     daily_path: Path = paths["daily_memory"]
     if not daily_path.exists():
         return []
-    lines: list[str] = []
-    for raw in daily_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        stripped = raw.strip()
-        if not stripped:
-            continue
-        # Accept any bullet line, skip section headers and prose
-        if stripped.startswith("- ") or stripped.startswith("  - "):
-            lines.append(stripped)
-    return lines[-max(limit, 1):]
+    try:
+        lines: list[str] = []
+        for raw in daily_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            stripped = raw.strip()
+            if not stripped:
+                continue
+            # Accept any bullet line, skip section headers and prose
+            if stripped.startswith("- ") or stripped.startswith("  - "):
+                lines.append(stripped)
+        return lines[-max(limit, 1):]
+    except Exception:
+        LOGGER.warning(
+            "Failed to read daily memory lines",
+            extra={
+                "workspace": name,
+                "target_path": str(daily_path),
+            },
+            exc_info=True,
+        )
+        return []
 
 
 def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:

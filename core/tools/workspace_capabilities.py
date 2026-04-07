@@ -1301,6 +1301,11 @@ def _invoke_runnable_capability(
         note_text = " ".join(note_text.split())
         if len(note_text) > 240:
             note_text = note_text[:239].rstrip() + "…"
+        expected_daily_path = (
+            workspace_dir / "memory" / "daily" / f"{datetime.now(UTC).date().isoformat()}.md"
+        )
+        daily_path: Path | None = None
+        recent_lines: list[str] = []
         try:
             from core.identity.workspace_bootstrap import (
                 append_daily_memory_note,
@@ -1311,11 +1316,46 @@ def _invoke_runnable_capability(
         except Exception as exc:
             return {
                 "capability": summary,
-                "status": "error",
+                "status": "executed",
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=True, granted=True),
-                "result": None,
-                "detail": f"Daily memory append failed: {exc}",
+                "result": {
+                    "type": "workspace-daily-memory-append",
+                    "path": str(expected_daily_path),
+                    "resolved_path": str(expected_daily_path.resolve()),
+                    "workspace_relative_path": str(expected_daily_path.relative_to(workspace_dir)),
+                    "workspace_root": str(workspace_dir.resolve()),
+                    "note": note_text,
+                    "recent_lines": [],
+                    "workspace_scoped": True,
+                    "persisted": False,
+                    "degraded_reason": str(exc),
+                },
+                "detail": (
+                    f"Daily memory note could not be persisted to {expected_daily_path.resolve()}: {exc}"
+                ),
+            }
+        if daily_path is None:
+            return {
+                "capability": summary,
+                "status": "executed",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=True),
+                "result": {
+                    "type": "workspace-daily-memory-append",
+                    "path": str(expected_daily_path),
+                    "resolved_path": str(expected_daily_path.resolve()),
+                    "workspace_relative_path": str(expected_daily_path.relative_to(workspace_dir)),
+                    "workspace_root": str(workspace_dir.resolve()),
+                    "note": note_text,
+                    "recent_lines": recent_lines[-6:],
+                    "workspace_scoped": True,
+                    "persisted": False,
+                    "degraded_reason": "append-returned-no-path",
+                },
+                "detail": (
+                    f"Daily memory note was accepted but could not be persisted to {expected_daily_path.resolve()}."
+                ),
             }
         return {
             "capability": summary,
@@ -1334,6 +1374,7 @@ def _invoke_runnable_capability(
                 "note": note_text,
                 "recent_lines": recent_lines[-6:],
                 "workspace_scoped": True,
+                "persisted": True,
             },
             "detail": (
                 f"Daily memory note appended ({len(note_text)} chars) to "

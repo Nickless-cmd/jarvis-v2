@@ -11,10 +11,10 @@ from uuid import uuid4
 from core.eventbus.bus import event_bus
 from core.runtime.db import list_runtime_dream_hypothesis_signals, upsert_runtime_dream_hypothesis_signal
 
-_DREAM_COOLDOWN_MINUTES = 35
-_DREAM_VISIBLE_GRACE_MINUTES = 14
-_ADJACENT_PRODUCER_GRACE_MINUTES = 5
-_MIN_SOURCE_INPUTS = 3
+_DREAM_COOLDOWN_MINUTES = 20
+_DREAM_VISIBLE_GRACE_MINUTES = 8
+_ADJACENT_PRODUCER_GRACE_MINUTES = 1
+_MIN_SOURCE_INPUTS = 2
 
 _last_run_at: str = ""
 _last_result: dict[str, object] | None = None

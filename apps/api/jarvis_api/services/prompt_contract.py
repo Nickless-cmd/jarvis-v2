@@ -1901,6 +1901,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
             parts.append(council_runtime)
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.self_model_signal_tracking import (
+            build_self_model_signal_prompt_section,
+        )
+        self_model_signals = build_self_model_signal_prompt_section(limit=4)
+        if self_model_signals:
+            parts.append(self_model_signals)
+    except Exception:
+        pass
     if not parts:
         return None
     return "\n".join(parts)
@@ -2011,6 +2020,7 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _private_support_signal_instruction,
         _growth_support_signal_instruction,
         _self_model_support_signal_instruction,
+        _self_model_signal_tracking_section,
         _world_model_support_signal_instruction,
         _goal_support_signal_instruction,
         _runtime_awareness_support_signal_instruction,
@@ -2023,6 +2033,23 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         if section:
             sections.append(section)
     return sections
+
+
+def _self_model_signal_tracking_section() -> str | None:
+    """Bridge to self_model_signal_tracking prompt section in visible chat.
+
+    Surfaces active self-model signals (limitations, strengths,
+    confidence baselines) tracked from personality_vector evolution.
+    Previously this data lived only in MC and was never injected into
+    Jarvis' own prompts.
+    """
+    try:
+        from apps.api.jarvis_api.services.self_model_signal_tracking import (
+            build_self_model_signal_prompt_section,
+        )
+        return build_self_model_signal_prompt_section(limit=4)
+    except Exception:
+        return None
 
 
 def _runtime_self_report_instruction(

@@ -26,6 +26,7 @@ EXEC_COMMAND_PREFIX = "EXEC_COMMAND:"
 WRITE_FILE_PREFIX = "WRITE_FILE:"
 WRITE_MEMORY_FILE_PREFIX = "WRITE_MEMORY_FILE:"
 WRITE_EXTERNAL_FILE_PREFIX = "WRITE_EXTERNAL_FILE:"
+RUNTIME_INSPECT_PREFIX = "RUNTIME_INSPECT:"
 MAX_FILE_OUTPUT_CHARS = 8000
 MAX_SEARCH_MATCHES = 5
 MAX_MATCH_EXCERPT_CHARS = 160
@@ -415,9 +416,13 @@ def _document_summary(path: Path, *, kind: str) -> dict[str, object]:
     lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
     headings = [line.lstrip("#").strip() for line in lines if line.startswith("#")]
     content_lines = [line for line in lines if line and not line.startswith("#")]
+    # Bumped from 8 to 20 — the original cap was hiding several declared
+    # tools (write user profile, list workspace files, etc.) and the
+    # new RUNTIME_INSPECT capability. 20 is still bounded but actually
+    # exposes everything currently declared in TOOLS.md.
     described_capabilities = [
         _section_summary(section)
-        for section in _document_sections(path, kind=kind)[:8]
+        for section in _document_sections(path, kind=kind)[:20]
     ]
 
     return {
@@ -522,6 +527,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         name = heading[len(WRITE_EXTERNAL_FILE_PREFIX) :].strip()
         execution_mode = "external-file-write"
         runnable = False
+    elif heading.startswith(RUNTIME_INSPECT_PREFIX):
+        name = heading[len(RUNTIME_INSPECT_PREFIX) :].strip()
+        execution_mode = "runtime-event-read"
+        runnable = True
     else:
         name = heading
         execution_mode = "declared-only"
@@ -615,6 +624,9 @@ def _invoke_runnable_capability(
                 "text": section["body"],
             },
         }
+
+    if summary["execution_mode"] == "runtime-event-read":
+        return _execute_runtime_event_read(summary)
 
     if summary["execution_mode"] == "workspace-file-read":
         target_path = str(summary.get("target_path") or "").strip()
@@ -1223,6 +1235,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "external-dir-list",
         "non-destructive-exec",
         "workspace-memory-write",
+        "runtime-event-read",
     }:
         return "not-needed"
     if execution_mode in {
@@ -1251,6 +1264,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "external-dir-list",
         "non-destructive-exec",
         "workspace-memory-write",
+        "runtime-event-read",
         "guidance-only",
         "declared-only",
         "unsupported",
@@ -1458,6 +1472,63 @@ def _expand_declared_path(value: str, *, workspace_dir: Path) -> str:
         .replace("${PROJECT_ROOT}", str(PROJECT_ROOT))
         .replace("${WORKSPACE_ROOT}", str(workspace_dir.resolve()))
     )
+
+
+def _execute_runtime_event_read(summary: dict[str, object]) -> dict[str, object]:
+    """Execute the runtime-event-read tool: surface recent eventbus events.
+
+    Lets Jarvis inspect his own recent runtime activity (eventbus events)
+    so internal logging is no longer a blind spot. Read-only and bounded
+    to the most recent 30 events.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+    except Exception as exc:  # pragma: no cover - defensive
+        return {
+            "capability": summary,
+            "status": "blocked-runtime-unavailable",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=False),
+            "result": None,
+            "detail": f"Eventbus unavailable: {exc}",
+        }
+    try:
+        events = event_bus.recent(limit=30)
+    except Exception as exc:
+        return {
+            "capability": summary,
+            "status": "blocked-runtime-error",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=False),
+            "result": None,
+            "detail": f"Failed to read runtime events: {exc}",
+        }
+    lines: list[str] = []
+    for event in events:
+        kind = str(event.get("kind") or "").strip()
+        created_at = str(event.get("created_at") or "").strip()
+        payload_json = str(event.get("payload_json") or "").strip()
+        if not kind:
+            continue
+        payload_preview = payload_json
+        if len(payload_preview) > 160:
+            payload_preview = payload_preview[:159] + "…"
+        lines.append(f"{created_at} | {kind} | {payload_preview}")
+    text_body = "\n".join(lines) if lines else "[no recent runtime events]"
+    if len(text_body) > MAX_FILE_OUTPUT_CHARS:
+        text_body = text_body[: MAX_FILE_OUTPUT_CHARS - 1].rstrip() + "…"
+    return {
+        "capability": summary,
+        "status": "executed",
+        "execution_mode": summary["execution_mode"],
+        "approval": _approval_result(summary, approved=True, granted=True),
+        "result": {
+            "type": "runtime-event-read",
+            "event_count": len(lines),
+            "text": text_body,
+        },
+        "detail": f"Read {len(lines)} recent runtime events.",
+    }
 
 
 def _read_bounded_text(path: Path) -> str:

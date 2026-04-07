@@ -1,3 +1,6 @@
+import importlib
+
+
 def test_mission_control_operations_route_returns_runtime_runs_approvals_and_sessions(
     isolated_runtime,
     monkeypatch,
@@ -379,6 +382,34 @@ def test_experiential_runtime_context_route_uses_shared_bundle_cache(
     assert first["summary"] == "steady-1"
     assert second["summary"] == "steady-1"
     assert call_count["count"] == 1
+
+
+def test_mc_runtime_exposes_shared_cognitive_architecture(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    mission_control = isolated_runtime.mission_control
+    cognitive_architecture_surface = importlib.import_module(
+        "apps.api.jarvis_api.services.cognitive_architecture_surface"
+    )
+    shared = {
+        "systems": [{"system": "ghost_networks", "active": True, "summary": "haunting"}],
+        "surfaces": {"ghost_networks": {"active": True, "summary": "haunting"}},
+        "active_count": 1,
+        "total_count": 1,
+        "summary": "1/1 cognitive systems active",
+    }
+
+    monkeypatch.setattr(
+        cognitive_architecture_surface,
+        "build_cognitive_architecture_surface",
+        lambda: shared,
+    )
+    mission_control._MC_ROUTE_CACHE.clear()
+
+    payload = mission_control.mc_runtime()
+
+    assert payload["cognitive_architecture"] == shared
 
 
 def test_mission_control_jarvis_reuses_runtime_cache_projection(

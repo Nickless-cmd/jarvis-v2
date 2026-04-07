@@ -552,11 +552,11 @@ def _mc_runtime_uncached() -> dict:
     with runtime_surface_cache():
         settings = load_settings()
         heartbeat = heartbeat_runtime_surface()
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _build_cognitive_surfaces,
+        from apps.api.jarvis_api.services.cognitive_architecture_surface import (
+            build_cognitive_architecture_surface,
         )
 
-        cognitive_architecture = _build_cognitive_surfaces()
+        cognitive_architecture = build_cognitive_architecture_surface()
         payload = {
             "settings": settings.to_dict(),
             "heartbeat_runtime": heartbeat,
@@ -2181,10 +2181,18 @@ def _protected_inner_voice_priority(
     source = str(voice.get("source") or "").strip()
     preferred = int(is_fresh and source in _PREFERRED_PROTECTED_VOICE_SOURCES)
     enriched = int(is_fresh and bool(voice.get("enriched")))
+    freshness = int(is_fresh)
     generic_penalty = int(source == _TEMPLATE_PROTECTED_VOICE_SOURCE)
     created_sort = created_at.isoformat() if created_at is not None else ""
     identifier = int(voice.get("id") or 0)
-    return (preferred, enriched, -generic_penalty, created_sort, identifier)
+    return (
+        preferred,
+        enriched,
+        freshness,
+        -generic_penalty,
+        created_sort,
+        identifier,
+    )
 
 
 def _parse_runtime_iso_datetime(value: object) -> datetime | None:

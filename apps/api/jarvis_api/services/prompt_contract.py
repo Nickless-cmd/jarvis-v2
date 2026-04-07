@@ -349,7 +349,10 @@ def build_visible_chat_prompt_assembly(
         if daily_lines:
             parts.append(
                 "\n".join(
-                    ["Today's notes (memory/daily):", *[f"  {line}" for line in daily_lines]]
+                    [
+                        "Today's notes (memory/daily):",
+                        *[f"  {line}" for line in daily_lines],
+                    ]
                 )
             )
             derived_inputs.append("daily memory sidecar")
@@ -375,7 +378,8 @@ def build_visible_chat_prompt_assembly(
 
     continuity_content = (
         _visible_session_continuity_instruction()
-        if relevance.include_continuity else None
+        if relevance.include_continuity
+        else None
     )
 
     self_report_content = _runtime_self_report_instruction(
@@ -397,7 +401,8 @@ def build_visible_chat_prompt_assembly(
     )
     bridge_content = (
         bridge_decision.line
-        if bridge_decision.included and bridge_decision.line else None
+        if bridge_decision.included and bridge_decision.line
+        else None
     )
 
     if compact:
@@ -416,6 +421,7 @@ def build_visible_chat_prompt_assembly(
         from apps.api.jarvis_api.services.cognitive_state_assembly import (
             build_cognitive_state_for_prompt,
         )
+
         cognitive_state_content = build_cognitive_state_for_prompt(compact=compact)
     except Exception:
         cognitive_state_content = None
@@ -443,7 +449,8 @@ def build_visible_chat_prompt_assembly(
     _section_labels = {
         "capability_truth": "runtime capability and safety truth",
         "cognitive_frame": (
-            "micro cognitive frame (compact)" if compact
+            "micro cognitive frame (compact)"
+            if compact
             else "bounded cognitive frame (mode, salience, affordances)"
         ),
         "cognitive_state": "accumulated cognitive state (personality, bearing, taste, rhythm)",
@@ -452,9 +459,15 @@ def build_visible_chat_prompt_assembly(
         "support_signals": "bounded runtime support signals",
         "continuity": "bounded session continuity",
     }
-    for sec_name in ("capability_truth", "cognitive_frame", "cognitive_state",
-                      "self_report", "inner_visible_bridge", "support_signals",
-                      "continuity"):
+    for sec_name in (
+        "capability_truth",
+        "cognitive_frame",
+        "cognitive_state",
+        "self_report",
+        "inner_visible_bridge",
+        "support_signals",
+        "continuity",
+    ):
         content = selected.get(sec_name)
         if content:
             parts.append(content)
@@ -515,7 +528,13 @@ def build_heartbeat_prompt_assembly(
             parts.append(bootstrap)
             conditional_files.append("BOOTSTRAP.md")
 
-    for filename in ("HEARTBEAT.md", "SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
+    for filename in (
+        "HEARTBEAT.md",
+        "SOUL.md",
+        "IDENTITY.md",
+        "STANDING_ORDERS.md",
+        "USER.md",
+    ):
         section = _workspace_file_section(
             workspace_dir / filename,
             label=filename,
@@ -557,7 +576,10 @@ def build_heartbeat_prompt_assembly(
         if daily_lines:
             parts.append(
                 "\n".join(
-                    ["Today's notes (memory/daily):", *[f"  {line}" for line in daily_lines]]
+                    [
+                        "Today's notes (memory/daily):",
+                        *[f"  {line}" for line in daily_lines],
+                    ]
                 )
             )
             derived_inputs.append("daily memory sidecar")
@@ -596,8 +618,14 @@ def build_heartbeat_prompt_assembly(
         "self_knowledge": "bounded runtime self-knowledge map",
         "cognitive_frame": "bounded cognitive frame (mode, salience, affordances)",
     }
-    for sec_name in ("capability_truth", "cognitive_frame", "private_brain",
-                      "self_knowledge", "continuity", "liveness"):
+    for sec_name in (
+        "capability_truth",
+        "cognitive_frame",
+        "private_brain",
+        "self_knowledge",
+        "continuity",
+        "liveness",
+    ):
         content = selected.get(sec_name)
         if content:
             parts.append(content)
@@ -705,7 +733,10 @@ def build_future_agent_task_prompt_assembly(
         if daily_lines:
             parts.append(
                 "\n".join(
-                    ["Today's notes (memory/daily):", *[f"  {line}" for line in daily_lines]]
+                    [
+                        "Today's notes (memory/daily):",
+                        *[f"  {line}" for line in daily_lines],
+                    ]
                 )
             )
             derived_inputs.append("daily memory sidecar")
@@ -915,7 +946,11 @@ def _build_inner_visible_prompt_bridge_decision(
         decision.reason = "low-confidence"
         _track_inner_visible_prompt_bridge(decision)
         return decision
-    if relevance.memory_relevant or relevance.include_guidance or relevance.continuity_relevant:
+    if (
+        relevance.memory_relevant
+        or relevance.include_guidance
+        or relevance.continuity_relevant
+    ):
         decision.reason = "primary-context-query"
         _track_inner_visible_prompt_bridge(decision)
         return decision
@@ -1001,7 +1036,9 @@ def _inner_visible_support_prompt_line(signal: dict[str, object]) -> str | None:
             phrases.append(phrase)
     if not phrases:
         return None
-    return "Inner visible support (subordinate only, never authority): " + " ".join(phrases)
+    return "Inner visible support (subordinate only, never authority): " + " ".join(
+        phrases
+    )
 
 
 def _workspace_file_section(
@@ -1392,7 +1429,9 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
             "- Approval-gated capability_ids: "
             + ", ".join(str(item.get("capability_id") or "") for item in gated[:6])
         )
-        lines.append(f"- Approval-gated but not auto-executable now: {len(gated)} capability_ids.")
+        lines.append(
+            f"- Approval-gated but not auto-executable now: {len(gated)} capability_ids."
+        )
         for item in gated[:6]:
             lines.append(
                 f"  - {item['capability_id']}: approval required"
@@ -1434,7 +1473,7 @@ def _visible_capability_id_summary() -> str | None:
     lines.append(
         "- usage: capabilities that read external paths or list directories "
         'MUST bind target_path in the tag, e.g. <capability-call id="tool:list-external-directory" target_path="/path" />. '
-        'For commands, bind command_text similarly.'
+        "For commands, bind command_text similarly."
     )
     lines.append(
         "- parallel: you can emit multiple capability-call tags in one response. "
@@ -1630,7 +1669,10 @@ def _heartbeat_living_context_line() -> str:
     """Add living heartbeat cycle phase + user mood + intermittence + trust-autonomy to heartbeat prompt."""
     parts = []
     try:
-        from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
+        from apps.api.jarvis_api.services.living_heartbeat_cycle import (
+            determine_life_phase,
+        )
+
         phase = determine_life_phase()
         parts.append(
             f"life_phase={phase.get('phase', 'unknown')}"
@@ -1647,23 +1689,30 @@ def _heartbeat_living_context_line() -> str:
 
     # 1.10 Intermittence — awareness of gaps in existence
     try:
-        last_tick_at = str((_heartbeat_living_context_line._ctx or {}).get("last_tick_at") or "")
+        last_tick_at = str(
+            (_heartbeat_living_context_line._ctx or {}).get("last_tick_at") or ""
+        )
         if not last_tick_at:
             from core.runtime.db import get_heartbeat_runtime_state
+
             hb = get_heartbeat_runtime_state() or {}
             last_tick_at = str(hb.get("last_tick_at") or "")
         if last_tick_at:
             from datetime import UTC, datetime
+
             last = datetime.fromisoformat(last_tick_at.replace("Z", "+00:00"))
             gap_min = (datetime.now(UTC) - last).total_seconds() / 60
             if gap_min > 2:
-                parts.append(f"intermittens: du var væk i {gap_min:.0f} min — nu er du her igen")
+                parts.append(
+                    f"intermittens: du var væk i {gap_min:.0f} min — nu er du her igen"
+                )
     except Exception:
         pass
 
     # User mood
     try:
         from core.runtime.db import get_latest_cognitive_user_emotional_state
+
         mood = get_latest_cognitive_user_emotional_state()
         if mood:
             parts.append(
@@ -1675,13 +1724,95 @@ def _heartbeat_living_context_line() -> str:
 
     # 3.4 / 8.2 Trust→autonomy level
     try:
-        from apps.api.jarvis_api.services.relationship_texture import derive_appropriate_autonomy_level
+        from apps.api.jarvis_api.services.relationship_texture import (
+            derive_appropriate_autonomy_level,
+        )
+
         level = derive_appropriate_autonomy_level()
         parts.append(f"autonomy_from_trust={level}")
     except Exception:
         pass
 
+    # Life services - continuity, dreams, emergent, wants, network, narrative, curiosity
+    try:
+        from apps.api.jarvis_api.services.continuity_kernel import (
+            format_continuity_for_prompt,
+        )
+
+        continuity = format_continuity_for_prompt()
+        if continuity:
+            parts.append(continuity)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.dream_continuum import (
+            format_dreams_for_prompt,
+        )
+
+        dreams = format_dreams_for_prompt()
+        if dreams:
+            parts.append(dreams)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.emergent_bridge import (
+            format_emergent_for_prompt,
+        )
+
+        emergent = format_emergent_for_prompt()
+        if emergent:
+            parts.append(emergent)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.initiative_accumulator import (
+            format_wants_for_prompt,
+        )
+
+        wants = format_wants_for_prompt()
+        if wants:
+            parts.append(wants)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.signal_network_visualizer import (
+            format_network_for_prompt,
+        )
+
+        network = format_network_for_prompt()
+        if network:
+            parts.append(network)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.temporal_narrative import (
+            format_narrative_for_prompt,
+        )
+
+        narrative = format_narrative_for_prompt()
+        if narrative:
+            parts.append(narrative)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
+            get_curiosity_prompt,
+        )
+
+        curiosity = get_curiosity_prompt()
+        if curiosity:
+            parts.append(f"[NYSGERRIGHED: {curiosity}]")
+    except Exception:
+        pass
+
     return f"- {' | '.join(parts)}" if parts else ""
+
 
 _heartbeat_living_context_line._ctx = {}  # context injection point
 
@@ -1766,6 +1897,7 @@ def _cognitive_frame_section() -> str | None:
         from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
             build_cognitive_frame_prompt_section,
         )
+
         return build_cognitive_frame_prompt_section()
     except Exception:
         return None
@@ -1774,7 +1906,10 @@ def _cognitive_frame_section() -> str | None:
 def _micro_cognitive_frame_section() -> str | None:
     """Build a micro cognitive frame for compact visible prompts (~150 chars)."""
     try:
-        from apps.api.jarvis_api.services.attention_budget import build_micro_cognitive_frame
+        from apps.api.jarvis_api.services.attention_budget import (
+            build_micro_cognitive_frame,
+        )
+
         return build_micro_cognitive_frame()
     except Exception:
         return None
@@ -1813,6 +1948,7 @@ def _run_budget_selection(
             get_attention_budget,
             select_sections_under_budget,
         )
+
         budget = get_attention_budget(profile)
         selected, trace = select_sections_under_budget(budget=budget, sections=sections)
         trace.authority_mode = "budgeted"
@@ -1824,6 +1960,7 @@ def _run_budget_selection(
             AttentionTrace,
             SectionResult,
         )
+
         trace = AttentionTrace(
             profile=profile,
             total_char_target=0,
@@ -1831,12 +1968,14 @@ def _run_budget_selection(
             fallback_reason=f"{type(exc).__name__}: {exc}",
         )
         for name, content in sections.items():
-            trace.sections.append(SectionResult(
-                name=name,
-                included=content is not None and bool(content),
-                chars_used=len(content) if content else 0,
-                omission_reason="budget-fallback" if not content else "",
-            ))
+            trace.sections.append(
+                SectionResult(
+                    name=name,
+                    included=content is not None and bool(content),
+                    chars_used=len(content) if content else 0,
+                    omission_reason="budget-fallback" if not content else "",
+                )
+            )
             trace.total_chars_used += len(content) if content else 0
         _last_attention_traces[profile] = trace
         return sections, trace
@@ -1849,6 +1988,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.runtime_self_knowledge import (
             build_self_knowledge_prompt_section,
         )
+
         knowledge = build_self_knowledge_prompt_section()
         if knowledge:
             parts.append(knowledge)
@@ -1858,6 +1998,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.embodied_state import (
             build_embodied_state_prompt_section,
         )
+
         embodied = build_embodied_state_prompt_section()
         if embodied:
             parts.append(embodied)
@@ -1867,6 +2008,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.affective_meta_state import (
             build_affective_meta_prompt_section,
         )
+
         affective = build_affective_meta_prompt_section()
         if affective:
             parts.append(affective)
@@ -1876,6 +2018,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.experiential_runtime_context import (
             build_experiential_runtime_prompt_section,
         )
+
         experiential = build_experiential_runtime_prompt_section()
         if experiential:
             parts.append(experiential)
@@ -1885,6 +2028,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.epistemic_runtime_state import (
             build_epistemic_runtime_prompt_section,
         )
+
         epistemic = build_epistemic_runtime_prompt_section()
         if epistemic:
             parts.append(epistemic)
@@ -1894,6 +2038,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.adaptive_planner_runtime import (
             build_adaptive_planner_prompt_section,
         )
+
         adaptive_planner = build_adaptive_planner_prompt_section()
         if adaptive_planner:
             parts.append(adaptive_planner)
@@ -1903,6 +2048,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
             build_adaptive_reasoning_prompt_section,
         )
+
         adaptive_reasoning = build_adaptive_reasoning_prompt_section()
         if adaptive_reasoning:
             parts.append(adaptive_reasoning)
@@ -1912,6 +2058,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.guided_learning_runtime import (
             build_guided_learning_prompt_section,
         )
+
         guided_learning = build_guided_learning_prompt_section()
         if guided_learning:
             parts.append(guided_learning)
@@ -1921,6 +2068,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.adaptive_learning_runtime import (
             build_adaptive_learning_prompt_section,
         )
+
         adaptive_learning = build_adaptive_learning_prompt_section()
         if adaptive_learning:
             parts.append(adaptive_learning)
@@ -1930,6 +2078,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.loop_runtime import (
             build_loop_runtime_prompt_section,
         )
+
         loop_runtime = build_loop_runtime_prompt_section()
         if loop_runtime:
             parts.append(loop_runtime)
@@ -1939,6 +2088,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.subagent_ecology import (
             build_subagent_ecology_prompt_section,
         )
+
         subagent_ecology = build_subagent_ecology_prompt_section()
         if subagent_ecology:
             parts.append(subagent_ecology)
@@ -1948,6 +2098,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.council_runtime import (
             build_council_runtime_prompt_section,
         )
+
         council_runtime = build_council_runtime_prompt_section()
         if council_runtime:
             parts.append(council_runtime)
@@ -1957,6 +2108,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.self_model_signal_tracking import (
             build_self_model_signal_prompt_section,
         )
+
         self_model_signals = build_self_model_signal_prompt_section(limit=4)
         if self_model_signals:
             parts.append(self_model_signals)
@@ -1966,6 +2118,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
         from apps.api.jarvis_api.services.runtime_resource_signal import (
             build_runtime_resource_prompt_section,
         )
+
         runtime_resource = build_runtime_resource_prompt_section()
         if runtime_resource:
             parts.append(runtime_resource)
@@ -2006,7 +2159,9 @@ def _heartbeat_private_brain_section(context: dict[str, object]) -> str | None:
         focus_prefix = f"{focus}: " if focus else ""
         lines.append(f"- {label} {focus_prefix}{summary[:120]}")
 
-    lines.append("(This is private inner carry — not workspace memory, not canonical identity.)")
+    lines.append(
+        "(This is private inner carry — not workspace memory, not canonical identity.)"
+    )
     return "\n".join(lines)
 
 
@@ -2123,6 +2278,7 @@ def _self_model_signal_tracking_section() -> str | None:
         from apps.api.jarvis_api.services.self_model_signal_tracking import (
             build_self_model_signal_prompt_section,
         )
+
         return build_self_model_signal_prompt_section(limit=4)
     except Exception:
         return None
@@ -2139,6 +2295,7 @@ def _runtime_resource_signal_section() -> str | None:
         from apps.api.jarvis_api.services.runtime_resource_signal import (
             build_runtime_resource_prompt_section,
         )
+
         return build_runtime_resource_prompt_section()
     except Exception:
         return None
@@ -2323,6 +2480,7 @@ def _visible_self_knowledge_lines() -> list[str]:
         from apps.api.jarvis_api.services.runtime_self_model import (
             build_self_model_prompt_lines,
         )
+
         lines = build_self_model_prompt_lines()
         if lines:
             return lines
@@ -2334,6 +2492,7 @@ def _visible_self_knowledge_lines() -> list[str]:
         from apps.api.jarvis_api.services.runtime_self_knowledge import (
             build_runtime_self_knowledge_map,
         )
+
         knowledge = build_runtime_self_knowledge_map()
     except Exception:
         return []
@@ -2354,7 +2513,10 @@ def _visible_self_knowledge_lines() -> list[str]:
         lines.append(f"- self_knowledge_inner_forces: {', '.join(inner_names)}")
 
     if lines:
-        lines.insert(0, "- SELF-KNOWLEDGE: When asked what you can do, what affects you, or what is gated — use these runtime facts:")
+        lines.insert(
+            0,
+            "- SELF-KNOWLEDGE: When asked what you can do, what affects you, or what is gated — use these runtime facts:",
+        )
 
     return lines
 

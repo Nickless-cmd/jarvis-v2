@@ -21,7 +21,11 @@ from core.runtime.provider_router import resolve_provider_router_target
 
 logger = logging.getLogger(__name__)
 
-_MAX_OUTPUT_TOKENS = 100
+# Bumped from 100 → 300 because local thinking-models (gemma4:e2b
+# etc.) burn the entire token budget on the `thinking` field and
+# return empty `content` if num_predict is too low. 300 leaves room
+# for both the chain-of-thought and a short final answer.
+_MAX_OUTPUT_TOKENS = 300
 
 
 def _resolve_enrichment_target() -> dict[str, object] | None:
@@ -157,6 +161,15 @@ def _resolve_auth_header(target: dict) -> dict[str, str]:
     return headers
 
 
+def call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
+    """Public alias for _call_cheap_llm so other services can reuse it.
+
+    Same behaviour: tries local lane → cheap lane → visible-ollama
+    fallback. Returns text or None on failure. Bounded output tokens.
+    """
+    return _call_cheap_llm(system_prompt, user_message)
+
+
 def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
     """Call cheapest available LLM. Returns response text or None on failure."""
     target = _resolve_enrichment_target()
@@ -253,11 +266,26 @@ def _call_ollama_chat(
         )
         with urllib_request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            text = (
-                data.get("message", {})
-                .get("content", "")
-            )
-            return text.strip() if text.strip() else None
+            message = data.get("message", {}) or {}
+            text = str(message.get("content") or "").strip()
+            if text:
+                return text
+            # Thinking-model fallback: when num_predict is exhausted on
+            # the chain-of-thought, content can come back empty even
+            # though the model produced something useful in `thinking`.
+            # Take the last sentence of `thinking` as a degraded answer
+            # rather than dropping the response entirely.
+            thinking = str(message.get("thinking") or "").strip()
+            if thinking:
+                # Pick the last non-trivial sentence
+                sentences = [
+                    s.strip()
+                    for s in thinking.replace("\n", " ").split(".")
+                    if len(s.strip()) > 4
+                ]
+                if sentences:
+                    return sentences[-1]
+            return None
     except Exception as exc:
         logger.warning("inner-llm-enrichment: ollama chat failed: %s", exc)
         return None

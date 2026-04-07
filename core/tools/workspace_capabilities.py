@@ -153,6 +153,55 @@ NON_DESTRUCTIVE_EXEC_SEGMENT_SEPARATORS = (
 )
 
 
+def _finalize_capability_result(result: dict[str, object]) -> dict[str, object]:
+    normalized = dict(result)
+    status = str(normalized.get("status") or "unknown")
+    execution_mode = str(normalized.get("execution_mode") or "unsupported")
+    detail = str(normalized.get("detail") or "").strip()
+    status_family = _capability_status_family(status)
+
+    if not detail:
+        detail = _default_capability_detail(status=status, execution_mode=execution_mode)
+
+    normalized["status_family"] = status_family
+    normalized["ok"] = status == "executed"
+    normalized["error"] = status_family in {"blocked", "unavailable", "missing", "error"}
+    normalized["detail"] = detail
+    normalized["message"] = detail
+    return normalized
+
+
+def _capability_status_family(status: str) -> str:
+    if status == "executed":
+        return "success"
+    if status == "approval-required":
+        return "approval"
+    if status in {"not-found", "blocked-missing-capability"}:
+        return "missing"
+    if status in {"unavailable", "not-runnable"}:
+        return "unavailable"
+    if status.startswith("blocked"):
+        return "blocked"
+    if status.endswith("error") or "error" in status:
+        return "error"
+    return "other"
+
+
+def _default_capability_detail(*, status: str, execution_mode: str) -> str:
+    if status == "executed":
+        return f"Capability executed: {execution_mode}."
+    if status == "approval-required":
+        return f"Capability requires approval before execution: {execution_mode}."
+    if status == "unavailable":
+        return f"Capability is unavailable: {execution_mode}."
+    if status == "not-runnable":
+        return f"Capability is not runnable in this pass: {execution_mode}."
+    if status == "not-found":
+        return "Capability was not found in runtime truth."
+    if status.startswith("blocked"):
+        return f"Capability execution was blocked: {status}."
+    return f"Capability finished with status {status}: {execution_mode}."
+
 def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
     workspace_dir = ensure_default_workspace(name=name)
     tools = _document_summary(workspace_dir / CAPABILITY_FILES["tools"], kind="tool")
@@ -274,26 +323,26 @@ def invoke_workspace_capability(
     if capability is not None:
         summary = dict(capability)
         if summary["runtime_status"] == "guidance-only":
-            result = {
+            result = _finalize_capability_result({
                 "capability": summary,
                 "status": "not-runnable",
                 "execution_mode": "guidance-only",
                 "approval": _approval_result(summary, approved=approved, granted=False),
                 "result": None,
                 "detail": "Capability is described in workspace guidance only and is not runtime-executable.",
-            }
+            })
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
         if summary["runtime_status"] == "unavailable":
-            result = {
+            result = _finalize_capability_result({
                 "capability": summary,
                 "status": "unavailable",
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=approved, granted=False),
                 "result": None,
                 "detail": "Capability is known to runtime but is not currently available.",
-            }
+            })
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
@@ -302,7 +351,7 @@ def invoke_workspace_capability(
                 summary=summary,
                 write_content=write_content,
             )
-            result = {
+            result = _finalize_capability_result({
                 "capability": summary,
                 "status": "approval-required",
                 "execution_mode": summary["execution_mode"],
@@ -310,7 +359,7 @@ def invoke_workspace_capability(
                 "result": proposal_content,
                 "proposal_content": proposal_content,
                 "detail": f"Capability requires explicit approval: {summary['execution_mode']}",
-            }
+            })
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _persist_capability_approval_request(
                 result,
@@ -320,14 +369,14 @@ def invoke_workspace_capability(
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
         if summary["runtime_status"] != "approval-required" and not summary["available_now"]:
-            result = {
+            result = _finalize_capability_result({
                 "capability": summary,
                 "status": "unavailable",
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=approved, granted=False),
                 "result": None,
                 "detail": "Capability is not currently available for execution.",
-            }
+            })
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
@@ -337,18 +386,18 @@ def invoke_workspace_capability(
             capability_id=capability_id,
         )
         if section is None:
-            result = {
+            result = _finalize_capability_result({
                 "capability": summary,
                 "status": "unavailable",
                 "execution_mode": summary["execution_mode"],
                 "approval": _approval_result(summary, approved=approved, granted=False),
                 "result": None,
                 "detail": "Runtime capability is missing its source guidance section.",
-            }
+            })
             _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
             _publish_capability_invocation_completed(result, invoked_at=invoked_at)
             return result
-        result = _invoke_runnable_capability(
+        result = _finalize_capability_result(_invoke_runnable_capability(
             workspace_dir=workspace_dir,
             section=section,
             summary=summary,
@@ -356,7 +405,7 @@ def invoke_workspace_capability(
             write_content=write_content,
             target_path=target_path,
             command_text=command_text,
-        )
+        ))
         _set_last_capability_invocation(result, invoked_at=invoked_at, run_id=run_id)
         if str(result.get("status") or "") == "approval-required" and not approved:
             _persist_capability_approval_request(
@@ -367,7 +416,7 @@ def invoke_workspace_capability(
         _publish_capability_invocation_completed(result, invoked_at=invoked_at)
         return result
 
-    result = {
+    result = _finalize_capability_result({
         "capability": None,
         "status": "not-found",
         "execution_mode": "unsupported",
@@ -378,7 +427,7 @@ def invoke_workspace_capability(
             "granted": False,
         },
         "result": None,
-    }
+    })
     _set_last_capability_invocation(
         result,
         invoked_at=invoked_at,

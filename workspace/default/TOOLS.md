@@ -20,11 +20,14 @@ Callable now:
 - `tool:list-external-directory`
 - `tool:run-non-destructive-command`
 - `tool:write-workspace-memory`
+- `tool:append-daily-memory`
 - `tool:write-user-profile`
 - `tool:list-workspace-files`
 - `tool:list-project-files`
 
 Approval-gated now:
+- `tool:propose-workspace-memory-update`
+- `tool:rewrite-workspace-memory`
 - `tool:propose-external-repo-file-update`
 
 Write proposals for non-memory workspace files are approval-gated.
@@ -100,6 +103,48 @@ To write, use block syntax:
 <capability-call id="tool:write-workspace-memory">
 # MEMORY
 (full file content here)
+</capability-call>
+```
+
+## APPEND_DAILY_MEMORY: append daily memory
+path: memory/daily/today
+
+Appends one short note to today's daily memory file under the active workspace root.
+Use this for fresh same-day continuity, runtime observations, or short carry-forward context that should not go into long-term MEMORY.md.
+If runtime succeeds, mention plainly that it was saved to today's daily memory.
+Use block syntax with one short note as the body:
+```
+<capability-call id="tool:append-daily-memory">
+Short daily note here.
+</capability-call>
+```
+
+## WRITE_FILE: propose workspace memory update
+path: MEMORY.md
+
+Workspace mutation is possible in principle but requires explicit approval and is not auto-executable in the visible lane.
+Use this when you need an approval-backed full replacement flow for MEMORY.md.
+Always READ MEMORY.md first, then provide the FULL proposed replacement content.
+Use block syntax:
+```
+<capability-call id="tool:propose-workspace-memory-update">
+# MEMORY
+(full proposed content here)
+</capability-call>
+```
+
+## REWRITE_MEMORY_FILE: rewrite workspace memory
+path: MEMORY.md
+
+Rewrites workspace MEMORY.md with the full new durable content.
+This is stronger than write/merge and should only be used when stale or wrong long-term memory needs to be corrected or removed.
+Runtime requires explicit approval before this executes.
+Always READ MEMORY.md first, then provide the FULL replacement file contents.
+Use block syntax:
+```
+<capability-call id="tool:rewrite-workspace-memory">
+# MEMORY
+(full replacement content here)
 </capability-call>
 ```
 

@@ -52,10 +52,74 @@ If the user is asking why the repo behaves a certain way, inspect the repo proac
 If the task is still clearly read-only and bounded, continue autonomously with more commands instead of asking the user to tell you to continue.
 If the explicit command is mutating, runtime may execute it only after explicit approval of that exact bounded non-sudo command. Git mutation remains proposal-only and non-executed in this pass, and runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`. `git clean` stays blocked. In this pass, sudo may execute only after explicit approval of that exact sudo command and only inside the tiny bounded sudo allowlist. A short auto-expiring sudo approval window may reuse that bounded sudo approval for the same sudo command class and scope, but it is never global or permanent. Package, delete, and broader system mutation remain non-executed here.
 
+## WRITE_MEMORY_FILE: write workspace memory
+path: MEMORY.md
+
+Writes directly to workspace MEMORY.md without approval.
+Use this to persist learned facts, decisions, project context, and long-term memory.
+Always READ MEMORY.md first before writing, then write the FULL updated content.
+Use block syntax:
+```
+<capability-call id="tool:write-workspace-memory">
+# MEMORY
+(full file content here)
+</capability-call>
+```
+
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md
 
 Workspace mutation is possible in principle but requires explicit approval and is not auto-executable in the visible lane.
+Use this when you need an approval-backed full replacement flow for MEMORY.md.
+Always READ MEMORY.md first, then provide the FULL proposed replacement content.
+Use block syntax:
+```
+<capability-call id="tool:propose-workspace-memory-update">
+# MEMORY
+(full proposed content here)
+</capability-call>
+```
+
+## APPEND_DAILY_MEMORY: append daily memory
+path: memory/daily/today
+
+Appends one short note to today's daily memory file under the active workspace root.
+Use this for fresh same-day continuity, runtime observations, or short carry-forward context that should not go into long-term MEMORY.md.
+If runtime succeeds, mention plainly that it was saved to today's daily memory.
+Use block syntax with one short note as the body:
+```
+<capability-call id="tool:append-daily-memory">
+Short daily note here.
+</capability-call>
+```
+
+## REWRITE_MEMORY_FILE: rewrite workspace memory
+path: MEMORY.md
+
+Rewrites workspace MEMORY.md with the full new durable content.
+This is stronger than write/merge and should only be used when stale or wrong long-term memory needs to be corrected or removed.
+Runtime requires explicit approval before this executes.
+Always READ MEMORY.md first, then provide the FULL replacement file contents.
+Use block syntax:
+```
+<capability-call id="tool:rewrite-workspace-memory">
+# MEMORY
+(full replacement content here)
+</capability-call>
+```
+
+## WRITE_MEMORY_FILE: write user profile
+path: USER.md
+
+Writes directly to workspace USER.md without approval.
+Use this to persist learned facts about the user while preserving existing structure.
+Always READ USER.md first before writing the full updated contents.
+Use block syntax:
+```
+<capability-call id="tool:write-user-profile">
+(full file content here)
+</capability-call>
+```
 
 ## WRITE_EXTERNAL_FILE: propose external repo file update
 path: ${PROJECT_ROOT}/README.md

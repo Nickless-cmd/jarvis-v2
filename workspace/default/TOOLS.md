@@ -133,3 +133,10 @@ path: ${PROJECT_ROOT}/README.md
 
 Proposes a bounded external file update for the repository README.
 This is approval-gated and is not auto-executable.
+
+## RUNTIME_INSPECT: read recent runtime events
+
+Reads the 30 most recent eventbus events Jarvis' own runtime has emitted (heartbeat ticks, capability invocations, signal updates, conflict outcomes, ping decisions, etc.).
+Use this to debug your own behavior, audit recent activity, or understand what the runtime has been doing between turns when you cannot remember.
+This is read-only and does not require approval.
+Bind it like other tools: `<capability-call id="tool:read-recent-runtime-events" />`

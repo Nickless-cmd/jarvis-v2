@@ -25,6 +25,7 @@ LIST_EXTERNAL_DIR_PREFIX = "LIST_EXTERNAL_DIR:"
 EXEC_COMMAND_PREFIX = "EXEC_COMMAND:"
 WRITE_FILE_PREFIX = "WRITE_FILE:"
 WRITE_MEMORY_FILE_PREFIX = "WRITE_MEMORY_FILE:"
+REPLACE_MEMORY_LINE_PREFIX = "REPLACE_MEMORY_LINE:"
 REWRITE_MEMORY_FILE_PREFIX = "REWRITE_MEMORY_FILE:"
 APPEND_DAILY_MEMORY_PREFIX = "APPEND_DAILY_MEMORY:"
 PROPOSE_SOURCE_EDIT_PREFIX = "PROPOSE_SOURCE_EDIT:"
@@ -570,6 +571,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
     elif heading.startswith(WRITE_MEMORY_FILE_PREFIX):
         name = heading[len(WRITE_MEMORY_FILE_PREFIX) :].strip()
         execution_mode = "workspace-memory-write"
+        runnable = write_target_path is not None
+    elif heading.startswith(REPLACE_MEMORY_LINE_PREFIX):
+        name = heading[len(REPLACE_MEMORY_LINE_PREFIX) :].strip()
+        execution_mode = "workspace-memory-replace"
         runnable = write_target_path is not None
     elif heading.startswith(REWRITE_MEMORY_FILE_PREFIX):
         name = heading[len(REWRITE_MEMORY_FILE_PREFIX) :].strip()
@@ -1382,6 +1387,141 @@ def _invoke_runnable_capability(
             ),
         }
 
+    if summary["execution_mode"] == "workspace-memory-replace":
+        target_path = str(summary.get("target_path") or "MEMORY.md").strip()
+        candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
+        if candidate is None:
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": (
+                    f"Memory replace target is outside workspace scope: {target_path}. "
+                    f"Active workspace root: {workspace_dir.resolve()}"
+                ),
+            }
+        if candidate.name != "MEMORY.md":
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": (
+                    "workspace-memory-replace is only allowed for MEMORY.md. "
+                    f"Active workspace root: {workspace_dir.resolve()}"
+                ),
+            }
+        old_line = " ".join(str(command_text or "").split()).strip()
+        new_line = " ".join(str(write_content or "").split()).strip()
+        if not old_line or not new_line:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-replace-content",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": (
+                    "Memory replace requires command_text with the exact old durable line "
+                    "and write_content with the exact new durable line."
+                ),
+            }
+        if old_line == new_line:
+            return {
+                "capability": summary,
+                "status": "blocked-noop",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Memory replace old and new lines are identical.",
+            }
+        if not old_line.startswith("- ") or not _is_durable_memory_line(old_line):
+            return {
+                "capability": summary,
+                "status": "blocked-invalid-replace-old-line",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Memory replace only supports exact durable bullet lines from MEMORY.md.",
+            }
+        if not new_line.startswith("- ") or not _is_durable_memory_line(new_line):
+            return {
+                "capability": summary,
+                "status": "blocked-invalid-replace-new-line",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Memory replace new line must be a single durable bullet line.",
+            }
+        if not candidate.exists():
+            return {
+                "capability": summary,
+                "status": "blocked-missing-target-file",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"Memory replace target file does not exist: {candidate.resolve()}",
+            }
+        existing_content = candidate.read_text(encoding="utf-8", errors="replace")
+        existing_lines = existing_content.splitlines()
+        match_indexes = [
+            index
+            for index, line in enumerate(existing_lines)
+            if line.strip() == old_line
+        ]
+        if not match_indexes:
+            return {
+                "capability": summary,
+                "status": "blocked-no-match",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": (
+                    f"Memory replace could not find the exact line in {candidate.resolve()}: {old_line}"
+                ),
+            }
+        updated_lines = [
+            new_line if line.strip() == old_line else line
+            for line in existing_lines
+        ]
+        updated_content = "\n".join(updated_lines).rstrip() + "\n"
+        existing_bytes = len(existing_content.encode("utf-8"))
+        candidate.write_text(updated_content, encoding="utf-8")
+        try:
+            readback_content = candidate.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            readback_content = ""
+        new_fingerprint = _content_fingerprint(updated_content)
+        readback_fingerprint = _content_fingerprint(readback_content) if readback_content else ""
+        readback_match = bool(readback_fingerprint and readback_fingerprint == new_fingerprint)
+        new_bytes = len(updated_content.encode("utf-8"))
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=True),
+            "result": {
+                "type": "workspace-memory-replace",
+                "path": target_path,
+                "resolved_path": str(candidate.resolve()),
+                "workspace_relative_path": target_path,
+                "workspace_root": str(workspace_dir.resolve()),
+                "match_count": len(match_indexes),
+                "old_line": _preview_text(old_line, limit=160),
+                "new_line": _preview_text(new_line, limit=160),
+                "bytes_written": new_bytes,
+                "bytes_before": existing_bytes,
+                "bytes_delta": new_bytes - existing_bytes,
+                "readback_match": readback_match,
+                "content_fingerprint": new_fingerprint,
+            },
+            "detail": (
+                f"Memory replace executed for {len(match_indexes)} exact line(s) in {candidate.resolve()}."
+            ),
+        }
+
     if summary["execution_mode"] == "workspace-memory-rewrite":
         target_path = str(summary.get("target_path") or "MEMORY.md").strip()
         candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
@@ -1737,6 +1877,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "external-dir-list",
         "non-destructive-exec",
         "workspace-memory-write",
+        "workspace-memory-replace",
         "workspace-daily-memory-append",
         "autonomy-proposal-source-edit",
         "runtime-event-read",
@@ -1744,6 +1885,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         return "not-needed"
     if execution_mode in {
         "workspace-file-write",
+        "workspace-memory-replace",
         "workspace-memory-rewrite",
         "external-file-write",
         "workspace-file-delete",
@@ -1769,6 +1911,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "external-dir-list",
         "non-destructive-exec",
         "workspace-memory-write",
+        "workspace-memory-replace",
         "workspace-daily-memory-append",
         "autonomy-proposal-source-edit",
         "runtime-event-read",

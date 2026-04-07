@@ -66,6 +66,20 @@ Use block syntax:
 </capability-call>
 ```
 
+## REPLACE_MEMORY_LINE: replace workspace memory line
+path: MEMORY.md
+
+Replaces one exact durable bullet line in MEMORY.md without rewriting the whole file.
+Use this when a stale long-term memory fact needs to be corrected in place.
+`command_text` must be the exact old `- ...` line already present in MEMORY.md.
+The block body must be the exact new durable `- ...` line.
+Use block syntax:
+```
+<capability-call id="tool:replace-workspace-memory-line" command_text="- old durable fact">
+- new durable fact
+</capability-call>
+```
+
 ## WRITE_FILE: propose workspace memory update
 path: MEMORY.md
 

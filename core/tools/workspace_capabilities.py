@@ -27,6 +27,7 @@ WRITE_FILE_PREFIX = "WRITE_FILE:"
 WRITE_MEMORY_FILE_PREFIX = "WRITE_MEMORY_FILE:"
 REWRITE_MEMORY_FILE_PREFIX = "REWRITE_MEMORY_FILE:"
 APPEND_DAILY_MEMORY_PREFIX = "APPEND_DAILY_MEMORY:"
+PROPOSE_SOURCE_EDIT_PREFIX = "PROPOSE_SOURCE_EDIT:"
 WRITE_EXTERNAL_FILE_PREFIX = "WRITE_EXTERNAL_FILE:"
 RUNTIME_INSPECT_PREFIX = "RUNTIME_INSPECT:"
 MAX_FILE_OUTPUT_CHARS = 8000
@@ -528,6 +529,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
     elif heading.startswith(APPEND_DAILY_MEMORY_PREFIX):
         name = heading[len(APPEND_DAILY_MEMORY_PREFIX) :].strip()
         execution_mode = "workspace-daily-memory-append"
+        runnable = True
+    elif heading.startswith(PROPOSE_SOURCE_EDIT_PREFIX):
+        name = heading[len(PROPOSE_SOURCE_EDIT_PREFIX) :].strip()
+        execution_mode = "autonomy-proposal-source-edit"
         runnable = True
     elif heading.startswith(WRITE_FILE_PREFIX):
         name = heading[len(WRITE_FILE_PREFIX) :].strip()
@@ -1367,6 +1372,183 @@ def _invoke_runnable_capability(
             ),
         }
 
+    if summary["execution_mode"] == "autonomy-proposal-source-edit":
+        # Niveau 2 autonomy: Jarvis files a source-edit proposal that
+        # waits for Bjørn approval. The capability itself does NOT
+        # mutate any source — it just enqueues the request. Approval
+        # + execution happen via the autonomy_proposal_queue service.
+        raw_args = summary.get("arguments") or {}
+        if not isinstance(raw_args, dict):
+            raw_args = {}
+        target_path_arg = str(
+            target_path
+            or raw_args.get("target_path")
+            or raw_args.get("path")
+            or ""
+        ).strip()
+        base_fingerprint = str(raw_args.get("base_fingerprint") or "").strip()
+        rationale = str(raw_args.get("rationale") or "").strip()
+        new_content = str(write_content or "")
+        if not target_path_arg:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-target",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "tool:propose-source-edit requires target_path attribute on the capability call.",
+            }
+        if not new_content:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-write-content",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "tool:propose-source-edit requires the FULL new file contents in the capability body.",
+            }
+        # Path safety: must exist, must be under PROJECT_ROOT, must
+        # have an allowed extension, must not be in a forbidden path.
+        from pathlib import Path as _Path
+        try:
+            resolved = _Path(target_path_arg).resolve()
+            project_root = _Path(PROJECT_ROOT).resolve()
+            resolved.relative_to(project_root)
+        except (ValueError, OSError):
+            return {
+                "capability": summary,
+                "status": "blocked-out-of-scope",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"target_path must be inside the repo: {target_path_arg}",
+            }
+        forbidden_segments = {".git", ".claude", "node_modules", "__pycache__"}
+        forbidden_subpaths = ("workspace/default/runtime",)
+        rel_str = str(resolved.relative_to(project_root))
+        if any(seg in resolved.parts for seg in forbidden_segments):
+            return {
+                "capability": summary,
+                "status": "blocked-forbidden-path",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"target_path is in a forbidden directory: {rel_str}",
+            }
+        if any(rel_str.startswith(sub) for sub in forbidden_subpaths):
+            return {
+                "capability": summary,
+                "status": "blocked-forbidden-path",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"target_path is in a forbidden subpath: {rel_str}",
+            }
+        allowed_exts = {
+            ".py", ".md", ".json", ".yaml", ".yml",
+            ".ts", ".tsx", ".jsx", ".js",
+            ".css", ".html", ".toml", ".txt",
+        }
+        if resolved.suffix.lower() not in allowed_exts:
+            return {
+                "capability": summary,
+                "status": "blocked-extension",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"target_path extension {resolved.suffix} not in allowed set",
+            }
+        if not resolved.exists() or not resolved.is_file():
+            return {
+                "capability": summary,
+                "status": "blocked-not-found",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"target_path does not exist: {rel_str}",
+            }
+        # Compute current disk fingerprint and the new fingerprint;
+        # we surface both so MC can render a diff later. We do NOT
+        # require base_fingerprint to match here — that check happens
+        # at execute time so the proposal can survive Bjørn pondering
+        # for a while. We just record the base.
+        try:
+            current_content = resolved.read_text(encoding="utf-8", errors="replace")
+        except Exception as exc:
+            return {
+                "capability": summary,
+                "status": "blocked-read-failed",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"Could not read target file: {exc}",
+            }
+        current_fingerprint = _content_fingerprint(current_content)
+        new_fingerprint = _content_fingerprint(new_content)
+        if new_fingerprint == current_fingerprint:
+            return {
+                "capability": summary,
+                "status": "blocked-no-op",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Proposed content is identical to current file content — no edit needed.",
+            }
+        # File the proposal
+        try:
+            from apps.api.jarvis_api.services.autonomy_proposal_queue import (
+                file_proposal,
+            )
+            proposal = file_proposal(
+                kind="source-edit",
+                title=f"Edit {rel_str}",
+                rationale=rationale or "(no rationale provided)",
+                payload={
+                    "target_path": str(resolved),
+                    "relative_path": rel_str,
+                    "base_fingerprint": base_fingerprint or current_fingerprint,
+                    "current_fingerprint_at_filing": current_fingerprint,
+                    "new_fingerprint": new_fingerprint,
+                    "new_content": new_content,
+                    "bytes_before": len(current_content.encode("utf-8")),
+                    "bytes_after": len(new_content.encode("utf-8")),
+                    "bytes_delta": len(new_content.encode("utf-8")) - len(current_content.encode("utf-8")),
+                },
+                created_by="visible-capability",
+            )
+        except Exception as exc:
+            return {
+                "capability": summary,
+                "status": "error",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"Failed to file source-edit proposal: {exc}",
+            }
+        proposal_id = str(proposal.get("proposal_id") or "")
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=True),
+            "result": {
+                "type": "autonomy-proposal-source-edit",
+                "proposal_id": proposal_id,
+                "kind": "source-edit",
+                "target_path": rel_str,
+                "current_fingerprint": current_fingerprint,
+                "new_fingerprint": new_fingerprint,
+                "bytes_delta": len(new_content.encode("utf-8")) - len(current_content.encode("utf-8")),
+                "status": "pending",
+                "workspace_scoped": False,
+            },
+            "detail": (
+                f"Source-edit proposal filed: {proposal_id} for {rel_str} "
+                f"({len(new_content.encode('utf-8')) - len(current_content.encode('utf-8')):+d} bytes). "
+                "Awaiting Bjørn approval."
+            ),
+        }
+
     if summary["execution_mode"] == "workspace-file-write":
         target_path = str(summary.get("target_path") or "").strip()
         candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
@@ -1435,6 +1617,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "non-destructive-exec",
         "workspace-memory-write",
         "workspace-daily-memory-append",
+        "autonomy-proposal-source-edit",
         "runtime-event-read",
     }:
         return "not-needed"
@@ -1466,6 +1649,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "non-destructive-exec",
         "workspace-memory-write",
         "workspace-daily-memory-append",
+        "autonomy-proposal-source-edit",
         "runtime-event-read",
         "guidance-only",
         "declared-only",

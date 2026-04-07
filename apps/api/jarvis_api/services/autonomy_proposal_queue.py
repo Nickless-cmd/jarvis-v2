@@ -260,5 +260,90 @@ def _execute_memory_rewrite_proposal(payload: dict) -> dict:
     }
 
 
+def _execute_source_edit_proposal(payload: dict) -> dict:
+    """Execute an approved source-edit proposal.
+
+    Payload schema (set by tool:propose-source-edit handler):
+        {
+            "target_path": "/abs/path/to/file",
+            "relative_path": "core/foo.py",
+            "base_fingerprint": "sha1[:16]",
+            "new_content": "...",
+            "bytes_delta": int,
+            ...
+        }
+
+    Verification at execute time:
+    - target file still exists
+    - current disk fingerprint == base_fingerprint
+      (otherwise: someone else has touched the file since the
+       proposal was filed and we abort to avoid clobber)
+    - readback after write matches new_fingerprint
+    """
+    from pathlib import Path as _Path
+    from hashlib import sha1 as _sha1
+
+    target_path = str(payload.get("target_path") or "")
+    base_fingerprint = str(payload.get("base_fingerprint") or "")
+    new_content = str(payload.get("new_content") or "")
+    if not target_path or not new_content:
+        return {"status": "error", "error": "missing target_path or new_content"}
+
+    path = _Path(target_path)
+    if not path.exists() or not path.is_file():
+        return {
+            "status": "error",
+            "error": f"target file no longer exists: {target_path}",
+        }
+
+    def _fp(text: str) -> str:
+        return _sha1(text.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+
+    try:
+        current_content = path.read_text(encoding="utf-8", errors="replace")
+    except Exception as exc:
+        return {"status": "error", "error": f"read failed: {exc}"}
+
+    current_fingerprint = _fp(current_content)
+    if base_fingerprint and base_fingerprint != current_fingerprint:
+        return {
+            "status": "stale",
+            "error": (
+                f"file changed under proposal: base={base_fingerprint} "
+                f"now={current_fingerprint}"
+            ),
+            "current_fingerprint": current_fingerprint,
+            "base_fingerprint": base_fingerprint,
+        }
+
+    # Apply
+    try:
+        path.write_text(new_content, encoding="utf-8")
+    except Exception as exc:
+        return {"status": "error", "error": f"write failed: {exc}"}
+
+    # Readback verification
+    try:
+        readback_content = path.read_text(encoding="utf-8", errors="replace")
+    except Exception as exc:
+        return {"status": "error", "error": f"readback failed: {exc}"}
+    readback_fingerprint = _fp(readback_content)
+    new_fingerprint = _fp(new_content)
+    readback_match = readback_fingerprint == new_fingerprint
+
+    return {
+        "status": "executed",
+        "target_path": target_path,
+        "bytes_before": len(current_content.encode("utf-8")),
+        "bytes_after": len(new_content.encode("utf-8")),
+        "bytes_delta": len(new_content.encode("utf-8")) - len(current_content.encode("utf-8")),
+        "base_fingerprint": current_fingerprint,
+        "new_fingerprint": new_fingerprint,
+        "readback_fingerprint": readback_fingerprint,
+        "readback_match": readback_match,
+    }
+
+
 # Register built-ins on import
 register_proposal_executor("memory-rewrite", _execute_memory_rewrite_proposal)
+register_proposal_executor("source-edit", _execute_source_edit_proposal)

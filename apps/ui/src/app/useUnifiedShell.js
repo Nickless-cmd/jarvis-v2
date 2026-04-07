@@ -154,7 +154,18 @@ export function useUnifiedShell() {
       if (event.kind !== 'channel.chat_message_appended') return
 
       const payload = event.payload || {}
-      if (payload.source !== 'proactive-execution-pilot') return
+      // Accept any backend-originated proactive message source. Used to
+      // be hardcoded to "proactive-execution-pilot" only, which meant
+      // direct heartbeat pings (source="heartbeat-ping-bridge") and
+      // propose bridges (source="heartbeat-propose-bridge") never
+      // updated the UI live and required a manual browser refresh.
+      const proactiveSources = new Set([
+        'proactive-execution-pilot',
+        'heartbeat-ping-bridge',
+        'heartbeat-propose-bridge',
+        'inner-voice-initiative-bridge',
+      ])
+      if (!proactiveSources.has(String(payload.source || ''))) return
       if (String(payload.session_id || '') !== String(activeSessionId || '')) return
 
       const message = payload.message || {}

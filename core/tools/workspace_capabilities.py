@@ -25,6 +25,7 @@ LIST_EXTERNAL_DIR_PREFIX = "LIST_EXTERNAL_DIR:"
 EXEC_COMMAND_PREFIX = "EXEC_COMMAND:"
 WRITE_FILE_PREFIX = "WRITE_FILE:"
 WRITE_MEMORY_FILE_PREFIX = "WRITE_MEMORY_FILE:"
+REWRITE_MEMORY_FILE_PREFIX = "REWRITE_MEMORY_FILE:"
 WRITE_EXTERNAL_FILE_PREFIX = "WRITE_EXTERNAL_FILE:"
 RUNTIME_INSPECT_PREFIX = "RUNTIME_INSPECT:"
 MAX_FILE_OUTPUT_CHARS = 8000
@@ -518,6 +519,10 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
     elif heading.startswith(WRITE_MEMORY_FILE_PREFIX):
         name = heading[len(WRITE_MEMORY_FILE_PREFIX) :].strip()
         execution_mode = "workspace-memory-write"
+        runnable = write_target_path is not None
+    elif heading.startswith(REWRITE_MEMORY_FILE_PREFIX):
+        name = heading[len(REWRITE_MEMORY_FILE_PREFIX) :].strip()
+        execution_mode = "workspace-memory-rewrite"
         runnable = write_target_path is not None
     elif heading.startswith(WRITE_FILE_PREFIX):
         name = heading[len(WRITE_FILE_PREFIX) :].strip()
@@ -1200,6 +1205,108 @@ def _invoke_runnable_capability(
             ),
         }
 
+    if summary["execution_mode"] == "workspace-memory-rewrite":
+        target_path = str(summary.get("target_path") or "MEMORY.md").strip()
+        candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
+        if candidate is None:
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"Memory rewrite target is outside workspace scope: {target_path}",
+            }
+        _MEMORY_REWRITE_ALLOWED_FILES = {"MEMORY.md", "USER.md"}
+        if candidate.name not in _MEMORY_REWRITE_ALLOWED_FILES:
+            return {
+                "capability": summary,
+                "status": "blocked-scope-mismatch",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": f"workspace-memory-rewrite is only allowed for {', '.join(sorted(_MEMORY_REWRITE_ALLOWED_FILES))}.",
+            }
+        if not approved:
+            return {
+                "capability": summary,
+                "status": "blocked-needs-approval",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=False, granted=False),
+                "result": None,
+                "detail": "Memory rewrite requires explicit Bjørn approval — call again with approved=True.",
+            }
+        if write_content is None:
+            return {
+                "capability": summary,
+                "status": "blocked-missing-write-content",
+                "execution_mode": summary["execution_mode"],
+                "approval": _approval_result(summary, approved=True, granted=False),
+                "result": None,
+                "detail": "Memory rewrite requires explicit write_content with the FULL new file contents.",
+            }
+        # Filter the incoming content through the durable-only line
+        # filter so even an approved rewrite cannot inject session
+        # noise into long-term memory.
+        filtered_lines: list[str] = []
+        rejected_lines: list[str] = []
+        for line in str(write_content).splitlines():
+            if _is_durable_memory_line(line):
+                filtered_lines.append(line)
+            else:
+                rejected_lines.append(line)
+        filtered_content = "\n".join(filtered_lines).rstrip() + "\n"
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        existing_content = (
+            candidate.read_text(encoding="utf-8", errors="replace")
+            if candidate.exists()
+            else ""
+        )
+        existing_fingerprint = _content_fingerprint(existing_content) if existing_content else ""
+        existing_bytes = len(existing_content.encode("utf-8"))
+        candidate.write_text(filtered_content, encoding="utf-8")
+        try:
+            readback_content = candidate.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            readback_content = ""
+        new_fingerprint = _content_fingerprint(filtered_content)
+        readback_fingerprint = _content_fingerprint(readback_content) if readback_content else ""
+        readback_match = bool(readback_fingerprint and readback_fingerprint == new_fingerprint)
+        new_bytes = len(filtered_content.encode("utf-8"))
+        return {
+            "capability": summary,
+            "status": "executed",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=True, granted=True),
+            "result": {
+                "type": "workspace-memory-rewrite",
+                "path": target_path,
+                "bytes_written": new_bytes,
+                "bytes_before": existing_bytes,
+                "bytes_delta": new_bytes - existing_bytes,
+                "lines_kept": len(filtered_lines),
+                "lines_rejected": len(rejected_lines),
+                "rejected_sample": [line[:120] for line in rejected_lines[:5]],
+                "text": _preview_text(
+                    filtered_content,
+                    limit=min(MAX_FILE_OUTPUT_CHARS, 600),
+                ),
+                "content_fingerprint": new_fingerprint,
+                "content_fingerprint_before": existing_fingerprint,
+                "readback_fingerprint": readback_fingerprint,
+                "readback_match": readback_match,
+                "content_source": "explicit-rewrite-content-filtered",
+                "workspace_scoped": True,
+            },
+            "detail": (
+                f"Memory rewrite executed for {target_path}. "
+                f"{new_bytes - existing_bytes:+d} bytes, "
+                f"{len(filtered_lines)} lines kept, "
+                f"{len(rejected_lines)} noise lines rejected, "
+                f"readback={'verified' if readback_match else 'MISMATCH'}."
+            ),
+        }
+
     if summary["execution_mode"] == "workspace-file-write":
         target_path = str(summary.get("target_path") or "").strip()
         candidate = _resolve_workspace_relative_path(workspace_dir, target_path)
@@ -1272,6 +1379,7 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         return "not-needed"
     if execution_mode in {
         "workspace-file-write",
+        "workspace-memory-rewrite",
         "external-file-write",
         "workspace-file-delete",
         "delete-file",
@@ -1309,6 +1417,7 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         }
     if normalized in {
         "workspace-file-write",
+        "workspace-memory-rewrite",
         "workspace-file-edit",
         "workspace-file-create",
         "modify-file",
@@ -2581,6 +2690,99 @@ def _preview_text(text: str, limit: int = 120) -> str:
     return normalized[: limit - 1].rstrip() + "…"
 
 
+_MEMORY_NOISE_SUBSTRINGS = (
+    # Session/time-bound phrases that should never live in long-term memory
+    "vi ses",
+    "god nat",
+    "god aften",
+    "god morgen",
+    "pas på dig",
+    "kør forsigtigt",
+    "hav en god",
+    "ses senere",
+    "i mellemtiden",
+    "i aften",
+    "i morgen",
+    "lige nu",
+    # First-person inner state narration — belongs in INNER_VOICE
+    "jeg mærker",
+    "jeg føler",
+    "jeg oplever",
+    "jeg holder stillingen",
+    "jeg venter",
+    "jeg fortsætter selv",
+    "næste skridt",
+    "jeg dykker ned",
+    # Direct address to user — conversation, not memory
+    "hej bjørn",
+    "hi bjørn",
+    "hvordan har du",
+    # Question-to-user phrasing — same
+    "vil du have jeg",
+    "vil du have mig til",
+    "skal jeg",
+    "hvad foretrækker du",
+    "er der noget",
+    # English session-bound equivalents
+    "see you soon",
+    "let me know",
+    "how are you",
+    "should i review",
+    "should i look",
+    "is there anything",
+)
+
+_MEMORY_NOISE_LINE_PREFIXES = (
+    "### ",
+    "#### ",
+    "##### ",
+    "✅",
+    "🚀",
+    "🧠",
+    "📋",
+    "🌙",
+    "❓",
+    "🎮",
+    "🤖",
+    "🎬",
+    "🖥️",
+)
+
+
+def _is_durable_memory_line(line: str) -> bool:
+    """True if a line looks like a durable fact, not session noise.
+
+    Used by _merge_workspace_memory_content to reject conversation
+    fragments, inner-state narration, and emoji-headed proposals from
+    leaking into MEMORY.md. Durable facts are short, start with `- `
+    or a `## H2` header, and don't contain first-person reflection.
+    """
+    stripped = line.strip()
+    if not stripped:
+        return True  # blank lines are structural, not noise
+    # Allowed structural lines
+    if stripped.startswith("# ") or stripped.startswith("## "):
+        return True
+    if stripped == "---":
+        return True
+    # Bullet facts or continuation-indented body lines
+    if not (stripped.startswith("- ") or stripped.startswith("  ")):
+        # Anything else (free-form prose, headings, etc.) is noise
+        return False
+    # Reject emoji-headed or H3+ pseudo-sections even inside bullets
+    for prefix in _MEMORY_NOISE_LINE_PREFIXES:
+        if stripped.startswith(prefix):
+            return False
+    # Too long to be a concise fact — likely narrative
+    if len(stripped) > 400:
+        return False
+    lowered = stripped.lower()
+    for substring in _MEMORY_NOISE_SUBSTRINGS:
+        if substring in lowered:
+            return False
+    return True
+
+
 def _merge_workspace_memory_content(*, existing_content: str, incoming_content: str) -> str:
     existing_lines = existing_content.splitlines()
     incoming_lines = incoming_content.splitlines()
@@ -2593,12 +2795,32 @@ def _merge_workspace_memory_content(*, existing_content: str, incoming_content: 
         if " ".join(str(line).split()).strip()
     }
     appended: list[str] = []
+    rejected: list[str] = []
     for line in incoming_lines:
         normalized = " ".join(str(line).split()).strip()
         if not normalized or normalized in seen:
             continue
+        if not _is_durable_memory_line(line):
+            rejected.append(line)
+            continue
         seen.add(normalized)
         appended.append(line)
+
+    # Surface rejected noise so we have observability into what the
+    # filter catches — not raised as an error because we still want
+    # the caller to get a successful write for the durable lines.
+    if rejected:
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish(
+                "workspace_memory.noise_filtered",
+                {
+                    "rejected_count": len(rejected),
+                    "sample": [line[:120] for line in rejected[:5]],
+                },
+            )
+        except Exception:
+            pass
 
     if not appended:
         return existing_content if existing_content.endswith("\n") else existing_content + "\n"

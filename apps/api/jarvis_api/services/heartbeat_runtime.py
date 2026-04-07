@@ -2466,6 +2466,77 @@ def _execute_openrouter_prompt(
     }
 
 
+def _detect_visible_language() -> str:
+    """Detect the language Bjørn is currently using in webchat.
+
+    Returns 'da' for Danish, 'en' for English, or 'da' as a default.
+    Used so heartbeat pings match the language the user is currently
+    speaking, instead of being hardcoded to one or the other.
+    """
+    try:
+        from apps.api.jarvis_api.services.chat_sessions import (
+            list_chat_sessions, recent_chat_session_messages,
+        )
+        sessions = list_chat_sessions()
+        if not sessions:
+            return "da"
+        session_id = str((sessions[0] or {}).get("id") or "").strip()
+        if not session_id:
+            return "da"
+        messages = recent_chat_session_messages(session_id, limit=8)
+        # Find most recent user message
+        for msg in reversed(messages):
+            if str(msg.get("role") or "") != "user":
+                continue
+            text = str(msg.get("content") or "").lower()
+            if not text:
+                continue
+            # Danish marker words / characters
+            danish_markers = (
+                "æ", "ø", "å", " ikke ", " jeg ", " du ", " det ", " det ",
+                " og ", " er ", " har ", " skal ", " kan ", " som ",
+                " fra ", " til ", " med ", " hvad ", " hvor ", " hvorfor ",
+            )
+            if any(marker in text for marker in danish_markers):
+                return "da"
+            return "en"
+    except Exception:
+        pass
+    return "da"
+
+
+def _recent_ping_history(*, limit: int = 6) -> list[str]:
+    """Return the last N assistant ping_text strings already delivered.
+
+    Used so the LLM can see what it has recently asked and avoid
+    repetitive 'Should I review...' style pinging.
+    """
+    try:
+        from apps.api.jarvis_api.services.chat_sessions import (
+            list_chat_sessions, recent_chat_session_messages,
+        )
+        sessions = list_chat_sessions()
+        if not sessions:
+            return []
+        session_id = str((sessions[0] or {}).get("id") or "").strip()
+        if not session_id:
+            return []
+        messages = recent_chat_session_messages(session_id, limit=40)
+        recent: list[str] = []
+        for msg in reversed(messages):
+            if str(msg.get("role") or "") != "assistant":
+                continue
+            content = str(msg.get("content") or "").strip()
+            if not content or len(content) > 220:
+                continue
+            recent.append(content)
+            if len(recent) >= limit:
+                break
+        return list(reversed(recent))
+    except Exception:
+        return []
+
+
 def _heartbeat_prompt_text(base_text: str) -> str:
     # Inject affective guidance as active instruction
     affective_guidance = ""
@@ -2493,11 +2564,32 @@ def _heartbeat_prompt_text(base_text: str) -> str:
     except Exception:
         pass
 
+    # Language match — what language is Bjørn currently speaking?
+    detected_language = _detect_visible_language()
+    language_label = "Danish (dansk)" if detected_language == "da" else "English"
+    language_directive = (
+        f"Language: Bjørn is currently speaking {language_label}. "
+        f"Your ping_text MUST be in {language_label}. Match the language "
+        "of his most recent message — do not hardcode either language."
+    )
+
+    # Recent ping history — anti-repetition guard
+    recent_pings = _recent_ping_history(limit=6)
+    history_section = ""
+    if recent_pings:
+        history_lines = ["Recent assistant messages already delivered to Bjørn (do NOT repeat or paraphrase):"]
+        for line in recent_pings:
+            history_lines.append(f"  - {line[:160]}")
+        history_section = "\n".join(history_lines)
+
     parts = [
         base_text.strip(),
     ]
     if affective_guidance:
         parts.append(affective_guidance)
+    parts.append(language_directive)
+    if history_section:
+        parts.append(history_section)
     parts.extend([
         "Heartbeat response contract:",
         "- Return only one compact JSON object.",
@@ -2507,9 +2599,18 @@ def _heartbeat_prompt_text(base_text: str) -> str:
         "- summary must be short and concrete.",
         "- reason must explain why this decision is appropriate now.",
         "- proposed_action should be a short bounded action description or empty.",
-        "- ping_text MUST be a concrete one-sentence question to Bjørn whenever decision_type=ping. Empty ping_text is not allowed.",
-        "- You may pick ping when you are curious, when an inner-voice thought wants to surface to Bjørn, when boredom rises, or when a small wonder is worth sharing — you do NOT need permission gates to ask a question.",
-        "- If you have nothing concrete to ask, choose noop instead of ping.",
+        "- ping_text rules (when decision_type=ping):",
+        "  * MUST be in the language Bjørn is currently using (see Language directive above).",
+        "  * MUST be a concrete, specific question grounded in actual current context — never generic.",
+        "  * MUST NOT be a paraphrase of any message in the recent history list above.",
+        "  * MUST NOT use templates like 'Should I review X?', 'Is there anything specific you would like...?',"
+        " 'Vil du have jeg dykker ned i...?', or 'Should I look at...?'. These are banned.",
+        "  * MUST reference something concrete: a file, a recent runtime event, an open loop by name,"
+        " a specific signal, an actual observation. No generic hedges.",
+        "  * If you cannot satisfy ALL of the above, choose noop instead. Generic pings are worse than silence.",
+        "- You may pick ping when you are curious, when an inner-voice thought wants to surface to Bjørn,"
+        " when boredom rises, or when a small wonder is worth sharing — you do NOT need permission gates"
+        " to ask a question, but the question must still be specific and non-repetitive.",
         "- execute_action should only be set if decision_type=execute or initiative.",
         f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
         '- For initiative decisions, set execute_action to "act_on_initiative".',
@@ -2979,6 +3080,54 @@ def _deliver_heartbeat_ping_directly(
             "artifact": "",
             "blocked_reason": "missing-ping-text",
         }
+
+    # Anti-spam guard: reject generic templated pings even when the LLM
+    # ignored the prompt instruction. These are the patterns Jarvis was
+    # caught spamming ("Should I review the recent...", etc.). If we
+    # detect any of them, we block delivery and let the next tick try
+    # again with fresh context.
+    banned_patterns = (
+        "should i review",
+        "should i look at",
+        "is there anything specific you would like",
+        "is there anything you would like me to review",
+        "vil du have jeg dykker ned",
+        "vil du have jeg kigger",
+        "skal jeg kigge",
+        "skal jeg dykke ned",
+        "er der noget specifikt",
+        "er der noget bestemt du vil",
+    )
+    lowered_message = message_text.lower()
+    if any(pattern in lowered_message for pattern in banned_patterns):
+        return {
+            "status": "blocked",
+            "summary": message_text,
+            "action_type": "webchat-heartbeat-ping",
+            "artifact": "",
+            "blocked_reason": "generic-templated-ping-rejected",
+        }
+
+    # Repetition guard: reject if this exact text (or a near-duplicate)
+    # is already in recent assistant history. We compare against the
+    # last 8 assistant messages.
+    try:
+        recent = _recent_ping_history(limit=8)
+        normalized_message = " ".join(lowered_message.split())
+        for prior in recent:
+            normalized_prior = " ".join(prior.lower().split())
+            if not normalized_prior:
+                continue
+            if normalized_message == normalized_prior:
+                return {
+                    "status": "blocked",
+                    "summary": message_text,
+                    "action_type": "webchat-heartbeat-ping",
+                    "artifact": "",
+                    "blocked_reason": "duplicate-of-recent-message",
+                }
+    except Exception:
+        pass
 
     if not bool(policy.get("allow_ping")):
         return {

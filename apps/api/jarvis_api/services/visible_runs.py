@@ -1750,6 +1750,35 @@ def _execute_visible_capability_entries(
             cap_result_text = str(cap_result_obj.get("text") or "").strip()
         cap_detail = str(capability_result.get("detail") or "").strip()
 
+        # Echo confirmation header for memory/file writes so the LLM gets
+        # explicit feedback that the write succeeded — Jarvis previously
+        # only saw the merged preview text and could not tell whether the
+        # write had actually been persisted.
+        if cap_status == "executed" and isinstance(cap_result_obj, dict):
+            write_kind = str(cap_result_obj.get("type") or "")
+            if write_kind in {"workspace-memory-write", "workspace-file-write"}:
+                write_path = str(cap_result_obj.get("path") or "").strip()
+                bytes_written = cap_result_obj.get("bytes_written")
+                fingerprint = str(cap_result_obj.get("content_fingerprint") or "").strip()
+                line_count: int | None = None
+                if cap_result_text:
+                    line_count = cap_result_text.count("\n") + 1
+                header_parts: list[str] = [
+                    f"WRITE_CONFIRMED path={write_path or 'unknown'}",
+                    f"bytes={int(bytes_written) if isinstance(bytes_written, (int, float)) else 'unknown'}",
+                ]
+                if line_count is not None:
+                    header_parts.append(f"preview_lines={line_count}")
+                if fingerprint:
+                    header_parts.append(f"fingerprint={fingerprint[:16]}")
+                header_parts.append("status=persisted")
+                confirmation_header = " | ".join(header_parts)
+                cap_result_text = (
+                    f"{confirmation_header}\n--- preview ---\n{cap_result_text}"
+                    if cap_result_text
+                    else confirmation_header
+                )
+
         _update_visible_execution_trace(
             run,
             {

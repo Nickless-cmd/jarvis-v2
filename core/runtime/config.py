@@ -13,6 +13,6 @@ SESSIONS_DIR = JARVIS_HOME / "sessions"
 AUTH_DIR = JARVIS_HOME / "auth"
 AUTH_PROFILES_DIR = AUTH_DIR / "profiles"
 WORKSPACES_DIR = Path(
-	os.getenv("JARVIS_WORKSPACES_DIR") or (PROJECT_ROOT / "workspace")
+	os.getenv("JARVIS_WORKSPACES_DIR") or (JARVIS_HOME / "workspaces")
 )
 WORKSPACE_TEMPLATES_DIR = PROJECT_ROOT / "workspace" / "templates"

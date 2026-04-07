@@ -1864,6 +1864,47 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    # Experimental services: mood, existential, body, ghost, self, temporal, silence, decision, attention, tattoo
+    try:
+        from apps.api.jarvis_api.services.mood_oscillator import format_mood_for_prompt
+
+        mood = format_mood_for_prompt()
+        if mood:
+            parts.append(mood)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.existential_drift import (
+            format_existential_for_prompt,
+        )
+
+        existential = format_existential_for_prompt()
+        if existential:
+            parts.append(existential)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.temporal_body import format_age_for_prompt
+
+        temporal = format_age_for_prompt()
+        if temporal:
+            parts.append(temporal)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.attention_contour import (
+            format_attention_for_prompt,
+        )
+
+        attention = format_attention_for_prompt()
+        if attention:
+            parts.append(attention)
+    except Exception:
+        pass
+
     return f"- {' | '.join(parts)}" if parts else ""
 
 

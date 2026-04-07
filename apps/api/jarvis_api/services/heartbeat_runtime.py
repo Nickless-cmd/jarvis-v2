@@ -609,6 +609,87 @@ def _build_cognitive_surfaces() -> dict[str, object]:
             fromlist=["build_seed_surface"],
         ).build_seed_surface(),
     )
+    # Experimental services
+    _safe_surface(
+        surfaces,
+        "mood_oscillator",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.mood_oscillator",
+            fromlist=["build_mood_oscillator_surface"],
+        ).build_mood_oscillator_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "existential_drift",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.existential_drift",
+            fromlist=["build_existential_drift_surface"],
+        ).build_existential_drift_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "body_memory",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.body_memory",
+            fromlist=["build_body_memory_surface"],
+        ).build_body_memory_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "ghost_networks",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.ghost_networks",
+            fromlist=["build_ghost_networks_surface"],
+        ).build_ghost_networks_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "parallel_selves",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.parallel_selves",
+            fromlist=["build_parallel_selves_surface"],
+        ).build_parallel_selves_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "temporal_body",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.temporal_body",
+            fromlist=["build_temporal_body_surface"],
+        ).build_temporal_body_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "silence_listener",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.silence_listener",
+            fromlist=["build_silence_listener_surface"],
+        ).build_silence_listener_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "decision_ghosts",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.decision_ghosts",
+            fromlist=["build_decision_ghosts_surface"],
+        ).build_decision_ghosts_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "attention_contour",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.attention_contour",
+            fromlist=["build_attention_contour_surface"],
+        ).build_attention_contour_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "memory_tattoos",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.memory_tattoos",
+            fromlist=["build_memory_tattoos_surface"],
+        ).build_memory_tattoos_surface(),
+    )
     return surfaces
 
 
@@ -717,6 +798,43 @@ def _run_heartbeat_tick_locked(
             )
         except Exception:
             pass
+
+    # Mood oscillator: update on every tick
+    try:
+        from apps.api.jarvis_api.services.mood_oscillator import tick as mood_tick
+
+        mood_tick(seconds=30)
+    except Exception:
+        pass
+
+    # Experimental services: update on every tick
+    try:
+        from apps.api.jarvis_api.services.existential_drift import increment_awareness
+
+        increment_awareness(seconds=30)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.temporal_body import age_journey
+
+        age_journey()
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.silence_listener import experience_silence
+
+        experience_silence(duration_seconds=30)
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.attention_contour import get_attention_shape
+
+        get_attention_shape()
+    except Exception:
+        pass
 
     now = datetime.now(UTC)
     workspace_dir = ensure_default_workspace(name=name)

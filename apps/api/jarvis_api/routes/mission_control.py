@@ -117,6 +117,36 @@ from apps.api.jarvis_api.services.experiential_memory import (
 from apps.api.jarvis_api.services.seed_system import (
     build_seed_surface,
 )
+from apps.api.jarvis_api.services.mood_oscillator import (
+    build_mood_oscillator_surface,
+)
+from apps.api.jarvis_api.services.existential_drift import (
+    build_existential_drift_surface,
+)
+from apps.api.jarvis_api.services.body_memory import (
+    build_body_memory_surface,
+)
+from apps.api.jarvis_api.services.ghost_networks import (
+    build_ghost_networks_surface,
+)
+from apps.api.jarvis_api.services.parallel_selves import (
+    build_parallel_selves_surface,
+)
+from apps.api.jarvis_api.services.temporal_body import (
+    build_temporal_body_surface,
+)
+from apps.api.jarvis_api.services.silence_listener import (
+    build_silence_listener_surface,
+)
+from apps.api.jarvis_api.services.decision_ghosts import (
+    build_decision_ghosts_surface,
+)
+from apps.api.jarvis_api.services.attention_contour import (
+    build_attention_contour_surface,
+)
+from apps.api.jarvis_api.services.memory_tattoos import (
+    build_memory_tattoos_surface,
+)
 from apps.api.jarvis_api.services.development_focus_tracking import (
     build_runtime_development_focus_surface,
 )
@@ -647,6 +677,17 @@ def _mc_runtime_uncached() -> dict:
                 "paradox_tracker": build_paradox_surface(),
                 "experiential_memory": build_experiential_memory_surface(),
                 "seeds": build_seed_surface(),
+                # Experimental services
+                "mood_oscillator": build_mood_oscillator_surface(),
+                "existential_drift": build_existential_drift_surface(),
+                "body_memory": build_body_memory_surface(),
+                "ghost_networks": build_ghost_networks_surface(),
+                "parallel_selves": build_parallel_selves_surface(),
+                "temporal_body": build_temporal_body_surface(),
+                "silence_listener": build_silence_listener_surface(),
+                "decision_ghosts": build_decision_ghosts_surface(),
+                "attention_contour": build_attention_contour_surface(),
+                "memory_tattoos": build_memory_tattoos_surface(),
             },
             "runtime_work": _runtime_work_surface(),
             "paths": {

@@ -1811,6 +1811,59 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    # GAP services - mirror, paradox, experiential, seeds, inner_voice
+    try:
+        from apps.api.jarvis_api.services.mirror_engine import build_mirror_surface
+
+        mirror = build_mirror_surface()
+        if mirror.get("active"):
+            parts.append("[SELV-REFLEKSION: aktiv]")
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.paradox_tracker import build_paradox_surface
+
+        paradox = build_paradox_surface()
+        if paradox.get("active_tensions"):
+            count = len(paradox.get("active_tensions", []))
+            parts.append(f"[PARADOKSER: {count} aktive spændinger]")
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.experiential_memory import (
+            build_experiential_memory_surface,
+        )
+
+        experiential = build_experiential_memory_surface()
+        if experiential.get("memory_count", 0) > 0:
+            parts.append(
+                f"[OPLEVELSER: {experiential.get('memory_count', 0)} hukommelser]"
+            )
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.seed_system import build_seed_surface
+
+        seeds = build_seed_surface()
+        if seeds.get("active_seed_count", 0) > 0:
+            parts.append(f"[FRØ: {seeds.get('active_seed_count', 0)} aktive]")
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.signal_network_visualizer import (
+            describe_inner_network,
+        )
+
+        inner_voice = describe_inner_network()
+        if inner_voice and inner_voice != "Mit indre netværk er stille":
+            parts.append(f"[INDRE: {inner_voice[:80]}]")
+    except Exception:
+        pass
+
     return f"- {' | '.join(parts)}" if parts else ""
 
 

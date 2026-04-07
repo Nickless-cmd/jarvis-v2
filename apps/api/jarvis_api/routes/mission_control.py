@@ -105,6 +105,18 @@ from apps.api.jarvis_api.services.temporal_narrative import (
 from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
     build_boredom_curiosity_bridge_surface,
 )
+from apps.api.jarvis_api.services.mirror_engine import (
+    build_mirror_surface,
+)
+from apps.api.jarvis_api.services.paradox_tracker import (
+    build_paradox_surface,
+)
+from apps.api.jarvis_api.services.experiential_memory import (
+    build_experiential_memory_surface,
+)
+from apps.api.jarvis_api.services.seed_system import (
+    build_seed_surface,
+)
 from apps.api.jarvis_api.services.development_focus_tracking import (
     build_runtime_development_focus_surface,
 )
@@ -630,6 +642,11 @@ def _mc_runtime_uncached() -> dict:
                 "signal_network_visualizer": build_signal_network_visualizer_surface(),
                 "temporal_narrative": build_temporal_narrative_surface(),
                 "boredom_curiosity_bridge": build_boredom_curiosity_bridge_surface(),
+                # GAP services
+                "mirror": build_mirror_surface(),
+                "paradox_tracker": build_paradox_surface(),
+                "experiential_memory": build_experiential_memory_surface(),
+                "seeds": build_seed_surface(),
             },
             "runtime_work": _runtime_work_surface(),
             "paths": {

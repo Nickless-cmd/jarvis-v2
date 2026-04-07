@@ -576,6 +576,39 @@ def _build_cognitive_surfaces() -> dict[str, object]:
             fromlist=["build_boredom_curiosity_bridge_surface"],
         ).build_boredom_curiosity_bridge_surface(),
     )
+    # Gap services
+    _safe_surface(
+        surfaces,
+        "mirror",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.mirror_engine",
+            fromlist=["build_mirror_surface"],
+        ).build_mirror_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "paradox_tracker",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.paradox_tracker",
+            fromlist=["build_paradox_surface"],
+        ).build_paradox_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "experiential_memory",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.experiential_memory",
+            fromlist=["build_experiential_memory_surface"],
+        ).build_experiential_memory_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "seeds",
+        lambda: __import__(
+            "apps.api.jarvis_api.services.seed_system",
+            fromlist=["build_seed_surface"],
+        ).build_seed_surface(),
+    )
     return surfaces
 
 
@@ -659,6 +692,31 @@ def _run_heartbeat_tick_locked(
         add_boredom(duration=timedelta(seconds=30))
     except Exception:
         pass
+
+    # Every 2nd tick: run mirror reflection
+    if tick_count % 2 == 0:
+        try:
+            from apps.api.jarvis_api.services.mirror_engine import (
+                generate_mirror_insight,
+            )
+            from apps.api.jarvis_api.services.loop_runtime import (
+                build_loop_runtime_surface,
+            )
+
+            loops_surface = build_loop_runtime_surface()
+            open_loops = list(loops_surface.get("open_loops") or [])
+            top_summary = str(
+                (open_loops[0].get("summary") or "") if open_loops else ""
+            )
+            generate_mirror_insight(
+                idle_hours=0.0,
+                open_loop_count=len(open_loops),
+                recent_error_count=0,
+                recent_success_count=0,
+                top_loop_summary=top_summary[:80],
+            )
+        except Exception:
+            pass
 
     now = datetime.now(UTC)
     workspace_dir = ensure_default_workspace(name=name)

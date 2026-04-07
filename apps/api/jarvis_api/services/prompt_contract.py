@@ -163,7 +163,11 @@ def build_runtime_inner_visible_prompt_bridge_surface(
 
 
 from core.identity.runtime_contract import build_runtime_contract_state
-from core.identity.workspace_bootstrap import TEMPLATE_DIR, ensure_default_workspace
+from core.identity.workspace_bootstrap import (
+    TEMPLATE_DIR,
+    ensure_default_workspace,
+    read_daily_memory_lines,
+)
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
 )
@@ -337,6 +341,18 @@ def build_visible_chat_prompt_assembly(
                 derived_inputs.append("bounded NL memory entry selection")
             elif memory_selection.fallback_used:
                 derived_inputs.append("heuristic memory entry selection fallback")
+
+        # Daily memory sidecar — short-lived session notes from today.
+        # Read separately from MEMORY.md so Jarvis has today's context
+        # without needing the full long-term memory file every turn.
+        daily_lines = _today_daily_memory_lines(limit=6 if compact else 10)
+        if daily_lines:
+            parts.append(
+                "\n".join(
+                    ["Today's notes (memory/daily):", *[f"  {line}" for line in daily_lines]]
+                )
+            )
+            derived_inputs.append("daily memory sidecar")
 
     if relevance.include_guidance:
         for filename in ("TOOLS.md", "SKILLS.md"):
@@ -534,6 +550,18 @@ def build_heartbeat_prompt_assembly(
             elif memory_selection.fallback_used:
                 derived_inputs.append("heuristic memory entry selection fallback")
 
+        # Daily memory sidecar for heartbeat prompts too, so proactive
+        # decisions can reference today's context without pulling in
+        # the full long-term memory file.
+        daily_lines = _today_daily_memory_lines(limit=8)
+        if daily_lines:
+            parts.append(
+                "\n".join(
+                    ["Today's notes (memory/daily):", *[f"  {line}" for line in daily_lines]]
+                )
+            )
+            derived_inputs.append("daily memory sidecar")
+
     # Due summary is always included (scheduling truth, not runtime-derived)
     due_summary = _heartbeat_due_summary(heartbeat_context or {})
     if due_summary:
@@ -670,6 +698,17 @@ def build_future_agent_task_prompt_assembly(
                 derived_inputs.append("bounded NL memory entry selection")
             elif memory_selection.fallback_used:
                 derived_inputs.append("heuristic memory entry selection fallback")
+
+        # Daily memory sidecar so delegated agents see today's session
+        # context, not just long-term curated facts.
+        daily_lines = _today_daily_memory_lines(limit=8)
+        if daily_lines:
+            parts.append(
+                "\n".join(
+                    ["Today's notes (memory/daily):", *[f"  {line}" for line in daily_lines]]
+                )
+            )
+            derived_inputs.append("daily memory sidecar")
 
     if relevance.include_guidance or context.get("include_guidance"):
         for filename in ("TOOLS.md", "SKILLS.md"):
@@ -1052,6 +1091,19 @@ def _workspace_memory_section(
         return None
     _track_memory_selection(selection, mode, len(entries))
     return selection
+
+
+def _today_daily_memory_lines(*, limit: int = 10) -> list[str]:
+    """Read today's daily memory lines for injection into visible prompts.
+
+    Wraps read_daily_memory_lines with exception safety so prompt
+    builders never fail because the daily file is missing, empty, or
+    briefly unreadable.
+    """
+    try:
+        return read_daily_memory_lines(limit=limit)
+    except Exception:
+        return []
 
 
 def _workspace_memory_entries(path: Path) -> list[str]:

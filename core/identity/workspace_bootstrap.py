@@ -76,6 +76,83 @@ def workspace_memory_paths(name: str = "default") -> dict[str, Path]:
     }
 
 
+def append_daily_memory_note(
+    note: str,
+    *,
+    name: str = "default",
+    source: str = "session",
+) -> Path | None:
+    """Append a short note to today's daily memory file.
+
+    Daily memory is for short-lived session context — what happened
+    today, what was discussed, what is fresh in mind. It is read into
+    visible prompts as a separate sidecar to MEMORY.md so Jarvis has
+    today's context without needing the full long-term memory file
+    every turn.
+
+    Notes auto-rotate by date (one file per UTC day). Old daily files
+    accumulate in memory/daily/ and can be migrated to memory/curated/
+    or pruned by a separate consolidation pass.
+    """
+    cleaned = " ".join(str(note or "").split()).strip()
+    if not cleaned:
+        return None
+    paths = workspace_memory_paths(name=name)
+    daily_path: Path = paths["daily_memory"]
+    daily_path.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(UTC).strftime("%H:%M")
+    line = f"- [{timestamp}] [{source}] {cleaned}"
+    if daily_path.exists():
+        existing = daily_path.read_text(encoding="utf-8", errors="replace")
+        # De-dupe: skip if exact-line already there (without timestamp)
+        existing_normalized = {
+            " ".join(l.split()).split("] ", 2)[-1].strip()
+            for l in existing.splitlines()
+            if l.strip().startswith("- [")
+        }
+        if cleaned in existing_normalized:
+            return daily_path
+        new_content = existing.rstrip() + "\n" + line + "\n"
+    else:
+        header = (
+            f"# Daily memory — {datetime.now(UTC).date().isoformat()}\n\n"
+            "Short-lived session notes. Auto-rotated daily.\n\n"
+        )
+        new_content = header + line + "\n"
+    daily_path.write_text(new_content, encoding="utf-8")
+    return daily_path
+
+
+def read_daily_memory_lines(
+    *,
+    name: str = "default",
+    limit: int = 12,
+) -> list[str]:
+    """Read the most recent daily memory notes (today only).
+
+    Accepts both formats:
+    - `- [HH:MM] [source] note` (from append_daily_memory_note)
+    - `- session_id: ...` / `- carried: ...` etc (from end_of_run consolidation)
+
+    Returns a bounded list of bullet lines from today's file. Used by
+    prompt builders to inject today's context into visible prompts as
+    a sidecar to MEMORY.md.
+    """
+    paths = workspace_memory_paths(name=name)
+    daily_path: Path = paths["daily_memory"]
+    if not daily_path.exists():
+        return []
+    lines: list[str] = []
+    for raw in daily_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = raw.strip()
+        if not stripped:
+            continue
+        # Accept any bullet line, skip section headers and prose
+        if stripped.startswith("- ") or stripped.startswith("  - "):
+            lines.append(stripped)
+    return lines[-max(limit, 1):]
+
+
 def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
     workspace_dir = Path(WORKSPACES_DIR) / name
     workspace_dir.mkdir(parents=True, exist_ok=True)

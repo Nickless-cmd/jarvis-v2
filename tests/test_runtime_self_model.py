@@ -11,6 +11,8 @@ Verifies:
 """
 from __future__ import annotations
 
+import importlib
+
 
 # ---------------------------------------------------------------------------
 # 1. Self-model builds successfully from runtime
@@ -327,6 +329,31 @@ def test_mc_runtime_self_model_endpoint(isolated_runtime) -> None:
     assert "prompt_evolution" in response
     assert "truth_boundaries" in response
     assert "summary" in response
+
+
+def test_cognitive_architecture_awareness_uses_shared_runtime_builder(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    model_mod = isolated_runtime.runtime_self_model
+    cognitive_architecture_surface = importlib.import_module(
+        "apps.api.jarvis_api.services.cognitive_architecture_surface"
+    )
+    shared = {
+        "systems": [{"system": "body_memory", "active": True, "summary": "warm"}],
+        "surfaces": {"body_memory": {"active": True}},
+        "active_count": 1,
+        "total_count": 1,
+        "summary": "1/1 cognitive systems active",
+    }
+
+    monkeypatch.setattr(
+        cognitive_architecture_surface,
+        "build_cognitive_architecture_surface",
+        lambda: shared,
+    )
+
+    assert model_mod._cognitive_architecture_awareness() == shared
 
 
 # ---------------------------------------------------------------------------

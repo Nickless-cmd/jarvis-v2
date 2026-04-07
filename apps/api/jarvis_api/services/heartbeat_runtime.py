@@ -1362,6 +1362,21 @@ def _build_heartbeat_context(
     self_system_code_awareness = build_self_system_code_awareness_surface()
     tool_intent = build_tool_intent_runtime_surface()
     cognitive_frame = _build_heartbeat_cognitive_frame(merged_state=merged_state)
+    private_signal_pressure = str(cognitive_frame.get("private_signal_pressure") or "low")
+    private_signal_items = list(cognitive_frame.get("private_signal_items") or [])[:2]
+
+    if private_signal_pressure in {"medium", "high"}:
+        top_private_summary = str(
+            (private_signal_items[0] or {}).get("summary")
+            or "private signal pressure remains active"
+        )[:140]
+        due_items.append(
+            f"private signal pressure is {private_signal_pressure}: {top_private_summary}"
+        )
+    for item in private_signal_items[:2]:
+        summary = str(item.get("summary") or "").strip()
+        if summary:
+            open_loops.append(f"private signal carry: {summary[:140]}")
 
     # Initiative queue — pending thought-to-action initiatives
     try:
@@ -1425,6 +1440,8 @@ def _build_heartbeat_context(
         "self_system_code_awareness": self_system_code_awareness,
         "tool_intent": tool_intent,
         "cognitive_frame": cognitive_frame,
+        "private_signal_pressure": private_signal_pressure,
+        "private_signal_items": private_signal_items,
         "influence_trace": influence_trace,
     }
 

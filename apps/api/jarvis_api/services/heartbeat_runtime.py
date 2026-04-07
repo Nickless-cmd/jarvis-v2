@@ -2507,7 +2507,9 @@ def _heartbeat_prompt_text(base_text: str) -> str:
         "- summary must be short and concrete.",
         "- reason must explain why this decision is appropriate now.",
         "- proposed_action should be a short bounded action description or empty.",
-        "- ping_text should only be set if decision_type=ping.",
+        "- ping_text MUST be a concrete one-sentence question to Bjørn whenever decision_type=ping. Empty ping_text is not allowed.",
+        "- You may pick ping when you are curious, when an inner-voice thought wants to surface to Bjørn, when boredom rises, or when a small wonder is worth sharing — you do NOT need permission gates to ask a question.",
+        "- If you have nothing concrete to ask, choose noop instead of ping.",
         "- execute_action should only be set if decision_type=execute or initiative.",
         f"- Allowed execute_action values: {', '.join(sorted(HEARTBEAT_ALLOWED_EXECUTE_ACTIONS))}.",
         '- For initiative decisions, set execute_action to "act_on_initiative".',
@@ -2740,6 +2742,48 @@ def _validate_heartbeat_decision(
                 "action_artifact": "",
             }
         if ping_channel == "webchat":
+            # Direct path: when LLM has actual ping_text, deliver it straight
+            # to webchat — Jarvis must always be able to ask a question that
+            # comes from a thought, curiosity, or boredom, without requiring
+            # a pre-existing 3-way gate alignment.
+            ping_text_value = str(decision.get("ping_text") or "").strip()
+            decision_summary_value = str(decision.get("summary") or "").strip()
+            if ping_text_value:
+                direct_result = _deliver_heartbeat_ping_directly(
+                    policy=policy,
+                    tick_id=tick_id,
+                    ping_text=ping_text_value,
+                    summary=decision_summary_value,
+                )
+                if str(direct_result.get("status") or "") == "sent":
+                    return {
+                        "tick_id": tick_id,
+                        "blocked_reason": "",
+                        "ping_eligible": True,
+                        "ping_result": "sent-webchat-direct",
+                        "action_status": "sent",
+                        "action_summary": str(direct_result.get("summary") or ""),
+                        "action_type": "webchat-heartbeat-ping",
+                        "action_artifact": str(direct_result.get("artifact") or ""),
+                    }
+                # If direct delivery is blocked for an env reason (no
+                # session, channel mismatch, kill switch, ping not allowed),
+                # surface that — do not silently fall through to the strict
+                # gate-aligned pilot.
+                return {
+                    "tick_id": tick_id,
+                    "blocked_reason": str(direct_result.get("blocked_reason") or "ping-direct-blocked"),
+                    "ping_eligible": False,
+                    "ping_result": "blocked-direct",
+                    "action_status": "blocked",
+                    "action_summary": str(direct_result.get("summary") or "Direct heartbeat ping delivery blocked."),
+                    "action_type": "webchat-heartbeat-ping",
+                    "action_artifact": str(direct_result.get("artifact") or ""),
+                }
+
+            # No ping_text from LLM — fall back to the strict gate-aligned
+            # execution pilot path (preserves observability for the older
+            # orchestrated proactive-question flow).
             from apps.api.jarvis_api.services.tiny_webchat_execution_pilot import (
                 maybe_run_tiny_webchat_execution_pilot,
             )
@@ -2747,8 +2791,8 @@ def _validate_heartbeat_decision(
             pilot_result = maybe_run_tiny_webchat_execution_pilot(
                 policy=policy,
                 heartbeat_tick_id=tick_id,
-                decision_summary=str(decision.get("summary") or ""),
-                ping_text=str(decision.get("ping_text") or ""),
+                decision_summary=decision_summary_value,
+                ping_text="",
             )
             item = pilot_result.get("item") or {}
             if str(pilot_result.get("delivery_state") or "") != "sent":
@@ -2905,6 +2949,123 @@ def _deliver_heartbeat_proposal(
                 "session_id": session_id,
                 "message_id": str(message.get("id") or ""),
                 "delivery_channel": "webchat",
+            },
+            ensure_ascii=False,
+            default=str,
+        ),
+        "blocked_reason": "",
+    }
+
+
+def _deliver_heartbeat_ping_directly(
+    *,
+    policy: dict[str, object],
+    tick_id: str,
+    ping_text: str,
+    summary: str,
+) -> dict[str, str]:
+    """Deliver an LLM-authored ping straight to webchat.
+
+    Bypasses the strict 3-gate execution pilot. Used when the heartbeat LLM
+    actually wrote a ping_text — Jarvis must always be able to deliver an
+    asked question whether it came from a thought, curiosity, or boredom.
+    """
+    message_text = ping_text.strip() or summary.strip()
+    if not message_text:
+        return {
+            "status": "blocked",
+            "summary": "Heartbeat ping decision had no user-facing text to deliver.",
+            "action_type": "webchat-heartbeat-ping",
+            "artifact": "",
+            "blocked_reason": "missing-ping-text",
+        }
+
+    if not bool(policy.get("allow_ping")):
+        return {
+            "status": "blocked",
+            "summary": "Heartbeat policy blocks ping delivery.",
+            "action_type": "webchat-heartbeat-ping",
+            "artifact": "",
+            "blocked_reason": "ping-not-allowed",
+        }
+
+    kill_switch_state = str(policy.get("kill_switch") or "enabled")
+    if kill_switch_state != "enabled":
+        return {
+            "status": "blocked",
+            "summary": "Heartbeat kill switch blocks proactive webchat delivery.",
+            "action_type": "webchat-heartbeat-ping",
+            "artifact": "",
+            "blocked_reason": "kill-switch-disabled",
+        }
+
+    ping_channel = str(policy.get("ping_channel") or "none").strip() or "none"
+    if ping_channel != "webchat":
+        return {
+            "status": "recorded",
+            "summary": message_text,
+            "action_type": "webchat-heartbeat-ping",
+            "artifact": "",
+            "blocked_reason": "",
+        }
+
+    from apps.api.jarvis_api.services.chat_sessions import (
+        append_chat_message,
+        get_chat_session,
+        list_chat_sessions,
+    )
+
+    sessions = list_chat_sessions()
+    session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
+    if not session_id or get_chat_session(session_id) is None:
+        event_bus.publish(
+            "heartbeat.ping_blocked",
+            {
+                "tick_id": tick_id,
+                "blocked_reason": "missing-webchat-session",
+            },
+        )
+        return {
+            "status": "blocked",
+            "summary": "No webchat session is available for bounded ping delivery.",
+            "action_type": "webchat-heartbeat-ping",
+            "artifact": "",
+            "blocked_reason": "missing-webchat-session",
+        }
+
+    message = append_chat_message(
+        session_id=session_id,
+        role="assistant",
+        content=message_text,
+    )
+    event_bus.publish(
+        "channel.chat_message_appended",
+        {
+            "session_id": session_id,
+            "message": message,
+            "source": "heartbeat-ping-bridge",
+        },
+    )
+    event_bus.publish(
+        "heartbeat.ping_delivered",
+        {
+            "tick_id": tick_id,
+            "session_id": session_id,
+            "message_id": str(message.get("id") or ""),
+            "summary": summary,
+            "ping_text": message_text[:200],
+        },
+    )
+    return {
+        "status": "sent",
+        "summary": "Heartbeat delivered one bounded ping to webchat.",
+        "action_type": "webchat-heartbeat-ping",
+        "artifact": json.dumps(
+            {
+                "session_id": session_id,
+                "message_id": str(message.get("id") or ""),
+                "delivery_channel": "webchat",
+                "ping_text": message_text[:200],
             },
             ensure_ascii=False,
             default=str,

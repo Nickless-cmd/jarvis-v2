@@ -718,6 +718,35 @@ def mc_approvals(limit: int = 20) -> dict:
     }
 
 
+@router.get("/autonomy/proposals")
+def mc_autonomy_proposals(limit: int = 30) -> dict:
+    """MC surface for Niveau 2 autonomy proposal queue.
+
+    Returns pending proposals awaiting Bjørn approval plus recent
+    resolved history.
+    """
+    from apps.api.jarvis_api.services.autonomy_proposal_queue import (
+        build_autonomy_proposal_surface,
+    )
+    return build_autonomy_proposal_surface(limit=max(int(limit), 1))
+
+
+@router.post("/autonomy/proposals/{proposal_id}/approve")
+def mc_approve_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
+    from apps.api.jarvis_api.services.autonomy_proposal_queue import (
+        approve_proposal,
+    )
+    return approve_proposal(proposal_id, resolution_note=note)
+
+
+@router.post("/autonomy/proposals/{proposal_id}/reject")
+def mc_reject_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
+    from apps.api.jarvis_api.services.autonomy_proposal_queue import (
+        reject_proposal,
+    )
+    return reject_proposal(proposal_id, resolution_note=note)
+
+
 @router.get("/operations")
 def mc_operations(limit: int = 20) -> dict:
     cache_key = f"operations:{limit}"

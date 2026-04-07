@@ -1910,6 +1910,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
             parts.append(self_model_signals)
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_resource_signal import (
+            build_runtime_resource_prompt_section,
+        )
+        runtime_resource = build_runtime_resource_prompt_section()
+        if runtime_resource:
+            parts.append(runtime_resource)
+    except Exception:
+        pass
     if not parts:
         return None
     return "\n".join(parts)
@@ -2035,6 +2044,7 @@ def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[st
         _growth_support_signal_instruction,
         _self_model_support_signal_instruction,
         _self_model_signal_tracking_section,
+        _runtime_resource_signal_section,
         _world_model_support_signal_instruction,
         _goal_support_signal_instruction,
         _runtime_awareness_support_signal_instruction,
@@ -2062,6 +2072,22 @@ def _self_model_signal_tracking_section() -> str | None:
             build_self_model_signal_prompt_section,
         )
         return build_self_model_signal_prompt_section(limit=4)
+    except Exception:
+        return None
+
+
+def _runtime_resource_signal_section() -> str | None:
+    """Bridge to runtime_resource_signal in visible support sections.
+
+    Lets Jarvis see his own bounded telemetry (today's tokens, cost,
+    pressure, latest provider/lane). Previously runtime resource usage
+    was only visible in Mission Control — Jarvis himself had no signal.
+    """
+    try:
+        from apps.api.jarvis_api.services.runtime_resource_signal import (
+            build_runtime_resource_prompt_section,
+        )
+        return build_runtime_resource_prompt_section()
     except Exception:
         return None
 

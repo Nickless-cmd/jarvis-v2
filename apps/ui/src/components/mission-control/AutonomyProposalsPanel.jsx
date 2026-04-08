@@ -332,7 +332,7 @@ export function AutonomyProposalsPanel() {
       {pending.length === 0 && !loading && (
         <div
           style={s({
-            padding: 20,
+            padding: '8px 12px',
             textAlign: 'center',
             color: T.text3,
             fontSize: 11,

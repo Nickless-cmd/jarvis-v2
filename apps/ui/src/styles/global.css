@@ -75,7 +75,7 @@ button { cursor: pointer; }
 .support-card, .mc-stat {
   background: #1c1f25;
   border:1px solid rgba(255,255,255,.04);
-  border-radius:10px; padding:14px 16px;
+  border-radius:10px; padding:10px 12px;
 }
 .sidebar-sessions { display:flex; flex-direction:column; gap:10px; min-height: 0; flex:1; overflow:hidden; }
 .sidebar-sessions-head {
@@ -351,7 +351,7 @@ button { cursor: pointer; }
 .chat-support-rail::-webkit-scrollbar { display: none; }
 .chat-support-rail { -ms-overflow-style: none; scrollbar-width: none; }
 .support-rail { display:flex; flex-direction:column; gap:14px; }
-.support-card { padding:14px 16px; background: #1c1f25; border: 1px solid rgba(255,255,255,.04); border-radius: 10px; box-shadow: none; }
+.support-card { padding:10px 12px; background: #1c1f25; border: 1px solid rgba(255,255,255,.04); border-radius: 10px; box-shadow: none; }
 .support-card.compact { padding:12px 14px; }
 .support-card-header { display:flex; flex-direction:column; gap:3px; margin-bottom:8px; }
 .support-card-kicker {
@@ -528,7 +528,7 @@ button { cursor: pointer; }
   border:none; background:transparent; color:#8b909e; border-radius:8px; padding:8px 14px; white-space:nowrap; font-size:12px;
 }
 .mc-tab.active { background:rgba(40,177,163,.12); color:#e4e6ed; }
-.mc-tab-page, .mc-observability-shell { display:flex; flex-direction:column; gap:16px; min-height:0; width:100%; box-sizing:border-box; }
+.mc-tab-page, .mc-observability-shell { display:flex; flex-direction:column; gap:8px; min-height:0; width:100%; box-sizing:border-box; }
 .mc-summary-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px; width:100%; }
 .now-section { background:linear-gradient(135deg, rgba(40,177,163,.06) 0%, rgba(40,177,163,.02) 100%); border:1px solid rgba(40,177,163,.12); border-radius:12px; padding:14px; }
 .now-header { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
@@ -584,7 +584,7 @@ button { cursor: pointer; }
 }
 .mc-list-row {
   width:100%; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:10px;
-  padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.04); background:#1c1f25; color:#e4e6ed;
+  padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.04); background:#1c1f25; color:#e4e6ed;
   transition: border-color .14s ease, background .14s ease;
 }
 .mc-list-row.active { border-color: rgba(40,177,163,.25); background:#16222f; }

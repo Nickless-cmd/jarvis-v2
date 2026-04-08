@@ -539,11 +539,16 @@ export function OperationsTab({
         </section>
       ) : null}
 
-      <section className="support-card" id="runs" title={sectionTitleWithMeta({
-        source: '/mc/runs',
-        fetchedAt: data?.fetchedAt,
-        mode: 'event-assisted + 20s',
-      })}>
+      <article
+        className="support-card"
+        id="runs"
+        style={{ gridColumn: '1 / -1' }}
+        title={sectionTitleWithMeta({
+          source: '/mc/runs',
+          fetchedAt: data?.fetchedAt,
+          mode: 'event-assisted + 20s',
+        })}
+      >
         <div className="panel-header">
           <div>
             <h3>Runs</h3>
@@ -583,9 +588,8 @@ export function OperationsTab({
             </button>
           ))}
         </div>
-      </section>
+      </article>
 
-      <section className="mc-section-grid">
         <article className="support-card" id="sessions" title={sectionTitleWithMeta({
           source: '/chat/sessions',
           fetchedAt: data?.fetchedAt,
@@ -653,7 +657,6 @@ export function OperationsTab({
             ))}
           </div>
         </article>
-      </section>
     </div>
   )
 }

@@ -1193,3 +1193,188 @@ def test_flow_state_prompt_section_none_when_clear(isolated_runtime) -> None:
     model_mod = isolated_runtime.runtime_self_model
     section = model_mod.build_flow_state_awareness_prompt_section()
     assert section is None or "flow_state=clear" not in section
+
+
+# ---------------------------------------------------------------------------
+# Wonder awareness
+# ---------------------------------------------------------------------------
+
+
+def _wonder_inputs(
+    *,
+    voice_mode: str = "",
+    voice_created: bool = False,
+    flow: str = "clear",
+    temporal_state: str = "immediate",
+    ownership_state: str = "ambient",
+    self_relevance: str = "merely-present",
+    return_ownership: bool = False,
+    stream_state: str = "baseline",
+    open_loop_count: int = 0,
+    dream_carry: bool = False,
+) -> tuple[dict, dict, dict, dict, dict, dict, dict]:
+    inner_voice = {
+        "mode": voice_mode,
+        "inner_voice_created": voice_created,
+    }
+    flow_state = {"flow_state": flow}
+    temporal_feel = {
+        "temporal_state": temporal_state,
+        "return_signal": temporal_state == "returning",
+    }
+    mineness = {
+        "ownership_state": ownership_state,
+        "self_relevance": self_relevance,
+        "return_ownership": return_ownership,
+    }
+    support_stream = {"stream_state": stream_state}
+    sources = {"open_loop_open_count": open_loop_count}
+    wonder_sources = {"dream_carry": dream_carry, "dream_state": "pressing" if dream_carry else "idle"}
+    return inner_voice, flow_state, temporal_feel, mineness, support_stream, sources, wonder_sources
+
+
+def test_self_model_includes_wonder_awareness(isolated_runtime) -> None:
+    """Self-model must expose a bounded wonder_awareness surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "wonder_awareness" in model
+    wonder = model["wonder_awareness"]
+    assert "wonder_state" in wonder
+    assert "wonder_orientation" in wonder
+    assert "wonder_source" in wonder
+    assert "narrative" in wonder
+    assert wonder["authority"] == "derived-runtime-truth"
+    assert wonder["visibility"] == "internal-only"
+    assert wonder["kind"] == "wonder-awareness"
+    assert wonder["wonder_state"] in {"quiet", "stirred", "curious", "drawn", "wonder-struck"}
+    assert wonder["wonder_orientation"] in {"none", "noticing", "drawn", "opening", "lingering-with"}
+    assert wonder["wonder_source"] in {"none", "novelty-pull", "flow-depth", "dream-carry", "self-recognition", "temporal-stretch"}
+
+
+def test_wonder_quiet_when_no_basis() -> None:
+    """No signals → wonder_state=quiet with empty narrative."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+
+    iv, fs, tf, mn, ss, src, ws = _wonder_inputs()
+    wonder = _derive_wonder_awareness(
+        inner_voice=iv, flow_state=fs, temporal_feel=tf, mineness=mn,
+        support_stream=ss, sources=src, wonder_sources=ws,
+    )
+    assert wonder["wonder_state"] == "quiet"
+    assert wonder["wonder_orientation"] == "none"
+    assert wonder["wonder_source"] == "none"
+    assert wonder["narrative"] == ""
+
+
+def test_wonder_stirred_when_exploring_voice_alone() -> None:
+    """Searching voice without other signals → stirred."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+
+    iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
+        voice_mode="searching", voice_created=True
+    )
+    wonder = _derive_wonder_awareness(
+        inner_voice=iv, flow_state=fs, temporal_feel=tf, mineness=mn,
+        support_stream=ss, sources=src, wonder_sources=ws,
+    )
+    assert wonder["wonder_state"] == "stirred"
+    assert wonder["narrative"] != ""
+
+
+def test_wonder_curious_when_exploring_with_temporal_extension() -> None:
+    """Searching voice + lingering temporal → curious."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+
+    iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
+        voice_mode="searching", voice_created=True, temporal_state="lingering"
+    )
+    wonder = _derive_wonder_awareness(
+        inner_voice=iv, flow_state=fs, temporal_feel=tf, mineness=mn,
+        support_stream=ss, sources=src, wonder_sources=ws,
+    )
+    assert wonder["wonder_state"] == "curious"
+    assert wonder["narrative"] != ""
+
+
+def test_wonder_drawn_when_pulled_voice() -> None:
+    """Pulled voice mode → drawn with drawn orientation."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+
+    iv, fs, tf, mn, ss, src, ws = _wonder_inputs(voice_mode="pulled", voice_created=True)
+    wonder = _derive_wonder_awareness(
+        inner_voice=iv, flow_state=fs, temporal_feel=tf, mineness=mn,
+        support_stream=ss, sources=src, wonder_sources=ws,
+    )
+    assert wonder["wonder_state"] == "drawn"
+    assert wonder["wonder_orientation"] == "drawn"
+    assert wonder["narrative"] != ""
+
+
+def test_wonder_drawn_when_absorbed_and_owned() -> None:
+    """Absorbed flow + owned thread → drawn with flow-depth source."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+
+    iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
+        flow="absorbed",
+        ownership_state="owned",
+        self_relevance="actively-carried",
+    )
+    wonder = _derive_wonder_awareness(
+        inner_voice=iv, flow_state=fs, temporal_feel=tf, mineness=mn,
+        support_stream=ss, sources=src, wonder_sources=ws,
+    )
+    assert wonder["wonder_state"] == "drawn"
+    assert wonder["wonder_source"] == "flow-depth"
+
+
+def test_wonder_struck_on_convergence() -> None:
+    """3+ strong signals (absorbed + personally-salient + temporal-stretch) → wonder-struck."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+
+    iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
+        flow="absorbed",
+        ownership_state="owned",
+        self_relevance="personally-salient",
+        temporal_state="lingering",
+    )
+    wonder = _derive_wonder_awareness(
+        inner_voice=iv, flow_state=fs, temporal_feel=tf, mineness=mn,
+        support_stream=ss, sources=src, wonder_sources=ws,
+    )
+    assert wonder["wonder_state"] == "wonder-struck"
+    assert wonder["narrative"] != ""
+
+
+def test_wonder_orientation_lingering_with_when_temporal_and_owned() -> None:
+    """Temporal extension + personally-salient ownership → lingering-with orientation."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+
+    iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
+        voice_mode="circling",
+        temporal_state="stretched",
+        ownership_state="owned",
+        self_relevance="personally-salient",
+    )
+    wonder = _derive_wonder_awareness(
+        inner_voice=iv, flow_state=fs, temporal_feel=tf, mineness=mn,
+        support_stream=ss, sources=src, wonder_sources=ws,
+    )
+    assert wonder["wonder_orientation"] == "lingering-with"
+
+
+def test_wonder_prompt_line_hidden_when_quiet(isolated_runtime) -> None:
+    """Wonder prompt line must not emit in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    if "wonder_awareness:" in joined:
+        assert "state=quiet" not in joined
+
+
+def test_wonder_prompt_section_none_when_quiet(isolated_runtime) -> None:
+    """Heartbeat wonder prompt section must return None when quiet."""
+    model_mod = isolated_runtime.runtime_self_model
+    section = model_mod.build_wonder_awareness_prompt_section()
+    assert section is None or "wonder_state=quiet" not in section

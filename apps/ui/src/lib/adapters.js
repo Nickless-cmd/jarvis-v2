@@ -969,6 +969,20 @@ function normalizeMinenessOwnership(item = {}) {
   }
 }
 
+function normalizeFlowStateAwareness(item = {}) {
+  if (!item || !item.kind) return null
+  return {
+    flowState: item.flow_state || 'clear',
+    flowCoherence: item.flow_coherence || 'stable',
+    interruptionSignal: item.interruption_signal || 'stable',
+    carriedFlow: item.carried_flow || 'none',
+    narrative: item.narrative || '',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'flow-state-awareness',
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -3783,6 +3797,7 @@ export const backend = {
       innerVoiceDaemon: normalizeInnerVoiceDaemonState(innerVoiceDaemonPayload || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),
+      flowStateAwareness: normalizeFlowStateAwareness(selfModelPayload?.flow_state_awareness || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

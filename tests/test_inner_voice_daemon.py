@@ -443,7 +443,7 @@ def test_deterministic_compose_includes_support_narrative() -> None:
     note = _deterministic_compose(grounding)
 
     assert "Carrying weight" in note["summary"]
-    assert note["mode"] == "work-steady"
+    assert note["mode"] in {"circling", "carrying"}
     assert note["initiative"] is None
 
 
@@ -473,6 +473,72 @@ def test_select_mode_prefers_living_carry_over_work_steady_when_candidate_pull_i
     )
 
     assert mode == "carrying"
+
+
+def test_select_mode_prefers_circling_over_witness_steady_for_mixed_watch_stream() -> None:
+    """Witness/watch should not win when mixed experiential and work signals keep the stream live."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _select_inner_voice_mode
+
+    grounding = {
+        "source_count": 4,
+        "sources": ["witness", "open-loops", "development-focus", "experiential-continuity"],
+        "fragments": {
+            "witness_signal": "a witness trace that has not gone quiet",
+            "open_loop_signal": "Open loop: visible repair thread",
+            "dev_focus": "active coherence tuning",
+            "experiential_continuity_state": "lingering",
+            "experiential_initiative_shading": "hesitant",
+            "experiential_attentional_posture": "guarded",
+            "experiential_influence_narrative": "The stream feels unresolved rather than settled.",
+            "conductor_mode": "watch",
+        },
+    }
+
+    mode = _select_inner_voice_mode(grounding)
+
+    assert mode == "circling"
+
+
+def test_select_mode_prefers_living_mode_over_witness_steady_for_lingering_live_uncertainty() -> None:
+    """Lingering uncertainty with experiential basis should stay live instead of falling back to watchfulness."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _select_inner_voice_mode
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["witness", "experiential-continuity"],
+        "fragments": {
+            "witness_signal": "a witness trace around something unresolved",
+            "experiential_continuity_state": "lingering",
+            "experiential_initiative_shading": "hesitant",
+            "conductor_mode": "watch",
+        },
+    }
+
+    mode = _select_inner_voice_mode(
+        grounding,
+        thought="I am not sure what this thread wants yet.",
+    )
+
+    assert mode in {"searching", "circling"}
+
+
+def test_select_mode_keeps_work_steady_when_only_visible_work_basis_exists() -> None:
+    """Steady fallback should remain when there is no stronger private or experiential basis."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _select_inner_voice_mode
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["open-loops", "development-focus"],
+        "fragments": {
+            "open_loop_signal": "Open loop: implementation task",
+            "dev_focus": "finish the patch",
+            "conductor_mode": "watch",
+        },
+    }
+
+    mode = _select_inner_voice_mode(grounding)
+
+    assert mode == "work-steady"
 
 
 def test_derive_focus_prefers_private_carry_for_living_modes() -> None:

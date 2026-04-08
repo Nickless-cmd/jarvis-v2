@@ -597,6 +597,38 @@ def _has_living_candidate_pull(
     )
 
 
+def _has_mixed_live_stream(
+    fragments: dict[str, str],
+    *,
+    continuity_state: str,
+    initiative_shading: str,
+) -> bool:
+    support_bias = str(fragments.get("experiential_support_bias") or "")
+    support_posture = str(fragments.get("experiential_support_posture") or "")
+    support_mode = str(fragments.get("experiential_support_mode") or "")
+    attentional_posture = str(fragments.get("experiential_attentional_posture") or "")
+    has_private_or_experiential = any(
+        fragments.get(key)
+        for key in (
+            "brain_continuity",
+            "brain_top_focus",
+            "witness_signal",
+            "experiential_continuity_narrative",
+            "experiential_influence_narrative",
+            "experiential_support_narrative",
+        )
+    )
+    continuity_live = continuity_state in {"lingering", "returning", "shifted", "easing"}
+    initiative_live = initiative_shading in {"hesitant", "returning", "burdened"}
+    support_live = support_bias in {"protect_focus", "stabilize_thread", "reopen_context"} or (
+        support_posture not in {"", "steadying"} and support_mode not in {"", "steady"}
+    )
+    posture_live = attentional_posture in {"guarded", "opening"}
+    return has_private_or_experiential and (
+        continuity_live or initiative_live or support_live or posture_live
+    )
+
+
 def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
     """Deterministic fallback composition when LLM is unavailable.
 
@@ -657,12 +689,21 @@ def _select_inner_voice_mode(
         initiative_shading=initiative_shading,
         thought=thought,
     )
+    has_mixed_live_stream = _has_mixed_live_stream(
+        fragments,
+        continuity_state=continuity_state,
+        initiative_shading=initiative_shading,
+    )
 
     if has_conflict or conductor_mode == "clarify":
         base_mode = "pulled"
     elif has_brain and has_living_pull:
         base_mode = "carrying"
-    elif has_living_pull and (has_salient or has_open_loop or has_witness):
+    elif has_living_pull and (has_salient or has_open_loop or has_witness or has_focus):
+        base_mode = "circling"
+    elif has_mixed_live_stream and has_brain and (has_open_loop or has_focus):
+        base_mode = "carrying"
+    elif has_mixed_live_stream and (has_open_loop or has_focus or has_witness):
         base_mode = "circling"
     elif has_brain and not has_open_loop and not has_focus:
         base_mode = "carrying"
@@ -671,7 +712,7 @@ def _select_inner_voice_mode(
         for token in ("curious", "unclear", "not sure", "can't tell", "cannot tell", "half-formed", "edge of")
     ):
         base_mode = "searching"
-    elif continuity_state in {"returning", "lingering"} and not has_open_loop:
+    elif continuity_state in {"returning", "lingering"} and not (has_open_loop and not has_mixed_live_stream):
         base_mode = "searching"
     elif has_open_loop or has_focus:
         base_mode = "work-steady"

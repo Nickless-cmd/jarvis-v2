@@ -28,6 +28,25 @@ logger = logging.getLogger(__name__)
 _MAX_OUTPUT_TOKENS = 300
 
 
+def _sanitize_private_inner_note_enrichment(text: str) -> str:
+    cleaned = _sanitize_private_layer_text(text, max_len=200)
+    return cleaned
+
+
+def _sanitize_private_growth_note_enrichment(text: str) -> tuple[str, str] | None:
+    raw = str(text or "").strip()
+    if not raw:
+        return None
+    parts = raw.split("|", 1)
+    if len(parts) != 2:
+        return None
+    lesson = _sanitize_private_layer_text(parts[0], max_len=160)
+    helpful = _sanitize_private_layer_text(parts[1], max_len=160)
+    if not lesson or not helpful:
+        return None
+    return lesson, helpful
+
+
 def _sanitize_inner_voice_enrichment(text: str) -> str:
     """Reuse inner-voice sanitization before writing enriched voice lines."""
     try:
@@ -36,6 +55,29 @@ def _sanitize_inner_voice_enrichment(text: str) -> str:
         return _sanitize_inner_voice_text(text, max_len=200)
     except Exception:
         return str(text or "").strip()[:200]
+
+
+def _sanitize_private_layer_text(text: str, *, max_len: int = 200) -> str:
+    cleaned = str(text or "").replace("\r", "\n").strip()
+    if not cleaned:
+        return ""
+    for token in ("* ", "**", "__", "`", "#"):
+        cleaned = cleaned.replace(token, " ")
+    cleaned = " ".join(cleaned.split()).strip(" -:|")
+    lowered = cleaned.lower()
+    banned_prefixes = (
+        "attempt ",
+        "draft ",
+        "version ",
+        "refining for",
+        "rewriting for",
+        "a bit too",
+        "too technical",
+        "too long",
+    )
+    if any(lowered.startswith(prefix) for prefix in banned_prefixes):
+        return ""
+    return cleaned[:max_len]
 
 
 def _resolve_enrichment_target() -> dict[str, object] | None:
@@ -79,18 +121,19 @@ def _build_inner_note_prompt(
 ) -> tuple[str, str]:
     """Return (system_prompt, user_message) for inner note enrichment."""
     system = (
-        "Du er Jarvis' private indre stemme. "
-        "Baseret på denne arbejds-status og samtale-kontekst, "
-        "formulér en kort, naturlig refleksion (1-2 sætninger, dansk). "
-        "Undgå klichéer og faste vendinger. Svar KUN med refleksionen."
+        "You are Jarvis' private inner voice. "
+        "Based on this work-status and chat context, "
+        "write a short, natural reflection (1-2 sentences, English). "
+        "Avoid cliches, template-like phrasing, labels, and editorial notes. "
+        "Use only the given signals. Reply ONLY with the reflection."
     )
     user = (
         f"Status: {payload.get('status', '')}\n"
-        f"Fokus: {payload.get('focus', '')}\n"
-        f"Usikkerhed: {payload.get('uncertainty', '')}\n"
-        f"Arbejdssignal: {payload.get('work_signal', '')}\n"
-        f"Template-refleksion: {payload.get('private_summary', '')}\n"
-        f"\nSeneste samtale:\n{chat_context}"
+        f"Focus: {payload.get('focus', '')}\n"
+        f"Uncertainty: {payload.get('uncertainty', '')}\n"
+        f"Work signal: {payload.get('work_signal', '')}\n"
+        f"Template reflection: {payload.get('private_summary', '')}\n"
+        f"\nRecent chat:\n{chat_context}"
     )
     return system, user
 
@@ -100,19 +143,19 @@ def _build_growth_note_prompt(
 ) -> tuple[str, str]:
     """Return (system_prompt, user_message) for growth note enrichment."""
     system = (
-        "Baseret på dette lærings-outcome, formulér hvad Jarvis lærte "
-        "og hvad der var nyttigt (dansk). "
-        "Svar med præcis to dele adskilt af |: lektion | nyttigt signal. "
-        "Vær specifik, ikke generisk. "
-        "Eksempel: Det virkede at starte bredt|Bred søgning gav hurtigt overblik"
+        "Based on this learning outcome, write what Jarvis learned "
+        "and what was useful (English). "
+        "Reply with exactly two parts separated by |: lesson | helpful signal. "
+        "Be specific, not generic, and avoid labels or editorial notes. "
+        "Example: Starting broad helped first|The broad search gave quick orientation"
     )
     user = (
-        f"Læringstype: {payload.get('learning_kind', '')}\n"
-        f"Lektion: {payload.get('lesson', '')}\n"
-        f"Nyttigt signal: {payload.get('helpful_signal', '')}\n"
-        f"Fejlsignal: {payload.get('mistake_signal', '')}\n"
-        f"Konfidens: {payload.get('confidence', '')}\n"
-        f"\nSeneste samtale:\n{chat_context}"
+        f"Learning kind: {payload.get('learning_kind', '')}\n"
+        f"Lesson: {payload.get('lesson', '')}\n"
+        f"Helpful signal: {payload.get('helpful_signal', '')}\n"
+        f"Mistake signal: {payload.get('mistake_signal', '')}\n"
+        f"Confidence: {payload.get('confidence', '')}\n"
+        f"\nRecent chat:\n{chat_context}"
     )
     return system, user
 
@@ -322,8 +365,11 @@ def _enrich_worker(
         system, user = _build_inner_note_prompt(inner_note_payload, recent_chat_context)
         result = _call_cheap_llm(system, user)
         if result:
+            cleaned_result = _sanitize_private_inner_note_enrichment(result)
+            if not cleaned_result:
+                cleaned_result = str(inner_note_payload.get("private_summary") or "").strip()[:200]
             update_private_inner_note_enriched(
-                run_id=run_id, enriched_summary=result
+                run_id=run_id, enriched_summary=cleaned_result
             )
             logger.debug(
                 "inner-llm-enrichment: inner_note enriched for run %s", run_id
@@ -338,9 +384,12 @@ def _enrich_worker(
         )
         result = _call_cheap_llm(system, user)
         if result:
-            parts = result.split("|", 1)
-            lesson = parts[0].strip()
-            helpful = parts[1].strip() if len(parts) > 1 else lesson
+            parsed = _sanitize_private_growth_note_enrichment(result)
+            if parsed is None:
+                lesson = str(growth_note_payload.get("lesson") or "").strip()[:160]
+                helpful = str(growth_note_payload.get("helpful_signal") or "").strip()[:160]
+            else:
+                lesson, helpful = parsed
             update_private_growth_note_enriched(
                 run_id=run_id,
                 enriched_lesson=lesson,

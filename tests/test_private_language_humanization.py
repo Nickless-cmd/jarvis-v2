@@ -26,6 +26,47 @@ def test_private_growth_note_uses_human_helpful_signal() -> None:
     assert "list external directory" in helpful.lower()
 
 
+def test_private_inner_note_uses_human_summary_without_raw_ids() -> None:
+    from core.memory.private_inner_note import build_private_inner_note_payload
+
+    payload = build_private_inner_note_payload(
+        run_id="run-1",
+        work_id="work-1",
+        status="completed",
+        user_message_preview="find mine filer",
+        work_preview="Found 3 files",
+        capability_id="tool:list-external-directory",
+        created_at="2026-04-06T00:00:00+00:00",
+    )
+
+    summary = str(payload["private_summary"])
+    assert "tool:list-external-directory" not in summary
+    assert "list external directory" in summary.lower()
+    assert any(token in summary.lower() for token in ("work", "signal", "thread", "settled", "strain"))
+
+
+def test_private_growth_note_uses_human_lesson_without_raw_ids() -> None:
+    from core.memory.private_growth_note import build_private_growth_note_payload
+
+    payload = build_private_growth_note_payload(
+        run_id="run-1",
+        work_id="work-1",
+        status="completed",
+        work_preview="Found 3 files",
+        private_inner_note={
+            "focus": "tool:list-external-directory",
+            "work_signal": "completed:tool:list-external-directory",
+            "uncertainty": "low",
+            "identity_alignment": "subordinate-to-visible",
+        },
+        created_at="2026-04-06T00:00:00+00:00",
+    )
+
+    lesson = str(payload["lesson"])
+    assert "tool:list-external-directory" not in lesson
+    assert "list external directory" in lesson.lower()
+
+
 def test_protected_inner_voice_uses_sentence_form() -> None:
     from core.memory.protected_inner_voice import build_protected_inner_voice_payload
 

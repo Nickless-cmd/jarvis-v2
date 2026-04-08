@@ -170,7 +170,7 @@ def test_build_inner_note_prompt_includes_payload_and_context() -> None:
     }
     chat_ctx = "User: find my notes\nAssistant: Found 3 notes."
     system, user = _build_inner_note_prompt(payload, chat_ctx)
-    assert "stemme" in system.lower()
+    assert "inner voice" in system.lower()
     assert "workspace-search" in user
     assert "task-completed" in user
     assert "find my notes" in user
@@ -186,7 +186,7 @@ def test_build_growth_note_prompt_includes_lesson_and_context() -> None:
     }
     chat_ctx = "User: search files"
     system, user = _build_growth_note_prompt(payload, chat_ctx)
-    assert "lærte" in system.lower() or "lært" in system.lower()
+    assert "what jarvis learned" in system.lower()
     assert "reinforce" in user
     assert "search files" in user
 

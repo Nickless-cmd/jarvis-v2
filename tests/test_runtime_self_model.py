@@ -1752,6 +1752,228 @@ def test_heartbeat_self_knowledge_can_foreground_secondary_awareness_when_primar
 
 
 # ---------------------------------------------------------------------------
+# Self-insight awareness (bounded narrative identity carry-forward)
+# ---------------------------------------------------------------------------
+
+
+def _self_insight_inputs(
+    *,
+    narrative_active: bool = False,
+    narrative_state: str = "none",
+    narrative_direction: str = "steadying",
+    narrative_weight: str = "low",
+    chronicle_active: bool = False,
+    chronicle_weight: str = "low",
+    diary_active: bool = False,
+    reflection_active: bool = False,
+    reflection_depth: int = 0,
+    self_review_active: bool = False,
+    dream_carry: bool = False,
+    ownership_state: str = "ambient",
+    carried_thread_count: int = 0,
+    flow_state: str = "clear",
+    wonder_state: str = "quiet",
+    longing_state: str = "quiet",
+) -> tuple[dict, dict, dict, dict, dict]:
+    sources = {
+        "narrative_active": narrative_active,
+        "narrative_state": narrative_state,
+        "narrative_direction": narrative_direction,
+        "narrative_weight": narrative_weight,
+        "chronicle_active": chronicle_active,
+        "chronicle_weight": chronicle_weight,
+        "chronicle_confidence": "low",
+        "diary_active": diary_active,
+        "diary_state": "none",
+        "reflection_active": reflection_active,
+        "reflection_depth": reflection_depth,
+        "self_review_active": self_review_active,
+        "dream_carry": dream_carry,
+    }
+    mineness = {
+        "ownership_state": ownership_state,
+        "carried_thread_count": carried_thread_count,
+    }
+    flow = {"flow_state": flow_state}
+    wonder = {"wonder_state": wonder_state}
+    longing = {"longing_state": longing_state}
+    return sources, mineness, flow, wonder, longing
+
+
+def test_self_model_includes_self_insight_awareness(isolated_runtime) -> None:
+    """Self-model must expose a bounded self_insight_awareness surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "self_insight_awareness" in model
+    insight = model["self_insight_awareness"]
+    assert "insight_state" in insight
+    assert "identity_relation" in insight
+    assert "insight_source" in insight
+    assert "narrative" in insight
+    assert insight["authority"] == "derived-runtime-truth"
+    assert insight["visibility"] == "internal-only"
+    assert insight["kind"] == "self-insight-awareness"
+    assert insight["insight_state"] in {
+        "quiet",
+        "noticing-pattern",
+        "clarifying",
+        "stabilizing",
+        "shifting",
+    }
+    assert insight["identity_relation"] in {
+        "incidental",
+        "recurring",
+        "self-forming",
+        "increasingly-recognized",
+    }
+    assert insight["insight_source"] in {
+        "none",
+        "self-narrative-continuity",
+        "chronicle-brief",
+        "diary-synthesis",
+        "reflection-pattern",
+        "self-review-cadence",
+        "dream-carry-pattern",
+        "recurring-carried-pattern",
+    }
+
+
+def test_self_insight_quiet_when_no_basis() -> None:
+    """No insight-bearing seams should keep self-insight quiet."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_self_insight_awareness,
+    )
+
+    src, mn, fl, wn, lg = _self_insight_inputs()
+    insight = _derive_self_insight_awareness(
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert insight["insight_state"] == "quiet"
+    assert insight["identity_relation"] == "incidental"
+    assert insight["insight_source"] == "none"
+    assert insight["narrative"] == ""
+
+
+def test_self_insight_noticing_pattern_when_carried_across_layers() -> None:
+    """A recurring carried pattern across multiple layers should register as noticing-pattern."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_self_insight_awareness,
+    )
+
+    src, mn, fl, wn, lg = _self_insight_inputs(
+        ownership_state="owned",
+        carried_thread_count=2,
+        longing_state="missing",
+    )
+    insight = _derive_self_insight_awareness(
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert insight["insight_state"] == "noticing-pattern"
+    assert insight["identity_relation"] == "recurring"
+    assert insight["insight_source"] == "recurring-carried-pattern"
+    assert insight["narrative"] != ""
+
+
+def test_self_insight_clarifying_when_chronicle_brief_active() -> None:
+    """An active chronicle brief should register as clarifying."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_self_insight_awareness,
+    )
+
+    src, mn, fl, wn, lg = _self_insight_inputs(
+        chronicle_active=True,
+        chronicle_weight="low",
+    )
+    insight = _derive_self_insight_awareness(
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert insight["insight_state"] == "clarifying"
+    assert insight["identity_relation"] == "recurring"
+    assert insight["insight_source"] == "chronicle-brief"
+    assert insight["narrative"] != ""
+
+
+def test_self_insight_stabilizing_when_narrative_holds_strong() -> None:
+    """A strong-weight stabilizing narrative line should register as stabilizing."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_self_insight_awareness,
+    )
+
+    src, mn, fl, wn, lg = _self_insight_inputs(
+        narrative_active=True,
+        narrative_state="becoming-steady",
+        narrative_direction="deepening",
+        narrative_weight="high",
+    )
+    insight = _derive_self_insight_awareness(
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert insight["insight_state"] == "stabilizing"
+    assert insight["identity_relation"] == "increasingly-recognized"
+    assert insight["insight_source"] == "self-narrative-continuity"
+    assert insight["narrative"] != ""
+
+
+def test_self_insight_shifting_when_narrative_opens() -> None:
+    """An opening narrative direction should register as shifting / self-forming."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_self_insight_awareness,
+    )
+
+    src, mn, fl, wn, lg = _self_insight_inputs(
+        narrative_active=True,
+        narrative_state="becoming-open",
+        narrative_direction="opening",
+        narrative_weight="medium",
+    )
+    insight = _derive_self_insight_awareness(
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert insight["insight_state"] == "shifting"
+    assert insight["identity_relation"] == "self-forming"
+    assert insight["insight_source"] == "self-narrative-continuity"
+    assert insight["narrative"] != ""
+
+
+def test_self_insight_prompt_section_none_when_quiet(isolated_runtime) -> None:
+    """Self-insight prompt section must return None in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    section = model_mod.build_self_insight_awareness_prompt_section()
+    assert section is None or "insight_state=quiet" not in section
+
+
+def test_self_insight_prompt_line_hidden_when_quiet(isolated_runtime) -> None:
+    """Self-insight prompt line must not emit in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    if "self_insight_awareness:" in joined:
+        assert "state=quiet" not in joined
+
+
+# ---------------------------------------------------------------------------
 # Absence awareness repair
 # ---------------------------------------------------------------------------
 

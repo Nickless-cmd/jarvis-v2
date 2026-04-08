@@ -61,7 +61,7 @@ def _private_summary(
     else:
         lead = f"I am still holding a small private response around {normalized_focus}."
 
-    tail = f"{_uncertainty_phrase(uncertainty)} { _signal_phrase(work_signal) }".strip()
+    tail = f"{_uncertainty_phrase(uncertainty)} {_signal_phrase(work_signal)}".strip()
     summary = f"{lead} {tail}".strip()
     return " ".join(summary.split())[:160].rstrip()
 

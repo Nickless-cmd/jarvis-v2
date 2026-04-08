@@ -50,3 +50,20 @@ def test_protected_inner_voice_uses_sentence_form() -> None:
     assert "pull=" not in voice_line
     assert "Jeg" in voice_line
     assert "list external directory" in voice_line.lower()
+
+
+def test_protected_inner_voice_humanizes_stability_and_pattern_tokens() -> None:
+    from core.memory.protected_inner_voice import _voice_line
+
+    voice_line = _voice_line(
+        mood_tone="steady",
+        self_position="visible-work",
+        current_concern="stability:low",
+        current_pull="retain-current-pattern",
+    )
+
+    assert "stability:low" not in voice_line
+    assert "retain-current-pattern" not in voice_line
+    assert "det synlige arbejde" in voice_line.lower()
+    assert "jeg mærker lidt usikkerhed endnu" in voice_line.lower()
+    assert "det, der virker lige nu" in voice_line.lower()

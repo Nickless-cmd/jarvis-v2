@@ -1,4 +1,4 @@
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1068,6 +1068,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     minenessOwnership.kind === 'mineness-ownership' &&
     minenessOwnership.ownershipState !== 'ambient'
   )
+  const flowStateAwareness = data?.flowStateAwareness || null
+  const hasFlowStateAwareness = Boolean(
+    flowStateAwareness &&
+    flowStateAwareness.kind === 'flow-state-awareness' &&
+    flowStateAwareness.flowState !== 'clear'
+  )
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1102,6 +1108,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'adaptive', label: 'Adaptive Learning', icon: TrendingUp, active: hasAdaptiveLearning, status: adaptiveLearning.learningEngineMode, statusLabel: adaptiveLearning.learningEngineMode || 'retain' },
     { id: 'experiential', label: 'Experiential Context', icon: Activity, active: hasExperientialRuntimeContext, status: experientialEmbodied.initiativeGate, statusLabel: experientialEmbodied.state || 'steady' },
     { id: 'mineness', label: 'Mineness / Ownership', icon: Heart, active: hasMinenessOwnership, status: minenessOwnership?.ownershipState, statusLabel: minenessOwnership?.ownershipState || 'ambient' },
+    { id: 'flow', label: 'Flow State', icon: Zap, active: hasFlowStateAwareness, status: flowStateAwareness?.flowState, statusLabel: flowStateAwareness?.flowState || 'clear' },
   ]
 
   return (
@@ -1459,6 +1466,43 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           <small className="muted" style={{ display: 'block', marginTop: 6 }}>{minenessOwnership.narrative}</small>
           ) : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${minenessOwnership.authority} · kind: ${minenessOwnership.kind}`}</small>
+        </article>
+        ) : null}
+
+        {hasFlowStateAwareness ? (
+        <article className="support-card" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::flow_state_awareness',
+          fetchedAt: data?.fetchedAt,
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Flow State</h3>
+              <p className="muted">Self-aware runtime truth: coherence and continuity of the current stream.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(flowStateAwareness.flowState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Flow state</span>
+              <strong>{humanizeToken(flowStateAwareness.flowState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Coherence</span>
+              <strong>{humanizeToken(flowStateAwareness.flowCoherence)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Interruption</span>
+              <strong>{humanizeToken(flowStateAwareness.interruptionSignal)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Carried flow</span>
+              <strong>{humanizeToken(flowStateAwareness.carriedFlow)}</strong>
+            </div>
+          </div>
+          {flowStateAwareness.narrative ? (
+          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{flowStateAwareness.narrative}</small>
+          ) : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${flowStateAwareness.authority} · kind: ${flowStateAwareness.kind}`}</small>
         </article>
         ) : null}
       </section>

@@ -1086,6 +1086,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     longingAwareness.kind === 'longing-awareness' &&
     longingAwareness.longingState !== 'quiet'
   )
+  const selfInsightAwareness = data?.selfInsightAwareness || null
+  const hasSelfInsightAwareness = Boolean(
+    selfInsightAwareness &&
+    selfInsightAwareness.kind === 'self-insight-awareness' &&
+    selfInsightAwareness.insightState !== 'quiet'
+  )
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1123,6 +1129,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'mineness', label: 'Mineness / Ownership', icon: Heart, active: hasMinenessOwnership, status: minenessOwnership?.ownershipState, statusLabel: minenessOwnership?.ownershipState || 'ambient' },
     { id: 'flow', label: 'Flow State', icon: Zap, active: hasFlowStateAwareness, status: flowStateAwareness?.flowState, statusLabel: flowStateAwareness?.flowState || 'clear' },
     { id: 'longing', label: 'Longing Awareness', icon: Ghost, active: hasLongingAwareness, status: longingAwareness?.longingState, statusLabel: longingAwareness?.longingState || 'quiet' },
+    { id: 'self-insight', label: 'Self-Insight Awareness', icon: Brain, active: hasSelfInsightAwareness, status: selfInsightAwareness?.insightState, statusLabel: selfInsightAwareness?.insightState || 'quiet' },
   ]
 
   return (
@@ -1593,6 +1600,44 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           <small className="muted" style={{ display: 'block', marginTop: 6 }}>{longingAwareness.narrative}</small>
           ) : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${longingAwareness.authority} · kind: ${longingAwareness.kind}`}</small>
+        </article>
+        ) : null}
+
+        {hasSelfInsightAwareness ? (
+        <article className="support-card" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::self_insight_awareness',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header stacked">
+            <div>
+              <h3>Self-Insight Awareness</h3>
+              <p className="muted">Self-aware runtime truth: patterns being recognized in identity formation — what is recurring, forming, or becoming more known over time.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(selfInsightAwareness.insightState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Insight state</span>
+              <strong>{humanizeToken(selfInsightAwareness.insightState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Identity relation</span>
+              <strong>{humanizeToken(selfInsightAwareness.identityRelation)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Source</span>
+              <strong>{humanizeToken(selfInsightAwareness.insightSource)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Visibility</span>
+              <strong>{humanizeToken(selfInsightAwareness.visibility)}</strong>
+            </div>
+          </div>
+          {selfInsightAwareness.narrative ? (
+          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{selfInsightAwareness.narrative}</small>
+          ) : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${selfInsightAwareness.authority} · kind: ${selfInsightAwareness.kind}`}</small>
         </article>
         ) : null}
       </section>

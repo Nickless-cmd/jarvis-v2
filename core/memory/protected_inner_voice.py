@@ -144,7 +144,9 @@ def _voice_line(
     current_concern: str,
     current_pull: str,
 ) -> str:
-    position_text = self_position.replace("-", " ").replace(":", " ").strip()
+    position_text = _humanize_voice_fragment(self_position)
+    concern_text = _humanize_voice_fragment(current_concern)
+    pull_text = _humanize_voice_fragment(current_pull)
     tone_map = {
         "guarded": "Jeg er lidt på vagt",
         "attentive": "Jeg følger tæt med",
@@ -152,5 +154,40 @@ def _voice_line(
         "quiet": "Jeg holder mig i baggrunden",
     }
     lead = tone_map.get(mood_tone, "Jeg prøver at holde mig samlet")
-    text = f"{lead} omkring {position_text}. {current_concern} {current_pull}"
+    text = f"{lead} omkring {position_text}. {concern_text} {pull_text}"
     return text[:200].rstrip()
+
+
+def _humanize_voice_fragment(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+
+    exact_map = {
+        "visible-work": "det synlige arbejde",
+        "visible work": "det synlige arbejde",
+        "retain-current-pattern": "det, der virker lige nu",
+        "stability:low": "Jeg mærker lidt usikkerhed endnu.",
+        "stability:medium": "Jeg prøver at holde et roligt greb om tråden.",
+        "stability:high": "Jeg står ret sikkert i den nuværende tråd.",
+    }
+    if text in exact_map:
+        return exact_map[text]
+
+    lowered = text.lower()
+    if lowered.startswith("stability:"):
+        level = lowered.split(":", 1)[1].strip()
+        level_map = {
+            "low": "Jeg mærker lidt usikkerhed endnu.",
+            "medium": "Jeg prøver at holde et roligt greb om tråden.",
+            "high": "Jeg står ret sikkert i den nuværende tråd.",
+        }
+        return level_map.get(level, "Jeg prøver at holde tråden samlet.")
+
+    if lowered.startswith("observe"):
+        return "det, der stadig er værd at følge lidt endnu"
+
+    cleaned = text.replace("-", " ").replace(":", " ").strip()
+    if cleaned and cleaned[0].islower():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    return cleaned[:96]

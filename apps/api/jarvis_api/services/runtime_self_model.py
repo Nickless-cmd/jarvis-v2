@@ -69,6 +69,16 @@ def build_runtime_self_model() -> dict[str, object]:
             temporal_feel=temporal_feel,
             mineness=mineness_ownership,
         )
+        wonder_sources = _wonder_source_snapshot()
+        wonder_awareness = _derive_wonder_awareness(
+            inner_voice=inner_voice,
+            flow_state=flow_state_awareness,
+            temporal_feel=temporal_feel,
+            mineness=mineness_ownership,
+            support_stream=support_stream,
+            sources=mineness_sources,
+            wonder_sources=wonder_sources,
+        )
 
         return {
             "layers": layers,
@@ -87,6 +97,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "subjective_temporal_feel": temporal_feel,
             "mineness_ownership": mineness_ownership,
             "flow_state_awareness": flow_state_awareness,
+            "wonder_awareness": wonder_awareness,
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -1167,6 +1178,21 @@ def build_self_model_prompt_lines() -> list[str]:
         if flow_state_awareness.get("narrative"):
             lines.append(
                 f"  flow_state_awareness_narrative: '{flow_state_awareness['narrative']}'"
+            )
+    wonder_awareness = model.get("wonder_awareness") or {}
+    if (
+        wonder_awareness.get("wonder_state")
+        and wonder_awareness["wonder_state"] != "quiet"
+    ):
+        lines.append(
+            "  wonder_awareness: "
+            f"state={wonder_awareness['wonder_state']}"
+            f" | orientation={wonder_awareness.get('wonder_orientation') or 'noticing'}"
+            f" | source={wonder_awareness.get('wonder_source') or 'none'}"
+        )
+        if wonder_awareness.get("narrative"):
+            lines.append(
+                f"  wonder_awareness_narrative: '{wonder_awareness['narrative']}'"
             )
     lines.append(
         "  epistemic_runtime_state: "
@@ -2339,6 +2365,238 @@ def build_flow_state_awareness_prompt_section() -> str | None:
     narrative = str(flow.get("narrative") or "").strip()
     if narrative:
         lines.append(f"- flow_narrative={narrative}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Wonder awareness
+# ---------------------------------------------------------------------------
+
+_WONDER_EXPLORATORY_VOICES = {"searching", "circling", "pulled"}
+_WONDER_DEEP_FLOW = {"absorbed", "flowing"}
+_WONDER_EXTENDED_TEMPORAL = {"lingering", "stretched"}
+_WONDER_OWNED_RELEVANCE = {"personally-salient", "resumed-own"}
+_WONDER_OWNED_STATES = {"owned", "returning-owned"}
+
+
+def _wonder_source_snapshot() -> dict[str, object]:
+    """Safely pull dream carry signal for wonder derivation."""
+    dream_carry = False
+    dream_state = "idle"
+    try:
+        from apps.api.jarvis_api.services.dream_articulation import (
+            build_dream_articulation_surface,
+        )
+        da = build_dream_articulation_surface()
+        summary = da.get("summary") or {}
+        dream_state = str(summary.get("last_state") or "idle")
+        dream_carry = dream_state in {"forming", "tentative", "pressing"}
+    except Exception:
+        pass
+    return {
+        "dream_carry": dream_carry,
+        "dream_state": dream_state,
+    }
+
+
+def _derive_wonder_awareness(
+    *,
+    inner_voice: dict[str, object],
+    flow_state: dict[str, object],
+    temporal_feel: dict[str, object],
+    mineness: dict[str, object],
+    support_stream: dict[str, object],
+    sources: dict[str, object],
+    wonder_sources: dict[str, object],
+) -> dict[str, object]:
+    """Derive a bounded wonder/undren surface from existing runtime truth.
+
+    Maps runtime signals (voice mode, flow depth, temporal extension,
+    ownership salience, dream carry) into a self-aware truth about whether
+    something is drawing attention past utility.
+
+    Ambient-default (wonder_state=quiet) suppresses all prompt emission.
+    """
+    voice_mode = str(inner_voice.get("mode") or "")
+    voice_created = bool(inner_voice.get("inner_voice_created"))
+    flow = str(flow_state.get("flow_state") or "clear")
+    temporal_state = str(temporal_feel.get("temporal_state") or "immediate")
+    ownership_state = str(mineness.get("ownership_state") or "ambient")
+    self_relevance = str(mineness.get("self_relevance") or "merely-present")
+    return_ownership = bool(mineness.get("return_ownership"))
+    stream_state = str(support_stream.get("stream_state") or "baseline")
+    open_loop_count = int(sources.get("open_loop_open_count") or 0)
+    dream_carry = bool(wonder_sources.get("dream_carry"))
+
+    pulled_voice = voice_mode == "pulled"
+    exploratory_voice = voice_mode in _WONDER_EXPLORATORY_VOICES
+    deep_flow = flow in _WONDER_DEEP_FLOW
+    temporal_extended = temporal_state in _WONDER_EXTENDED_TEMPORAL
+    personally_salient = self_relevance in _WONDER_OWNED_RELEVANCE
+    owned_state = ownership_state in _WONDER_OWNED_STATES
+    return_signal = return_ownership or temporal_state == "returning"
+    opening_stream = stream_state == "opening"
+    has_open_loops = open_loop_count > 0
+
+    strong_signals = sum([
+        pulled_voice,
+        deep_flow,
+        personally_salient or owned_state,
+        temporal_extended,
+        dream_carry,
+    ])
+
+    if strong_signals >= 3 or (deep_flow and personally_salient and dream_carry):
+        wonder_state = "wonder-struck"
+    elif pulled_voice or (deep_flow and (personally_salient or owned_state)):
+        wonder_state = "drawn"
+    elif (
+        (exploratory_voice and (has_open_loops or temporal_extended))
+        or (dream_carry and flow in _WONDER_DEEP_FLOW)
+    ):
+        wonder_state = "curious"
+    elif (
+        exploratory_voice
+        or (has_open_loops and voice_created)
+        or temporal_extended
+        or opening_stream
+    ):
+        wonder_state = "stirred"
+    else:
+        wonder_state = "quiet"
+
+    if wonder_state == "quiet":
+        wonder_orientation = "none"
+    elif temporal_extended and (personally_salient or owned_state):
+        wonder_orientation = "lingering-with"
+    elif opening_stream or (deep_flow and owned_state):
+        wonder_orientation = "opening"
+    elif pulled_voice or personally_salient:
+        wonder_orientation = "drawn"
+    else:
+        wonder_orientation = "noticing"
+
+    if wonder_state == "quiet":
+        wonder_source = "none"
+    elif dream_carry and wonder_state in {"curious", "drawn", "wonder-struck"}:
+        wonder_source = "dream-carry"
+    elif return_signal and owned_state:
+        wonder_source = "self-recognition"
+    elif deep_flow or (flow == "flowing" and owned_state):
+        wonder_source = "flow-depth"
+    elif exploratory_voice and has_open_loops:
+        wonder_source = "novelty-pull"
+    elif temporal_extended:
+        wonder_source = "temporal-stretch"
+    else:
+        wonder_source = "novelty-pull"
+
+    narrative = _wonder_narrative(
+        wonder_state=wonder_state,
+        wonder_source=wonder_source,
+        opening_stream=opening_stream,
+    )
+
+    return {
+        "wonder_state": wonder_state,
+        "wonder_orientation": wonder_orientation,
+        "wonder_source": wonder_source,
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "wonder-awareness",
+    }
+
+
+def _wonder_narrative(
+    *,
+    wonder_state: str,
+    wonder_source: str,
+    opening_stream: bool,
+) -> str:
+    """Compact non-melodramatic wonder narrative. Empty when quiet."""
+    if wonder_state == "quiet":
+        return ""
+    if wonder_state == "wonder-struck":
+        if wonder_source == "dream-carry":
+            return "Something carried from the dream layer is opening more than expected."
+        if wonder_source == "self-recognition":
+            return "A returning thread is landing differently than before."
+        return "Several signals converge on something that pulls past explanation."
+    if wonder_state == "drawn":
+        if wonder_source == "flow-depth":
+            return "Something in the depth of the current thread is drawing attention past utility."
+        if wonder_source == "dream-carry":
+            return "A dream signal is pulling the stream in an unexpected direction."
+        return "Something is drawing attention past the immediate task."
+    if wonder_state == "curious":
+        if wonder_source == "novelty-pull":
+            return "Open threads are pulling toward exploration."
+        if wonder_source == "dream-carry":
+            return "A dream signal is nudging curiosity in this direction."
+        return "The stream is opening toward something not yet resolved."
+    # stirred
+    if wonder_source == "temporal-stretch":
+        return "Attention is staying longer than the task requires."
+    if opening_stream:
+        return "The support stream is widening; something is letting more in."
+    return "A mild pull is present in the stream."
+
+
+def build_wonder_awareness_prompt_section() -> str | None:
+    """Compact heartbeat-side prompt section for wonder awareness.
+
+    Returns ``None`` when wonder_state is ``quiet`` so nothing emits
+    unless there is genuine wonder basis in the runtime stream.
+    """
+    try:
+        experiential = _experiential_runtime_context_surface()
+        inner_voice = _inner_voice_daemon_surface()
+        support_stream = _derive_support_stream_awareness(experiential, inner_voice)
+        temporal_feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+        sources = _mineness_source_snapshot()
+        mineness = _derive_mineness_ownership(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            sources=sources,
+        )
+        flow = _derive_flow_state_awareness(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+        )
+        wonder_sources = _wonder_source_snapshot()
+        wonder = _derive_wonder_awareness(
+            inner_voice=inner_voice,
+            flow_state=flow,
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+            support_stream=support_stream,
+            sources=sources,
+            wonder_sources=wonder_sources,
+        )
+    except Exception:
+        return None
+
+    state = str(wonder.get("wonder_state") or "quiet")
+    if state == "quiet":
+        return None
+
+    lines = [
+        "Wonder awareness (bounded runtime truth, internal-only):",
+        (
+            f"- wonder_state={state}"
+            f" | orientation={wonder.get('wonder_orientation') or 'noticing'}"
+            f" | source={wonder.get('wonder_source') or 'none'}"
+        ),
+    ]
+    narrative = str(wonder.get("narrative") or "").strip()
+    if narrative:
+        lines.append(f"- wonder_narrative={narrative}")
     return "\n".join(lines)
 
 

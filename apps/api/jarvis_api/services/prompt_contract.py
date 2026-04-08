@@ -2296,6 +2296,15 @@ def _heartbeat_self_knowledge_section() -> str | None:
             parts.append(flow_state)
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_wonder_awareness_prompt_section,
+        )
+        wonder = build_wonder_awareness_prompt_section()
+        if wonder:
+            parts.append(wonder)
+    except Exception:
+        pass
     if not parts:
         return None
     return "\n".join(parts)

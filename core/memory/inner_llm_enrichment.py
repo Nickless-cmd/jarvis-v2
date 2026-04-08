@@ -28,6 +28,16 @@ logger = logging.getLogger(__name__)
 _MAX_OUTPUT_TOKENS = 300
 
 
+def _sanitize_inner_voice_enrichment(text: str) -> str:
+    """Reuse inner-voice sanitization before writing enriched voice lines."""
+    try:
+        from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_inner_voice_text
+
+        return _sanitize_inner_voice_text(text, max_len=200)
+    except Exception:
+        return str(text or "").strip()[:200]
+
+
 def _resolve_enrichment_target() -> dict[str, object] | None:
     """Resolve the best available target for private-layer enrichment.
 
@@ -350,8 +360,11 @@ def _enrich_worker(
         )
         result = _call_cheap_llm(system, user)
         if result:
+            cleaned_result = _sanitize_inner_voice_enrichment(result)
+            if not cleaned_result:
+                cleaned_result = str(inner_voice_payload.get("voice_line") or "").strip()[:200]
             update_protected_inner_voice_enriched(
-                run_id=run_id, enriched_voice_line=result
+                run_id=run_id, enriched_voice_line=cleaned_result
             )
             logger.debug(
                 "inner-llm-enrichment: inner_voice enriched for run %s", run_id

@@ -373,6 +373,17 @@ def test_sanitize_previous_inner_voice_drops_meta_contaminated_prior_voice() -> 
     assert cleaned == ""
 
 
+def test_sanitize_inner_voice_text_removes_refining_flow_mood_prefix() -> None:
+    """Writer-room process prefixes should not survive into inner voice text."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_inner_voice_text
+
+    cleaned = _sanitize_inner_voice_text(
+        "*Refining for flow and mood (steady, slightly anxious):* Needs to reflect the balancing act between holding focus and not rushing."
+    )
+
+    assert cleaned == "Needs to reflect the balancing act between holding focus and not rushing."
+
+
 def test_llm_render_rejects_meta_only_thought_and_falls_back(isolated_runtime, monkeypatch) -> None:
     """Meta-only model output should be treated as unusable so fallback can take over."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _render_inner_voice_note

@@ -357,6 +357,44 @@ def test_enrich_private_layers_async_updates_db_on_success() -> None:
     assert voice[1] == 1
 
 
+def test_enrich_private_layers_async_sanitizes_meta_contaminated_inner_voice() -> None:
+    jarvis_db.init_db()
+
+    run_id = "run-async-sanitized-voice"
+    _insert_inner_note(run_id)
+    _insert_growth_note(run_id)
+    _insert_inner_voice(run_id)
+
+    responses = iter([
+        "Enriched inner note",
+        "Enriched lesson|Enriched helpful",
+        "*Refining for flow and mood (steady, slightly anxious):* Needs to reflect the balancing act between holding focus and not rushing.",
+    ])
+
+    with patch(
+        "core.memory.inner_llm_enrichment._call_cheap_llm",
+        side_effect=lambda s, u: next(responses),
+    ):
+        enrich_private_layers_async(
+            run_id=run_id,
+            inner_note_payload={"private_summary": "t", "focus": "f", "uncertainty": "low", "work_signal": "s", "status": "completed"},
+            growth_note_payload={"lesson": "t", "helpful_signal": "t", "mistake_signal": "", "learning_kind": "reinforce", "confidence": "medium"},
+            inner_voice_payload={"mood_tone": "steady", "self_position": "observing", "current_concern": "c", "current_pull": "p", "voice_line": "Template voice line"},
+            recent_chat_context="User: test",
+        )
+        time.sleep(2)
+
+    conn = jarvis_db.connect()
+    voice = conn.execute(
+        "SELECT voice_line, enriched FROM protected_inner_voices WHERE run_id = ?",
+        (run_id,),
+    ).fetchone()
+    conn.close()
+
+    assert voice[0] == "Needs to reflect the balancing act between holding focus and not rushing."
+    assert voice[1] == 1
+
+
 def test_enrich_private_layers_async_preserves_template_on_failure() -> None:
     jarvis_db.init_db()
 

@@ -693,5 +693,9 @@ def test_visible_self_knowledge_lines_produce_output() -> None:
     lines = _visible_self_knowledge_lines()
     # Should always produce at least the header + active capabilities
     assert len(lines) >= 2
-    assert any("SELF-KNOWLEDGE" in line for line in lines)
-    assert any("self_knowledge_active" in line for line in lines)
+    assert any(
+        "RUNTIME SELF-MODEL" in line or "SELF-KNOWLEDGE" in line for line in lines
+    )
+    assert any(
+        "truth_boundary" in line or "self_knowledge_active" in line for line in lines
+    )

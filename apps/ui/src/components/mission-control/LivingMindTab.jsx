@@ -1098,6 +1098,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     narrativeIdentityContinuity.kind === 'narrative-identity-continuity' &&
     narrativeIdentityContinuity.identityContinuityState !== 'quiet'
   )
+  const dreamIdentityCarryAwareness = data?.dreamIdentityCarryAwareness || null
+  const hasDreamIdentityCarryAwareness = Boolean(
+    dreamIdentityCarryAwareness &&
+    dreamIdentityCarryAwareness.kind === 'dream-identity-carry-awareness' &&
+    dreamIdentityCarryAwareness.dreamIdentityCarryState !== 'quiet'
+  )
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1136,6 +1142,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'flow', label: 'Flow State', icon: Zap, active: hasFlowStateAwareness, status: flowStateAwareness?.flowState, statusLabel: flowStateAwareness?.flowState || 'clear' },
     { id: 'longing', label: 'Longing Awareness', icon: Ghost, active: hasLongingAwareness, status: longingAwareness?.longingState, statusLabel: longingAwareness?.longingState || 'quiet' },
     { id: 'self-insight', label: 'Self-Insight Awareness', icon: Brain, active: hasSelfInsightAwareness, status: selfInsightAwareness?.insightState, statusLabel: selfInsightAwareness?.insightState || 'quiet' },
+    { id: 'dream-identity-carry', label: 'Dream Identity Carry', icon: Moon, active: hasDreamIdentityCarryAwareness, status: dreamIdentityCarryAwareness?.dreamIdentityCarryState, statusLabel: dreamIdentityCarryAwareness?.dreamIdentityCarryState || 'quiet' },
   ]
 
   return (
@@ -1681,6 +1688,43 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           <small className="muted" style={{ display: 'block', marginTop: 6 }}>{narrativeIdentityContinuity.narrative}</small>
           ) : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${narrativeIdentityContinuity.authority} · kind: ${narrativeIdentityContinuity.kind}`}</small>
+        </article>
+        ) : null}
+        {hasDreamIdentityCarryAwareness ? (
+        <article className="support-card" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::dream_identity_carry_awareness',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header stacked">
+            <div>
+              <h3>Dream Identity Carry</h3>
+              <p className="muted">Self-aware runtime truth: when dreams remain active enough to begin shaping self-direction over time, beyond dream artifacts, self-insight, or identity continuity alone.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(dreamIdentityCarryAwareness.dreamIdentityCarryState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Carry state</span>
+              <strong>{humanizeToken(dreamIdentityCarryAwareness.dreamIdentityCarryState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Dream self relation</span>
+              <strong>{humanizeToken(dreamIdentityCarryAwareness.dreamSelfRelation)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Identity source</span>
+              <strong>{humanizeToken(dreamIdentityCarryAwareness.dreamIdentitySource)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Visibility</span>
+              <strong>{humanizeToken(dreamIdentityCarryAwareness.visibility)}</strong>
+            </div>
+          </div>
+          {dreamIdentityCarryAwareness.narrative ? (
+          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{dreamIdentityCarryAwareness.narrative}</small>
+          ) : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${dreamIdentityCarryAwareness.authority} · kind: ${dreamIdentityCarryAwareness.kind}`}</small>
         </article>
         ) : null}
       </section>

@@ -1062,6 +1062,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     supportStreamAwareness.kind === 'support-stream-awareness' &&
     supportStreamAwareness.streamState !== 'baseline'
   )
+  const minenessOwnership = data?.minenessOwnership || null
+  const hasMinenessOwnership = Boolean(
+    minenessOwnership &&
+    minenessOwnership.kind === 'mineness-ownership' &&
+    minenessOwnership.ownershipState !== 'ambient'
+  )
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1095,6 +1101,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'guided', label: 'Guided Learning', icon: GraduationCap, active: hasGuidedLearning, status: guidedLearning.learningMode, statusLabel: guidedLearning.learningMode || 'reinforce' },
     { id: 'adaptive', label: 'Adaptive Learning', icon: TrendingUp, active: hasAdaptiveLearning, status: adaptiveLearning.learningEngineMode, statusLabel: adaptiveLearning.learningEngineMode || 'retain' },
     { id: 'experiential', label: 'Experiential Context', icon: Activity, active: hasExperientialRuntimeContext, status: experientialEmbodied.initiativeGate, statusLabel: experientialEmbodied.state || 'steady' },
+    { id: 'mineness', label: 'Mineness / Ownership', icon: Heart, active: hasMinenessOwnership, status: minenessOwnership?.ownershipState, statusLabel: minenessOwnership?.ownershipState || 'ambient' },
   ]
 
   return (
@@ -1406,6 +1413,52 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           <small className="muted" style={{ display: 'block', marginTop: 6 }}>{supportStreamAwareness.narrative}</small>
           ) : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${supportStreamAwareness.authority} · kind: ${supportStreamAwareness.kind}`}</small>
+        </article>
+        ) : null}
+
+        {hasMinenessOwnership ? (
+        <article className="support-card" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::mineness_ownership',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header stacked">
+            <div>
+              <h3>Mineness / Ownership</h3>
+              <p className="muted">Self-aware runtime truth: what threads feel like mine in the current stream.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(minenessOwnership.ownershipState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Ownership state</span>
+              <strong>{humanizeToken(minenessOwnership.ownershipState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Self relevance</span>
+              <strong>{humanizeToken(minenessOwnership.selfRelevance)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Carried threads</span>
+              <strong>{humanizeToken(minenessOwnership.carriedThreadState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Thread count</span>
+              <strong>{minenessOwnership.carriedThreadCount}</strong>
+            </div>
+          </div>
+          {minenessOwnership.returnOwnership ? (
+          <div className="compact-grid" style={{ marginTop: 8 }}>
+            <div className="compact-metric">
+              <span>Return ownership</span>
+              <strong>yes</strong>
+            </div>
+          </div>
+          ) : null}
+          {minenessOwnership.narrative ? (
+          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{minenessOwnership.narrative}</small>
+          ) : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${minenessOwnership.authority} · kind: ${minenessOwnership.kind}`}</small>
         </article>
         ) : null}
       </section>

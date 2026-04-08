@@ -954,6 +954,21 @@ function normalizeSupportStreamAwareness(item = {}) {
   }
 }
 
+function normalizeMinenessOwnership(item = {}) {
+  if (!item || !item.kind) return null
+  return {
+    ownershipState: item.ownership_state || 'ambient',
+    selfRelevance: item.self_relevance || 'merely-present',
+    carriedThreadState: item.carried_thread_state || 'none',
+    carriedThreadCount: Number(item.carried_thread_count || 0),
+    returnOwnership: Boolean(item.return_ownership),
+    narrative: item.narrative || '',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'mineness-ownership',
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -3767,6 +3782,7 @@ export const backend = {
       experientialRuntimeContext: normalizeExperientialRuntimeContext(experientialRuntimeContextSource || {}),
       innerVoiceDaemon: normalizeInnerVoiceDaemonState(innerVoiceDaemonPayload || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
+      minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

@@ -1092,6 +1092,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     selfInsightAwareness.kind === 'self-insight-awareness' &&
     selfInsightAwareness.insightState !== 'quiet'
   )
+  const narrativeIdentityContinuity = data?.narrativeIdentityContinuity || null
+  const hasNarrativeIdentityContinuity = Boolean(
+    narrativeIdentityContinuity &&
+    narrativeIdentityContinuity.kind === 'narrative-identity-continuity' &&
+    narrativeIdentityContinuity.identityContinuityState !== 'quiet'
+  )
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1638,6 +1644,43 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           <small className="muted" style={{ display: 'block', marginTop: 6 }}>{selfInsightAwareness.narrative}</small>
           ) : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${selfInsightAwareness.authority} · kind: ${selfInsightAwareness.kind}`}</small>
+        </article>
+        ) : null}
+        {hasNarrativeIdentityContinuity ? (
+        <article className="support-card" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::narrative_identity_continuity',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header stacked">
+            <div>
+              <h3>Narrative Identity Continuity</h3>
+              <p className="muted">Self-aware runtime truth: whether recurring patterns in self-insight, chronicle, and cross-layer carry begin to cohere into a more persistent identity form.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(narrativeIdentityContinuity.identityContinuityState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Continuity state</span>
+              <strong>{humanizeToken(narrativeIdentityContinuity.identityContinuityState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Pattern relation</span>
+              <strong>{humanizeToken(narrativeIdentityContinuity.patternRelation)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Identity source</span>
+              <strong>{humanizeToken(narrativeIdentityContinuity.identitySource)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Visibility</span>
+              <strong>{humanizeToken(narrativeIdentityContinuity.visibility)}</strong>
+            </div>
+          </div>
+          {narrativeIdentityContinuity.narrative ? (
+          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{narrativeIdentityContinuity.narrative}</small>
+          ) : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${narrativeIdentityContinuity.authority} · kind: ${narrativeIdentityContinuity.kind}`}</small>
         </article>
         ) : null}
       </section>

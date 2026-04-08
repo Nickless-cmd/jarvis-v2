@@ -996,6 +996,19 @@ function normalizeWonderAwareness(item = {}) {
   }
 }
 
+function normalizeLongingAwareness(item = {}) {
+  if (!item || !item.kind) return null
+  return {
+    longingState: item.longing_state || 'quiet',
+    absenceRelation: item.absence_relation || 'none',
+    longingSource: item.longing_source || 'none',
+    narrative: item.narrative || '',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'longing-awareness',
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -3812,6 +3825,7 @@ export const backend = {
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),
       flowStateAwareness: normalizeFlowStateAwareness(selfModelPayload?.flow_state_awareness || {}),
+      longingAwareness: normalizeLongingAwareness(selfModelPayload?.longing_awareness || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

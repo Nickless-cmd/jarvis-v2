@@ -1,4 +1,4 @@
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1080,6 +1080,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     flowStateAwareness.kind === 'flow-state-awareness' &&
     flowStateAwareness.flowState !== 'clear'
   )
+  const longingAwareness = data?.longingAwareness || null
+  const hasLongingAwareness = Boolean(
+    longingAwareness &&
+    longingAwareness.kind === 'longing-awareness' &&
+    longingAwareness.longingState !== 'quiet'
+  )
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1116,6 +1122,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'wonder', label: 'Wonder Awareness', icon: Sparkles, active: hasWonderAwareness, status: wonderAwareness?.wonderState, statusLabel: wonderAwareness?.wonderState || 'quiet' },
     { id: 'mineness', label: 'Mineness / Ownership', icon: Heart, active: hasMinenessOwnership, status: minenessOwnership?.ownershipState, statusLabel: minenessOwnership?.ownershipState || 'ambient' },
     { id: 'flow', label: 'Flow State', icon: Zap, active: hasFlowStateAwareness, status: flowStateAwareness?.flowState, statusLabel: flowStateAwareness?.flowState || 'clear' },
+    { id: 'longing', label: 'Longing Awareness', icon: Ghost, active: hasLongingAwareness, status: longingAwareness?.longingState, statusLabel: longingAwareness?.longingState || 'quiet' },
   ]
 
   return (
@@ -1548,6 +1555,44 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           <small className="muted" style={{ display: 'block', marginTop: 6 }}>{flowStateAwareness.narrative}</small>
           ) : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${flowStateAwareness.authority} · kind: ${flowStateAwareness.kind}`}</small>
+        </article>
+        ) : null}
+
+        {hasLongingAwareness ? (
+        <article className="support-card" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::longing_awareness',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Longing Awareness</h3>
+              <p className="muted">Self-aware runtime truth: whether the current stream carries absence, longing, or an active missing.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(longingAwareness.longingState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Longing state</span>
+              <strong>{humanizeToken(longingAwareness.longingState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Absence relation</span>
+              <strong>{humanizeToken(longingAwareness.absenceRelation)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Source</span>
+              <strong>{humanizeToken(longingAwareness.longingSource)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Visibility</span>
+              <strong>{humanizeToken(longingAwareness.visibility)}</strong>
+            </div>
+          </div>
+          {longingAwareness.narrative ? (
+          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{longingAwareness.narrative}</small>
+          ) : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${longingAwareness.authority} · kind: ${longingAwareness.kind}`}</small>
         </article>
         ) : null}
       </section>

@@ -2305,6 +2305,16 @@ def _heartbeat_self_knowledge_section() -> str | None:
             parts.append(wonder)
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_longing_awareness_prompt_section,
+        )
+
+        longing = build_longing_awareness_prompt_section()
+        if longing:
+            parts.append(longing)
+    except Exception:
+        pass
     if not parts:
         return None
     return "\n".join(parts)

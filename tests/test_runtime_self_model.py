@@ -35,6 +35,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "inner_voice_daemon" in model
     assert "support_stream_awareness" in model
     assert "subjective_temporal_feel" in model
+    assert "longing_awareness" in model
     assert "epistemic_runtime_state" in model
     assert "subagent_ecology" in model
     assert "council_runtime" in model
@@ -320,6 +321,7 @@ def test_mc_runtime_self_model_endpoint(isolated_runtime) -> None:
     assert "council_runtime" in response
     assert "adaptive_planner" in response
     assert "adaptive_reasoning" in response
+    assert "longing_awareness" in response
     assert "guided_learning" in response
     assert "adaptive_learning" in response
     assert "dream_influence" in response
@@ -1378,3 +1380,263 @@ def test_wonder_prompt_section_none_when_quiet(isolated_runtime) -> None:
     model_mod = isolated_runtime.runtime_self_model
     section = model_mod.build_wonder_awareness_prompt_section()
     assert section is None or "wonder_state=quiet" not in section
+
+
+# ---------------------------------------------------------------------------
+# Longing awareness
+# ---------------------------------------------------------------------------
+
+
+def _longing_inputs(
+    *,
+    temporal_state: str = "immediate",
+    return_signal: bool = False,
+    ownership_state: str = "ambient",
+    self_relevance: str = "merely-present",
+    carried_thread_count: int = 0,
+    return_ownership: bool = False,
+    voice_mode: str = "",
+    voice_created: bool = False,
+    stream_state: str = "baseline",
+    brain_active: bool = False,
+    open_loop_count: int = 0,
+    dream_carry: bool = False,
+    relation_active: bool = False,
+    relation_weight: str = "low",
+    absence_active: bool = False,
+) -> tuple[dict, dict, dict, dict, dict, dict]:
+    temporal_feel = {
+        "temporal_state": temporal_state,
+        "return_signal": return_signal,
+    }
+    mineness = {
+        "ownership_state": ownership_state,
+        "self_relevance": self_relevance,
+        "carried_thread_count": carried_thread_count,
+        "return_ownership": return_ownership,
+    }
+    support_stream = {"stream_state": stream_state}
+    inner_voice = {
+        "last_result": {
+            "mode": voice_mode,
+            "inner_voice_created": voice_created,
+        }
+    }
+    sources = {
+        "brain_active": brain_active,
+        "open_loop_open_count": open_loop_count,
+    }
+    longing_sources = {
+        "dream_carry": dream_carry,
+        "relation_active": relation_active,
+        "relation_weight": relation_weight,
+        "absence_active": absence_active,
+    }
+    return temporal_feel, mineness, support_stream, inner_voice, sources, longing_sources
+
+
+def test_self_model_includes_longing_awareness(isolated_runtime) -> None:
+    """Self-model must expose a bounded longing_awareness surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "longing_awareness" in model
+    longing = model["longing_awareness"]
+    assert "longing_state" in longing
+    assert "absence_relation" in longing
+    assert "longing_source" in longing
+    assert "narrative" in longing
+    assert longing["authority"] == "derived-runtime-truth"
+    assert longing["visibility"] == "internal-only"
+    assert longing["kind"] == "longing-awareness"
+    assert longing["longing_state"] in {
+        "quiet",
+        "missing",
+        "yearning",
+        "returning-pull",
+        "aching",
+    }
+    assert longing["absence_relation"] in {
+        "none",
+        "simply-absent",
+        "carried-in-absence",
+        "returning-through-absence",
+        "emotionally-near",
+    }
+    assert longing["longing_source"] in {
+        "none",
+        "carried-thread",
+        "temporal-return",
+        "dream-carry",
+        "owned-thread",
+        "unresolved-relational-absence",
+    }
+
+
+def test_longing_quiet_when_no_basis() -> None:
+    """No absence/carry basis keeps longing quiet."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+
+    tf, mn, ss, iv, src, ls = _longing_inputs()
+    longing = _derive_longing_awareness(
+        temporal_feel=tf,
+        mineness=mn,
+        support_stream=ss,
+        inner_voice=iv,
+        sources=src,
+        longing_sources=ls,
+    )
+    assert longing["longing_state"] == "quiet"
+    assert longing["absence_relation"] == "none"
+    assert longing["longing_source"] == "none"
+    assert longing["narrative"] == ""
+
+
+def test_longing_missing_when_absence_carries_open_thread() -> None:
+    """Absence plus carried thread should register as missing."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+
+    tf, mn, ss, iv, src, ls = _longing_inputs(
+        ownership_state="held",
+        carried_thread_count=1,
+        open_loop_count=1,
+        absence_active=True,
+    )
+    longing = _derive_longing_awareness(
+        temporal_feel=tf,
+        mineness=mn,
+        support_stream=ss,
+        inner_voice=iv,
+        sources=src,
+        longing_sources=ls,
+    )
+    assert longing["longing_state"] == "missing"
+    assert longing["absence_relation"] == "carried-in-absence"
+    assert longing["longing_source"] == "carried-thread"
+    assert longing["narrative"] != ""
+
+
+def test_longing_yearning_when_owned_thread_persists_in_absence() -> None:
+    """Owned carried thread under absence should deepen to yearning."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+
+    tf, mn, ss, iv, src, ls = _longing_inputs(
+        temporal_state="lingering",
+        ownership_state="owned",
+        self_relevance="personally-salient",
+        carried_thread_count=2,
+        voice_mode="carrying",
+        voice_created=True,
+        brain_active=True,
+        absence_active=True,
+    )
+    longing = _derive_longing_awareness(
+        temporal_feel=tf,
+        mineness=mn,
+        support_stream=ss,
+        inner_voice=iv,
+        sources=src,
+        longing_sources=ls,
+    )
+    assert longing["longing_state"] == "yearning"
+    assert longing["absence_relation"] == "carried-in-absence"
+    assert longing["longing_source"] == "owned-thread"
+    assert longing["narrative"] != ""
+
+
+def test_longing_returning_pull_when_thread_returns() -> None:
+    """Return signal plus carry should register as returning-pull."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+
+    tf, mn, ss, iv, src, ls = _longing_inputs(
+        temporal_state="returning",
+        return_signal=True,
+        ownership_state="returning-owned",
+        self_relevance="resumed-own",
+        carried_thread_count=1,
+        return_ownership=True,
+        voice_mode="circling",
+        voice_created=True,
+        open_loop_count=1,
+    )
+    longing = _derive_longing_awareness(
+        temporal_feel=tf,
+        mineness=mn,
+        support_stream=ss,
+        inner_voice=iv,
+        sources=src,
+        longing_sources=ls,
+    )
+    assert longing["longing_state"] == "returning-pull"
+    assert longing["absence_relation"] == "returning-through-absence"
+    assert longing["longing_source"] == "temporal-return"
+    assert "return" in longing["narrative"].lower()
+
+
+def test_longing_aching_when_relation_stays_near_under_absence() -> None:
+    """Relational continuity under distance can deepen into aching."""
+    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+
+    tf, mn, ss, iv, src, ls = _longing_inputs(
+        temporal_state="stretched",
+        ownership_state="owned",
+        self_relevance="personally-salient",
+        carried_thread_count=1,
+        voice_mode="pulled",
+        voice_created=True,
+        dream_carry=True,
+        relation_active=True,
+        relation_weight="high",
+        absence_active=True,
+    )
+    longing = _derive_longing_awareness(
+        temporal_feel=tf,
+        mineness=mn,
+        support_stream=ss,
+        inner_voice=iv,
+        sources=src,
+        longing_sources=ls,
+    )
+    assert longing["longing_state"] == "aching"
+    assert longing["absence_relation"] == "emotionally-near"
+    assert longing["longing_source"] == "unresolved-relational-absence"
+    assert longing["narrative"] != ""
+
+
+def test_longing_prompt_line_hidden_when_quiet(isolated_runtime) -> None:
+    """Longing prompt line must not emit in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    if "longing_awareness:" in joined:
+        assert "state=quiet" not in joined
+
+
+def test_longing_prompt_section_none_when_quiet(isolated_runtime) -> None:
+    """Heartbeat longing prompt section must return None when quiet."""
+    model_mod = isolated_runtime.runtime_self_model
+    section = model_mod.build_longing_awareness_prompt_section()
+    assert section is None or "longing_state=quiet" not in section
+
+
+def test_heartbeat_self_knowledge_section_includes_longing_awareness(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """Heartbeat self-knowledge section should carry longing awareness when present."""
+    prompt_contract = isolated_runtime.prompt_contract
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_longing_awareness_prompt_section",
+        lambda: (
+            "Longing awareness (bounded runtime truth, internal-only):\n"
+            "- longing_state=missing | relation=carried-in-absence | source=carried-thread"
+        ),
+    )
+
+    section = prompt_contract._heartbeat_self_knowledge_section()
+    assert section is not None
+    assert "longing_state=missing" in section

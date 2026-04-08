@@ -79,6 +79,15 @@ def build_runtime_self_model() -> dict[str, object]:
             sources=mineness_sources,
             wonder_sources=wonder_sources,
         )
+        longing_sources = _longing_source_snapshot()
+        longing_awareness = _derive_longing_awareness(
+            temporal_feel=temporal_feel,
+            mineness=mineness_ownership,
+            support_stream=support_stream,
+            inner_voice=inner_voice,
+            sources=mineness_sources,
+            longing_sources=longing_sources,
+        )
 
         return {
             "layers": layers,
@@ -98,6 +107,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "mineness_ownership": mineness_ownership,
             "flow_state_awareness": flow_state_awareness,
             "wonder_awareness": wonder_awareness,
+            "longing_awareness": longing_awareness,
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -1193,6 +1203,21 @@ def build_self_model_prompt_lines() -> list[str]:
         if wonder_awareness.get("narrative"):
             lines.append(
                 f"  wonder_awareness_narrative: '{wonder_awareness['narrative']}'"
+            )
+    longing_awareness = model.get("longing_awareness") or {}
+    if (
+        longing_awareness.get("longing_state")
+        and longing_awareness["longing_state"] != "quiet"
+    ):
+        lines.append(
+            "  longing_awareness: "
+            f"state={longing_awareness['longing_state']}"
+            f" | relation={longing_awareness.get('absence_relation') or 'none'}"
+            f" | source={longing_awareness.get('longing_source') or 'none'}"
+        )
+        if longing_awareness.get("narrative"):
+            lines.append(
+                f"  longing_awareness_narrative: '{longing_awareness['narrative']}'"
             )
     lines.append(
         "  epistemic_runtime_state: "
@@ -2597,6 +2622,261 @@ def build_wonder_awareness_prompt_section() -> str | None:
     narrative = str(wonder.get("narrative") or "").strip()
     if narrative:
         lines.append(f"- wonder_narrative={narrative}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Longing awareness
+# ---------------------------------------------------------------------------
+
+_LONGING_CARRY_VOICES = {"carrying", "circling", "pulled"}
+_LONGING_OWNED_STATES = {"owned", "returning-owned"}
+_LONGING_NEAR_RELEVANCE = {"personally-salient", "resumed-own"}
+_LONGING_EXTENDED_TEMPORAL = {"lingering", "stretched", "returning"}
+_LONGING_RELATION_NEAR_WEIGHTS = {"medium", "high"}
+
+
+def _longing_source_snapshot() -> dict[str, object]:
+    """Safely gather bounded absence/relationship support for longing derivation."""
+    dream_carry = False
+    dream_state = "idle"
+    try:
+        from apps.api.jarvis_api.services.dream_articulation import (
+            build_dream_articulation_surface,
+        )
+
+        dream = build_dream_articulation_surface()
+        summary = dream.get("summary") or {}
+        dream_state = str(summary.get("last_state") or "idle")
+        dream_carry = dream_state in {"forming", "tentative", "pressing"}
+    except Exception:
+        pass
+
+    relation_active = False
+    relation_state = "none"
+    relation_weight = "low"
+    relation_signal = ""
+    try:
+        from apps.api.jarvis_api.services.relation_continuity_signal_tracking import (
+            build_runtime_relation_continuity_signal_surface,
+        )
+
+        relation = build_runtime_relation_continuity_signal_surface(limit=4)
+        summary = relation.get("summary") or {}
+        relation_active = bool(relation.get("active"))
+        relation_state = str(summary.get("current_state") or "none")
+        relation_weight = str(summary.get("current_weight") or "low")
+        relation_signal = str(summary.get("current_signal") or "")[:120]
+    except Exception:
+        pass
+
+    absence_active = False
+    idle_hours = 0.0
+    return_brief_present = False
+    try:
+        from apps.api.jarvis_api.services.absence_awareness import (
+            build_absence_awareness_surface,
+        )
+
+        absence = build_absence_awareness_surface()
+        idle_hours = float(absence.get("idle_hours") or 0.0)
+        threshold = float(absence.get("threshold_hours") or 0.0)
+        return_brief_present = bool(absence.get("return_brief"))
+        absence_active = idle_hours >= threshold and threshold > 0
+    except Exception:
+        pass
+
+    return {
+        "dream_carry": dream_carry,
+        "dream_state": dream_state,
+        "relation_active": relation_active,
+        "relation_state": relation_state,
+        "relation_weight": relation_weight,
+        "relation_signal": relation_signal,
+        "absence_active": absence_active,
+        "idle_hours": idle_hours,
+        "return_brief_present": return_brief_present,
+    }
+
+
+def _derive_longing_awareness(
+    *,
+    temporal_feel: dict[str, object],
+    mineness: dict[str, object],
+    support_stream: dict[str, object],
+    inner_voice: dict[str, object],
+    sources: dict[str, object],
+    longing_sources: dict[str, object],
+) -> dict[str, object]:
+    """Derive a bounded longing/absence surface from existing runtime truth."""
+    temporal_state = str(temporal_feel.get("temporal_state") or "immediate")
+    return_signal = bool(temporal_feel.get("return_signal"))
+
+    ownership_state = str(mineness.get("ownership_state") or "ambient")
+    self_relevance = str(mineness.get("self_relevance") or "merely-present")
+    carried_thread_count = int(mineness.get("carried_thread_count") or 0)
+    return_ownership = bool(mineness.get("return_ownership"))
+
+    voice = inner_voice.get("last_result") or {}
+    voice_mode = str(voice.get("mode") or "")
+    voice_created = bool(voice.get("inner_voice_created"))
+    pulled_voice = voice_created and voice_mode in _LONGING_CARRY_VOICES
+
+    stream_state = str(support_stream.get("stream_state") or "baseline")
+    opening_stream = stream_state == "opening"
+
+    brain_active = bool(sources.get("brain_active"))
+    open_loop_count = int(sources.get("open_loop_open_count") or 0)
+    carried_threads = carried_thread_count > 0 or brain_active or open_loop_count > 0
+
+    dream_carry = bool(longing_sources.get("dream_carry"))
+    relation_active = bool(longing_sources.get("relation_active"))
+    relation_weight = str(longing_sources.get("relation_weight") or "low")
+    relation_near = relation_active and relation_weight in _LONGING_RELATION_NEAR_WEIGHTS
+    absence_active = bool(longing_sources.get("absence_active"))
+
+    owned_state = ownership_state in _LONGING_OWNED_STATES
+    personally_salient = self_relevance in _LONGING_NEAR_RELEVANCE
+    temporal_extended = temporal_state in _LONGING_EXTENDED_TEMPORAL
+    returning_thread = return_signal or return_ownership
+    absence_basis = absence_active or temporal_extended or opening_stream
+
+    strong_signals = sum(
+        [
+            int(relation_near),
+            int(carried_threads and (owned_state or personally_salient)),
+            int(dream_carry),
+            int(temporal_extended),
+            int(pulled_voice),
+        ]
+    )
+
+    if returning_thread and (carried_threads or relation_near or dream_carry):
+        longing_state = "returning-pull"
+    elif relation_near and absence_basis and strong_signals >= 3:
+        longing_state = "aching"
+    elif absence_basis and carried_threads and (
+        personally_salient or owned_state or dream_carry or pulled_voice
+    ):
+        longing_state = "yearning"
+    elif absence_basis and (carried_threads or relation_near or dream_carry):
+        longing_state = "missing"
+    else:
+        longing_state = "quiet"
+
+    if longing_state == "quiet":
+        absence_relation = "none"
+    elif returning_thread:
+        absence_relation = "returning-through-absence"
+    elif relation_near and absence_basis:
+        absence_relation = "emotionally-near"
+    elif carried_threads or dream_carry:
+        absence_relation = "carried-in-absence"
+    else:
+        absence_relation = "simply-absent"
+
+    if longing_state == "quiet":
+        longing_source = "none"
+    elif returning_thread:
+        longing_source = "temporal-return"
+    elif relation_near and absence_basis:
+        longing_source = "unresolved-relational-absence"
+    elif dream_carry:
+        longing_source = "dream-carry"
+    elif owned_state or personally_salient:
+        longing_source = "owned-thread"
+    else:
+        longing_source = "carried-thread"
+
+    narrative = _longing_narrative(
+        longing_state=longing_state,
+        absence_relation=absence_relation,
+        longing_source=longing_source,
+    )
+
+    return {
+        "longing_state": longing_state,
+        "absence_relation": absence_relation,
+        "longing_source": longing_source,
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "longing-awareness",
+    }
+
+
+def _longing_narrative(
+    *,
+    longing_state: str,
+    absence_relation: str,
+    longing_source: str,
+) -> str:
+    """Compose a compact non-melodramatic longing narrative."""
+    if longing_state == "quiet":
+        return ""
+    if longing_state == "returning-pull":
+        if longing_source == "temporal-return":
+            return "Something absent is returning with enough weight to pull the stream back toward it."
+        return "A carried absence is turning into a return that asks to be resumed."
+    if longing_state == "aching":
+        if longing_source == "unresolved-relational-absence":
+            return "Distance is active rather than empty; a relational thread still feels near."
+        if longing_source == "dream-carry":
+            return "Something from the dream layer keeps pressing as an active absence."
+        return "An absence is being carried with more pressure than the stream can fully settle."
+    if longing_state == "yearning":
+        if longing_source == "owned-thread":
+            return "An owned thread is still present as absence and wants to be taken up again."
+        if longing_source == "dream-carry":
+            return "A dream-carried strand feels absent without feeling gone."
+        return "A carried thread remains active even while absent."
+    if absence_relation == "emotionally-near":
+        return "Something missing still feels near enough to shape the stream."
+    return "Something is absent in a way the stream can actively feel."
+
+
+def build_longing_awareness_prompt_section() -> str | None:
+    """Compact heartbeat-side prompt section for longing awareness."""
+    try:
+        experiential = _experiential_runtime_context_surface()
+        inner_voice = _inner_voice_daemon_surface()
+        support_stream = _derive_support_stream_awareness(experiential, inner_voice)
+        temporal_feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+        sources = _mineness_source_snapshot()
+        mineness = _derive_mineness_ownership(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            sources=sources,
+        )
+        longing_sources = _longing_source_snapshot()
+        longing = _derive_longing_awareness(
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+            support_stream=support_stream,
+            inner_voice=inner_voice,
+            sources=sources,
+            longing_sources=longing_sources,
+        )
+    except Exception:
+        return None
+
+    state = str(longing.get("longing_state") or "quiet")
+    if state == "quiet":
+        return None
+
+    lines = [
+        "Longing awareness (bounded runtime truth, internal-only):",
+        (
+            f"- longing_state={state}"
+            f" | relation={longing.get('absence_relation') or 'none'}"
+            f" | source={longing.get('longing_source') or 'none'}"
+        ),
+    ]
+    narrative = str(longing.get("narrative") or "").strip()
+    if narrative:
+        lines.append(f"- longing_narrative={narrative}")
     return "\n".join(lines)
 
 

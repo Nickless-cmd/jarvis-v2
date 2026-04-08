@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, HTTPException
 
 from apps.api.jarvis_api.services.visible_model import (
+    available_provider_models,
     available_ollama_models_for_visible_target,
     visible_capability_continuity_summary,
     visible_continuity_summary,
@@ -423,7 +424,7 @@ from core.tools.workspace_capabilities import (
 )
 
 router = APIRouter(prefix="/mc", tags=["mission-control"])
-SUPPORTED_VISIBLE_PROVIDERS = ("phase1-runtime", "openai")
+SUPPORTED_VISIBLE_PROVIDERS = ("phase1-runtime", "openai", "github-copilot", "ollama")
 VISIBLE_RUN_EVENT_KINDS = (
     "runtime.visible_run_started",
     "runtime.visible_run_completed",
@@ -1632,6 +1633,16 @@ def mc_ollama_models() -> dict:
     return available_ollama_models_for_visible_target()
 
 
+@router.get("/provider-models")
+def mc_provider_models(provider: str = "", auth_profile: str = "") -> dict:
+    if not str(provider).strip():
+        raise HTTPException(status_code=400, detail="provider must be a non-empty string")
+    return available_provider_models(
+        provider=str(provider).strip(),
+        auth_profile=str(auth_profile or "").strip(),
+    )
+
+
 @router.post("/workspace-capabilities/{capability_id}/invoke")
 def mc_invoke_workspace_capability(
     capability_id: str,
@@ -1879,38 +1890,22 @@ def mc_update_main_agent_selection(payload: dict) -> dict:
             auth_profile=auth_profile,
         )
     except ValueError as exc:
-        if str(provider).strip() == "ollama":
-            ollama_models = available_ollama_models_for_visible_target()
-            available = {
-                str(item.get("name") or "").strip()
-                for item in ollama_models.get("models", [])
-                if isinstance(item, dict)
-            }
-            if model.strip() in available:
-                local_target = resolve_provider_router_target(lane="local")
-                configure_provider_router_entry(
-                    provider="ollama",
-                    model=model.strip(),
-                    auth_mode="none",
-                    auth_profile="",
-                    base_url=str(
-                        local_target.get("base_url") or "http://127.0.0.1:11434"
-                    ),
-                    api_key="",
-                    lane="local",
-                    set_visible=False,
+        if _maybe_configure_live_main_agent_target(
+            provider=str(provider).strip(),
+            model=str(model).strip(),
+            auth_profile=str(auth_profile or "").strip(),
+        ):
+            try:
+                select_main_agent_target(
+                    provider=provider,
+                    model=model,
+                    auth_profile=auth_profile,
                 )
-                try:
-                    select_main_agent_target(
-                        provider=provider,
-                        model=model,
-                        auth_profile=auth_profile,
-                    )
-                except ValueError as nested_exc:
-                    raise HTTPException(
-                        status_code=400, detail=str(nested_exc)
-                    ) from nested_exc
-                return _main_agent_selection_surface()
+            except ValueError as nested_exc:
+                raise HTTPException(
+                    status_code=400, detail=str(nested_exc)
+                ) from nested_exc
+            return _main_agent_selection_surface()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return _main_agent_selection_surface()
@@ -2014,6 +2009,59 @@ def _main_agent_selection_surface() -> dict:
         "readiness": visible_execution_readiness(),
         "ollama_models": available_ollama_models_for_visible_target(),
     }
+
+
+def _maybe_configure_live_main_agent_target(
+    *, provider: str, model: str, auth_profile: str
+) -> bool:
+    if not provider or not model:
+        return False
+
+    models_surface = available_provider_models(
+        provider=provider,
+        auth_profile=auth_profile,
+    )
+    available = {
+        str(item.get("id") or "").strip()
+        for item in models_surface.get("models", [])
+        if isinstance(item, dict) and str(item.get("id") or "").strip()
+    }
+    if model not in available:
+        return False
+
+    configured_profile = str(auth_profile or models_surface.get("auth_profile") or "").strip()
+    if provider == "ollama":
+        local_target = resolve_provider_router_target(lane="local")
+        configure_provider_router_entry(
+            provider="ollama",
+            model=model,
+            auth_mode="none",
+            auth_profile="",
+            base_url=str(
+                models_surface.get("base_url")
+                or local_target.get("base_url")
+                or "http://127.0.0.1:11434"
+            ),
+            api_key="",
+            lane="local",
+            set_visible=False,
+        )
+        return True
+
+    if provider == "github-copilot":
+        configure_provider_router_entry(
+            provider="github-copilot",
+            model=model,
+            auth_mode="oauth",
+            auth_profile=configured_profile or "copilot",
+            base_url="",
+            api_key="",
+            lane="visible",
+            set_visible=False,
+        )
+        return True
+
+    return False
 
 
 def _available_openai_profiles() -> list[dict[str, str]]:

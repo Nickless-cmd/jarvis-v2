@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, MoreVertical, Search, RefreshCw, X } from 'lucide-react'
 import { Chip } from '../shared/Chip'
+import { backend } from '../../lib/adapters'
 
 function formatTokens(n) {
   if (!n && n !== 0) return '—'
@@ -23,16 +24,71 @@ export function ChatHeader({
 }) {
   const [provider, setProvider] = useState(selection.currentProvider || '')
   const [model, setModel] = useState(selection.currentModel || '')
+  const [liveProviderModels, setLiveProviderModels] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const menuRef = useRef(null)
   const searchInputRef = useRef(null)
+  const providerModelsRequestRef = useRef(0)
 
   useEffect(() => {
     setProvider(selection.currentProvider || '')
     setModel(selection.currentModel || '')
   }, [selection.currentProvider, selection.currentModel])
+
+  const configuredTargets = selection.availableConfiguredTargets || []
+
+  const configuredProviderModels = useMemo(
+    () => configuredTargets.filter((x) => x.provider === provider),
+    [configuredTargets, provider]
+  )
+
+  const authProfileForProvider = useMemo(() => {
+    const configured = configuredTargets.find((x) => x.provider === provider)
+    if (configured?.authProfile) return configured.authProfile
+    if (provider === selection.currentProvider) return selection.currentAuthProfile || ''
+    return ''
+  }, [configuredTargets, provider, selection.currentProvider, selection.currentAuthProfile])
+
+  async function refreshProviderModels(nextProvider, nextAuthProfile, preferredModel = '') {
+    if (!nextProvider) {
+      setLiveProviderModels([])
+      return []
+    }
+
+    const requestId = providerModelsRequestRef.current + 1
+    providerModelsRequestRef.current = requestId
+
+    try {
+      const payload = await backend.getProviderModels({
+        provider: nextProvider,
+        authProfile: nextAuthProfile || '',
+      })
+      if (providerModelsRequestRef.current !== requestId) return []
+      const models = (payload.models || []).map((item) => ({
+        model: item.id,
+        label: item.label || item.id,
+        authProfile: payload.authProfile || nextAuthProfile || '',
+      }))
+      setLiveProviderModels(models)
+      if (!models.length) return []
+      return models
+    } catch {
+      if (providerModelsRequestRef.current === requestId) {
+        setLiveProviderModels([])
+      }
+      return []
+    }
+  }
+
+  useEffect(() => {
+    void refreshProviderModels(
+      selection.currentProvider || '',
+      selection.currentAuthProfile || '',
+      selection.currentModel || ''
+    )
+  }, [selection.currentProvider, selection.currentAuthProfile, selection.currentModel])
 
   // Close menu on click outside
   useEffect(() => {
@@ -55,21 +111,31 @@ export function ChatHeader({
   }, [searchOpen])
 
   const providers = useMemo(
-    () => [...new Set((selection.availableConfiguredTargets || []).map((x) => x.provider))],
-    [selection.availableConfiguredTargets]
+    () => [...new Set([selection.currentProvider || '', ...configuredTargets.map((x) => x.provider)].filter(Boolean))],
+    [configuredTargets, selection.currentProvider]
   )
   const models = useMemo(
-    () => (selection.availableConfiguredTargets || []).filter((x) => x.provider === provider),
-    [selection.availableConfiguredTargets, provider]
+    () => (liveProviderModels.length ? liveProviderModels : configuredProviderModels.map((item) => ({
+      model: item.model,
+      label: item.model,
+      authProfile: item.authProfile || '',
+    }))),
+    [configuredProviderModels, liveProviderModels]
   )
 
-  function handleProviderChange(e) {
+  async function handleProviderChange(e) {
     const next = e.target.value
     setProvider(next)
-    const first = (selection.availableConfiguredTargets || []).find((x) => x.provider === next)
-    if (first) {
-      setModel(first.model)
-      onSelectionChange?.({ provider: next, model: first.model, authProfile: first.authProfile || '' })
+    const configured = configuredTargets.find((x) => x.provider === next)
+    const nextAuthProfile = configured?.authProfile || (next === selection.currentProvider ? selection.currentAuthProfile || '' : '')
+    const liveModels = await refreshProviderModels(next, nextAuthProfile)
+    const options = liveModels.length ? liveModels : configuredTargets
+      .filter((x) => x.provider === next)
+      .map((item) => ({ model: item.model, label: item.model, authProfile: item.authProfile || '' }))
+    const nextModel = options.find((item) => item.model === model)?.model || options[0]?.model || ''
+    setModel(nextModel)
+    if (nextModel) {
+      onSelectionChange?.({ provider: next, model: nextModel, authProfile: nextAuthProfile || '' })
     }
   }
 
@@ -131,7 +197,7 @@ export function ChatHeader({
           </select>
 
           <select className="header-select mono" value={model} onChange={handleModelChange} title="Model">
-            {models.map((m) => <option key={m.model} value={m.model}>{m.model}</option>)}
+            {models.map((m) => <option key={m.model} value={m.model}>{m.label || m.model}</option>)}
           </select>
 
           <div className={`chat-token-meter ${isStreaming ? 'active' : ''}`} title={tokenTitle}>

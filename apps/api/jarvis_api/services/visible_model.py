@@ -41,6 +41,7 @@ from core.runtime.db import (
 )
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import load_workspace_capabilities
+from core.runtime.provider_router import load_provider_router_registry
 
 READINESS_PROBE_TTL_SECONDS = 15
 _READINESS_PROBE_CACHE: dict[tuple[str, str, str], dict[str, str | bool]] = {}
@@ -208,6 +209,110 @@ def _ensure_github_copilot_model_available(*, profile: str, model: str) -> None:
     )
 
 
+def _configured_provider_models(provider: str) -> list[str]:
+    normalized_provider = str(provider or "").strip()
+    if not normalized_provider:
+        return []
+
+    registry = load_provider_router_registry()
+    models: list[str] = []
+    seen: set[str] = set()
+    for item in registry.get("models") or []:
+        if not bool(item.get("enabled", True)):
+            continue
+        if str(item.get("provider") or "").strip() != normalized_provider:
+            continue
+        model = str(item.get("model") or "").strip()
+        if not model or model in seen:
+            continue
+        seen.add(model)
+        models.append(model)
+    models.sort()
+    return models
+
+
+def available_provider_models(*, provider: str, auth_profile: str = "") -> dict[str, object]:
+    normalized_provider = str(provider or "").strip()
+    normalized_profile = str(auth_profile or "").strip()
+    if not normalized_provider:
+        return {
+            "provider": "",
+            "auth_profile": normalized_profile,
+            "source": "missing-provider",
+            "status": "missing-provider",
+            "models": [],
+        }
+
+    if normalized_provider == "ollama":
+        data = available_ollama_models_for_visible_target()
+        return {
+            "provider": normalized_provider,
+            "auth_profile": "",
+            "source": "provider-live",
+            "status": str(data.get("status") or "unknown"),
+            "base_url": str(data.get("base_url") or ""),
+            "models": [
+                {
+                    "id": str(item.get("name") or "").strip(),
+                    "label": str(item.get("name") or "").strip(),
+                    "family": str(item.get("family") or "").strip(),
+                    "parameter_size": str(item.get("parameter_size") or "").strip(),
+                    "quantization_level": str(
+                        item.get("quantization_level") or ""
+                    ).strip(),
+                }
+                for item in data.get("models", [])
+                if isinstance(item, dict) and str(item.get("name") or "").strip()
+            ],
+        }
+
+    if normalized_provider == "github-copilot":
+        profile = normalized_profile or load_settings().visible_auth_profile or "default"
+        oauth_truth = get_copilot_oauth_truth(profile=profile)
+        has_real_credentials = bool(oauth_truth.get("has_real_credentials", False))
+        oauth_state = str(oauth_truth.get("oauth_state") or "")
+
+        if not has_real_credentials or oauth_state != "real-stored":
+            return {
+                "provider": normalized_provider,
+                "auth_profile": profile,
+                "source": "provider-live",
+                "status": "auth-not-ready",
+                "models": [],
+            }
+
+        models = fetch_github_copilot_models(profile=profile)
+        return {
+            "provider": normalized_provider,
+            "auth_profile": profile,
+            "source": "provider-live",
+            "status": "ready" if models else "unavailable",
+            "models": [
+                {
+                    "id": item,
+                    "label": item,
+                }
+                for item in models
+                if str(item).strip()
+            ],
+        }
+
+    configured_models = _configured_provider_models(normalized_provider)
+    return {
+        "provider": normalized_provider,
+        "auth_profile": normalized_profile,
+        "source": "configured-targets",
+        "status": "configured-only" if configured_models else "unconfigured",
+        "models": [
+            {
+                "id": item,
+                "label": item,
+            }
+            for item in configured_models
+        ],
+    }
+
+
 def _set_github_visible_cooldown(
     profile: str, ttl_minutes: int = GITHUB_VISIBLE_COOLDOWN_TTL_MINUTES
 ) -> None:
@@ -292,6 +397,14 @@ def stream_visible_model(
         return
     if provider == "ollama":
         yield from _stream_ollama_model(
+            message=message,
+            model=model,
+            session_id=session_id,
+            controller=controller,
+        )
+        return
+    if provider == "github-copilot":
+        yield from _stream_github_copilot_model(
             message=message,
             model=model,
             session_id=session_id,
@@ -784,6 +897,87 @@ def _stream_ollama_model(
             text=text,
             input_tokens=prompt_eval_count,
             output_tokens=eval_count or _estimate_tokens(text),
+            cost_usd=0.0,
+        )
+    )
+
+
+def _stream_github_copilot_model(
+    *, message: str, model: str, session_id: str | None = None, controller=None
+) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+    settings = load_settings()
+    profile = settings.visible_auth_profile or "default"
+
+    if _is_github_visible_cooled_down(profile):
+        raise VisibleModelRateLimited(
+            "GitHub Copilot visible lane is temporarily rate-limited. Please try again in a few minutes, or switch to a local lane."
+        )
+
+    access_token = _load_github_copilot_token(profile=profile)
+    normalized_model = _normalize_github_models_model_id(model)
+    _ensure_github_copilot_model_available(profile=profile, model=normalized_model)
+
+    payload = {
+        "model": normalized_model,
+        "messages": _build_visible_chat_messages_for_github(
+            message=message,
+            session_id=session_id,
+        ),
+        "stream": True,
+    }
+    req = urllib_request.Request(
+        "https://models.github.ai/inference/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+            "Authorization": f"Bearer {access_token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        method="POST",
+    )
+
+    parts: list[str] = []
+
+    try:
+        with urllib_request.urlopen(req, timeout=180) as response:
+            if controller is not None:
+                controller.attach_stream(response)
+            for event in _iter_sse_events(response):
+                delta = _extract_chat_completion_delta(event)
+                if delta:
+                    parts.append(delta)
+                    yield VisibleModelDelta(delta=delta)
+                if _chat_completion_stream_is_terminal(event):
+                    break
+    except urllib_error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        error_msg = f"GitHub Copilot API error: HTTP {exc.code}: {body}"
+        if exc.code == 429:
+            _set_github_visible_cooldown(profile)
+            raise VisibleModelRateLimited(
+                "GitHub Copilot visible lane is temporarily rate-limited. Please try again in a few minutes, or switch to a local lane."
+            )
+        raise RuntimeError(error_msg)
+    except Exception:
+        if controller is not None and controller.is_cancelled():
+            raise VisibleModelStreamCancelled("visible-run-cancelled")
+        raise
+    finally:
+        if controller is not None:
+            controller.clear_stream()
+
+    text = "".join(parts).strip()
+    if not text:
+        if controller is not None and controller.is_cancelled():
+            raise VisibleModelStreamCancelled("visible-run-cancelled")
+        raise RuntimeError("GitHub Copilot visible execution returned no streamed text")
+
+    yield VisibleModelStreamDone(
+        result=VisibleModelResult(
+            text=text,
+            input_tokens=_estimate_tokens(message),
+            output_tokens=_estimate_tokens(text),
             cost_usd=0.0,
         )
     )
@@ -1459,6 +1653,38 @@ def _calculate_openai_cost_usd(
 
 def _chunk_text(text: str, size: int = 48) -> list[str]:
     return [text[i : i + size] for i in range(0, len(text), size)]
+
+
+def _extract_chat_completion_delta(event: dict) -> str:
+    choices = event.get("choices") or []
+    parts: list[str] = []
+    for item in choices:
+        if not isinstance(item, dict):
+            continue
+        delta = item.get("delta") or {}
+        content = delta.get("content")
+        if isinstance(content, str):
+            if content:
+                parts.append(content)
+            continue
+        if isinstance(content, list):
+            for chunk in content:
+                if not isinstance(chunk, dict):
+                    continue
+                text = str(chunk.get("text") or "").strip()
+                if text:
+                    parts.append(text)
+    return "".join(parts)
+
+
+def _chat_completion_stream_is_terminal(event: dict) -> bool:
+    choices = event.get("choices") or []
+    if not choices:
+        return False
+    return all(
+        isinstance(item, dict) and str(item.get("finish_reason") or "").strip()
+        for item in choices
+    )
 
 
 def _iter_sse_events(response) -> Iterator[dict]:

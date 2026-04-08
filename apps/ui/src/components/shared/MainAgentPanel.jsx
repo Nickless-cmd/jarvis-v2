@@ -1,18 +1,70 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { backend } from '../../lib/adapters'
 
 export function MainAgentPanel({ selection, onSave, embedded = false }) {
   const [provider, setProvider] = useState(selection.currentProvider)
   const [model, setModel] = useState(selection.currentModel)
   const [authProfile, setAuthProfile] = useState(selection.currentAuthProfile)
+  const [liveProviderModels, setLiveProviderModels] = useState([])
+  const providerModelsRequestRef = useRef(0)
 
   useEffect(() => {
     setProvider(selection.currentProvider)
     setModel(selection.currentModel)
     setAuthProfile(selection.currentAuthProfile)
-  }, [selection])
+  }, [selection.currentProvider, selection.currentModel, selection.currentAuthProfile])
 
-  const providers = useMemo(() => [...new Set(selection.availableConfiguredTargets.map((x) => x.provider))], [selection])
-  const models = useMemo(() => selection.availableConfiguredTargets.filter((x) => x.provider === provider), [selection, provider])
+  const configuredTargets = selection.availableConfiguredTargets || []
+
+  const configuredModels = useMemo(
+    () => configuredTargets.filter((x) => x.provider === provider),
+    [configuredTargets, provider]
+  )
+
+  async function refreshProviderModels(nextProvider, nextAuthProfile) {
+    if (!nextProvider) {
+      setLiveProviderModels([])
+      return []
+    }
+    const requestId = providerModelsRequestRef.current + 1
+    providerModelsRequestRef.current = requestId
+    try {
+      const payload = await backend.getProviderModels({
+        provider: nextProvider,
+        authProfile: nextAuthProfile || '',
+      })
+      if (providerModelsRequestRef.current !== requestId) return []
+      const models = (payload.models || []).map((item) => ({
+        model: item.id,
+        label: item.label || item.id,
+        authProfile: payload.authProfile || nextAuthProfile || '',
+      }))
+      setLiveProviderModels(models)
+      return models
+    } catch {
+      if (providerModelsRequestRef.current === requestId) {
+        setLiveProviderModels([])
+      }
+      return []
+    }
+  }
+
+  useEffect(() => {
+    void refreshProviderModels(selection.currentProvider, selection.currentAuthProfile)
+  }, [selection.currentProvider, selection.currentAuthProfile])
+
+  const providers = useMemo(
+    () => [...new Set([selection.currentProvider || '', ...configuredTargets.map((x) => x.provider)].filter(Boolean))],
+    [configuredTargets, selection.currentProvider]
+  )
+  const models = useMemo(
+    () => (liveProviderModels.length ? liveProviderModels : configuredModels.map((item) => ({
+      model: item.model,
+      label: item.model,
+      authProfile: item.authProfile || '',
+    }))),
+    [configuredModels, liveProviderModels]
+  )
 
   return (
     <section className={embedded ? 'authority-card embedded' : 'support-card authority-card'}>
@@ -27,12 +79,21 @@ export function MainAgentPanel({ selection, onSave, embedded = false }) {
         <span>Provider</span>
         <select value={provider} onChange={(e) => {
           const next = e.target.value
-          setProvider(next)
-          const first = selection.availableConfiguredTargets.find((x) => x.provider === next)
-          if (first) {
-            setModel(first.model)
-            setAuthProfile(first.authProfile || '')
-          }
+          void (async () => {
+            setProvider(next)
+            const configured = configuredTargets.find((x) => x.provider === next)
+            const nextAuthProfile = configured?.authProfile || (next === selection.currentProvider ? selection.currentAuthProfile || '' : '')
+            setAuthProfile(nextAuthProfile)
+            const liveModels = await refreshProviderModels(next, nextAuthProfile)
+            const options = liveModels.length ? liveModels : configuredTargets
+              .filter((x) => x.provider === next)
+              .map((item) => ({
+                model: item.model,
+                label: item.model,
+                authProfile: item.authProfile || '',
+              }))
+            setModel(options[0]?.model || '')
+          })()
         }}>
           {providers.map((item) => <option key={item} value={item}>{item}</option>)}
         </select>
@@ -46,7 +107,7 @@ export function MainAgentPanel({ selection, onSave, embedded = false }) {
           const candidate = models.find((x) => x.model === next)
           if (candidate) setAuthProfile(candidate.authProfile || '')
         }}>
-          {models.map((item) => <option key={item.model} value={item.model}>{item.model}</option>)}
+          {models.map((item) => <option key={item.model} value={item.model}>{item.label || item.model}</option>)}
         </select>
       </label>
 

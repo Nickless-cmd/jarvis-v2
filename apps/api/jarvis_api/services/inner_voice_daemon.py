@@ -43,6 +43,13 @@ _INNER_VOICE_META_PATTERNS = (
     r"\bmore mood[- ]driven\b",
     r"\ba bit too technical\b",
     r"\btoo technical\b",
+    r"\brefining\s+for\b",
+    r"\bfor flow(?:\s+and\s+mood)?\b",
+    r"\bfor mood\b",
+    r"\bflow and mood\b",
+    r"\badjusting tone\b",
+    r"\btuning (?:for )?(?:flow|mood|tone)\b",
+    r"\bslightly anxious\b",
     r"\bversion\s*\d+\b",
     r"\bdraft\s*\d+\b",
     r"\brewrite\b",
@@ -50,6 +57,11 @@ _INNER_VOICE_META_PATTERNS = (
 )
 _INNER_VOICE_META_LINE_PREFIXES = (
     "attempt ",
+    "refining for",
+    "for flow",
+    "for mood",
+    "adjusting tone",
+    "tuning for",
     "more mood-driven",
     "a bit too technical",
     "too technical",
@@ -914,6 +926,8 @@ def _sanitize_inner_voice_text(text: object, *, max_len: int = 400) -> str:
 
     prefix_patterns = (
         r"^\s*(?:attempt|draft|version|revision)\s*\d*\s*(?:\([^)]*\))?\s*[:\-]*\s*",
+        r"^\s*(?:refining|rewriting|adjusting|tuning)\s+for\s+[^:]{0,80}[:\-]*\s*",
+        r"^\s*\(?\s*(?:steady|searching|circling|carrying|pulled|witness-steady|work-steady)\s*,\s*(?:slightly|a bit)?\s*[a-z-]+\s*\)?\s*[:\-]*\s*",
         r"^\s*\(?\s*(?:a bit too technical|too technical)\s*\)?\s*[:\-]*\s*",
     )
     changed = True

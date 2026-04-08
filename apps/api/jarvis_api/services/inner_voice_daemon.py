@@ -41,8 +41,11 @@ _INNER_VOICE_LIVING_MODES = {
 _INNER_VOICE_META_PATTERNS = (
     r"\battempt\s*\d+\b",
     r"\bmore mood[- ]driven\b",
+    r"\ba bit too long\b",
+    r"\btoo long\b",
     r"\ba bit too technical\b",
     r"\btoo technical\b",
+    r"\banalytical\b",
     r"\brefining\s+for\b",
     r"\bfor flow(?:\s+and\s+mood)?\b",
     r"\bfor mood\b",
@@ -57,12 +60,15 @@ _INNER_VOICE_META_PATTERNS = (
 )
 _INNER_VOICE_META_LINE_PREFIXES = (
     "attempt ",
+    "a bit too long",
+    "too long",
     "refining for",
     "for flow",
     "for mood",
     "adjusting tone",
     "tuning for",
     "more mood-driven",
+    "analytical",
     "a bit too technical",
     "too technical",
     "note:",
@@ -928,6 +934,7 @@ def _sanitize_inner_voice_text(text: object, *, max_len: int = 400) -> str:
         r"^\s*(?:attempt|draft|version|revision)\s*\d*\s*(?:\([^)]*\))?\s*[:\-]*\s*",
         r"^\s*(?:refining|rewriting|adjusting|tuning)\s+for\s+[^:]{0,80}[:\-]*\s*",
         r"^\s*\(?\s*(?:steady|searching|circling|carrying|pulled|witness-steady|work-steady)\s*,\s*(?:slightly|a bit)?\s*[a-z-]+\s*\)?\s*[:\-]*\s*",
+        r"^\s*\(?\s*(?:a bit too long|too long|a bit too technical|too technical|analytical)(?:/[a-z-]+)?\s*\)?\s*[:\-]*\s*",
         r"^\s*\(?\s*(?:a bit too technical|too technical)\s*\)?\s*[:\-]*\s*",
     )
     changed = True
@@ -951,7 +958,8 @@ def _sanitize_inner_voice_text(text: object, *, max_len: int = 400) -> str:
         kept.append(sentence)
     cleaned = " ".join(kept).strip() if kept else value
     cleaned = re.sub(r"\s+", " ", cleaned).strip(" -:")
-    if not cleaned or _looks_like_inner_voice_meta(cleaned):
+    cleaned = cleaned.strip("*/()[]{}\\/|")
+    if not cleaned or len(cleaned) < 4 or _looks_like_inner_voice_meta(cleaned):
         return ""
     return cleaned[:max_len]
 

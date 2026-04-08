@@ -1022,6 +1022,19 @@ function normalizeSelfInsightAwareness(item = {}) {
   }
 }
 
+function normalizeNarrativeIdentityContinuity(item = {}) {
+  if (!item || !item.kind) return null
+  return {
+    identityContinuityState: item.identity_continuity_state || 'quiet',
+    patternRelation: item.pattern_relation || 'incidental',
+    identitySource: item.identity_source || 'none',
+    narrative: item.narrative || '',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'narrative-identity-continuity',
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -3840,6 +3853,7 @@ export const backend = {
       flowStateAwareness: normalizeFlowStateAwareness(selfModelPayload?.flow_state_awareness || {}),
       longingAwareness: normalizeLongingAwareness(selfModelPayload?.longing_awareness || {}),
       selfInsightAwareness: normalizeSelfInsightAwareness(selfModelPayload?.self_insight_awareness || {}),
+      narrativeIdentityContinuity: normalizeNarrativeIdentityContinuity(selfModelPayload?.narrative_identity_continuity || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

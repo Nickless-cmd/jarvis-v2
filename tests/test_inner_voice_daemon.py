@@ -351,6 +351,109 @@ def test_render_mode_is_observable_in_daemon_result(isolated_runtime) -> None:
     assert result["render_mode"] in {"llm-rendered", "deterministic-fallback"}
 
 
+def test_sanitize_inner_voice_text_removes_attempt_and_style_meta() -> None:
+    """Revision labels and style commentary must not survive into inner voice text."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_inner_voice_text
+
+    cleaned = _sanitize_inner_voice_text(
+        "*Attempt 2 (More Mood-driven):* (A bit too technical) Jeg fokuserer intenst på den samme tråd."
+    )
+
+    assert cleaned == "Jeg fokuserer intenst på den samme tråd."
+
+
+def test_sanitize_previous_inner_voice_drops_meta_contaminated_prior_voice() -> None:
+    """A contaminated previous thought should not be fed back into the next prompt."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_previous_inner_voice
+
+    cleaned = _sanitize_previous_inner_voice(
+        "Attempt 2 (More Mood-driven): A bit too technical"
+    )
+
+    assert cleaned == ""
+
+
+def test_llm_render_rejects_meta_only_thought_and_falls_back(isolated_runtime, monkeypatch) -> None:
+    """Meta-only model output should be treated as unusable so fallback can take over."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _render_inner_voice_note
+
+    monkeypatch.setattr(
+        iv_module,
+        "_llm_render_inner_voice",
+        lambda grounding: None,
+    )
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["open-loops", "private-brain"],
+        "fragments": {
+            "open_loop_signal": "Test loop",
+            "brain_continuity": "A quieter unresolved line remains",
+        },
+    }
+
+    note, render_mode = _render_inner_voice_note(grounding)
+
+    assert render_mode == "deterministic-fallback"
+    assert "Attempt 2" not in note["summary"]
+    assert "too technical" not in note["summary"].lower()
+
+
+def test_llm_render_context_humanizes_grounding_keys_and_skips_contaminated_previous_voice(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """Prompt context should avoid raw runtime keys and should not echo contaminated previous thoughts."""
+    captured: dict[str, str] = {}
+
+    class _FakeWorkspace:
+        def __truediv__(self, name: str):
+            from pathlib import Path
+
+            return Path("/media/projects/jarvis-v2/workspace/default") / name
+
+    monkeypatch.setattr(
+        "core.identity.workspace_bootstrap.ensure_default_workspace",
+        lambda: _FakeWorkspace(),
+    )
+
+    monkeypatch.setattr(
+        "core.runtime.db.get_protected_inner_voice",
+        lambda: {"voice_line": "Attempt 2 (More Mood-driven): A bit too technical"},
+    )
+
+    def _fake_execute_heartbeat_model(**kwargs):
+        captured["prompt"] = kwargs["prompt"]
+        return {"text": '{"thought":"Jeg holder stadig fast i den tråd, der ikke er faldet til ro.","initiative":null,"mode":"carrying"}'}
+
+    import apps.api.jarvis_api.services.heartbeat_runtime as heartbeat_runtime
+
+    monkeypatch.setattr(heartbeat_runtime, "_load_heartbeat_policy", lambda: {}, raising=False)
+    monkeypatch.setattr(heartbeat_runtime, "_resolve_heartbeat_target", lambda policy: "test-target", raising=False)
+    monkeypatch.setattr(heartbeat_runtime, "_execute_heartbeat_model", _fake_execute_heartbeat_model, raising=False)
+
+    from apps.api.jarvis_api.services.inner_voice_daemon import _llm_render_inner_voice
+
+    grounding = {
+        "source_count": 2,
+        "sources": ["open-loops", "experiential-support"],
+        "fragments": {
+            "open_loop_signal": "repair the voice path",
+            "experiential_support_narrative": "The stream is carrying some weight.",
+            "experiential_initiative_shading": "hesitant",
+        },
+    }
+
+    note = _llm_render_inner_voice(grounding)
+
+    assert note is not None
+    assert "Open loop: repair the voice path" in captured["prompt"]
+    assert "Initiative shading: hesitant" in captured["prompt"]
+    assert "open_loop_signal:" not in captured["prompt"]
+    assert "experiential_initiative_shading:" not in captured["prompt"]
+    assert "Previous thought:" not in captured["prompt"]
+
+
 # ---------------------------------------------------------------------------
 # Experiential support carry-forward into inner voice
 # ---------------------------------------------------------------------------

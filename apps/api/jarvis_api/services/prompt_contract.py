@@ -2358,6 +2358,18 @@ def _heartbeat_self_knowledge_section() -> str | None:
         )
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_self_insight_awareness_prompt_section,
+        )
+
+        _append_entry(
+            key="self-insight",
+            section=build_self_insight_awareness_prompt_section(),
+            importance="background",
+        )
+    except Exception:
+        pass
     if not entries:
         return None
 
@@ -2378,6 +2390,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
     flow = model.get("flow_state_awareness") or {}
     wonder = model.get("wonder_awareness") or {}
     longing = model.get("longing_awareness") or {}
+    self_insight = model.get("self_insight_awareness") or {}
 
     primary_dynamic = any(
         (
@@ -2406,11 +2419,17 @@ def _heartbeat_self_knowledge_section() -> str | None:
         wonder_foreground = True
     if not primary_dynamic and str(longing.get("longing_state") or "quiet") == "missing":
         longing_foreground = True
+    self_insight_foreground = str(self_insight.get("insight_state") or "quiet") in {
+        "stabilizing",
+        "shifting",
+    }
 
     for entry in entries:
         if entry["key"] == "wonder" and wonder_foreground:
             entry["importance"] = "foreground"
         elif entry["key"] == "longing" and longing_foreground:
+            entry["importance"] = "foreground"
+        elif entry["key"] == "self-insight" and self_insight_foreground:
             entry["importance"] = "foreground"
 
     foreground_sections = [

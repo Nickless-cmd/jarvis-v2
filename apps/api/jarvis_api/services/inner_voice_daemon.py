@@ -14,6 +14,7 @@ Design constraints:
 """
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -37,6 +38,26 @@ _INNER_VOICE_LIVING_MODES = {
     "witness-steady",
     "work-steady",
 }
+_INNER_VOICE_META_PATTERNS = (
+    r"\battempt\s*\d+\b",
+    r"\bmore mood[- ]driven\b",
+    r"\ba bit too technical\b",
+    r"\btoo technical\b",
+    r"\bversion\s*\d+\b",
+    r"\bdraft\s*\d+\b",
+    r"\brewrite\b",
+    r"\brevision\b",
+)
+_INNER_VOICE_META_LINE_PREFIXES = (
+    "attempt ",
+    "more mood-driven",
+    "a bit too technical",
+    "too technical",
+    "note:",
+    "revision:",
+    "draft:",
+    "version:",
+)
 
 # Module-level state (in-memory)
 _voice_last_run_at: str = ""
@@ -431,14 +452,18 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
         f"- Active grounding sources: {', '.join(sources)}",
     ]
     for key, value in fragments.items():
-        context_lines.append(f"- {key}: {value}")
+        line = _render_grounding_fragment(str(key), str(value))
+        if line:
+            context_lines.append(f"- {line}")
 
     # 1.5 Inner voice chaining — feed previous thought
     try:
         from core.runtime.db import get_protected_inner_voice
         prev_voice = get_protected_inner_voice()
         if prev_voice:
-            prev = str(prev_voice.get("enriched_voice_line") or prev_voice.get("voice_line") or "")[:200]
+            prev = _sanitize_previous_inner_voice(
+                str(prev_voice.get("enriched_voice_line") or prev_voice.get("voice_line") or "")[:200]
+            )
             if prev:
                 context_lines.append(f"- Previous thought: {prev}")
     except Exception:
@@ -450,6 +475,7 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
             "- Do not default to steady/support/work-stabilization unless the grounding clearly warrants it.",
             "- If there is no real next-step pull, set initiative to null.",
             "- Optional mode field may be one of: searching, circling, carrying, pulled, witness-steady, work-steady.",
+            "- Do not include revision notes, self-critique, style commentary, markdown emphasis, or labels like 'Attempt 2' inside the thought.",
         ]
     )
 
@@ -494,15 +520,15 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
         else:
             return None
 
-    thought = str(parsed.get("thought") or parsed.get("note") or "")[:400].strip()
+    thought = _sanitize_inner_voice_text(parsed.get("thought") or parsed.get("note") or "")
     initiative = parsed.get("initiative")
     if isinstance(initiative, str):
-        initiative = initiative.strip() or None
+        initiative = _sanitize_inner_voice_text(initiative, max_len=200) or None
     requested_mode = _normalize_inner_voice_mode(parsed.get("mode"))
 
     # Back-compat: also accept old format
     if not thought:
-        thought = str(parsed.get("focus") or "")[:400].strip()
+        thought = _sanitize_inner_voice_text(parsed.get("focus") or "")
     if not thought:
         return None
 
@@ -835,6 +861,96 @@ def _normalize_inner_voice_initiative(
     if _thought_contains_initiative(thought):
         return _extract_initiative_from_thought(thought)
     return None
+
+
+def _render_grounding_fragment(key: str, value: str) -> str:
+    cleaned_value = str(value or "").strip()
+    if not cleaned_value:
+        return ""
+    label_map = {
+        "brain_continuity": "Private carry",
+        "brain_top_focus": "Private thread",
+        "open_loop_signal": "Open loop",
+        "witness_signal": "Witness trace",
+        "conductor_mode": "Current conductor mode",
+        "salient_top": "Most salient item",
+        "dev_focus": "Development focus",
+        "conflict_outcome": "Conflict outcome",
+        "conflict_reason": "Conflict pressure",
+        "experiential_continuity_state": "Experiential continuity state",
+        "experiential_continuity_narrative": "Experiential continuity",
+        "experiential_attentional_posture": "Attentional posture",
+        "experiential_initiative_shading": "Initiative shading",
+        "experiential_cognitive_bearing": "Cognitive bearing",
+        "experiential_influence_narrative": "Experiential influence",
+        "experiential_support_posture": "Support posture",
+        "experiential_support_bias": "Support bias",
+        "experiential_support_mode": "Support mode",
+        "experiential_support_narrative": "Experiential support",
+        "personality_bearing": "Personality bearing",
+    }
+    label = label_map.get(key, key.replace("_", " "))
+    return f"{label}: {cleaned_value[:160]}"
+
+
+def _sanitize_previous_inner_voice(text: object) -> str:
+    cleaned = _sanitize_inner_voice_text(text, max_len=200)
+    if not cleaned:
+        return ""
+    if _looks_like_inner_voice_meta(cleaned):
+        return ""
+    return cleaned
+
+
+def _sanitize_inner_voice_text(text: object, *, max_len: int = 400) -> str:
+    value = str(text or "")
+    if not value:
+        return ""
+    value = value.replace("\r", "\n")
+    value = re.sub(r"[*_`#]+", "", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    if not value:
+        return ""
+
+    prefix_patterns = (
+        r"^\s*(?:attempt|draft|version|revision)\s*\d*\s*(?:\([^)]*\))?\s*[:\-]*\s*",
+        r"^\s*\(?\s*(?:a bit too technical|too technical)\s*\)?\s*[:\-]*\s*",
+    )
+    changed = True
+    while value and changed:
+        changed = False
+        for pattern in prefix_patterns:
+            updated = re.sub(pattern, "", value, flags=re.IGNORECASE)
+            if updated != value:
+                value = updated.strip()
+                changed = True
+
+    sentences = [
+        part.strip(" -:")
+        for part in re.split(r"(?<=[.!?])\s+|\s+\*\s+", value)
+        if part.strip(" -:")
+    ]
+    kept: list[str] = []
+    for sentence in sentences:
+        if _looks_like_inner_voice_meta(sentence):
+            continue
+        kept.append(sentence)
+    cleaned = " ".join(kept).strip() if kept else value
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" -:")
+    if not cleaned or _looks_like_inner_voice_meta(cleaned):
+        return ""
+    return cleaned[:max_len]
+
+
+def _looks_like_inner_voice_meta(text: str) -> bool:
+    lowered = str(text or "").strip().lower()
+    if not lowered:
+        return False
+    if any(lowered.startswith(prefix) for prefix in _INNER_VOICE_META_LINE_PREFIXES):
+        return True
+    if lowered.startswith("(") and any(token in lowered for token in ("technical", "mood-driven", "attempt", "revision")):
+        return True
+    return any(re.search(pattern, lowered) for pattern in _INNER_VOICE_META_PATTERNS)
 
 
 # ---------------------------------------------------------------------------

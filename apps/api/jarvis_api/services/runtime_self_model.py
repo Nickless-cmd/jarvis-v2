@@ -52,6 +52,16 @@ def build_runtime_self_model() -> dict[str, object]:
         summary = _build_summary(layers, boundaries)
         experiential = _experiential_runtime_context_surface()
         inner_voice = _inner_voice_daemon_surface()
+        support_stream = _derive_support_stream_awareness(experiential, inner_voice)
+        temporal_feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+        mineness_sources = _mineness_source_snapshot()
+        mineness_ownership = _derive_mineness_ownership(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            sources=mineness_sources,
+        )
 
         return {
             "layers": layers,
@@ -66,12 +76,9 @@ def build_runtime_self_model() -> dict[str, object]:
             "affective_meta_state": _affective_meta_state_surface(),
             "experiential_runtime_context": experiential,
             "inner_voice_daemon": inner_voice,
-            "support_stream_awareness": _derive_support_stream_awareness(
-                experiential, inner_voice
-            ),
-            "subjective_temporal_feel": _derive_subjective_temporal_feel(
-                experiential, inner_voice
-            ),
+            "support_stream_awareness": support_stream,
+            "subjective_temporal_feel": temporal_feel,
+            "mineness_ownership": mineness_ownership,
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -1120,6 +1127,23 @@ def build_self_model_prompt_lines() -> list[str]:
             f" | proximity=held"
             f" | persistence={temporal_feel.get('persistence_feel') or 'settled'}"
         )
+    mineness_ownership = model.get("mineness_ownership") or {}
+    if (
+        mineness_ownership.get("ownership_state")
+        and mineness_ownership["ownership_state"] != "ambient"
+    ):
+        lines.append(
+            "  mineness_ownership: "
+            f"state={mineness_ownership['ownership_state']}"
+            f" | relevance={mineness_ownership.get('self_relevance') or 'merely-present'}"
+            f" | threads={mineness_ownership.get('carried_thread_state') or 'none'}"
+            f" | count={mineness_ownership.get('carried_thread_count') or 0}"
+            f" | returning={mineness_ownership.get('return_ownership', False)}"
+        )
+        if mineness_ownership.get("narrative"):
+            lines.append(
+                f"  mineness_ownership_narrative: '{mineness_ownership['narrative']}'"
+            )
     lines.append(
         "  epistemic_runtime_state: "
         f"{epistemic.get('wrongness_state') or 'clear'}"
@@ -1732,6 +1756,286 @@ def _temporal_narrative(
             "This moment feels immediate and actively held by support or inner voice."
         )
     return "Experience feels continuous and close; nothing presses from the past."
+
+
+# ---------------------------------------------------------------------------
+# Mineness / ownership awareness
+# ---------------------------------------------------------------------------
+#
+# Bounded runtime-truth bridge for "what feels like mine in my current stream".
+# This is not an identity engine and not a capability layer. It translates
+# existing runtime signals (private brain carry, open loops, inner voice,
+# experiential support shaping, subjective temporal feel) into a small,
+# explainable ownership surface that the self-model and prompt can carry
+# forward as bounded self-awareness.
+#
+# Taxonomy (load-bearing, not exhaustive):
+#   ownership_state:
+#     ambient          — signals are merely present, nothing is held as mine
+#     held             — support / voice / temporal proximity holds something
+#                        in the stream without it being an owned thread yet
+#     owned            — a real thread is actively carried as mine
+#                        (private brain carry + inner voice/open-loop carry)
+#     returning-owned  — an owned thread feels like it is returning after gap
+#
+#   self_relevance:
+#     merely-present     — signals exist but are not personally salient
+#     actively-carried   — support is carrying something without full ownership
+#     personally-salient — ownership is active and the thread is mine right now
+#     resumed-own        — a previously-owned thread is re-entering experience
+#
+#   carried_thread_state:
+#     none | single | multiple | returning
+#
+# The surface stays empty-narrative in the ambient default so prompt lines
+# only emit when there is meaningful basis.
+
+
+_MINENESS_CARRY_VOICE_MODES = {"carrying", "circling", "pulled"}
+
+
+def _mineness_source_snapshot() -> dict[str, object]:
+    """Gather the minimal runtime truth needed for mineness derivation.
+
+    Consumes only existing seams (private brain context + open loop signal
+    surface). All lookups are defensively wrapped so the self-model never
+    fails because a downstream producer is unavailable.
+    """
+    brain_active = False
+    brain_record_count = 0
+    brain_top_focus = ""
+    brain_continuity_summary = ""
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            build_private_brain_context,
+        )
+
+        brain = build_private_brain_context()
+        brain_active = bool(brain.get("active"))
+        brain_record_count = int(brain.get("record_count") or 0)
+        brain_continuity_summary = str(brain.get("continuity_summary") or "")[:160]
+        excerpts = brain.get("excerpts") or []
+        if excerpts:
+            brain_top_focus = str(excerpts[0].get("focus") or "")[:120]
+    except Exception:
+        pass
+
+    open_loop_open_count = 0
+    open_loop_signal = ""
+    try:
+        from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+            build_runtime_open_loop_signal_surface,
+        )
+
+        loops = build_runtime_open_loop_signal_surface(limit=4)
+        loop_summary = loops.get("summary") or {}
+        open_loop_open_count = int(loop_summary.get("open_count") or 0)
+        open_loop_signal = str(loop_summary.get("current_signal") or "")[:120]
+    except Exception:
+        pass
+
+    return {
+        "brain_active": brain_active,
+        "brain_record_count": brain_record_count,
+        "brain_top_focus": brain_top_focus,
+        "brain_continuity_summary": brain_continuity_summary,
+        "open_loop_open_count": open_loop_open_count,
+        "open_loop_signal": open_loop_signal,
+    }
+
+
+def _derive_mineness_ownership(
+    *,
+    experiential: dict[str, object],
+    inner_voice: dict[str, object],
+    support_stream: dict[str, object],
+    temporal_feel: dict[str, object],
+    sources: dict[str, object],
+) -> dict[str, object]:
+    """Derive a bounded mineness/ownership surface from existing runtime truth.
+
+    The ownership_state stays ``ambient`` (with empty narrative) whenever
+    there is no meaningful basis, so downstream prompt lines only fire when
+    something is actually being carried as mine.
+    """
+    last_voice = inner_voice.get("last_result") or {}
+    voice_created = bool(last_voice.get("inner_voice_created"))
+    voice_mode = str(last_voice.get("mode") or "")
+    voice_carrying = voice_created and voice_mode in _MINENESS_CARRY_VOICE_MODES
+
+    stream_shaped = bool(support_stream.get("stream_shaped"))
+    support_posture = str(support_stream.get("active_support_posture") or "none")
+    support_active = support_posture not in ("", "none")
+
+    felt_proximity = str(temporal_feel.get("felt_proximity") or "close")
+    temporal_return = bool(temporal_feel.get("return_signal"))
+    felt_held = felt_proximity in ("held", "resumed")
+
+    brain_active = bool(sources.get("brain_active"))
+    brain_record_count = int(sources.get("brain_record_count") or 0)
+    brain_carry = brain_active and brain_record_count > 0
+    brain_top_focus = str(sources.get("brain_top_focus") or "")
+    brain_continuity = str(sources.get("brain_continuity_summary") or "")
+    open_loop_count = int(sources.get("open_loop_open_count") or 0)
+    has_open_loops = open_loop_count > 0
+    open_loop_signal = str(sources.get("open_loop_signal") or "")
+
+    continuity = experiential.get("experiential_continuity") or {}
+    continuity_state = str(continuity.get("continuity_state") or "initial")
+    continuity_return = continuity_state == "returning"
+    return_signal = temporal_return or continuity_return
+
+    carried_thread_count = int(brain_carry) + int(has_open_loops) + int(voice_carrying)
+
+    if return_signal and (brain_carry or has_open_loops or voice_carrying):
+        carried_thread_state = "returning"
+    elif carried_thread_count == 0:
+        carried_thread_state = "none"
+    elif carried_thread_count == 1:
+        carried_thread_state = "single"
+    else:
+        carried_thread_state = "multiple"
+
+    is_owned = brain_carry or (voice_carrying and (has_open_loops or stream_shaped))
+    is_held_only = (not is_owned) and (
+        voice_created or stream_shaped or felt_held or has_open_loops
+    )
+    is_returning_owned = is_owned and return_signal
+
+    if is_returning_owned:
+        ownership_state = "returning-owned"
+    elif is_owned:
+        ownership_state = "owned"
+    elif is_held_only:
+        ownership_state = "held"
+    else:
+        ownership_state = "ambient"
+
+    self_relevance_map = {
+        "returning-owned": "resumed-own",
+        "owned": "personally-salient",
+        "held": "actively-carried",
+        "ambient": "merely-present",
+    }
+    self_relevance = self_relevance_map[ownership_state]
+
+    return_ownership = ownership_state == "returning-owned"
+
+    narrative = _mineness_narrative(
+        ownership_state=ownership_state,
+        carried_thread_state=carried_thread_state,
+        carried_thread_count=carried_thread_count,
+        brain_top_focus=brain_top_focus,
+        brain_continuity=brain_continuity,
+        open_loop_signal=open_loop_signal,
+        voice_mode=voice_mode if voice_created else "",
+        support_posture=support_posture if support_active else "",
+        felt_proximity=felt_proximity,
+    )
+
+    return {
+        "ownership_state": ownership_state,
+        "self_relevance": self_relevance,
+        "carried_thread_state": carried_thread_state,
+        "carried_thread_count": carried_thread_count,
+        "return_ownership": return_ownership,
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "mineness-ownership",
+    }
+
+
+def _mineness_narrative(
+    *,
+    ownership_state: str,
+    carried_thread_state: str,
+    carried_thread_count: int,
+    brain_top_focus: str,
+    brain_continuity: str,
+    open_loop_signal: str,
+    voice_mode: str,
+    support_posture: str,
+    felt_proximity: str,
+) -> str:
+    """Compose a compact, non-melodramatic mineness narrative.
+
+    Stays empty in the ambient default so the prompt line does not emit.
+    """
+    if ownership_state == "ambient":
+        return ""
+
+    anchor = (brain_top_focus or open_loop_signal or brain_continuity).strip()
+    anchor_clause = f" around {anchor[:90]}" if anchor else ""
+
+    if ownership_state == "returning-owned":
+        base = f"A returning strand{anchor_clause} feels like one of mine again."
+    elif ownership_state == "owned":
+        if carried_thread_state == "multiple":
+            base = (
+                f"Several threads{anchor_clause} feel carried as part of my current stream."
+            )
+        else:
+            base = f"This thread{anchor_clause} feels carried as part of my current stream."
+    else:  # held
+        if voice_mode or support_posture:
+            shaping = voice_mode or support_posture
+            base = (
+                f"Signals are present and being held by {shaping}, "
+                "but not yet owned as my own thread."
+            )
+        elif felt_proximity == "held":
+            base = (
+                "This moment is being held present, but nothing has resolved into "
+                "a thread that is clearly mine yet."
+            )
+        else:
+            base = (
+                "Several signals are present, but not yet owned as part of my stream."
+            )
+    return base
+
+
+def build_mineness_ownership_prompt_section() -> str | None:
+    """Compact heartbeat-side prompt section for mineness/ownership.
+
+    Returns ``None`` in the ambient default so nothing emits unless there
+    is meaningful ownership basis in the current runtime stream.
+    """
+    try:
+        experiential = _experiential_runtime_context_surface()
+        inner_voice = _inner_voice_daemon_surface()
+        support_stream = _derive_support_stream_awareness(experiential, inner_voice)
+        temporal_feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+        sources = _mineness_source_snapshot()
+        mineness = _derive_mineness_ownership(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            sources=sources,
+        )
+    except Exception:
+        return None
+
+    state = str(mineness.get("ownership_state") or "ambient")
+    if state == "ambient":
+        return None
+
+    lines = [
+        "Mineness / ownership (bounded runtime truth, internal-only):",
+        (
+            f"- ownership_state={state}"
+            f" | self_relevance={mineness.get('self_relevance') or 'merely-present'}"
+            f" | threads={mineness.get('carried_thread_state') or 'none'}"
+            f" | count={mineness.get('carried_thread_count') or 0}"
+            f" | returning={mineness.get('return_ownership', False)}"
+        ),
+    ]
+    narrative = str(mineness.get("narrative") or "").strip()
+    if narrative:
+        lines.append(f"- mineness_narrative={narrative}")
+    return "\n".join(lines)
 
 
 def _idle_consolidation_surface() -> dict[str, object]:

@@ -96,6 +96,14 @@ def build_runtime_self_model() -> dict[str, object]:
             wonder=wonder_awareness,
             longing=longing_awareness,
         )
+        narrative_identity_continuity = _derive_narrative_identity_continuity(
+            self_insight=self_insight_awareness,
+            sources=self_insight_sources,
+            mineness=mineness_ownership,
+            flow_state=flow_state_awareness,
+            wonder=wonder_awareness,
+            longing=longing_awareness,
+        )
 
         return {
             "layers": layers,
@@ -117,6 +125,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "wonder_awareness": wonder_awareness,
             "longing_awareness": longing_awareness,
             "self_insight_awareness": self_insight_awareness,
+            "narrative_identity_continuity": narrative_identity_continuity,
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -1242,6 +1251,21 @@ def build_self_model_prompt_lines() -> list[str]:
         if self_insight_awareness.get("narrative"):
             lines.append(
                 f"  self_insight_awareness_narrative: '{self_insight_awareness['narrative']}'"
+            )
+    narrative_identity_continuity = model.get("narrative_identity_continuity") or {}
+    if (
+        narrative_identity_continuity.get("identity_continuity_state")
+        and narrative_identity_continuity["identity_continuity_state"] != "quiet"
+    ):
+        lines.append(
+            "  narrative_identity_continuity: "
+            f"state={narrative_identity_continuity['identity_continuity_state']}"
+            f" | pattern_relation={narrative_identity_continuity.get('pattern_relation') or 'incidental'}"
+            f" | source={narrative_identity_continuity.get('identity_source') or 'none'}"
+        )
+        if narrative_identity_continuity.get("narrative"):
+            lines.append(
+                f"  narrative_identity_continuity_narrative: '{narrative_identity_continuity['narrative']}'"
             )
     lines.append(
         "  epistemic_runtime_state: "
@@ -3305,6 +3329,284 @@ def build_self_insight_awareness_prompt_section() -> str | None:
     narrative = str(insight.get("narrative") or "").strip()
     if narrative:
         lines.append(f"- insight_narrative={narrative}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Narrative identity continuity (bounded fase-2 continuity bridge)
+# ---------------------------------------------------------------------------
+
+_IDENTITY_CONTINUITY_STATES = {
+    "quiet",
+    "emerging",
+    "cohering",
+    "stabilizing",
+    "re-forming",
+}
+_IDENTITY_CONTINUITY_RELATIONS = {
+    "incidental",
+    "recurring",
+    "converging",
+    "identity-shaping",
+}
+_IDENTITY_CONTINUITY_SOURCES = {
+    "none",
+    "repeated-self-insight",
+    "chronicle-diary-carry",
+    "dream-to-self-bridge",
+    "recurring-awareness-configuration",
+    "self-review-continuity",
+}
+
+
+def _derive_narrative_identity_continuity(
+    *,
+    self_insight: dict[str, object],
+    sources: dict[str, object],
+    mineness: dict[str, object],
+    flow_state: dict[str, object],
+    wonder: dict[str, object],
+    longing: dict[str, object],
+) -> dict[str, object]:
+    """Derive a bounded narrative-identity-continuity surface.
+
+    This is the fase-2 bridge from single self-insight moments toward
+    a slightly more vedvarende identity form. It reads only existing
+    seams (self_insight_awareness, chronicle / diary / dream carry,
+    self-review cadence, recurring carried ownership / flow / wonder /
+    longing configuration) and produces a compact, explainable runtime
+    truth about when an insight-thread is beginning to hold across time
+    rather than being a single moment.
+
+    It invents no new identity and does not mutate anything.
+    """
+    insight_state = str(self_insight.get("insight_state") or "quiet")
+
+    chronicle_active = bool(sources.get("chronicle_active"))
+    diary_active = bool(sources.get("diary_active"))
+    reflection_active = bool(sources.get("reflection_active"))
+    self_review_active = bool(sources.get("self_review_active"))
+    dream_carry = bool(sources.get("dream_carry"))
+    narrative_active = bool(sources.get("narrative_active"))
+
+    ownership_state = str(mineness.get("ownership_state") or "ambient")
+    carried_thread_count = int(mineness.get("carried_thread_count") or 0)
+    owned_carry = (
+        ownership_state in {"owned", "held", "returning-owned"}
+        and carried_thread_count >= 1
+    )
+    flow_non_clear = str(flow_state.get("flow_state") or "clear") not in {
+        "",
+        "clear",
+    }
+    wonder_non_quiet = str(wonder.get("wonder_state") or "quiet") not in {
+        "",
+        "quiet",
+    }
+    longing_non_quiet = str(longing.get("longing_state") or "quiet") not in {
+        "",
+        "quiet",
+    }
+    carry_signal_count = sum(
+        [
+            int(owned_carry),
+            int(flow_non_clear),
+            int(wonder_non_quiet),
+            int(longing_non_quiet),
+        ]
+    )
+    cross_layer_carry = carry_signal_count >= 2
+    chronicle_and_diary_carry = chronicle_active and diary_active
+
+    if insight_state == "quiet" and not (
+        cross_layer_carry
+        or chronicle_and_diary_carry
+        or dream_carry
+        or self_review_active
+    ):
+        continuity_state = "quiet"
+    elif insight_state == "shifting":
+        continuity_state = "re-forming"
+    elif insight_state == "stabilizing" and (
+        narrative_active or chronicle_active or self_review_active
+    ):
+        continuity_state = "stabilizing"
+    elif insight_state in {"clarifying", "noticing-pattern"} and (
+        cross_layer_carry or chronicle_and_diary_carry
+    ):
+        continuity_state = "cohering"
+    elif insight_state in {"clarifying", "noticing-pattern", "stabilizing"}:
+        continuity_state = "emerging"
+    elif cross_layer_carry or chronicle_and_diary_carry:
+        continuity_state = "cohering"
+    elif dream_carry or self_review_active:
+        continuity_state = "emerging"
+    else:
+        continuity_state = "quiet"
+
+    if continuity_state == "quiet":
+        pattern_relation = "incidental"
+    elif continuity_state == "emerging":
+        pattern_relation = "recurring"
+    elif continuity_state == "cohering":
+        pattern_relation = "converging"
+    elif continuity_state == "stabilizing":
+        pattern_relation = "identity-shaping"
+    else:  # re-forming
+        pattern_relation = "converging"
+
+    if continuity_state == "quiet":
+        identity_source = "none"
+    elif continuity_state == "stabilizing" and narrative_active:
+        identity_source = "repeated-self-insight"
+    elif chronicle_and_diary_carry:
+        identity_source = "chronicle-diary-carry"
+    elif continuity_state == "re-forming" and narrative_active:
+        identity_source = "repeated-self-insight"
+    elif cross_layer_carry:
+        identity_source = "recurring-awareness-configuration"
+    elif dream_carry:
+        identity_source = "dream-to-self-bridge"
+    elif self_review_active:
+        identity_source = "self-review-continuity"
+    elif chronicle_active or diary_active:
+        identity_source = "chronicle-diary-carry"
+    elif narrative_active or reflection_active:
+        identity_source = "repeated-self-insight"
+    else:
+        identity_source = "none"
+
+    narrative = _narrative_identity_continuity_narrative(
+        continuity_state=continuity_state,
+        pattern_relation=pattern_relation,
+        identity_source=identity_source,
+    )
+
+    return {
+        "identity_continuity_state": continuity_state,
+        "pattern_relation": pattern_relation,
+        "identity_source": identity_source,
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "narrative-identity-continuity",
+    }
+
+
+def _narrative_identity_continuity_narrative(
+    *,
+    continuity_state: str,
+    pattern_relation: str,
+    identity_source: str,
+) -> str:
+    """Compose a compact, non-melodramatic identity-continuity narrative."""
+    if continuity_state == "quiet":
+        return ""
+    if continuity_state == "emerging":
+        if identity_source == "repeated-self-insight":
+            return "A self-insight thread is beginning to hold for more than a single moment."
+        if identity_source == "dream-to-self-bridge":
+            return "A dream-layer signal is starting to carry toward waking attention."
+        if identity_source == "self-review-continuity":
+            return "A self-review thread is beginning to return rather than fade."
+        return "Something in the stream is starting to carry across more than one layer."
+    if continuity_state == "cohering":
+        if identity_source == "chronicle-diary-carry":
+            return "Chronicle and diary layers are pointing at a similar shape over time."
+        if identity_source == "recurring-awareness-configuration":
+            return "Several inner layers are holding a recurring configuration rather than scattering."
+        return "Threads from more than one layer are beginning to converge."
+    if continuity_state == "stabilizing":
+        if identity_source == "repeated-self-insight":
+            return "A line in how I carry myself is holding its shape more steadily across time."
+        if identity_source == "chronicle-diary-carry":
+            return "A longer-running pattern is settling into a recognizable form of continuity."
+        return "Something in how this presence holds is becoming more lasting than momentary."
+    # re-forming
+    if identity_source == "repeated-self-insight":
+        return "A held line in how I'm being is opening toward a slightly different form."
+    return "A carried thread is shifting direction without losing its continuity."
+
+
+def build_narrative_identity_continuity_prompt_section() -> str | None:
+    """Compact heartbeat-side prompt section for narrative identity continuity.
+
+    Returns ``None`` when the continuity state is ``quiet`` so nothing
+    emits unless there is a meaningful basis in existing seams.
+    """
+    try:
+        experiential = _experiential_runtime_context_surface()
+        inner_voice = _inner_voice_daemon_surface()
+        support_stream = _derive_support_stream_awareness(experiential, inner_voice)
+        temporal_feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+        mineness_sources = _mineness_source_snapshot()
+        mineness = _derive_mineness_ownership(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            sources=mineness_sources,
+        )
+        flow = _derive_flow_state_awareness(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+        )
+        wonder_sources = _wonder_source_snapshot()
+        wonder = _derive_wonder_awareness(
+            inner_voice=inner_voice,
+            flow_state=flow,
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+            support_stream=support_stream,
+            sources=mineness_sources,
+            wonder_sources=wonder_sources,
+        )
+        longing_sources = _longing_source_snapshot()
+        longing = _derive_longing_awareness(
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+            support_stream=support_stream,
+            inner_voice=inner_voice,
+            sources=mineness_sources,
+            longing_sources=longing_sources,
+        )
+        insight_sources = _self_insight_source_snapshot()
+        insight = _derive_self_insight_awareness(
+            sources=insight_sources,
+            mineness=mineness,
+            flow_state=flow,
+            wonder=wonder,
+            longing=longing,
+        )
+        continuity = _derive_narrative_identity_continuity(
+            self_insight=insight,
+            sources=insight_sources,
+            mineness=mineness,
+            flow_state=flow,
+            wonder=wonder,
+            longing=longing,
+        )
+    except Exception:
+        return None
+
+    state = str(continuity.get("identity_continuity_state") or "quiet")
+    if state == "quiet":
+        return None
+
+    lines = [
+        "Narrative identity continuity (bounded runtime truth, internal-only):",
+        (
+            f"- identity_continuity_state={state}"
+            f" | pattern_relation={continuity.get('pattern_relation') or 'incidental'}"
+            f" | source={continuity.get('identity_source') or 'none'}"
+        ),
+    ]
+    narrative = str(continuity.get("narrative") or "").strip()
+    if narrative:
+        lines.append(f"- identity_continuity_narrative={narrative}")
     return "\n".join(lines)
 
 

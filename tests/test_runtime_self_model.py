@@ -1974,6 +1974,223 @@ def test_self_insight_prompt_line_hidden_when_quiet(isolated_runtime) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Narrative identity continuity (bounded fase-2 continuity bridge)
+# ---------------------------------------------------------------------------
+
+
+def _identity_continuity_inputs(
+    *,
+    insight_state: str = "quiet",
+    narrative_active: bool = False,
+    chronicle_active: bool = False,
+    diary_active: bool = False,
+    reflection_active: bool = False,
+    self_review_active: bool = False,
+    dream_carry: bool = False,
+    ownership_state: str = "ambient",
+    carried_thread_count: int = 0,
+    flow_state: str = "clear",
+    wonder_state: str = "quiet",
+    longing_state: str = "quiet",
+) -> tuple[dict, dict, dict, dict, dict, dict]:
+    self_insight = {"insight_state": insight_state}
+    sources = {
+        "narrative_active": narrative_active,
+        "narrative_state": "none",
+        "narrative_direction": "steadying",
+        "narrative_weight": "low",
+        "chronicle_active": chronicle_active,
+        "chronicle_weight": "low",
+        "chronicle_confidence": "low",
+        "diary_active": diary_active,
+        "diary_state": "none",
+        "reflection_active": reflection_active,
+        "reflection_depth": 0,
+        "self_review_active": self_review_active,
+        "dream_carry": dream_carry,
+    }
+    mineness = {
+        "ownership_state": ownership_state,
+        "carried_thread_count": carried_thread_count,
+    }
+    flow = {"flow_state": flow_state}
+    wonder = {"wonder_state": wonder_state}
+    longing = {"longing_state": longing_state}
+    return self_insight, sources, mineness, flow, wonder, longing
+
+
+def test_self_model_includes_narrative_identity_continuity(isolated_runtime) -> None:
+    """Self-model must expose a bounded narrative_identity_continuity surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "narrative_identity_continuity" in model
+    continuity = model["narrative_identity_continuity"]
+    assert "identity_continuity_state" in continuity
+    assert "pattern_relation" in continuity
+    assert "identity_source" in continuity
+    assert "narrative" in continuity
+    assert continuity["authority"] == "derived-runtime-truth"
+    assert continuity["visibility"] == "internal-only"
+    assert continuity["kind"] == "narrative-identity-continuity"
+    assert continuity["identity_continuity_state"] in {
+        "quiet",
+        "emerging",
+        "cohering",
+        "stabilizing",
+        "re-forming",
+    }
+    assert continuity["pattern_relation"] in {
+        "incidental",
+        "recurring",
+        "converging",
+        "identity-shaping",
+    }
+    assert continuity["identity_source"] in {
+        "none",
+        "repeated-self-insight",
+        "chronicle-diary-carry",
+        "dream-to-self-bridge",
+        "recurring-awareness-configuration",
+        "self-review-continuity",
+    }
+
+
+def test_identity_continuity_quiet_when_no_basis() -> None:
+    """No insight and no carry signals should keep identity continuity quiet."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_narrative_identity_continuity,
+    )
+
+    si, src, mn, fl, wn, lg = _identity_continuity_inputs()
+    continuity = _derive_narrative_identity_continuity(
+        self_insight=si,
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert continuity["identity_continuity_state"] == "quiet"
+    assert continuity["pattern_relation"] == "incidental"
+    assert continuity["identity_source"] == "none"
+    assert continuity["narrative"] == ""
+
+
+def test_identity_continuity_emerging_when_single_bridge() -> None:
+    """A single self-insight noticing-pattern without cross-layer carry should emerge only."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_narrative_identity_continuity,
+    )
+
+    si, src, mn, fl, wn, lg = _identity_continuity_inputs(
+        insight_state="noticing-pattern",
+    )
+    continuity = _derive_narrative_identity_continuity(
+        self_insight=si,
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert continuity["identity_continuity_state"] == "emerging"
+    assert continuity["pattern_relation"] == "recurring"
+    assert continuity["narrative"] != ""
+
+
+def test_identity_continuity_cohering_when_cross_layer_carry() -> None:
+    """Insight clarifying plus cross-layer carry should cohere into converging."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_narrative_identity_continuity,
+    )
+
+    si, src, mn, fl, wn, lg = _identity_continuity_inputs(
+        insight_state="clarifying",
+        ownership_state="owned",
+        carried_thread_count=2,
+        longing_state="missing",
+    )
+    continuity = _derive_narrative_identity_continuity(
+        self_insight=si,
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert continuity["identity_continuity_state"] == "cohering"
+    assert continuity["pattern_relation"] == "converging"
+    assert continuity["identity_source"] == "recurring-awareness-configuration"
+    assert continuity["narrative"] != ""
+
+
+def test_identity_continuity_stabilizing_when_insight_stabilizing_and_narrative() -> None:
+    """Insight stabilizing plus active narrative should promote to identity-shaping."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_narrative_identity_continuity,
+    )
+
+    si, src, mn, fl, wn, lg = _identity_continuity_inputs(
+        insight_state="stabilizing",
+        narrative_active=True,
+    )
+    continuity = _derive_narrative_identity_continuity(
+        self_insight=si,
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert continuity["identity_continuity_state"] == "stabilizing"
+    assert continuity["pattern_relation"] == "identity-shaping"
+    assert continuity["identity_source"] == "repeated-self-insight"
+    assert continuity["narrative"] != ""
+
+
+def test_identity_continuity_re_forming_when_insight_shifts() -> None:
+    """Insight shifting should reshape continuity into re-forming."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_narrative_identity_continuity,
+    )
+
+    si, src, mn, fl, wn, lg = _identity_continuity_inputs(
+        insight_state="shifting",
+        narrative_active=True,
+    )
+    continuity = _derive_narrative_identity_continuity(
+        self_insight=si,
+        sources=src,
+        mineness=mn,
+        flow_state=fl,
+        wonder=wn,
+        longing=lg,
+    )
+    assert continuity["identity_continuity_state"] == "re-forming"
+    assert continuity["pattern_relation"] == "converging"
+    assert continuity["identity_source"] == "repeated-self-insight"
+    assert continuity["narrative"] != ""
+
+
+def test_identity_continuity_prompt_section_none_when_quiet(isolated_runtime) -> None:
+    """Narrative-identity-continuity prompt section must return None in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    section = model_mod.build_narrative_identity_continuity_prompt_section()
+    assert section is None or "identity_continuity_state=quiet" not in section
+
+
+def test_identity_continuity_prompt_line_hidden_when_quiet(isolated_runtime) -> None:
+    """Narrative-identity-continuity prompt line must not emit in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    if "narrative_identity_continuity:" in joined:
+        assert "state=quiet" not in joined
+
+
+# ---------------------------------------------------------------------------
 # Absence awareness repair
 # ---------------------------------------------------------------------------
 

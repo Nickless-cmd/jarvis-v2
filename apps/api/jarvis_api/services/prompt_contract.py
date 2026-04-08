@@ -2370,6 +2370,18 @@ def _heartbeat_self_knowledge_section() -> str | None:
         )
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_narrative_identity_continuity_prompt_section,
+        )
+
+        _append_entry(
+            key="identity-continuity",
+            section=build_narrative_identity_continuity_prompt_section(),
+            importance="background",
+        )
+    except Exception:
+        pass
     if not entries:
         return None
 
@@ -2391,6 +2403,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
     wonder = model.get("wonder_awareness") or {}
     longing = model.get("longing_awareness") or {}
     self_insight = model.get("self_insight_awareness") or {}
+    identity_continuity = model.get("narrative_identity_continuity") or {}
 
     primary_dynamic = any(
         (
@@ -2423,6 +2436,12 @@ def _heartbeat_self_knowledge_section() -> str | None:
         "stabilizing",
         "shifting",
     }
+    identity_continuity_foreground = str(
+        identity_continuity.get("identity_continuity_state") or "quiet"
+    ) in {
+        "stabilizing",
+        "re-forming",
+    }
 
     for entry in entries:
         if entry["key"] == "wonder" and wonder_foreground:
@@ -2430,6 +2449,8 @@ def _heartbeat_self_knowledge_section() -> str | None:
         elif entry["key"] == "longing" and longing_foreground:
             entry["importance"] = "foreground"
         elif entry["key"] == "self-insight" and self_insight_foreground:
+            entry["importance"] = "foreground"
+        elif entry["key"] == "identity-continuity" and identity_continuity_foreground:
             entry["importance"] = "foreground"
 
     foreground_sections = [

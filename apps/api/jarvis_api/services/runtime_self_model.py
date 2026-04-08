@@ -2672,7 +2672,7 @@ def _longing_source_snapshot() -> dict[str, object]:
 
     absence_active = False
     idle_hours = 0.0
-    return_brief_present = False
+    return_context_present = False
     try:
         from apps.api.jarvis_api.services.absence_awareness import (
             build_absence_awareness_surface,
@@ -2681,8 +2681,12 @@ def _longing_source_snapshot() -> dict[str, object]:
         absence = build_absence_awareness_surface()
         idle_hours = float(absence.get("idle_hours") or 0.0)
         threshold = float(absence.get("threshold_hours") or 0.0)
-        return_brief_present = bool(absence.get("return_brief"))
-        absence_active = idle_hours >= threshold and threshold > 0
+        return_context_present = bool(absence.get("return_context")) and bool(
+            absence.get("return_brief")
+        )
+        absence_active = bool(absence.get("absence_active")) or (
+            idle_hours >= threshold and threshold > 0
+        )
     except Exception:
         pass
 
@@ -2695,7 +2699,7 @@ def _longing_source_snapshot() -> dict[str, object]:
         "relation_signal": relation_signal,
         "absence_active": absence_active,
         "idle_hours": idle_hours,
-        "return_brief_present": return_brief_present,
+        "return_context_present": return_context_present,
     }
 
 

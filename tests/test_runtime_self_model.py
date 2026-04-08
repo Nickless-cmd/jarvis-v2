@@ -1640,3 +1640,75 @@ def test_heartbeat_self_knowledge_section_includes_longing_awareness(
     section = prompt_contract._heartbeat_self_knowledge_section()
     assert section is not None
     assert "longing_state=missing" in section
+
+
+# ---------------------------------------------------------------------------
+# Absence awareness repair
+# ---------------------------------------------------------------------------
+
+
+def test_absence_awareness_is_structural_runtime_context(monkeypatch) -> None:
+    """Absence awareness should expose structural return context, not felt absence."""
+    from apps.api.jarvis_api.services import absence_awareness as absence_mod
+
+    monkeypatch.setattr(
+        absence_mod,
+        "recent_visible_runs",
+        lambda limit=1: [
+            {
+                "text_preview": "Vi var ved at stramme continuity-laget omkring returnering.",
+                "finished_at": "2026-04-08T08:00:00+00:00",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        absence_mod,
+        "get_latest_cognitive_compass_state",
+        lambda: {"bearing": "Fortsæt den bounded repair uden broad refactor."},
+    )
+    monkeypatch.setattr(
+        absence_mod,
+        "list_cognitive_seeds",
+        lambda status="sprouted", limit=3: [{"title": "Repair stale seam"}],
+    )
+
+    surface = absence_mod.build_absence_awareness_surface()
+
+    assert surface["kind"] == "absence-awareness"
+    assert surface["authority"] == "runtime-context"
+    assert surface["visibility"] == "internal-only"
+    assert surface["interpretation_boundary"] == "structural-return-context-only"
+    assert surface["affective_handoff"] == "longing-awareness"
+    assert "return_context" in surface
+
+
+def test_return_brief_is_signal_grounded_without_hardcoded_feeling_prose(monkeypatch) -> None:
+    """Return brief should stay neutral and source-led."""
+    from apps.api.jarvis_api.services import absence_awareness as absence_mod
+
+    monkeypatch.setattr(
+        absence_mod,
+        "recent_visible_runs",
+        lambda limit=1: [{"text_preview": "Working on absence-awareness repair"}],
+    )
+    monkeypatch.setattr(
+        absence_mod,
+        "get_latest_cognitive_compass_state",
+        lambda: {"bearing": "Align absence with phase-1 runtime principles"},
+    )
+    monkeypatch.setattr(
+        absence_mod,
+        "list_cognitive_seeds",
+        lambda status="sprouted", limit=3: [{"title": "Longing handoff"}],
+    )
+
+    brief = absence_mod.build_return_brief(idle_hours=24.0)
+
+    assert brief is not None
+    assert "Retur-kontekst efter 24t væk." in brief
+    assert "Sidste aktive tråd: Working on absence-awareness repair" in brief
+    assert "Retning stadig i carry: Align absence with phase-1 runtime principles" in brief
+    assert "Klar til genoptagelse: Longing handoff" in brief
+    assert "Stilheden har været mærkbar" not in brief
+    assert "savnet at arbejde sammen" not in brief
+    assert "Den samtale vi havde sidder stadig i dig" not in brief

@@ -507,7 +507,7 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
         return None
 
     mode = requested_mode or _select_inner_voice_mode(grounding, thought=thought)
-    focus = _derive_inner_voice_focus(grounding, thought=thought)
+    focus = _derive_inner_voice_focus(grounding, mode=mode, thought=thought)
     initiative = _normalize_inner_voice_initiative(
         initiative,
         grounding=grounding,
@@ -549,12 +549,52 @@ def _apply_support_shading(
         return base_mode
 
     _BIAS_MODE_MAP = {
-        "protect_focus": "work-steady",
+        "protect_focus": "carrying",
         "stabilize_thread": "carrying",
         "reopen_context": "circling",
         "reduce_spread": "witness-steady",
     }
     return _BIAS_MODE_MAP.get(support_bias, base_mode)
+
+
+def _has_living_candidate_pull(
+    fragments: dict[str, str],
+    *,
+    continuity_state: str,
+    initiative_shading: str,
+    thought: str,
+) -> bool:
+    lowered = str(thought or "").strip().lower()
+    attentional_posture = str(fragments.get("experiential_attentional_posture") or "")
+    cognitive_bearing = str(fragments.get("experiential_cognitive_bearing") or "")
+    has_private_carry = bool(
+        fragments.get("brain_continuity")
+        or fragments.get("brain_top_focus")
+        or fragments.get("witness_signal")
+        or fragments.get("experiential_continuity_narrative")
+    )
+    exploratory_language = any(
+        token in lowered
+        for token in (
+            "curious",
+            "unclear",
+            "not sure",
+            "can't tell",
+            "cannot tell",
+            "half-formed",
+            "edge of",
+            "maybe",
+            "not resolved",
+            "not settled",
+        )
+    )
+    shaded_for_carry = initiative_shading in {"hesitant", "returning", "burdened"}
+    continuity_carry = continuity_state in {"lingering", "returning", "shifted", "easing"}
+    posture_carry = attentional_posture in {"guarded", "opening"}
+    bearing_carry = cognitive_bearing in {"loaded", "pressured", "heavy"}
+    return exploratory_language or (
+        has_private_carry and (shaded_for_carry or continuity_carry or posture_carry or bearing_carry)
+    )
 
 
 def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
@@ -566,7 +606,7 @@ def _deterministic_compose(grounding: dict[str, object]) -> dict[str, object]:
     sources = grounding.get("sources") or []
 
     mode = _select_inner_voice_mode(grounding)
-    focus = _derive_inner_voice_focus(grounding)
+    focus = _derive_inner_voice_focus(grounding, mode=mode)
     thought = _compose_living_inner_voice_thought(mode=mode, fragments=fragments, focus=focus)
     initiative = _normalize_inner_voice_initiative(
         None,
@@ -611,14 +651,25 @@ def _select_inner_voice_mode(
     has_conflict = bool(fragments.get("conflict_outcome") or fragments.get("conflict_reason"))
     has_focus = bool(fragments.get("dev_focus"))
     has_salient = bool(fragments.get("salient_top"))
+    has_living_pull = _has_living_candidate_pull(
+        fragments,
+        continuity_state=continuity_state,
+        initiative_shading=initiative_shading,
+        thought=thought,
+    )
 
     if has_conflict or conductor_mode == "clarify":
         base_mode = "pulled"
-    elif initiative_shading in {"hesitant", "returning"} and (has_salient or has_open_loop):
+    elif has_brain and has_living_pull:
+        base_mode = "carrying"
+    elif has_living_pull and (has_salient or has_open_loop or has_witness):
         base_mode = "circling"
     elif has_brain and not has_open_loop and not has_focus:
         base_mode = "carrying"
-    elif any(token in lowered for token in ("curious", "unclear", "not sure", "can't tell", "cannot tell", "half-formed", "edge of")):
+    elif any(
+        token in lowered
+        for token in ("curious", "unclear", "not sure", "can't tell", "cannot tell", "half-formed", "edge of")
+    ):
         base_mode = "searching"
     elif continuity_state in {"returning", "lingering"} and not has_open_loop:
         base_mode = "searching"
@@ -637,19 +688,34 @@ def _select_inner_voice_mode(
 def _derive_inner_voice_focus(
     grounding: dict[str, object],
     *,
+    mode: str = "",
     thought: str = "",
 ) -> str:
     fragments = grounding.get("fragments") or {}
-    focus = (
-        fragments.get("salient_top")
-        or fragments.get("brain_top_focus")
-        or fragments.get("open_loop_signal")
-        or fragments.get("dev_focus")
-        or fragments.get("witness_signal")
-        or fragments.get("personality_bearing")
-        or str(thought or "")[:120]
-        or "quiet moment"
-    )
+    if mode in {"searching", "circling", "carrying", "witness-steady"}:
+        focus = (
+            fragments.get("brain_top_focus")
+            or fragments.get("witness_signal")
+            or fragments.get("brain_continuity")
+            or fragments.get("experiential_continuity_narrative")
+            or fragments.get("open_loop_signal")
+            or fragments.get("salient_top")
+            or fragments.get("dev_focus")
+            or fragments.get("personality_bearing")
+            or str(thought or "")[:120]
+            or "quiet moment"
+        )
+    else:
+        focus = (
+            fragments.get("salient_top")
+            or fragments.get("open_loop_signal")
+            or fragments.get("dev_focus")
+            or fragments.get("brain_top_focus")
+            or fragments.get("witness_signal")
+            or fragments.get("personality_bearing")
+            or str(thought or "")[:120]
+            or "quiet moment"
+        )
     return str(focus)[:120]
 
 
@@ -670,7 +736,7 @@ def _compose_living_inner_voice_thought(
     elif mode == "pulled":
         first = f"There is a live pull around {anchor}, more like a pressure or question than an action I can justify yet."
     elif mode == "work-steady":
-        first = f"{anchor} is still the active thread, and I am holding it in view without forcing it into motion too quickly."
+        first = f"{anchor} is still the active thread, but it does not need to harden into a task just because it is still here."
     else:
         first = f"I am keeping light watch around {anchor}; nothing needs to harden into a move yet."
     return f"{first} {second}".strip()

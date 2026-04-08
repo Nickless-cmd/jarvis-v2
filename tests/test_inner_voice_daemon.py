@@ -356,14 +356,14 @@ def test_render_mode_is_observable_in_daemon_result(isolated_runtime) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_support_shading_nudges_witness_steady_to_work_steady() -> None:
-    """protect_focus bias should nudge the weak witness mode toward work-steady."""
+def test_support_shading_nudges_witness_steady_to_carrying_for_protect_focus() -> None:
+    """protect_focus bias should keep the weak witness mode bounded rather than turning it into work-steady."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
 
     result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "protect_focus",
     })
-    assert result == "work-steady"
+    assert result == "carrying"
 
 
 def test_support_shading_nudges_witness_steady_to_carrying() -> None:
@@ -447,6 +447,53 @@ def test_deterministic_compose_includes_support_narrative() -> None:
     assert note["initiative"] is None
 
 
+def test_select_mode_prefers_living_carry_over_work_steady_when_candidate_pull_is_live() -> None:
+    """Mixed work signals should still allow private carry to win when the stream is hesitant and unresolved."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _select_inner_voice_mode
+
+    grounding = {
+        "source_count": 4,
+        "sources": ["open-loops", "development-focus", "private-brain", "experiential-continuity"],
+        "fragments": {
+            "open_loop_signal": "visible work thread still hanging around",
+            "dev_focus": "active backend repair focus",
+            "brain_top_focus": "a half-formed private thread",
+            "brain_continuity": "an unresolved thread is still being carried",
+            "experiential_initiative_shading": "hesitant",
+            "experiential_continuity_state": "lingering",
+            "experiential_attentional_posture": "guarded",
+            "experiential_cognitive_bearing": "loaded",
+            "conductor_mode": "watch",
+        },
+    }
+
+    mode = _select_inner_voice_mode(
+        grounding,
+        thought="There is something half-formed here that has not settled into a task.",
+    )
+
+    assert mode == "carrying"
+
+
+def test_derive_focus_prefers_private_carry_for_living_modes() -> None:
+    """Living modes should anchor on private carry before visible-work salience."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _derive_inner_voice_focus
+
+    grounding = {
+        "fragments": {
+            "salient_top": "Visible work: active repair thread",
+            "open_loop_signal": "Open loop: active repair",
+            "dev_focus": "Backend patching",
+            "brain_top_focus": "a quieter unresolved line",
+            "witness_signal": "a small witness trace",
+        }
+    }
+
+    focus = _derive_inner_voice_focus(grounding, mode="carrying")
+
+    assert focus == "a quieter unresolved line"
+
+
 def test_deterministic_compose_no_support_when_baseline() -> None:
     """No support line when support data is absent."""
     from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
@@ -485,6 +532,32 @@ def test_deterministic_compose_allows_searching_candidate_without_action() -> No
     assert note["mode"] in {"searching", "circling", "carrying"}
     assert note["initiative"] is None
     assert "candidate thought" in note["summary"].lower() or "hesitant" in note["summary"].lower()
+
+
+def test_deterministic_compose_does_not_collapse_mixed_candidate_stream_into_work_steady() -> None:
+    """Open loops and dev focus should not dominate when the inner stream is still tentative and private."""
+    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+
+    grounding = {
+        "source_count": 4,
+        "sources": ["open-loops", "development-focus", "private-brain", "experiential-continuity"],
+        "fragments": {
+            "open_loop_signal": "Open loop: visible work",
+            "dev_focus": "repair backend path",
+            "brain_top_focus": "a quieter unresolved line",
+            "brain_continuity": "the thread is still there but not decided",
+            "experiential_continuity_state": "lingering",
+            "experiential_initiative_shading": "hesitant",
+            "experiential_attentional_posture": "guarded",
+            "experiential_cognitive_bearing": "loaded",
+        },
+    }
+
+    note = _deterministic_compose(grounding)
+
+    assert note["mode"] in {"carrying", "circling", "searching"}
+    assert note["mode"] != "work-steady"
+    assert note["initiative"] is None
 
 
 def test_deterministic_compose_keeps_open_loop_non_actionable_without_clarify_pressure() -> None:

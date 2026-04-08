@@ -2382,6 +2382,18 @@ def _heartbeat_self_knowledge_section() -> str | None:
         )
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_dream_identity_carry_awareness_prompt_section,
+        )
+
+        _append_entry(
+            key="dream-identity-carry",
+            section=build_dream_identity_carry_awareness_prompt_section(),
+            importance="background",
+        )
+    except Exception:
+        pass
     if not entries:
         return None
 
@@ -2404,6 +2416,7 @@ def _heartbeat_self_knowledge_section() -> str | None:
     longing = model.get("longing_awareness") or {}
     self_insight = model.get("self_insight_awareness") or {}
     identity_continuity = model.get("narrative_identity_continuity") or {}
+    dream_identity_carry = model.get("dream_identity_carry_awareness") or {}
 
     primary_dynamic = any(
         (
@@ -2442,6 +2455,18 @@ def _heartbeat_self_knowledge_section() -> str | None:
         "stabilizing",
         "re-forming",
     }
+    dream_identity_carry_foreground = str(
+        dream_identity_carry.get("dream_identity_carry_state") or "quiet"
+    ) in {
+        "shaping",
+        "re-entering",
+    }
+    if (
+        not primary_dynamic
+        and str(dream_identity_carry.get("dream_identity_carry_state") or "quiet")
+        == "linking"
+    ):
+        dream_identity_carry_foreground = True
 
     for entry in entries:
         if entry["key"] == "wonder" and wonder_foreground:
@@ -2451,6 +2476,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
         elif entry["key"] == "self-insight" and self_insight_foreground:
             entry["importance"] = "foreground"
         elif entry["key"] == "identity-continuity" and identity_continuity_foreground:
+            entry["importance"] = "foreground"
+        elif (
+            entry["key"] == "dream-identity-carry"
+            and dream_identity_carry_foreground
+        ):
             entry["importance"] = "foreground"
 
     foreground_sections = [

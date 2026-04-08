@@ -36,6 +36,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "support_stream_awareness" in model
     assert "subjective_temporal_feel" in model
     assert "longing_awareness" in model
+    assert "dream_identity_carry_awareness" in model
     assert "epistemic_runtime_state" in model
     assert "subagent_ecology" in model
     assert "council_runtime" in model
@@ -1749,6 +1750,239 @@ def test_heartbeat_self_knowledge_can_foreground_secondary_awareness_when_primar
     assert "Foreground runtime truths:" in section
     assert "Wonder awareness (bounded runtime truth, internal-only):" in section
     assert "Longing awareness (bounded runtime truth, internal-only):" in section
+
+
+# ---------------------------------------------------------------------------
+# Dream carry identity shaping (bounded phase-2 bridge)
+# ---------------------------------------------------------------------------
+
+
+def _dream_identity_carry_inputs(
+    *,
+    insight_state: str = "quiet",
+    continuity_state: str = "quiet",
+    narrative_active: bool = False,
+    chronicle_active: bool = False,
+    diary_active: bool = False,
+    dream_state: str = "idle",
+    influence_state: str = "quiet",
+    influence_target: str = "none",
+    influence_strength: str = "none",
+) -> tuple[dict, dict, dict, dict]:
+    self_insight = {"insight_state": insight_state}
+    identity_continuity = {"identity_continuity_state": continuity_state}
+    sources = {
+        "narrative_active": narrative_active,
+        "chronicle_active": chronicle_active,
+        "diary_active": diary_active,
+    }
+    dream_influence = {
+        "influence_state": influence_state,
+        "influence_target": influence_target,
+        "influence_strength": influence_strength,
+    }
+    dream_articulation = {"summary": {"last_state": dream_state}}
+    return self_insight, identity_continuity, sources, dream_influence, dream_articulation
+
+
+def test_self_model_includes_dream_identity_carry_awareness(isolated_runtime) -> None:
+    """Self-model must expose a bounded dream_identity_carry_awareness surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "dream_identity_carry_awareness" in model
+    carry = model["dream_identity_carry_awareness"]
+    assert "dream_identity_carry_state" in carry
+    assert "dream_self_relation" in carry
+    assert "dream_identity_source" in carry
+    assert "narrative" in carry
+    assert carry["authority"] == "derived-runtime-truth"
+    assert carry["visibility"] == "internal-only"
+    assert carry["kind"] == "dream-identity-carry-awareness"
+    assert carry["dream_identity_carry_state"] in {
+        "quiet",
+        "lingering",
+        "linking",
+        "shaping",
+        "re-entering",
+    }
+    assert carry["dream_self_relation"] in {
+        "incidental",
+        "still-present",
+        "self-linking",
+        "identity-shaping",
+    }
+    assert carry["dream_identity_source"] in {
+        "none",
+        "dream-articulation-continuity",
+        "dream-self-insight-bridge",
+        "chronicle-diary-resonance",
+        "recurring-dream-to-self-pattern",
+        "identity-continuity-reinforcement",
+    }
+
+
+def test_dream_identity_carry_quiet_when_no_dream_basis() -> None:
+    """Without dream presence or influence, the bridge must stay quiet."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_dream_identity_carry_awareness,
+    )
+
+    si, ic, src, influence, dream = _dream_identity_carry_inputs()
+    carry = _derive_dream_identity_carry_awareness(
+        self_insight=si,
+        identity_continuity=ic,
+        sources=src,
+        dream_influence=influence,
+        dream_articulation=dream,
+    )
+    assert carry["dream_identity_carry_state"] == "quiet"
+    assert carry["dream_self_relation"] == "incidental"
+    assert carry["dream_identity_source"] == "none"
+    assert carry["narrative"] == ""
+
+
+def test_dream_identity_carry_links_when_dream_meets_self_insight() -> None:
+    """Dream carry should register as linking when it joins an active self-insight line."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_dream_identity_carry_awareness,
+    )
+
+    si, ic, src, influence, dream = _dream_identity_carry_inputs(
+        insight_state="clarifying",
+        dream_state="forming",
+        influence_state="present",
+        influence_target="learning",
+        influence_strength="low",
+    )
+    carry = _derive_dream_identity_carry_awareness(
+        self_insight=si,
+        identity_continuity=ic,
+        sources=src,
+        dream_influence=influence,
+        dream_articulation=dream,
+    )
+    assert carry["dream_identity_carry_state"] == "linking"
+    assert carry["dream_self_relation"] == "self-linking"
+    assert carry["dream_identity_source"] == "dream-self-insight-bridge"
+    assert carry["narrative"] != ""
+
+
+def test_dream_identity_carry_shapes_when_dream_reinforces_identity_continuity() -> None:
+    """Strong dream carry should register as shaping when identity continuity already holds."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_dream_identity_carry_awareness,
+    )
+
+    si, ic, src, influence, dream = _dream_identity_carry_inputs(
+        insight_state="stabilizing",
+        continuity_state="stabilizing",
+        narrative_active=True,
+        dream_state="pressing",
+        influence_state="active",
+        influence_target="learning",
+        influence_strength="medium",
+    )
+    carry = _derive_dream_identity_carry_awareness(
+        self_insight=si,
+        identity_continuity=ic,
+        sources=src,
+        dream_influence=influence,
+        dream_articulation=dream,
+    )
+    assert carry["dream_identity_carry_state"] == "shaping"
+    assert carry["dream_self_relation"] == "identity-shaping"
+    assert carry["dream_identity_source"] == "identity-continuity-reinforcement"
+    assert carry["narrative"] != ""
+
+
+def test_dream_identity_carry_prompt_section_none_when_quiet(isolated_runtime) -> None:
+    """Dream identity carry prompt section must return None in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    section = model_mod.build_dream_identity_carry_awareness_prompt_section()
+    assert section is None or "dream_identity_carry_state=quiet" not in section
+
+
+def test_dream_identity_carry_prompt_line_hidden_when_quiet(isolated_runtime) -> None:
+    """Dream identity carry prompt line must not emit in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    if "dream_identity_carry_awareness:" in joined:
+        assert "state=quiet" not in joined
+
+
+def test_heartbeat_self_knowledge_section_includes_dream_identity_carry_awareness(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """Heartbeat self-knowledge section should carry dream identity shaping when present."""
+    prompt_contract = isolated_runtime.prompt_contract
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_dream_identity_carry_awareness_prompt_section",
+        lambda: (
+            "Dream carry identity shaping (bounded runtime truth, internal-only):\n"
+            "- dream_identity_carry_state=linking | self_relation=self-linking | source=dream-self-insight-bridge"
+        ),
+    )
+
+    section = prompt_contract._heartbeat_self_knowledge_section()
+    assert section is not None
+    assert "dream_identity_carry_state=linking" in section
+
+
+def test_heartbeat_self_knowledge_backgrounds_dream_identity_carry_when_primary_is_active(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """Dream identity carry should recede when stronger primary runtime motion is active."""
+    prompt_contract = isolated_runtime.prompt_contract
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_runtime_self_model",
+        lambda: {
+            "experiential_runtime_context": {
+                "experiential_continuity": {"continuity_state": "lingering"},
+                "experiential_influence": {"initiative_shading": "hesitant"},
+                "experiential_support": {"support_posture": "holding-open"},
+                "context_pressure_translation": {"state": "narrowing"},
+            },
+            "mineness_ownership": {"ownership_state": "ambient"},
+            "flow_state_awareness": {"flow_state": "clear"},
+            "wonder_awareness": {"wonder_state": "quiet"},
+            "longing_awareness": {"longing_state": "quiet"},
+            "self_insight_awareness": {"insight_state": "clarifying"},
+            "narrative_identity_continuity": {"identity_continuity_state": "emerging"},
+            "dream_identity_carry_awareness": {
+                "dream_identity_carry_state": "linking"
+            },
+        },
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_dream_identity_carry_awareness_prompt_section",
+        lambda: (
+            "Dream carry identity shaping (bounded runtime truth, internal-only):\n"
+            "- dream_identity_carry_state=linking | self_relation=self-linking | source=dream-self-insight-bridge\n"
+            "- dream_identity_carry_narrative=A dream-carried strand is linking up with an active self-insight thread."
+        ),
+    )
+
+    section = prompt_contract._heartbeat_self_knowledge_section()
+
+    assert section is not None
+    assert "Background runtime truths:" in section
+    assert (
+        "- Dream carry identity shaping: dream_identity_carry_state=linking | self_relation=self-linking | source=dream-self-insight-bridge"
+        in section
+    )
+    assert "Dream carry identity shaping (bounded runtime truth, internal-only):" not in section
 
 
 # ---------------------------------------------------------------------------

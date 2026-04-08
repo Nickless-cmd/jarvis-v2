@@ -2276,6 +2276,16 @@ def _heartbeat_self_knowledge_section() -> str | None:
             parts.append(runtime_resource)
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_mineness_ownership_prompt_section,
+        )
+
+        mineness = build_mineness_ownership_prompt_section()
+        if mineness:
+            parts.append(mineness)
+    except Exception:
+        pass
     if not parts:
         return None
     return "\n".join(parts)

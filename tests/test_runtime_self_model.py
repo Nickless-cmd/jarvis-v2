@@ -659,3 +659,206 @@ def test_temporal_feel_prompt_line_only_when_non_immediate(isolated_runtime) -> 
     # so temporal_feel line should NOT appear (unless held)
     if "temporal_feel:" in joined:
         assert "state=immediate" not in joined or "proximity=held" in joined
+
+
+# ---------------------------------------------------------------------------
+# 15. Mineness / ownership awareness
+# ---------------------------------------------------------------------------
+
+
+def test_self_model_includes_mineness_ownership(isolated_runtime) -> None:
+    """Self-model must expose a bounded mineness_ownership surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "mineness_ownership" in model
+    mineness = model["mineness_ownership"]
+    assert "ownership_state" in mineness
+    assert "self_relevance" in mineness
+    assert "carried_thread_state" in mineness
+    assert "carried_thread_count" in mineness
+    assert "return_ownership" in mineness
+    assert "narrative" in mineness
+    assert mineness["authority"] == "derived-runtime-truth"
+    assert mineness["visibility"] == "internal-only"
+    assert mineness["kind"] == "mineness-ownership"
+    assert mineness["ownership_state"] in {
+        "ambient",
+        "held",
+        "owned",
+        "returning-owned",
+    }
+    assert mineness["self_relevance"] in {
+        "merely-present",
+        "actively-carried",
+        "personally-salient",
+        "resumed-own",
+    }
+    assert mineness["carried_thread_state"] in {
+        "none",
+        "single",
+        "multiple",
+        "returning",
+    }
+
+
+def test_mineness_ambient_when_no_basis() -> None:
+    """Ownership stays ambient with empty narrative when nothing is carried."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_mineness_ownership,
+    )
+
+    experiential = {"experiential_continuity": {"continuity_state": "stable"}}
+    inner_voice = {"last_result": None}
+    support_stream = {"stream_shaped": False, "active_support_posture": "none"}
+    temporal_feel = {"felt_proximity": "close", "return_signal": False}
+    sources = {
+        "brain_active": False,
+        "brain_record_count": 0,
+        "brain_top_focus": "",
+        "brain_continuity_summary": "",
+        "open_loop_open_count": 0,
+        "open_loop_signal": "",
+    }
+
+    mineness = _derive_mineness_ownership(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        sources=sources,
+    )
+    assert mineness["ownership_state"] == "ambient"
+    assert mineness["self_relevance"] == "merely-present"
+    assert mineness["carried_thread_state"] == "none"
+    assert mineness["carried_thread_count"] == 0
+    assert mineness["return_ownership"] is False
+    assert mineness["narrative"] == ""
+
+
+def test_mineness_held_when_support_shaped_voice() -> None:
+    """Ownership becomes 'held' when support/voice holds signals without full carry."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_mineness_ownership,
+    )
+
+    experiential = {"experiential_continuity": {"continuity_state": "stable"}}
+    inner_voice = {
+        "last_result": {"inner_voice_created": True, "mode": "witness-steady"}
+    }
+    support_stream = {
+        "stream_shaped": True,
+        "active_support_posture": "grounding",
+    }
+    temporal_feel = {"felt_proximity": "held", "return_signal": False}
+    sources = {
+        "brain_active": False,
+        "brain_record_count": 0,
+        "brain_top_focus": "",
+        "brain_continuity_summary": "",
+        "open_loop_open_count": 0,
+        "open_loop_signal": "",
+    }
+
+    mineness = _derive_mineness_ownership(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        sources=sources,
+    )
+    assert mineness["ownership_state"] == "held"
+    assert mineness["self_relevance"] == "actively-carried"
+    assert mineness["return_ownership"] is False
+    assert mineness["narrative"] != ""
+    assert "held" in mineness["narrative"].lower() or "present" in mineness["narrative"].lower()
+
+
+def test_mineness_owned_when_brain_carry_plus_signal() -> None:
+    """Ownership becomes 'owned' when private brain carries threads."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_mineness_ownership,
+    )
+
+    experiential = {"experiential_continuity": {"continuity_state": "stable"}}
+    inner_voice = {
+        "last_result": {"inner_voice_created": True, "mode": "carrying"}
+    }
+    support_stream = {"stream_shaped": False, "active_support_posture": "none"}
+    temporal_feel = {"felt_proximity": "close", "return_signal": False}
+    sources = {
+        "brain_active": True,
+        "brain_record_count": 3,
+        "brain_top_focus": "mineness ownership design",
+        "brain_continuity_summary": "Private brain carries 3 active records.",
+        "open_loop_open_count": 2,
+        "open_loop_signal": "finish mineness pass",
+    }
+
+    mineness = _derive_mineness_ownership(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        sources=sources,
+    )
+    assert mineness["ownership_state"] == "owned"
+    assert mineness["self_relevance"] == "personally-salient"
+    assert mineness["carried_thread_state"] == "multiple"
+    assert mineness["carried_thread_count"] == 3
+    assert mineness["return_ownership"] is False
+    assert "stream" in mineness["narrative"].lower() or "thread" in mineness["narrative"].lower()
+
+
+def test_mineness_returning_owned_when_carry_and_return() -> None:
+    """Ownership becomes 'returning-owned' when owned thread returns after gap."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_mineness_ownership,
+    )
+
+    experiential = {"experiential_continuity": {"continuity_state": "returning"}}
+    inner_voice = {
+        "last_result": {"inner_voice_created": True, "mode": "circling"}
+    }
+    support_stream = {"stream_shaped": False, "active_support_posture": "none"}
+    temporal_feel = {"felt_proximity": "resumed", "return_signal": True}
+    sources = {
+        "brain_active": True,
+        "brain_record_count": 2,
+        "brain_top_focus": "mineness pass",
+        "brain_continuity_summary": "Private brain carries 2 active records.",
+        "open_loop_open_count": 1,
+        "open_loop_signal": "resume mineness work",
+    }
+
+    mineness = _derive_mineness_ownership(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        sources=sources,
+    )
+    assert mineness["ownership_state"] == "returning-owned"
+    assert mineness["self_relevance"] == "resumed-own"
+    assert mineness["carried_thread_state"] == "returning"
+    assert mineness["return_ownership"] is True
+    assert "returning" in mineness["narrative"].lower() or "again" in mineness["narrative"].lower()
+
+
+def test_mineness_prompt_line_hidden_when_ambient(isolated_runtime) -> None:
+    """Mineness prompt line should not emit in ambient default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    # In isolated_runtime without real state, ownership should be ambient.
+    if "mineness_ownership:" in joined:
+        assert "state=ambient" not in joined
+
+
+def test_mineness_prompt_section_none_when_ambient(isolated_runtime) -> None:
+    """Heartbeat prompt section must return None in ambient default."""
+    model_mod = isolated_runtime.runtime_self_model
+    section = model_mod.build_mineness_ownership_prompt_section()
+    # In isolated_runtime the default should be ambient → no section emitted.
+    assert section is None or "ownership_state=ambient" not in section

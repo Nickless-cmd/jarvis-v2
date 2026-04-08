@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
 from typing import Iterator
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
@@ -15,6 +16,7 @@ from apps.api.jarvis_api.services.non_visible_lane_execution import (
     _extract_github_copilot_text,
     _load_github_copilot_token,
     _post_github_copilot_chat_completion,
+    fetch_github_copilot_models,
 )
 from apps.api.jarvis_api.services.prompt_contract import (
     build_visible_chat_prompt_assembly,
@@ -124,6 +126,85 @@ def _normalize_github_models_model_id(model: str) -> str:
     raise ValueError(
         f"GitHub Models: cannot resolve model ID '{model}'. "
         f"Use a known model name (e.g., 'gpt-4.1', 'gpt-5-mini') or full API ID (e.g., 'openai/gpt-4.1')."
+    )
+
+
+def _github_model_matches_requested(*, requested: str, candidate: str) -> bool:
+    requested_clean = str(requested or "").strip()
+    candidate_clean = str(candidate or "").strip()
+    if not requested_clean or not candidate_clean:
+        return False
+
+    try:
+        requested_normalized = _normalize_github_models_model_id(requested_clean).lower()
+    except ValueError:
+        requested_normalized = requested_clean.lower()
+
+    try:
+        candidate_normalized = _normalize_github_models_model_id(candidate_clean).lower()
+    except ValueError:
+        candidate_normalized = candidate_clean.lower()
+
+    if requested_normalized == candidate_normalized:
+        return True
+    return requested_clean.lower() == candidate_clean.lower()
+
+
+def _probe_github_copilot_model(*, profile: str, model: str) -> dict[str, str | bool | None]:
+    checked_at = datetime.now(UTC).isoformat()
+    try:
+        available_models = fetch_github_copilot_models(profile=profile)
+    except Exception:
+        available_models = []
+
+    if available_models:
+        if any(
+            _github_model_matches_requested(requested=model, candidate=item)
+            for item in available_models
+        ):
+            return {
+                "provider_reachable": True,
+                "live_verified": True,
+                "provider_status": "ready",
+                "checked_at": checked_at,
+                "available_models": available_models,
+            }
+        return {
+            "provider_reachable": True,
+            "live_verified": False,
+            "provider_status": "model-not-available",
+            "checked_at": checked_at,
+            "available_models": available_models,
+        }
+
+    return {
+        "provider_reachable": True,
+        "live_verified": False,
+        "provider_status": "not-verified",
+        "checked_at": checked_at,
+        "available_models": available_models,
+    }
+
+
+def _ensure_github_copilot_model_available(*, profile: str, model: str) -> None:
+    probe = _probe_github_copilot_model(profile=profile, model=model)
+    if str(probe.get("provider_status") or "") != "model-not-available":
+        return
+
+    available_models = [
+        str(item).strip()
+        for item in (probe.get("available_models") or [])
+        if str(item).strip()
+    ]
+    available_preview = ", ".join(available_models[:6])
+    detail = (
+        f" Available for this auth profile: {available_preview}."
+        if available_preview
+        else ""
+    )
+    raise RuntimeError(
+        f"GitHub Copilot visible model '{model}' is not available for auth profile '{profile}'."
+        f"{detail}"
     )
 
 
@@ -320,12 +401,19 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
         if is_cooled_down:
             auth_status = "rate-limited-cooldown"
             provider_status = "rate-limited"
+            live_verified = False
+            checked_at = None
         elif auth_ready:
             auth_status = "ready-github-models"
-            provider_status = "ready"
+            probe = _probe_github_copilot_model(profile=profile, model=model)
+            provider_status = str(probe["provider_status"])
+            live_verified = bool(probe["live_verified"])
+            checked_at = str(probe["checked_at"])
         else:
             auth_status = f"not-ready-{exchange_readiness}"
             provider_status = "auth-not-ready"
+            live_verified = False
+            checked_at = None
 
         return {
             "provider": provider,
@@ -336,10 +424,10 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "auth_profile": profile,
             "auth_note": "requires-models-read-scope" if auth_ready else None,
             "provider_reachable": auth_ready,
-            "live_verified": False,
+            "live_verified": live_verified,
             "provider_status": provider_status,
             "probe_cache": "not-run",
-            "checked_at": None,
+            "checked_at": checked_at,
             "cooldown": cooldown_status,
         }
 
@@ -507,6 +595,7 @@ def _execute_github_copilot_visible_model(
     access_token = _load_github_copilot_token(profile=profile)
 
     normalized_model = _normalize_github_models_model_id(model)
+    _ensure_github_copilot_model_available(profile=profile, model=normalized_model)
 
     messages = _build_visible_chat_messages_for_github(
         message=message,

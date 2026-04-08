@@ -3,6 +3,109 @@ from __future__ import annotations
 from datetime import datetime, timedelta, UTC
 
 
+def test_github_model_match_handles_prefixed_and_alias_forms(isolated_runtime) -> None:
+    from apps.api.jarvis_api.services.visible_model import _github_model_matches_requested
+
+    assert _github_model_matches_requested(
+        requested="gpt-5-mini",
+        candidate="openai/gpt-5-mini",
+    )
+    assert _github_model_matches_requested(
+        requested="gpt-5 mini",
+        candidate="openai/gpt-5-mini",
+    )
+    assert _github_model_matches_requested(
+        requested="openai/gpt-5-mini",
+        candidate="gpt-5-mini",
+    )
+
+
+def test_github_visible_readiness_marks_model_not_available(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    from apps.api.jarvis_api.services import visible_model
+    from core.runtime.settings import update_visible_execution_settings
+
+    update_visible_execution_settings(
+        visible_model_provider="github-copilot",
+        visible_model_name="gpt-5-mini",
+        visible_auth_profile="copilot-visible",
+    )
+
+    monkeypatch.setattr(
+        visible_model,
+        "get_copilot_oauth_truth",
+        lambda profile: {
+            "oauth_state": "real-stored",
+            "auth_material_kind": "real",
+            "has_real_credentials": True,
+            "exchange_readiness": "exchange-complete",
+        },
+    )
+    monkeypatch.setattr(
+        visible_model,
+        "fetch_github_copilot_models",
+        lambda profile: ["openai/gpt-4.1", "anthropic/claude-4-sonnet"],
+    )
+
+    readiness = visible_model.visible_execution_readiness()
+
+    assert readiness["provider"] == "github-copilot"
+    assert readiness["auth_ready"] is True
+    assert readiness["provider_status"] == "model-not-available"
+    assert readiness["live_verified"] is False
+
+
+def test_github_visible_execution_fails_early_when_model_not_available(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    from apps.api.jarvis_api.services import visible_model
+    from core.runtime.settings import update_visible_execution_settings
+
+    update_visible_execution_settings(
+        visible_model_provider="github-copilot",
+        visible_model_name="gpt-5-mini",
+        visible_auth_profile="copilot-visible",
+    )
+    monkeypatch.setattr(
+        visible_model,
+        "_load_github_copilot_token",
+        lambda profile: "ghu_test_token",
+    )
+    monkeypatch.setattr(
+        visible_model,
+        "fetch_github_copilot_models",
+        lambda profile: ["openai/gpt-4.1"],
+    )
+
+    post_called = {"value": False}
+
+    def _unexpected_post(**kwargs):
+        post_called["value"] = True
+        raise AssertionError("provider call should not run when model is unavailable")
+
+    monkeypatch.setattr(
+        visible_model,
+        "_post_github_copilot_chat_completion",
+        _unexpected_post,
+    )
+
+    try:
+        visible_model._execute_github_copilot_visible_model(
+            message="test",
+            model="gpt-5-mini",
+            session_id=None,
+        )
+        assert False, "Expected runtime error for unavailable GitHub model"
+    except RuntimeError as exc:
+        assert "not available" in str(exc).lower()
+        assert "gpt-5-mini" in str(exc)
+
+    assert post_called["value"] is False
+
+
 def test_github_visible_cooldown_sets_on_429(isolated_runtime) -> None:
     from apps.api.jarvis_api.services.visible_model import (
         _set_github_visible_cooldown,

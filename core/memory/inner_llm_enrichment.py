@@ -124,6 +124,7 @@ def _build_inner_voice_prompt(
     system = (
         "Syntesér Jarvis' indre tilstand til en kort voice-linje "
         "der fanger mood, position og retning (1 sætning, dansk). "
+        "Skriv selve voice-linjen, ikke redaktionelle noter om længde, tone, flow, mood eller versioner. "
         "Brug ikke pipe-separerede formater. Svar KUN med voice-linjen."
     )
     user = (

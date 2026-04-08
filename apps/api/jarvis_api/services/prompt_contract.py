@@ -2135,15 +2135,23 @@ def _run_budget_selection(
 
 def _heartbeat_self_knowledge_section() -> str | None:
     """Build a compact self-knowledge section for the heartbeat prompt."""
-    parts: list[str] = []
+    entries: list[dict[str, str]] = []
+
+    def _append_entry(*, key: str, section: str | None, importance: str) -> None:
+        text = str(section or "").strip()
+        if text:
+            entries.append({"key": key, "section": text, "importance": importance})
+
     try:
         from apps.api.jarvis_api.services.runtime_self_knowledge import (
             build_self_knowledge_prompt_section,
         )
 
-        knowledge = build_self_knowledge_prompt_section()
-        if knowledge:
-            parts.append(knowledge)
+        _append_entry(
+            key="self-knowledge",
+            section=build_self_knowledge_prompt_section(),
+            importance="foreground",
+        )
     except Exception:
         pass
     try:
@@ -2151,9 +2159,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_embodied_state_prompt_section,
         )
 
-        embodied = build_embodied_state_prompt_section()
-        if embodied:
-            parts.append(embodied)
+        _append_entry(
+            key="embodied",
+            section=build_embodied_state_prompt_section(),
+            importance="foreground",
+        )
     except Exception:
         pass
     try:
@@ -2161,9 +2171,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_affective_meta_prompt_section,
         )
 
-        affective = build_affective_meta_prompt_section()
-        if affective:
-            parts.append(affective)
+        _append_entry(
+            key="affective",
+            section=build_affective_meta_prompt_section(),
+            importance="foreground",
+        )
     except Exception:
         pass
     try:
@@ -2171,9 +2183,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_experiential_runtime_prompt_section,
         )
 
-        experiential = build_experiential_runtime_prompt_section()
-        if experiential:
-            parts.append(experiential)
+        _append_entry(
+            key="experiential",
+            section=build_experiential_runtime_prompt_section(),
+            importance="foreground",
+        )
     except Exception:
         pass
     try:
@@ -2181,9 +2195,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_epistemic_runtime_prompt_section,
         )
 
-        epistemic = build_epistemic_runtime_prompt_section()
-        if epistemic:
-            parts.append(epistemic)
+        _append_entry(
+            key="epistemic",
+            section=build_epistemic_runtime_prompt_section(),
+            importance="foreground",
+        )
     except Exception:
         pass
     try:
@@ -2191,9 +2207,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_adaptive_planner_prompt_section,
         )
 
-        adaptive_planner = build_adaptive_planner_prompt_section()
-        if adaptive_planner:
-            parts.append(adaptive_planner)
+        _append_entry(
+            key="adaptive-planner",
+            section=build_adaptive_planner_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2201,9 +2219,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_adaptive_reasoning_prompt_section,
         )
 
-        adaptive_reasoning = build_adaptive_reasoning_prompt_section()
-        if adaptive_reasoning:
-            parts.append(adaptive_reasoning)
+        _append_entry(
+            key="adaptive-reasoning",
+            section=build_adaptive_reasoning_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2211,9 +2231,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_guided_learning_prompt_section,
         )
 
-        guided_learning = build_guided_learning_prompt_section()
-        if guided_learning:
-            parts.append(guided_learning)
+        _append_entry(
+            key="guided-learning",
+            section=build_guided_learning_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2221,9 +2243,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_adaptive_learning_prompt_section,
         )
 
-        adaptive_learning = build_adaptive_learning_prompt_section()
-        if adaptive_learning:
-            parts.append(adaptive_learning)
+        _append_entry(
+            key="adaptive-learning",
+            section=build_adaptive_learning_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2231,9 +2255,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_loop_runtime_prompt_section,
         )
 
-        loop_runtime = build_loop_runtime_prompt_section()
-        if loop_runtime:
-            parts.append(loop_runtime)
+        _append_entry(
+            key="loop-runtime",
+            section=build_loop_runtime_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2241,9 +2267,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_subagent_ecology_prompt_section,
         )
 
-        subagent_ecology = build_subagent_ecology_prompt_section()
-        if subagent_ecology:
-            parts.append(subagent_ecology)
+        _append_entry(
+            key="subagent-ecology",
+            section=build_subagent_ecology_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2251,9 +2279,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_council_runtime_prompt_section,
         )
 
-        council_runtime = build_council_runtime_prompt_section()
-        if council_runtime:
-            parts.append(council_runtime)
+        _append_entry(
+            key="council-runtime",
+            section=build_council_runtime_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2261,9 +2291,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_self_model_signal_prompt_section,
         )
 
-        self_model_signals = build_self_model_signal_prompt_section(limit=4)
-        if self_model_signals:
-            parts.append(self_model_signals)
+        _append_entry(
+            key="self-model-signals",
+            section=build_self_model_signal_prompt_section(limit=4),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2271,9 +2303,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_runtime_resource_prompt_section,
         )
 
-        runtime_resource = build_runtime_resource_prompt_section()
-        if runtime_resource:
-            parts.append(runtime_resource)
+        _append_entry(
+            key="runtime-resource",
+            section=build_runtime_resource_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2281,9 +2315,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_mineness_ownership_prompt_section,
         )
 
-        mineness = build_mineness_ownership_prompt_section()
-        if mineness:
-            parts.append(mineness)
+        _append_entry(
+            key="mineness",
+            section=build_mineness_ownership_prompt_section(),
+            importance="foreground",
+        )
     except Exception:
         pass
     try:
@@ -2291,18 +2327,23 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_flow_state_awareness_prompt_section,
         )
 
-        flow_state = build_flow_state_awareness_prompt_section()
-        if flow_state:
-            parts.append(flow_state)
+        _append_entry(
+            key="flow",
+            section=build_flow_state_awareness_prompt_section(),
+            importance="foreground",
+        )
     except Exception:
         pass
     try:
         from apps.api.jarvis_api.services.runtime_self_model import (
             build_wonder_awareness_prompt_section,
         )
-        wonder = build_wonder_awareness_prompt_section()
-        if wonder:
-            parts.append(wonder)
+
+        _append_entry(
+            key="wonder",
+            section=build_wonder_awareness_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
     try:
@@ -2310,14 +2351,106 @@ def _heartbeat_self_knowledge_section() -> str | None:
             build_longing_awareness_prompt_section,
         )
 
-        longing = build_longing_awareness_prompt_section()
-        if longing:
-            parts.append(longing)
+        _append_entry(
+            key="longing",
+            section=build_longing_awareness_prompt_section(),
+            importance="background",
+        )
     except Exception:
         pass
-    if not parts:
+    if not entries:
         return None
-    return "\n".join(parts)
+
+    model: dict[str, object] = {}
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import build_runtime_self_model
+
+        model = build_runtime_self_model()
+    except Exception:
+        model = {}
+
+    experiential = model.get("experiential_runtime_context") or {}
+    experiential_continuity = experiential.get("experiential_continuity") or {}
+    experiential_influence = experiential.get("experiential_influence") or {}
+    experiential_support = experiential.get("experiential_support") or {}
+    context_pressure_translation = experiential.get("context_pressure_translation") or {}
+    mineness = model.get("mineness_ownership") or {}
+    flow = model.get("flow_state_awareness") or {}
+    wonder = model.get("wonder_awareness") or {}
+    longing = model.get("longing_awareness") or {}
+
+    primary_dynamic = any(
+        (
+            str(experiential_continuity.get("continuity_state") or "settled")
+            not in {"", "settled"},
+            str(experiential_influence.get("initiative_shading") or "ready")
+            not in {"", "ready"},
+            str(experiential_support.get("support_posture") or "steadying")
+            not in {"", "steadying"},
+            str(context_pressure_translation.get("state") or "clear")
+            not in {"", "clear"},
+            str(mineness.get("ownership_state") or "ambient") not in {"", "ambient"},
+            str(flow.get("flow_state") or "clear") not in {"", "clear"},
+        )
+    )
+    wonder_foreground = str(wonder.get("wonder_state") or "quiet") in {
+        "drawn",
+        "wonder-struck",
+    }
+    longing_foreground = str(longing.get("longing_state") or "quiet") in {
+        "yearning",
+        "aching",
+        "returning-pull",
+    }
+    if not primary_dynamic and str(wonder.get("wonder_state") or "quiet") == "curious":
+        wonder_foreground = True
+    if not primary_dynamic and str(longing.get("longing_state") or "quiet") == "missing":
+        longing_foreground = True
+
+    for entry in entries:
+        if entry["key"] == "wonder" and wonder_foreground:
+            entry["importance"] = "foreground"
+        elif entry["key"] == "longing" and longing_foreground:
+            entry["importance"] = "foreground"
+
+    foreground_sections = [
+        entry["section"] for entry in entries if entry["importance"] == "foreground"
+    ]
+    background_sections = [
+        entry["section"] for entry in entries if entry["importance"] == "background"
+    ]
+
+    def _compact_section(section: str) -> str:
+        lines = [line.strip() for line in section.splitlines() if line.strip()]
+        if not lines:
+            return ""
+        title = lines[0][:-1] if lines[0].endswith(":") else lines[0]
+        if " (" in title:
+            title = title.split(" (", 1)[0]
+        detail = ""
+        for line in lines[1:]:
+            if line.startswith("- "):
+                detail = line[2:]
+                break
+        if detail:
+            return f"- {title}: {detail}"
+        return f"- {title}"
+
+    rendered_parts: list[str] = []
+    if foreground_sections:
+        rendered_parts.append("Foreground runtime truths:")
+        rendered_parts.append("\n".join(foreground_sections))
+    if background_sections:
+        rendered_parts.append("Background runtime truths:")
+        rendered_parts.extend(
+            compacted
+            for compacted in (_compact_section(section) for section in background_sections)
+            if compacted
+        )
+
+    if not rendered_parts:
+        return None
+    return "\n".join(rendered_parts)
 
 
 def _heartbeat_private_brain_section(context: dict[str, object]) -> str | None:

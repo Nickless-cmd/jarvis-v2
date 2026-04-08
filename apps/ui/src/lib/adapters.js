@@ -1035,6 +1035,19 @@ function normalizeNarrativeIdentityContinuity(item = {}) {
   }
 }
 
+function normalizeDreamIdentityCarryAwareness(item = {}) {
+  if (!item || !item.kind) return null
+  return {
+    dreamIdentityCarryState: item.dream_identity_carry_state || 'quiet',
+    dreamSelfRelation: item.dream_self_relation || 'incidental',
+    dreamIdentitySource: item.dream_identity_source || 'none',
+    narrative: item.narrative || '',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'dream-identity-carry-awareness',
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -3854,6 +3867,7 @@ export const backend = {
       longingAwareness: normalizeLongingAwareness(selfModelPayload?.longing_awareness || {}),
       selfInsightAwareness: normalizeSelfInsightAwareness(selfModelPayload?.self_insight_awareness || {}),
       narrativeIdentityContinuity: normalizeNarrativeIdentityContinuity(selfModelPayload?.narrative_identity_continuity || {}),
+      dreamIdentityCarryAwareness: normalizeDreamIdentityCarryAwareness(selfModelPayload?.dream_identity_carry_awareness || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

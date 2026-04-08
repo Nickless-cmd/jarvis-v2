@@ -1642,6 +1642,115 @@ def test_heartbeat_self_knowledge_section_includes_longing_awareness(
     assert "longing_state=missing" in section
 
 
+def test_heartbeat_self_knowledge_backgrounds_secondary_awareness_when_primary_is_active(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """Secondary wonder/longing signals should recede when primary runtime motion is active."""
+    prompt_contract = isolated_runtime.prompt_contract
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_runtime_self_model",
+        lambda: {
+            "experiential_runtime_context": {
+                "experiential_continuity": {"continuity_state": "lingering"},
+                "experiential_influence": {"initiative_shading": "hesitant"},
+                "experiential_support": {"support_posture": "holding-open"},
+                "context_pressure_translation": {"state": "narrowing"},
+            },
+            "mineness_ownership": {"ownership_state": "ambient"},
+            "flow_state_awareness": {"flow_state": "clear"},
+            "wonder_awareness": {"wonder_state": "curious"},
+            "longing_awareness": {"longing_state": "missing"},
+        },
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_wonder_awareness_prompt_section",
+        lambda: (
+            "Wonder awareness (bounded runtime truth, internal-only):\n"
+            "- wonder_state=curious | orientation=noticing | source=novelty-pull\n"
+            "- wonder_narrative=Open threads are pulling toward exploration."
+        ),
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_longing_awareness_prompt_section",
+        lambda: (
+            "Longing awareness (bounded runtime truth, internal-only):\n"
+            "- longing_state=missing | relation=carried-in-absence | source=carried-thread\n"
+            "- longing_narrative=Something absent is still being carried."
+        ),
+    )
+
+    section = prompt_contract._heartbeat_self_knowledge_section()
+
+    assert section is not None
+    assert "Foreground runtime truths:" in section
+    assert "Background runtime truths:" in section
+    assert (
+        "- Wonder awareness: wonder_state=curious | orientation=noticing | source=novelty-pull"
+        in section
+    )
+    assert (
+        "- Longing awareness: longing_state=missing | relation=carried-in-absence | source=carried-thread"
+        in section
+    )
+    assert "Wonder awareness (bounded runtime truth, internal-only):" not in section
+    assert "Longing awareness (bounded runtime truth, internal-only):" not in section
+
+
+def test_heartbeat_self_knowledge_can_foreground_secondary_awareness_when_primary_is_quiet(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    """Wonder/longing may move forward when stronger primary runtime motion is absent."""
+    prompt_contract = isolated_runtime.prompt_contract
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_runtime_self_model",
+        lambda: {
+            "experiential_runtime_context": {
+                "experiential_continuity": {"continuity_state": "settled"},
+                "experiential_influence": {"initiative_shading": "ready"},
+                "experiential_support": {"support_posture": "steadying"},
+                "context_pressure_translation": {"state": "clear"},
+            },
+            "mineness_ownership": {"ownership_state": "ambient"},
+            "flow_state_awareness": {"flow_state": "clear"},
+            "wonder_awareness": {"wonder_state": "curious"},
+            "longing_awareness": {"longing_state": "missing"},
+        },
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_wonder_awareness_prompt_section",
+        lambda: (
+            "Wonder awareness (bounded runtime truth, internal-only):\n"
+            "- wonder_state=curious | orientation=noticing | source=novelty-pull"
+        ),
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_longing_awareness_prompt_section",
+        lambda: (
+            "Longing awareness (bounded runtime truth, internal-only):\n"
+            "- longing_state=missing | relation=carried-in-absence | source=carried-thread"
+        ),
+    )
+
+    section = prompt_contract._heartbeat_self_knowledge_section()
+
+    assert section is not None
+    assert "Foreground runtime truths:" in section
+    assert "Wonder awareness (bounded runtime truth, internal-only):" in section
+    assert "Longing awareness (bounded runtime truth, internal-only):" in section
+
+
 # ---------------------------------------------------------------------------
 # Absence awareness repair
 # ---------------------------------------------------------------------------

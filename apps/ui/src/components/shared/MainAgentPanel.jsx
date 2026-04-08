@@ -118,17 +118,19 @@ export function MainAgentPanel({ selection, onSave, embedded = false }) {
 
       <button className="primary-btn" onClick={() => onSave({ provider, model, authProfile })}>Save selection</button>
 
-      <div className="candidate-list">
-        {selection.availableConfiguredTargets.map((target) => (
-          <div key={`${target.provider}:${target.model}`} className="candidate-row">
-            <div>
-              <strong>{target.provider}</strong>
-              <span>{target.model}</span>
+      {!embedded ? (
+        <div className="candidate-list">
+          {selection.availableConfiguredTargets.map((target) => (
+            <div key={`${target.provider}:${target.model}`} className="candidate-row">
+              <div>
+                <strong>{target.provider}</strong>
+                <span>{target.model}</span>
+              </div>
+              <small className={`hint ${target.readinessHint}`}>{target.readinessHint}</small>
             </div>
-            <small className={`hint ${target.readinessHint}`}>{target.readinessHint}</small>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   )
 }

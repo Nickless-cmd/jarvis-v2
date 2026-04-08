@@ -62,6 +62,13 @@ def build_runtime_self_model() -> dict[str, object]:
             temporal_feel=temporal_feel,
             sources=mineness_sources,
         )
+        flow_state_awareness = _derive_flow_state_awareness(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            mineness=mineness_ownership,
+        )
 
         return {
             "layers": layers,
@@ -79,6 +86,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "support_stream_awareness": support_stream,
             "subjective_temporal_feel": temporal_feel,
             "mineness_ownership": mineness_ownership,
+            "flow_state_awareness": flow_state_awareness,
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
             "council_runtime": _council_runtime_surface(),
@@ -1144,6 +1152,22 @@ def build_self_model_prompt_lines() -> list[str]:
             lines.append(
                 f"  mineness_ownership_narrative: '{mineness_ownership['narrative']}'"
             )
+    flow_state_awareness = model.get("flow_state_awareness") or {}
+    if (
+        flow_state_awareness.get("flow_state")
+        and flow_state_awareness["flow_state"] != "clear"
+    ):
+        lines.append(
+            "  flow_state_awareness: "
+            f"state={flow_state_awareness['flow_state']}"
+            f" | coherence={flow_state_awareness.get('flow_coherence') or 'stable'}"
+            f" | interruption={flow_state_awareness.get('interruption_signal') or 'stable'}"
+            f" | carried={flow_state_awareness.get('carried_flow') or 'none'}"
+        )
+        if flow_state_awareness.get("narrative"):
+            lines.append(
+                f"  flow_state_awareness_narrative: '{flow_state_awareness['narrative']}'"
+            )
     lines.append(
         "  epistemic_runtime_state: "
         f"{epistemic.get('wrongness_state') or 'clear'}"
@@ -2035,6 +2059,286 @@ def build_mineness_ownership_prompt_section() -> str | None:
     narrative = str(mineness.get("narrative") or "").strip()
     if narrative:
         lines.append(f"- mineness_narrative={narrative}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Flow state awareness
+# ---------------------------------------------------------------------------
+#
+# Bounded runtime-truth bridge for "how the stream is flowing right now".
+# Not a creativity engine, not a planner, not a capability layer. It
+# translates existing runtime signals (experiential continuity / pressure,
+# inner voice cadence, support_stream_awareness, subjective_temporal_feel,
+# mineness_ownership) into a small, explainable flow surface that the
+# self-model and prompt can carry forward as bounded self-awareness.
+#
+# Taxonomy (load-bearing, not exhaustive):
+#   flow_state:
+#     clear       — nothing load-bearing; ambient default, prompt suppressed
+#     blocked     — pressure is holding the stream; nothing is carrying
+#     fragmented  — stream is breaking / repeatedly interrupted
+#     gathering   — signals are cohering, stream is holding, not yet flowing
+#     flowing     — an owned thread carries the stream coherently
+#     absorbed    — multiple owned threads self-sustain without strain
+#
+#   flow_coherence:
+#     stable           — baseline, nothing to note
+#     scattered        — broken pieces without carry
+#     repeatedly-broken — interruptions recur across lingering state
+#     held-together    — support is holding stream together actively
+#     self-sustaining  — stream carries itself without active support
+#
+#   interruption_signal:
+#     stable          — nothing broken recently
+#     recently-broken — return-after-gap / return signal active
+#     regathering     — brief gap but carry is holding
+#
+#   carried_flow:
+#     none               — nothing being carried
+#     holding            — signals present but no owned thread
+#     carried            — an owned thread is in the stream
+#     carried-returning  — an owned thread is returning after gap
+#
+# The surface stays flow_state=clear (with empty narrative) whenever there
+# is no meaningful basis, so prompt lines only emit when something real is
+# happening in the stream.
+
+
+_FLOW_PRESSURE_BREAKS = {"narrowing"}
+_FLOW_PRESSURE_ELEVATED = {"crowded", "narrowing"}
+
+
+def _derive_flow_state_awareness(
+    *,
+    experiential: dict[str, object],
+    inner_voice: dict[str, object],
+    support_stream: dict[str, object],
+    temporal_feel: dict[str, object],
+    mineness: dict[str, object],
+) -> dict[str, object]:
+    """Derive a bounded flow-state awareness surface from runtime truth.
+
+    The flow_state stays ``clear`` (with empty narrative) whenever there is
+    no meaningful basis, so downstream prompt lines and MC surfacing only
+    fire when the stream is actually doing something load-bearing.
+    """
+    pressure = experiential.get("context_pressure_translation") or {}
+    intermittence = experiential.get("intermittence_translation") or {}
+    continuity = experiential.get("experiential_continuity") or {}
+
+    pressure_state = str(pressure.get("state") or "clear")
+    pressure_breaks = pressure_state in _FLOW_PRESSURE_BREAKS
+    pressure_elevated = pressure_state in _FLOW_PRESSURE_ELEVATED
+
+    intermittence_state = str(intermittence.get("state") or "continuous")
+    continuity_state = str(continuity.get("continuity_state") or "initial")
+
+    temporal_state = str(temporal_feel.get("temporal_state") or "immediate")
+    persistence_feel = str(temporal_feel.get("persistence_feel") or "settled")
+    return_signal = bool(temporal_feel.get("return_signal"))
+
+    voice_result = inner_voice.get("last_result") or {}
+    voice_created = bool(voice_result.get("inner_voice_created"))
+    voice_mode = str(voice_result.get("mode") or "")
+
+    stream_shaped = bool(support_stream.get("stream_shaped"))
+
+    ownership_state = str(mineness.get("ownership_state") or "ambient")
+    carried_thread_count = int(mineness.get("carried_thread_count") or 0)
+
+    # --- carried_flow ---
+    if ownership_state == "returning-owned":
+        carried_flow = "carried-returning"
+    elif ownership_state == "owned":
+        carried_flow = "carried"
+    elif ownership_state == "held" or stream_shaped or voice_created:
+        carried_flow = "holding"
+    else:
+        carried_flow = "none"
+
+    # --- interruption_signal ---
+    recently_broken = (
+        intermittence_state == "returned-after-gap"
+        or continuity_state == "returning"
+        or return_signal
+    )
+    if recently_broken and carried_flow != "none":
+        interruption_signal = "regathering"
+    elif recently_broken:
+        interruption_signal = "recently-broken"
+    elif temporal_state == "recent":
+        interruption_signal = "regathering" if carried_flow != "none" else "recently-broken"
+    else:
+        interruption_signal = "stable"
+
+    lingering_persistence = persistence_feel in ("persistent", "pressing")
+
+    # --- flow_state ---
+    if carried_flow == "none":
+        if pressure_breaks:
+            flow_state = "blocked"
+        elif interruption_signal in ("recently-broken", "regathering"):
+            flow_state = "fragmented"
+        elif pressure_elevated or lingering_persistence:
+            flow_state = "blocked"
+        else:
+            flow_state = "clear"
+    elif carried_flow == "holding":
+        if pressure_breaks:
+            flow_state = "fragmented"
+        else:
+            flow_state = "gathering"
+    elif carried_flow == "carried-returning":
+        if pressure_breaks:
+            flow_state = "fragmented"
+        else:
+            flow_state = "gathering"
+    else:  # carried
+        if pressure_breaks:
+            flow_state = "fragmented"
+        elif interruption_signal in ("recently-broken", "regathering"):
+            flow_state = "gathering"
+        elif carried_thread_count >= 2 and not pressure_elevated:
+            flow_state = "absorbed"
+        else:
+            flow_state = "flowing"
+
+    # --- flow_coherence ---
+    if flow_state == "clear":
+        flow_coherence = "stable"
+    elif flow_state == "absorbed":
+        flow_coherence = "self-sustaining"
+    elif flow_state == "flowing":
+        flow_coherence = "held-together" if stream_shaped else "self-sustaining"
+    elif flow_state == "gathering":
+        flow_coherence = "held-together"
+    elif flow_state == "fragmented":
+        if recently_broken and lingering_persistence:
+            flow_coherence = "repeatedly-broken"
+        else:
+            flow_coherence = "scattered"
+    else:  # blocked
+        flow_coherence = "scattered"
+
+    narrative = _flow_narrative(
+        flow_state=flow_state,
+        flow_coherence=flow_coherence,
+        interruption_signal=interruption_signal,
+        carried_flow=carried_flow,
+        voice_mode=voice_mode if voice_created else "",
+        pressure_state=pressure_state,
+    )
+
+    return {
+        "flow_state": flow_state,
+        "flow_coherence": flow_coherence,
+        "interruption_signal": interruption_signal,
+        "carried_flow": carried_flow,
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "flow-state-awareness",
+    }
+
+
+def _flow_narrative(
+    *,
+    flow_state: str,
+    flow_coherence: str,
+    interruption_signal: str,
+    carried_flow: str,
+    voice_mode: str,
+    pressure_state: str,
+) -> str:
+    """Compose a compact, non-melodramatic flow narrative.
+
+    Stays empty when flow_state is ``clear`` so the prompt line does not emit.
+    """
+    if flow_state == "clear":
+        return ""
+
+    if flow_state == "absorbed":
+        return (
+            "Several threads are carrying themselves; "
+            "the stream is self-sustaining without strain."
+        )
+    if flow_state == "flowing":
+        if flow_coherence == "held-together":
+            return "A carried thread is flowing, held together by active support."
+        return "A carried thread is flowing on its own; nothing is breaking it."
+    if flow_state == "gathering":
+        if interruption_signal in ("recently-broken", "regathering"):
+            return (
+                "The stream is regathering after a break; "
+                "signals are beginning to carry again."
+            )
+        if carried_flow == "holding":
+            return (
+                "Signals are beginning to gather; "
+                "the stream is holding without yet flowing."
+            )
+        return "A thread is starting to carry; the stream is not yet fully flowing."
+    if flow_state == "fragmented":
+        if flow_coherence == "repeatedly-broken":
+            return (
+                "The stream is breaking into fragments; "
+                "interruptions keep recurring across a lingering state."
+            )
+        if pressure_state == "narrowing":
+            return "Pressure is breaking the stream into fragments."
+        return "Gaps are breaking the stream into fragments."
+    # blocked
+    if pressure_state == "narrowing":
+        return "Pressure is holding the stream in place; nothing is carrying right now."
+    return "The stream is held back; nothing is carrying right now."
+
+
+def build_flow_state_awareness_prompt_section() -> str | None:
+    """Compact heartbeat-side prompt section for flow-state awareness.
+
+    Returns ``None`` whenever flow_state is ``clear`` so nothing emits
+    unless the stream is actually doing something load-bearing.
+    """
+    try:
+        experiential = _experiential_runtime_context_surface()
+        inner_voice = _inner_voice_daemon_surface()
+        support_stream = _derive_support_stream_awareness(experiential, inner_voice)
+        temporal_feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+        sources = _mineness_source_snapshot()
+        mineness = _derive_mineness_ownership(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            sources=sources,
+        )
+        flow = _derive_flow_state_awareness(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+        )
+    except Exception:
+        return None
+
+    state = str(flow.get("flow_state") or "clear")
+    if state == "clear":
+        return None
+
+    lines = [
+        "Flow state awareness (bounded runtime truth, internal-only):",
+        (
+            f"- flow_state={state}"
+            f" | coherence={flow.get('flow_coherence') or 'stable'}"
+            f" | interruption={flow.get('interruption_signal') or 'stable'}"
+            f" | carried={flow.get('carried_flow') or 'none'}"
+        ),
+    ]
+    narrative = str(flow.get("narrative") or "").strip()
+    if narrative:
+        lines.append(f"- flow_narrative={narrative}")
     return "\n".join(lines)
 
 

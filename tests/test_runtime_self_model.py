@@ -862,3 +862,334 @@ def test_mineness_prompt_section_none_when_ambient(isolated_runtime) -> None:
     section = model_mod.build_mineness_ownership_prompt_section()
     # In isolated_runtime the default should be ambient → no section emitted.
     assert section is None or "ownership_state=ambient" not in section
+
+
+# ---------------------------------------------------------------------------
+# Flow state awareness
+# ---------------------------------------------------------------------------
+
+
+def _flow_default_experiential(
+    *,
+    pressure_state: str = "clear",
+    intermittence_state: str = "continuous",
+    continuity_state: str = "stable",
+) -> dict[str, object]:
+    return {
+        "context_pressure_translation": {"state": pressure_state},
+        "intermittence_translation": {"state": intermittence_state},
+        "experiential_continuity": {"continuity_state": continuity_state},
+    }
+
+
+def test_self_model_includes_flow_state_awareness(isolated_runtime) -> None:
+    """Self-model must expose a bounded flow_state_awareness surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "flow_state_awareness" in model
+    flow = model["flow_state_awareness"]
+    assert "flow_state" in flow
+    assert "flow_coherence" in flow
+    assert "interruption_signal" in flow
+    assert "carried_flow" in flow
+    assert "narrative" in flow
+    assert flow["authority"] == "derived-runtime-truth"
+    assert flow["visibility"] == "internal-only"
+    assert flow["kind"] == "flow-state-awareness"
+    assert flow["flow_state"] in {
+        "clear",
+        "blocked",
+        "fragmented",
+        "gathering",
+        "flowing",
+        "absorbed",
+    }
+    assert flow["flow_coherence"] in {
+        "stable",
+        "scattered",
+        "repeatedly-broken",
+        "held-together",
+        "self-sustaining",
+    }
+    assert flow["interruption_signal"] in {
+        "stable",
+        "recently-broken",
+        "regathering",
+    }
+    assert flow["carried_flow"] in {
+        "none",
+        "holding",
+        "carried",
+        "carried-returning",
+    }
+
+
+def test_flow_state_clear_when_no_basis() -> None:
+    """Flow stays clear with empty narrative when nothing is happening."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_flow_state_awareness,
+    )
+
+    experiential = _flow_default_experiential()
+    inner_voice = {"last_result": None}
+    support_stream = {"stream_shaped": False}
+    temporal_feel = {
+        "temporal_state": "immediate",
+        "felt_proximity": "close",
+        "return_signal": False,
+        "persistence_feel": "settled",
+    }
+    mineness = {
+        "ownership_state": "ambient",
+        "carried_thread_count": 0,
+        "carried_thread_state": "none",
+    }
+
+    flow = _derive_flow_state_awareness(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        mineness=mineness,
+    )
+    assert flow["flow_state"] == "clear"
+    assert flow["flow_coherence"] == "stable"
+    assert flow["interruption_signal"] == "stable"
+    assert flow["carried_flow"] == "none"
+    assert flow["narrative"] == ""
+
+
+def test_flow_state_flowing_when_owned_thread_stable() -> None:
+    """A single owned thread in a stable stream produces flowing state."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_flow_state_awareness,
+    )
+
+    experiential = _flow_default_experiential()
+    inner_voice = {
+        "last_result": {"inner_voice_created": True, "mode": "carrying"}
+    }
+    support_stream = {"stream_shaped": False}
+    temporal_feel = {
+        "temporal_state": "immediate",
+        "felt_proximity": "close",
+        "return_signal": False,
+        "persistence_feel": "settled",
+    }
+    mineness = {
+        "ownership_state": "owned",
+        "carried_thread_count": 1,
+        "carried_thread_state": "single",
+    }
+
+    flow = _derive_flow_state_awareness(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        mineness=mineness,
+    )
+    assert flow["flow_state"] == "flowing"
+    assert flow["flow_coherence"] == "self-sustaining"
+    assert flow["carried_flow"] == "carried"
+    assert flow["interruption_signal"] == "stable"
+    assert "flowing" in flow["narrative"].lower()
+
+
+def test_flow_state_absorbed_when_multiple_owned_threads() -> None:
+    """Multiple owned threads without pressure produce absorbed state."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_flow_state_awareness,
+    )
+
+    experiential = _flow_default_experiential()
+    inner_voice = {
+        "last_result": {"inner_voice_created": True, "mode": "carrying"}
+    }
+    support_stream = {"stream_shaped": False}
+    temporal_feel = {
+        "temporal_state": "immediate",
+        "felt_proximity": "close",
+        "return_signal": False,
+        "persistence_feel": "settled",
+    }
+    mineness = {
+        "ownership_state": "owned",
+        "carried_thread_count": 3,
+        "carried_thread_state": "multiple",
+    }
+
+    flow = _derive_flow_state_awareness(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        mineness=mineness,
+    )
+    assert flow["flow_state"] == "absorbed"
+    assert flow["flow_coherence"] == "self-sustaining"
+    assert flow["carried_flow"] == "carried"
+    assert "self-sustaining" in flow["narrative"].lower() or "carrying themselves" in flow["narrative"].lower()
+
+
+def test_flow_state_gathering_when_held_without_carry() -> None:
+    """Held signals without full ownership produce gathering state."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_flow_state_awareness,
+    )
+
+    experiential = _flow_default_experiential()
+    inner_voice = {
+        "last_result": {"inner_voice_created": True, "mode": "witness-steady"}
+    }
+    support_stream = {"stream_shaped": True}
+    temporal_feel = {
+        "temporal_state": "immediate",
+        "felt_proximity": "held",
+        "return_signal": False,
+        "persistence_feel": "settled",
+    }
+    mineness = {
+        "ownership_state": "held",
+        "carried_thread_count": 0,
+        "carried_thread_state": "none",
+    }
+
+    flow = _derive_flow_state_awareness(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        mineness=mineness,
+    )
+    assert flow["flow_state"] == "gathering"
+    assert flow["flow_coherence"] == "held-together"
+    assert flow["carried_flow"] == "holding"
+    assert flow["narrative"] != ""
+
+
+def test_flow_state_gathering_when_returning_owned() -> None:
+    """Returning-owned ownership regathers into gathering, not flowing."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_flow_state_awareness,
+    )
+
+    experiential = _flow_default_experiential(
+        intermittence_state="returned-after-gap",
+        continuity_state="returning",
+    )
+    inner_voice = {
+        "last_result": {"inner_voice_created": True, "mode": "circling"}
+    }
+    support_stream = {"stream_shaped": False}
+    temporal_feel = {
+        "temporal_state": "returning",
+        "felt_proximity": "resumed",
+        "return_signal": True,
+        "persistence_feel": "reconnecting",
+    }
+    mineness = {
+        "ownership_state": "returning-owned",
+        "carried_thread_count": 2,
+        "carried_thread_state": "returning",
+    }
+
+    flow = _derive_flow_state_awareness(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        mineness=mineness,
+    )
+    assert flow["flow_state"] == "gathering"
+    assert flow["carried_flow"] == "carried-returning"
+    assert flow["interruption_signal"] == "regathering"
+    assert "regathering" in flow["narrative"].lower() or "carry" in flow["narrative"].lower()
+
+
+def test_flow_state_fragmented_when_pressure_breaks_carry() -> None:
+    """Narrowing pressure fragments even an owned carry."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_flow_state_awareness,
+    )
+
+    experiential = _flow_default_experiential(pressure_state="narrowing")
+    inner_voice = {
+        "last_result": {"inner_voice_created": True, "mode": "carrying"}
+    }
+    support_stream = {"stream_shaped": False}
+    temporal_feel = {
+        "temporal_state": "immediate",
+        "felt_proximity": "close",
+        "return_signal": False,
+        "persistence_feel": "pressing",
+    }
+    mineness = {
+        "ownership_state": "owned",
+        "carried_thread_count": 1,
+        "carried_thread_state": "single",
+    }
+
+    flow = _derive_flow_state_awareness(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        mineness=mineness,
+    )
+    assert flow["flow_state"] == "fragmented"
+    assert flow["flow_coherence"] in {"scattered", "repeatedly-broken"}
+    assert "fragment" in flow["narrative"].lower()
+
+
+def test_flow_state_blocked_when_pressure_and_no_carry() -> None:
+    """Narrowing pressure with nothing carried produces blocked state."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_flow_state_awareness,
+    )
+
+    experiential = _flow_default_experiential(pressure_state="narrowing")
+    inner_voice = {"last_result": None}
+    support_stream = {"stream_shaped": False}
+    temporal_feel = {
+        "temporal_state": "immediate",
+        "felt_proximity": "close",
+        "return_signal": False,
+        "persistence_feel": "pressing",
+    }
+    mineness = {
+        "ownership_state": "ambient",
+        "carried_thread_count": 0,
+        "carried_thread_state": "none",
+    }
+
+    flow = _derive_flow_state_awareness(
+        experiential=experiential,
+        inner_voice=inner_voice,
+        support_stream=support_stream,
+        temporal_feel=temporal_feel,
+        mineness=mineness,
+    )
+    assert flow["flow_state"] == "blocked"
+    assert flow["flow_coherence"] == "scattered"
+    assert flow["carried_flow"] == "none"
+    assert flow["narrative"] != ""
+
+
+def test_flow_state_prompt_line_hidden_when_clear(isolated_runtime) -> None:
+    """Flow state prompt line should not emit in clear default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    # In isolated_runtime without real state, flow should default to clear.
+    if "flow_state_awareness:" in joined:
+        assert "state=clear" not in joined
+
+
+def test_flow_state_prompt_section_none_when_clear(isolated_runtime) -> None:
+    """Heartbeat flow state prompt section must return None when clear."""
+    model_mod = isolated_runtime.runtime_self_model
+    section = model_mod.build_flow_state_awareness_prompt_section()
+    assert section is None or "flow_state=clear" not in section

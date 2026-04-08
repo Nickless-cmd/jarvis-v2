@@ -2286,6 +2286,16 @@ def _heartbeat_self_knowledge_section() -> str | None:
             parts.append(mineness)
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_flow_state_awareness_prompt_section,
+        )
+
+        flow_state = build_flow_state_awareness_prompt_section()
+        if flow_state:
+            parts.append(flow_state)
+    except Exception:
+        pass
     if not parts:
         return None
     return "\n".join(parts)

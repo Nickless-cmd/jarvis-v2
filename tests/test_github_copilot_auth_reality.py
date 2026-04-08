@@ -152,6 +152,53 @@ def test_copilot_can_be_set_as_visible_provider(isolated_runtime) -> None:
     assert summary["router"]["visible_primary"]["model"] == "gpt-4.1"
 
 
+def test_main_agent_selection_accepts_live_github_model_not_preconfigured(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+    mission_control = isolated_runtime.mission_control
+
+    auth_profiles.save_provider_credentials(
+        profile="copilot-live",
+        provider="github-copilot",
+        credentials={
+            "access_token": "ghu_test_token",
+            "token_type": "bearer",
+            "oauth_state": "real-stored",
+            "token_exchange_completed": True,
+            "real_oauth": True,
+            "created_by": "test",
+        },
+    )
+
+    monkeypatch.setattr(
+        mission_control,
+        "available_provider_models",
+        lambda provider, auth_profile="": {
+            "provider": provider,
+            "auth_profile": auth_profile or "copilot-live",
+            "source": "provider-live",
+            "status": "ready",
+            "models": [
+                {"id": "gpt-4o-2024-11-20", "label": "gpt-4o-2024-11-20"},
+            ],
+        },
+    )
+
+    result = mission_control.mc_update_main_agent_selection(
+        {
+            "provider": "github-copilot",
+            "model": "gpt-4o-2024-11-20",
+            "auth_profile": "copilot-live",
+        }
+    )
+
+    assert result["selection"]["current_provider"] == "github-copilot"
+    assert result["selection"]["current_model"] == "gpt-4o-2024-11-20"
+    assert result["selection"]["current_auth_profile"] == "copilot-live"
+
+
 def test_copilot_device_flow_state_tracking(isolated_runtime) -> None:
     auth_profiles = isolated_runtime.auth_profiles
 

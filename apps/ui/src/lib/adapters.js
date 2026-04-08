@@ -166,6 +166,23 @@ function normalizeSelection(payload) {
   }
 }
 
+function normalizeProviderModels(payload = {}) {
+  return {
+    provider: payload.provider || '',
+    authProfile: payload.auth_profile || '',
+    source: payload.source || 'unknown',
+    status: payload.status || 'unknown',
+    baseUrl: payload.base_url || '',
+    models: (payload.models || []).map((item) => ({
+      id: item.id || item.name || '',
+      label: item.label || item.id || item.name || '',
+      family: item.family || '',
+      parameterSize: item.parameter_size || '',
+      quantizationLevel: item.quantization_level || '',
+    })).filter((item) => item.id),
+  }
+}
+
 function formatRelativeTime(value) {
   const ts = Date.parse(String(value || ''))
   if (!Number.isFinite(ts)) return 'unknown'
@@ -2802,6 +2819,13 @@ export const backend = {
       }),
     })
     return normalizeSelection(updated)
+  },
+
+  async getProviderModels({ provider, authProfile = '' }) {
+    const params = new URLSearchParams({ provider })
+    if (authProfile) params.set('auth_profile', authProfile)
+    const data = await requestJson(`/mc/provider-models?${params.toString()}`)
+    return normalizeProviderModels(data)
   },
 
   async getMissionControlOverview({ selection } = {}) {

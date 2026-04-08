@@ -106,6 +106,74 @@ def test_github_visible_execution_fails_early_when_model_not_available(
     assert post_called["value"] is False
 
 
+def test_github_streaming_emits_deltas_for_chat_completions_sse(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    from apps.api.jarvis_api.services import visible_model
+    from core.runtime.settings import update_visible_execution_settings
+
+    update_visible_execution_settings(
+        visible_model_provider="github-copilot",
+        visible_model_name="gpt-4o-2024-11-20",
+        visible_auth_profile="copilot-visible",
+    )
+    monkeypatch.setattr(
+        visible_model,
+        "_load_github_copilot_token",
+        lambda profile: "ghu_test_token",
+    )
+    monkeypatch.setattr(
+        visible_model,
+        "fetch_github_copilot_models",
+        lambda profile: ["gpt-4o-2024-11-20"],
+    )
+    monkeypatch.setattr(
+        visible_model,
+        "_build_visible_chat_messages_for_github",
+        lambda message, session_id=None: [{"role": "user", "content": message}],
+    )
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def __iter__(self):
+            lines = [
+                'data: {"choices":[{"delta":{"content":"Hello "}}]}\n',
+                '\n',
+                'data: {"choices":[{"delta":{"content":"world"},"finish_reason":"stop"}]}\n',
+                '\n',
+                'data: [DONE]\n',
+                '\n',
+            ]
+            for line in lines:
+                yield line.encode("utf-8")
+
+    monkeypatch.setattr(
+        visible_model.urllib_request,
+        "urlopen",
+        lambda req, timeout=180: _FakeResponse(),
+    )
+
+    items = list(
+        visible_model.stream_visible_model(
+            message="hi",
+            provider="github-copilot",
+            model="gpt-4o-2024-11-20",
+        )
+    )
+
+    deltas = [item.delta for item in items if isinstance(item, visible_model.VisibleModelDelta)]
+    done = next(item for item in items if isinstance(item, visible_model.VisibleModelStreamDone))
+
+    assert deltas == ["Hello ", "world"]
+    assert done.result.text == "Hello world"
+
+
 def test_github_visible_cooldown_sets_on_429(isolated_runtime) -> None:
     from apps.api.jarvis_api.services.visible_model import (
         _set_github_visible_cooldown,

@@ -1056,6 +1056,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const experientialInfluence = experientialRuntimeContext?.experientialInfluence || null
   const experientialSupport = experientialRuntimeContext?.experientialSupport || null
   const innerVoiceDaemon = data?.innerVoiceDaemon || null
+  const wonderAwareness = data?.wonderAwareness || null
+  const hasWonderAwareness = Boolean(
+    wonderAwareness &&
+    wonderAwareness.kind === 'wonder-awareness' &&
+    wonderAwareness.wonderState !== 'quiet'
+  )
   const supportStreamAwareness = data?.supportStreamAwareness || null
   const hasSupportStreamAwareness = Boolean(
     supportStreamAwareness &&
@@ -1107,6 +1113,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'guided', label: 'Guided Learning', icon: GraduationCap, active: hasGuidedLearning, status: guidedLearning.learningMode, statusLabel: guidedLearning.learningMode || 'reinforce' },
     { id: 'adaptive', label: 'Adaptive Learning', icon: TrendingUp, active: hasAdaptiveLearning, status: adaptiveLearning.learningEngineMode, statusLabel: adaptiveLearning.learningEngineMode || 'retain' },
     { id: 'experiential', label: 'Experiential Context', icon: Activity, active: hasExperientialRuntimeContext, status: experientialEmbodied.initiativeGate, statusLabel: experientialEmbodied.state || 'steady' },
+    { id: 'wonder', label: 'Wonder Awareness', icon: Sparkles, active: hasWonderAwareness, status: wonderAwareness?.wonderState, statusLabel: wonderAwareness?.wonderState || 'quiet' },
     { id: 'mineness', label: 'Mineness / Ownership', icon: Heart, active: hasMinenessOwnership, status: minenessOwnership?.ownershipState, statusLabel: minenessOwnership?.ownershipState || 'ambient' },
     { id: 'flow', label: 'Flow State', icon: Zap, active: hasFlowStateAwareness, status: flowStateAwareness?.flowState, statusLabel: flowStateAwareness?.flowState || 'clear' },
   ]
@@ -1374,6 +1381,44 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
             {`shaped inner voice → mode ${humanizeToken(innerVoiceDaemon.lastResult.mode)} · ${humanizeToken(innerVoiceDaemon.lastResult.renderMode)}`}
           </small>
           ) : null}
+        </article>
+        ) : null}
+
+        {hasWonderAwareness ? (
+        <article className="support-card" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::wonder_awareness',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header stacked">
+            <div>
+              <h3>Wonder Awareness</h3>
+              <p className="muted">Self-aware runtime truth: whether the current stream carries undren or drag, beyond experiential context, flow, or mineness alone.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(wonderAwareness.wonderState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Wonder state</span>
+              <strong>{humanizeToken(wonderAwareness.wonderState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Orientation</span>
+              <strong>{humanizeToken(wonderAwareness.wonderOrientation)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Source</span>
+              <strong>{humanizeToken(wonderAwareness.wonderSource)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Visibility</span>
+              <strong>{humanizeToken(wonderAwareness.visibility)}</strong>
+            </div>
+          </div>
+          {wonderAwareness.narrative ? (
+          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{wonderAwareness.narrative}</small>
+          ) : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${wonderAwareness.authority} · kind: ${wonderAwareness.kind}`}</small>
         </article>
         ) : null}
 

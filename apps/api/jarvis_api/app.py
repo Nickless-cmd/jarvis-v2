@@ -16,7 +16,9 @@ from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.mission_control import router as mc_router
+from apps.api.jarvis_api.routes.openai_compat import router as openai_compat_router
 from apps.api.jarvis_api.routes.system_health import router as system_health_router
+from apps.api.jarvis_api.mcp_server import create_mcp_app
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.bootstrap import ensure_runtime_dirs
@@ -30,13 +32,16 @@ def create_app() -> FastAPI:
     init_db()
     ensure_default_workspace()
 
-    app = FastAPI(title="Jarvis V2 API")
+    mcp_app = create_mcp_app()
+    app = FastAPI(title="Jarvis V2 API", lifespan=mcp_app.lifespan)
 
     app.include_router(chat_router)
     app.include_router(health_router)
     app.include_router(mc_router)
     app.include_router(live_router)
     app.include_router(system_health_router, prefix="/mc")
+    app.include_router(openai_compat_router)
+    app.mount("/mcp", mcp_app)
 
     @app.on_event("startup")
     async def on_startup() -> None:

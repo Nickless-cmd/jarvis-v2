@@ -253,6 +253,13 @@ _BLOCKED_COMMANDS = [
 ]
 
 
+_READ_ONLY_GIT_SUBCOMMANDS = {
+    "status", "log", "diff", "show", "branch", "remote", "tag",
+    "stash list", "rev-parse", "blame", "shortlog", "describe",
+    "ls-files", "ls-tree", "cat-file", "reflog",
+}
+
+
 def classify_command(command: str) -> str:
     """Classify a shell command: 'auto', 'approval', 'destructive', or 'blocked'."""
     normalized = command.strip().lower()
@@ -267,6 +274,13 @@ def classify_command(command: str) -> str:
 
     for prefix in _READ_ONLY_COMMAND_PREFIXES:
         if normalized.startswith(prefix) or normalized == prefix.strip():
+            return "auto"
+
+    # Git with flags before subcommand (e.g. git -C /path log)
+    git_match = re.match(r"git\s+(?:-\S+\s+\S+\s+)*(\S+(?:\s+\S+)?)", normalized)
+    if git_match:
+        subcmd = git_match.group(1)
+        if any(subcmd.startswith(s) for s in _READ_ONLY_GIT_SUBCOMMANDS):
             return "auto"
 
     # Piped commands: check if all segments are read-only

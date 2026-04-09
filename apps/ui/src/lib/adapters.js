@@ -4019,7 +4019,7 @@ export const backend = {
     return data.session
   },
 
-  async streamMessage({ sessionId, content, onRun, onDelta, onDone, onFailed, onWorkingStep }) {
+  async streamMessage({ sessionId, content, onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {
     const response = await fetch('/chat/stream', {
       method: 'POST',
       headers: JSON_HEADERS,
@@ -4028,7 +4028,7 @@ export const backend = {
     if (!response.ok) {
       throw new Error(`/chat/stream: ${response.status} ${response.statusText}`)
     }
-    return readSseStream(response, { onRun, onDelta, onDone, onFailed, onWorkingStep })
+    return readSseStream(response, { onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest })
   },
 
   async cancelRun(runId) {

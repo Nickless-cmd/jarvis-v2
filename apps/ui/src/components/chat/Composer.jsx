@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUp, Square, Paperclip, GitBranch, ShieldCheck, Layers, Activity } from 'lucide-react'
+import { ArrowUp, Square, Paperclip, GitBranch, GitCommit, ShieldCheck, Layers, Activity, Check, X } from 'lucide-react'
 import { backend } from '../../lib/adapters'
 
 function formatTokens(n) {
@@ -27,10 +27,16 @@ export function Composer({
   streamingTokenEstimate,
 }) {
   const textareaRef = useRef(null)
+  const commitInputRef = useRef(null)
   const canSend = Boolean(value.trim()) && !isStreaming
 
   const [planMode, setPlanMode] = useState(false)
+  const [approvalMode, setApprovalMode] = useState('auto')
   const [gitInfo, setGitInfo] = useState(null)
+  const [commitOpen, setCommitOpen] = useState(false)
+  const [commitMsg, setCommitMsg] = useState('')
+  const [commitState, setCommitState] = useState('idle') // idle | loading | error
+  const [commitError, setCommitError] = useState('')
   const [provider, setProvider] = useState(selection?.currentProvider || '')
   const [model, setModel] = useState(selection?.currentModel || '')
 
@@ -49,6 +55,11 @@ export function Composer({
     const id = setInterval(fetchGit, 30_000)
     return () => clearInterval(id)
   }, [])
+
+  // Focus commit input when opened
+  useEffect(() => {
+    if (commitOpen) commitInputRef.current?.focus()
+  }, [commitOpen])
 
   useLayoutEffect(() => {
     const node = textareaRef.current
@@ -90,7 +101,45 @@ export function Composer({
   function handleSend() {
     if (!canSend) return
     const msg = planMode ? `[Plan mode] ${value.trim()}` : value.trim()
-    onSend(msg)
+    onSend(msg, { approvalMode })
+  }
+
+  function openCommit() {
+    setCommitMsg('')
+    setCommitError('')
+    setCommitState('idle')
+    setCommitOpen(true)
+  }
+
+  function cancelCommit() {
+    setCommitOpen(false)
+    setCommitMsg('')
+    setCommitError('')
+    setCommitState('idle')
+  }
+
+  async function submitCommit() {
+    const msg = commitMsg.trim()
+    if (!msg) return
+    setCommitState('loading')
+    setCommitError('')
+    try {
+      const result = await backend.gitCommit(msg)
+      if (result.ok) {
+        setCommitOpen(false)
+        setCommitMsg('')
+        setCommitState('idle')
+        // Refresh git info so diff stats clear
+        const info = await backend.getSystemGit()
+        setGitInfo(info)
+      } else {
+        setCommitState('error')
+        setCommitError(result.error || 'Commit failed')
+      }
+    } catch (err) {
+      setCommitState('error')
+      setCommitError(String(err))
+    }
   }
 
   const tokenLabel = isStreaming && streamingTokenEstimate > 0
@@ -102,29 +151,83 @@ export function Composer({
   const shortPath = gitInfo?.workspace
     ? gitInfo.workspace.replace(/^\/media\/projects\//, '~/')
     : ''
+  const hasChanges = (gitInfo?.files_changed || 0) > 0
 
   return (
     <section className="composer-shell">
 
-      {/* Top meta row: git branch + diff + workspace */}
+      {/* Top meta row: git branch + diff + commit button + workspace */}
       {(shortBranch || shortPath) && (
         <div className="composer-meta-row">
-          {shortBranch && (
-            <div className="composer-git-info">
-              <GitBranch size={11} strokeWidth={1.8} />
-              <span className="mono">{shortBranch}</span>
-              {diffParts.length > 0 && (
-                <span className="composer-diff-stats mono">
-                  {diffParts.map((part, i) => (
-                    <span key={i} className={part.startsWith('+') ? 'diff-ins' : 'diff-dels'}>{part}</span>
-                  ))}
-                </span>
-              )}
-            </div>
-          )}
+          <div className="composer-meta-left">
+            {shortBranch && (
+              <div className="composer-git-info">
+                <GitBranch size={11} strokeWidth={1.8} />
+                <span className="mono">{shortBranch}</span>
+                {diffParts.length > 0 && (
+                  <span className="composer-diff-stats mono">
+                    {diffParts.map((part, i) => (
+                      <span key={i} className={part.startsWith('+') ? 'diff-ins' : 'diff-dels'}>{part}</span>
+                    ))}
+                  </span>
+                )}
+              </div>
+            )}
+            {hasChanges && !commitOpen && (
+              <button
+                className="composer-commit-btn"
+                onClick={openCommit}
+                title="Commit changes"
+                type="button"
+              >
+                <GitCommit size={11} strokeWidth={1.8} />
+                <span>Commit changes</span>
+              </button>
+            )}
+          </div>
           {shortPath && (
             <span className="composer-workspace-path mono">{shortPath}</span>
           )}
+        </div>
+      )}
+
+      {/* Inline commit field */}
+      {commitOpen && (
+        <div className="composer-commit-row">
+          <GitCommit size={12} strokeWidth={1.8} className="composer-commit-icon" />
+          <input
+            ref={commitInputRef}
+            className="composer-commit-input mono"
+            type="text"
+            value={commitMsg}
+            onChange={(e) => setCommitMsg(e.target.value)}
+            placeholder="Commit message…"
+            disabled={commitState === 'loading'}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitCommit()
+              if (e.key === 'Escape') cancelCommit()
+            }}
+          />
+          {commitError && (
+            <span className="composer-commit-error mono">{commitError}</span>
+          )}
+          <button
+            className="composer-commit-confirm"
+            onClick={submitCommit}
+            disabled={!commitMsg.trim() || commitState === 'loading'}
+            title="Confirm commit"
+            type="button"
+          >
+            <Check size={12} />
+          </button>
+          <button
+            className="composer-commit-cancel"
+            onClick={cancelCommit}
+            title="Cancel"
+            type="button"
+          >
+            <X size={12} />
+          </button>
         </div>
       )}
 
@@ -172,8 +275,17 @@ export function Composer({
       <div className="composer-toolbar">
         <div className="composer-toolbar-left">
           <div className="composer-toolbar-group" title="Tool approval mode">
-            <ShieldCheck size={11} strokeWidth={1.8} />
-            <span className="mono composer-toolbar-label">auto</span>
+            <ShieldCheck size={11} strokeWidth={1.8} className="composer-shield-icon" />
+            <select
+              className="composer-select mono"
+              value={approvalMode}
+              onChange={(e) => setApprovalMode(e.target.value)}
+              title="Tool approval mode"
+            >
+              <option value="auto">auto</option>
+              <option value="ask">ask all</option>
+              <option value="trust">trust all</option>
+            </select>
           </div>
 
           {providers.length > 0 && (
@@ -215,7 +327,10 @@ export function Composer({
           </button>
 
           {tokenLabel && (
-            <div className="composer-token-count mono" title={lastRunTokens ? `In: ${lastRunTokens.input} / Out: ${lastRunTokens.output}` : ''}>
+            <div
+              className="composer-token-count mono"
+              title={lastRunTokens ? `In: ${lastRunTokens.input} / Out: ${lastRunTokens.output}` : ''}
+            >
               <Activity size={9} />
               <span>{tokenLabel}</span>
             </div>

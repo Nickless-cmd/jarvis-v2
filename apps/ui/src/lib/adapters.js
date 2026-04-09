@@ -4064,6 +4064,14 @@ export const backend = {
     }
   },
 
+  async gitCommit(message) {
+    return await requestJson('/mc/system/git/commit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    })
+  },
+
   async getCostSummary() {
     try {
       const data = await requestJson('/mc/cost/summary')

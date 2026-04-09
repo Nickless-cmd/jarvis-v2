@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import psutil
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 router = APIRouter(tags=["system"])
 
@@ -66,3 +67,35 @@ def system_git() -> dict:
         "files_changed": files_changed,
         "workspace": _REPO_ROOT,
     }
+
+
+class CommitRequest(BaseModel):
+    message: str
+
+
+@router.post("/system/git/commit")
+def system_git_commit(body: CommitRequest) -> dict:
+    """Stage tracked changes and commit with the given message."""
+    message = body.message.strip()
+    if not message:
+        return {"ok": False, "error": "Commit message cannot be empty"}
+    try:
+        subprocess.check_output(
+            ["git", "add", "-u"],
+            cwd=_REPO_ROOT,
+            text=True,
+            timeout=10,
+            stderr=subprocess.STDOUT,
+        )
+        out = subprocess.check_output(
+            ["git", "commit", "-m", message],
+            cwd=_REPO_ROOT,
+            text=True,
+            timeout=10,
+            stderr=subprocess.STDOUT,
+        )
+        return {"ok": True, "output": out.strip()}
+    except subprocess.CalledProcessError as exc:
+        return {"ok": False, "error": (exc.output or "").strip() or str(exc)}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}

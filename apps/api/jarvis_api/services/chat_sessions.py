@@ -115,8 +115,8 @@ def append_chat_message(
     if not normalized_session:
         raise ValueError("session_id must not be empty")
     normalized_role = (role or "").strip()
-    if normalized_role not in {"user", "assistant"}:
-        raise ValueError("role must be user or assistant")
+    if normalized_role not in {"user", "assistant", "tool"}:
+        raise ValueError("role must be user, assistant, or tool")
     normalized_content = str(content or "").strip()
     if not normalized_content:
         raise ValueError("content must not be empty")

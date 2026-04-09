@@ -2786,7 +2786,17 @@ async function readSseStream(response, handlers = {}) {
         failure = 'Chat cancelled'
         handlers.onFailed?.(failure)
       }
-      if (eventName === 'done') handlers.onDone?.(payload, assistantText)
+      if (eventName === 'done') {
+        handlers.onDone?.(payload, assistantText)
+        // Close the reader immediately — don't wait for HTTP connection to close
+        try { reader.cancel() } catch (_) { /* ignore */ }
+        return {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: assistantText || 'No response content returned.',
+          ts: nowLabel(),
+        }
+      }
     }
   }
 

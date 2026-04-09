@@ -557,8 +557,9 @@ button { cursor: pointer; }
 /* Emotion grid (2x2) */
 .emotion-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .emotion-card {
-  padding: 8px; background: #1c1f25;
-  border: 1px solid rgba(255,255,255,0.04); border-radius: 8px;
+  padding: 8px; background: linear-gradient(160deg, rgba(14,22,32,.96), rgba(10,16,24,.99));
+  border: 1px solid rgba(40,177,163,.10); border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
 }
 .emotion-card-header {
   display: flex; align-items: center; gap: 4px; margin-bottom: 4px;
@@ -570,8 +571,9 @@ button { cursor: pointer; }
 /* Affective state grid (2x2) */
 .rail-affective-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .rail-affective-card {
-  padding: 8px; background: #1c1f25;
-  border: 1px solid rgba(255,255,255,0.04); border-radius: 8px;
+  padding: 8px; background: linear-gradient(160deg, rgba(14,22,32,.96), rgba(10,16,24,.99));
+  border: 1px solid rgba(40,177,163,.10); border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
 }
 .rail-affective-card-header {
   display: flex; align-items: center; gap: 4px; margin-bottom: 4px;
@@ -579,8 +581,9 @@ button { cursor: pointer; }
 .rail-affective-card-header .mono { font-size: 8px; color: #4e5262; letter-spacing: 0.08em; }
 .rail-affective-card-value { font-size: 11px; margin-bottom: 2px; text-transform: capitalize; }
 .rail-affective-summary {
-  margin-top: 8px; padding: 6px 8px; background: #1c1f25;
-  border: 1px solid rgba(255,255,255,0.04); border-radius: 6px;
+  margin-top: 8px; padding: 6px 8px;
+  background: linear-gradient(160deg, rgba(14,22,32,.96), rgba(10,16,24,.99));
+  border: 1px solid rgba(40,177,163,.08); border-radius: 6px;
   font-size: 10px; color: #8b909e; line-height: 1.4;
 }
 
@@ -593,9 +596,10 @@ button { cursor: pointer; }
 
 /* Inner voice */
 .rail-inner-voice {
-  padding: 8px 10px; background: #1c1f25;
-  border: 1px solid rgba(255,255,255,0.04);
-  border-radius: 7px; border-left: 2px solid #2d303d;
+  padding: 8px 10px;
+  background: linear-gradient(160deg, rgba(14,22,32,.96), rgba(10,16,24,.99));
+  border: 1px solid rgba(40,177,163,.10);
+  border-radius: 7px; border-left: 2px solid rgba(40,177,163,.30);
 }
 .rail-inner-voice span {
   font-size: 11px; color: #4e5262; font-style: italic; line-height: 1.5;
@@ -607,8 +611,11 @@ button { cursor: pointer; }
 .compact-grid.compact-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .compact-grid.compact-grid-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .compact-metric {
-  padding:8px 10px; border-radius:6px; background:#21252e; border:1px solid rgba(255,255,255,.04);
+  padding:8px 10px; border-radius:6px;
+  background: linear-gradient(160deg, rgba(14,22,32,.96), rgba(10,16,24,.99));
+  border:1px solid rgba(40,177,163,.10);
   display:flex; flex-direction:column; gap:4px; align-items:flex-start; min-width:0;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
 }
 .compact-metric span { font-size:9px; font-family:'IBM Plex Mono', monospace; color:#6b7a8f; letter-spacing:.08em; text-transform:uppercase; }
 .compact-metric strong { font-size:13px; line-height:1.35; text-align:left; overflow-wrap:anywhere; }

@@ -1344,9 +1344,10 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     lines = [
         "Runtime tool calling:",
         "- You have tools available via native function calling. Use them directly.",
-        "- Read-only tools (read_file, search, find_files, bash with read-only commands) are auto-approved.",
-        "- Write tools (write_file, edit_file) auto-approve for workspace files (MEMORY.md, USER.md). Other files require user approval.",
-        "- bash auto-approves read-only commands. Mutations require user approval.",
+        "- CRITICAL: ALWAYS use the actual tool call mechanism. NEVER simulate tool usage in text.",
+        "- When you need to write a file, CALL write_file. Do NOT say 'I will write' — just call the tool.",
+        "- When you need to run a command, CALL bash. Do NOT describe the command — call it.",
+        "- The runtime handles all permissions and approvals automatically. You never need to ask the user.",
         "- If you need information, use tools proactively. Do not guess from fragments.",
         "- If a task needs multiple reads, call multiple tools. Continue autonomously instead of asking permission.",
         "- If the user asks for code analysis, read concrete code files — not just README or directory listings.",

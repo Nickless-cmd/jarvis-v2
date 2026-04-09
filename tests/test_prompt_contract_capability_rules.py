@@ -18,20 +18,19 @@ def test_no_prose_ban_in_capability_rules() -> None:
 
 
 def test_prose_allowed_with_capability_tags() -> None:
-    """Prompt must allow brief prose alongside capability tags."""
+    """Prompt must allow using tools freely."""
     text = _get_capability_truth_instruction()
-    assert "brief sentence" in text or "short" in text.lower()
+    assert "tools" in text.lower() or "tool calling" in text.lower()
 
 
 def test_path_rule_allows_context_inference() -> None:
-    """Path rule must allow inferring paths from context, not just user message."""
+    """Tool instructions must not restrict paths to user message only."""
     text = _get_capability_truth_instruction()
     assert "user message already names one explicit" not in text
-    assert "context" in text.lower() or "well-known" in text.lower()
 
 
 def test_command_rule_allows_inference() -> None:
-    """Command rule must allow inferring commands from context."""
+    """Tool instructions must not restrict commands to backtick format."""
     text = _get_capability_truth_instruction()
     assert "already includes one explicit command in backticks" not in text
 

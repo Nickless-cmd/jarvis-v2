@@ -4,6 +4,7 @@ import asyncio
 import json
 import re
 from datetime import UTC, datetime
+from urllib import request as urllib_request
 from dataclasses import dataclass
 from typing import AsyncIterator
 from uuid import uuid4
@@ -187,9 +188,12 @@ from apps.api.jarvis_api.services.visible_model import (
     VisibleModelStreamCancelled,
     VisibleModelStreamDone,
     VisibleModelToolCalls,
+    _build_visible_input,
+    _estimate_tokens,
     execute_visible_model,
     stream_visible_model,
 )
+from core.runtime.provider_router import resolve_provider_router_target
 from core.memory.private_layer_pipeline import write_private_terminal_layers
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
@@ -478,18 +482,118 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
         capability_plan = _extract_capability_plan(result.text)
 
-        # Merge native tool_calls into capability plan (takes priority over XML)
+        # ── Native tool_calls: execute directly via simple_tools ──
         if _collected_native_tool_calls:
-            native_caps = _native_tool_calls_to_capabilities(_collected_native_tool_calls)
-            if native_caps:
-                existing = capability_plan.get("all_capabilities") or []
-                capability_plan["all_capabilities"] = native_caps + existing
-                capability_plan["had_markup"] = True
-                if native_caps:
-                    capability_plan["selected_capability_id"] = native_caps[0].get("capability_id")
-                    capability_plan["selected_arguments"] = native_caps[0].get("arguments", {})
-                capability_plan["native_tool_calls"] = True
+            simple_results = _execute_simple_tool_calls(_collected_native_tool_calls)
 
+            if simple_results:
+                _update_visible_execution_trace(
+                    run,
+                    {
+                        "argument_binding_mode": "native-tool-call",
+                        "native_tool_call_count": len(simple_results),
+                    },
+                )
+
+                # Send tool results as SSE events
+                for sr in simple_results:
+                    yield _sse("capability", {
+                        "type": "tool_result",
+                        "tool": sr["tool_name"],
+                        "status": sr["status"],
+                    })
+
+                # Build followup for the model with tool results
+                from apps.api.jarvis_api.services.ollama_visible_prompt import (
+                    serialize_ollama_chat_messages,
+                )
+                from core.tools.simple_tools import get_tool_definitions
+
+                visible_input = _build_visible_input(
+                    run.user_message, session_id=run.session_id
+                )
+                followup_messages = serialize_ollama_chat_messages(visible_input)
+
+                # Add assistant message with tool_calls
+                followup_messages.append({
+                    "role": "assistant",
+                    "content": result.text if result.text != "[tool calls only]" else "",
+                    "tool_calls": _collected_native_tool_calls,
+                })
+
+                # Add tool results
+                for sr in simple_results:
+                    followup_messages.append({
+                        "role": "tool",
+                        "content": sr["result_text"],
+                    })
+
+                # Second-pass: stream model response grounded in tool results
+                import json as _json
+                target = resolve_provider_router_target(lane="visible")
+                base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
+                tools = get_tool_definitions()
+                followup_payload: dict[str, object] = {
+                    "model": run.model,
+                    "messages": followup_messages,
+                    "stream": True,
+                }
+                if tools:
+                    followup_payload["tools"] = tools
+
+                followup_req = urllib_request.Request(
+                    f"{base_url.rstrip('/')}/api/chat",
+                    data=_json.dumps(followup_payload, ensure_ascii=False).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+
+                followup_parts: list[str] = []
+                try:
+                    with urllib_request.urlopen(followup_req, timeout=180) as followup_resp:
+                        for raw_line in followup_resp:
+                            line = raw_line.decode("utf-8").strip()
+                            if not line:
+                                continue
+                            event = _json.loads(line)
+                            msg = event.get("message") or {}
+                            delta = str(msg.get("content") or "")
+                            if delta:
+                                followup_parts.append(delta)
+                                yield _sse("delta", {
+                                    "type": "delta",
+                                    "run_id": run.run_id,
+                                    "delta": delta,
+                                })
+                            if event.get("done"):
+                                break
+                except Exception:
+                    pass
+
+                followup_text = "".join(followup_parts).strip()
+                if followup_text:
+                    _persist_session_assistant_message(run, followup_text)
+                    set_last_visible_run_outcome(run, status="completed", text_preview=followup_text[:140])
+                    total_input_tokens = result.input_tokens * 2
+                    total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
+                    record_cost(
+                        provider=run.provider,
+                        model=run.model,
+                        input_tokens=total_input_tokens,
+                        output_tokens=total_output_tokens,
+                        cost_usd=0.0,
+                        run_id=run.run_id,
+                        lane="visible",
+                    )
+                    yield _sse("done", {
+                        "type": "done",
+                        "run_id": run.run_id,
+                        "input_tokens": total_input_tokens,
+                        "output_tokens": total_output_tokens,
+                    })
+                    return
+
+        # ── Legacy XML capability-call fallback ──
         _update_visible_execution_trace(
             run,
             {
@@ -497,10 +601,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "parsed_command_text": (capability_plan.get("selected_arguments") or {}).get("command_text"),
                 "parsed_target_path": (capability_plan.get("selected_arguments") or {}).get("target_path"),
                 "argument_source": capability_plan.get("argument_source") or "none",
-                "argument_binding_mode": (
-                    "native-tool-call" if capability_plan.get("native_tool_calls")
-                    else capability_plan.get("argument_binding_mode") or "id-only"
-                ),
+                "argument_binding_mode": capability_plan.get("argument_binding_mode") or "id-only",
                 "capability_markup_count": len(capability_plan.get("capability_ids") or []),
                 "multiple_capability_tags": bool(capability_plan.get("multiple")),
                 "native_tool_call_count": len(_collected_native_tool_calls),
@@ -1263,7 +1364,7 @@ _MAX_CAPABILITIES_PER_TURN = 5
 
 
 def _native_tool_calls_to_capabilities(tool_calls: list[dict]) -> list[dict]:
-    """Convert Ollama native tool_calls to capability-plan entries."""
+    """Convert Ollama native tool_calls to capability-plan entries (legacy compat)."""
     from core.tools.workspace_capabilities import resolve_tool_call_to_capability
 
     caps: list[dict] = []
@@ -1291,6 +1392,31 @@ def _native_tool_calls_to_capabilities(tool_calls: list[dict]) -> list[dict]:
             "tool_name": name,
         })
     return caps
+
+
+def _execute_simple_tool_calls(
+    tool_calls: list[dict],
+) -> list[dict[str, object]]:
+    """Execute native tool_calls directly via simple_tools. Returns results."""
+    from core.tools.simple_tools import execute_tool, format_tool_result_for_model
+
+    results: list[dict[str, object]] = []
+    for tc in tool_calls[:_MAX_CAPABILITIES_PER_TURN]:
+        fn = tc.get("function") or {}
+        name = str(fn.get("name") or "")
+        arguments = fn.get("arguments") or {}
+        if not name:
+            continue
+        result = execute_tool(name, arguments)
+        result_text = format_tool_result_for_model(name, result)
+        results.append({
+            "tool_name": name,
+            "arguments": arguments,
+            "result": result,
+            "result_text": result_text,
+            "status": result.get("status", "ok"),
+        })
+    return results
 
 
 def _extract_capability_plan(text: str) -> dict[str, object]:

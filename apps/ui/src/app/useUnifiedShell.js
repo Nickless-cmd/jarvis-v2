@@ -244,6 +244,25 @@ export function useUnifiedShell() {
             ts: Date.now(),
           }])
         },
+        onApprovalRequest: (payload) => {
+          // Insert approval card inline in the chat transcript
+          setActiveSession((current) =>
+            current
+              ? {
+                  ...current,
+                  messages: [
+                    ...(current.messages || []),
+                    {
+                      id: `approval-${payload.approval_id}`,
+                      role: 'approval_request',
+                      ...payload,
+                      ts: nowLabel(),
+                    },
+                  ],
+                }
+              : current
+          )
+        },
         onWorkingStep: (step) => {
           setWorkingSteps((prev) => {
             if (step.status === 'done') {

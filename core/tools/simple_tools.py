@@ -340,6 +340,29 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Execute tool bypassing approval checks. Only call for user-approved requests."""
+    handler = _FORCE_HANDLERS.get(name) or _TOOL_HANDLERS.get(name)
+    if not handler:
+        return {"error": f"Unknown tool: {name}", "status": "error"}
+
+    event_bus.publish("tool.force_invoked", {
+        "tool": name,
+        "arguments": {k: str(v)[:100] for k, v in arguments.items()},
+    })
+
+    try:
+        result = handler(arguments)
+    except Exception as exc:
+        result = {"error": str(exc), "status": "error"}
+
+    event_bus.publish("tool.completed", {
+        "tool": name,
+        "status": result.get("status", "ok"),
+    })
+    return result
+
+
 def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
     path = str(args.get("path") or "").strip()
     if not path:
@@ -631,6 +654,72 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "bash": _exec_bash,
     "web_fetch": _exec_web_fetch,
     "web_search": _exec_web_search,
+}
+
+
+def _force_write_file(args: dict[str, Any]) -> dict[str, Any]:
+    """Write file bypassing approval (blocked paths still blocked)."""
+    path = str(args.get("path") or "").strip()
+    content = str(args.get("content") or "")
+    if not path:
+        return {"error": "path is required", "status": "error"}
+    target = Path(path).expanduser().resolve()
+    if classify_file_write(str(target)) == "blocked":
+        return {"error": f"Write blocked for safety: {path}", "status": "blocked"}
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+    return {"status": "ok", "path": str(target), "size": len(content)}
+
+
+def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
+    """Edit file bypassing approval (blocked paths still blocked)."""
+    path = str(args.get("path") or "").strip()
+    old_text = str(args.get("old_text") or "")
+    new_text = str(args.get("new_text") or "")
+    if not path or not old_text:
+        return {"error": "path and old_text are required", "status": "error"}
+    target = Path(path).expanduser().resolve()
+    if classify_file_write(str(target)) == "blocked":
+        return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
+    if not target.exists():
+        return {"error": f"File not found: {path}", "status": "error"}
+    content = target.read_text(encoding="utf-8", errors="replace")
+    if old_text not in content:
+        return {"error": "old_text not found in file", "status": "error"}
+    new_content = content.replace(old_text, new_text, 1)
+    target.write_text(new_content, encoding="utf-8")
+    return {"status": "ok", "path": str(target), "replacements": 1}
+
+
+def _force_bash(args: dict[str, Any]) -> dict[str, Any]:
+    """Run bash command bypassing approval (blocked still blocked)."""
+    command = str(args.get("command") or "").strip()
+    if not command:
+        return {"error": "command is required", "status": "error"}
+    if classify_command(command) == "blocked":
+        return {"error": f"Command blocked: {command}", "status": "blocked"}
+    try:
+        result = subprocess.run(
+            ["bash", "-c", command],
+            capture_output=True,
+            text=True,
+            timeout=MAX_BASH_SECONDS,
+            cwd=str(PROJECT_ROOT),
+        )
+    except subprocess.TimeoutExpired:
+        return {"error": f"Command timed out after {MAX_BASH_SECONDS}s", "status": "error"}
+    output = result.stdout.strip()
+    if result.stderr.strip():
+        output = (output + "\n" + result.stderr.strip()).strip()
+    if len(output) > MAX_BASH_OUTPUT_CHARS:
+        output = output[:MAX_BASH_OUTPUT_CHARS - 1] + "…"
+    return {"text": output or "[no output]", "exit_code": result.returncode, "status": "ok"}
+
+
+_FORCE_HANDLERS: dict[str, Any] = {
+    "write_file": _force_write_file,
+    "edit_file": _force_edit_file,
+    "bash": _force_bash,
 }
 
 

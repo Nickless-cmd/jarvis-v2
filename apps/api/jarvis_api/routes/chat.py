@@ -12,7 +12,11 @@ from apps.api.jarvis_api.services.chat_sessions import (
     list_chat_sessions,
     rename_chat_session,
 )
-from apps.api.jarvis_api.services.visible_runs import cancel_visible_run, start_visible_run
+from apps.api.jarvis_api.services.visible_runs import (
+    cancel_visible_run,
+    resolve_pending_approval,
+    start_visible_run,
+)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -79,6 +83,22 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
             "Connection": "keep-alive",
         },
     )
+
+
+@router.post("/approvals/{approval_id}/approve")
+async def chat_approve_tool(approval_id: str) -> dict:
+    result = resolve_pending_approval(approval_id, approved=True)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
+    return result
+
+
+@router.post("/approvals/{approval_id}/deny")
+async def chat_deny_tool(approval_id: str) -> dict:
+    result = resolve_pending_approval(approval_id, approved=False)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=404, detail=result.get("error", "Not found"))
+    return result
 
 
 @router.post("/runs/{run_id}/cancel")

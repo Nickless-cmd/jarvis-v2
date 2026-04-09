@@ -65,6 +65,25 @@ def _serialize_system_block(system_parts: list[str]) -> str:
     ).strip()
 
 
+def serialize_ollama_chat_messages(items: list[dict]) -> list[dict]:
+    """Convert visible input items to Ollama /api/chat messages format."""
+    system_parts, conversation_parts = _collect_visible_text_parts(items)
+    messages: list[dict] = []
+    if system_parts:
+        messages.append({
+            "role": "system",
+            "content": "\n\n".join(system_parts).strip(),
+        })
+    for part in conversation_parts:
+        if part.startswith("User:\n"):
+            messages.append({"role": "user", "content": part[6:].strip()})
+        elif part.startswith("Assistant:\n"):
+            messages.append({"role": "assistant", "content": part[11:].strip()})
+        else:
+            messages.append({"role": "user", "content": part.strip()})
+    return messages
+
+
 def _serialize_conversation_block(conversation_parts: list[str]) -> str:
     return "\n".join(
         [

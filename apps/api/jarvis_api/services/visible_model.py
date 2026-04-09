@@ -72,6 +72,11 @@ class VisibleModelStreamDone:
     result: VisibleModelResult
 
 
+@dataclass(slots=True)
+class VisibleModelToolCalls:
+    tool_calls: list[dict]
+
+
 class VisibleModelStreamCancelled(RuntimeError):
     pass
 
@@ -660,28 +665,42 @@ def _execute_openai_model(
 def _execute_ollama_model(
     *, message: str, model: str, session_id: str | None = None
 ) -> VisibleModelResult:
+    from apps.api.jarvis_api.services.ollama_visible_prompt import (
+        serialize_ollama_chat_messages,
+    )
+    from core.tools.workspace_capabilities import build_ollama_tool_definitions
+
     target = resolve_provider_router_target(lane="visible")
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
-    prompt = _build_ollama_prompt(message, model=model, session_id=session_id)
-    payload = {
+
+    visible_input = _build_visible_input(message, session_id=session_id)
+    messages = serialize_ollama_chat_messages(visible_input)
+    tools = build_ollama_tool_definitions()
+
+    payload: dict[str, object] = {
         "model": model,
-        "prompt": prompt,
+        "messages": messages,
         "stream": False,
     }
+    if tools:
+        payload["tools"] = tools
+
     req = urllib_request.Request(
-        f"{base_url.rstrip('/')}/api/generate",
-        data=json.dumps(payload).encode("utf-8"),
+        f"{base_url.rstrip('/')}/api/chat",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
     with urllib_request.urlopen(req, timeout=120) as response:
         data = json.loads(response.read().decode("utf-8"))
 
-    text = str(data.get("response") or "").strip()
+    msg = data.get("message") or {}
+    text = str(msg.get("content") or "").strip()
     if not text:
         raise RuntimeError("Ollama visible execution returned no response")
 
-    prompt_eval_count = int(data.get("prompt_eval_count") or _estimate_tokens(prompt))
+    prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
+    prompt_eval_count = int(data.get("prompt_eval_count") or prompt_estimate)
     eval_count = int(data.get("eval_count") or _estimate_tokens(text))
     return VisibleModelResult(
         text=text,
@@ -834,25 +853,41 @@ def _stream_openai_model(
 
 def _stream_ollama_model(
     *, message: str, model: str, session_id: str | None = None, controller=None
-) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+) -> Iterator[VisibleModelDelta | VisibleModelToolCalls | VisibleModelStreamDone]:
+    from apps.api.jarvis_api.services.ollama_visible_prompt import (
+        serialize_ollama_chat_messages,
+    )
+    from core.tools.workspace_capabilities import build_ollama_tool_definitions
+
     target = resolve_provider_router_target(lane="visible")
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
-    payload = {
+
+    visible_input = _build_visible_input(message, session_id=session_id)
+    messages = serialize_ollama_chat_messages(visible_input)
+    tools = build_ollama_tool_definitions()
+
+    payload: dict[str, object] = {
         "model": model,
-        "prompt": _build_ollama_prompt(message, model=model, session_id=session_id),
+        "messages": messages,
         "stream": True,
     }
+    if tools:
+        payload["tools"] = tools
+
+    prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
+
     req = urllib_request.Request(
-        f"{base_url.rstrip('/')}/api/generate",
-        data=json.dumps(payload).encode("utf-8"),
+        f"{base_url.rstrip('/')}/api/chat",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
 
     parts: list[str] = []
     terminal_response = ""
-    prompt_eval_count = _estimate_tokens(payload["prompt"])
+    prompt_eval_count = prompt_estimate
     eval_count = 0
+    collected_tool_calls: list[dict] = []
 
     try:
         with urllib_request.urlopen(req, timeout=180) as response:
@@ -863,11 +898,18 @@ def _stream_ollama_model(
                 if not line:
                     continue
                 event = json.loads(line)
-                delta = str(event.get("response") or "")
+                msg = event.get("message") or {}
+
+                delta = str(msg.get("content") or "")
                 if delta:
                     terminal_response = delta
                     parts.append(delta)
                     yield VisibleModelDelta(delta=delta)
+
+                tool_calls = msg.get("tool_calls") or []
+                if tool_calls:
+                    collected_tool_calls.extend(tool_calls)
+
                 if event.get("done"):
                     if not parts and delta:
                         terminal_response = delta
@@ -887,14 +929,18 @@ def _stream_ollama_model(
     text = "".join(parts).strip()
     if not text:
         text = terminal_response.strip()
-    if not text:
+
+    if collected_tool_calls:
+        yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
+
+    if not text and not collected_tool_calls:
         if controller is not None and controller.is_cancelled():
             raise VisibleModelStreamCancelled("visible-run-cancelled")
         raise RuntimeError("Ollama visible execution returned no streamed response")
 
     yield VisibleModelStreamDone(
         result=VisibleModelResult(
-            text=text,
+            text=text or "[tool calls only]",
             input_tokens=prompt_eval_count,
             output_tokens=eval_count or _estimate_tokens(text),
             cost_usd=0.0,

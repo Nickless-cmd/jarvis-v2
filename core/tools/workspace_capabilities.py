@@ -299,6 +299,177 @@ def load_workspace_capabilities(name: str = "default") -> dict[str, object]:
     }
 
 
+_TOOL_PARAMETER_MAP: dict[str, dict[str, object]] = {
+    "project-grep": {
+        "type": "object",
+        "properties": {
+            "pattern": {
+                "type": "string",
+                "description": "Regex search pattern to find across all source files",
+            },
+        },
+        "required": ["pattern"],
+    },
+    "multi-external-file-read": {
+        "type": "object",
+        "properties": {
+            "paths": {
+                "type": "string",
+                "description": "Comma-separated absolute file paths to read",
+            },
+        },
+    },
+    "project-outline": {
+        "type": "object",
+        "properties": {
+            "subdir": {
+                "type": "string",
+                "description": "Subdirectory relative to project root (e.g. core/ or apps/api/)",
+            },
+        },
+    },
+    "external-file-read": {
+        "type": "object",
+        "properties": {
+            "target_path": {
+                "type": "string",
+                "description": "Absolute path to the file to read",
+            },
+        },
+        "required": ["target_path"],
+    },
+    "external-dir-list": {
+        "type": "object",
+        "properties": {
+            "target_path": {
+                "type": "string",
+                "description": "Absolute path to the directory to list",
+            },
+        },
+        "required": ["target_path"],
+    },
+    "non-destructive-exec": {
+        "type": "object",
+        "properties": {
+            "command": {
+                "type": "string",
+                "description": "Shell command to run (read-only, non-destructive)",
+            },
+        },
+        "required": ["command"],
+    },
+    "workspace-memory-write": {
+        "type": "object",
+        "properties": {
+            "content": {
+                "type": "string",
+                "description": "Full MEMORY.md content to write",
+            },
+        },
+        "required": ["content"],
+    },
+    "workspace-memory-replace": {
+        "type": "object",
+        "properties": {
+            "old_line": {
+                "type": "string",
+                "description": "Exact existing line to replace (starts with '- ')",
+            },
+            "new_line": {
+                "type": "string",
+                "description": "New line to replace it with (starts with '- ')",
+            },
+        },
+        "required": ["old_line", "new_line"],
+    },
+    "workspace-memory-delete": {
+        "type": "object",
+        "properties": {
+            "line": {
+                "type": "string",
+                "description": "Exact line to delete from MEMORY.md (starts with '- ')",
+            },
+        },
+        "required": ["line"],
+    },
+}
+
+_EXECUTION_MODE_TO_TOOL_NAME: dict[str, str] = {
+    "project-grep": "grep_project",
+    "multi-external-file-read": "read_multiple_files",
+    "project-outline": "project_outline",
+    "external-file-read": "read_file",
+    "external-dir-list": "list_directory",
+    "non-destructive-exec": "run_command",
+    "workspace-file-read": "read_workspace_file",
+    "workspace-search-read": "search_workspace",
+    "workspace-memory-write": "write_memory",
+    "workspace-memory-replace": "replace_memory_line",
+    "workspace-memory-delete": "delete_memory_line",
+    "workspace-daily-memory-append": "append_daily_memory",
+    "runtime-event-read": "read_runtime_events",
+    "autonomy-proposal-source-edit": "propose_source_edit",
+}
+
+_TOOL_NAME_TO_CAPABILITY_ID: dict[str, str] = {}
+
+
+def build_ollama_tool_definitions(name: str = "default") -> list[dict]:
+    """Build Ollama-compatible tool definitions from workspace capabilities."""
+    caps = load_workspace_capabilities(name)
+    tools: list[dict] = []
+    seen_tool_names: set[str] = set()
+    _TOOL_NAME_TO_CAPABILITY_ID.clear()
+    for cap in caps["runtime_capabilities"]:
+        if cap["runtime_status"] != "available":
+            continue
+        execution_mode = str(cap.get("execution_mode") or "")
+        tool_name = _EXECUTION_MODE_TO_TOOL_NAME.get(execution_mode)
+        if not tool_name or tool_name in seen_tool_names:
+            continue
+        seen_tool_names.add(tool_name)
+        capability_id = str(cap.get("capability_id") or "")
+        description = str(cap.get("name") or tool_name).strip()
+        parameters = _TOOL_PARAMETER_MAP.get(execution_mode, {
+            "type": "object",
+            "properties": {},
+        })
+        tools.append({
+            "type": "function",
+            "function": {
+                "name": tool_name,
+                "description": description,
+                "parameters": parameters,
+            },
+        })
+        _TOOL_NAME_TO_CAPABILITY_ID[tool_name] = capability_id
+    return tools
+
+
+def resolve_tool_call_to_capability(
+    tool_name: str,
+    arguments: dict[str, object],
+) -> dict[str, object]:
+    """Map an Ollama tool_call back to capability invocation parameters."""
+    capability_id = _TOOL_NAME_TO_CAPABILITY_ID.get(tool_name, "")
+    command_text = (
+        str(arguments.get("pattern") or "")
+        or str(arguments.get("command") or "")
+        or str(arguments.get("paths") or "")
+        or str(arguments.get("subdir") or "")
+        or str(arguments.get("old_line") or "")
+        or str(arguments.get("line") or "")
+    ).strip() or None
+    target_path = str(arguments.get("target_path") or "").strip() or None
+    write_content = str(arguments.get("content") or "").strip() or None
+    return {
+        "capability_id": capability_id,
+        "command_text": command_text,
+        "target_path": target_path,
+        "write_content": write_content,
+    }
+
+
 def invoke_workspace_capability(
     capability_id: str,
     *,

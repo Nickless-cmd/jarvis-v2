@@ -28,9 +28,9 @@ Callable now:
 - `tool:list-project-files`
 - `tool:propose-source-edit`
 - `tool:read-recent-runtime-events`
-- `tool:grep-project`
-- `tool:read-project-files`
-- `tool:project-outline`
+- `tool:grep-project-codebase`
+- `tool:read-multiple-project-files`
+- `tool:project-file-outline`
 
 Approval-gated now:
 - `tool:propose-workspace-memory-update`
@@ -271,7 +271,7 @@ Use this to find functions, classes, imports, patterns, or any text across all s
 This is read-only and does not require approval.
 Always bind the pattern as command_text:
 ```
-<capability-call id="tool:grep-project" command_text="def _read_bounded_text" />
+<capability-call id="tool:grep-project-codebase" command_text="def _read_bounded_text" />
 ```
 
 ## MULTI_READ: read multiple project files
@@ -282,7 +282,7 @@ Use this for code analysis, architecture review, or understanding how multiple f
 Pass comma-separated file paths (absolute or relative to project root) as command_text.
 This is read-only and does not require approval.
 ```
-<capability-call id="tool:read-project-files" command_text="core/eventbus/bus.py, core/eventbus/events.py, core/runtime/config.py" />
+<capability-call id="tool:read-multiple-project-files" command_text="core/eventbus/bus.py, core/eventbus/events.py, core/runtime/config.py" />
 ```
 
 ## PROJECT_OUTLINE: project file outline
@@ -293,5 +293,5 @@ Use this to understand project structure and identify key files before reading t
 Pass a subdirectory path (relative to project root) or omit for full project.
 This is read-only and does not require approval.
 ```
-<capability-call id="tool:project-outline" command_text="core/" />
+<capability-call id="tool:project-file-outline" command_text="core/" />
 ```

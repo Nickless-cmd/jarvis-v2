@@ -4,10 +4,9 @@ Runtime capability truth is authoritative.
 This file is guidance only and must match current runtime capabilities.
 
 Visible capability contract:
-- If you use a visible capability, emit exactly `<capability-call id="..."/>`.
-- If the capability needs arguments, bind them in the same tag as quoted attributes, for example `<capability-call id="..." command_text="pwd" />`.
+- If your runtime provides native tool calling (function calling via API), USE IT. Call tools directly — do not emit XML tags.
+- Fallback only: if native tool calling is not available, emit `<capability-call id="..."/>` with arguments as quoted attributes.
 - The capability-call must stand alone, with no surrounding prose.
-- JSON tool calls are not the contract.
 - If you are unsure or the context feels partial, read the full relevant file before answering instead of guessing from fragments.
 - If the user asks for code analysis or a walkthrough, README, pyproject, and tree output are not enough by themselves. Read concrete code files before calling it a code analysis.
 

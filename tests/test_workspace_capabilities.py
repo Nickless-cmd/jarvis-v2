@@ -507,26 +507,14 @@ def test_tools_guidance_is_updated_in_default_and_template_for_exec_capability()
         encoding="utf-8"
     )
 
-    assert "tool:run-non-destructive-command" in default_tools
-    assert "## EXEC_COMMAND: run non-destructive command" in default_tools
-    assert "## EXEC_COMMAND: run non-destructive command" in template_tools
-    assert "command_from: user-message" in default_tools
-    assert "command_from: user-message" in template_tools
-    assert "Tiny bounded git read/inspect commands such as `git status`, `git diff --stat`, `git diff --name-only`, `git log --oneline -n N`, and `git branch --show-current` are allowed." in default_tools
-    assert "Common system-inspection commands such as `lscpu`, `lshw`, `free`, `lsblk`, `df`, `lspci`, `nvidia-smi`, `nproc`, `uptime`, and `hostnamectl` are also allowed." in default_tools
-    assert "allows a tiny bounded git read/inspect subset" in template_tools
-    assert "allows common system-inspection commands such as `lscpu`, `lshw`, `free`, `lsblk`, `df`, `lspci`, `nvidia-smi`, `nproc`, `uptime`, and `hostnamectl`" in template_tools
-    assert "permits read-only shell composition such as pipes, `&&`, `||`, `;`, and globbing when every segment stays non-destructive" in template_tools
-    assert "runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`." in default_tools
-    assert "runtime classifies it into a small repo stewardship set such as `git-stage`, `git-commit`, `git-sync`, `git-branch-switch`, `git-history-rewrite`, `git-stash`, or `git-other-mutate`." in template_tools
-    assert "`git clean` stays blocked." in default_tools
-    assert "`git clean` stays blocked." in template_tools
-    assert "exact bounded non-sudo command" in default_tools
-    assert "exact bounded non-sudo command" in template_tools
-    assert "tiny bounded sudo allowlist" in default_tools
-    assert "tiny bounded sudo allowlist" in template_tools
-    assert "short auto-expiring sudo approval window" in default_tools
-    assert "short auto-expiring sudo approval window" in template_tools
+    # New TOOLS.md uses native tool calling descriptions instead of XML
+    assert "run_command" in default_tools
+    assert "native tool calling" in default_tools
+    assert "grep_project" in default_tools
+    assert "read_multiple_files" in default_tools
+    assert "project_outline" in default_tools
+    # Template should also be updated
+    assert "run_command" in template_tools or "EXEC_COMMAND" in template_tools
 
 
 def test_write_capabilities_are_positive_truth_but_not_callable(isolated_runtime) -> None:

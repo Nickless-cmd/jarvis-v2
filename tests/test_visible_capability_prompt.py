@@ -8,13 +8,10 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
 
     assert instruction is not None
     assert "Runtime capability truth:" in instruction
-    assert '<capability-call id="capability_id" />' in instruction
-    assert '<capability-call id="capability_id" command_text="pwd" />' in instruction
-    assert "emit the capability-call tags together" in instruction
-    assert "capability-call tag is authoritative" in instruction
+    assert "native tool calling" in instruction
+    assert "Do NOT emit XML capability-call tags" in instruction
     assert "do not stop at README, pyproject, or directory names" in instruction
-    assert "continue autonomously with additional capability calls" in instruction
-    assert "Do not emit JSON or pseudo-JSON tool calls." in instruction
+    assert "continue autonomously with additional" in instruction
     assert "tool:read-workspace-user-profile" in instruction
     assert "tool:search-workspace-memory-continuity" in instruction
     assert "tool:read-repository-readme" in instruction
@@ -37,7 +34,7 @@ def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtim
     assert "short auto-expiring sudo approval window" in instruction
 
 
-def test_visible_prompt_assembly_keeps_text_capability_contract(isolated_runtime) -> None:
+def test_visible_prompt_assembly_keeps_tool_calling_contract(isolated_runtime) -> None:
     prompt_contract = isolated_runtime.prompt_contract
 
     assembly = prompt_contract.build_visible_chat_prompt_assembly(
@@ -47,8 +44,7 @@ def test_visible_prompt_assembly_keeps_text_capability_contract(isolated_runtime
         session_id=None,
     )
 
-    assert '<capability-call id="capability_id" />' in assembly.text
-    assert '<capability-call id="capability_id" command_text="pwd" />' in assembly.text
+    assert "native tool calling" in assembly.text
     assert "tool:read-workspace-user-profile" in assembly.text
     assert "tool:read-external-file-by-path" in assembly.text
     assert "tool:run-non-destructive-command" in assembly.text

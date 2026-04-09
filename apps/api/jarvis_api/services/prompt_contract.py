@@ -1348,30 +1348,18 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
     contract = capability_truth.get("contract") or {}
     lines = ["Runtime capability truth:"]
     lines.append(
-        "- Visible tool invocation uses text capability-call lines, not JSON: "
-        '<capability-call id="capability_id" />'
+        "- Your runtime provides native tool calling (function calling). "
+        "Use the tools provided by the API directly. Do NOT emit XML capability-call tags."
     )
     lines.append(
-        "- If a capability needs arguments, bind them in the same tag as quoted attributes, for example: "
-        '<capability-call id="capability_id" command_text="pwd" />'
-    )
-    lines.append(
-        "- When you invoke capabilities, emit the capability-call tags together. "
-        "You may include a brief sentence before or after the tags explaining what you are doing, "
-        "but keep it short — the capability results will speak for themselves."
+        "- When you need to use a tool, call it through the native function calling mechanism. "
+        "The runtime will execute it and return results."
     )
     lines.append(
         "- If you are missing context or feel uncertain about a file-backed answer, read the whole relevant file before answering instead of guessing from fragments."
     )
     lines.append(
         "- If the user asks for code analysis, walkthrough, or a repo/codebase review, do not stop at README, pyproject, or directory names. Read concrete code files before claiming analysis."
-    )
-    lines.append(
-        "- For arg-requiring capabilities, the capability-call tag is authoritative. User-message extraction is compatibility fallback only."
-    )
-    lines.append(
-        "- Do not emit JSON or pseudo-JSON tool calls. "
-        f"json_tool_call_supported={contract.get('json_tool_call_supported', False)}"
     )
     if any(
         str(item.get("execution_mode") or "") == "external-file-read"
@@ -1471,17 +1459,16 @@ def _visible_capability_id_summary() -> str | None:
     if gated_ids:
         lines.append("- approval_gated: " + ", ".join(gated_ids))
     lines.append(
-        "- usage: capabilities that read external paths or list directories "
-        'MUST bind target_path in the tag, e.g. <capability-call id="tool:list-external-directory" target_path="/path" />. '
-        "For commands, bind command_text similarly."
+        "- usage: use native tool calling to invoke capabilities. "
+        "Pass arguments (target_path, command, pattern, etc.) as tool parameters."
     )
     lines.append(
-        "- parallel: you can emit multiple capability-call tags in one response. "
+        "- parallel: you can call multiple tools in one response. "
         "Do this when exploring — e.g. list a directory AND read a file in the same turn. "
         "If one fails, others still execute. Never stop working because one call failed."
     )
     lines.append(
-        "- autonomy: if the task is still read-only and bounded, continue with more capability-call tags instead of asking the user to tell you to continue."
+        "- autonomy: if the task is still read-only and bounded, continue with more tool calls instead of asking the user to tell you to continue."
     )
     lines.append(
         "- system-inspection: when a user asks for multiple machine specs, prefer multiple small command calls in one response "

@@ -2405,14 +2405,13 @@ def _execute_multi_file_read(
     """Read multiple project files in one call. Read-only, no approval."""
     raw_paths = str(command_text or "").strip()
     if not raw_paths:
-        return {
-            "capability": summary,
-            "status": "blocked-missing-paths",
-            "execution_mode": summary["execution_mode"],
-            "approval": _approval_result(summary, approved=False, granted=False),
-            "result": None,
-            "detail": "Multi-read requires comma-separated file paths in command_text.",
-        }
+        raw_paths = ", ".join([
+            "core/eventbus/bus.py",
+            "core/eventbus/events.py",
+            "core/runtime/config.py",
+            "core/runtime/bootstrap.py",
+            "apps/api/jarvis_api/app.py",
+        ])
     path_list = [p.strip() for p in raw_paths.split(",") if p.strip()]
     if len(path_list) > MAX_MULTI_READ_FILES:
         path_list = path_list[:MAX_MULTI_READ_FILES]
@@ -2495,6 +2494,8 @@ def _execute_project_outline(
         "-not", "-path", "*/node_modules/*",
         "-not", "-path", "*/__pycache__/*",
         "-not", "-path", "*/.claude/*",
+        "-not", "-path", "*/workspace/*",
+        "-not", "-path", "*/tests/*",
     ]
     try:
         find_result = subprocess.run(

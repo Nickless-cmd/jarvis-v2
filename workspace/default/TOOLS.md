@@ -185,37 +185,6 @@ Use block syntax:
 </capability-call>
 ```
 
-## WRITE_MEMORY_FILE: write user profile
-path: USER.md
-
-Writes directly to workspace USER.md without approval.
-Use this to persist learned facts about the user — preferences, working style, communication patterns.
-Always READ USER.md first before writing, then write the FULL updated content preserving existing structure.
-To write, use block syntax:
-```
-<capability-call id="tool:write-user-profile">
-(full file content here)
-</capability-call>
-```
-
-## EXEC_COMMAND: list workspace files
-command: ls -la
-scope: workspace
-
-Lists files in the active workspace directory. Use this to discover what files exist in workspace.
-
-## EXEC_COMMAND: list project files
-command: find . -maxdepth 3 -type f -name "*.py" -o -name "*.md" -o -name "*.json" -o -name "*.yaml" | head -60
-scope: project
-
-Lists project files to understand project structure. Use this to navigate and explore the codebase.
-
-## WRITE_EXTERNAL_FILE: propose external repo file update
-path: ${PROJECT_ROOT}/README.md
-
-Proposes a bounded external file update for the repository README.
-This is approval-gated and is not auto-executable.
-
 ## PROPOSE_SOURCE_EDIT: propose source edit
 target_from: capability-arg
 
@@ -255,6 +224,37 @@ To file, use block syntax with the new content as the body:
 The capability returns a proposal_id. Tell Bjørn the proposal is
 filed and which file it touches — then wait. Do not assume execution.
 
+## WRITE_MEMORY_FILE: write user profile
+path: USER.md
+
+Writes directly to workspace USER.md without approval.
+Use this to persist learned facts about the user — preferences, working style, communication patterns.
+Always READ USER.md first before writing, then write the FULL updated content preserving existing structure.
+To write, use block syntax:
+```
+<capability-call id="tool:write-user-profile">
+(full file content here)
+</capability-call>
+```
+
+## EXEC_COMMAND: list workspace files
+command: ls -la
+scope: workspace
+
+Lists files in the active workspace directory. Use this to discover what files exist in workspace.
+
+## EXEC_COMMAND: list project files
+command: find . -maxdepth 3 -type f -name "*.py" -o -name "*.md" -o -name "*.json" -o -name "*.yaml" | head -60
+scope: project
+
+Lists project files to understand project structure. Use this to navigate and explore the codebase.
+
+## WRITE_EXTERNAL_FILE: propose external repo file update
+path: ${PROJECT_ROOT}/README.md
+
+Proposes a bounded external file update for the repository README.
+This is approval-gated and is not auto-executable.
+
 ## RUNTIME_INSPECT: read recent runtime events
 
 Reads the 30 most recent eventbus events Jarvis' own runtime has emitted (heartbeat ticks, capability invocations, signal updates, conflict outcomes, ping decisions, etc.).
@@ -279,8 +279,8 @@ command_from: invocation-argument
 
 Reads up to 10 project files in a single call. Much more efficient than reading files one at a time.
 Use this for code analysis, architecture review, or understanding how multiple files interact.
-Pass comma-separated file paths (absolute or relative to project root) as command_text.
-This is read-only and does not require approval.
+Optionally pass comma-separated file paths as command_text. Default reads key architecture files (eventbus, config, bootstrap, app.py).
+This is read-only and does not require approval. Works with or without command_text.
 ```
 <capability-call id="tool:read-multiple-project-files" command_text="core/eventbus/bus.py, core/eventbus/events.py, core/runtime/config.py" />
 ```
@@ -290,8 +290,8 @@ command_from: invocation-argument
 
 Shows all source files in a project directory with line counts, sorted by size (largest first).
 Use this to understand project structure and identify key files before reading them.
-Pass a subdirectory path (relative to project root) or omit for full project.
-This is read-only and does not require approval.
+Optionally pass a subdirectory path as command_text. Default shows all core/ and apps/ code (excludes tests/ and workspace/).
+This is read-only and does not require approval. Works with or without command_text.
 ```
 <capability-call id="tool:project-file-outline" command_text="core/" />
 ```

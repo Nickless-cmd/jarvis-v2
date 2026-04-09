@@ -104,6 +104,7 @@ Accepts standard OpenAI chat completion request format. Wraps with Jarvis' ident
 | `"minimax-m2.7:cloud"` | Ollama with that model |
 | `"glm-5.1:cloud"` | Ollama with that model |
 | `"gemma4:32b-cloud"` | Ollama with that model |
+| `"qwen3.5:397b-cloud"` | Ollama with that model |
 | `"gpt-4o"` | OpenAI provider |
 | `"copilot/gpt-4o"` | GitHub Copilot provider |
 

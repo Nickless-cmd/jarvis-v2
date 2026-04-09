@@ -550,8 +550,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 )
 
                 followup_parts: list[str] = []
+                followup_tool_calls: list[dict] = []
                 followup_queue: asyncio.Queue = asyncio.Queue()
                 followup_sentinel = object()
+                _TOOL_CALL_MARKER = "__TOOL_CALLS__"
 
                 def _pump_followup() -> None:
                     try:
@@ -566,6 +568,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 if delta:
                                     loop.call_soon_threadsafe(
                                         followup_queue.put_nowait, delta
+                                    )
+                                # Collect tool_calls from second pass
+                                tc = msg.get("tool_calls") or []
+                                if tc:
+                                    loop.call_soon_threadsafe(
+                                        followup_queue.put_nowait,
+                                        (_TOOL_CALL_MARKER, tc),
                                     )
                                 if ev.get("done"):
                                     break
@@ -588,12 +597,32 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         break
                     if item is followup_sentinel:
                         break
+                    if isinstance(item, tuple) and item[0] == _TOOL_CALL_MARKER:
+                        followup_tool_calls.extend(item[1])
+                        continue
                     followup_parts.append(item)
                     yield _sse("delta", {
                         "type": "delta",
                         "run_id": run.run_id,
                         "delta": item,
                     })
+
+                # Execute any tool_calls from second pass (e.g. write_file after read_file)
+                if followup_tool_calls:
+                    second_round_results = _execute_simple_tool_calls(followup_tool_calls)
+                    for sr in second_round_results:
+                        yield _sse("capability", {
+                            "type": "tool_result",
+                            "tool": sr["tool_name"],
+                            "status": sr["status"],
+                        })
+                        summary = f"[{sr['tool_name']}]: {sr['result_text'][:200]}"
+                        followup_parts.append(summary)
+                        yield _sse("delta", {
+                            "type": "delta",
+                            "run_id": run.run_id,
+                            "delta": f"\n{summary}",
+                        })
 
                 followup_text = "".join(followup_parts).strip()
                 if not followup_text:

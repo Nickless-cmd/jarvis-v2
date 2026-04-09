@@ -37,6 +37,7 @@ export function useUnifiedShell() {
   const liveSubscriptionStartedAtRef = useRef(Date.now())
   const jarvisSurfaceRefreshTimerRef = useRef(null)
   const jarvisSurfaceRefreshInFlightRef = useRef(false)
+  const streamApprovalMessagesRef = useRef([])
 
   async function refreshShell() {
     const next = await backend.getShell()
@@ -227,6 +228,7 @@ export function useUnifiedShell() {
     setLastRunTokens(null)
     setStreamingTokenEstimate(0)
     setCapabilityActivity([])
+    streamApprovalMessagesRef.current = []
     setActiveSession((current) =>
       current ? appendMessagesToSession(current, userMessage, pendingAssistantMessage) : current
     )
@@ -245,21 +247,16 @@ export function useUnifiedShell() {
           }])
         },
         onApprovalRequest: (payload) => {
-          // Insert approval card inline in the chat transcript
+          const approvalMsg = {
+            id: `approval-${payload.approval_id}`,
+            role: 'approval_request',
+            ...payload,
+            ts: nowLabel(),
+          }
+          streamApprovalMessagesRef.current.push(approvalMsg)
           setActiveSession((current) =>
             current
-              ? {
-                  ...current,
-                  messages: [
-                    ...(current.messages || []),
-                    {
-                      id: `approval-${payload.approval_id}`,
-                      role: 'approval_request',
-                      ...payload,
-                      ts: nowLabel(),
-                    },
-                  ],
-                }
+              ? { ...current, messages: [...(current.messages || []), approvalMsg] }
               : current
           )
         },
@@ -306,6 +303,14 @@ export function useUnifiedShell() {
           : current
       )
       await loadSession(sessionId)
+      // Merge back any approval cards (transient, not persisted to backend)
+      if (streamApprovalMessagesRef.current.length > 0) {
+        const saved = streamApprovalMessagesRef.current
+        streamApprovalMessagesRef.current = []
+        setActiveSession((current) =>
+          current ? { ...current, messages: [...(current.messages || []), ...saved] } : current
+        )
+      }
       await refreshShell()
     } catch (err) {
       const failure = err instanceof Error ? err.message : 'Chat failed'

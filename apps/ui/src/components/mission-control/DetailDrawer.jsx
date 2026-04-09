@@ -1,8 +1,97 @@
 import { X } from 'lucide-react'
 import { formatFreshness } from './meta'
 
-function renderJson(value) {
-  return JSON.stringify(value, null, 2)
+function humanizeKey(value) {
+  return String(value || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+}
+
+function isScalar(value) {
+  return value == null || ['string', 'number', 'boolean'].includes(typeof value)
+}
+
+function formatScalar(value) {
+  if (value == null || value === '') return '—'
+  if (typeof value === 'boolean') return value ? 'yes' : 'no'
+  if (Array.isArray(value)) return value.join(', ')
+  return String(value)
+}
+
+function splitEntries(value) {
+  return Object.entries(value || {}).reduce((acc, [key, entry]) => {
+    if (isScalar(entry) || (Array.isArray(entry) && entry.every(isScalar))) {
+      acc.scalars.push([key, entry])
+      return acc
+    }
+    acc.groups.push([key, entry])
+    return acc
+  }, { scalars: [], groups: [] })
+}
+
+function StructuredDetailValue({ value, depth = 0 }) {
+  if (isScalar(value)) {
+    return <p>{formatScalar(value)}</p>
+  }
+
+  if (Array.isArray(value)) {
+    if (!value.length) return <p className="muted">No entries.</p>
+
+    if (value.every(isScalar)) {
+      return (
+        <div className="mc-drawer-list">
+          {value.map((entry, index) => (
+            <p key={`${String(entry)}-${index}`}>{formatScalar(entry)}</p>
+          ))}
+        </div>
+      )
+    }
+
+    return (
+      <div className="mc-detail-array">
+        {value.slice(0, 8).map((entry, index) => (
+          <article className="mc-detail-group" key={index}>
+            <strong>{`Entry ${index + 1}`}</strong>
+            <StructuredDetailValue value={entry} depth={depth + 1} />
+          </article>
+        ))}
+        {value.length > 8 ? <p className="muted">{`Showing first 8 of ${value.length} entries.`}</p> : null}
+      </div>
+    )
+  }
+
+  const { scalars, groups } = splitEntries(value)
+
+  return (
+    <div className="mc-detail-sections">
+      {scalars.length ? (
+        <div className="mc-keyval-grid">
+          {scalars.map(([key, entry]) => (
+            <div key={key}>
+              <span>{humanizeKey(key)}</span>
+              <strong>{formatScalar(entry)}</strong>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {groups.map(([key, entry]) => (
+        <article className="mc-detail-group" key={key}>
+          <strong>{humanizeKey(key)}</strong>
+          <StructuredDetailValue value={entry} depth={depth + 1} />
+        </article>
+      ))}
+    </div>
+  )
+}
+
+function StructuredDetailCard({ title, value }) {
+  return (
+    <article className="mc-code-card mc-structured-card">
+      <strong>{title}</strong>
+      <StructuredDetailValue value={value} />
+    </article>
+  )
 }
 
 export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCandidateAction, onDevelopmentFocusAction }) {
@@ -69,7 +158,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
             </div>
             <article className="mc-code-card">
               <strong>Payload</strong>
-              <pre>{renderJson(drawer.item.payload)}</pre>
+              <StructuredDetailValue value={drawer.item.payload} />
             </article>
           </div>
         ) : null}
@@ -210,7 +299,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
             </div>
             <article className="mc-code-card">
               <strong>Approval record</strong>
-              <pre>{renderJson(drawer.item)}</pre>
+              <StructuredDetailValue value={drawer.item} />
             </article>
           </div>
         ) : null}
@@ -309,7 +398,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
             ) : null}
             <article className="mc-code-card">
               <strong>Candidate detail</strong>
-              <pre>{renderJson(drawer.item)}</pre>
+              <StructuredDetailValue value={drawer.item} />
             </article>
           </div>
         ) : null}
@@ -340,10 +429,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
                 </article>
               ) : null}
             </div>
-            <article className="mc-code-card">
-              <strong>Detail</strong>
-              <pre>{renderJson(drawer.item)}</pre>
-            </article>
+            <StructuredDetailCard title="Detail" value={drawer.item} />
           </div>
         ) : null}
 
@@ -401,10 +487,7 @@ export function DetailDrawer({ drawer, onClose, onApprovalAction, onContractCand
                 <p>{drawer.item.supportSummary}</p>
               </article>
             ) : null}
-            <article className="mc-code-card">
-              <strong>Focus Detail</strong>
-              <pre>{renderJson(drawer.item)}</pre>
-            </article>
+            <StructuredDetailCard title="Focus Detail" value={drawer.item} />
           </div>
         ) : null}
       </div>

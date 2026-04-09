@@ -67,10 +67,10 @@ button { cursor: pointer; }
 .app-content { padding: 0; min-width:0; min-height:0; height:100%; overflow:hidden; }
 
 .chat-shell-grid { display:grid; grid-template-columns: minmax(0, 1fr) 240px; gap:0; height:100%; min-height:0; }
-.panel, .hero-card, .composer-wrap {
+.panel, .hero-card, .composer-card {
   background: linear-gradient(180deg, rgba(23,33,45,.92), rgba(18,25,35,.98));
   border:1px solid rgba(255,255,255,.07);
-  border-radius:20px; box-shadow: 0 18px 42px rgba(0,0,0,.24);
+  border-radius:16px; box-shadow: 0 18px 42px rgba(0,0,0,.24);
 }
 .support-card, .mc-stat {
   background: #1c1f25;
@@ -177,7 +177,7 @@ button { cursor: pointer; }
 .hero-card h1 { margin:0 0 8px; font-size:34px; line-height:1.1; }
 .hero-card p { margin:0; color:#8b909e; max-width:60ch; }
 .transcript {
-  padding:12px 16px 90px; display:flex; flex-direction:column; gap:6px; flex:1; min-height:0; overflow:auto;
+  padding:12px 16px 180px; display:flex; flex-direction:column; gap:6px; flex:1; min-height:0; overflow:auto;
   max-width: 880px; margin: 0 auto; width: 100%;
 }
 .transcript::-webkit-scrollbar { display: none; }
@@ -289,65 +289,57 @@ button { cursor: pointer; }
 .approval-status.denied { color: #ff8888; }
 .approval-status.error { color: #ff6666; }
 
+/* ── Composer shell ──────────────────────────────────────────── */
 .composer-shell {
-  padding:6px 12px 8px; position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
+  padding: 6px 12px 8px; position: absolute; bottom: 0; left: 0; right: 0; z-index: 4;
   background: linear-gradient(180deg, transparent, rgba(13,17,23,.72) 20%, rgba(13,17,23,.94));
-  display: flex; flex-direction: column; align-items: center;
+  display: flex; flex-direction: column; align-items: center; gap: 0;
 }
-.composer-wrap {
-  display:grid; grid-template-columns: auto 1fr auto; align-items:center; gap:6px; padding:6px 10px;
-  border-radius:999px; border:2px solid rgba(130, 116, 240, .72); background:#171f2a;
-  box-shadow: 0 0 0 1px rgba(255,255,255,.02), 0 10px 28px rgba(0,0,0,.24);
-  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
-  width: 100%; max-width: 880px;
+
+/* Main card (replaces pill .composer-wrap) */
+.composer-card {
+  width: 100%; max-width: 880px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  transition: border-color .16s ease, box-shadow .16s ease;
 }
-.composer-wrap:focus-within {
-  border-color: rgba(137, 124, 246, .95);
-  box-shadow: 0 0 0 4px rgba(137,124,246,.12), 0 10px 28px rgba(0,0,0,.26);
+.composer-card:focus-within {
+  border-color: rgba(137,124,246,.65);
+  box-shadow: 0 0 0 3px rgba(137,124,246,.10), 0 18px 42px rgba(0,0,0,.28);
 }
-.composer-wrap.working {
-  border-color: rgba(40,177,163,.74);
-  box-shadow: 0 0 0 4px rgba(40,177,163,.10), 0 10px 28px rgba(0,0,0,.26);
+.composer-card.working {
+  border-color: rgba(40,177,163,.6);
+  box-shadow: 0 0 0 3px rgba(40,177,163,.08), 0 18px 42px rgba(0,0,0,.28);
 }
-.composer-wrap textarea {
-  min-height:20px; max-height:120px; resize:none; overflow:auto; border:none; outline:none; background:transparent; color:#e4e6ed; padding:4px 0; line-height:1.4;
-}
-.composer-wrap textarea::placeholder { color:#7f90a3; }
-.composer-attach-btn { width:24px; height:24px; border-radius:999px; }
-.send-btn {
-  width:28px; height:28px; border-radius:999px; border:none; background:#ffffff; color:#11161f; display:grid; place-items:center;
-  box-shadow: 0 8px 18px rgba(0,0,0,.24); transition: transform .14s ease, box-shadow .14s ease, background .14s ease, color .14s ease, opacity .14s ease;
-}
-.send-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0,0,0,.28); }
-.send-btn.working { opacity: .9; background:#3d8f7c; color:#081116; }
-.send-btn.cancel { background: #e05252; color: #fff; cursor: pointer; }
-.send-btn.cancel:hover { transform: translateY(-1px); background: #c94040; box-shadow: 0 12px 26px rgba(0,0,0,.28); }
-.send-btn:disabled { cursor: default; opacity:.58; box-shadow:none; }
-/* Composer meta row (git branch + workspace path) */
-.composer-meta-row {
+
+/* Git bar (top of card) */
+.composer-git-bar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 4px 4px; gap: 8px; width: 100%; max-width: 880px;
+  padding: 7px 12px; gap: 8px;
 }
-.composer-meta-left { display: flex; align-items: center; gap: 8px; }
-.composer-git-info {
-  display: flex; align-items: center; gap: 5px; color: #5a6270; font-size: 11px;
+.composer-git-bar-left {
+  display: flex; align-items: center; gap: 6px;
+  color: #5a6472; font-size: 11px;
 }
-.composer-git-info svg { color: #5a7a6a; flex-shrink: 0; }
-.composer-diff-stats { display: flex; gap: 4px; }
+.composer-git-bar-left svg { color: #4a6a5a; flex-shrink: 0; }
+.composer-git-bar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.composer-diff-stats { display: flex; gap: 5px; }
 .diff-ins { color: #4caf82; }
 .diff-dels { color: #c96060; }
-.composer-workspace-path { font-size: 10px; color: #444c5a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
 
-/* Commit button (meta row) */
+/* Commit button inside git bar (prominent white-ish button) */
 .composer-commit-btn {
-  display: flex; align-items: center; gap: 4px; padding: 2px 8px;
-  border-radius: 4px; border: 1px solid #2a3548; background: transparent;
-  color: #6a8070; font-size: 11px; cursor: pointer;
-  transition: border-color .12s, color .12s, background .12s;
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.13);
+  background: rgba(255,255,255,.07);
+  color: #c0ccd8; font-size: 11px; cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
 }
-.composer-commit-btn:hover { border-color: #4caf82; color: #4caf82; background: rgba(76,175,130,.08); }
+.composer-commit-btn:hover {
+  background: rgba(255,255,255,.13); border-color: rgba(255,255,255,.22); color: #e4e6ed;
+}
 
-/* Inline commit row */
+/* Inline commit row (above card) */
 .composer-commit-row {
   display: flex; align-items: center; gap: 6px;
   padding: 0 4px 6px; width: 100%; max-width: 880px;
@@ -355,14 +347,14 @@ button { cursor: pointer; }
 .composer-commit-icon { color: #5a7a6a; flex-shrink: 0; }
 .composer-commit-input {
   flex: 1; background: rgba(255,255,255,.04); border: 1px solid #2a3548;
-  border-radius: 4px; padding: 4px 8px; font-size: 12px; color: #c8d0dc;
+  border-radius: 6px; padding: 4px 10px; font-size: 12px; color: #c8d0dc;
   outline: none;
 }
 .composer-commit-input:focus { border-color: rgba(76,175,130,.6); }
 .composer-commit-input::placeholder { color: #4a5568; }
 .composer-commit-error { font-size: 10px; color: #c96060; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .composer-commit-confirm, .composer-commit-cancel {
-  width: 22px; height: 22px; border-radius: 4px; border: 1px solid #2a3548;
+  width: 22px; height: 22px; border-radius: 5px; border: 1px solid #2a3548;
   background: transparent; display: grid; place-items: center; cursor: pointer;
   transition: border-color .12s, color .12s, background .12s; flex-shrink: 0;
 }
@@ -372,28 +364,64 @@ button { cursor: pointer; }
 .composer-commit-cancel { color: #6a7080; }
 .composer-commit-cancel:hover { border-color: #c96060; color: #c96060; background: rgba(201,96,96,.08); }
 
-/* Composer bottom toolbar */
+/* Textarea (full-width, clean) */
+.composer-textarea {
+  display: block; width: 100%; min-height: 42px; max-height: 160px;
+  padding: 12px 14px; resize: none; overflow: auto;
+  border: none; outline: none; background: transparent;
+  color: #e4e6ed; line-height: 1.5; font-size: 14px;
+}
+.composer-textarea::placeholder { color: #7f90a3; }
+
+/* Toolbar row (bottom of card) */
 .composer-toolbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 5px 4px 0; width: 100%; max-width: 880px; gap: 8px;
+  padding: 6px 10px 8px; gap: 8px;
 }
-.composer-toolbar-left { display: flex; align-items: center; gap: 8px; }
+.composer-toolbar-left { display: flex; align-items: center; gap: 6px; }
 .composer-toolbar-right { display: flex; align-items: center; gap: 8px; }
-.composer-toolbar-group {
-  display: flex; align-items: center; gap: 4px;
-  color: #5a6270; font-size: 11px;
+.composer-attach-btn { width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0; }
+.composer-permissions-group {
+  display: flex; align-items: center; gap: 4px; color: #7a8898; font-size: 11px;
 }
-.composer-toolbar-group svg { color: #5a7a6a; }
-.composer-shield-icon { color: #5a7a8a; }
-.composer-toolbar-label { color: #5a6a7a; }
+.composer-shield-icon { color: #5a7a8a; flex-shrink: 0; }
+.composer-model-group { display: flex; align-items: center; gap: 0; }
 .composer-select {
   background: transparent; border: none; outline: none;
-  color: #8090a4; font-size: 11px; cursor: pointer;
-  padding: 0; max-width: 140px;
+  color: #8090a4; font-size: 11px; cursor: pointer; padding: 0; max-width: 150px;
 }
 .composer-select:hover { color: #b0bec8; }
 .composer-select option { background: #171f2a; color: #e4e6ed; }
-.composer-select-sep { color: #394555; font-size: 11px; }
+.composer-select-sep { color: #394555; font-size: 11px; padding: 0 2px; }
+
+/* Send / cancel button */
+.send-btn {
+  width: 28px; height: 28px; border-radius: 999px; border: none;
+  background: #ffffff; color: #11161f; display: grid; place-items: center;
+  box-shadow: 0 8px 18px rgba(0,0,0,.24);
+  transition: transform .14s ease, box-shadow .14s ease, background .14s ease, color .14s ease, opacity .14s ease;
+  flex-shrink: 0;
+}
+.send-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0,0,0,.28); }
+.send-btn.cancel { background: #e05252; color: #fff; cursor: pointer; }
+.send-btn.cancel:hover { transform: translateY(-1px); background: #c94040; box-shadow: 0 12px 26px rgba(0,0,0,.28); }
+.send-btn:disabled { cursor: default; opacity: .48; box-shadow: none; }
+
+/* Footer row (below card) */
+.composer-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 4px 0; width: 100%; max-width: 880px; gap: 8px;
+}
+.composer-footer-left {
+  display: flex; align-items: center; gap: 5px; color: #3a4458; font-size: 10px; min-width: 0;
+}
+.composer-footer-left svg { color: #3a4a5a; flex-shrink: 0; }
+.composer-workspace-path {
+  font-size: 10px; color: #3a4458; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;
+}
+.composer-footer-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* Plan button */
 .composer-plan-btn {
   display: flex; align-items: center; gap: 4px; padding: 2px 7px;
   border-radius: 4px; border: 1px solid #2a3548; background: transparent;
@@ -402,9 +430,10 @@ button { cursor: pointer; }
 }
 .composer-plan-btn:hover { border-color: #8274f0; color: #a898f8; background: rgba(130,116,240,.08); }
 .composer-plan-btn.active { border-color: #8274f0; color: #a898f8; background: rgba(130,116,240,.14); }
+
+/* Token count */
 .composer-token-count {
-  display: flex; align-items: center; gap: 3px;
-  color: #5a6270; font-size: 11px;
+  display: flex; align-items: center; gap: 3px; color: #5a6270; font-size: 11px;
 }
 .composer-token-count svg { color: #3d8f7c; }
 

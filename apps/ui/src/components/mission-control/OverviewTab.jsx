@@ -15,23 +15,23 @@ export function OverviewTab({ data, onJump, onOpenEvent }) {
             onClick={() => onJump(card.targetTab, card.targetSection)}
             title={sectionTitleWithMeta({ source: card.source, fetchedAt: data?.fetchedAt, mode: 'summary card' })}
             style={s({
-              padding: '14px 16px',
+              padding: '12px 14px',
               background: T.bgRaised,
               border: `1px solid ${T.border0}`,
               borderRadius: 10,
               textAlign: 'left',
               cursor: 'pointer',
               color: T.text1,
-              transition: 'border-color .14s ease, transform .14s ease',
+              transition: 'border-color .14s ease',
             })}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${T.accent}30`; e.currentTarget.style.transform = 'translateY(-1px)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border0; e.currentTarget.style.transform = 'none' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${T.accent}30` }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border0 }}
           >
             <span style={s({ ...mono, fontSize: 9, color: T.text3, letterSpacing: '0.1em', textTransform: 'uppercase' })}>{card.label}</span>
-            <div style={s({ fontSize: 26, fontWeight: 300, marginTop: 6, letterSpacing: '-0.02em' })}>{card.value}</div>
-            <div style={s({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, color: T.text3, fontSize: 11 })}>
+            <div style={s({ fontSize: 24, fontWeight: 400, marginTop: 4, letterSpacing: '-0.02em' })}>{card.value}</div>
+            <div style={s({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, color: T.text3, fontSize: 10 })}>
               <small>{card.targetTab}</small>
-              <ChevronRight size={12} />
+              <ChevronRight size={11} />
             </div>
           </button>
         ))}

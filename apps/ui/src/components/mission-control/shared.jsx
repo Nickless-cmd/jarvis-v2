@@ -11,7 +11,7 @@ export function Chip({ children, color = T.text3, bg }) {
         background: bg || `${color}18`,
         border: `1px solid ${color}35`,
         color,
-        letterSpacing: '0.06em',
+        letterSpacing: '0.05em',
       })}
     >
       {children}
@@ -41,27 +41,28 @@ export function MetricCard({ label, value, sub, color, icon: Icon, alert }) {
   return (
     <div
       style={s({
-        padding: '14px 16px',
-        background: T.bgRaised,
+        padding: '12px 14px',
+        background: T.cardGradient,
         border: `1px solid ${alert ? `${T.amber}40` : T.border0}`,
         borderRadius: 10,
         flex: 1,
-        minWidth: 120,
+        minWidth: 100,
+        boxShadow: alert ? `0 0 12px ${T.amber}20` : T.shadowSm,
       })}
     >
-      <div style={s({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 })}>
+      <div style={s({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 })}>
         <span style={s({ ...mono, fontSize: 9, color: T.text3, letterSpacing: '0.1em', textTransform: 'uppercase' })}>{label}</span>
-        {Icon && <Icon size={12} color={T.text3} />}
+        {Icon && <Icon size={11} color={T.text3} />}
       </div>
-      <div style={s({ fontSize: 26, fontWeight: 300, color: color || T.text1, letterSpacing: '-0.02em' })}>{value}</div>
-      {sub && <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 4 })}>{sub}</div>}
+      <div style={s({ fontSize: 22, fontWeight: 400, color: color || T.text1, letterSpacing: '-0.02em' })}>{value}</div>
+      {sub && <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 3 })}>{sub}</div>}
     </div>
   )
 }
 
 export function SectionTitle({ children }) {
   return (
-    <div style={s({ ...mono, fontSize: 9, color: T.text3, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 })}>
+    <div style={s({ ...mono, fontSize: 9, color: T.text3, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 })}>
       {children}
     </div>
   )
@@ -126,8 +127,8 @@ export function ScrollPanel({ children, maxHeight = 180, style = {} }) {
         overflowX: 'hidden',
         overflowY: 'auto',
         border: `1px solid ${T.border0}`,
-        borderRadius: 8,
-        padding: 8,
+        borderRadius: 10,
+        padding: 10,
         background: T.bgSurface,
         scrollbarGutter: 'stable',
         ...style,
@@ -139,7 +140,19 @@ export function ScrollPanel({ children, maxHeight = 180, style = {} }) {
 }
 
 export function Card({ children, style = {} }) {
-  return <div style={s({ background: T.bgRaised, border: `1px solid ${T.border0}`, borderRadius: 10, padding: '14px 16px', ...style })}>{children}</div>
+  return (
+    <div
+      style={s({
+        background: T.bgRaised,
+        border: `1px solid ${T.border0}`,
+        borderRadius: 10,
+        padding: '14px 16px',
+        ...style,
+      })}
+    >
+      {children}
+    </div>
+  )
 }
 
 export function Btn({ children, onClick, variant = 'ghost', icon: Icon, small, disabled }) {
@@ -236,15 +249,14 @@ export function ListRow({ children, onClick, active, subtle, staticRow }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 10,
+        gap: 8,
         padding: '8px 10px',
         borderRadius: 8,
         border: `1px solid ${active ? `${T.accent}40` : T.border0}`,
         background: active ? T.bgOverlay : subtle ? T.bgSurface : T.bgRaised,
         color: T.text1,
         cursor: staticRow ? 'default' : 'pointer',
-        transition: 'border-color .14s ease, background .14s ease',
-        ...(subtle && { marginLeft: 10 }),
+        transition: 'border-color .14s ease',
       })}
       onMouseEnter={(e) => !staticRow && (e.currentTarget.style.borderColor = `${T.accent}30`)}
       onMouseLeave={(e) => !staticRow && (e.currentTarget.style.borderColor = active ? `${T.accent}40` : T.border0)}
@@ -300,8 +312,38 @@ export function KeyValCell({ label, value, color }) {
 export function EmptyState({ title, children }) {
   return (
     <div style={s({ padding: '14px 16px', textAlign: 'center' })}>
-      {title && <div style={s({ fontSize: 13, fontWeight: 500, color: T.text2, marginBottom: 4 })}>{title}</div>}
+      {title && <div style={s({ fontSize: 12, fontWeight: 500, color: T.text2, marginBottom: 4 })}>{title}</div>}
       {children && <div style={s({ fontSize: 11, color: T.text3 })}>{children}</div>}
     </div>
   )
+}
+
+/* Skeleton — shimmer loading placeholder */
+export function Skeleton({ width = '100%', height = 20, style = {} }) {
+  return (
+    <div
+      style={s({
+        width,
+        height,
+        borderRadius: 8,
+        background: `linear-gradient(90deg, ${T.bgOverlay} 25%, ${T.bgHover} 50%, ${T.bgOverlay} 75%)`,
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.5s ease-in-out infinite',
+        ...style,
+      })}
+    />
+  )
+}
+
+const shimmerKeyframes = `
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+`
+
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style')
+  styleSheet.textContent = shimmerKeyframes
+  document.head.appendChild(styleSheet)
 }

@@ -328,6 +328,7 @@ button { cursor: pointer; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 4px 4px; gap: 8px; width: 100%; max-width: 880px;
 }
+.composer-meta-left { display: flex; align-items: center; gap: 8px; }
 .composer-git-info {
   display: flex; align-items: center; gap: 5px; color: #5a6270; font-size: 11px;
 }
@@ -336,6 +337,40 @@ button { cursor: pointer; }
 .diff-ins { color: #4caf82; }
 .diff-dels { color: #c96060; }
 .composer-workspace-path { font-size: 10px; color: #444c5a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+
+/* Commit button (meta row) */
+.composer-commit-btn {
+  display: flex; align-items: center; gap: 4px; padding: 2px 8px;
+  border-radius: 4px; border: 1px solid #2a3548; background: transparent;
+  color: #6a8070; font-size: 11px; cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.composer-commit-btn:hover { border-color: #4caf82; color: #4caf82; background: rgba(76,175,130,.08); }
+
+/* Inline commit row */
+.composer-commit-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 4px 6px; width: 100%; max-width: 880px;
+}
+.composer-commit-icon { color: #5a7a6a; flex-shrink: 0; }
+.composer-commit-input {
+  flex: 1; background: rgba(255,255,255,.04); border: 1px solid #2a3548;
+  border-radius: 4px; padding: 4px 8px; font-size: 12px; color: #c8d0dc;
+  outline: none;
+}
+.composer-commit-input:focus { border-color: rgba(76,175,130,.6); }
+.composer-commit-input::placeholder { color: #4a5568; }
+.composer-commit-error { font-size: 10px; color: #c96060; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.composer-commit-confirm, .composer-commit-cancel {
+  width: 22px; height: 22px; border-radius: 4px; border: 1px solid #2a3548;
+  background: transparent; display: grid; place-items: center; cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s; flex-shrink: 0;
+}
+.composer-commit-confirm { color: #4caf82; }
+.composer-commit-confirm:hover:not(:disabled) { border-color: #4caf82; background: rgba(76,175,130,.1); }
+.composer-commit-confirm:disabled { opacity: .4; cursor: default; }
+.composer-commit-cancel { color: #6a7080; }
+.composer-commit-cancel:hover { border-color: #c96060; color: #c96060; background: rgba(201,96,96,.08); }
 
 /* Composer bottom toolbar */
 .composer-toolbar {
@@ -349,6 +384,7 @@ button { cursor: pointer; }
   color: #5a6270; font-size: 11px;
 }
 .composer-toolbar-group svg { color: #5a7a6a; }
+.composer-shield-icon { color: #5a7a8a; }
 .composer-toolbar-label { color: #5a6a7a; }
 .composer-select {
   background: transparent; border: none; outline: none;

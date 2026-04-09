@@ -852,13 +852,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             },
         )
         yield _sse("trace", _visible_trace_payload(run))
-        set_last_visible_run_outcome(
-            run,
-            status="completed",
-            text_preview=_preview_text(visible_output_text),
-        )
-        _persist_session_assistant_message(run, visible_output_text)
-        _track_runtime_candidates(run, visible_output_text)
         yield _sse(
             "working_step",
             {
@@ -882,7 +875,28 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             },
         )
     finally:
-        unregister_visible_run(run.run_id)
+        # Post-processing in finally so it runs after stream closes,
+        # and never blocks the done SSE event from reaching the client.
+        import threading
+
+        def _post_process() -> None:
+            try:
+                set_last_visible_run_outcome(
+                    run,
+                    status="completed",
+                    text_preview=_preview_text(visible_output_text),
+                )
+                _persist_session_assistant_message(run, visible_output_text)
+                _track_runtime_candidates(run, visible_output_text)
+            except Exception:
+                pass
+            finally:
+                unregister_visible_run(run.run_id)
+
+        if visible_output_text:
+            threading.Thread(target=_post_process, daemon=True).start()
+        else:
+            unregister_visible_run(run.run_id)
 
 
 def _preview_text(text: str, limit: int = 120) -> str:

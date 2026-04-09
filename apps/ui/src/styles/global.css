@@ -91,10 +91,10 @@ button { cursor: pointer; }
 .panel-header h2, .panel-header h3 { margin:0; font-size:12px; font-weight:500; }
 .panel-header.stacked { align-items:flex-start; }
 .icon-btn {
-  width:30px; height:30px; border-radius:10px; border:1px solid rgba(255,255,255,.08); background:#1a2431; color:#8b909e;
+  width:30px; height:30px; border-radius:10px; border:1px solid rgba(40,177,163,.15); background:rgba(40,177,163,.05); color:#5ab8a0;
   display:grid; place-items:center; transition: background .14s ease, border-color .14s ease, color .14s ease, transform .14s ease;
 }
-.icon-btn:hover { background:#202c3a; color:#e4e6ed; border-color:rgba(255,255,255,.14); }
+.icon-btn:hover { background:rgba(40,177,163,.10); color:#7dd8c4; border-color:rgba(40,177,163,.28); }
 .icon-btn:focus-visible {
   outline:none; border-color:rgba(104,163,255,.35); box-shadow:0 0 0 3px rgba(104,163,255,.12);
 }

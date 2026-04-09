@@ -34,15 +34,10 @@ export function ChatPage({
       <main className="chat-stage">
         <ChatHeader
           session={{ title: hero.title }}
-          selection={selection}
-          onSelectionChange={onSelectionChange}
           onRefresh={onRefresh}
           onRename={onRename}
           onDelete={onDelete}
           isRefreshing={isRefreshing}
-          isStreaming={isStreaming}
-          lastRunTokens={lastRunTokens}
-          streamingTokenEstimate={streamingTokenEstimate}
           messages={activeSession?.messages || []}
         />
 
@@ -54,12 +49,16 @@ export function ChatPage({
           value={draft}
           onChange={setDraft}
           isStreaming={isStreaming}
-          onSend={() => {
-            if (!draft.trim() || isStreaming) return
-            onSend(draft.trim())
+          onSend={(msg) => {
+            if (isStreaming) return
+            onSend(msg)
             setDraft('')
           }}
           onCancel={onCancel}
+          selection={selection}
+          onSelectionChange={onSelectionChange}
+          lastRunTokens={lastRunTokens}
+          streamingTokenEstimate={streamingTokenEstimate}
         />
       </main>
 

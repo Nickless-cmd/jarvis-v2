@@ -668,14 +668,14 @@ def _execute_ollama_model(
     from apps.api.jarvis_api.services.ollama_visible_prompt import (
         serialize_ollama_chat_messages,
     )
-    from core.tools.workspace_capabilities import build_ollama_tool_definitions
+    from core.tools.simple_tools import get_tool_definitions
 
     target = resolve_provider_router_target(lane="visible")
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
 
     visible_input = _build_visible_input(message, session_id=session_id)
     messages = serialize_ollama_chat_messages(visible_input)
-    tools = build_ollama_tool_definitions()
+    tools = get_tool_definitions()
 
     payload: dict[str, object] = {
         "model": model,
@@ -857,14 +857,14 @@ def _stream_ollama_model(
     from apps.api.jarvis_api.services.ollama_visible_prompt import (
         serialize_ollama_chat_messages,
     )
-    from core.tools.workspace_capabilities import build_ollama_tool_definitions
+    from core.tools.simple_tools import get_tool_definitions
 
     target = resolve_provider_router_target(lane="visible")
     base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
 
     visible_input = _build_visible_input(message, session_id=session_id)
     messages = serialize_ollama_chat_messages(visible_input)
-    tools = build_ollama_tool_definitions()
+    tools = get_tool_definitions()
 
     payload: dict[str, object] = {
         "model": model,

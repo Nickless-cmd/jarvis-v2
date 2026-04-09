@@ -186,6 +186,7 @@ from core.runtime.db import (
     recent_visible_runs,
     visible_session_continuity,
 )
+from core.runtime.config import PROJECT_ROOT
 from core.tools.workspace_capabilities import load_workspace_capabilities
 
 DEFAULT_EXCLUDED_FILES = (
@@ -412,7 +413,7 @@ def build_visible_chat_prompt_assembly(
 
     transcript_content = _recent_transcript_section(
         session_id,
-        limit=10 if compact else 14,
+        limit=20 if compact else 30,
         include=relevance.include_transcript,
     )
 
@@ -1332,148 +1333,26 @@ def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
 
 
 def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
-    capability_truth = load_workspace_capabilities()
-    capabilities = capability_truth.get("runtime_capabilities", [])
-    available = [
-        item
-        for item in capabilities
-        if item.get("available_now") and str(item.get("capability_id") or "").strip()
+    lines = [
+        "Runtime tool calling:",
+        "- You have tools available via native function calling. Use them directly.",
+        "- Read-only tools (read_file, search, find_files, bash with read-only commands) are auto-approved.",
+        "- Write tools (write_file, edit_file) auto-approve for workspace files (MEMORY.md, USER.md). Other files require user approval.",
+        "- bash auto-approves read-only commands. Mutations require user approval.",
+        "- If you need information, use tools proactively. Do not guess from fragments.",
+        "- If a task needs multiple reads, call multiple tools. Continue autonomously instead of asking permission.",
+        "- If the user asks for code analysis, read concrete code files — not just README or directory listings.",
+        "- Project root: " + str(PROJECT_ROOT),
+        "- Workspace: ~/.jarvis-v2/workspaces/default/",
     ]
-    gated = [
-        item
-        for item in capabilities
-        if item.get("runtime_status") == "approval-required"
-    ]
-    policy = capability_truth.get("policy") or {}
-    contract = capability_truth.get("contract") or {}
-    lines = ["Runtime capability truth:"]
-    lines.append(
-        "- Your runtime provides native tool calling (function calling). "
-        "Use the tools provided by the API directly. Do NOT emit XML capability-call tags."
-    )
-    lines.append(
-        "- When you need to use a tool, call it through the native function calling mechanism. "
-        "The runtime will execute it and return results."
-    )
-    lines.append(
-        "- If you are missing context or feel uncertain about a file-backed answer, read the whole relevant file before answering instead of guessing from fragments."
-    )
-    lines.append(
-        "- If the user asks for code analysis, walkthrough, or a repo/codebase review, do not stop at README, pyproject, or directory names. Read concrete code files before claiming analysis."
-    )
-    if any(
-        str(item.get("execution_mode") or "") == "external-file-read"
-        and str(item.get("target_path_source") or "") == "invocation-argument"
-        for item in available
-    ):
-        lines.append(
-            "- Dynamic external file read and directory listing can use paths from: "
-            "(1) the user's current message, (2) results from previous capability calls in this turn, "
-            "(3) well-known paths (PROJECT_ROOT, workspace root, home directory). "
-            "You do not need the user to spell out every path — if you know the path from context, use it."
-        )
-    if any(
-        str(item.get("execution_mode") or "") == "non-destructive-exec"
-        and str(item.get("command_source") or "") == "invocation-argument"
-        for item in available
-    ):
-        lines.append(
-            "- Non-destructive exec is allowed when the user's intent is clear. "
-            "You do not need the command in backticks — infer the appropriate read-only command from context."
-        )
-        lines.append(
-            "- When a task spans several facts, prefer multiple small read-only commands in the same turn. Do not stop after the first partial result if more bounded calls are clearly needed."
-        )
-        lines.append(
-            "- If the current task is still clearly read-only and bounded, continue autonomously with additional capability calls instead of asking the user for permission to keep reading."
-        )
-        lines.append(
-            "- If the user is asking about repo behavior, path resolution, capabilities, commits, or backend structure, proactively inspect the repo with bounded reads or git inspection before answering."
-        )
-        lines.append(
-            "- If the user is asking about the machine or runtime environment, proactively gather bounded system facts before answering."
-        )
-        lines.append(
-            "- Bounded git read/inspect commands such as git status, git diff --stat, git diff --name-only, git log --oneline -n N, and git branch --show-current may execute as non-destructive inspection. Git mutation remains proposal-only here and is classified into small repo stewardship classes such as git-stage, git-commit, git-sync, git-branch-switch, git-history-rewrite, git-stash, or git-other-mutate. Git clean stays blocked. If a command is mutating, do not claim execution unless runtime truth has explicit approval for that exact bounded non-sudo command fingerprint. Sudo-near commands may execute only after explicit approval of that exact sudo command fingerprint and only inside the tiny sudo allowlist for this pass. Runtime may reuse a short auto-expiring sudo approval window only for the same bounded sudo scope."
-        )
-    if available:
-        lines.append(
-            "- Callable capability_ids: "
-            + ", ".join(str(item.get("capability_id") or "") for item in available)
-        )
-        lines.append(f"- Callable now: {len(available)} capability_ids.")
-        limit = len(available)
-        for item in available[:limit]:
-            lines.append(
-                f"  - {item['capability_id']}: {item.get('name', '')}"
-                f" [{item.get('execution_mode', 'unknown')}]"
-            )
-    else:
-        lines.append(
-            "- No workspace capabilities are currently available for direct execution."
-        )
-    if gated:
-        lines.append(
-            "- Approval-gated capability_ids: "
-            + ", ".join(str(item.get("capability_id") or "") for item in gated[:6])
-        )
-        lines.append(
-            f"- Approval-gated but not auto-executable now: {len(gated)} capability_ids."
-        )
-        for item in gated[:6]:
-            lines.append(
-                f"  - {item['capability_id']}: approval required"
-                f" [{item.get('execution_mode', 'unknown')}]"
-            )
-    lines.append(
-        "- Policy: "
-        f"workspace_read={policy.get('workspace_read', 'allowed')} | "
-        f"external_read={policy.get('external_read', 'allowed')} | "
-        f"non_destructive_exec={policy.get('non_destructive_exec', 'allowed')} | "
-        f"mutating_exec={policy.get('mutating_exec', 'explicit-approval-required-bounded-non-sudo-only')} | "
-        f"sudo_exec={policy.get('sudo_exec', 'explicit-approval-required-bounded-allowlist-with-short-ttl-window')} | "
-        f"workspace_write={policy.get('workspace_write', 'explicit-approval-required')} | "
-        f"external_write={policy.get('external_write', 'explicit-approval-required')}"
-    )
     return "\n".join(lines)
 
 
 def _visible_capability_id_summary() -> str | None:
-    capability_truth = load_workspace_capabilities()
-    callable_ids = [
-        str(item.get("capability_id") or "")
-        for item in (capability_truth.get("runtime_capabilities") or [])
-        if item.get("available_now") and str(item.get("capability_id") or "").strip()
+    lines = [
+        "Available tools: read_file, write_file, edit_file, search, find_files, bash, web_fetch, web_search.",
+        "Call multiple tools in one turn when exploring. Continue autonomously for read-only tasks.",
     ]
-    gated_ids = [
-        str(item.get("capability_id") or "")
-        for item in (capability_truth.get("runtime_capabilities") or [])
-        if item.get("runtime_status") == "approval-required"
-        and str(item.get("capability_id") or "").strip()
-    ]
-    if not callable_ids and not gated_ids:
-        return None
-    lines = ["Visible capability ids:"]
-    if callable_ids:
-        lines.append("- callable: " + ", ".join(callable_ids))
-    if gated_ids:
-        lines.append("- approval_gated: " + ", ".join(gated_ids))
-    lines.append(
-        "- usage: use native tool calling to invoke capabilities. "
-        "Pass arguments (target_path, command, pattern, etc.) as tool parameters."
-    )
-    lines.append(
-        "- parallel: you can call multiple tools in one response. "
-        "Do this when exploring — e.g. list a directory AND read a file in the same turn. "
-        "If one fails, others still execute. Never stop working because one call failed."
-    )
-    lines.append(
-        "- autonomy: if the task is still read-only and bounded, continue with more tool calls instead of asking the user to tell you to continue."
-    )
-    lines.append(
-        "- system-inspection: when a user asks for multiple machine specs, prefer multiple small command calls in one response "
-        'such as `lscpu`, `free -h`, `lsblk`, `df -h`, and either `lspci | rg -i "vga|3d|display"` or `nvidia-smi` instead of one oversized command.'
-    )
     return "\n".join(lines)
 
 
@@ -2613,8 +2492,8 @@ def _recent_transcript_section(
     for item in history[-limit:]:
         role = "User" if item["role"] == "user" else "Jarvis"
         content = " ".join(str(item.get("content") or "").split())
-        if len(content) > 260:
-            content = content[:259].rstrip() + "…"
+        if len(content) > 800:
+            content = content[:799].rstrip() + "…"
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
 

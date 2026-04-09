@@ -1,40 +1,20 @@
 from __future__ import annotations
 
 
-def test_visible_prompt_surfaces_callable_and_gated_capabilities(isolated_runtime) -> None:
+def test_visible_prompt_surfaces_tool_calling_instructions(isolated_runtime) -> None:
     prompt_contract = isolated_runtime.prompt_contract
 
     instruction = prompt_contract._visible_capability_truth_instruction(compact=False)
 
     assert instruction is not None
-    assert "Runtime capability truth:" in instruction
-    assert "native tool calling" in instruction
-    assert "Do NOT emit XML capability-call tags" in instruction
-    assert "do not stop at README, pyproject, or directory names" in instruction
-    assert "continue autonomously with additional" in instruction
-    assert "tool:read-workspace-user-profile" in instruction
-    assert "tool:search-workspace-memory-continuity" in instruction
-    assert "tool:read-repository-readme" in instruction
-    assert "tool:read-external-file-by-path" in instruction
-    assert "tool:run-non-destructive-command" in instruction
-    assert "tool:propose-workspace-memory-update" in instruction
-    assert "tool:propose-external-repo-file-update" in instruction
-    assert "workspace_read=allowed" in instruction
-    assert "external_read=allowed" in instruction
-    assert "non_destructive_exec=allowed" in instruction
-    assert "mutating_exec=explicit-approval-required-bounded-non-sudo-only" in instruction
-    assert "sudo_exec=explicit-approval-required-bounded-allowlist-with-short-ttl-window" in instruction
-    assert "workspace_write=explicit-approval-required" in instruction
-    assert "Bounded git read/inspect commands such as git status" in instruction
-    assert "Git mutation remains proposal-only here and is classified into small repo stewardship classes" in instruction
-    assert "git-stage, git-commit, git-sync, git-branch-switch, git-history-rewrite, git-stash, or git-other-mutate" in instruction
-    assert "Git clean stays blocked." in instruction
-    assert "exact bounded non-sudo command fingerprint" in instruction
-    assert "exact sudo command fingerprint" in instruction
-    assert "short auto-expiring sudo approval window" in instruction
+    assert "Runtime tool calling:" in instruction
+    assert "native function calling" in instruction
+    assert "read_file" in instruction
+    assert "auto-approved" in instruction or "auto-approve" in instruction
+    assert "user approval" in instruction
 
 
-def test_visible_prompt_assembly_keeps_tool_calling_contract(isolated_runtime) -> None:
+def test_visible_prompt_assembly_includes_tool_info(isolated_runtime) -> None:
     prompt_contract = isolated_runtime.prompt_contract
 
     assembly = prompt_contract.build_visible_chat_prompt_assembly(
@@ -44,8 +24,6 @@ def test_visible_prompt_assembly_keeps_tool_calling_contract(isolated_runtime) -
         session_id=None,
     )
 
-    assert "native tool calling" in assembly.text
-    assert "tool:read-workspace-user-profile" in assembly.text
-    assert "tool:read-external-file-by-path" in assembly.text
-    assert "tool:run-non-destructive-command" in assembly.text
-    assert "Never stop working because one call failed." in assembly.text
+    assert "read_file" in assembly.text
+    assert "search" in assembly.text
+    assert "bash" in assembly.text

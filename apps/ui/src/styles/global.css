@@ -732,12 +732,13 @@ button { cursor: pointer; }
 .mc-contract-column.runtime-column .mc-row-meta { gap:6px; }
 .mc-list-row {
   width:100%; text-align:left; display:flex; align-items:center; justify-content:space-between; gap:10px;
-  padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.04); background:#1c1f25; color:#e4e6ed;
+  padding:6px 10px; border-radius:8px; border:1px solid rgba(40,177,163,.08); background:rgba(14,20,30,.8); color:#e4e6ed;
   transition: border-color .14s ease, background .14s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
 }
-.mc-list-row.active { border-color: rgba(40,177,163,.25); background:#16222f; }
+.mc-list-row.active { border-color: rgba(40,177,163,.22); background:rgba(16,28,40,.85); }
 .mc-list-row.static { cursor:default; }
-.mc-list-row-subtle { margin-left:10px; background:#101721; border-color:rgba(255,255,255,.035); }
+.mc-list-row-subtle { margin-left:10px; background:rgba(10,16,24,.85); border-color:rgba(40,177,163,.05); }
 .mc-list-row div { min-width:0; }
 .mc-list-row strong { display:block; margin-bottom:2px; font-size:12px; }
 .mc-list-row span { display:block; color:#8b909e; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

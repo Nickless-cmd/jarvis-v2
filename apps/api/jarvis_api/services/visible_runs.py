@@ -186,6 +186,7 @@ from apps.api.jarvis_api.services.visible_model import (
     VisibleModelResult,
     VisibleModelStreamCancelled,
     VisibleModelStreamDone,
+    VisibleModelToolCalls,
     execute_visible_model,
     stream_visible_model,
 )
@@ -321,6 +322,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     result = None
     visible_output_text = ""
     markup_buffer = _CapabilityMarkupBuffer()
+    _collected_native_tool_calls: list[dict] = []
     try:
         try:
             # Run the synchronous model stream in a thread so SSE
@@ -368,6 +370,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 "delta": safe_text,
                             },
                         )
+                    continue
+                if isinstance(item, VisibleModelToolCalls):
+                    _collected_native_tool_calls = item.tool_calls
                     continue
                 if isinstance(item, VisibleModelStreamDone):
                     result = item.result
@@ -472,6 +477,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             return
 
         capability_plan = _extract_capability_plan(result.text)
+
+        # Merge native tool_calls into capability plan (takes priority over XML)
+        if _collected_native_tool_calls:
+            native_caps = _native_tool_calls_to_capabilities(_collected_native_tool_calls)
+            if native_caps:
+                existing = capability_plan.get("all_capabilities") or []
+                capability_plan["all_capabilities"] = native_caps + existing
+                capability_plan["had_markup"] = True
+                if native_caps:
+                    capability_plan["selected_capability_id"] = native_caps[0].get("capability_id")
+                    capability_plan["selected_arguments"] = native_caps[0].get("arguments", {})
+                capability_plan["native_tool_calls"] = True
+
         _update_visible_execution_trace(
             run,
             {
@@ -479,9 +497,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "parsed_command_text": (capability_plan.get("selected_arguments") or {}).get("command_text"),
                 "parsed_target_path": (capability_plan.get("selected_arguments") or {}).get("target_path"),
                 "argument_source": capability_plan.get("argument_source") or "none",
-                "argument_binding_mode": capability_plan.get("argument_binding_mode") or "id-only",
+                "argument_binding_mode": (
+                    "native-tool-call" if capability_plan.get("native_tool_calls")
+                    else capability_plan.get("argument_binding_mode") or "id-only"
+                ),
                 "capability_markup_count": len(capability_plan.get("capability_ids") or []),
                 "multiple_capability_tags": bool(capability_plan.get("multiple")),
+                "native_tool_call_count": len(_collected_native_tool_calls),
             },
         )
 
@@ -1238,6 +1260,37 @@ def _extract_capability_call(text: str) -> str | None:
 
 
 _MAX_CAPABILITIES_PER_TURN = 5
+
+
+def _native_tool_calls_to_capabilities(tool_calls: list[dict]) -> list[dict]:
+    """Convert Ollama native tool_calls to capability-plan entries."""
+    from core.tools.workspace_capabilities import resolve_tool_call_to_capability
+
+    caps: list[dict] = []
+    for tc in tool_calls[:_MAX_CAPABILITIES_PER_TURN]:
+        fn = tc.get("function") or {}
+        name = str(fn.get("name") or "")
+        arguments = fn.get("arguments") or {}
+        if not name:
+            continue
+        resolved = resolve_tool_call_to_capability(name, arguments)
+        capability_id = resolved.get("capability_id") or ""
+        if not capability_id:
+            continue
+        cap_args: dict[str, str] = {}
+        if resolved.get("command_text"):
+            cap_args["command_text"] = str(resolved["command_text"])
+        if resolved.get("target_path"):
+            cap_args["target_path"] = str(resolved["target_path"])
+        if resolved.get("write_content"):
+            cap_args["write_content"] = str(resolved["write_content"])
+        caps.append({
+            "capability_id": capability_id,
+            "arguments": cap_args,
+            "source": "native-tool-call",
+            "tool_name": name,
+        })
+    return caps
 
 
 def _extract_capability_plan(text: str) -> dict[str, object]:

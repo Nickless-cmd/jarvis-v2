@@ -477,13 +477,11 @@ def _document_summary(path: Path, *, kind: str) -> dict[str, object]:
     lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
     headings = [line.lstrip("#").strip() for line in lines if line.startswith("#")]
     content_lines = [line for line in lines if line and not line.startswith("#")]
-    # Bumped from 8 to 20 — the original cap was hiding several declared
-    # tools (write user profile, list workspace files, etc.) and the
-    # new RUNTIME_INSPECT capability. 20 is still bounded but actually
-    # exposes everything currently declared in TOOLS.md.
+    # Bumped from 20 to 30 — 20 was hiding the new code-exploration
+    # capabilities (grep-project, read-project-files, project-outline).
     described_capabilities = [
         _section_summary(section)
-        for section in _document_sections(path, kind=kind)[:20]
+        for section in _document_sections(path, kind=kind)[:30]
     ]
 
     return {

@@ -37,6 +37,7 @@ _AUTO_APPROVE_WRITE_PATHS = {
 _AUTO_APPROVE_WRITE_PREFIXES = [
     str(WORKSPACE_DIR) + "/",                          # all runtime workspace files
     str(Path(PROJECT_ROOT) / "workspace" / "default") + "/",  # repo workspace template
+    "/tmp/",                                            # safe temp directory
 ]
 _BLOCKED_WRITE_PATTERNS = [
     "/.git/",

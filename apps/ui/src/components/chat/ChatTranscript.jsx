@@ -25,7 +25,7 @@ export function ChatTranscript({ messages, workingSteps }) {
 
   return (
     <section ref={transcriptRef} className="transcript">
-      {messages.map((message) => (
+      {messages.filter((m) => m.role !== 'tool').map((message) => (
         <article key={message.id} className={`message-row ${message.role}`}>
           <div className="message-avatar">
             {message.role === 'assistant' ? <Bot size={15} /> : <User size={15} />}

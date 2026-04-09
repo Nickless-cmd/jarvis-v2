@@ -248,7 +248,7 @@ export function ChatHeader({
               {searchResults.length === 0 ? (
                 <div className="chat-search-empty mono">No matches</div>
               ) : (
-                searchResults.map((m, i) => (
+                searchResults.filter((m) => m.role !== 'tool').map((m, i) => (
                   <div key={m.id || i} className="chat-search-result">
                     <span className="chat-search-result-role mono">{m.role === 'assistant' ? 'Jarvis' : 'You'}</span>
                     <span className="chat-search-result-text">{(m.content || '').slice(0, 120)}</span>

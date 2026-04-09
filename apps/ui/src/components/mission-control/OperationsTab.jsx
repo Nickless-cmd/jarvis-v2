@@ -1,12 +1,67 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState } from 'react'
 import { MainAgentPanel } from '../shared/MainAgentPanel'
 import { AutonomyProposalsPanel } from './AutonomyProposalsPanel'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
+import { s, T } from '../../shared/theme/tokens'
 
-function StatusPill({ status }) {
-  if (!status) return null
-  const normalizedStatus = String(status).toLowerCase().replace(/[-_\s]+/g, '-')
-  return <span className={`mc-status-pill status-${normalizedStatus}`}>{status}</span>
+function CollapsibleSection({ title, subtitle, defaultOpen = false, children }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+  
+  return (
+    <div style={s({ border: `1px solid ${T.border0}`, borderRadius: 10, overflow: 'hidden', marginTop: 8 })}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={s({
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 12px',
+          background: T.bgSurface,
+          border: 'none',
+          color: T.text1,
+          cursor: 'pointer',
+          textAlign: 'left',
+        })}
+      >
+        <div>
+          <div style={s({ fontSize: 11, fontWeight: 500 })}>{title}</div>
+          {subtitle && <div style={s({ fontSize: 10, color: T.text3, marginTop: 2 })}>{subtitle}</div>}
+        </div>
+        {isOpen ? <ChevronUp size={14} color={T.text3} /> : <ChevronDown size={14} color={T.text3} />}
+      </button>
+      {isOpen && (
+        <div style={s({ padding: 12, background: T.bgRaised })}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StatusBadge({ status }) {
+  const getColor = (s) => {
+    const lower = String(s || '').toLowerCase()
+    if (lower === 'approved' || lower === 'ok' || lower === 'completed') return T.green
+    if (lower === 'pending' || lower === 'review') return T.amber
+    if (lower === 'rejected' || lower === 'failed' || lower === 'error') return T.red
+    return T.text3
+  }
+  const color = getColor(status)
+  return (
+    <span style={s({
+      fontSize: 9,
+      padding: '2px 6px',
+      borderRadius: 6,
+      background: `${color}15`,
+      color: color,
+      fontFamily: T.mono,
+      letterSpacing: '0.04em',
+    })}>
+      {status}
+    </span>
+  )
 }
 
 function humanizeToken(value) {
@@ -212,7 +267,7 @@ export function OperationsTab({
           <div className="panel-header stacked">
             <div>
               <h3>Execution Authority</h3>
-              <p className="muted">Canonical home for main-agent selection.</p>
+              <p className="muted">Main-agent selection.</p>
             </div>
             <span className="mc-section-hint">Editable</span>
           </div>
@@ -227,7 +282,7 @@ export function OperationsTab({
           <div className="panel-header">
             <div>
               <h3>Runtime Lanes</h3>
-              <p className="muted">Visible, cheap, coding, and local readiness.</p>
+              <p className="muted">Visible, cheap, coding, local.</p>
             </div>
             <span className="mc-section-hint">Read-only</span>
           </div>
@@ -244,297 +299,187 @@ export function OperationsTab({
       </section>
 
       {toolIntent ? (
-        <section className="support-card" id="tool-intent" title={sectionTitleWithMeta({
-          source: toolIntent.source || '/mc/tool-intent',
-          fetchedAt: toolIntent.createdAt || data?.fetchedAt,
-          mode: 'operational intent detail',
-        })}>
+        <section className="support-card" id="tool-intent" style={{ marginTop: 12 }}>
           <div className="panel-header">
             <div>
               <h3>Tool Intent</h3>
-              <p className="muted">Bounded operational intent with mutation visibility and a proposal-only execution boundary.</p>
+              <p className="muted">Bounded operational intent.</p>
             </div>
-            <span className="mc-section-hint">Read-only</span>
+            <div style={s({ display: 'flex', gap: 6 })}>
+              <StatusBadge status={toolIntent.intentState || 'idle'} />
+              <StatusBadge status={toolIntent.approvalState || 'none'} />
+            </div>
           </div>
-          <div className="compact-grid">
-            <div className="compact-metric" title="Current intent state">
-              <span>State</span>
-              <strong>{toolIntent.intentState || 'idle'}</strong>
-              <p className="muted">{toolIntent.intentType || 'inspect-repo-status'}</p>
-            </div>
-            <div className="compact-metric" title="Approval lifecycle state and source">
-              <span>Approval</span>
-              <strong>{humanizeToken(toolIntent.approvalState || 'none')}</strong>
-              <p className="muted">via {humanizeToken(toolIntent.approvalSource || 'none')} · {toolIntent.approvalRequired ? 'required' : 'not required'}</p>
-            </div>
-            <div className="compact-metric" title="Intent target and urgency">
+          
+          <div className="compact-grid" style={{ marginBottom: 8 }}>
+            <div className="compact-metric">
               <span>Target</span>
               <strong>{toolIntent.executionTarget || toolIntent.intentTarget || 'workspace'}</strong>
-              <p className="muted">{toolIntent.urgency || 'low'} urgency</p>
+              <p className="muted">{toolIntent.intentType || 'inspect'}</p>
             </div>
-            <div className="compact-metric" title="Read-only execution state and mode">
-              <span>Execution</span>
-              <strong>{toolIntent.executionState || 'not-executed'}</strong>
-              <p className="muted">{humanizeToken(toolIntent.executionMode || 'read-only')} · {toolIntent.executionOperation ? humanizeToken(toolIntent.executionOperation) : humanizeToken(toolIntent.intentType || 'inspect-repo-status')}</p>
-            </div>
-            <div className="compact-metric" title="Boundary and mutation permission">
-              <span>Boundary</span>
-              <strong>{toolIntent.mutationPermitted ? 'mutable' : 'proposal-only'}</strong>
-              <p className="muted">{toolIntent.approvalScope || 'repo-read'} · {toolIntent.approvalLifecycle || 'bounded-approval-surface-light'}</p>
-            </div>
-            <div className="compact-metric" title="Execution or approval freshness">
-              <span>Freshness</span>
-              <strong>{executionTimingLabel(toolIntent) || approvalTimingLabel(toolIntent) || 'awaiting signal'}</strong>
-              <p className="muted">{toolIntent.executionSummary || toolIntent.approvalResolutionReason || toolIntent.approvalResolutionMessage || 'No execution summary recorded'}</p>
+            <div className="compact-metric">
+              <span>Mode</span>
+              <strong>{humanizeToken(toolIntent.executionMode || 'read-only')}</strong>
+              <p className="muted">{toolIntent.executionState || 'not-executed'}</p>
             </div>
           </div>
-          {showMutationIntent ? (
-            <>
-              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
-                <div className="compact-metric" title="Mutation intent state and classification">
-                  <span>Mutation</span>
+
+          {showMutationIntent && (
+            <CollapsibleSection 
+              title="Mutation Intent" 
+              subtitle={`${toolIntent.mutationTargetFiles?.length || 0} files · ${mutationGuardLabel(toolIntent)}`}
+            >
+              <div className="compact-grid compact-grid-4" style={{ marginBottom: 8 }}>
+                <div className="compact-metric">
+                  <span>Classification</span>
                   <strong>{humanizeToken(toolIntent.mutationIntentClassification || 'none')}</strong>
-                  <p className="muted">{humanizeToken(toolIntent.mutationIntentState || 'idle')} · {toolIntent.mutationNear ? 'action-near' : 'not action-near'}</p>
                 </div>
-                <div className="compact-metric" title="Bounded mutation targets">
+                <div className="compact-metric">
                   <span>Targets</span>
-                  <strong>{toolIntent.mutationTargetFiles?.length || toolIntent.mutationTargetPaths?.length || 0}</strong>
+                  <strong>{toolIntent.mutationTargetFiles?.length || 0}</strong>
                   <p className="muted">{mutationTargets}</p>
                 </div>
-                <div className="compact-metric" title="Repo or system mutation scope">
+                <div className="compact-metric">
                   <span>Scope</span>
                   <strong>{mutationScope || 'none'}</strong>
-                  <p className="muted">repo {toolIntent.mutationRepoScope || 'none'} · system {toolIntent.mutationSystemScope || 'none'}</p>
                 </div>
-                <div className="compact-metric" title="Mutation boundary and execution permission">
+                <div className="compact-metric">
                   <span>Guard</span>
                   <strong>{mutationGuardLabel(toolIntent)}</strong>
-                  <p className="muted">sudo {toolIntent.mutationSudoRequired ? 'required' : 'not needed'} · {toolIntent.mutationCritical ? 'critical' : 'normal risk'}</p>
                 </div>
               </div>
-              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
-                <strong>Mutation intent</strong>
-                <p>{toolIntent.mutationSummary || 'No bounded mutation intent is active.'}</p>
-                <div className="mc-inline-meta">
-                  <span className="mc-meta-pill">classification {humanizeToken(toolIntent.mutationIntentClassification || 'none')}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutationNear ? 'action-near' : 'not action-near'}</span>
-                  <span className="mc-meta-pill">{mutationGuardLabel(toolIntent)}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutationSudoRequired ? 'sudo required' : 'sudo not needed'}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutationCritical ? 'critical change' : 'normal risk'}</span>
-                  {toolIntent.createdAt ? <span className="mc-meta-pill">updated {formatFreshness(toolIntent.createdAt)}</span> : null}
-                </div>
-              </article>
-            </>
-          ) : null}
-          {showMutatingExecProposal ? (
-            <>
-              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
-                <div className="compact-metric" title="Mutating exec proposal state and review boundary">
-                  <span>Exec Proposal</span>
+            </CollapsibleSection>
+          )}
+
+          {showMutatingExecProposal && (
+            <CollapsibleSection 
+              title="Mutating Exec Proposal" 
+              subtitle={humanizeToken(toolIntent.mutatingExecProposalState || 'none')}
+            >
+              <div className="compact-grid compact-grid-4" style={{ marginBottom: 8 }}>
+                <div className="compact-metric">
+                  <span>State</span>
                   <strong>{humanizeToken(toolIntent.mutatingExecProposalState || 'none')}</strong>
-                  <p className="muted">proposal-only · not executed</p>
                 </div>
-                {toolIntent.hasGitRepoStewardshipProposalSurface ? (
-                  <div className="compact-metric" title="Repo stewardship domain and git mutation class">
-                    <span>Stewardship</span>
-                    <strong>{humanizeToken(toolIntent.mutatingExecGitMutationClass || 'none')}</strong>
-                    <p className="muted">{humanizeToken(toolIntent.mutatingExecRepoStewardshipDomain || 'none')} repo stewardship</p>
-                  </div>
-                ) : null}
-                <div className="compact-metric" title="Mutating exec scope and criticality">
+                <div className="compact-metric">
                   <span>Scope</span>
                   <strong>{humanizeToken(toolIntent.mutatingExecProposalScope || 'none')}</strong>
-                  <p className="muted">{humanizeToken(toolIntent.mutatingExecCriticality || 'none')} criticality</p>
                 </div>
-                <div className="compact-metric" title="Approval and sudo requirements">
+                <div className="compact-metric">
                   <span>Guard</span>
                   <strong>{mutatingExecGuardLabel(toolIntent)}</strong>
-                  <p className="muted">sudo {toolIntent.mutatingExecRequiresSudo ? 'required' : 'not needed'}</p>
                 </div>
-                <div className="compact-metric" title="Proposal confidence and fingerprint">
+                <div className="compact-metric">
                   <span>Confidence</span>
                   <strong>{humanizeToken(toolIntent.mutatingExecConfidence || 'low')}</strong>
-                  <p className="muted">{toolIntent.mutatingExecCommandFingerprint || 'no fingerprint'}</p>
                 </div>
               </div>
-              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
-                <strong>Mutating exec proposal</strong>
-                <p>{toolIntent.mutatingExecProposalSummary || toolIntent.mutatingExecProposalReason || 'A mutating exec proposal is present and remains review-only.'}</p>
-                <div className="mc-inline-meta">
-                  {toolIntent.hasGitRepoStewardshipProposalSurface ? (
-                    <>
-                      <span className="mc-meta-pill">domain {humanizeToken(toolIntent.mutatingExecRepoStewardshipDomain || 'none')}</span>
-                      <span className="mc-meta-pill">class {humanizeToken(toolIntent.mutatingExecGitMutationClass || 'none')}</span>
-                    </>
-                  ) : null}
-                  <span className="mc-meta-pill">command {toolIntent.mutatingExecProposalCommand || 'none'}</span>
-                  <span className="mc-meta-pill">scope {humanizeToken(toolIntent.mutatingExecProposalScope || 'none')}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresApproval ? 'approval required' : 'approval not required'}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresSudo ? 'sudo required' : 'sudo not needed'}</span>
-                  <span className="mc-meta-pill">not executed</span>
-                </div>
-              </article>
-              {toolIntent.hasGitRepoStewardshipProposalSurface ? (
-                <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
-                  <strong>Git repo stewardship</strong>
-                  <p>This proposal is repo stewardship truth, not generic shell mutation. It stays approval-gated and not executed until an explicit approval path acts on it.</p>
-                  <div className="mc-inline-meta">
-                    <span className="mc-meta-pill">git {humanizeToken(toolIntent.mutatingExecGitMutationClass || 'none')}</span>
-                    <span className="mc-meta-pill">approval gated</span>
-                    <span className="mc-meta-pill">proposal only</span>
-                    <span className="mc-meta-pill">not executed</span>
-                  </div>
-                </article>
-              ) : null}
-            </>
-          ) : null}
-          {showSudoExecProposal ? (
-            <>
-              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
-                <div className="compact-metric" title="Sudo exec proposal state and review boundary">
-                  <span>Sudo Proposal</span>
+              {toolIntent.mutatingExecProposalSummary && (
+                <p style={s({ fontSize: 11, color: T.text2, marginTop: 8 })}>{toolIntent.mutatingExecProposalSummary}</p>
+              )}
+            </CollapsibleSection>
+          )}
+
+          {showSudoExecProposal && (
+            <CollapsibleSection 
+              title="Sudo Exec Proposal" 
+              subtitle={humanizeToken(toolIntent.sudoExecProposalState || 'none')}
+            >
+              <div className="compact-grid compact-grid-4" style={{ marginBottom: 8 }}>
+                <div className="compact-metric">
+                  <span>State</span>
                   <strong>{humanizeToken(toolIntent.sudoExecProposalState || 'none')}</strong>
-                  <p className="muted">proposal-only · not executed</p>
                 </div>
-                <div className="compact-metric" title="Sudo exec scope and criticality">
+                <div className="compact-metric">
                   <span>Scope</span>
                   <strong>{humanizeToken(toolIntent.sudoExecProposalScope || 'none')}</strong>
-                  <p className="muted">{humanizeToken(toolIntent.sudoExecCriticality || 'none')} criticality</p>
                 </div>
-                <div className="compact-metric" title="Approval and sudo requirements">
+                <div className="compact-metric">
                   <span>Guard</span>
                   <strong>{sudoExecGuardLabel(toolIntent)}</strong>
-                  <p className="muted">{toolIntent.sudoExecRequiresSudo ? 'requires sudo' : 'sudo not needed'}</p>
-                </div>
-                <div className="compact-metric" title="Proposal confidence and fingerprint">
-                  <span>Fingerprint</span>
-                  <strong>{toolIntent.sudoExecCommandFingerprint || 'none'}</strong>
-                  <p className="muted">{humanizeToken(toolIntent.sudoExecConfidence || 'low')} confidence</p>
                 </div>
               </div>
-              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
-                <strong>Sudo exec proposal</strong>
-                <p>{toolIntent.sudoExecProposalSummary || toolIntent.sudoExecProposalReason || 'A sudo exec proposal is present and remains review-only.'}</p>
-                <div className="mc-inline-meta">
-                  <span className="mc-meta-pill">command {toolIntent.sudoExecProposalCommand || 'none'}</span>
-                  <span className="mc-meta-pill">scope {humanizeToken(toolIntent.sudoExecProposalScope || 'none')}</span>
-                  <span className="mc-meta-pill">{toolIntent.sudoExecRequiresApproval ? 'approval required' : 'approval not required'}</span>
-                  <span className="mc-meta-pill">{toolIntent.sudoExecRequiresSudo ? 'requires sudo' : 'sudo not needed'}</span>
-                  <span className="mc-meta-pill">not executed</span>
-                </div>
-              </article>
-            </>
-          ) : null}
-          {showSudoApprovalWindow ? (
-            <>
-              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
-                <div className="compact-metric" title="Short bounded sudo approval window state">
-                  <span>Sudo Window</span>
+            </CollapsibleSection>
+          )}
+
+          {showSudoApprovalWindow && (
+            <CollapsibleSection 
+              title="Sudo Approval Window" 
+              subtitle={`${toolIntent.sudoApprovalWindowRemainingSeconds || 0}s remaining`}
+            >
+              <div className="compact-grid compact-grid-4" style={{ marginBottom: 8 }}>
+                <div className="compact-metric">
+                  <span>State</span>
                   <strong>{humanizeToken(toolIntent.sudoApprovalWindowState || 'none')}</strong>
-                  <p className="muted">{sudoApprovalWindowGuardLabel(toolIntent)} · short TTL</p>
                 </div>
-                <div className="compact-metric" title="Bounded sudo approval scope and source">
+                <div className="compact-metric">
                   <span>Scope</span>
                   <strong>{humanizeToken(toolIntent.sudoApprovalWindowScope || 'none')}</strong>
-                  <p className="muted">via {humanizeToken(toolIntent.sudoApprovalWindowSource || 'none')}</p>
                 </div>
-                <div className="compact-metric" title="Remaining sudo approval window time">
+                <div className="compact-metric">
                   <span>Remaining</span>
                   <strong>{toolIntent.sudoApprovalWindowRemainingSeconds || 0}s</strong>
-                  <p className="muted">{toolIntent.sudoApprovalWindowReusable ? 'approval reusable' : 'reuse blocked'}</p>
                 </div>
-                <div className="compact-metric" title="Window lifecycle timestamps">
+                <div className="compact-metric">
                   <span>Expires</span>
                   <strong>{toolIntent.sudoApprovalWindowExpiresAt ? formatFreshness(toolIntent.sudoApprovalWindowExpiresAt) : 'unknown'}</strong>
-                  <p className="muted">{toolIntent.sudoApprovalWindowStartedAt ? `started ${formatFreshness(toolIntent.sudoApprovalWindowStartedAt)}` : 'start time unavailable'}</p>
                 </div>
               </div>
-              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
-                <strong>Sudo approval window</strong>
-                <p>A short, scoped sudo approval window may reuse a recent approval only within the same bounded sudo scope. It is not global root access.</p>
-                <div className="mc-inline-meta">
-                  <span className="mc-meta-pill">state {humanizeToken(toolIntent.sudoApprovalWindowState || 'none')}</span>
-                  <span className="mc-meta-pill">scope {humanizeToken(toolIntent.sudoApprovalWindowScope || 'none')}</span>
-                  <span className="mc-meta-pill">{toolIntent.sudoApprovalWindowReusable ? 'reusable' : 'not reusable'}</span>
-                  <span className="mc-meta-pill">{toolIntent.sudoApprovalWindowRemainingSeconds || 0}s remaining</span>
-                  <span className="mc-meta-pill">source {humanizeToken(toolIntent.sudoApprovalWindowSource || 'none')}</span>
-                </div>
-              </article>
-            </>
-          ) : null}
-          {showMutatingExecExecution ? (
-            <>
-              <div className="compact-grid compact-grid-4 mc-tool-intent-mutation-grid">
-                <div className="compact-metric" title="Mutating exec execution state and outcome">
-                  <span>Exec Result</span>
+            </CollapsibleSection>
+          )}
+
+          {showMutatingExecExecution && (
+            <CollapsibleSection 
+              title="Mutating Exec Execution" 
+              subtitle={toolIntent.executionSummary ? 'Completed' : 'Running'}
+            >
+              <div className="compact-grid compact-grid-4" style={{ marginBottom: 8 }}>
+                <div className="compact-metric">
+                  <span>Result</span>
                   <strong>{humanizeToken(toolIntent.mutatingExecExecutionState || 'mutating-exec')}</strong>
-                  <p className="muted">{toolIntent.mutatingExecExecutionSucceeded ? 'completed' : 'failed'} · {toolIntent.mutationPermitted ? 'mutation permitted' : 'mutation blocked'}</p>
                 </div>
-                <div className="compact-metric" title="Mutating exec scope and non-sudo boundary">
+                <div className="compact-metric">
                   <span>Scope</span>
                   <strong>{humanizeToken(toolIntent.mutatingExecExecutionScope || 'none')}</strong>
-                  <p className="muted">{toolIntent.mutatingExecRequiresSudo ? 'sudo required' : 'sudo not permitted'}</p>
                 </div>
-                <div className="compact-metric" title="Approval binding and execution mode">
+                <div className="compact-metric">
                   <span>Binding</span>
                   <strong>{mutatingExecExecutionGuardLabel(toolIntent)}</strong>
-                  <p className="muted">{humanizeToken(toolIntent.executionMode || 'mutating-exec')} · approval {humanizeToken(toolIntent.approvalState || 'none')}</p>
-                </div>
-                <div className="compact-metric" title="Command fingerprint and continuity outcome">
-                  <span>Fingerprint</span>
-                  <strong>{toolIntent.mutatingExecCommandFingerprint || 'none'}</strong>
-                  <p className="muted">{humanizeToken(toolIntent.lastActionOutcome || 'none')} · {humanizeToken(toolIntent.followupState || 'none')}</p>
                 </div>
               </div>
-              <article className="mc-code-card mc-tool-intent-summary mc-tool-intent-mutation-summary">
-                <strong>Mutating exec execution</strong>
-                <p>{toolIntent.executionSummary || 'No bounded mutating exec execution summary is recorded.'}</p>
-                <div className="mc-inline-meta">
-                  <span className="mc-meta-pill">command {toolIntent.mutatingExecExecutionCommand || 'none'}</span>
-                  <span className="mc-meta-pill">scope {humanizeToken(toolIntent.mutatingExecExecutionScope || 'none')}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutatingExecApprovalMatched ? 'approval matched' : 'review binding'}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutatingExecRequiresSudo ? 'sudo required' : 'sudo_permitted=false'}</span>
-                  <span className="mc-meta-pill">{toolIntent.mutationPermitted ? 'mutation permitted' : 'mutation_permitted=false'}</span>
-                  {toolIntent.executionFinishedAt ? <span className="mc-meta-pill">finished {formatFreshness(toolIntent.executionFinishedAt)}</span> : null}
-                </div>
-              </article>
-            </>
-          ) : null}
-          {toolIntent.executionSummary ? (
-            <article className="mc-code-card mc-tool-intent-summary">
-              <strong>{showMutatingExecExecution ? 'Execution result' : 'Read-only result'}</strong>
-              <p>{toolIntent.executionSummary}</p>
-              <div className="mc-inline-meta">
-                <span className="mc-meta-pill">mode {humanizeToken(toolIntent.executionMode || 'read-only')}</span>
-                <span className="mc-meta-pill">{toolIntent.mutationPermitted ? 'mutation permitted' : 'mutation_permitted=false'}</span>
-                {toolIntent.executionConfidence ? <span className="mc-meta-pill">confidence {humanizeToken(toolIntent.executionConfidence)}</span> : null}
-              </div>
-            </article>
-          ) : null}
-          <div className="mc-list">
-            {toolIntentRow(toolIntent, onOpenItem)}
-          </div>
+              {toolIntent.executionSummary && (
+                <p style={s({ fontSize: 11, color: T.text2, marginTop: 8 })}>{toolIntent.executionSummary}</p>
+              )}
+            </CollapsibleSection>
+          )}
+
+          {toolIntent.executionSummary && (
+            <div style={s({ marginTop: 8, padding: 10, background: T.bgSurface, borderRadius: 8 })}>
+              <strong style={s({ fontSize: 11, color: T.text1 })}>Result</strong>
+              <p style={s({ fontSize: 11, color: T.text2, marginTop: 4 })}>{toolIntent.executionSummary}</p>
+            </div>
+          )}
+
           {toolIntent.approvalState === 'pending' ? (
-            <>
-              {toolIntentActionError ? <div className="inline-error">{toolIntentActionError}</div> : null}
-              <div className="mc-inline-actions mc-tool-intent-actions">
-                <button
-                  className="primary-btn"
-                  disabled={toolIntentActionBusy}
-                  onClick={() => onToolIntentAction?.('approve')}
-                >
-                  {toolIntentActionBusy ? 'Working…' : 'Approve'}
-                </button>
-                <button
-                  className="secondary-btn"
-                  disabled={toolIntentActionBusy}
-                  onClick={() => onToolIntentAction?.('deny')}
-                >
-                  Deny
-                </button>
-              </div>
-              <p className="mc-tool-intent-help muted">Resolve only bounded approval state here. Any execution stays read-only and mutation_permitted=false.</p>
-            </>
+            <div style={s({ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' })}>
+              <button
+                className="primary-btn"
+                disabled={toolIntentActionBusy}
+                onClick={() => onToolIntentAction?.('approve')}
+              >
+                {toolIntentActionBusy ? 'Working…' : 'Approve'}
+              </button>
+              <button
+                className="secondary-btn"
+                disabled={toolIntentActionBusy}
+                onClick={() => onToolIntentAction?.('deny')}
+              >
+                Deny
+              </button>
+              {toolIntentActionError && (
+                <span style={s({ fontSize: 11, color: T.red })}>{toolIntentActionError}</span>
+              )}
+            </div>
           ) : null}
         </section>
       ) : null}

@@ -25,6 +25,18 @@ export const T = {
   sans: "'DM Sans', sans-serif",
   r_sm: '10px',
   r_lg: '14px',
+
+  // Advanced colors
+  glass: 'rgba(255,255,255,0.03)',
+  glassBorder: 'rgba(255,255,255,0.06)',
+  cardGradient: 'linear-gradient(135deg, #1c1f25 0%, #232730 100%)',
+  headerGlass: 'rgba(22, 24, 28, 0.85)',
+  
+  // Shadows
+  shadowSm: '0 1px 2px rgba(0,0,0,0.3)',
+  shadowMd: '0 4px 12px rgba(0,0,0,0.25)',
+  shadowLg: '0 8px 24px rgba(0,0,0,0.3)',
+  shadowGlow: '0 0 20px rgba(61,143,124,0.15)',
 }
 
 export const s = (styles) => styles

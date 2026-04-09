@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUp, Square, Paperclip, GitBranch, GitCommit, ShieldCheck, Layers, Activity, Check, X } from 'lucide-react'
+import { ArrowUp, Square, Plus, GitBranch, GitCommit, ShieldCheck, Layers, Activity, Check, X, Monitor } from 'lucide-react'
 import { backend } from '../../lib/adapters'
 
 function formatTokens(n) {
@@ -129,7 +129,6 @@ export function Composer({
         setCommitOpen(false)
         setCommitMsg('')
         setCommitState('idle')
-        // Refresh git info so diff stats clear
         const info = await backend.getSystemGit()
         setGitInfo(info)
       } else {
@@ -156,42 +155,7 @@ export function Composer({
   return (
     <section className="composer-shell">
 
-      {/* Top meta row: git branch + diff + commit button + workspace */}
-      {(shortBranch || shortPath) && (
-        <div className="composer-meta-row">
-          <div className="composer-meta-left">
-            {shortBranch && (
-              <div className="composer-git-info">
-                <GitBranch size={11} strokeWidth={1.8} />
-                <span className="mono">{shortBranch}</span>
-                {diffParts.length > 0 && (
-                  <span className="composer-diff-stats mono">
-                    {diffParts.map((part, i) => (
-                      <span key={i} className={part.startsWith('+') ? 'diff-ins' : 'diff-dels'}>{part}</span>
-                    ))}
-                  </span>
-                )}
-              </div>
-            )}
-            {hasChanges && !commitOpen && (
-              <button
-                className="composer-commit-btn"
-                onClick={openCommit}
-                title="Commit changes"
-                type="button"
-              >
-                <GitCommit size={11} strokeWidth={1.8} />
-                <span>Commit changes</span>
-              </button>
-            )}
-          </div>
-          {shortPath && (
-            <span className="composer-workspace-path mono">{shortPath}</span>
-          )}
-        </div>
-      )}
-
-      {/* Inline commit field */}
+      {/* Inline commit field (shown above the card) */}
       {commitOpen && (
         <div className="composer-commit-row">
           <GitCommit size={12} strokeWidth={1.8} className="composer-commit-icon" />
@@ -231,13 +195,43 @@ export function Composer({
         </div>
       )}
 
-      {/* Input row */}
-      <div className={isStreaming ? 'composer-wrap working' : 'composer-wrap'}>
-        <button className="icon-btn subtle composer-attach-btn" type="button" title="Attach">
-          <Paperclip size={16} />
-        </button>
+      {/* Main card */}
+      <div className={`composer-card${isStreaming ? ' working' : ''}`}>
+
+        {/* Git bar */}
+        {shortBranch && (
+          <div className="composer-git-bar">
+            <div className="composer-git-bar-left">
+              <GitBranch size={11} strokeWidth={1.8} />
+              <span className="mono">{shortBranch}</span>
+              {diffParts.length > 0 && (
+                <span className="composer-diff-stats mono">
+                  {diffParts.map((part, i) => (
+                    <span key={i} className={part.startsWith('+') ? 'diff-ins' : 'diff-dels'}>{part}</span>
+                  ))}
+                </span>
+              )}
+            </div>
+            <div className="composer-git-bar-right">
+              {hasChanges && !commitOpen && (
+                <button
+                  className="composer-commit-btn"
+                  onClick={openCommit}
+                  title="Commit changes"
+                  type="button"
+                >
+                  <GitCommit size={11} strokeWidth={1.8} />
+                  <span>Commit changes</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Textarea */}
         <textarea
           ref={textareaRef}
+          className="composer-textarea"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
@@ -255,67 +249,83 @@ export function Composer({
           }
           rows={1}
         />
-        {isStreaming ? (
-          <button className="send-btn cancel" onClick={onCancel} title="Stop generating">
-            <Square size={14} />
-          </button>
-        ) : (
-          <button
-            className="send-btn"
-            onClick={handleSend}
-            disabled={!canSend}
-            title={canSend ? 'Send message' : 'Write a message first'}
-          >
-            <ArrowUp size={16} />
-          </button>
-        )}
-      </div>
 
-      {/* Bottom toolbar */}
-      <div className="composer-toolbar">
-        <div className="composer-toolbar-left">
-          <div className="composer-toolbar-group" title="Tool approval mode">
-            <ShieldCheck size={11} strokeWidth={1.8} className="composer-shield-icon" />
-            <select
-              className="composer-select mono"
-              value={approvalMode}
-              onChange={(e) => setApprovalMode(e.target.value)}
-              title="Tool approval mode"
-            >
-              <option value="auto">auto</option>
-              <option value="ask">ask all</option>
-              <option value="trust">trust all</option>
-            </select>
-          </div>
-
-          {providers.length > 0 && (
-            <div className="composer-toolbar-group">
+        {/* Toolbar row */}
+        <div className="composer-toolbar">
+          <div className="composer-toolbar-left">
+            <button className="composer-attach-btn icon-btn subtle" type="button" title="Attach">
+              <Plus size={14} />
+            </button>
+            <div className="composer-permissions-group" title="Tool approval mode">
+              <ShieldCheck size={11} strokeWidth={1.8} className="composer-shield-icon" />
               <select
                 className="composer-select mono"
-                value={provider}
-                onChange={handleProviderChange}
-                title="Provider"
+                value={approvalMode}
+                onChange={(e) => setApprovalMode(e.target.value)}
               >
-                {providers.map((p) => <option key={p} value={p}>{p}</option>)}
+                <option value="auto">Auto</option>
+                <option value="ask">Ask permissions</option>
+                <option value="trust">Trust all</option>
               </select>
-              {models.length > 0 && (
-                <>
-                  <span className="composer-select-sep mono">/</span>
-                  <select
-                    className="composer-select mono"
-                    value={model}
-                    onChange={handleModelChange}
-                    title="Model"
-                  >
-                    {models.map((m) => <option key={m.model} value={m.model}>{m.label}</option>)}
-                  </select>
-                </>
-              )}
             </div>
+          </div>
+
+          <div className="composer-toolbar-right">
+            {providers.length > 0 && (
+              <div className="composer-model-group">
+                <select
+                  className="composer-select mono"
+                  value={provider}
+                  onChange={handleProviderChange}
+                  title="Provider"
+                >
+                  {providers.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+                {models.length > 0 && (
+                  <>
+                    <span className="composer-select-sep mono">/</span>
+                    <select
+                      className="composer-select mono"
+                      value={model}
+                      onChange={handleModelChange}
+                      title="Model"
+                    >
+                      {models.map((m) => <option key={m.model} value={m.model}>{m.label}</option>)}
+                    </select>
+                  </>
+                )}
+              </div>
+            )}
+
+            {isStreaming ? (
+              <button className="send-btn cancel" onClick={onCancel} title="Stop generating">
+                <Square size={14} />
+              </button>
+            ) : (
+              <button
+                className="send-btn"
+                onClick={handleSend}
+                disabled={!canSend}
+                title={canSend ? 'Send message' : 'Write a message first'}
+              >
+                <ArrowUp size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer row */}
+      <div className="composer-footer">
+        <div className="composer-footer-left">
+          {shortPath && (
+            <>
+              <Monitor size={10} strokeWidth={1.6} />
+              <span className="composer-workspace-path mono">{shortPath}</span>
+            </>
           )}
         </div>
-
-        <div className="composer-toolbar-right">
+        <div className="composer-footer-right">
           <button
             className={`composer-plan-btn${planMode ? ' active' : ''}`}
             onClick={() => setPlanMode(!planMode)}

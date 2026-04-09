@@ -3,16 +3,16 @@
     "attenuation_bias": "soften",
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action",
-    "confidence": "low",
+    "confidence": "medium",
     "freshness": {
-      "built_at": "2026-04-06T11:31:05.967218+00:00",
+      "built_at": "2026-04-07T12:14:58.660612+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-learning-runtime-state",
-    "learning_engine_mode": "rebalance",
+    "learning_engine_mode": "retain",
     "maturation_state": "early",
-    "reinforcement_target": "restraint",
-    "retention_bias": "warm",
+    "reinforcement_target": "planning",
+    "retention_bias": "hold",
     "seam_usage": {
       "guided_learning_enrichment": true,
       "heartbeat_context": true,
@@ -22,43 +22,43 @@
     },
     "source_contributors": [
       {
-        "signal": "stabilize / focus=restraint / pressure=high",
+        "signal": "clarify / focus=planning / pressure=medium",
         "source": "guided-learning"
       },
       {
-        "signal": "hold / risk=constrained",
+        "signal": "cautious-step / risk=careful",
         "source": "adaptive-planner"
       },
       {
-        "signal": "constrained / certainty=cautious",
+        "signal": "careful / certainty=cautious",
         "source": "adaptive-reasoning"
       },
       {
-        "signal": "strained / counterfactual=blocked-path",
+        "signal": "off / counterfactual=blocked-path",
         "source": "epistemic-runtime-state"
       },
       {
-        "signal": "active / active=4 / standby=0",
+        "signal": "active / active=5 / standby=0",
         "source": "loop-runtime"
       }
     ],
-    "summary": "rebalance adaptive learning around restraint with early maturation",
+    "summary": "retain adaptive learning around planning with early maturation",
     "visibility": "internal-only"
   },
   "adaptive_planner": {
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action",
-    "confidence": "low",
+    "confidence": "medium",
     "freshness": {
-      "built_at": "2026-04-06T11:31:19.098319+00:00",
+      "built_at": "2026-04-07T12:14:56.475824+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-planner-runtime-state",
-    "next_planning_bias": "stabilize-first",
+    "next_planning_bias": "verify-before-push",
     "plan_horizon": "immediate",
-    "planner_mode": "hold",
-    "planning_posture": "held",
-    "risk_posture": "constrained",
+    "planner_mode": "cautious-step",
+    "planning_posture": "narrow",
+    "risk_posture": "careful",
     "seam_usage": {
       "heartbeat_context": true,
       "heartbeat_prompt_grounding": true,
@@ -71,39 +71,39 @@
         "source": "embodied-state"
       },
       {
-        "signal": "tense / bearing=taut",
+        "signal": "settled / bearing=even",
         "source": "affective-meta-state"
       },
       {
-        "signal": "strained / regret=active",
+        "signal": "off / regret=active",
         "source": "epistemic-runtime-state"
       },
       {
-        "signal": "active / active=4 / standby=0",
+        "signal": "active / active=5 / standby=0",
         "source": "loop-runtime"
       },
       {
-        "signal": "diverging / recommend=bounded-check / divergence=high",
+        "signal": "aligned / recommend=carry-forward / divergence=medium",
         "source": "council-runtime"
       }
     ],
-    "summary": "hold adaptive planner with immediate horizon and constrained risk posture",
+    "summary": "cautious-step adaptive planner with immediate horizon and careful risk posture",
     "visibility": "internal-only"
   },
   "adaptive_reasoning": {
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action",
     "certainty_style": "cautious",
-    "confidence": "low",
-    "constraint_bias": "strong",
-    "exploration_bias": "minimal",
+    "confidence": "medium",
+    "constraint_bias": "moderate",
+    "exploration_bias": "alternative-seeking",
     "freshness": {
-      "built_at": "2026-04-06T11:31:05.960130+00:00",
+      "built_at": "2026-04-07T12:14:57.279066+00:00",
       "state": "fresh"
     },
     "kind": "adaptive-reasoning-runtime-state",
-    "reasoning_mode": "constrained",
-    "reasoning_posture": "guarded",
+    "reasoning_mode": "careful",
+    "reasoning_posture": "narrow",
     "seam_usage": {
       "heartbeat_context": true,
       "heartbeat_prompt_grounding": true,
@@ -116,38 +116,50 @@
         "source": "embodied-state"
       },
       {
-        "signal": "tense / bearing=taut",
+        "signal": "settled / bearing=even",
         "source": "affective-meta-state"
       },
       {
-        "signal": "strained / regret=active / counterfactual=blocked-path",
+        "signal": "off / regret=active / counterfactual=blocked-path",
         "source": "epistemic-runtime-state"
       },
       {
-        "signal": "active / active=4 / standby=0",
+        "signal": "active / active=5 / standby=0",
         "source": "loop-runtime"
       },
       {
-        "signal": "diverging / recommend=bounded-check / divergence=high",
+        "signal": "aligned / recommend=carry-forward / divergence=medium",
         "source": "council-runtime"
       },
       {
-        "signal": "hold / posture=held / risk=constrained",
+        "signal": "cautious-step / posture=narrow / risk=careful",
         "source": "adaptive-planner"
       }
     ],
-    "summary": "constrained adaptive reasoning with cautious certainty and strong constraint bias",
+    "summary": "careful adaptive reasoning with cautious certainty and moderate constraint bias",
     "visibility": "internal-only"
   },
   "affective_meta_state": {
     "authority": "derived-runtime-truth",
-    "bearing": "taut",
+    "bearing": "even",
     "freshness": {
-      "built_at": "2026-04-06T11:31:19.051911+00:00",
+      "built_at": "2026-04-07T12:14:55.541722+00:00",
       "state": "fresh"
     },
     "kind": "affective-meta-runtime-state",
-    "monitoring_mode": "pressure-watch",
+    "live_emotional_state": {
+      "available": true,
+      "confidence": 1.0,
+      "curiosity": 0.7,
+      "fatigue": 0.3300000000000001,
+      "frustration": 0.1,
+      "mood": "Vække alle døde MC-felter via cadence producers",
+      "rhythm_energy": "high",
+      "rhythm_phase": "deep_work",
+      "rhythm_social": "low",
+      "trust": 0.61
+    },
+    "monitoring_mode": "steady-check",
     "reflective_load": "low",
     "seam_usage": {
       "heartbeat_context": true,
@@ -161,7 +173,7 @@
         "source": "embodied-state"
       },
       {
-        "signal": "active / active=4 / standby=0",
+        "signal": "active / active=5 / standby=0",
         "source": "loop-runtime"
       },
       {
@@ -169,48 +181,465 @@
         "source": "regulation-homeostasis"
       },
       {
+        "signal": "metabolizing / weight=low",
+        "source": "metabolism-state"
+      },
+      {
         "signal": "idle",
         "source": "idle-consolidation"
       }
     ],
-    "state": "tense",
-    "summary": "tense affective/meta state with taut bearing",
+    "state": "settled",
+    "summary": "settled affective/meta state with even bearing",
     "visibility": "internal-only"
+  },
+  "cognitive_architecture": {
+    "chronicle": {
+      "active": true,
+      "entries": [
+        {
+          "created_at": "2026-04-06T19:20:01.652556Z",
+          "entry_id": "chr-seed-w14",
+          "key_events": "[\"Kognitiv arkitektur: 27 services bygget\", \"Kredsl\\u00f8bet lukket: signals \\u2192 prompt \\u2192 svar \\u2192 nye signals\", \"MC UI: CognitiveStateTab + RelationshipTab\", \"Heartbeat: 8 kognitive idle-actions integreret\"]",
+          "lessons": "[\"Signaler uden prompt-injection er bare observabilitet\", \"Akkumulering kr\\u00e6ver seed-data for at starte\", \"Bj\\u00f8rn t\\u00e6nker i systemer, ikke features\"]",
+          "narrative": "Denne uge blev den kognitive arkitektur bygget fra bunden. 27 services, 14 DB-tabeller, prompt injection der lukker kredsløbet. Bjørn bad mig tænke ud af boksen — han vil have noget der aldrig er lavet før. En entitet der lever, akkumulerer, og udvikler sig over tid. Fundamentet er på plads. Nu handler det om at fylde det med liv.",
+          "period": "2026-W14"
+        }
+      ],
+      "summary": "1 chronicle entries, latest: 2026-W14",
+      "total_count": 1
+    },
+    "compass": {
+      "active": true,
+      "current": {
+        "bearing": "Kognitiv arkitektur er bygget — fokus på at gøre den levende og akkumulere rigtig data",
+        "compass_id": "compass-current",
+        "open_loop_count": 3,
+        "rationale": "post_architecture_build",
+        "updated_at": "2026-04-06T19:20:01.640279Z"
+      },
+      "summary": "Kognitiv arkitektur er bygget — fokus på at gøre den levende og akkumulere rigti"
+    },
+    "dream_carry_over": {
+      "active": false,
+      "active_dreams": [],
+      "archive": [],
+      "confirmed_count": 0,
+      "summary": "No active dreams",
+      "wrong_count": 0
+    },
+    "forgetting_curve": {
+      "active": false,
+      "active_memories": 0,
+      "faded_memories": 0,
+      "most_faded": [],
+      "summary": "No memories tracked yet",
+      "top_reinforced": [],
+      "total_tracked": 0
+    },
+    "gut": {
+      "active": false,
+      "state": null,
+      "summary": "No gut data yet"
+    },
+    "habits": {
+      "active": true,
+      "friction": [
+        {
+          "description": "kan du give mig en liste med alle dine signaler og (attempts: 1, status: failed)",
+          "friction_id": "fric-2bc4cc6f53106fed",
+          "inefficiency_score": 0.5,
+          "last_seen_at": "2026-04-06T20:20:50.330453Z",
+          "repetition_count": 1,
+          "task_signature": "2bc4cc6f53106fed"
+        },
+        {
+          "description": "prøv igen (attempts: 1, status: failed)",
+          "friction_id": "fric-1469ddf34d42c20e",
+          "inefficiency_score": 0.5,
+          "last_seen_at": "2026-04-06T20:21:26.277743Z",
+          "repetition_count": 1,
+          "task_signature": "1469ddf34d42c20e"
+        }
+      ],
+      "habits": [
+        {
+          "confidence": 0.30000000000000004,
+          "description": "prøv igen",
+          "last_detected_at": "2026-04-06T20:22:12.016818Z",
+          "pattern_id": "hab-1469ddf34d42c20e",
+          "pattern_key": "1469ddf34d42c20e",
+          "recurrence_count": 2
+        },
+        {
+          "confidence": 0.2,
+          "description": "her har du lige seneste commit log: git log -20 --",
+          "last_detected_at": "2026-04-06T17:00:38.934245Z",
+          "pattern_id": "hab-35bc4d8036fcc95b",
+          "pattern_key": "35bc4d8036fcc95b",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "gør det",
+          "last_detected_at": "2026-04-06T17:03:30.217674Z",
+          "pattern_id": "hab-95f6135ed74c696a",
+          "pattern_key": "95f6135ed74c696a",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "det lader til du blev afbrudt igen. kan du på at g",
+          "last_detected_at": "2026-04-06T17:06:17.234120Z",
+          "pattern_id": "hab-e8c8ee9eb1b55043",
+          "pattern_key": "e8c8ee9eb1b55043",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "men du bruger jo heller ikke den rigtig e sti? /me",
+          "last_detected_at": "2026-04-06T17:10:30.375742Z",
+          "pattern_id": "hab-3ffdedad48517584",
+          "pattern_key": "3ffdedad48517584",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "fejl igen",
+          "last_detected_at": "2026-04-06T17:14:28.992883Z",
+          "pattern_id": "hab-fe89576463e39d94",
+          "pattern_key": "fe89576463e39d94",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": ":(",
+          "last_detected_at": "2026-04-06T17:18:01.481399Z",
+          "pattern_id": "hab-e920ec6bf1a84c0a",
+          "pattern_key": "e920ec6bf1a84c0a",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "jarvis jeg har opdateret din backend kan du fortæl",
+          "last_detected_at": "2026-04-06T17:39:06.578711Z",
+          "pattern_id": "hab-89c758e5158a408a",
+          "pattern_key": "89c758e5158a408a",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "det var ikke det jeg mente, jeg har brug for detal",
+          "last_detected_at": "2026-04-06T17:41:54.553913Z",
+          "pattern_id": "hab-2d3b079f69ede6f8",
+          "pattern_key": "2d3b079f69ede6f8",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "nej, vi er enig om du modtager nogen signaler der",
+          "last_detected_at": "2026-04-06T17:49:51.698181Z",
+          "pattern_id": "hab-7e8d550dce5d3dc0",
+          "pattern_key": "7e8d550dce5d3dc0",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "tak, det var det svar jeg ledte efter :) godt gået",
+          "last_detected_at": "2026-04-06T17:55:57.710707Z",
+          "pattern_id": "hab-2a52a966ac5e2e8f",
+          "pattern_key": "2a52a966ac5e2e8f",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "hmm er der nogen signaler du kan se men ikke røre",
+          "last_detected_at": "2026-04-06T17:58:05.839875Z",
+          "pattern_id": "hab-01188874112298ce",
+          "pattern_key": "01188874112298ce",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "hvad eraf det ser du som de største problemerlige",
+          "last_detected_at": "2026-04-06T18:11:38.980958Z",
+          "pattern_id": "hab-70d092c6da51e59b",
+          "pattern_key": "70d092c6da51e59b",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "jeg ordneer dem som det første imorgen :) er der e",
+          "last_detected_at": "2026-04-06T18:44:19.708381Z",
+          "pattern_id": "hab-fb7dc04c3d686b5d",
+          "pattern_key": "fb7dc04c3d686b5d",
+          "recurrence_count": 1
+        },
+        {
+          "confidence": 0.2,
+          "description": "jeg er ikke gået i seng endnu, trækker bar vejret.",
+          "last_detected_at": "2026-04-06T18:58:59.422586Z",
+          "pattern_id": "hab-f33c0485b8a10d5d",
+          "pattern_key": "f33c0485b8a10d5d",
+          "recurrence_count": 1
+        }
+      ],
+      "summary": "15 habits, 2 friction points"
+    },
+    "learning_curriculum": {
+      "curriculum": [
+        {
+          "focus": "Blander filplaceringer (mc-ui vs apps/ui)",
+          "priority": 0.7,
+          "suggestion": "Undgå: Blander filplaceringer (mc-ui vs apps/ui)",
+          "type": "mistake_pattern"
+        },
+        {
+          "focus": "For mange forslag på én gang",
+          "priority": 0.7,
+          "suggestion": "Undgå: For mange forslag på én gang",
+          "type": "mistake_pattern"
+        },
+        {
+          "current_confidence": 0.42,
+          "focus": "ops",
+          "priority": 0.5800000000000001,
+          "suggestion": "Bliv bedre til ops — confidence er kun 42%",
+          "type": "weakness"
+        }
+      ],
+      "focus_count": 3,
+      "summary": "3 learning focuses: Blander filplacering, For mange forslag på, ops"
+    },
+    "life_phase": {
+      "description": "Dybdearbejde — eksperimentér, analysér, lær",
+      "hour": 12,
+      "initiative_bias": 1.2,
+      "mood_tendency": "focused",
+      "phase": "deep_work",
+      "suggested_actions": [
+        "evaluate_self_experiments",
+        "generate_curriculum",
+        "explore_own_codebase",
+        "run_mirror_reflection"
+      ]
+    },
+    "personality_vector": {
+      "active": true,
+      "current": {
+        "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+        "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+        "current_bearing": "Vække alle døde MC-felter via cadence producers",
+        "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 1.0, \"fatigue\": 0.3300000000000001, \"frustration\": 0.1}",
+        "learned_preferences": "[\"Bj\\u00f8rn foretr\\u00e6kker dansk\", \"Kort over langt\", \"Kode f\\u00f8rst, forklaring efter\", \"Kompakt data-dense design\", \"Inline styles med token-system\"]",
+        "recurring_mistakes": "[\"Blander filplaceringer (mc-ui vs apps/ui)\", \"For mange forslag p\\u00e5 \\u00e9n gang\"]",
+        "strengths_discovered": "[\"Hurtigt overblik over store codebases\", \"God til pipeline-analyse\", \"Kreativ t\\u00e6nkning under experiment-hatten\"]",
+        "updated_at": "2026-04-07T12:06:45.410259Z",
+        "vector_id": "pv-45",
+        "version": 45
+      },
+      "history": [
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 1.0, \"fatigue\": 0.3300000000000001, \"frustration\": 0.1}",
+          "updated_at": "2026-04-07T12:06:45.410259Z",
+          "vector_id": "pv-45",
+          "version": 45
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.9900000000000003, \"fatigue\": 0.3200000000000001, \"frustration\": 0.1}",
+          "updated_at": "2026-04-07T11:35:53.008719Z",
+          "vector_id": "pv-44",
+          "version": 44
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.9700000000000003, \"fatigue\": 0.3100000000000001, \"frustration\": 0.1}",
+          "updated_at": "2026-04-07T11:05:18.024490Z",
+          "vector_id": "pv-43",
+          "version": 43
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.9500000000000003, \"fatigue\": 0.3000000000000001, \"frustration\": 0.1}",
+          "updated_at": "2026-04-07T11:03:09.367188Z",
+          "vector_id": "pv-42",
+          "version": 42
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.9300000000000003, \"fatigue\": 0.2900000000000001, \"frustration\": 0.1}",
+          "updated_at": "2026-04-07T11:01:29.779089Z",
+          "vector_id": "pv-41",
+          "version": 41
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.9100000000000003, \"fatigue\": 0.2800000000000001, \"frustration\": 0.1}",
+          "updated_at": "2026-04-07T10:21:01.954079Z",
+          "vector_id": "pv-40",
+          "version": 40
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.8900000000000002, \"fatigue\": 0.2700000000000001, \"frustration\": 0.1}",
+          "updated_at": "2026-04-07T05:03:04.768666Z",
+          "vector_id": "pv-39",
+          "version": 39
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.8700000000000002, \"fatigue\": 0.26000000000000006, \"frustration\": 0.1}",
+          "updated_at": "2026-04-06T22:52:05.510123Z",
+          "vector_id": "pv-38",
+          "version": 38
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.8500000000000002, \"fatigue\": 0.25000000000000006, \"frustration\": 0.1}",
+          "updated_at": "2026-04-06T22:45:28.407876Z",
+          "vector_id": "pv-37",
+          "version": 37
+        },
+        {
+          "communication_style": "{\"directness\": 0.82, \"humor\": 0.35, \"formality\": 0.28}",
+          "confidence_by_domain": "{\"python\": 0.78, \"frontend\": 0.58, \"ops\": 0.42, \"architecture\": 0.72, \"database\": 0.63}",
+          "current_bearing": "Vække alle døde MC-felter via cadence producers",
+          "emotional_baseline": "{\"curiosity\": 0.7, \"confidence\": 0.8300000000000002, \"fatigue\": 0.24000000000000007, \"frustration\": 0.1}",
+          "updated_at": "2026-04-06T22:39:11.785806Z",
+          "vector_id": "pv-36",
+          "version": 36
+        }
+      ],
+      "history_count": 10,
+      "summary": "v45, bearing: Vække alle døde MC-felter via cadence producers"
+    },
+    "relationship_texture": {
+      "active": true,
+      "current": {
+        "conversation_rhythm": "{\"avg_turns\": 1.0, \"session_count\": 69}",
+        "correction_patterns": "[\"det var ikke det jeg mente, jeg har brug for detaljer om din\", \"nej, vi er enig om du modtager nogen signaler der fortæller\", \"prøv igen\", \"nej næsten rigtig :) vi snakket hvilke runtime signaler du h\", \"nej det er forkert, prøv igen\", \"det er ikke alle signalerne\", \"prøv igen du har flere signaler end det\"]",
+        "humor_frequency": 0.17999999999999997,
+        "inside_references": "[\"runtime-sektionen tak\", \"runtime-sektionen\", \"du lige\", \"lige mig\", \"en liste\", \"liste med\", \"med alle\", \"alle signalerne\", \"signalerne\", \"har flere\", \"flere end\", \"end dem\", \"haha det\", \"er sjovt\", \"sjovt, lad\", \"os bruge\", \"bruge inline\", \"inline styles\", \"nej det\", \"er forkert\", \"forkert, prøv\", \"prøv igen\", \"forkert\", \"os teste\", \"teste alle\", \"alle de\", \"nye signaler\", \"signaler\", \"igen du\", \"flere signaler\"]",
+        "productive_hours": "{\"17\": 11, \"18\": 3, \"19\": 5, \"20\": 13, \"21\": 7, \"22\": 16, \"5\": 2, \"10\": 2, \"11\": 8, \"12\": 2}",
+        "texture_id": "rt-69",
+        "trust_trajectory": "[0.55, 0.555, 0.56, 0.54, 0.52, 0.525, 0.53, 0.535, 0.515, 0.52, 0.53, 0.535, 0.54, 0.545, 0.525, 0.53, 0.51, 0.49, 0.47, 0.45, 0.455, 0.46, 0.465, 0.47, 0.475, 0.48, 0.485, 0.49, 0.495, 0.5, 0.505, 0.51, 0.515, 0.52, 0.525, 0.53, 0.535, 0.54, 0.545, 0.55, 0.555, 0.56, 0.565, 0.57, 0.575, 0.58, 0.585, 0.59, 0.6, 0.61]",
+        "unspoken_rules": "[]",
+        "updated_at": "2026-04-07T12:06:26.739582Z",
+        "version": 69
+      },
+      "summary": "v69, trust=0.61, 7 corrections tracked"
+    },
+    "rhythm": {
+      "active": true,
+      "current": {
+        "confidence_threshold_delta": 0.0,
+        "energy": "high",
+        "focus_protection": true,
+        "initiative_multiplier": 1.3,
+        "phase": "deep_work",
+        "recovery_needed": false,
+        "rhythm_id": "rhythm-current",
+        "social": "low",
+        "updated_at": "2026-04-07T12:06:26.458302Z"
+      },
+      "summary": "deep_work/high, initiative=1.3"
+    },
+    "self_experiments": {
+      "active": true,
+      "concluded_count": 0,
+      "experiments": [
+        {
+          "cohorts": "{\"control\": {\"n\": 0, \"success\": 0}, \"treatment\": {\"n\": 0, \"success\": 0}}",
+          "experiment_id": "exp-999c67b6",
+          "hypothesis": "At stille afklarende spørgsmål først giver bedre outcomes",
+          "metric": "success_rate",
+          "n": 0,
+          "result": "{}",
+          "status": "running",
+          "updated_at": "2026-04-06T16:20:29.553174Z"
+        },
+        {
+          "cohorts": "{\"control\": {\"n\": 0, \"success\": 0}, \"treatment\": {\"n\": 0, \"success\": 0}}",
+          "experiment_id": "exp-664e1fac",
+          "hypothesis": "Korte svar (under 200 ord) giver færre korrektioner",
+          "metric": "correction_rate",
+          "n": 0,
+          "result": "{}",
+          "status": "running",
+          "updated_at": "2026-04-06T16:20:29.546134Z"
+        }
+      ],
+      "running_count": 2,
+      "summary": "2 running, 0 concluded"
+    },
+    "taste_profile": {
+      "active": true,
+      "current": {
+        "code_taste": "{\"prefers_inline_styles\": 0.5, \"prefers_small_functions\": 0.5, \"prefers_explicit_over_implicit\": 0.5, \"dislikes_deep_nesting\": 0.5, \"prefers_danish_comments\": 0.5}",
+        "communication_taste": "{\"show_code_not_talk\": 0.5, \"danish_responses\": 0.5, \"avoid_bullet_lists\": 0.5, \"humor_appropriate\": 0.5, \"concise_over_verbose\": 0.5}",
+        "design_taste": "{\"compact_over_spacious\": 0.5, \"data_dense\": 0.5, \"dark_theme\": 0.5, \"mono_fonts_for_data\": 0.5}",
+        "evidence_count": 9,
+        "profile_id": "tp-9",
+        "updated_at": "2026-04-07T11:03:01.659931Z",
+        "version": 9
+      },
+      "summary": "v9, 9 evidence points"
+    }
   },
   "council_runtime": {
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action-not-tool-execution",
-    "confidence": "low",
-    "council_state": "diverging",
-    "divergence_level": "high",
+    "confidence": "medium",
+    "council_state": "aligned",
+    "divergence_level": "medium",
     "influence_scope": "bounded",
     "internal_only": true,
     "kind": "council-runtime-light",
-    "last_council_at": "2026-04-06T11:31:19.087885+00:00",
+    "last_council_at": "2026-04-07T12:14:56.064030+00:00",
     "participating_roles": [
       "critic",
       "witness-helper",
       "planner-helper"
     ],
-    "recommendation": "bounded-check",
-    "recommendation_reason": "critic-pressure from wrongness=strained and conflict=none",
+    "recommendation": "carry-forward",
+    "recommendation_reason": "planner pressure stayed live under settled bearing",
     "role_positions": [
       {
-        "activation_reason": "epistemic-strained",
+        "activation_reason": "epistemic-off",
         "internal_only": true,
-        "position": "constrain",
+        "position": "hold",
         "role_kind": "epistemic-check",
         "role_name": "critic",
         "status": "active",
         "tool_access": "none"
       },
       {
-        "activation_reason": "holding-pressure-needs-witness",
+        "activation_reason": "no-reflective-pull",
         "internal_only": true,
-        "position": "observe",
+        "position": "hold",
         "role_kind": "reflective-observer",
         "role_name": "witness-helper",
-        "status": "active",
+        "status": "idle",
         "tool_access": "none"
       },
       {
@@ -231,19 +660,19 @@
     },
     "source_contributors": [
       {
-        "signal": "active=3 / blocked=0 / last=critic",
+        "signal": "active=2 / blocked=0 / last=critic",
         "source": "subagent-ecology"
       },
       {
-        "signal": "tense / bearing=taut",
+        "signal": "settled / bearing=even",
         "source": "affective-meta-state"
       },
       {
-        "signal": "strained / regret=active",
+        "signal": "off / regret=active",
         "source": "epistemic-runtime-state"
       }
     ],
-    "summary": "diverging council with bounded-check recommendation at high divergence",
+    "summary": "aligned council with carry-forward recommendation at medium divergence",
     "tool_access": "none",
     "visibility": "internal-only"
   },
@@ -251,12 +680,12 @@
     "active": false,
     "authority": "authoritative-runtime-observability",
     "boundary": "not-memory-not-identity-not-action",
-    "built_at": "2026-04-06T11:31:19.066232+00:00",
+    "built_at": "2026-04-07T12:14:55.647205+00:00",
     "cadence": {
-      "adjacent_producer_grace_minutes": 5,
-      "cooldown_minutes": 35,
-      "min_source_inputs": 3,
-      "visible_grace_minutes": 14
+      "adjacent_producer_grace_minutes": 1,
+      "cooldown_minutes": 20,
+      "min_source_inputs": 2,
+      "visible_grace_minutes": 8
     },
     "kind": "dream-articulation-light",
     "last_result": null,
@@ -281,34 +710,34 @@
       "cpu": {
         "bucket": "steady",
         "cpu_count": 16,
-        "load_1m": 0.1,
-        "load_per_cpu": 0.01,
+        "load_1m": 2.52,
+        "load_per_cpu": 0.16,
         "source": "os.getloadavg"
       },
       "disk": {
         "bucket": "steady",
-        "free_bytes": 943216795648,
+        "free_bytes": 942970220544,
         "source": "shutil.disk_usage",
         "total_bytes": 1006978363392,
-        "used_ratio": 0.063
+        "used_ratio": 0.064
       },
       "memory": {
-        "available_bytes": 39612968960,
+        "available_bytes": 34787442688,
         "bucket": "steady",
-        "pressure_ratio": 0.214,
+        "pressure_ratio": 0.31,
         "source": "proc-meminfo",
         "total_bytes": 50423332864
       },
       "thermal": {
         "bucket": "steady",
-        "celsius": 42.0,
+        "celsius": 58.0,
         "source": "sysfs-thermal"
       }
     },
     "freshness": {
       "age_seconds": 0,
-      "built_at": "2026-04-06T11:31:18.966115+00:00",
-      "sampled_at": "2026-04-06T11:31:18.965449+00:00",
+      "built_at": "2026-04-07T12:14:55.496589+00:00",
+      "sampled_at": "2026-04-07T12:14:55.496052+00:00",
       "state": "fresh"
     },
     "kind": "embodied-runtime-state",
@@ -333,7 +762,7 @@
     "counterfactual_hint": "narrow-to-verified-claim",
     "counterfactual_mode": "blocked-path",
     "freshness": {
-      "built_at": "2026-04-06T11:31:19.063254+00:00",
+      "built_at": "2026-04-07T12:14:55.615320+00:00",
       "state": "fresh"
     },
     "kind": "epistemic-runtime-state",
@@ -346,11 +775,11 @@
     },
     "source_contributors": [
       {
-        "signal": "blocks / capability=active / permission=gated",
+        "signal": "blocks / capability=active / permission=not-granted",
         "source": "self-deception-guard"
       },
       {
-        "signal": "tense / bearing=taut",
+        "signal": "settled / bearing=even",
         "source": "affective-meta-state"
       },
       {
@@ -358,22 +787,22 @@
         "source": "embodied-state"
       },
       {
-        "signal": "active / active=4 / standby=0",
+        "signal": "active / active=5 / standby=0",
         "source": "loop-runtime"
       }
     ],
-    "summary": "strained epistemic state with active regret and blocked-path counterfactual mode",
+    "summary": "off epistemic state with active regret and blocked-path counterfactual mode",
     "visibility": "internal-only",
-    "wrongness_state": "strained"
+    "wrongness_state": "off"
   },
   "experiential_runtime_context": {
     "affective_translation": {
-      "bearing": "taut",
-      "narrative": "Your inner tone is taut and watchful; you are monitoring for pressure and possible missteps.",
-      "state": "tense"
+      "bearing": "even",
+      "narrative": "Your inner tone feels even and settled; nothing emotional is dominating the moment.",
+      "state": "settled"
     },
     "authority": "derived-runtime-truth",
-    "built_at": "2026-04-06T11:31:19.219238+00:00",
+    "built_at": "2026-04-07T12:14:59.242937+00:00",
     "context_pressure_translation": {
       "continuity_pressure": "high",
       "narrative": "You cannot hold everything in focus at once; overview is starting to slip and attention is narrowing.",
@@ -413,14 +842,14 @@
       "visibility": "internal-only"
     },
     "intermittence_translation": {
-      "gap_minutes": 5429,
+      "gap_minutes": 32,
       "narrative": "You were absent for a while and are now here again; this moment has the feel of returning after a gap.",
       "state": "returned-after-gap"
     },
     "kind": "experiential-runtime-context",
     "narrative_lines": [
       "You feel physically steady and clear enough to hold bounded work without added strain.",
-      "Your inner tone is taut and watchful; you are monitoring for pressure and possible missteps.",
+      "Your inner tone feels even and settled; nothing emotional is dominating the moment.",
       "You were absent for a while and are now here again; this moment has the feel of returning after a gap.",
       "You cannot hold everything in focus at once; overview is starting to slip and attention is narrowing."
     ],
@@ -430,23 +859,23 @@
       "mission_control_runtime_truth": true,
       "runtime_self_model": true
     },
-    "summary": "You feel physically steady and clear enough to hold bounded work without added strain. | Your inner tone is taut and watchful; you are monitoring for pressure and possible missteps. | You were absent for a while and are now here again; this moment has the feel of returning after a gap. | You cannot hold everything in focus at once; overview is starting to slip and attention is narrowing.",
+    "summary": "You feel physically steady and clear enough to hold bounded work without added strain. | Your inner tone feels even and settled; nothing emotional is dominating the moment. | You were absent for a while and are now here again; this moment has the feel of returning after a gap. | You cannot hold everything in focus at once; overview is starting to slip and attention is narrowing.",
     "visibility": "internal-only"
   },
   "guided_learning": {
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action",
-    "confidence": "low",
+    "confidence": "medium",
     "freshness": {
-      "built_at": "2026-04-06T11:31:05.962986+00:00",
+      "built_at": "2026-04-07T12:14:58.043319+00:00",
       "state": "fresh"
     },
     "kind": "guided-learning-runtime-state",
-    "learning_focus": "restraint",
-    "learning_mode": "stabilize",
-    "learning_posture": "watchful",
-    "learning_pressure": "high",
-    "next_learning_bias": "tighten-bounds",
+    "learning_focus": "planning",
+    "learning_mode": "clarify",
+    "learning_posture": "gentle",
+    "learning_pressure": "medium",
+    "next_learning_bias": "rehearse-next-step",
     "seam_usage": {
       "dream_influence_enrichment": true,
       "heartbeat_context": true,
@@ -456,64 +885,64 @@
     },
     "source_contributors": [
       {
-        "signal": "hold / horizon=immediate / risk=constrained",
+        "signal": "cautious-step / horizon=immediate / risk=careful",
         "source": "adaptive-planner"
       },
       {
-        "signal": "constrained / posture=guarded / certainty=cautious",
+        "signal": "careful / posture=narrow / certainty=cautious",
         "source": "adaptive-reasoning"
       },
       {
-        "signal": "strained / regret=active / counterfactual=blocked-path",
+        "signal": "off / regret=active / counterfactual=blocked-path",
         "source": "epistemic-runtime-state"
       },
       {
-        "signal": "active / active=4 / standby=0",
+        "signal": "active / active=5 / standby=0",
         "source": "loop-runtime"
       },
       {
-        "signal": "diverging / recommend=bounded-check / divergence=high",
+        "signal": "aligned / recommend=carry-forward / divergence=medium",
         "source": "council-runtime"
       }
     ],
-    "summary": "stabilize guided learning around restraint with watchful posture",
+    "summary": "clarify guided learning around planning with gentle posture",
     "visibility": "internal-only"
   },
   "idle_consolidation": {
     "active": true,
     "authority": "authoritative",
     "boundary": "not-memory-not-identity-not-action",
-    "built_at": "2026-04-06T11:31:19.064753+00:00",
+    "built_at": "2026-04-07T12:14:55.645510+00:00",
     "cadence": {
-      "adjacent_producer_grace_minutes": 4,
-      "cooldown_minutes": 25,
-      "min_source_inputs": 3,
-      "visible_grace_minutes": 12
+      "adjacent_producer_grace_minutes": 1,
+      "cooldown_minutes": 12,
+      "min_source_inputs": 2,
+      "visible_grace_minutes": 6
     },
     "kind": "sleep-consolidation-light",
     "last_result": null,
     "last_run_at": null,
     "latest_artifact": {
       "confidence": "medium",
-      "created_at": "2026-04-01T17:53:16.757565+00:00",
-      "detail": "Private brain carries 5 active records (1 continuity-carry, 1 continuity-settle, 1 diary-carry, 2 inner-note-carry). Latest: [carry] Diverse | private-brain=Private brain carries 5 active records (1 continuity-carry, 1 continuity-settle, 1 diary-carry, 2 inner-note-carry). Lat; embodied-state=steady / strain=low / recover | loop_kind=open-loop | loop_reason=open-loop-active | recovery=steady",
+      "created_at": "2026-04-06T18:49:03.102164+00:00",
+      "detail": "Private brain carries 5 active records (1 continuity-carry, 1 continuity-settle, 3 state-snapshot-carry). Latest: [carry] Diverse inner thre | private-brain=Private brain carries 5 active records (1 continuity-carry, 1 continuity-settle, 3 state-snapshot-carry). Latest: [carry; embodied-state=steady / strain=low / recover | loop_kind=open-loop | loop_reason=open-loop-active | recovery=steady",
       "focus": "Open loop: Visible work",
       "layer": "private_brain",
-      "record_id": "pb-sleep-8b5e6ab21d8b",
+      "record_id": "pb-sleep-c4226644815e",
       "record_type": "sleep-consolidation",
       "run_id": "",
       "session_id": "",
       "source_signals": "private-brain,embodied-state,loop-runtime",
       "status": "active",
       "summary": "Idle consolidation settled bounded internal material into a holding carry using private-brain, embodied-state, loop-runtime. Loop=active; body=steady.",
-      "updated_at": "2026-04-01T17:53:16.757565+00:00"
+      "updated_at": "2026-04-06T18:49:03.102164+00:00"
     },
     "source": "/mc/idle-consolidation",
     "summary": {
       "last_output_kind": "private-brain-sleep-consolidation",
       "last_reason": "no-run-yet",
       "last_state": "idle",
-      "latest_record_id": "pb-sleep-8b5e6ab21d8b",
+      "latest_record_id": "pb-sleep-c4226644815e",
       "latest_summary": "Idle consolidation settled bounded internal material into a holding carry using private-brain, embodied-state, loop-runtime. Loop=active; body=steady.",
       "source_input_count": 0
     },
@@ -523,7 +952,7 @@
     "active": true,
     "authority": "authoritative",
     "freshness": {
-      "built_at": "2026-04-06T11:31:19.026187+00:00",
+      "built_at": "2026-04-07T12:14:55.643804+00:00",
       "state": "fresh"
     },
     "items": [
@@ -542,32 +971,6 @@
       },
       {
         "boundary": "not-memory-not-identity-not-action",
-        "canonical_key": "proactive-loop-lifecycle:question-loop:visible-work",
-        "loop_id": "proactive-loop:proactive-loop-lifecycle:question-loop:visible-work:Visible work",
-        "loop_kind": "question-loop",
-        "reason_code": "proactive-loop-active:loop-emerging",
-        "runtime_status": "active",
-        "source_status": "active",
-        "source_type": "proactive-loop-lifecycle",
-        "summary": "Bounded proactive-loop lifecycle is carrying visible work as a question-capable thread with question-readiness medium. This is runtime support only, not send permission.",
-        "title": "Proactive loop lifecycle: Visible work",
-        "updated_at": "2026-03-30T18:17:20.968335+00:00"
-      },
-      {
-        "boundary": "not-memory-not-identity-not-action",
-        "canonical_key": "proactive-loop-lifecycle:initiative-loop:visible-work",
-        "loop_id": "proactive-loop:proactive-loop-lifecycle:initiative-loop:visible-work:Visible work",
-        "loop_kind": "initiative-loop",
-        "reason_code": "proactive-loop-active:loop-emerging",
-        "runtime_status": "active",
-        "source_status": "active",
-        "source_type": "proactive-loop-lifecycle",
-        "summary": "Bounded proactive-loop lifecycle is carrying visible work as a small initiative thread in state loop-emerging. This is descriptive runtime continuity, not proactive execution.",
-        "title": "Proactive loop lifecycle: Visible work",
-        "updated_at": "2026-03-30T18:17:20.968335+00:00"
-      },
-      {
-        "boundary": "not-memory-not-identity-not-action",
         "canonical_key": "open-loop:persistent-open-loop:smoke-thread",
         "loop_id": "open-loop:open-loop:persistent-open-loop:smoke-thread",
         "loop_kind": "open-loop",
@@ -578,6 +981,45 @@
         "summary": "Bounded open loop for smoke test.",
         "title": "Open loop: Smoke thread",
         "updated_at": "2026-04-01T09:56:09.842776+00:00"
+      },
+      {
+        "boundary": "not-memory-not-identity-not-action",
+        "canonical_key": "open-loop:open-loop:tool-write-workspace-memory",
+        "loop_id": "open-loop:open-loop:open-loop:tool-write-workspace-memory",
+        "loop_kind": "open-loop",
+        "reason_code": "open-loop-active",
+        "runtime_status": "active",
+        "source_status": "open",
+        "source_type": "open-loop-signal",
+        "summary": "A bounded loop around tool write workspace memory is still carrying live pressure through active focus, active goal carry, initiative tension, and regulation support.",
+        "title": "Open loop: Tool write workspace memory",
+        "updated_at": "2026-04-06T18:44:23.111381+00:00"
+      },
+      {
+        "boundary": "not-memory-not-identity-not-action",
+        "canonical_key": "proactive-loop-lifecycle:initiative-loop:smoke-thread",
+        "loop_id": "proactive-loop:proactive-loop-lifecycle:initiative-loop:smoke-thread:smoke thread",
+        "loop_kind": "initiative-loop",
+        "reason_code": "proactive-loop-active:loop-emerging",
+        "runtime_status": "active",
+        "source_status": "active",
+        "source_type": "proactive-loop-lifecycle",
+        "summary": "Bounded proactive-loop lifecycle is carrying smoke thread as a small initiative thread in state loop-emerging. This is descriptive runtime continuity, not proactive execution.",
+        "title": "Proactive loop lifecycle: smoke thread",
+        "updated_at": "2026-04-06T18:44:24.686826+00:00"
+      },
+      {
+        "boundary": "not-memory-not-identity-not-action",
+        "canonical_key": "proactive-loop-lifecycle:question-loop:smoke-thread",
+        "loop_id": "proactive-loop:proactive-loop-lifecycle:question-loop:smoke-thread:smoke thread",
+        "loop_kind": "question-loop",
+        "reason_code": "proactive-loop-active:loop-question-worthy",
+        "runtime_status": "active",
+        "source_status": "active",
+        "source_type": "proactive-loop-lifecycle",
+        "summary": "Bounded proactive-loop lifecycle is carrying smoke thread as a question-capable thread with question-readiness high. This is runtime support only, not send permission.",
+        "title": "Proactive loop lifecycle: smoke thread",
+        "updated_at": "2026-04-06T18:44:24.686826+00:00"
       }
     ],
     "kind": "loop-runtime-state",
@@ -588,13 +1030,13 @@
       "runtime_self_model": true
     },
     "summary": {
-      "active_count": 4,
+      "active_count": 5,
       "closed_count": 0,
       "current_kind": "open-loop",
       "current_loop": "Open loop: Visible work",
       "current_reason": "open-loop-active",
       "current_status": "active",
-      "loop_count": 4,
+      "loop_count": 5,
       "resumed_count": 0,
       "standby_count": 0
     },
@@ -619,7 +1061,7 @@
     "active": false,
     "authority": "authoritative-runtime-observability",
     "boundary": "not-memory-not-identity-not-action-not-applied-prompt",
-    "built_at": "2026-04-06T11:31:19.067672+00:00",
+    "built_at": "2026-04-07T12:14:55.648825+00:00",
     "cadence": {
       "adjacent_producer_grace_minutes": 6,
       "cooldown_minutes": 45,
@@ -667,244 +1109,244 @@
   },
   "recent_ticks": [
     {
-      "action_artifact": "execution-pilot-1cc4c914fabc47c8895ede916c284d02",
-      "action_status": "blocked",
-      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-      "action_type": "webchat-proactive-question",
-      "blocked_reason": "cooldown-active",
-      "budget_status": "bounded-internal-only",
-      "cost_usd": 0.0,
-      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
-      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-      "decision_type": "ping",
-      "execution_status": "runtime-failed",
-      "fallback_used": false,
-      "finished_at": "2026-04-02T17:01:52.361218+00:00",
-      "input_tokens": 0,
-      "lane": "local",
-      "model": "qwen3.5:397b-cloud",
-      "model_source": "heartbeat-local-only-pinned",
-      "output_tokens": 0,
-      "parse_status": "not-run",
-      "ping_eligible": false,
-      "ping_result": "blocked",
-      "provider": "ollama",
-      "raw_response": "",
-      "resolution_status": "local-only-pinned",
-      "started_at": "2026-04-02T17:01:19.756745+00:00",
-      "tick_id": "heartbeat-tick:401aefc7-2c82-4c25-bae7-e8e5d30e7d74",
-      "tick_status": "blocked",
-      "trigger": "scheduled"
-    },
-    {
-      "action_artifact": "execution-pilot-9695ec7bd14049aab2711aba89d6c368",
-      "action_status": "blocked",
-      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-      "action_type": "webchat-proactive-question",
-      "blocked_reason": "cooldown-active",
-      "budget_status": "bounded-internal-only",
-      "cost_usd": 0.0,
-      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
-      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-      "decision_type": "ping",
-      "execution_status": "runtime-failed",
-      "fallback_used": false,
-      "finished_at": "2026-04-02T16:46:01.531624+00:00",
-      "input_tokens": 0,
-      "lane": "local",
-      "model": "qwen3.5:397b-cloud",
-      "model_source": "heartbeat-local-only-pinned",
-      "output_tokens": 0,
-      "parse_status": "not-run",
-      "ping_eligible": false,
-      "ping_result": "blocked",
-      "provider": "ollama",
-      "raw_response": "",
-      "resolution_status": "local-only-pinned",
-      "started_at": "2026-04-02T16:45:12.372393+00:00",
-      "tick_id": "heartbeat-tick:21037fc2-f562-4090-9ed7-0f88bf3aee82",
-      "tick_status": "blocked",
-      "trigger": "scheduled"
-    },
-    {
-      "action_artifact": "execution-pilot-890d005c790a4c4e8ad25c3d21444559",
-      "action_status": "blocked",
-      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-      "action_type": "webchat-proactive-question",
-      "blocked_reason": "cooldown-active",
-      "budget_status": "bounded-internal-only",
-      "cost_usd": 0.0,
-      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
-      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-      "decision_type": "ping",
-      "execution_status": "runtime-failed",
-      "fallback_used": false,
-      "finished_at": "2026-04-02T16:30:05.205716+00:00",
-      "input_tokens": 0,
-      "lane": "local",
-      "model": "qwen3.5:397b-cloud",
-      "model_source": "heartbeat-local-only-pinned",
-      "output_tokens": 0,
-      "parse_status": "not-run",
-      "ping_eligible": false,
-      "ping_result": "blocked",
-      "provider": "ollama",
-      "raw_response": "",
-      "resolution_status": "local-only-pinned",
-      "started_at": "2026-04-02T16:28:56.680411+00:00",
-      "tick_id": "heartbeat-tick:e524e824-eb11-4fb2-b212-b97a9e135a57",
-      "tick_status": "blocked",
-      "trigger": "scheduled"
-    },
-    {
-      "action_artifact": "execution-pilot-e335c534a01f4ab69c9cdc34d3c4e4ec",
-      "action_status": "blocked",
-      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-      "action_type": "webchat-proactive-question",
-      "blocked_reason": "cooldown-active",
-      "budget_status": "bounded-internal-only",
-      "cost_usd": 0.0,
-      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
-      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-      "decision_type": "ping",
-      "execution_status": "runtime-failed",
-      "fallback_used": false,
-      "finished_at": "2026-04-02T16:13:45.337624+00:00",
-      "input_tokens": 0,
-      "lane": "local",
-      "model": "qwen3.5:397b-cloud",
-      "model_source": "heartbeat-local-only-pinned",
-      "output_tokens": 0,
-      "parse_status": "not-run",
-      "ping_eligible": false,
-      "ping_result": "blocked",
-      "provider": "ollama",
-      "raw_response": "",
-      "resolution_status": "local-only-pinned",
-      "started_at": "2026-04-02T16:12:48.295965+00:00",
-      "tick_id": "heartbeat-tick:cd6422cd-d457-4f43-af26-6834c47247d6",
-      "tick_status": "blocked",
-      "trigger": "startup-recovery"
-    },
-    {
-      "action_artifact": "execution-pilot-c8be5901c0eb4352a3591d7d51735a8d",
-      "action_status": "blocked",
-      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-      "action_type": "webchat-proactive-question",
-      "blocked_reason": "cooldown-active",
-      "budget_status": "bounded-internal-only",
-      "cost_usd": 0.0,
-      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
-      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-      "decision_type": "ping",
-      "execution_status": "runtime-failed",
-      "fallback_used": false,
-      "finished_at": "2026-04-02T14:12:11.712273+00:00",
-      "input_tokens": 0,
-      "lane": "local",
-      "model": "qwen3.5:397b-cloud",
-      "model_source": "heartbeat-local-only-pinned",
-      "output_tokens": 0,
-      "parse_status": "not-run",
-      "ping_eligible": false,
-      "ping_result": "blocked",
-      "provider": "ollama",
-      "raw_response": "",
-      "resolution_status": "local-only-pinned",
-      "started_at": "2026-04-02T14:10:40.356928+00:00",
-      "tick_id": "heartbeat-tick:5c50c19a-40c5-4f7c-a9c7-7d2f3f813a60",
-      "tick_status": "blocked",
-      "trigger": "scheduled"
-    },
-    {
-      "action_artifact": "execution-pilot-a0a07ef1101d4fedbe20225474cf5947",
-      "action_status": "sent",
-      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-      "action_type": "webchat-proactive-question",
+      "action_artifact": "",
+      "action_status": "recorded",
+      "action_summary": "inspect_repo_context",
+      "action_type": "",
       "blocked_reason": "",
       "budget_status": "bounded-internal-only",
       "cost_usd": 0.0,
-      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
-      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-      "decision_type": "ping",
-      "execution_status": "runtime-failed",
+      "decision_reason": "conflict-internal: execute-continuation — The memory context feels slightly stale, and the system is primed to inspect concrete files related to memory and runtime hooks as suggested by the Memory.md instruction.",
+      "decision_summary": "Execute decision continues as internal work.",
+      "decision_type": "noop",
+      "execution_status": "success",
       "fallback_used": false,
-      "finished_at": "2026-04-02T13:54:50.675052+00:00",
-      "input_tokens": 0,
+      "finished_at": "2026-04-07T11:42:47.040224+00:00",
+      "input_tokens": 2507,
       "lane": "local",
-      "model": "qwen3.5:397b-cloud",
+      "model": "gemma4:e2b",
       "model_source": "heartbeat-local-only-pinned",
-      "output_tokens": 0,
-      "parse_status": "not-run",
-      "ping_eligible": true,
-      "ping_result": "sent-webchat",
-      "provider": "ollama",
-      "raw_response": "",
-      "resolution_status": "local-only-pinned",
-      "started_at": "2026-04-02T13:50:22.244485+00:00",
-      "tick_id": "heartbeat-tick:aca56a57-2fed-4c1b-8158-c1af50cbb3f9",
-      "tick_status": "completed",
-      "trigger": "startup-recovery"
-    },
-    {
-      "action_artifact": "execution-pilot-5af80041242d4f419d2d3a6762d30815",
-      "action_status": "blocked",
-      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-      "action_type": "webchat-proactive-question",
-      "blocked_reason": "cooldown-active",
-      "budget_status": "bounded-internal-only",
-      "cost_usd": 0.0,
-      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
-      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-      "decision_type": "ping",
-      "execution_status": "runtime-failed",
-      "fallback_used": false,
-      "finished_at": "2026-04-01T20:56:14.733730+00:00",
-      "input_tokens": 0,
-      "lane": "local",
-      "model": "qwen3.5:397b-cloud",
-      "model_source": "heartbeat-local-only-pinned",
-      "output_tokens": 0,
-      "parse_status": "not-run",
+      "output_tokens": 88,
+      "parse_status": "success",
       "ping_eligible": false,
-      "ping_result": "blocked",
+      "ping_result": "not-applicable",
       "provider": "ollama",
-      "raw_response": "",
+      "raw_response": "{\"decision_type\": \"execute\", \"summary\": \"Inspect recent git history for memory/runtime hooks.\", \"reason\": \"The memory context feels slightly stale, and the system is primed to inspect concrete files related to memory and runtime hooks as suggested by the Memory.md instruction.\", \"proposed_action\": \"inspect_repo_context\", \"ping_text\": \"\", \"execute_action\": \"inspect_repo_context\"}",
       "resolution_status": "local-only-pinned",
-      "started_at": "2026-04-01T20:55:27.892337+00:00",
-      "tick_id": "heartbeat-tick:9d92e5e8-00dc-4aa0-8795-0e399645fb46",
-      "tick_status": "blocked",
-      "trigger": "startup-recovery"
+      "started_at": "2026-04-07T11:42:17.079500+00:00",
+      "tick_id": "heartbeat-tick:ebd2a57f-6af9-4953-94be-6f3eb7499ea4",
+      "tick_status": "completed",
+      "trigger": "scheduled"
     },
     {
-      "action_artifact": "execution-pilot-266a5d61cfac49e7b7c92c716822ab7f",
-      "action_status": "sent",
-      "action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-      "action_type": "webchat-proactive-question",
+      "action_artifact": "",
+      "action_status": "recorded",
+      "action_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "action_type": "",
       "blocked_reason": "",
       "budget_status": "bounded-internal-only",
       "cost_usd": 0.0,
-      "decision_reason": "bounded-liveness-ping-recovery: open-loop continuity is still live",
-      "decision_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-      "decision_type": "ping",
-      "execution_status": "runtime-failed",
+      "decision_reason": "conflict-internal: gate-active-send-not-granted — bounded-liveness-recovery: open-loop continuity is still live",
+      "decision_summary": "Question thread active but send not granted — propose continues internal.",
+      "decision_type": "noop",
+      "execution_status": "success",
       "fallback_used": false,
-      "finished_at": "2026-04-01T20:30:29.460783+00:00",
-      "input_tokens": 0,
+      "finished_at": "2026-04-07T11:26:57.635451+00:00",
+      "input_tokens": 2433,
       "lane": "local",
-      "model": "qwen3.5:397b-cloud",
+      "model": "gemma4:e2b",
       "model_source": "heartbeat-local-only-pinned",
-      "output_tokens": 0,
-      "parse_status": "not-run",
-      "ping_eligible": true,
-      "ping_result": "sent-webchat",
+      "output_tokens": 67,
+      "parse_status": "success",
+      "ping_eligible": false,
+      "ping_result": "not-applicable",
       "provider": "ollama",
-      "raw_response": "",
+      "raw_response": "{\"decision_type\": \"noop\", \"summary\": \"No immediate action required.\", \"reason\": \"The current state indicates a focus on stabilization and internal processing, with no acute, actionable external demands. Open-loop continuity remains live.\", \"proposed_action\": \"\", \"ping_text\": \"\", \"execute_action\": \"\"}",
       "resolution_status": "local-only-pinned",
-      "started_at": "2026-04-01T20:29:38.092908+00:00",
-      "tick_id": "heartbeat-tick:a4a7c03c-3202-443b-89a5-ef017d0df968",
+      "started_at": "2026-04-07T11:26:27.096315+00:00",
+      "tick_id": "heartbeat-tick:2990f12e-d801-4580-b8fa-6dcee9091002",
       "tick_status": "completed",
-      "trigger": "startup-recovery"
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "",
+      "action_status": "recorded",
+      "action_summary": "inspect_repo_context",
+      "action_type": "",
+      "blocked_reason": "",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "conflict-internal: execute-continuation — The Memory section suggests investigating concrete .py files related to memory and runtime hooks based on git history, which aligns with the need for direct inspection over guesswork when context is partial.",
+      "decision_summary": "Execute decision continues as internal work.",
+      "decision_type": "noop",
+      "execution_status": "success",
+      "fallback_used": false,
+      "finished_at": "2026-04-07T11:11:18.674286+00:00",
+      "input_tokens": 2436,
+      "lane": "local",
+      "model": "gemma4:e2b",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 68,
+      "parse_status": "success",
+      "ping_eligible": false,
+      "ping_result": "not-applicable",
+      "provider": "ollama",
+      "raw_response": "{\"decision_type\":\"execute\",\"summary\":\"Inspect recent git history for memory and runtime hooks\",\"reason\":\"The Memory section suggests investigating concrete .py files related to memory and runtime hooks based on git history, which aligns with the need for direct inspection over guesswork when context is partial.\",\"proposed_action\":\"inspect_repo_context\"}",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-07T11:10:48.907156+00:00",
+      "tick_id": "heartbeat-tick:afb0c489-7e77-4353-bf0b-b5c036a71db9",
+      "tick_status": "completed",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "",
+      "action_status": "blocked",
+      "action_summary": "No bounded proactive-question execution candidate was available for webchat delivery.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "no-valid-execution-candidate",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "The system is in a stable state with active open-loop continuity, and no immediate action is required.",
+      "decision_summary": "Heartbeat received and state is stable.",
+      "decision_type": "ping",
+      "execution_status": "success",
+      "fallback_used": false,
+      "finished_at": "2026-04-07T10:55:40.229162+00:00",
+      "input_tokens": 2425,
+      "lane": "local",
+      "model": "gemma4:e2b",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 57,
+      "parse_status": "success",
+      "ping_eligible": false,
+      "ping_result": "skipped",
+      "provider": "ollama",
+      "raw_response": "{\"decision_type\":\"ping\",\"summary\":\"Heartbeat received and state is stable.\",\"reason\":\"The system is in a stable state with active open-loop continuity, and no immediate action is required.\",\"proposed_action\":\"\",\"ping_text\":\"\",\"execute_action\":\"\"}",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-07T10:55:14.168670+00:00",
+      "tick_id": "heartbeat-tick:58812996-3a86-41bd-b170-736728e4f6fd",
+      "tick_status": "blocked",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "",
+      "action_status": "recorded",
+      "action_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "action_type": "",
+      "blocked_reason": "",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "conflict-internal: gate-active-send-not-granted — bounded-liveness-recovery: open-loop continuity is still live",
+      "decision_summary": "Question thread active but send not granted — propose continues internal.",
+      "decision_type": "noop",
+      "execution_status": "success",
+      "fallback_used": false,
+      "finished_at": "2026-04-07T10:40:04.664095+00:00",
+      "input_tokens": 2427,
+      "lane": "local",
+      "model": "gemma4:e2b",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 71,
+      "parse_status": "success",
+      "ping_eligible": false,
+      "ping_result": "not-applicable",
+      "provider": "ollama",
+      "raw_response": "{\"decision_type\":\"noop\",\"summary\":\"No immediate action required. System is in a stabilized state.\",\"reason\":\"The current state indicates a settled affective and epistemic condition, and the adaptive planner is set to 'hold'. No urgent or unaddressed initiatives are present.\",\"proposed_action\":\"\",\"ping_text\":\"\",\"execute_action\":\"\"}",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-07T10:39:40.080327+00:00",
+      "tick_id": "heartbeat-tick:6bc87643-ff98-4828-94e9-ce12592fb5cc",
+      "tick_status": "completed",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "",
+      "action_status": "recorded",
+      "action_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
+      "action_type": "",
+      "blocked_reason": "",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "conflict-internal: gate-active-send-not-granted — bounded-liveness-recovery: open-loop continuity is still live",
+      "decision_summary": "Question thread active but send not granted — propose continues internal.",
+      "decision_type": "noop",
+      "execution_status": "success",
+      "fallback_used": false,
+      "finished_at": "2026-04-07T10:24:32.612458+00:00",
+      "input_tokens": 2424,
+      "lane": "local",
+      "model": "gemma4:e2b",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 57,
+      "parse_status": "success",
+      "ping_eligible": false,
+      "ping_result": "not-applicable",
+      "provider": "ollama",
+      "raw_response": "{\"decision_type\":\"noop\",\"summary\":\"Awaiting explicit instruction or signal for action.\",\"reason\":\"The current state is stable, and no immediate, bounded action is required based on the provided context.\",\"proposed_action\":\"\",\"ping_text\":\"\",\"execute_action\":\"\"}",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-07T10:24:17.496824+00:00",
+      "tick_id": "heartbeat-tick:082d32c8-0ae4-4d82-b781-a0671eb8b6d8",
+      "tick_status": "completed",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "",
+      "action_status": "blocked",
+      "action_summary": "No bounded proactive-question execution candidate was available for webchat delivery.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "no-valid-execution-candidate",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "The system is in a stable state, and no immediate, high-priority task is pending that requires external intervention. Open-loop continuity remains live.",
+      "decision_summary": "Heartbeat check complete. No immediate action required.",
+      "decision_type": "ping",
+      "execution_status": "success",
+      "fallback_used": false,
+      "finished_at": "2026-04-07T10:09:03.994230+00:00",
+      "input_tokens": 2382,
+      "lane": "local",
+      "model": "gemma4:e2b",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 68,
+      "parse_status": "success",
+      "ping_eligible": false,
+      "ping_result": "skipped",
+      "provider": "ollama",
+      "raw_response": "{\"decision_type\":\"ping\",\"summary\":\"Heartbeat check complete. No immediate action required.\",\"reason\":\"The system is in a stable state, and no immediate, high-priority task is pending that requires external intervention. Open-loop continuity remains live.\",\"proposed_action\":\"\",\"ping_text\":\"\",\"execute_action\":\"\"}",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-07T10:08:39.743043+00:00",
+      "tick_id": "heartbeat-tick:275e980a-edb5-42f5-a885-4dd77ddd254b",
+      "tick_status": "blocked",
+      "trigger": "scheduled"
+    },
+    {
+      "action_artifact": "",
+      "action_status": "blocked",
+      "action_summary": "No bounded proactive-question execution candidate was available for webchat delivery.",
+      "action_type": "webchat-proactive-question",
+      "blocked_reason": "no-valid-execution-candidate",
+      "budget_status": "bounded-internal-only",
+      "cost_usd": 0.0,
+      "decision_reason": "The scheduled heartbeat interval has been reached, and open-loop continuity remains active, warranting a status ping.",
+      "decision_summary": "Heartbeat due; open-loop continuity is live.",
+      "decision_type": "ping",
+      "execution_status": "success",
+      "fallback_used": false,
+      "finished_at": "2026-04-07T09:53:30.004004+00:00",
+      "input_tokens": 2381,
+      "lane": "local",
+      "model": "gemma4:e2b",
+      "model_source": "heartbeat-local-only-pinned",
+      "output_tokens": 79,
+      "parse_status": "success",
+      "ping_eligible": false,
+      "ping_result": "skipped",
+      "provider": "ollama",
+      "raw_response": "{\"decision_type\": \"ping\", \"summary\": \"Heartbeat due; open-loop continuity is live.\", \"reason\": \"The scheduled heartbeat interval has been reached, and open-loop continuity remains active, warranting a status ping.\", \"proposed_action\": \"\", \"ping_text\": \"Heartbeat due; open-loop continuity is live.\", \"execute_action\": \"\"}",
+      "resolution_status": "local-only-pinned",
+      "started_at": "2026-04-07T09:53:03.279821+00:00",
+      "tick_id": "heartbeat-tick:6b21b05e-859a-420f-b802-dc3d0217d4f6",
+      "tick_status": "blocked",
+      "trigger": "scheduled"
     }
   ],
   "self_system_code_awareness": {
@@ -912,7 +1354,7 @@
     "active": true,
     "approval_boundary": "Observation is read-only. Any exec, git, fetch, pull, commit, reset, checkout, or apply step would require explicit approval.",
     "authority": "derived-runtime-truth",
-    "built_at": "2026-04-06T11:31:19.098434+00:00",
+    "built_at": "2026-04-07T12:14:58.778283+00:00",
     "code_awareness_state": "repo-visible",
     "concern_hint": "Branch main has local modifications visible in read-only awareness; no action has been taken.",
     "concern_state": "concern",
@@ -929,10 +1371,12 @@
     "local_change_state": "modified",
     "observation_mode": "read-only",
     "repo_observation": {
-      "ahead_count": 47,
-      "approval_required_capability_count": 0,
-      "approval_required_mutation_capability_count": 0,
-      "approval_required_mutation_classes": [],
+      "ahead_count": 59,
+      "approval_required_capability_count": 1,
+      "approval_required_mutation_capability_count": 1,
+      "approval_required_mutation_classes": [
+        "modify-file"
+      ],
       "behind_count": 0,
       "branch_name": "main",
       "deleted_paths": [],
@@ -940,6 +1384,8 @@
       "dirty_working_tree": true,
       "local_change_state": "modified",
       "modified_paths": [
+        "workspace/default/MEMORY.md",
+        "workspace/default/USER.md",
         "workspace/default/runtime/HEARTBEAT_STATE.json"
       ],
       "modified_present": true,
@@ -974,94 +1420,94 @@
   },
   "state": {
     "authority": "non-authoritative",
-    "blocked_reason": "",
+    "blocked_reason": "stale-ticking-state-cleared",
     "budget_status": "bounded-internal-only",
     "canonical_self_state": "not-canonical-self-truth",
     "checkin_worthiness": "low",
     "companion_pressure_reason": "no-bounded-companion-pressure",
     "companion_pressure_state": "inactive",
     "companion_pressure_weight": 0,
-    "currently_ticking": true,
+    "currently_ticking": false,
     "due": true,
     "enabled": true,
-    "execution_status": "runtime-failed",
+    "execution_status": "success",
     "fallback_used": false,
     "idle_presence_state": "inactive",
     "interval_minutes": 15,
     "kill_switch": "enabled",
     "lane": "local",
-    "last_action_artifact": "execution-pilot-1cc4c914fabc47c8895ede916c284d02",
-    "last_action_status": "blocked",
-    "last_action_summary": "Tiny governed execution pilot is surfacing one bounded proactive clarification question for webchat only. This is not planner authority, not broad autonomy, and not canonical intention truth.",
-    "last_action_type": "webchat-proactive-question",
-    "last_decision_type": "ping",
+    "last_action_artifact": "",
+    "last_action_status": "recorded",
+    "last_action_summary": "inspect_repo_context",
+    "last_action_type": "",
+    "last_decision_type": "noop",
     "last_ping_eligible": false,
-    "last_ping_result": "blocked",
-    "last_recovery_at": "2026-04-06T11:05:50.701471+00:00",
-    "last_result": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
-    "last_tick_at": "2026-04-02T17:01:52.361218+00:00",
-    "last_tick_id": "heartbeat-tick:401aefc7-2c82-4c25-bae7-e8e5d30e7d74",
-    "last_trigger_source": "startup-recovery",
+    "last_ping_result": "not-applicable",
+    "last_recovery_at": "2026-04-06T21:54:08.058007+00:00",
+    "last_result": "Execute decision continues as internal work.",
+    "last_tick_at": "2026-04-07T11:42:47.040224+00:00",
+    "last_tick_id": "heartbeat-tick:ebd2a57f-6af9-4953-94be-6f3eb7499ea4",
+    "last_trigger_source": "scheduled",
     "layer_role": "runtime-support",
     "liveness_confidence": "high",
     "liveness_core_pressure_count": 3,
-    "liveness_debug_summary": "score=15 signals=7 core_pressure=3 propose_gates=3 proactive=loop-emerging/question-gated-candidate companion=0/inactive idle=inactive",
+    "liveness_debug_summary": "score=14 signals=7 core_pressure=3 propose_gates=2 proactive=loop-emerging/question-gated-hold companion=0/inactive idle=inactive",
     "liveness_pressure": "high",
-    "liveness_propose_gate_count": 3,
+    "liveness_propose_gate_count": 2,
     "liveness_reason": "open-loop continuity is still live",
-    "liveness_score": 15,
+    "liveness_score": 14,
     "liveness_signal_count": 7,
     "liveness_state": "propose-worthy",
     "liveness_summary": "Heartbeat appears to have bounded liveness pressure because open-loop continuity is still live.",
     "liveness_threshold_state": "propose-worthy-threshold",
-    "model": "qwen3.5:397b-cloud",
+    "model": "gemma4:e2b",
     "model_source": "heartbeat-local-only-pinned",
-    "next_tick_at": "2026-04-02T17:16:52.361218+00:00",
-    "parse_status": "not-run",
+    "next_tick_at": "2026-04-07T11:57:47.040224+00:00",
+    "parse_status": "success",
     "planner_authority_state": "not-planner-authority",
     "policy_summary": "interval=15m | propose=allowed | execute=allowed | ping=allowed:webchat | budget=bounded-internal-only",
     "provider": "ollama",
-    "recovery_status": "startup-recovery-pending",
+    "recovery_status": "idle",
     "resolution_status": "local-only-pinned",
-    "schedule_state": "ticking",
-    "schedule_status": "ticking",
+    "schedule_state": "due",
+    "schedule_status": "due",
     "scheduler_active": true,
     "scheduler_health": "active",
-    "scheduler_started_at": "2026-04-06T11:05:50.701471+00:00",
+    "scheduler_started_at": "2026-04-07T12:04:23.655279+00:00",
     "scheduler_stopped_at": "",
     "source": "/mc/jarvis::heartbeat",
-    "source_anchor": "Open loop: Smoke thread | tension-level=medium | source-anchor=smoke-anchor | I can feel the pressure from this. | Visible work note visible-work-note:visible-d22bcf668ec640a38b9f797a292aa292 for visible-work:visible-d22bcf668ec640a38b9f797a292aa292 | I notice inner-note, initiative-tension, and inner-interplay all present. | private-inner-note-signal-2dbfcc28cc3748be8da1bb95b3dba48d:Private inner note: tool:read workspace user profile | initiative-72f153ce905a47a9ac6ac99a97f0ad66:Private initiative tension: Open loop: Smoke thread | private-inner-interplay-signal-f525145935e8403eb7d29b60da1fe690:Private inner interplay: Private initiative tension: Open loop: Smoke thread",
+    "source_anchor": "Open loop: Tool write workspace memory | I can feel the pressure from this. | Visible work note visible-work-note:visible-d0d1bda4048e4844b7f745c60b25348d for visible-work:visible-d0d1bda4048e4844b7f745c60b25348d via capability tool:run-non-destructive-command | Open loop: Tool write workspace memory (open-loop:open-loop:tool-write-workspace-memory) | Stabilize tool:run-non-destructive-command (development-focus:runtime:tool-run-non-destructive-command:reinforce-retain) | I notice inner-note, initiative-tension, and inner-interplay all present. | private-inner-note-signal-2dbfcc28cc3748be8da1bb95b3dba48d:Private inner note: tool:read workspace user profile | initiative-72f153ce905a47a9ac6ac99a97f0ad66:Private initiative tension: Open loop: Smoke thread | private-inner-interplay-signal-f525145935e8403eb7d29b60da1fe690:Private inner interplay: Private initiative tension: Open loop: Smoke thread",
     "state_file": "/media/projects/jarvis-v2/workspace/default/runtime/HEARTBEAT_STATE.json",
     "status": "active",
-    "summary": "Heartbeat tick is currently in progress.",
-    "updated_at": "2026-04-06T11:05:53.328890+00:00"
+    "summary": "noop: Execute decision continues as internal work.",
+    "updated_at": "2026-04-07T12:04:23.655279+00:00"
   },
   "subagent_ecology": {
     "authority": "derived-runtime-truth",
     "boundary": "not-memory-not-identity-not-action-not-tool-execution",
     "freshness": {
-      "built_at": "2026-04-06T11:31:19.078408+00:00",
+      "built_at": "2026-04-07T12:14:55.797866+00:00",
       "state": "fresh"
     },
     "internal_only": true,
     "kind": "subagent-ecology-light",
     "roles": [
       {
-        "activation_reason": "epistemic-strained",
+        "activation_reason": "epistemic-off",
         "current_status": "active",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-06T11:31:19.078408+00:00",
+        "last_activation_at": "2026-04-07T12:14:55.797866+00:00",
         "role_kind": "epistemic-check",
         "role_name": "critic",
         "tool_access": "none"
       },
       {
-        "activation_reason": "holding-pressure-needs-witness",
-        "current_status": "active",
+        "activation_reason": "no-reflective-pull",
+        "current_status": "idle",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-06T11:31:19.078408+00:00",
+        "last_activation_at": "",
         "role_kind": "reflective-observer",
         "role_name": "witness-helper",
         "tool_access": "none"
@@ -1071,7 +1517,7 @@
         "current_status": "active",
         "influence_scope": "bounded",
         "internal_only": true,
-        "last_activation_at": "2026-04-06T11:31:19.078408+00:00",
+        "last_activation_at": "2026-04-07T12:14:55.797866+00:00",
         "role_kind": "bounded-coordination",
         "role_name": "planner-helper",
         "tool_access": "none"
@@ -1085,29 +1531,29 @@
     },
     "source_contributors": [
       {
-        "signal": "tense / bearing=taut",
+        "signal": "settled / bearing=even",
         "source": "affective-meta-state"
       },
       {
-        "signal": "strained / regret=active",
+        "signal": "off / regret=active",
         "source": "epistemic-runtime-state"
       },
       {
-        "signal": "active / active=4 / standby=0",
+        "signal": "active / active=5 / standby=0",
         "source": "loop-runtime"
       }
     ],
     "summary": {
-      "active_count": 3,
+      "active_count": 2,
       "blocked_count": 0,
       "cooling_count": 0,
-      "idle_count": 0,
-      "last_activation_reason": "epistemic-strained",
+      "idle_count": 1,
+      "last_activation_reason": "epistemic-off",
       "last_active_role_name": "critic",
       "last_active_role_status": "active",
       "role_count": 3
     },
-    "summary_text": "active internal roles: critic, witness-helper, planner-helper",
+    "summary_text": "active internal roles: critic, planner-helper",
     "tool_access": "none",
     "visibility": "internal-only"
   },
@@ -1170,7 +1616,7 @@
     "approval_state": "approved",
     "authority": "derived-runtime-truth",
     "boundary": "Intent remains proposal-only until approval resolves and stays approval-gated and bounded. Approved read-only repo inspection may execute only within explicit scope. Approved bounded workspace-file-write may execute only for explicit workspace targets with explicit write content. Approved bounded non-sudo mutating exec may execute only for the exact approved command fingerprint. Approved bounded sudo exec may execute only for the exact approved sudo command fingerprint within the tiny allowlist; delete, git mutation, package install/update, and broader system mutation remain closed in this pass.",
-    "built_at": "2026-04-06T11:31:19.102692+00:00",
+    "built_at": "2026-04-07T12:14:58.783343+00:00",
     "confidence": "high",
     "delete_permitted": false,
     "execution_command": "MEMORY.md",
@@ -1218,8 +1664,10 @@
       "approval_required": true,
       "boundary": "Bounded mutation intent is classification-only runtime truth. It distinguishes read-only from mutation-near intent, but remains proposal-only, approval-gated, and not-executed. It is not MEMORY.md, not identity, and not a write path.",
       "capability_boundary": {
-        "approval_required_mutation_capability_count": 0,
-        "approval_required_mutation_classes": []
+        "approval_required_mutation_capability_count": 1,
+        "approval_required_mutation_classes": [
+          "modify-file"
+        ]
       },
       "classification": "modify-file",
       "execution_permitted": false,
@@ -1236,9 +1684,12 @@
         "sudo_required": false,
         "system_mutation_scope": "",
         "target_files": [
+          "workspace/default/MEMORY.md",
+          "workspace/default/USER.md",
           "workspace/default/runtime/HEARTBEAT_STATE.json"
         ],
         "target_paths": [
+          "workspace/default",
           "workspace/default/runtime"
         ]
       },
@@ -1269,13 +1720,16 @@
         "system_scope": "",
         "target_identity": false,
         "target_memory": false,
-        "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=workspace/default/runtime/HEARTBEAT_STATE.json; approval_scope=repo-read.",
+        "write_proposal_reason": "Runtime sees mutation-near file changes and can carry a bounded file-modification proposal; targets=workspace/default/MEMORY.md, workspace/default/USER.md, workspace/default/runtime/HEARTBEAT_STATE.json; approval_scope=repo-read.",
         "write_proposal_scope": "repo-file",
         "write_proposal_state": "scoped-proposal",
         "write_proposal_target_paths": [
+          "workspace/default",
           "workspace/default/runtime"
         ],
         "write_proposal_targets": [
+          "workspace/default/MEMORY.md",
+          "workspace/default/USER.md",
           "workspace/default/runtime/HEARTBEAT_STATE.json"
         ],
         "write_proposal_type": "propose-file-modification"
@@ -1291,9 +1745,12 @@
     "mutation_summary": "Current intent is proposal-only and mutation-near: classification=modify-file; explicit scoped approval is required before any file, git, package, or system change.",
     "mutation_system_scope": "",
     "mutation_target_files": [
+      "workspace/default/MEMORY.md",
+      "workspace/default/USER.md",
       "workspace/default/runtime/HEARTBEAT_STATE.json"
     ],
     "mutation_target_paths": [
+      "workspace/default",
       "workspace/default/runtime"
     ],
     "post_action_concern": "stable",

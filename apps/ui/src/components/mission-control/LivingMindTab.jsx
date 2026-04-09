@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
@@ -386,6 +387,31 @@ function metabolicHeartbeatSummary(summary = {}) {
     parts.push(`dream ${humanizeToken(summary.dream_articulation)}`)
   }
   return parts.join(' · ')
+}
+
+function ExpandableText({ text, lines = 2 }) {
+  const [expanded, setExpanded] = useState(false)
+  const normalizedText = String(text || '').trim()
+  if (!normalizedText) return null
+
+  const toggleNeeded = normalizedText.length > 120
+
+  return (
+    <div className="mc-expandable-block">
+      <p className={`muted mc-expandable-text ${expanded ? 'is-expanded' : ''}`} style={{ WebkitLineClamp: expanded ? 'unset' : String(lines) }}>
+        {normalizedText}
+      </p>
+      {toggleNeeded ? (
+        <button
+          type="button"
+          className="mc-inline-link"
+          onClick={() => setExpanded((current) => !current)}
+        >
+          {expanded ? 'Vis mindre' : 'Vis mere'}
+        </button>
+      ) : null}
+    </div>
+  )
 }
 
 /* ─── Row renderers ─── */
@@ -1121,28 +1147,38 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const promptEvolutionCadence = cadenceProducer(internalCadence, 'prompt_evolution_runtime')
   const webchatExecutionPilot = data?.development?.webchatExecutionPilot || { items: [], summary: {} }
 
+  const scrollToFeature = (targetId) => {
+    if (!targetId || typeof document === 'undefined') return
+    const element = document.getElementById(targetId)
+    if (!element) return
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (typeof element.focus === 'function') {
+      element.focus({ preventScroll: true })
+    }
+  }
+
   const features = [
-    { id: 'embodied', label: 'Embodied State', icon: Cpu, active: hasEmbodiedState, status: embodiedState.state, statusLabel: embodiedState.state || 'unknown' },
-    { id: 'loop', label: 'Loop Runtime', icon: Activity, active: hasLoopRuntime, status: loopRuntimeSummaryData.currentStatus, statusLabel: loopRuntimeSummaryData.currentStatus || 'idle' },
-    { id: 'idle', label: 'Idle Consolidation', icon: Moon, active: hasIdleConsolidation, status: idleConsolidationSummaryData.lastState, statusLabel: idleConsolidationSummaryData.lastState || 'idle' },
-    { id: 'dream', label: 'Dream Articulation', icon: Sparkles, active: hasDreamArticulation, status: dreamArticulationSummaryData.lastState, statusLabel: dreamArticulationSummaryData.lastState || 'idle' },
-    { id: 'prompt', label: 'Prompt Evolution', icon: Wand2, active: hasPromptEvolution, status: promptEvolutionSummaryData.lastState, statusLabel: promptEvolutionSummaryData.lastState || 'idle' },
-    { id: 'affective', label: 'Affective Meta', icon: Heart, active: hasAffectiveMetaState, status: affectiveMetaState.state, statusLabel: affectiveMetaState.state || 'unknown' },
-    { id: 'epistemic', label: 'Epistemic State', icon: Brain, active: hasEpistemicRuntimeState, status: epistemicRuntimeState.wrongnessState, statusLabel: epistemicRuntimeState.wrongnessState || 'clear' },
-    { id: 'subagent', label: 'Subagent Ecology', icon: Network, active: hasSubagentEcology, status: subagentEcologySummaryData.lastActiveRoleStatus, statusLabel: subagentEcologySummaryData.lastActiveRoleStatus || 'idle' },
-    { id: 'council', label: 'Council Runtime', icon: Users, active: hasCouncilRuntime, status: councilRuntime.councilState, statusLabel: councilRuntime.councilState || 'quiet' },
-    { id: 'planner', label: 'Adaptive Planner', icon: Map, active: hasAdaptivePlanner, status: adaptivePlanner.plannerMode, statusLabel: adaptivePlanner.plannerMode || 'incremental' },
-    { id: 'reasoning', label: 'Adaptive Reasoning', icon: Lightbulb, active: hasAdaptiveReasoning, status: adaptiveReasoning.reasoningMode, statusLabel: adaptiveReasoning.reasoningMode || 'direct' },
-    { id: 'dream-influence', label: 'Dream Influence', icon: Sparkles, active: hasDreamInfluence, status: dreamInfluence.influenceState, statusLabel: dreamInfluence.influenceState || 'quiet' },
-    { id: 'guided', label: 'Guided Learning', icon: GraduationCap, active: hasGuidedLearning, status: guidedLearning.learningMode, statusLabel: guidedLearning.learningMode || 'reinforce' },
-    { id: 'adaptive', label: 'Adaptive Learning', icon: TrendingUp, active: hasAdaptiveLearning, status: adaptiveLearning.learningEngineMode, statusLabel: adaptiveLearning.learningEngineMode || 'retain' },
-    { id: 'experiential', label: 'Experiential Context', icon: Activity, active: hasExperientialRuntimeContext, status: experientialEmbodied.initiativeGate, statusLabel: experientialEmbodied.state || 'steady' },
-    { id: 'wonder', label: 'Wonder Awareness', icon: Sparkles, active: hasWonderAwareness, status: wonderAwareness?.wonderState, statusLabel: wonderAwareness?.wonderState || 'quiet' },
-    { id: 'mineness', label: 'Mineness / Ownership', icon: Heart, active: hasMinenessOwnership, status: minenessOwnership?.ownershipState, statusLabel: minenessOwnership?.ownershipState || 'ambient' },
-    { id: 'flow', label: 'Flow State', icon: Zap, active: hasFlowStateAwareness, status: flowStateAwareness?.flowState, statusLabel: flowStateAwareness?.flowState || 'clear' },
-    { id: 'longing', label: 'Longing Awareness', icon: Ghost, active: hasLongingAwareness, status: longingAwareness?.longingState, statusLabel: longingAwareness?.longingState || 'quiet' },
-    { id: 'self-insight', label: 'Self-Insight Awareness', icon: Brain, active: hasSelfInsightAwareness, status: selfInsightAwareness?.insightState, statusLabel: selfInsightAwareness?.insightState || 'quiet' },
-    { id: 'dream-identity-carry', label: 'Dream Identity Carry', icon: Moon, active: hasDreamIdentityCarryAwareness, status: dreamIdentityCarryAwareness?.dreamIdentityCarryState, statusLabel: dreamIdentityCarryAwareness?.dreamIdentityCarryState || 'quiet' },
+    { id: 'embodied', targetId: 'living-mind-embodied-state', label: 'Embodied State', icon: Cpu, active: hasEmbodiedState, status: embodiedState.state, statusLabel: embodiedState.state || 'unknown' },
+    { id: 'loop', targetId: 'living-mind-loop-runtime', label: 'Loop Runtime', icon: Activity, active: hasLoopRuntime, status: loopRuntimeSummaryData.currentStatus, statusLabel: loopRuntimeSummaryData.currentStatus || 'idle' },
+    { id: 'idle', targetId: 'living-mind-idle-consolidation', label: 'Idle Consolidation', icon: Moon, active: hasIdleConsolidation, status: idleConsolidationSummaryData.lastState, statusLabel: idleConsolidationSummaryData.lastState || 'idle' },
+    { id: 'dream', targetId: 'living-mind-dream-articulation', label: 'Dream Articulation', icon: Sparkles, active: hasDreamArticulation, status: dreamArticulationSummaryData.lastState, statusLabel: dreamArticulationSummaryData.lastState || 'idle' },
+    { id: 'prompt', targetId: 'living-mind-prompt-evolution', label: 'Prompt Evolution', icon: Wand2, active: hasPromptEvolution, status: promptEvolutionSummaryData.lastState, statusLabel: promptEvolutionSummaryData.lastState || 'idle' },
+    { id: 'affective', targetId: 'living-mind-affective-meta', label: 'Affective Meta', icon: Heart, active: hasAffectiveMetaState, status: affectiveMetaState.state, statusLabel: affectiveMetaState.state || 'unknown' },
+    { id: 'epistemic', targetId: 'living-mind-epistemic-state', label: 'Epistemic State', icon: Brain, active: hasEpistemicRuntimeState, status: epistemicRuntimeState.wrongnessState, statusLabel: epistemicRuntimeState.wrongnessState || 'clear' },
+    { id: 'subagent', targetId: 'living-mind-subagent-ecology', label: 'Subagent Ecology', icon: Network, active: hasSubagentEcology, status: subagentEcologySummaryData.lastActiveRoleStatus, statusLabel: subagentEcologySummaryData.lastActiveRoleStatus || 'idle' },
+    { id: 'council', targetId: 'living-mind-council-runtime', label: 'Council Runtime', icon: Users, active: hasCouncilRuntime, status: councilRuntime.councilState, statusLabel: councilRuntime.councilState || 'quiet' },
+    { id: 'planner', targetId: 'living-mind-adaptive-planner', label: 'Adaptive Planner', icon: Map, active: hasAdaptivePlanner, status: adaptivePlanner.plannerMode, statusLabel: adaptivePlanner.plannerMode || 'incremental' },
+    { id: 'reasoning', targetId: 'living-mind-adaptive-reasoning', label: 'Adaptive Reasoning', icon: Lightbulb, active: hasAdaptiveReasoning, status: adaptiveReasoning.reasoningMode, statusLabel: adaptiveReasoning.reasoningMode || 'direct' },
+    { id: 'dream-influence', targetId: 'living-mind-dream-influence', label: 'Dream Influence', icon: Sparkles, active: hasDreamInfluence, status: dreamInfluence.influenceState, statusLabel: dreamInfluence.influenceState || 'quiet' },
+    { id: 'guided', targetId: 'living-mind-guided-learning', label: 'Guided Learning', icon: GraduationCap, active: hasGuidedLearning, status: guidedLearning.learningMode, statusLabel: guidedLearning.learningMode || 'reinforce' },
+    { id: 'adaptive', targetId: 'living-mind-adaptive-learning', label: 'Adaptive Learning', icon: TrendingUp, active: hasAdaptiveLearning, status: adaptiveLearning.learningEngineMode, statusLabel: adaptiveLearning.learningEngineMode || 'retain' },
+    { id: 'experiential', targetId: 'living-mind-experiential-context', label: 'Experiential Context', icon: Activity, active: hasExperientialRuntimeContext, status: experientialEmbodied.initiativeGate, statusLabel: experientialEmbodied.state || 'steady' },
+    { id: 'wonder', targetId: 'living-mind-wonder-awareness', label: 'Wonder Awareness', icon: Sparkles, active: hasWonderAwareness, status: wonderAwareness?.wonderState, statusLabel: wonderAwareness?.wonderState || 'quiet' },
+    { id: 'mineness', targetId: 'living-mind-mineness-ownership', label: 'Mineness / Ownership', icon: Heart, active: hasMinenessOwnership, status: minenessOwnership?.ownershipState, statusLabel: minenessOwnership?.ownershipState || 'ambient' },
+    { id: 'flow', targetId: 'living-mind-flow-state', label: 'Flow State', icon: Zap, active: hasFlowStateAwareness, status: flowStateAwareness?.flowState, statusLabel: flowStateAwareness?.flowState || 'clear' },
+    { id: 'longing', targetId: 'living-mind-longing-awareness', label: 'Longing Awareness', icon: Ghost, active: hasLongingAwareness, status: longingAwareness?.longingState, statusLabel: longingAwareness?.longingState || 'quiet' },
+    { id: 'self-insight', targetId: 'living-mind-self-insight-awareness', label: 'Self-Insight Awareness', icon: Brain, active: hasSelfInsightAwareness, status: selfInsightAwareness?.insightState, statusLabel: selfInsightAwareness?.insightState || 'quiet' },
+    { id: 'dream-identity-carry', targetId: 'living-mind-dream-identity-carry', label: 'Dream Identity Carry', icon: Moon, active: hasDreamIdentityCarryAwareness, status: dreamIdentityCarryAwareness?.dreamIdentityCarryState, statusLabel: dreamIdentityCarryAwareness?.dreamIdentityCarryState || 'quiet' },
   ]
 
   return (
@@ -1151,13 +1187,19 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
       {/* ─── Feature Status Grid ─── */}
       <div className="feature-status-grid">
         {features.filter(f => f.active).map(f => (
-          <div key={f.id} className={`feature-status-card ${f.status !== 'unknown' && f.status !== 'idle' && f.status !== 'quiet' && f.status !== 'clear' ? 'active' : ''}`}>
+          <button
+            type="button"
+            key={f.id}
+            className={`feature-status-card ${f.status !== 'unknown' && f.status !== 'idle' && f.status !== 'quiet' && f.status !== 'clear' ? 'active' : ''}`}
+            onClick={() => scrollToFeature(f.targetId)}
+            title={`Hop til ${f.label}`}
+          >
             <div className="feature-status-card-header">
               <f.icon size={12} />
               <span className="feature-status-card-label">{f.label}</span>
             </div>
             <div className="feature-status-card-meta mono">{f.statusLabel}</div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -1178,7 +1220,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           {heartbeatMetabolicSummary ? <small className="muted">{heartbeatMetabolicSummary}</small> : null}
         </article>
         {hasEmbodiedState ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-embodied-state" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target" title={sectionTitleWithMeta({
           source: embodiedState.source || '/mc/embodied-state',
           fetchedAt: embodiedState.createdAt || data?.fetchedAt,
           mode: 'embodied runtime snapshot',
@@ -1195,7 +1237,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasLoopRuntime ? (
-        <article className="mc-stat tone-green" title={sectionTitleWithMeta({
+        <article id="living-mind-loop-runtime" tabIndex={-1} className="mc-stat tone-green mc-scroll-target" title={sectionTitleWithMeta({
           source: loopRuntime.source || '/mc/loop-runtime',
           fetchedAt: loopRuntime.createdAt || data?.fetchedAt,
           mode: 'loop runtime snapshot',
@@ -1209,7 +1251,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasIdleConsolidation ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-idle-consolidation" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target" title={sectionTitleWithMeta({
           source: idleConsolidation.source || '/mc/idle-consolidation',
           fetchedAt: idleConsolidation.createdAt || data?.fetchedAt,
           mode: 'idle consolidation snapshot',
@@ -1223,7 +1265,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {(hasDreamArticulation || dreamCadence) ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-dream-articulation" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target" title={sectionTitleWithMeta({
           source: dreamArticulation.source || internalCadence.source || '/mc/dream-articulation',
           fetchedAt: dreamArticulation.createdAt || internalCadence.lastTickAt || data?.fetchedAt,
           mode: 'dream articulation snapshot',
@@ -1237,7 +1279,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {(hasPromptEvolution || promptEvolutionCadence) ? (
-        <article className="mc-stat tone-amber" title={sectionTitleWithMeta({
+        <article id="living-mind-prompt-evolution" tabIndex={-1} className="mc-stat tone-amber mc-scroll-target" title={sectionTitleWithMeta({
           source: promptEvolution.source || internalCadence.source || '/mc/prompt-evolution',
           fetchedAt: promptEvolution.createdAt || internalCadence.lastTickAt || data?.fetchedAt,
           mode: 'prompt evolution snapshot',
@@ -1253,7 +1295,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasAffectiveMetaState ? (
-        <article className="mc-stat tone-green" title={sectionTitleWithMeta({
+        <article id="living-mind-affective-meta" tabIndex={-1} className="mc-stat tone-green mc-scroll-target" title={sectionTitleWithMeta({
           source: affectiveMetaState.source || '/mc/affective-meta-state',
           fetchedAt: affectiveMetaState.createdAt || data?.fetchedAt,
           mode: 'affective/meta runtime snapshot',
@@ -1267,7 +1309,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasEpistemicRuntimeState ? (
-        <article className="mc-stat tone-amber" title={sectionTitleWithMeta({
+        <article id="living-mind-epistemic-state" tabIndex={-1} className="mc-stat tone-amber mc-scroll-target" title={sectionTitleWithMeta({
           source: epistemicRuntimeState.source || '/mc/epistemic-runtime-state',
           fetchedAt: epistemicRuntimeState.createdAt || data?.fetchedAt,
           mode: 'epistemic runtime snapshot',
@@ -1281,7 +1323,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasSubagentEcology ? (
-        <article className="mc-stat tone-green" title={sectionTitleWithMeta({
+        <article id="living-mind-subagent-ecology" tabIndex={-1} className="mc-stat tone-green mc-scroll-target" title={sectionTitleWithMeta({
           source: subagentEcology.source || '/mc/subagent-ecology',
           fetchedAt: subagentEcology.createdAt || data?.fetchedAt,
           mode: 'subagent ecology snapshot',
@@ -1295,7 +1337,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasCouncilRuntime ? (
-        <article className="mc-stat tone-amber" title={sectionTitleWithMeta({
+        <article id="living-mind-council-runtime" tabIndex={-1} className="mc-stat tone-amber mc-scroll-target" title={sectionTitleWithMeta({
           source: councilRuntime.source || '/mc/council-runtime',
           fetchedAt: councilRuntime.createdAt || data?.fetchedAt,
           mode: 'council runtime snapshot',
@@ -1308,7 +1350,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasAdaptivePlanner ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-adaptive-planner" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target" title={sectionTitleWithMeta({
           source: adaptivePlanner.source || '/mc/adaptive-planner',
           fetchedAt: adaptivePlanner.createdAt || data?.fetchedAt,
           mode: 'adaptive planner runtime snapshot',
@@ -1321,7 +1363,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasAdaptiveReasoning ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-adaptive-reasoning" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target" title={sectionTitleWithMeta({
           source: adaptiveReasoning.source || '/mc/adaptive-reasoning',
           fetchedAt: adaptiveReasoning.createdAt || data?.fetchedAt,
           mode: 'adaptive reasoning runtime snapshot',
@@ -1334,7 +1376,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasDreamInfluence ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-dream-influence" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target" title={sectionTitleWithMeta({
           source: dreamInfluence.source || '/mc/dream-influence',
           fetchedAt: dreamInfluence.createdAt || data?.fetchedAt,
           mode: 'dream influence runtime snapshot',
@@ -1347,7 +1389,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasGuidedLearning ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-guided-learning" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target" title={sectionTitleWithMeta({
           source: guidedLearning.source || '/mc/guided-learning',
           fetchedAt: guidedLearning.createdAt || data?.fetchedAt,
           mode: 'guided learning runtime snapshot',
@@ -1360,7 +1402,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasAdaptiveLearning ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-adaptive-learning" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target" title={sectionTitleWithMeta({
           source: adaptiveLearning.source || '/mc/adaptive-learning',
           fetchedAt: adaptiveLearning.createdAt || data?.fetchedAt,
           mode: 'adaptive learning runtime snapshot',
@@ -1373,7 +1415,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
         {hasExperientialRuntimeContext ? (
-        <article className="mc-stat tone-blue" title={sectionTitleWithMeta({
+        <article id="living-mind-experiential-context" tabIndex={-1} className="mc-stat tone-blue mc-scroll-target living-surface-card" title={sectionTitleWithMeta({
           source: experientialRuntimeContext.source || '/mc/experiential-runtime-context',
           fetchedAt: experientialRuntimeContext.createdAt || data?.fetchedAt,
           mode: 'experiential runtime context (derived-runtime-truth)',
@@ -1401,7 +1443,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           </small>
           ) : null}
           {experientialSupport?.narrative && experientialSupport.supportPosture !== 'steadying' ? (
-          <small className="muted">{experientialSupport.narrative}</small>
+          <ExpandableText text={experientialSupport.narrative} />
           ) : null}
           {experientialSupport && experientialSupport.supportPosture !== 'steadying' && innerVoiceDaemon?.lastResult?.innerVoiceCreated && innerVoiceDaemon.lastResult.mode ? (
           <small className="muted">
@@ -1412,7 +1454,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         ) : null}
 
         {hasWonderAwareness ? (
-        <article className="support-card" title={sectionTitleWithMeta({
+        <article id="living-mind-wonder-awareness" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
           source: '/mc/runtime-self-model::wonder_awareness',
           fetchedAt: data?.fetchedAt,
           mode: 'derived runtime truth',
@@ -1442,15 +1484,13 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
               <strong>{humanizeToken(wonderAwareness.visibility)}</strong>
             </div>
           </div>
-          {wonderAwareness.narrative ? (
-          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{wonderAwareness.narrative}</small>
-          ) : null}
+          {wonderAwareness.narrative ? <ExpandableText text={wonderAwareness.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${wonderAwareness.authority} · kind: ${wonderAwareness.kind}`}</small>
         </article>
         ) : null}
 
         {hasSupportStreamAwareness ? (
-        <article className="support-card" title={sectionTitleWithMeta({
+        <article id="living-mind-support-stream-awareness" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
           source: '/mc/runtime-self-model::support_stream_awareness',
           fetchedAt: data?.fetchedAt,
           mode: 'derived runtime truth',
@@ -1488,15 +1528,13 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
             </div>
           </div>
           ) : null}
-          {supportStreamAwareness.narrative ? (
-          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{supportStreamAwareness.narrative}</small>
-          ) : null}
+          {supportStreamAwareness.narrative ? <ExpandableText text={supportStreamAwareness.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${supportStreamAwareness.authority} · kind: ${supportStreamAwareness.kind}`}</small>
         </article>
         ) : null}
 
         {hasMinenessOwnership ? (
-        <article className="support-card" title={sectionTitleWithMeta({
+        <article id="living-mind-mineness-ownership" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
           source: '/mc/runtime-self-model::mineness_ownership',
           fetchedAt: data?.fetchedAt,
           mode: 'derived runtime truth',
@@ -1534,15 +1572,13 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
             </div>
           </div>
           ) : null}
-          {minenessOwnership.narrative ? (
-          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{minenessOwnership.narrative}</small>
-          ) : null}
+          {minenessOwnership.narrative ? <ExpandableText text={minenessOwnership.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${minenessOwnership.authority} · kind: ${minenessOwnership.kind}`}</small>
         </article>
         ) : null}
 
         {hasFlowStateAwareness ? (
-        <article className="support-card" title={sectionTitleWithMeta({
+        <article id="living-mind-flow-state" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
           source: '/mc/runtime-self-model::flow_state_awareness',
           fetchedAt: data?.fetchedAt,
         })}>
@@ -1571,15 +1607,13 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
               <strong>{humanizeToken(flowStateAwareness.carriedFlow)}</strong>
             </div>
           </div>
-          {flowStateAwareness.narrative ? (
-          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{flowStateAwareness.narrative}</small>
-          ) : null}
+          {flowStateAwareness.narrative ? <ExpandableText text={flowStateAwareness.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${flowStateAwareness.authority} · kind: ${flowStateAwareness.kind}`}</small>
         </article>
         ) : null}
 
         {hasLongingAwareness ? (
-        <article className="support-card" title={sectionTitleWithMeta({
+        <article id="living-mind-longing-awareness" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
           source: '/mc/runtime-self-model::longing_awareness',
           fetchedAt: data?.fetchedAt,
           mode: 'derived runtime truth',
@@ -1609,15 +1643,13 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
               <strong>{humanizeToken(longingAwareness.visibility)}</strong>
             </div>
           </div>
-          {longingAwareness.narrative ? (
-          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{longingAwareness.narrative}</small>
-          ) : null}
+          {longingAwareness.narrative ? <ExpandableText text={longingAwareness.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${longingAwareness.authority} · kind: ${longingAwareness.kind}`}</small>
         </article>
         ) : null}
 
         {hasSelfInsightAwareness ? (
-        <article className="support-card" title={sectionTitleWithMeta({
+        <article id="living-mind-self-insight-awareness" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
           source: '/mc/runtime-self-model::self_insight_awareness',
           fetchedAt: data?.fetchedAt,
           mode: 'derived runtime truth',
@@ -1647,14 +1679,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
               <strong>{humanizeToken(selfInsightAwareness.visibility)}</strong>
             </div>
           </div>
-          {selfInsightAwareness.narrative ? (
-          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{selfInsightAwareness.narrative}</small>
-          ) : null}
+          {selfInsightAwareness.narrative ? <ExpandableText text={selfInsightAwareness.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${selfInsightAwareness.authority} · kind: ${selfInsightAwareness.kind}`}</small>
         </article>
         ) : null}
         {hasNarrativeIdentityContinuity ? (
-        <article className="support-card" title={sectionTitleWithMeta({
+        <article id="living-mind-narrative-identity-continuity" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
           source: '/mc/runtime-self-model::narrative_identity_continuity',
           fetchedAt: data?.fetchedAt,
           mode: 'derived runtime truth',
@@ -1684,14 +1714,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
               <strong>{humanizeToken(narrativeIdentityContinuity.visibility)}</strong>
             </div>
           </div>
-          {narrativeIdentityContinuity.narrative ? (
-          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{narrativeIdentityContinuity.narrative}</small>
-          ) : null}
+          {narrativeIdentityContinuity.narrative ? <ExpandableText text={narrativeIdentityContinuity.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${narrativeIdentityContinuity.authority} · kind: ${narrativeIdentityContinuity.kind}`}</small>
         </article>
         ) : null}
         {hasDreamIdentityCarryAwareness ? (
-        <article className="support-card" title={sectionTitleWithMeta({
+        <article id="living-mind-dream-identity-carry" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
           source: '/mc/runtime-self-model::dream_identity_carry_awareness',
           fetchedAt: data?.fetchedAt,
           mode: 'derived runtime truth',
@@ -1721,9 +1749,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
               <strong>{humanizeToken(dreamIdentityCarryAwareness.visibility)}</strong>
             </div>
           </div>
-          {dreamIdentityCarryAwareness.narrative ? (
-          <small className="muted" style={{ display: 'block', marginTop: 6 }}>{dreamIdentityCarryAwareness.narrative}</small>
-          ) : null}
+          {dreamIdentityCarryAwareness.narrative ? <ExpandableText text={dreamIdentityCarryAwareness.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${dreamIdentityCarryAwareness.authority} · kind: ${dreamIdentityCarryAwareness.kind}`}</small>
         </article>
         ) : null}
@@ -1731,7 +1757,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
 
       {/* ─── Heartbeat Section ─── */}
       <section className="mc-section-grid">
-        <article className="support-card" id="living-mind-heartbeat" title={sectionTitleWithMeta({
+        <article className="support-card living-mind-heartbeat" id="living-mind-heartbeat" title={sectionTitleWithMeta({
           source: '/mc/jarvis::heartbeat',
           fetchedAt: data?.fetchedAt,
           mode: 'manual bounded tick + runtime snapshot',
@@ -1781,7 +1807,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           </div>
 
           <div className="mc-contract-grid">
-            <div className="mc-contract-column">
+            <div className="mc-contract-column runtime-column">
               <div className="support-card-header">
                 <span className="support-card-kicker">Policy</span>
                 <strong>Runtime State</strong>

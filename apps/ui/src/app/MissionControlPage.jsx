@@ -91,7 +91,8 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
             justifyContent: 'space-between',
             padding: '0 24px',
             height: 52,
-            background: T.bgSurface,
+            background: T.headerGlass,
+            backdropFilter: 'blur(12px)',
             borderBottom: `1px solid ${T.border0}`,
             flexShrink: 0,
           })}
@@ -113,11 +114,12 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
               title="Refresh Mission Control"
               style={s({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 28, height: 28, borderRadius: 6, border: `1px solid ${T.border1}`,
-                background: 'transparent', color: T.text2, cursor: 'pointer',
+                width: 32, height: 32, borderRadius: 8, border: `1px solid ${T.border1}`,
+                background: T.glass, color: T.text2, cursor: 'pointer',
+                transition: 'all 0.2s ease',
               })}
-              onMouseEnter={(e) => (e.currentTarget.style.background = T.bgHover)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={(e) => { e.currentTarget.style.background = T.bgOverlay; e.currentTarget.style.borderColor = T.accent }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = T.glass; e.currentTarget.style.borderColor = T.border1 }}
             >
               <RefreshCcw size={13} style={isRefreshing ? { animation: 'spin .8s linear infinite' } : undefined} />
             </button>

@@ -1227,10 +1227,23 @@ def _extract_output_text(data: dict) -> str:
     return text
 
 
-def _build_visible_input(message: str, *, session_id: str | None) -> list[dict]:
+def _build_visible_input(
+    message: str,
+    *,
+    session_id: str | None,
+    provider: str = "",
+    model: str = "",
+) -> list[dict]:
+    # Resolve actual provider/model from router if not supplied
+    actual_provider = provider
+    actual_model = model
+    if not actual_provider or not actual_model:
+        target = resolve_provider_router_target(lane="visible")
+        actual_provider = actual_provider or str(target.get("provider", ""))
+        actual_model = actual_model or str(target.get("model", ""))
     instruction = _visible_system_instruction_for_provider(
-        provider="openai",
-        model="",
+        provider=actual_provider,
+        model=actual_model,
         user_message=message,
         session_id=session_id,
     )

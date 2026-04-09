@@ -133,7 +133,7 @@ button { cursor: pointer; }
   gap:12px;
   min-height:58px;
   background: linear-gradient(180deg, #11161f 0%, #0f141c 100%);
-  border-bottom:1px solid rgba(255,255,255,.06);
+  border-bottom:1px solid rgba(40,177,163,.10);
   flex-shrink: 0;
 }
 /* ─── Chat Header: Chips & Token Meter ─── */

@@ -529,6 +529,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     })
 
                 # Second-pass: stream model response grounded in tool results
+                # Run in thread executor so we don't block the event loop.
                 import json as _json
                 target = resolve_provider_router_target(lane="visible")
                 base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
@@ -549,26 +550,44 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 )
 
                 followup_parts: list[str] = []
-                try:
-                    with urllib_request.urlopen(followup_req, timeout=180) as followup_resp:
-                        for raw_line in followup_resp:
-                            line = raw_line.decode("utf-8").strip()
-                            if not line:
-                                continue
-                            event = _json.loads(line)
-                            msg = event.get("message") or {}
-                            delta = str(msg.get("content") or "")
-                            if delta:
-                                followup_parts.append(delta)
-                                yield _sse("delta", {
-                                    "type": "delta",
-                                    "run_id": run.run_id,
-                                    "delta": delta,
-                                })
-                            if event.get("done"):
-                                break
-                except Exception:
-                    pass
+                followup_queue: asyncio.Queue = asyncio.Queue()
+                followup_sentinel = object()
+
+                def _pump_followup() -> None:
+                    try:
+                        with urllib_request.urlopen(followup_req, timeout=120) as resp:
+                            for raw_line in resp:
+                                line = raw_line.decode("utf-8").strip()
+                                if not line:
+                                    continue
+                                ev = _json.loads(line)
+                                msg = ev.get("message") or {}
+                                delta = str(msg.get("content") or "")
+                                if delta:
+                                    loop.call_soon_threadsafe(
+                                        followup_queue.put_nowait, delta
+                                    )
+                                if ev.get("done"):
+                                    break
+                    except Exception:
+                        pass
+                    finally:
+                        loop.call_soon_threadsafe(
+                            followup_queue.put_nowait, followup_sentinel
+                        )
+
+                loop.run_in_executor(None, _pump_followup)
+
+                while True:
+                    item = await followup_queue.get()
+                    if item is followup_sentinel:
+                        break
+                    followup_parts.append(item)
+                    yield _sse("delta", {
+                        "type": "delta",
+                        "run_id": run.run_id,
+                        "delta": item,
+                    })
 
                 followup_text = "".join(followup_parts).strip()
                 if not followup_text:

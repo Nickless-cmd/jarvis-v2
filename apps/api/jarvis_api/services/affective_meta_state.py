@@ -7,6 +7,9 @@ from core.runtime.db import (
     get_latest_cognitive_personality_vector,
     get_latest_cognitive_relationship_texture,
     get_latest_cognitive_rhythm_state,
+    get_private_self_model,
+    get_protected_inner_voice,
+    recent_visible_runs,
 )
 
 def build_affective_meta_state_surface() -> dict[str, object]:
@@ -27,6 +30,8 @@ def _build_affective_meta_state_surface_uncached() -> dict[str, object]:
         personality_vector=_safe_personality_vector(),
         relationship_texture=_safe_relationship_texture(),
         rhythm_state=_safe_rhythm_state(),
+        last_run_finished_at=_safe_last_run_finished_at(),
+        cognitive_residue=_safe_cognitive_residue(),
     )
 
 
@@ -43,6 +48,8 @@ def build_affective_meta_state_from_sources(
     personality_vector: dict[str, object] | None,
     relationship_texture: dict[str, object] | None,
     rhythm_state: dict[str, object] | None,
+    last_run_finished_at: str | None = None,
+    cognitive_residue: dict[str, object] | None = None,
 ) -> dict[str, object]:
     built_at = datetime.now(UTC).isoformat()
 
@@ -130,6 +137,8 @@ def build_affective_meta_state_from_sources(
         idle_consolidation_summary=consolidation_summary,
         dream_articulation_summary=dream_summary,
         inner_voice_state=voice_result,
+        last_run_finished_at=last_run_finished_at,
+        cognitive_residue=cognitive_residue or {},
     )
     bearing = _derive_bearing(
         affective_state=affective_state,
@@ -294,6 +303,43 @@ def build_affective_meta_prompt_section(surface: dict[str, object] | None = None
     )
 
 
+_DECAY_WINDOW_SECONDS = 60
+
+
+def _seconds_since(timestamp_str: str | None) -> float | None:
+    """Return seconds elapsed since an ISO timestamp, or None if unparseable."""
+    if not timestamp_str:
+        return None
+    try:
+        ts = timestamp_str.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return (datetime.now(UTC) - dt).total_seconds()
+    except Exception:
+        return None
+
+
+def _affective_state_from_cognitive_residue(residue: dict[str, object]) -> str:
+    """Map private inner voice + self-model signals to a post-run affective state."""
+    mood_tone = str(residue.get("mood_tone") or "").strip()
+    confidence = str(residue.get("confidence") or "").strip()
+    recurring_tension = str(residue.get("recurring_tension") or "").strip()
+
+    if mood_tone == "guarded":
+        return "tense"
+    if mood_tone == "attentive":
+        return "attentive"
+    # Low confidence or unresolved tension → still processing
+    if confidence == "low" or (recurring_tension and not recurring_tension.startswith("stability")):
+        return "reflective"
+    if mood_tone == "steady" and confidence == "high":
+        return "settled"
+    if mood_tone == "steady":
+        return "attentive"
+    return "settled"
+
+
 def _derive_affective_state(
     *,
     embodied_state: str,
@@ -305,6 +351,8 @@ def _derive_affective_state(
     idle_consolidation_summary: dict[str, object],
     dream_articulation_summary: dict[str, object],
     inner_voice_state: dict[str, object],
+    last_run_finished_at: str | None = None,
+    cognitive_residue: dict[str, object] | None = None,
 ) -> str:
     if embodied_state in {"strained", "degraded"} or strain_level == "high":
         return "burdened"
@@ -325,6 +373,13 @@ def _derive_affective_state(
         return "reflective"
     if int(loop_summary.get("standby_count") or 0) > 0 or embodied_state in {"loaded", "recovering"}:
         return "attentive"
+
+    # Decay window: within N seconds of last run, use cognitive residue instead of "settled"
+    seconds_since_run = _seconds_since(last_run_finished_at)
+    if seconds_since_run is not None and seconds_since_run < _DECAY_WINDOW_SECONDS:
+        if cognitive_residue:
+            return _affective_state_from_cognitive_residue(cognitive_residue)
+
     return "settled"
 
 
@@ -459,3 +514,33 @@ def _safe_inner_voice_state() -> dict[str, object]:
     from apps.api.jarvis_api.services.inner_voice_daemon import get_inner_voice_daemon_state
 
     return get_inner_voice_daemon_state()
+
+
+def _safe_last_run_finished_at() -> str | None:
+    """Return finished_at timestamp of the most recent visible run, or None."""
+    try:
+        runs = recent_visible_runs(limit=1)
+        if runs:
+            return runs[0].get("finished_at")
+    except Exception:
+        pass
+    return None
+
+
+def _safe_cognitive_residue() -> dict[str, object]:
+    """Fetch mood_tone, confidence, and recurring_tension from private cognitive layers."""
+    residue: dict[str, object] = {}
+    try:
+        voice = get_protected_inner_voice()
+        if voice:
+            residue["mood_tone"] = voice.get("mood_tone") or ""
+    except Exception:
+        pass
+    try:
+        model = get_private_self_model()
+        if model:
+            residue["confidence"] = model.get("confidence") or ""
+            residue["recurring_tension"] = model.get("recurring_tension") or ""
+    except Exception:
+        pass
+    return residue

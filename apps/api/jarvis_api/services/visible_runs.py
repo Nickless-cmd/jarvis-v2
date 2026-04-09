@@ -643,6 +643,27 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 if followup_tool_calls:
                     second_round_results = _execute_simple_tool_calls(followup_tool_calls)
                     for sr in second_round_results:
+                        if sr["status"] == "approval_needed":
+                            approval_id = f"approval-{uuid4().hex[:12]}"
+                            _PENDING_APPROVALS[approval_id] = {
+                                "tool_name": sr["tool_name"],
+                                "arguments": sr["arguments"],
+                                "result": sr["result"],
+                                "run_id": run.run_id,
+                                "session_id": run.session_id,
+                                "created_at": datetime.now(UTC).isoformat(),
+                            }
+                            yield _sse("approval_request", {
+                                "type": "approval_request",
+                                "approval_id": approval_id,
+                                "tool": sr["tool_name"],
+                                "message": sr["result"].get("message", ""),
+                                "detail": (
+                                    sr["result"].get("path")
+                                    or sr["result"].get("command", "")
+                                ),
+                            })
+                            continue
                         yield _sse("capability", {
                             "type": "tool_result",
                             "tool": sr["tool_name"],

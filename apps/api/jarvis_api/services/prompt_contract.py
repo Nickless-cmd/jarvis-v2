@@ -2498,7 +2498,13 @@ def _recent_transcript_section(
         "Newest line is last.",
     ]
     for item in history[-limit:]:
-        role = "User" if item["role"] == "user" else "Jarvis"
+        raw_role = item["role"]
+        if raw_role == "user":
+            role = "User"
+        elif raw_role == "tool":
+            role = "Tool"
+        else:
+            role = "Jarvis"
         content = " ".join(str(item.get("content") or "").split())
         if len(content) > 800:
             content = content[:799].rstrip() + "…"

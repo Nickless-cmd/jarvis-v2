@@ -495,13 +495,20 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     },
                 )
 
-                # Send tool results as SSE events
+                # Send tool results as SSE events + persist as role:tool
                 for sr in simple_results:
                     yield _sse("capability", {
                         "type": "tool_result",
                         "tool": sr["tool_name"],
                         "status": sr["status"],
                     })
+                    if run.session_id:
+                        tool_content = f"[{sr['tool_name']}]: {sr['result_text'][:800]}"
+                        append_chat_message(
+                            session_id=run.session_id,
+                            role="tool",
+                            content=tool_content,
+                        )
 
                 # Build followup for the model with tool results
                 from apps.api.jarvis_api.services.ollama_visible_prompt import (
@@ -623,6 +630,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "run_id": run.run_id,
                             "delta": f"\n{summary}",
                         })
+                        if run.session_id:
+                            append_chat_message(
+                                session_id=run.session_id,
+                                role="tool",
+                                content=f"[{sr['tool_name']}]: {sr['result_text'][:800]}",
+                            )
 
                 followup_text = "".join(followup_parts).strip()
                 if not followup_text:

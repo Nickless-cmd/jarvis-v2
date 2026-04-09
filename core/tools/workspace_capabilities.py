@@ -32,11 +32,18 @@ APPEND_DAILY_MEMORY_PREFIX = "APPEND_DAILY_MEMORY:"
 PROPOSE_SOURCE_EDIT_PREFIX = "PROPOSE_SOURCE_EDIT:"
 WRITE_EXTERNAL_FILE_PREFIX = "WRITE_EXTERNAL_FILE:"
 RUNTIME_INSPECT_PREFIX = "RUNTIME_INSPECT:"
+PROJECT_GREP_PREFIX = "PROJECT_GREP:"
+MULTI_READ_PREFIX = "MULTI_READ:"
+PROJECT_OUTLINE_PREFIX = "PROJECT_OUTLINE:"
 MAX_FILE_OUTPUT_CHARS = 8000
 MAX_SEARCH_MATCHES = 5
 MAX_MATCH_EXCERPT_CHARS = 160
 MAX_EXEC_OUTPUT_CHARS = 4000
 MAX_EXEC_SECONDS = 8
+MAX_MULTI_READ_FILES = 10
+MAX_MULTI_READ_CHARS = 24000
+MAX_GREP_MATCHES = 50
+MAX_GREP_MATCH_CHARS = 200
 _LAST_CAPABILITY_INVOCATION: dict[str, object] | None = None
 NON_DESTRUCTIVE_EXEC_ALLOWLIST = {
     "cd",
@@ -605,6 +612,18 @@ def _section_summary(section: dict[str, str]) -> dict[str, object]:
         name = heading[len(RUNTIME_INSPECT_PREFIX) :].strip()
         execution_mode = "runtime-event-read"
         runnable = True
+    elif heading.startswith(PROJECT_GREP_PREFIX):
+        name = heading[len(PROJECT_GREP_PREFIX) :].strip()
+        execution_mode = "project-grep"
+        runnable = True
+    elif heading.startswith(MULTI_READ_PREFIX):
+        name = heading[len(MULTI_READ_PREFIX) :].strip()
+        execution_mode = "multi-external-file-read"
+        runnable = True
+    elif heading.startswith(PROJECT_OUTLINE_PREFIX):
+        name = heading[len(PROJECT_OUTLINE_PREFIX) :].strip()
+        execution_mode = "project-outline"
+        runnable = True
     else:
         name = heading
         execution_mode = "declared-only"
@@ -701,6 +720,15 @@ def _invoke_runnable_capability(
 
     if summary["execution_mode"] == "runtime-event-read":
         return _execute_runtime_event_read(summary)
+
+    if summary["execution_mode"] == "project-grep":
+        return _execute_project_grep(summary, command_text)
+
+    if summary["execution_mode"] == "multi-external-file-read":
+        return _execute_multi_file_read(summary, command_text, workspace_dir)
+
+    if summary["execution_mode"] == "project-outline":
+        return _execute_project_outline(summary, command_text)
 
     if summary["execution_mode"] == "workspace-file-read":
         target_path = str(summary.get("target_path") or "").strip()
@@ -1992,6 +2020,9 @@ def _approval_policy_for_execution_mode(execution_mode: str) -> str:
         "workspace-daily-memory-append",
         "autonomy-proposal-source-edit",
         "runtime-event-read",
+        "project-grep",
+        "multi-external-file-read",
+        "project-outline",
     }:
         return "not-needed"
     if execution_mode in {
@@ -2028,6 +2059,9 @@ def classify_workspace_execution_mode(execution_mode: str) -> dict[str, object]:
         "workspace-daily-memory-append",
         "autonomy-proposal-source-edit",
         "runtime-event-read",
+        "project-grep",
+        "multi-external-file-read",
+        "project-outline",
         "guidance-only",
         "declared-only",
         "unsupported",
@@ -2292,6 +2326,226 @@ def _execute_runtime_event_read(summary: dict[str, object]) -> dict[str, object]
             "text": text_body,
         },
         "detail": f"Read {len(lines)} recent runtime events.",
+    }
+
+
+def _execute_project_grep(
+    summary: dict[str, object],
+    command_text: str | None,
+) -> dict[str, object]:
+    """Grep across PROJECT_ROOT for a pattern. Read-only, no approval."""
+    pattern = str(command_text or "").strip()
+    if not pattern:
+        return {
+            "capability": summary,
+            "status": "blocked-missing-pattern",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=False),
+            "result": None,
+            "detail": "Project grep requires a search pattern in command_text.",
+        }
+    argv = [
+        "grep", "-rn", "--color=never",
+        "--include=*.py", "--include=*.md", "--include=*.json",
+        "--include=*.yaml", "--include=*.yml", "--include=*.toml",
+        "--include=*.ts", "--include=*.tsx", "--include=*.jsx",
+        "--include=*.js", "--include=*.css", "--include=*.html",
+        "--exclude-dir=.git", "--exclude-dir=node_modules",
+        "--exclude-dir=__pycache__", "--exclude-dir=.claude",
+        "--exclude-dir=dist", "--exclude-dir=build",
+        "-m", str(MAX_GREP_MATCHES),
+        pattern,
+        ".",
+    ]
+    try:
+        completed = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=MAX_EXEC_SECONDS,
+            cwd=str(PROJECT_ROOT),
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "capability": summary,
+            "status": "blocked-timeout",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=True),
+            "result": None,
+            "detail": f"Grep timed out after {MAX_EXEC_SECONDS}s.",
+        }
+    output = str(completed.stdout or "").strip()
+    lines = output.splitlines()[:MAX_GREP_MATCHES]
+    bounded_lines: list[str] = []
+    for line in lines:
+        if len(line) > MAX_GREP_MATCH_CHARS:
+            line = line[: MAX_GREP_MATCH_CHARS - 1] + "…"
+        bounded_lines.append(line)
+    text_body = "\n".join(bounded_lines) if bounded_lines else "[no matches]"
+    if len(text_body) > MAX_FILE_OUTPUT_CHARS:
+        text_body = text_body[: MAX_FILE_OUTPUT_CHARS - 1].rstrip() + "…"
+    return {
+        "capability": summary,
+        "status": "executed",
+        "execution_mode": summary["execution_mode"],
+        "approval": _approval_result(summary, approved=False, granted=True),
+        "result": {
+            "type": "project-grep",
+            "pattern": pattern,
+            "match_count": len(bounded_lines),
+            "text": text_body,
+        },
+        "detail": f"Grep found {len(bounded_lines)} matches for '{pattern}'.",
+    }
+
+
+def _execute_multi_file_read(
+    summary: dict[str, object],
+    command_text: str | None,
+    workspace_dir: Path,
+) -> dict[str, object]:
+    """Read multiple project files in one call. Read-only, no approval."""
+    raw_paths = str(command_text or "").strip()
+    if not raw_paths:
+        return {
+            "capability": summary,
+            "status": "blocked-missing-paths",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=False),
+            "result": None,
+            "detail": "Multi-read requires comma-separated file paths in command_text.",
+        }
+    path_list = [p.strip() for p in raw_paths.split(",") if p.strip()]
+    if len(path_list) > MAX_MULTI_READ_FILES:
+        path_list = path_list[:MAX_MULTI_READ_FILES]
+    parts: list[str] = []
+    files_read = 0
+    total_chars = 0
+    per_file_limit = MAX_MULTI_READ_CHARS // max(len(path_list), 1)
+    for raw_path in path_list:
+        candidate = _resolve_external_path(workspace_dir, raw_path)
+        if candidate is None or not candidate.exists() or not candidate.is_file():
+            parts.append(f"--- file: {raw_path} ---\n[not found]")
+            continue
+        try:
+            text = candidate.read_text(encoding="utf-8", errors="replace")
+        except (PermissionError, OSError):
+            parts.append(f"--- file: {raw_path} ---\n[permission denied]")
+            continue
+        if len(text) > per_file_limit:
+            text = text[: per_file_limit - 1].rstrip() + "…"
+        parts.append(f"--- file: {candidate} ---\n{text}")
+        files_read += 1
+        total_chars += len(text)
+        if total_chars >= MAX_MULTI_READ_CHARS:
+            break
+    text_body = "\n\n".join(parts)
+    if len(text_body) > MAX_MULTI_READ_CHARS:
+        text_body = text_body[: MAX_MULTI_READ_CHARS - 1].rstrip() + "…"
+    return {
+        "capability": summary,
+        "status": "executed",
+        "execution_mode": summary["execution_mode"],
+        "approval": _approval_result(summary, approved=False, granted=True),
+        "result": {
+            "type": "multi-external-file-read",
+            "files_requested": len(path_list),
+            "files_read": files_read,
+            "text": text_body,
+        },
+        "detail": f"Read {files_read} of {len(path_list)} requested files.",
+    }
+
+
+def _execute_project_outline(
+    summary: dict[str, object],
+    command_text: str | None,
+) -> dict[str, object]:
+    """List project files with line counts. Read-only, no approval."""
+    subdir = str(command_text or "").strip() or "."
+    target_dir = Path(PROJECT_ROOT) / subdir
+    if not target_dir.exists() or not target_dir.is_dir():
+        return {
+            "capability": summary,
+            "status": "blocked-invalid-path",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=False),
+            "result": None,
+            "detail": f"Directory not found: {subdir}",
+        }
+    try:
+        resolved = target_dir.resolve()
+        project_resolved = Path(PROJECT_ROOT).resolve()
+        resolved.relative_to(project_resolved)
+    except ValueError:
+        return {
+            "capability": summary,
+            "status": "blocked-scope-violation",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=False),
+            "result": None,
+            "detail": "Path must be within project root.",
+        }
+    argv = [
+        "find", str(resolved),
+        "-type", "f",
+        "(", "-name", "*.py", "-o", "-name", "*.md", "-o", "-name", "*.json",
+        "-o", "-name", "*.yaml", "-o", "-name", "*.yml", "-o", "-name", "*.toml",
+        "-o", "-name", "*.ts", "-o", "-name", "*.tsx", "-o", "-name", "*.js",
+        "-o", "-name", "*.css", "-o", "-name", "*.html", ")",
+        "-not", "-path", "*/.git/*",
+        "-not", "-path", "*/node_modules/*",
+        "-not", "-path", "*/__pycache__/*",
+        "-not", "-path", "*/.claude/*",
+    ]
+    try:
+        find_result = subprocess.run(
+            argv,
+            capture_output=True,
+            text=True,
+            timeout=MAX_EXEC_SECONDS,
+            cwd=str(PROJECT_ROOT),
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "capability": summary,
+            "status": "blocked-timeout",
+            "execution_mode": summary["execution_mode"],
+            "approval": _approval_result(summary, approved=False, granted=True),
+            "result": None,
+            "detail": f"Outline timed out after {MAX_EXEC_SECONDS}s.",
+        }
+    file_paths = [
+        p.strip() for p in find_result.stdout.strip().splitlines() if p.strip()
+    ][:100]
+    entries: list[tuple[str, int]] = []
+    for fp in file_paths:
+        try:
+            line_count = sum(1 for _ in open(fp, encoding="utf-8", errors="replace"))
+            rel = str(Path(fp).relative_to(project_resolved))
+            entries.append((rel, line_count))
+        except (OSError, ValueError):
+            continue
+    entries.sort(key=lambda e: -e[1])
+    lines = [f"{count:>6} lines  {path}" for path, count in entries]
+    total = sum(c for _, c in entries)
+    lines.append(f"\n{total:>6} lines  TOTAL ({len(entries)} files)")
+    text_body = "\n".join(lines)
+    if len(text_body) > MAX_FILE_OUTPUT_CHARS:
+        text_body = text_body[: MAX_FILE_OUTPUT_CHARS - 1].rstrip() + "…"
+    return {
+        "capability": summary,
+        "status": "executed",
+        "execution_mode": summary["execution_mode"],
+        "approval": _approval_result(summary, approved=False, granted=True),
+        "result": {
+            "type": "project-outline",
+            "subdir": subdir,
+            "file_count": len(entries),
+            "total_lines": total,
+            "text": text_body,
+        },
+        "detail": f"Outlined {len(entries)} files ({total} lines) in {subdir}.",
     }
 
 

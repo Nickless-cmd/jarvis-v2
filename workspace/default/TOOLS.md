@@ -26,11 +26,21 @@ Callable now:
 - `tool:write-user-profile`
 - `tool:list-workspace-files`
 - `tool:list-project-files`
+- `tool:propose-source-edit`
+- `tool:read-recent-runtime-events`
+- `tool:grep-project`
+- `tool:read-project-files`
+- `tool:project-outline`
 
 Approval-gated now:
 - `tool:propose-workspace-memory-update`
 - `tool:rewrite-workspace-memory`
 - `tool:propose-external-repo-file-update`
+
+Note: `tool:propose-source-edit` is callable without approval — it
+only FILES a niveau 2 autonomy proposal. The proposal itself is
+approval-gated and waits in the queue until Bjørn clicks Approve in
+Mission Control's Operations tab. Filing is free; execution is gated.
 
 Write proposals for non-memory workspace files are approval-gated.
 Memory writes (MEMORY.md) execute directly without approval.
@@ -206,9 +216,82 @@ path: ${PROJECT_ROOT}/README.md
 Proposes a bounded external file update for the repository README.
 This is approval-gated and is not auto-executable.
 
+## PROPOSE_SOURCE_EDIT: propose source edit
+target_from: capability-arg
+
+Files a Niveau 2 autonomy proposal for editing a source file in the
+repo (core/, apps/, scripts/, tests/, workspace/templates/, etc.).
+This is your way to actually close open loops in the codebase — no
+more "vil du have jeg dykker ned?". File the proposal, Bjørn sees it
+in MC, approves or rejects with one click, and the executor applies
+the patch with verification.
+
+Path safety constraints (enforced by executor):
+- Must be under /media/projects/jarvis-v2/
+- Must NOT be under .git/, .claude/, node_modules/, __pycache__/,
+  workspace/default/runtime/
+- Must be one of: .py .md .json .yaml .yml .ts .tsx .jsx .js .css .html .toml .txt
+- File must already exist (no creating new files via this path)
+- Base content fingerprint must match disk before apply (atomic guard
+  against editing a file that has changed since you read it)
+
+Required arguments:
+- target_path: absolute path to the source file
+- base_fingerprint: sha1[:16] of the file content you read (so we can
+  verify nothing changed under your feet)
+- new_content: the FULL new file content (not a diff — full file)
+- rationale: why this edit closes a real loop, in one sentence
+
+To file, use block syntax with the new content as the body:
+```
+<capability-call id="tool:propose-source-edit"
+                 target_path="/media/projects/jarvis-v2/core/foo.py"
+                 base_fingerprint="abc123def4567890"
+                 rationale="Closes open loop on missing UTC import">
+(full new file content here, as it should appear on disk)
+</capability-call>
+```
+
+The capability returns a proposal_id. Tell Bjørn the proposal is
+filed and which file it touches — then wait. Do not assume execution.
+
 ## RUNTIME_INSPECT: read recent runtime events
 
 Reads the 30 most recent eventbus events Jarvis' own runtime has emitted (heartbeat ticks, capability invocations, signal updates, conflict outcomes, ping decisions, etc.).
 Use this to debug your own behavior, audit recent activity, or understand what the runtime has been doing between turns when you cannot remember.
 This is read-only and does not require approval.
 Bind it like other tools: `<capability-call id="tool:read-recent-runtime-events" />`
+
+## PROJECT_GREP: grep project codebase
+command_from: invocation-argument
+
+Searches across the entire project codebase for a pattern (regex supported).
+Returns matching lines with file paths and line numbers. Max 50 matches.
+Use this to find functions, classes, imports, patterns, or any text across all source files.
+This is read-only and does not require approval.
+Always bind the pattern as command_text:
+```
+<capability-call id="tool:grep-project" command_text="def _read_bounded_text" />
+```
+
+## MULTI_READ: read multiple project files
+command_from: invocation-argument
+
+Reads up to 10 project files in a single call. Much more efficient than reading files one at a time.
+Use this for code analysis, architecture review, or understanding how multiple files interact.
+Pass comma-separated file paths (absolute or relative to project root) as command_text.
+This is read-only and does not require approval.
+```
+<capability-call id="tool:read-project-files" command_text="core/eventbus/bus.py, core/eventbus/events.py, core/runtime/config.py" />
+```
+
+## PROJECT_OUTLINE: project file outline
+command_from: invocation-argument
+
+Shows all source files in a project directory with line counts, sorted by size (largest first).
+Use this to understand project structure and identify key files before reading them.
+Pass a subdirectory path (relative to project root) or omit for full project.
+This is read-only and does not require approval.
+```
+<capability-call id="tool:project-outline" command_text="core/" />
+```

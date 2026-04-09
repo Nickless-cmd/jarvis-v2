@@ -108,8 +108,8 @@ button { cursor: pointer; }
 .session-item:focus-visible {
   outline:none; border-color:rgba(104,163,255,.28); background:#141d28;
 }
-.session-item.active { border-color: rgba(40,177,163,.22); background:#16202c; }
-.session-item.active:hover { background:#172330; }
+.session-item.active { border-color: rgba(40,177,163,.22); background:rgba(14,22,34,.85); box-shadow: 0 0 0 1px rgba(40,177,163,.06); }
+.session-item.active:hover { background:rgba(16,26,40,.9); }
 .session-item-title {
   font-size: 11px; color: #e4e6ed; margin-bottom: 2px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

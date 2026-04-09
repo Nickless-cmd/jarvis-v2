@@ -665,9 +665,10 @@ button { cursor: pointer; }
   width:100%; max-width:100%; overflow:auto; flex-shrink: 0;
 }
 .mc-tab {
-  border:none; background:transparent; color:#8b909e; border-radius:8px; padding:8px 14px; white-space:nowrap; font-size:12px;
+  border:1px solid transparent; background:transparent; color:#8b909e; border-radius:8px; padding:8px 14px; white-space:nowrap; font-size:12px;
+  transition: border-color .14s ease, background .14s ease, color .14s ease;
 }
-.mc-tab.active { background:rgba(40,177,163,.12); color:#e4e6ed; }
+.mc-tab.active { background:rgba(14,22,32,.9); border-color:rgba(40,177,163,.18); color:#e4e6ed; box-shadow: 0 0 8px rgba(40,177,163,.06); }
 .mc-tab-page, .mc-observability-shell { display:flex; flex-direction:column; gap:8px; min-height:0; width:100%; box-sizing:border-box; }
 .mc-summary-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px; width:100%; }
 .now-section { background:linear-gradient(135deg, rgba(40,177,163,.06) 0%, rgba(40,177,163,.02) 100%); border:1px solid rgba(40,177,163,.12); border-radius:12px; padding:14px; }

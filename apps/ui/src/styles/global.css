@@ -73,9 +73,10 @@ button { cursor: pointer; }
   border-radius:16px; box-shadow: 0 18px 42px rgba(0,0,0,.24);
 }
 .support-card, .mc-stat {
-  background: #1c1f25;
-  border:1px solid rgba(255,255,255,.04);
+  background: linear-gradient(160deg, rgba(14,22,32,.96), rgba(10,16,24,.99));
+  border:1px solid rgba(40,177,163,.10);
   border-radius:10px; padding:10px 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.18);
 }
 .sidebar-sessions { display:flex; flex-direction:column; gap:10px; min-height: 0; flex:1; overflow:hidden; }
 .sidebar-sessions-head {
@@ -489,7 +490,7 @@ button { cursor: pointer; }
 .chat-support-rail::-webkit-scrollbar { display: none; }
 .chat-support-rail { -ms-overflow-style: none; scrollbar-width: none; }
 .support-rail { display:flex; flex-direction:column; gap:14px; }
-.support-card { padding:10px 12px; background: #1c1f25; border: 1px solid rgba(255,255,255,.04); border-radius: 10px; box-shadow: none; }
+.support-card { padding:10px 12px; background: linear-gradient(160deg, rgba(14,22,32,.96), rgba(10,16,24,.99)); border: 1px solid rgba(40,177,163,.10); border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.18); }
 .support-card.compact { padding:12px 14px; }
 .support-card-header { display:flex; flex-direction:column; gap:3px; margin-bottom:8px; }
 .support-card-kicker {

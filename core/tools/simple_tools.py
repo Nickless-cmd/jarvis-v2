@@ -642,6 +642,15 @@ def format_tool_result_for_model(name: str, result: dict[str, Any]) -> str:
     if text:
         return text
 
+    # Human-friendly summaries for common tool results
+    path = result.get("path", "")
+    if name == "write_file" and path:
+        size = result.get("size", "")
+        return f"Wrote {path}" + (f" ({size} bytes)" if size else "")
+    if name == "edit_file" and path:
+        n = result.get("replacements", 0)
+        return f"Edited {path} ({n} replacement{'s' if n != 1 else ''})"
+
     return json.dumps(
         {k: v for k, v in result.items() if k != "status"},
         ensure_ascii=False,

@@ -189,21 +189,32 @@ button { cursor: pointer; }
   background:rgba(19,28,39,.74); border:1px solid rgba(255,255,255,.06);
 }
 .empty-transcript-copy strong { display:block; margin-bottom:10px; font-size:18px; }
-.message-row { display:flex; gap:10px; align-items:flex-start; max-width: 84%; animation: msgIn .18s ease; }
-.message-row.user { margin-left:auto; flex-direction: row-reverse; }
-.message-avatar {
-  width:28px; height:28px; border-radius:8px; display:grid; place-items:center; flex:0 0 auto;
-  background:#162231; color:#5ab8a0; border:1px solid rgba(255,255,255,.06);
+.message-row { display:flex; flex-direction:column; gap:2px; max-width: 86%; animation: msgIn .18s ease; }
+.message-row.user { margin-left:auto; align-items:flex-end; }
+.message-avatar { display:none; }
+.message-name {
+  font-size:9px; letter-spacing:.09em; text-transform:uppercase;
+  color:rgba(40,177,163,.45); padding:0 2px; margin-bottom:1px;
 }
-.message-row.user .message-avatar { color:#68a3ff; }
+.message-row.user .message-name { color:rgba(104,163,255,.35); }
 .message-bubble {
-  min-width:0; padding:8px 0; border-radius:0; background:transparent; border:none;
+  min-width:0; padding:7px 12px;
+  border-left:2px solid rgba(40,177,163,.28); background:transparent;
 }
 .message-row.user .message-bubble {
-  background:linear-gradient(180deg, #1a2a3d, #172435); border:1px solid rgba(104,163,255,.1); border-radius:16px; padding:8px 12px;
+  border-left:none; border-right:2px solid rgba(104,163,255,.22);
+  background:rgba(104,163,255,.04); border-radius:10px 0 0 10px; padding:7px 12px;
 }
-.message-bubble.pending { border-color: rgba(40,177,163,.18); }
-.message-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-bottom:6px; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,.08); color:#8b909e; font-size:11px; }
+.message-bubble.pending { border-color: rgba(40,177,163,.45); }
+.message-row.user .message-bubble.pending { border-color: rgba(104,163,255,.4); }
+.message-time {
+  font-size:9px; color:#2e3848; padding:0 2px; margin-top:1px;
+  opacity:0; transition: opacity .15s ease;
+}
+.message-row:hover .message-time { opacity:1; }
+.message-row.user .message-time { text-align:right; }
+/* hide old meta bar */
+.message-meta { display:none; }
 /* Markdown content inside chat bubbles */
 .message-content { line-height:1.58; font-size:14px; color:#e4e6ed; }
 .message-content p { margin:0 0 0.5em 0; }

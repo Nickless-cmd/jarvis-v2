@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { Bot, User } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ApprovalCard } from './ApprovalCard'
 
@@ -29,28 +28,23 @@ export function ChatTranscript({ messages, workingSteps }) {
       {messages.filter((m) => m.role !== 'tool').map((message) =>
         message.role === 'approval_request' ? (
           <article key={message.id} className="message-row assistant">
-            <div className="message-avatar"><Bot size={15} /></div>
             <div className="message-bubble">
               <ApprovalCard approval={message} />
             </div>
           </article>
         ) : (
           <article key={message.id} className={`message-row ${message.role}`}>
-            <div className="message-avatar">
-              {message.role === 'assistant' ? <Bot size={15} /> : <User size={15} />}
+            <div className="message-name">
+              {message.role === 'assistant' ? 'Jarvis' : 'Du'}
             </div>
             <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
-              <div className="message-meta">
-                <strong>{message.role === 'assistant' ? 'Jarvis' : 'You'}</strong>
-                {message.pending && workingSteps?.length > 0 ? (
-                  <span className="working-shimmer">
-                    {workingSteps.find(s => s.status === 'running')?.detail
-                      || workingSteps.find(s => s.status === 'running')?.action
-                      || 'working…'}
-                  </span>
-                ) : (
-                  <span>{message.ts}</span>
-                )}</div>
+              {message.pending && workingSteps?.length > 0 ? (
+                <span className="working-shimmer">
+                  {workingSteps.find(s => s.status === 'running')?.detail
+                    || workingSteps.find(s => s.status === 'running')?.action
+                    || 'working…'}
+                </span>
+              ) : null}
               {message.content ? (
                 <div className="message-content">
                   <MarkdownRenderer content={message.content} />
@@ -58,6 +52,7 @@ export function ChatTranscript({ messages, workingSteps }) {
                 </div>
               ) : null}
             </div>
+            <div className="message-time">{message.ts}</div>
           </article>
         )
       )}

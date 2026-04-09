@@ -27,7 +27,7 @@ def build_private_growth_note_payload(
     identity_signal = str(
         private_inner_note.get("identity_alignment") or "subordinate-to-visible"
     )[:48]
-    confidence = _confidence(str(private_inner_note.get("uncertainty") or "medium"))
+    confidence = _confidence(status=status, work_preview=work_preview)
     return {
         "record_id": f"private-growth-note:{run_id}",
         "source": "private-inner-note:private-runtime-grounded",
@@ -89,11 +89,11 @@ def _helpful_signal(*, status: str, focus: str, work_signal: str) -> str:
     return normalized[:48]
 
 
-def _confidence(uncertainty: str) -> str:
-    normalized = (uncertainty or "").strip().lower()
-    if normalized == "low":
-        return "medium"
-    if normalized == "medium":
+def _confidence(*, status: str, work_preview: str | None) -> str:
+    normalized = (status or "").strip().lower()
+    if normalized == "completed":
+        return "high" if (work_preview and len(work_preview.strip()) > 50) else "medium"
+    if normalized in {"failed", "cancelled"}:
         return "low"
     return "low"
 

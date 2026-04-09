@@ -2092,6 +2092,18 @@ def update_private_growth_note_enriched(
         conn.commit()
 
 
+def update_private_retained_memory_record_enriched(
+    *, run_id: str, enriched_value: str
+) -> None:
+    """Replace template retained_value with LLM-enriched lesson text."""
+    with connect() as conn:
+        conn.execute(
+            "UPDATE private_retained_memory_records SET retained_value = ? WHERE run_id = ?",
+            (enriched_value[:200], run_id),
+        )
+        conn.commit()
+
+
 def recent_private_growth_notes(limit: int = 5) -> list[dict[str, object]]:
     with connect() as conn:
         rows = conn.execute(

@@ -4056,6 +4056,14 @@ export const backend = {
     }
   },
 
+  async getSystemGit() {
+    try {
+      return await requestJson('/mc/system/git')
+    } catch {
+      return { branch: '', insertions: 0, deletions: 0, files_changed: 0, workspace: '' }
+    }
+  },
+
   async getCostSummary() {
     try {
       const data = await requestJson('/mc/cost/summary')

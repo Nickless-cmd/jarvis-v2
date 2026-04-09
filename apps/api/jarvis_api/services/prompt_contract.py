@@ -287,6 +287,14 @@ def build_visible_chat_prompt_assembly(
     parts.append(lane_clause)
     derived_inputs.append(f"lane identity ({lane})")
 
+    # Inject model awareness so the model knows what it is (not Claude, not GPT)
+    parts.append(
+        f"You are running as model: {model} via provider: {provider}. "
+        "You are Jarvis — not Claude, not ChatGPT, not any other assistant. "
+        "Your identity comes from your workspace files, not your training data."
+    )
+    derived_inputs.append("model identity awareness")
+
     capability_truth = _visible_capability_truth_instruction(compact=compact)
     # capability_truth is added via budget-controlled section below
     capability_ids_line = _visible_capability_id_summary()

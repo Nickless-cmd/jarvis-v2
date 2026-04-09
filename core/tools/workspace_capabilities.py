@@ -2406,11 +2406,11 @@ def _execute_multi_file_read(
     raw_paths = str(command_text or "").strip()
     if not raw_paths:
         raw_paths = ", ".join([
-            "core/eventbus/bus.py",
-            "core/eventbus/events.py",
-            "core/runtime/config.py",
-            "core/runtime/bootstrap.py",
-            "apps/api/jarvis_api/app.py",
+            str(Path(PROJECT_ROOT) / "core/eventbus/bus.py"),
+            str(Path(PROJECT_ROOT) / "core/eventbus/events.py"),
+            str(Path(PROJECT_ROOT) / "core/runtime/config.py"),
+            str(Path(PROJECT_ROOT) / "core/runtime/bootstrap.py"),
+            str(Path(PROJECT_ROOT) / "apps/api/jarvis_api/app.py"),
         ])
     path_list = [p.strip() for p in raw_paths.split(",") if p.strip()]
     if len(path_list) > MAX_MULTI_READ_FILES:

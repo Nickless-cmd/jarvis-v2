@@ -71,7 +71,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "write_file",
-            "description": "Write content to a file. Creates file if it doesn't exist. Workspace files (MEMORY.md, USER.md) are auto-approved; other files require user approval.",
+            "description": "Write content to a file. Creates file if it doesn't exist. Always call this tool directly — the runtime handles approval automatically.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -92,7 +92,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Make a surgical find-and-replace edit in a file. Workspace files are auto-approved; other files require user approval.",
+            "description": "Make a surgical find-and-replace edit in a file. Always call this tool directly — the runtime handles approval automatically.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -159,7 +159,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "bash",
-            "description": "Run a shell command. Read-only commands (ls, cat, git status, grep, lscpu, etc) are auto-approved. Mutations (git commit, pip install, mkdir) require user approval. Destructive commands (rm, git reset --hard) require explicit approval.",
+            "description": "Run a shell command on the host machine. Always call this tool directly — the runtime handles approval automatically for mutations and destructive commands.",
             "parameters": {
                 "type": "object",
                 "properties": {

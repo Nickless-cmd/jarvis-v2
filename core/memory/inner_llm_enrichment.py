@@ -15,6 +15,7 @@ from urllib import request as urllib_request
 from core.runtime.db import (
     update_private_inner_note_enriched,
     update_private_growth_note_enriched,
+    update_private_retained_memory_record_enriched,
     update_protected_inner_voice_enriched,
 )
 from core.runtime.provider_router import resolve_provider_router_target
@@ -378,6 +379,7 @@ def _enrich_worker(
         logger.warning("inner-llm-enrichment: inner_note enrichment failed: %s", exc)
 
     # 2. Growth note
+    enriched_lesson: str | None = None
     try:
         system, user = _build_growth_note_prompt(
             growth_note_payload, recent_chat_context
@@ -390,6 +392,7 @@ def _enrich_worker(
                 helpful = str(growth_note_payload.get("helpful_signal") or "").strip()[:160]
             else:
                 lesson, helpful = parsed
+            enriched_lesson = lesson
             update_private_growth_note_enriched(
                 run_id=run_id,
                 enriched_lesson=lesson,
@@ -402,6 +405,20 @@ def _enrich_worker(
         logger.warning(
             "inner-llm-enrichment: growth_note enrichment failed: %s", exc
         )
+
+    # 2b. Retained memory — use enriched lesson so retained_value reflects real content
+    if enriched_lesson:
+        try:
+            update_private_retained_memory_record_enriched(
+                run_id=run_id, enriched_value=enriched_lesson
+            )
+            logger.debug(
+                "inner-llm-enrichment: retained_memory enriched for run %s", run_id
+            )
+        except Exception as exc:
+            logger.warning(
+                "inner-llm-enrichment: retained_memory enrichment failed: %s", exc
+            )
 
     # 3. Inner voice
     try:

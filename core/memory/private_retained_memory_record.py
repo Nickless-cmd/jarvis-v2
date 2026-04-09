@@ -16,13 +16,13 @@ def build_private_retained_memory_record_payload(
         or private_development_state.get("retained_pattern")
         or private_growth_note.get("helpful_signal")
         or "retain-current-pattern"
-    )[:96]
+    )[:200]
     retained_kind = _retained_kind(private_promotion_decision, private_growth_note)
-    retention_scope = str(
+    retention_scope = _humanize_scope(str(
         private_promotion_decision.get("promotion_scope")
         or private_self_model.get("identity_focus")
-        or "private-development"
-    )[:64]
+        or "general"
+    )[:64])
     retention_horizon = _retention_horizon(
         retention_scope=retention_scope,
         private_development_state=private_development_state,
@@ -65,6 +65,17 @@ def _retained_kind(
     return "held pattern"
 
 
+def _humanize_scope(scope: str) -> str:
+    scope_map = {
+        "private-development": "development",
+        "private-review": "review",
+        "private-watch": "observation",
+        "private-hold": "short-term",
+        "visible-work": "conversation",
+    }
+    return scope_map.get(scope, scope)
+
+
 def _retention_horizon(
     *,
     retention_scope: str,
@@ -74,13 +85,11 @@ def _retention_horizon(
     preferred_direction = str(
         private_development_state.get("preferred_direction") or ""
     ).strip()
-    identity_thread = str(private_development_state.get("identity_thread") or "").strip()
     growth_direction = str(private_self_model.get("growth_direction") or "").strip()
     if (
-        retention_scope == "private-development"
-        or identity_thread == "visible-work"
+        retention_scope in {"development", "private-development"}
         or preferred_direction.endswith("retain")
         or growth_direction.endswith(":retain")
     ):
-        return "development-stable"
-    return "short-term"
+        return "persistent"
+    return "transient"

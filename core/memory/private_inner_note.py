@@ -12,7 +12,7 @@ def build_private_inner_note_payload(
     created_at: str,
 ) -> dict[str, str]:
     note_kind = "work-status-signal"
-    focus = capability_id or "visible-work"
+    focus = capability_id or _derive_focus(user_message_preview)
     uncertainty = _uncertainty(status=status, work_preview=work_preview)
     identity_alignment = "subordinate-to-visible"
     work_signal = _work_signal(status=status, capability_id=capability_id)
@@ -92,6 +92,14 @@ def _signal_phrase(value: str) -> str:
     if normalized in {"failed", "cancelled"}:
         return "The pressure has not fully cleared."
     return "The thread is still present but bounded."
+
+
+def _derive_focus(user_message_preview: str | None) -> str:
+    """Derive a short topic label from the user's message when no capability_id is available."""
+    raw = (user_message_preview or "").strip()
+    if not raw:
+        return "conversation"
+    return " ".join(raw.split())[:48]
 
 
 def _uncertainty(*, status: str, work_preview: str | None) -> str:

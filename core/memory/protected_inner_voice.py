@@ -123,13 +123,13 @@ def _current_pull(
 ) -> str:
     reinforce = str(private_reflective_selection.get("reinforce") or "").strip()
     if reinforce:
-        return reinforce[:96]
+        return reinforce[:200]
 
     preferred_direction = str(
         private_development_state.get("preferred_direction") or ""
     ).strip()
     if preferred_direction:
-        return preferred_direction[:96]
+        return preferred_direction[:200]
 
     curiosity = str(private_state.get("curiosity") or "low").strip()
     if curiosity == "medium":

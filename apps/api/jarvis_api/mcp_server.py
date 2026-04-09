@@ -33,40 +33,40 @@ mcp = FastMCP("Jarvis V2")
 @mcp.tool
 def jarvis_memory_read() -> str:
     """Read Jarvis' cross-session memory (MEMORY.md)."""
-    event_bus.publish("mcp.tool_invoked", {"tool": "jarvis_memory_read"})
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_memory_read"})
     workspace = ensure_default_workspace()
     memory_path = workspace / "MEMORY.md"
     content = ""
     if memory_path.exists():
         content = memory_path.read_text(encoding="utf-8", errors="replace")
-    event_bus.publish("mcp.tool_completed", {"tool": "jarvis_memory_read"})
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_memory_read"})
     return content
 
 
 @mcp.tool
 def jarvis_memory_write(content: str) -> str:
     """Overwrite Jarvis' cross-session memory (MEMORY.md)."""
-    event_bus.publish("mcp.tool_invoked", {"tool": "jarvis_memory_write"})
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_memory_write"})
     workspace = ensure_default_workspace()
     memory_path = workspace / "MEMORY.md"
     memory_path.write_text(content, encoding="utf-8")
-    event_bus.publish("mcp.tool_completed", {"tool": "jarvis_memory_write"})
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_memory_write"})
     return f"MEMORY.md updated ({len(content)} chars)"
 
 
 @mcp.tool
 def jarvis_chat_sessions(limit: int = 20) -> str:
     """List Jarvis' chat sessions with metadata."""
-    event_bus.publish("mcp.tool_invoked", {"tool": "jarvis_chat_sessions"})
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_chat_sessions"})
     sessions = list_chat_sessions()[:limit]
-    event_bus.publish("mcp.tool_completed", {"tool": "jarvis_chat_sessions"})
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_chat_sessions"})
     return json.dumps(sessions, ensure_ascii=False, indent=2)
 
 
 @mcp.tool
 def jarvis_chat_history(session_id: str, limit: int = 50) -> str:
     """Get messages from a specific Jarvis chat session."""
-    event_bus.publish("mcp.tool_invoked", {"tool": "jarvis_chat_history"})
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_chat_history"})
     session = get_chat_session(session_id)
     if session is None:
         return json.dumps({"error": f"Session {session_id} not found"})
@@ -78,14 +78,14 @@ def jarvis_chat_history(session_id: str, limit: int = 50) -> str:
         "title": session.get("title"),
         "messages": messages,
     }
-    event_bus.publish("mcp.tool_completed", {"tool": "jarvis_chat_history"})
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_chat_history"})
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.tool
 def jarvis_identity() -> str:
     """Read Jarvis' identity files (SOUL.md, IDENTITY.md, USER.md)."""
-    event_bus.publish("mcp.tool_invoked", {"tool": "jarvis_identity"})
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_identity"})
     workspace = ensure_default_workspace()
     result = {}
     for filename in ("SOUL.md", "IDENTITY.md", "USER.md"):
@@ -94,14 +94,14 @@ def jarvis_identity() -> str:
             result[filename] = path.read_text(encoding="utf-8", errors="replace")
         else:
             result[filename] = ""
-    event_bus.publish("mcp.tool_completed", {"tool": "jarvis_identity"})
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_identity"})
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.tool
 def jarvis_cognitive_state() -> str:
     """Get Jarvis' current cognitive state: inner voice, self-model, retained memory."""
-    event_bus.publish("mcp.tool_invoked", {"tool": "jarvis_cognitive_state"})
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_cognitive_state"})
     inner_voice = get_protected_inner_voice()
     self_model = get_private_self_model()
     retained = get_private_retained_memory_record()
@@ -110,27 +110,27 @@ def jarvis_cognitive_state() -> str:
         "self_model": _safe_dict(self_model),
         "retained_memory": _safe_dict(retained),
     }
-    event_bus.publish("mcp.tool_completed", {"tool": "jarvis_cognitive_state"})
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_cognitive_state"})
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
 @mcp.tool
 def jarvis_retained_memories(limit: int = 10) -> str:
     """Get Jarvis' cross-session retained memory records."""
-    event_bus.publish("mcp.tool_invoked", {"tool": "jarvis_retained_memories"})
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_retained_memories"})
     records = recent_private_retained_memory_records(limit=limit)
-    event_bus.publish("mcp.tool_completed", {"tool": "jarvis_retained_memories"})
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_retained_memories"})
     return json.dumps([_safe_dict(r) for r in records], ensure_ascii=False, indent=2)
 
 
 @mcp.tool
 def jarvis_events(limit: int = 30, kind: str = "") -> str:
     """Get recent Jarvis eventbus events, optionally filtered by kind prefix."""
-    event_bus.publish("mcp.tool_invoked", {"tool": "jarvis_events"})
+    event_bus.publish("tool.mcp_invoked", {"tool": "jarvis_events"})
     events = event_bus.recent(limit=limit)
     if kind:
         events = [e for e in events if str(e.get("kind", "")).startswith(kind)]
-    event_bus.publish("mcp.tool_completed", {"tool": "jarvis_events"})
+    event_bus.publish("tool.mcp_completed", {"tool": "jarvis_events"})
     return json.dumps(events, ensure_ascii=False, default=str, indent=2)
 
 
@@ -147,7 +147,7 @@ def jarvis_chat(message: str, session_id: str = "") -> str:
     If no session_id, uses or creates a default MCP session.
     """
     event_bus.publish(
-        "mcp.tool_invoked", {"tool": "jarvis_chat", "message": message[:200]}
+        "tool.mcp_invoked", {"tool": "jarvis_chat", "message": message[:200]}
     )
 
     if not session_id:
@@ -168,7 +168,7 @@ def jarvis_chat(message: str, session_id: str = "") -> str:
     )
 
     event_bus.publish(
-        "mcp.tool_completed",
+        "tool.mcp_completed",
         {
             "tool": "jarvis_chat",
             "tokens": result.input_tokens + result.output_tokens,

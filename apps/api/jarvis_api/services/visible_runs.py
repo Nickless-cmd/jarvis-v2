@@ -555,7 +555,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
                 def _pump_followup() -> None:
                     try:
-                        with urllib_request.urlopen(followup_req, timeout=120) as resp:
+                        with urllib_request.urlopen(followup_req, timeout=90) as resp:
                             for raw_line in resp:
                                 line = raw_line.decode("utf-8").strip()
                                 if not line:
@@ -578,8 +578,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
                 loop.run_in_executor(None, _pump_followup)
 
+                # Read from queue with a timeout guard so we never hang forever
                 while True:
-                    item = await followup_queue.get()
+                    try:
+                        item = await asyncio.wait_for(
+                            followup_queue.get(), timeout=100
+                        )
+                    except asyncio.TimeoutError:
+                        break
                     if item is followup_sentinel:
                         break
                     followup_parts.append(item)
@@ -591,7 +597,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
                 followup_text = "".join(followup_parts).strip()
                 if not followup_text:
-                    # Model returned no text (maybe more tool_calls) — summarize results
                     summaries = [
                         f"[{sr['tool_name']}]: {sr['result_text'][:200]}"
                         for sr in simple_results
@@ -603,25 +608,44 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         "delta": followup_text,
                     })
 
-                _persist_session_assistant_message(run, followup_text)
-                set_last_visible_run_outcome(run, status="completed", text_preview=followup_text[:140])
+                # Send done FIRST, then persist in background
                 total_input_tokens = result.input_tokens * 2
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
-                record_cost(
-                    provider=run.provider,
-                    model=run.model,
-                    input_tokens=total_input_tokens,
-                    output_tokens=total_output_tokens,
-                    cost_usd=0.0,
-                    run_id=run.run_id,
-                    lane="visible",
-                )
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,
                     "input_tokens": total_input_tokens,
                     "output_tokens": total_output_tokens,
                 })
+
+                # Background: persist and record cost
+                _followup_text_ref = followup_text
+                _run_ref = run
+                _tokens = (total_input_tokens, total_output_tokens)
+                import threading as _threading
+
+                def _persist_tool_result() -> None:
+                    try:
+                        _persist_session_assistant_message(_run_ref, _followup_text_ref)
+                        set_last_visible_run_outcome(
+                            _run_ref, status="completed",
+                            text_preview=_followup_text_ref[:140],
+                        )
+                        record_cost(
+                            provider=_run_ref.provider,
+                            model=_run_ref.model,
+                            input_tokens=_tokens[0],
+                            output_tokens=_tokens[1],
+                            cost_usd=0.0,
+                            run_id=_run_ref.run_id,
+                            lane="visible",
+                        )
+                    except Exception:
+                        pass
+
+                _threading.Thread(
+                    target=_persist_tool_result, daemon=True
+                ).start()
                 return
 
         # ── Legacy XML capability-call fallback ──

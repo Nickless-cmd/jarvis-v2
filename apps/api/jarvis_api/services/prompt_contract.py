@@ -1084,7 +1084,7 @@ def _workspace_guidance_section(
 ) -> str | None:
     section = _workspace_file_section(
         path,
-        label=f"{label} guidance (not authority)",
+        label=label,
         max_lines=max_lines,
         max_chars=max_chars,
     )

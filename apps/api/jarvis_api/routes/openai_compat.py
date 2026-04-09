@@ -68,7 +68,7 @@ async def chat_completions(request: Request) -> JSONResponse | StreamingResponse
     append_chat_message(session_id=session_id, role="user", content=user_message)
 
     event_bus.publish(
-        "proxy.request_received",
+        "channel.proxy_request_received",
         {
             "provider": provider,
             "model": model,

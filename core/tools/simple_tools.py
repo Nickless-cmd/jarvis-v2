@@ -35,7 +35,8 @@ _AUTO_APPROVE_WRITE_PATHS = {
     str(WORKSPACE_DIR / "USER.md"),
 }
 _AUTO_APPROVE_WRITE_PREFIXES = [
-    str(WORKSPACE_DIR / "memory") + "/",
+    str(WORKSPACE_DIR) + "/",                          # all runtime workspace files
+    str(Path(PROJECT_ROOT) / "workspace" / "default") + "/",  # repo workspace template
 ]
 _BLOCKED_WRITE_PATTERNS = [
     "/.git/",

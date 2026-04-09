@@ -225,6 +225,9 @@ CAPABILITY_CALL_PREFIX = '<capability-call id="'
 CAPABILITY_CALL_SUFFIX = '" />'
 VISIBLE_CAPABILITY_ARG_NAMES = {"command_text", "target_path", "write_content"}
 
+# Pending tool approvals — keyed by approval_id
+_PENDING_APPROVALS: dict[str, dict] = {}
+
 
 @dataclass(slots=True)
 class VisibleRun:
@@ -496,7 +499,29 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 )
 
                 # Send tool results as SSE events + persist as role:tool
+                # For approval_needed, send approval_request SSE instead
                 for sr in simple_results:
+                    if sr["status"] == "approval_needed":
+                        approval_id = f"approval-{uuid4().hex[:12]}"
+                        _PENDING_APPROVALS[approval_id] = {
+                            "tool_name": sr["tool_name"],
+                            "arguments": sr["arguments"],
+                            "result": sr["result"],
+                            "run_id": run.run_id,
+                            "session_id": run.session_id,
+                            "created_at": datetime.now(UTC).isoformat(),
+                        }
+                        yield _sse("approval_request", {
+                            "type": "approval_request",
+                            "approval_id": approval_id,
+                            "tool": sr["tool_name"],
+                            "message": sr["result"].get("message", ""),
+                            "detail": (
+                                sr["result"].get("path")
+                                or sr["result"].get("command", "")
+                            ),
+                        })
+                        continue
                     yield _sse("capability", {
                         "type": "tool_result",
                         "tool": sr["tool_name"],
@@ -1528,6 +1553,44 @@ def _execute_simple_tool_calls(
             "status": result.get("status", "ok"),
         })
     return results
+
+
+def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
+    """Resolve a pending tool approval — execute if approved, discard if denied."""
+    from core.tools.simple_tools import execute_tool_force, format_tool_result_for_model
+
+    pending = _PENDING_APPROVALS.pop(approval_id, None)
+    if not pending:
+        return {"error": "Approval not found or expired", "status": "error"}
+
+    if not approved:
+        return {"status": "denied", "tool": pending["tool_name"]}
+
+    result = execute_tool_force(pending["tool_name"], pending["arguments"])
+    result_text = format_tool_result_for_model(pending["tool_name"], result)
+
+    if pending.get("session_id"):
+        try:
+            append_chat_message(
+                session_id=pending["session_id"],
+                role="tool",
+                content=f"[{pending['tool_name']}]: {result_text[:800]}",
+            )
+        except Exception:
+            pass
+
+    event_bus.publish("tool.approval_resolved", {
+        "approval_id": approval_id,
+        "tool": pending["tool_name"],
+        "approved": True,
+        "status": result.get("status", "ok"),
+    })
+
+    return {
+        "status": result.get("status", "ok"),
+        "tool": pending["tool_name"],
+        "result_text": result_text,
+    }
 
 
 def _extract_capability_plan(text: str) -> dict[str, object]:

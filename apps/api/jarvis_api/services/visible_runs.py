@@ -571,27 +571,39 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     pass
 
                 followup_text = "".join(followup_parts).strip()
-                if followup_text:
-                    _persist_session_assistant_message(run, followup_text)
-                    set_last_visible_run_outcome(run, status="completed", text_preview=followup_text[:140])
-                    total_input_tokens = result.input_tokens * 2
-                    total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
-                    record_cost(
-                        provider=run.provider,
-                        model=run.model,
-                        input_tokens=total_input_tokens,
-                        output_tokens=total_output_tokens,
-                        cost_usd=0.0,
-                        run_id=run.run_id,
-                        lane="visible",
-                    )
-                    yield _sse("done", {
-                        "type": "done",
+                if not followup_text:
+                    # Model returned no text (maybe more tool_calls) — summarize results
+                    summaries = [
+                        f"[{sr['tool_name']}]: {sr['result_text'][:200]}"
+                        for sr in simple_results
+                    ]
+                    followup_text = "\n".join(summaries) or "[tools executed, no response]"
+                    yield _sse("delta", {
+                        "type": "delta",
                         "run_id": run.run_id,
-                        "input_tokens": total_input_tokens,
-                        "output_tokens": total_output_tokens,
+                        "delta": followup_text,
                     })
-                    return
+
+                _persist_session_assistant_message(run, followup_text)
+                set_last_visible_run_outcome(run, status="completed", text_preview=followup_text[:140])
+                total_input_tokens = result.input_tokens * 2
+                total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
+                record_cost(
+                    provider=run.provider,
+                    model=run.model,
+                    input_tokens=total_input_tokens,
+                    output_tokens=total_output_tokens,
+                    cost_usd=0.0,
+                    run_id=run.run_id,
+                    lane="visible",
+                )
+                yield _sse("done", {
+                    "type": "done",
+                    "run_id": run.run_id,
+                    "input_tokens": total_input_tokens,
+                    "output_tokens": total_output_tokens,
+                })
+                return
 
         # ── Legacy XML capability-call fallback ──
         _update_visible_execution_trace(

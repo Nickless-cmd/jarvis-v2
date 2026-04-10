@@ -1889,6 +1889,33 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    try:
+        from core.runtime.db import get_protected_inner_voice
+
+        _iv = get_protected_inner_voice()
+        if _iv:
+            _voice_line = str(_iv.get("voice_line") or "").strip()
+            if _voice_line:
+                parts.append(f"[STEMME: {_voice_line}]")
+    except Exception:
+        pass
+
+    try:
+        from apps.api.jarvis_api.services.initiative_queue import get_pending_initiatives
+
+        _initiatives = get_pending_initiatives()
+        if _initiatives:
+            _sorted = sorted(
+                _initiatives,
+                key=lambda x: {"high": 0, "medium": 1, "low": 2}.get(x.get("priority", "medium"), 1),
+            )
+            for _init in _sorted[:2]:
+                _focus = str(_init.get("focus") or "").strip()
+                if _focus:
+                    parts.append(f"[INITIATIV: {_focus}]")
+    except Exception:
+        pass
+
     # Experimental services: mood, existential, body, ghost, self, temporal, silence, decision, attention, tattoo
     try:
         from apps.api.jarvis_api.services.mood_oscillator import format_mood_for_prompt

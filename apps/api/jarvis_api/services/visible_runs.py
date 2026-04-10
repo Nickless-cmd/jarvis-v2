@@ -814,6 +814,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             )
 
                 followup_text = "".join(followup_parts).strip()
+                # If the second pass produced no text (e.g. Ollama only returned
+                # tool_calls with no content), stream a minimal acknowledgement so
+                # the message doesn't disappear when loadSession() reloads from DB.
+                if not followup_text:
+                    followup_text = "Done."
+                    yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": followup_text})
 
                 total_input_tokens = result.input_tokens * 2
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)

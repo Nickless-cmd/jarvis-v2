@@ -3178,6 +3178,25 @@ def _validate_heartbeat_decision(
 ) -> dict[str, object]:
     decision_type = decision["decision_type"]
     execute_action = str(decision.get("execute_action") or "").strip()
+
+    # Downgrade execute/initiative → propose under high hardware pressure
+    if decision_type in {"execute", "initiative"}:
+        try:
+            from apps.api.jarvis_api.services.hardware_body import get_hardware_state
+            hw = get_hardware_state()
+            if hw.get("pressure") == "high":
+                logger.info(
+                    "heartbeat: downgraded %s→propose due to hardware-high pressure "
+                    "(cpu=%.0f%% ram=%.0f%%)",
+                    decision_type,
+                    hw.get("cpu_pct", 0),
+                    hw.get("ram_pct", 0),
+                )
+                decision = {**decision, "decision_type": "propose"}
+                decision_type = "propose"
+        except Exception:
+            pass
+
     if decision_type == "propose" and not bool(policy["allow_propose"]):
         return {
             "tick_id": tick_id,
@@ -5633,6 +5652,12 @@ def _tick_blocked_reason(merged_state: dict[str, object]) -> str:
         return "disabled"
     if str(merged_state["kill_switch"]) != "enabled":
         return "kill-switch-disabled"
+    try:
+        from apps.api.jarvis_api.services.hardware_body import get_hardware_state
+        if get_hardware_state().get("pressure") == "critical":
+            return "hardware-critical"
+    except Exception:
+        pass
     return ""
 
 

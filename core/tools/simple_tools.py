@@ -243,6 +243,33 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "search_memory",
+            "description": (
+                "Semantic search across your workspace memory files (MEMORY.md, USER.md, "
+                "SOUL.md, STANDING_ORDERS.md, SKILLS.md, and curated/daily memory notes). "
+                "Uses embeddings for true semantic recall — finds relevant context even when "
+                "exact keywords don't match. Use this to recall past decisions, learned facts, "
+                "or anything you wrote down about yourself or the user."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "What you're looking for — a question, topic, or concept",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results to return (default 5, max 10)",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "propose_source_edit",
             "description": (
                 "Propose a surgical edit to a source code file. The change goes into an "
@@ -916,6 +943,42 @@ def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_search_memory(args: dict[str, Any]) -> dict[str, Any]:
+    """Semantic search across workspace memory files."""
+    query = str(args.get("query") or "").strip()
+    if not query:
+        return {"status": "error", "error": "query is required"}
+    try:
+        limit = min(int(args.get("limit") or 5), 10)
+    except (TypeError, ValueError):
+        limit = 5
+    try:
+        from apps.api.jarvis_api.services.memory_search import search_memory
+        results = search_memory(query, limit=limit)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    if not results:
+        return {"status": "ok", "results": [], "text": f"No memory matches found for: {query}"}
+
+    lines = [f"Memory search: '{query}' — {len(results)} result(s)"]
+    for r in results:
+        score = r.get("score", 0)
+        source = r.get("source", "")
+        section = r.get("section", "")
+        text = r.get("text", "")
+        header = f"[{source}]" + (f" § {section}" if section else "")
+        lines.append(f"\n{header} (score={score:.2f})")
+        lines.append(f"  {text[:300]}")
+
+    return {
+        "status": "ok",
+        "query": query,
+        "results": results,
+        "text": "\n".join(lines),
+    }
+
+
 def _exec_propose_source_edit(args: dict[str, Any]) -> dict[str, Any]:
     """File a source-edit autonomy proposal."""
     from hashlib import sha1 as _sha1
@@ -1361,6 +1424,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "web_search": _exec_web_search,
     "list_initiatives": _exec_list_initiatives,
     "push_initiative": _exec_push_initiative,
+    "search_memory": _exec_search_memory,
     "propose_source_edit": _exec_propose_source_edit,
     "list_proposals": _exec_list_proposals,
     "schedule_task": _exec_schedule_task,

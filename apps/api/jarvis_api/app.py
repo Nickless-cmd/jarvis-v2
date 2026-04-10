@@ -23,6 +23,10 @@ from apps.api.jarvis_api.services.runtime_hook_runtime import (
     start_runtime_hook_runtime,
     stop_runtime_hook_runtime,
 )
+from apps.api.jarvis_api.services.mood_oscillator import (
+    register_event_listeners as start_mood_listener,
+    stop_event_listeners as stop_mood_listener,
+)
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.live import router as live_router
@@ -52,6 +56,7 @@ def create_app() -> FastAPI:
         start_heartbeat_scheduler()
         start_notification_bridge()
         start_scheduled_tasks_service()
+        start_mood_listener()
         event_bus.publish("runtime.started", {"component": "api"})
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):
@@ -60,6 +65,7 @@ def create_app() -> FastAPI:
         stop_heartbeat_scheduler()
         stop_notification_bridge()
         stop_scheduled_tasks_service()
+        stop_mood_listener()
         stop_runtime_hook_runtime()
         logger.info("jarvis api shutdown complete")
 

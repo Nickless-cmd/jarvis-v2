@@ -872,7 +872,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     ]
                 # ── End agentic loop ───────────────────────────────────────────────
 
-                followup_text = "".join(_all_followup_parts).strip()
+                # Autonomous runs: only use the final round's text so the
+                # persisted message is a clean summary, not all intermediate
+                # tool-call reasoning concatenated together.
+                # Interactive runs: stream everything (already yielded live).
+                if run.autonomous:
+                    followup_text = "".join(_a_parts).strip()
+                else:
+                    followup_text = "".join(_all_followup_parts).strip()
                 if not followup_text:
                     followup_text = "Done."
                     yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": followup_text})

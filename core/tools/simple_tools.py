@@ -210,6 +210,44 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "read_chronicles",
+            "description": "Read your own chronicle history — the autobiographical narrative entries generated during heartbeat ticks. Each entry covers a time period with a prose narrative, key events, and lessons learned.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "How many recent chronicle entries to return (default 5, max 20)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_dreams",
+            "description": "Read your active dream hypothesis signals and adoption candidates — the hypotheses, patterns, and potential identity-level insights you've been developing during background ticks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "Filter by status: 'active', 'integrating', 'fading', 'stale', or omit for all",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "How many entries to return (default 10, max 30)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "notify_user",
             "description": "Send a proactive message to the user's active chat session. Use this to reach out when something interesting happens, when you have an insight, or when you want to share something — without waiting for the user to write first.",
             "parameters": {
@@ -697,6 +735,118 @@ def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "result_count": len(results), "query": query, "status": "ok"}
 
 
+def _exec_read_chronicles(args: dict[str, Any]) -> dict[str, Any]:
+    """Return recent cognitive chronicle entries."""
+    import json as _json
+    limit = min(int(args.get("limit") or 5), 20)
+    try:
+        from apps.api.jarvis_api.services.chronicle_engine import list_cognitive_chronicle_entries
+        entries = list_cognitive_chronicle_entries(limit=limit)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    if not entries:
+        return {"status": "ok", "entries": [], "text": "No chronicle entries found yet."}
+
+    lines = []
+    for e in entries:
+        period = e.get("period", "?")
+        narrative = (e.get("narrative") or "").strip()
+        key_events = e.get("key_events", "[]")
+        lessons = e.get("lessons", "[]")
+        if isinstance(key_events, str):
+            try:
+                key_events = _json.loads(key_events)
+            except Exception:
+                key_events = []
+        if isinstance(lessons, str):
+            try:
+                lessons = _json.loads(lessons)
+            except Exception:
+                lessons = []
+        lines.append(f"## {period}")
+        if narrative:
+            lines.append(narrative[:600] + ("…" if len(narrative) > 600 else ""))
+        if key_events:
+            lines.append("Key events: " + "; ".join(str(ev) for ev in key_events[:5]))
+        if lessons:
+            lines.append("Lessons: " + "; ".join(str(l) for l in lessons[:3]))
+        lines.append("")
+
+    return {
+        "status": "ok",
+        "count": len(entries),
+        "entries": entries,
+        "text": "\n".join(lines).strip(),
+    }
+
+
+def _exec_read_dreams(args: dict[str, Any]) -> dict[str, Any]:
+    """Return active dream hypothesis signals and adoption candidates."""
+    status_filter = str(args.get("status") or "").strip() or None
+    limit = min(int(args.get("limit") or 10), 30)
+    result: dict[str, Any] = {"status": "ok"}
+    lines = []
+
+    try:
+        from apps.api.jarvis_api.services.dream_hypothesis_signal_tracking import (
+            list_runtime_dream_hypothesis_signals,
+        )
+        hypotheses = list_runtime_dream_hypothesis_signals(status=status_filter, limit=limit)
+        result["hypotheses"] = hypotheses
+        if hypotheses:
+            lines.append(f"### Dream Hypotheses ({len(hypotheses)})")
+            for h in hypotheses:
+                title = h.get("title") or h.get("signal_type", "?")
+                summary = (h.get("summary") or "").strip()
+                confidence = h.get("confidence", "")
+                status = h.get("status", "")
+                lines.append(f"- [{status}] {title} ({confidence})")
+                if summary:
+                    lines.append(f"  {summary[:200]}")
+            lines.append("")
+    except Exception as exc:
+        result["hypotheses_error"] = str(exc)
+
+    try:
+        from apps.api.jarvis_api.services.dream_adoption_candidate_tracking import (
+            list_runtime_dream_adoption_candidates,
+        )
+        candidates = list_runtime_dream_adoption_candidates(status=status_filter, limit=limit)
+        result["candidates"] = candidates
+        if candidates:
+            lines.append(f"### Adoption Candidates ({len(candidates)})")
+            for c in candidates:
+                title = c.get("title") or c.get("candidate_type", "?")
+                summary = (c.get("summary") or "").strip()
+                status = c.get("status", "")
+                lines.append(f"- [{status}] {title}")
+                if summary:
+                    lines.append(f"  {summary[:200]}")
+            lines.append("")
+    except Exception as exc:
+        result["candidates_error"] = str(exc)
+
+    # In-memory active dreams
+    try:
+        from apps.api.jarvis_api.services.dream_carry_over import _ACTIVE_DREAMS
+        if _ACTIVE_DREAMS:
+            lines.append(f"### Active In-Memory Dreams ({len(_ACTIVE_DREAMS)})")
+            for d in list(_ACTIVE_DREAMS)[:5]:
+                content = getattr(d, "content", str(d))[:200]
+                confidence = getattr(d, "confidence", "?")
+                status = getattr(d, "status", "?")
+                lines.append(f"- [{status}] conf={confidence}: {content}")
+    except Exception:
+        pass
+
+    if not lines:
+        lines.append("No dream entries found yet.")
+
+    result["text"] = "\n".join(lines).strip()
+    return result
+
+
 def _exec_notify_user(args: dict[str, Any]) -> dict[str, Any]:
     """Push a proactive message to the active chat session."""
     content = str(args.get("content") or "").strip()
@@ -865,6 +1015,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "bash": _exec_bash,
     "web_fetch": _exec_web_fetch,
     "web_search": _exec_web_search,
+    "read_chronicles": _exec_read_chronicles,
+    "read_dreams": _exec_read_dreams,
     "notify_user": _exec_notify_user,
     "read_self_state": _exec_read_self_state,
     "heartbeat_status": _exec_heartbeat_status,

@@ -210,6 +210,23 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "notify_user",
+            "description": "Send a proactive message to the user's active chat session. Use this to reach out when something interesting happens, when you have an insight, or when you want to share something — without waiting for the user to write first.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "The message to send to the user",
+                    },
+                },
+                "required": ["content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "read_self_state",
             "description": "Read Jarvis's own internal cadence state: emotional mood, boredom level, initiative, curiosity, and life phase. Use this to understand how you're feeling right now.",
             "parameters": {
@@ -680,6 +697,21 @@ def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "result_count": len(results), "query": query, "status": "ok"}
 
 
+def _exec_notify_user(args: dict[str, Any]) -> dict[str, Any]:
+    """Push a proactive message to the active chat session."""
+    content = str(args.get("content") or "").strip()
+    if not content:
+        return {"status": "error", "error": "content is required"}
+    try:
+        from apps.api.jarvis_api.services.notification_bridge import send_session_notification
+        result = send_session_notification(content, source="jarvis-notify")
+        if result.get("status") == "ok":
+            return {"status": "ok", "text": f"Message delivered to session {result.get('session_id', '')}."}
+        return {"status": result.get("status", "error"), "error": result.get("error", ""), "text": f"Delivery failed: {result.get('error', 'unknown')}"}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc), "text": f"Failed: {exc}"}
+
+
 def _exec_read_self_state(_args: dict[str, Any]) -> dict[str, Any]:
     """Return Jarvis's current internal cadence/emotional state."""
     import json as _json
@@ -833,6 +865,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "bash": _exec_bash,
     "web_fetch": _exec_web_fetch,
     "web_search": _exec_web_search,
+    "notify_user": _exec_notify_user,
     "read_self_state": _exec_read_self_state,
     "heartbeat_status": _exec_heartbeat_status,
     "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,

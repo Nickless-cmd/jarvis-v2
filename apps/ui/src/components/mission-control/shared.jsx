@@ -43,7 +43,7 @@ export function MetricCard({ label, value, sub, color, icon: Icon, alert }) {
       style={s({
         padding: '12px 14px',
         background: T.cardGradient,
-        border: `1px solid ${alert ? `${T.amber}40` : T.border0}`,
+        border: `1px solid ${alert ? `${T.amber}40` : T.border1}`,
         borderRadius: 10,
         flex: 1,
         minWidth: 100,
@@ -99,9 +99,10 @@ export function SurfaceNotice({ title, children, actions = [] }) {
     <div
       style={s({
         padding: '10px 12px',
-        background: T.bgSurface,
-        border: `1px solid ${T.border0}`,
+        background: T.cardGradient,
+        border: `1px solid ${T.border1}`,
         borderRadius: 10,
+        boxShadow: T.shadowSm,
       })}
     >
       <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 })}>
@@ -131,6 +132,7 @@ export function ScrollPanel({ children, maxHeight = 180, style = {} }) {
         padding: 10,
         background: T.bgSurface,
         scrollbarGutter: 'stable',
+        boxShadow: 'inset 0 1px 3px rgba(0,0,0,.15)',
         ...style,
       })}
     >
@@ -143,10 +145,11 @@ export function Card({ children, style = {} }) {
   return (
     <div
       style={s({
-        background: T.bgRaised,
-        border: `1px solid ${T.border0}`,
+        background: T.cardGradient,
+        border: `1px solid ${T.border1}`,
         borderRadius: 10,
         padding: '14px 16px',
+        boxShadow: T.shadowSm,
         ...style,
       })}
     >
@@ -252,14 +255,15 @@ export function ListRow({ children, onClick, active, subtle, staticRow }) {
         gap: 8,
         padding: '8px 10px',
         borderRadius: 8,
-        border: `1px solid ${active ? `${T.accent}40` : T.border0}`,
-        background: active ? T.bgOverlay : subtle ? T.bgSurface : T.bgRaised,
+        border: `1px solid ${active ? T.border2 : T.border0}`,
+        background: active ? T.bgOverlay : T.cardGradient,
         color: T.text1,
         cursor: staticRow ? 'default' : 'pointer',
-        transition: 'border-color .14s ease',
+        transition: 'border-color .14s ease, background .14s ease',
+        boxShadow: T.shadowSm,
       })}
-      onMouseEnter={(e) => !staticRow && (e.currentTarget.style.borderColor = `${T.accent}30`)}
-      onMouseLeave={(e) => !staticRow && (e.currentTarget.style.borderColor = active ? `${T.accent}40` : T.border0)}
+      onMouseEnter={(e) => { if (!staticRow) { e.currentTarget.style.borderColor = T.border2; e.currentTarget.style.background = T.bgOverlay } }}
+      onMouseLeave={(e) => { if (!staticRow) { e.currentTarget.style.borderColor = active ? T.border2 : T.border0; e.currentTarget.style.background = active ? T.bgOverlay : T.cardGradient } }}
     >
       {children}
     </button>
@@ -275,7 +279,7 @@ export function CodeCard({ children, tone, style = {} }) {
         padding: '10px 12px',
         borderRadius: 8,
         background: T.bgSurface,
-        border: `1px solid ${toneColors[tone] || T.border0}`,
+        border: `1px solid ${toneColors[tone] || T.border1}`,
         ...mono,
         fontSize: 10,
         color: T.text2,
@@ -301,7 +305,7 @@ export function KeyValGrid({ children }) {
 
 export function KeyValCell({ label, value, color }) {
   return (
-    <div style={s({ padding: 8, background: T.bgOverlay, borderRadius: 6 })}>
+    <div style={s({ padding: 8, background: T.bgSurface, border: `1px solid ${T.border0}`, borderRadius: 6 })}>
       <div style={s({ ...mono, fontSize: 8, color: T.text3, marginBottom: 3 })}>{label}</div>
       <div style={s({ ...mono, fontSize: 11, color: color || T.text1 })}>{value}</div>
     </div>

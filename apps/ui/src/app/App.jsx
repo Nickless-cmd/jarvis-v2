@@ -53,14 +53,17 @@ export function App() {
       systemHealth={systemHealth}
       onNewChat={handleCreateSession}
       sidebarContent={
-        activeView === 'chat' ? (
-          <SidebarSessions
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSelect={handleSessionSelect}
-            onCreate={handleCreateSession}
-          />
-        ) : null
+        <SidebarSessions
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelect={(id) => {
+            handleSessionSelect(id)
+            setActiveView('chat')
+          }}
+          onCreate={handleCreateSession}
+          onRename={handleRenameSession}
+          onDelete={handleDeleteSession}
+        />
       }
     >
       {activeView === 'chat' ? (

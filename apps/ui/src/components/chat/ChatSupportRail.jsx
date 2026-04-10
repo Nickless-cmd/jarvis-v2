@@ -262,7 +262,7 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
                   <Icon size={9} color={color} />
                   <span className="mono">{label}</span>
                 </div>
-                <div className="emotion-card-value mono">{pct}%</div>
+                <div className="emotion-card-value mono">{value.toFixed(2)}</div>
                 <div className="progress-bar">
                   <div className="progress-bar-fill" style={{ width: `${pct}%`, background: color }} />
                 </div>

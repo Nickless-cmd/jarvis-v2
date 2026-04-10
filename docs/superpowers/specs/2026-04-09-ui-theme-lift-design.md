@@ -77,11 +77,14 @@ border-bottom: 1px solid rgba(40,177,163,.10);
 
 ## What does NOT change
 
+- **Chat view and composer: size, width, padding, max-width — completely untouched**
 - All text content, links, data displays inside panels — untouched
 - Layout, grid structure, spacing — untouched
-- Composer (already correct)
+- Composer (already correct — visual language is the reference, not a target for change)
 - Color tokens (`tokens.js`) — no changes needed, all values inline in CSS overrides
 - Component JSX files — no changes, only `global.css`
+
+Only `background`, `border`, `box-shadow`, and `color` properties are modified. No `width`, `height`, `padding`, `margin`, `max-width`, `grid-template-*`, or `flex-*` properties are touched.
 
 ---
 

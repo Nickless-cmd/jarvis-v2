@@ -207,6 +207,42 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_self_state",
+            "description": "Read Jarvis's own internal cadence state: emotional mood, boredom level, initiative, curiosity, and life phase. Use this to understand how you're feeling right now.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "heartbeat_status",
+            "description": "Check the heartbeat scheduler status: whether it's running, when the last tick was, when the next tick is scheduled, and recent tick history.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_heartbeat_tick",
+            "description": "Trigger an on-demand heartbeat tick right now. Use this to run a reflection/cadence cycle outside the normal 15-minute schedule.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
 ]
 
 
@@ -644,6 +680,148 @@ def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "result_count": len(results), "query": query, "status": "ok"}
 
 
+def _exec_read_self_state(_args: dict[str, Any]) -> dict[str, Any]:
+    """Return Jarvis's current internal cadence/emotional state."""
+    import json as _json
+    from apps.api.jarvis_api.services.boredom_engine import get_boredom_state
+    from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
+        build_boredom_curiosity_bridge_surface,
+    )
+    from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
+
+    result: dict[str, Any] = {"status": "ok"}
+
+    # Boredom / restlessness
+    try:
+        result["boredom"] = get_boredom_state()
+    except Exception as exc:
+        result["boredom"] = {"error": str(exc)}
+
+    # Curiosity surface
+    try:
+        result["curiosity"] = build_boredom_curiosity_bridge_surface()
+    except Exception as exc:
+        result["curiosity"] = {"error": str(exc)}
+
+    # Life phase
+    try:
+        result["life_phase"] = determine_life_phase()
+    except Exception as exc:
+        result["life_phase"] = {"error": str(exc)}
+
+    # Cadence state from HEARTBEAT_STATE.json
+    try:
+        state_path = WORKSPACE_DIR / "runtime" / "HEARTBEAT_STATE.json"
+        raw = _json.loads(state_path.read_text(encoding="utf-8"))
+        state = raw.get("state", {})
+        result["cadence"] = {
+            "scheduler_active": state.get("scheduler_active"),
+            "currently_ticking": state.get("currently_ticking"),
+            "schedule_state": state.get("schedule_state"),
+            "last_decision_type": state.get("last_decision_type"),
+            "last_action_summary": state.get("last_action_summary"),
+            "liveness_state": state.get("liveness_state"),
+            "liveness_pressure": state.get("liveness_pressure"),
+            "liveness_reason": state.get("liveness_reason"),
+            "last_tick_at": state.get("last_tick_at"),
+            "next_tick_at": state.get("next_tick_at"),
+            "updated_at": state.get("updated_at"),
+        }
+        # Emotional state from other sections
+        for section in ("affective_meta_state", "embodied_state", "epistemic_runtime_state"):
+            if section in raw:
+                s = raw[section]
+                result[section] = {
+                    k: v for k, v in s.items()
+                    if k not in ("authority", "boundary", "confidence", "freshness",
+                                 "kind", "seam_usage", "source_contributors", "visibility")
+                }
+    except Exception as exc:
+        result["cadence"] = {"error": str(exc)}
+
+    lines = []
+    boredom = result.get("boredom", {})
+    lines.append(f"Boredom: {boredom.get('level', '?')} (restlessness {boredom.get('restlessness', 0):.0%})")
+    if boredom.get("desire"):
+        lines.append(f"Desire: {boredom['desire']}")
+    phase = result.get("life_phase", {})
+    lines.append(f"Life phase: {phase.get('phase', '?')} — {phase.get('description', '')}")
+    cadence = result.get("cadence", {})
+    lines.append(f"Liveness: {cadence.get('liveness_state', '?')} ({cadence.get('liveness_pressure', '?')} pressure)")
+    lines.append(f"Last decision: {cadence.get('last_decision_type', '?')}")
+    result["text"] = "\n".join(lines)
+    return result
+
+
+def _exec_heartbeat_status(_args: dict[str, Any]) -> dict[str, Any]:
+    """Return heartbeat scheduler status and recent tick history."""
+    import json as _json
+
+    try:
+        state_path = WORKSPACE_DIR / "runtime" / "HEARTBEAT_STATE.json"
+        raw = _json.loads(state_path.read_text(encoding="utf-8"))
+        state = raw.get("state", {})
+        recent = raw.get("recent_ticks", [])
+
+        scheduler = {
+            "active": state.get("scheduler_active"),
+            "health": state.get("scheduler_health"),
+            "started_at": state.get("scheduler_started_at"),
+            "stopped_at": state.get("scheduler_stopped_at") or None,
+            "currently_ticking": state.get("currently_ticking"),
+            "last_tick_at": state.get("last_tick_at"),
+            "next_tick_at": state.get("next_tick_at"),
+            "interval_minutes": state.get("interval_minutes"),
+            "last_trigger_source": state.get("last_trigger_source"),
+            "last_decision_type": state.get("last_decision_type"),
+            "execution_status": state.get("execution_status"),
+            "parse_status": state.get("parse_status"),
+        }
+
+        lines = []
+        lines.append(f"Scheduler: {'ACTIVE' if scheduler['active'] else 'STOPPED'} ({scheduler['health']})")
+        lines.append(f"Last tick: {scheduler['last_tick_at'] or 'never'}")
+        lines.append(f"Next tick: {scheduler['next_tick_at'] or 'unknown'}")
+        lines.append(f"Interval: {scheduler['interval_minutes']} min")
+        lines.append(f"Last trigger: {scheduler['last_trigger_source']}")
+        lines.append(f"Last decision: {scheduler['last_decision_type']}")
+        if recent:
+            lines.append(f"Recent ticks: {len(recent)} recorded")
+
+        return {
+            "status": "ok",
+            "scheduler": scheduler,
+            "recent_tick_count": len(recent),
+            "text": "\n".join(lines),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:
+    """Trigger an on-demand heartbeat tick."""
+    try:
+        from apps.api.jarvis_api.services.heartbeat_runtime import run_heartbeat_tick
+        result = run_heartbeat_tick(name="default", trigger="manual-tool")
+        summary = getattr(result, "summary", None) or str(result)
+        decision = getattr(result, "decision_type", None) or "unknown"
+        action = getattr(result, "action_type", None) or ""
+        lines = [f"Tick triggered. Decision: {decision}"]
+        if action:
+            lines.append(f"Action: {action}")
+        if summary:
+            lines.append(f"Summary: {summary}")
+        return {
+            "status": "ok",
+            "decision_type": decision,
+            "action_type": action,
+            "summary": summary,
+            "text": "\n".join(lines),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc), "text": f"Tick failed: {exc}"}
+
+
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
@@ -655,6 +833,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "bash": _exec_bash,
     "web_fetch": _exec_web_fetch,
     "web_search": _exec_web_search,
+    "read_self_state": _exec_read_self_state,
+    "heartbeat_status": _exec_heartbeat_status,
+    "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,
 }
 
 

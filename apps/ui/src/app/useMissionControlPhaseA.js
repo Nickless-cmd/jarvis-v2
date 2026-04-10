@@ -61,8 +61,20 @@ const JARVIS_RELATED_FAMILIES = new Set([
   'execution_pilot',
 ])
 
+const MC_TAB_KEY = 'jarvis-mc-active-tab'
+
+function preferredMcTab() {
+  if (typeof window === 'undefined') return 'overview'
+  return window.localStorage.getItem(MC_TAB_KEY) || 'overview'
+}
+
 export function useMissionControlPhaseA({ active, selection }) {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(preferredMcTab)
+
+  function setActiveTabPersisted(tab) {
+    window.localStorage.setItem(MC_TAB_KEY, tab)
+    setActiveTab(tab)
+  }
   const [focusSection, setFocusSection] = useState('')
   const [data, setData] = useState({
     overview: null,
@@ -301,7 +313,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   }, [activeTab, focusSection])
 
   const navigateTo = useCallback((tabId, sectionId = '') => {
-    setActiveTab(tabId)
+    setActiveTabPersisted(tabId)
     setFocusSection(sectionId)
   }, [])
 
@@ -513,7 +525,7 @@ export function useMissionControlPhaseA({ active, selection }) {
 
   return {
     activeTab,
-    setActiveTab,
+    setActiveTab: setActiveTabPersisted,
     focusSection,
     sections,
     drawer,

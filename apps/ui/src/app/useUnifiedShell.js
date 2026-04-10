@@ -3,6 +3,17 @@ import { backend } from '../lib/adapters'
 import { appendMessagesToSession, updateSessionMessage, upsertSessionMessage } from '../lib/sessionState'
 
 const ACTIVE_SESSION_KEY = 'jarvis-ui-active-session'
+const ACTIVE_VIEW_KEY = 'jarvis-ui-active-view'
+
+function preferredView() {
+  if (typeof window === 'undefined') return 'chat'
+  return window.localStorage.getItem(ACTIVE_VIEW_KEY) || 'chat'
+}
+
+function rememberActiveView(view) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(ACTIVE_VIEW_KEY, view)
+}
 
 function nowLabel() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -19,7 +30,7 @@ function preferredSessionId() {
 }
 
 export function useUnifiedShell() {
-  const [activeView, setActiveView] = useState('chat')
+  const [activeView, setActiveView] = useState(preferredView)
   const [shell, setShell] = useState(null)
   const [sessions, setSessions] = useState([])
   const [activeSessionId, setActiveSessionId] = useState(null)
@@ -303,14 +314,7 @@ export function useUnifiedShell() {
           : current
       )
       await loadSession(sessionId)
-      // Merge back any approval cards (transient, not persisted to backend)
-      if (streamApprovalMessagesRef.current.length > 0) {
-        const saved = streamApprovalMessagesRef.current
-        streamApprovalMessagesRef.current = []
-        setActiveSession((current) =>
-          current ? { ...current, messages: [...(current.messages || []), ...saved] } : current
-        )
-      }
+      streamApprovalMessagesRef.current = []
       await refreshShell()
     } catch (err) {
       const failure = err instanceof Error ? err.message : 'Chat failed'
@@ -328,6 +332,7 @@ export function useUnifiedShell() {
       setIsStreaming(false)
       setActiveRunId(null)
       setWorkingSteps([])
+      setCapabilityActivity([])
       setStreamingTokenEstimate(0)
     }
   }
@@ -400,9 +405,14 @@ export function useUnifiedShell() {
     }
   }
 
+  function setActiveViewPersisted(view) {
+    rememberActiveView(view)
+    setActiveView(view)
+  }
+
   return {
     activeView,
-    setActiveView,
+    setActiveView: setActiveViewPersisted,
     shell,
     sessions,
     activeSession: activeSession || activeSessionSummary,

@@ -1,4 +1,5 @@
-import { Activity, Battery, Compass, Eye, FileSearch, FolderOpen, Frown, Gauge, Lightbulb, Pencil, ScanSearch, Smile, Terminal } from 'lucide-react'
+import { Activity, Battery, CheckCircle2, Compass, Eye, FileSearch, FolderOpen, Frown, Gauge, Lightbulb, Loader2, Pencil, ScanSearch, Smile, Terminal } from 'lucide-react'
+import { s, T, mono } from '../../shared/theme/tokens'
 
 function PanelSection({ title, children }) {
   return (
@@ -137,6 +138,91 @@ function deriveEmotions(affective, emotionalBaseline = {}) {
   }
 }
 
+function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
+  const steps = workingSteps || []
+  const doneSteps = steps.filter(s => s.status === 'done').slice(-4)
+  const currentStep = steps.find(s => s.status === 'running')
+  const activities = (capabilityActivity || []).slice().reverse().slice(0, 3)
+
+  const hasActivity = currentStep || doneSteps.length > 0 || activities.length > 0
+
+  if (!hasActivity) {
+    return (
+      <div style={s({ ...mono, fontSize: 10, color: T.text3, padding: '2px 0' })}>idle</div>
+    )
+  }
+
+  return (
+    <div style={s({
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 8,
+      padding: '8px 10px',
+      background: T.bgRaised,
+      border: `1px solid ${T.border1}`,
+      borderLeft: `2px solid ${T.accent}`,
+      borderRadius: 8,
+      animation: 'slideUp 0.2s ease both',
+    })}>
+      {/* Spinner or done-indicator */}
+      <div style={s({
+        marginTop: 1,
+        flexShrink: 0,
+        color: isStreaming ? T.accentText : T.text3,
+        animation: isStreaming ? 'spin 1s linear infinite' : 'none',
+      })}>
+        <Loader2 size={12} />
+      </div>
+
+      <div style={s({ flex: 1, minWidth: 0 })}>
+        {/* Done steps from workingSteps */}
+        {doneSteps.map((step, i) => (
+          <div key={i} style={s({ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 })}>
+            <CheckCircle2 size={9} color={T.green} style={{ flexShrink: 0 }} />
+            <span style={s({ ...mono, fontSize: 9, color: T.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+              {step.detail || step.action || step.step}
+            </span>
+          </div>
+        ))}
+
+        {/* Done activities (capability events) */}
+        {!currentStep && activities.map((item, i) => {
+          const Icon = activityIcon(item)
+          const label = activityPrimaryText(item)
+          const ok = item.status === 'executed'
+          return (
+            <div key={i} style={s({ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 })}>
+              {ok
+                ? <CheckCircle2 size={9} color={T.green} style={{ flexShrink: 0 }} />
+                : <Icon size={9} color={T.text3} style={{ flexShrink: 0 }} />}
+              <span style={s({ ...mono, fontSize: 9, color: T.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+                {label}
+              </span>
+            </div>
+          )
+        })}
+
+        {/* Current running step */}
+        {currentStep && (
+          <>
+            <div style={s({ display: 'flex', alignItems: 'center', gap: 5 })}>
+              {(() => { const Icon = stepIcon(currentStep); return <Icon size={11} color={T.accentText} style={{ flexShrink: 0 }} /> })()}
+              <span style={s({ ...mono, fontSize: 10, color: T.accentText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+                {currentStep.action || currentStep.step || 'working'}
+              </span>
+            </div>
+            {(currentStep.detail) && (
+              <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+                {currentStep.detail}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface, systemHealth, workingSteps, capabilityActivity }) {
   const affective = jarvisSurface?.affectiveMetaState || {}
   const personalityVector = jarvisSurface?.personalityVector?.current || {}
@@ -221,35 +307,11 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
 
       {/* Workspace Scan Panel */}
       <PanelSection title="Workspace Scan">
-        <div className="rail-scan-status">
-          <span className={`rail-scan-dot ${isStreaming ? 'active' : ''}`} />
-          <span className="rail-scan-phase mono">
-            {isStreaming
-              ? (currentStep?.detail || currentStep?.action || 'working...')
-              : 'idle'}
-          </span>
-        </div>
-        {activityFeed.length > 0 ? (
-          <div className="rail-scan-activity">
-            {activityFeed.map((item, index) => {
-              const Icon = item.Icon
-              return (
-                <div key={item.key} className={`rail-scan-item ${item.statusClass} ${index === 0 && isStreaming ? 'live' : ''}`}>
-                  <div className="rail-scan-item-icon-wrap">
-                    <Icon size={11} />
-                  </div>
-                  <div className="rail-scan-item-copy">
-                    <span className="rail-scan-item-label mono">{item.primary}</span>
-                    <span className="rail-scan-item-meta mono">{item.secondary}</span>
-                  </div>
-                  <span className={`rail-scan-item-status ${item.statusClass}`}>{item.statusLabel}</span>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="rail-scan-empty mono">No activity yet</div>
-        )}
+        <WorkingScan
+          workingSteps={workingSteps}
+          capabilityActivity={capabilityActivity}
+          isStreaming={isStreaming}
+        />
       </PanelSection>
 
       <PanelSection title="Emotional State">

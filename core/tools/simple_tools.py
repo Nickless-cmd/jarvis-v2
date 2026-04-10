@@ -763,14 +763,42 @@ def classify_command(command: str) -> str:
         if any(subcmd.startswith(s) for s in _READ_ONLY_GIT_SUBCOMMANDS):
             return "auto"
 
-    # Piped commands: check if all segments are read-only
-    if "|" in normalized:
+    # Piped commands (|): check if all segments are read-only
+    if "|" in normalized and "&&" not in normalized and ";" not in normalized:
         segments = [s.strip() for s in normalized.split("|")]
         if all(
             any(seg.startswith(p) or seg == p.strip() for p in _READ_ONLY_COMMAND_PREFIXES)
             for seg in segments
             if seg
         ):
+            return "auto"
+
+    # &&-chained commands: classify each segment independently
+    # If ALL segments are auto or read-only, the chain is auto
+    if "&&" in normalized:
+        def _segment_is_safe(seg: str) -> bool:
+            seg = seg.strip()
+            if not seg:
+                return True
+            # Allow cd by itself (just changes dir, no side effects)
+            if re.match(r"^cd(\s+\S+)?$", seg):
+                return True
+            for pattern in _BLOCKED_COMMANDS:
+                if re.search(pattern, seg):
+                    return False
+            for pattern in _DESTRUCTIVE_PATTERNS:
+                if re.search(pattern, seg):
+                    return False
+            for prefix in _READ_ONLY_COMMAND_PREFIXES:
+                if seg.startswith(prefix) or seg == prefix.strip():
+                    return True
+            git_m = re.match(r"git\s+(?:-\S+\s+\S+\s+)*(\S+(?:\s+\S+)?)", seg)
+            if git_m and any(git_m.group(1).startswith(s) for s in _READ_ONLY_GIT_SUBCOMMANDS):
+                return True
+            return False
+
+        segments = [s.strip() for s in normalized.split("&&")]
+        if all(_segment_is_safe(s) for s in segments if s):
             return "auto"
 
     return "approval"

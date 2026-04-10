@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 
 
@@ -112,3 +113,57 @@ def test_end_of_run_memory_consolidation_reruns_with_full_context_when_model_req
     assert "FULL FILE CONTEXT" in prompts[1]
     assert "- Repo context: current collaboration happens in /media/projects/jarvis-v2." in memory_md
     assert "[MEMORY.md] Repo context: current collaboration happens in /media/projects/jarvis-v2." in daily_text
+
+
+def test_end_of_run_memory_consolidation_audits_skipped_runs(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    module = importlib.import_module(
+        "apps.api.jarvis_api.services.end_of_run_memory_consolidation"
+    )
+    module = importlib.reload(module)
+
+    monkeypatch.setattr(module, "_run_local_consolidation_model", lambda prompt: "")
+
+    result = module.consolidate_run_memory(
+        session_id="audit-session",
+        run_id="audit-run",
+        user_message="Husk at dette er en længere besked.",
+        assistant_response="Dette er et længere svar som udløser consolidation.",
+    )
+
+    latest = event_bus.recent(limit=4)[0]
+    assert result["skipped_reason"] == "model-unavailable"
+    assert latest["kind"] == "memory.end_of_run_consolidation"
+    assert latest["payload"]["run_id"] == "audit-run"
+    assert latest["payload"]["skipped_reason"] == "model-unavailable"
+
+
+def test_end_of_run_memory_consolidation_prompt_includes_internal_context(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    module = importlib.import_module(
+        "apps.api.jarvis_api.services.end_of_run_memory_consolidation"
+    )
+    module = importlib.reload(module)
+
+    prompts: list[str] = []
+
+    def _fake_run(prompt: str) -> str:
+        prompts.append(prompt)
+        return '{"needs_full_context": false, "items": []}'
+
+    monkeypatch.setattr(module, "_run_local_consolidation_model", _fake_run)
+
+    module.consolidate_run_memory(
+        session_id="tool-session",
+        run_id="tool-run",
+        user_message="Undersøg runtime events og husk resultatet.",
+        assistant_response="Jeg har undersøgt runtime events.",
+        internal_context="[bash]: found one failed runtime event",
+    )
+
+    assert "INTERNAL JARVIS-ONLY TOOL/RUNTIME CONTEXT" in prompts[0]
+    assert "[bash]: found one failed runtime event" in prompts[0]

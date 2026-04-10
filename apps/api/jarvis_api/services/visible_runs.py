@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from apps.api.jarvis_api.services.chat_sessions import (
     append_chat_message,
+    recent_chat_tool_messages,
 )
 from apps.api.jarvis_api.services.candidate_tracking import (
     auto_apply_safe_memory_md_candidates_for_visible_turn,
@@ -841,6 +842,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 # Background: status update and cost recording only
                 _run_ref = run
                 _tokens = (total_input_tokens, total_output_tokens)
+                _followup_text = followup_text
                 _followup_preview = followup_text[:140]
                 import threading as _threading
 
@@ -859,6 +861,23 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             run_id=_run_ref.run_id,
                             lane="visible",
                         )
+                        finished_at = datetime.now(UTC).isoformat()
+                        event_bus.publish(
+                            "runtime.visible_run_completed",
+                            {
+                                "run_id": _run_ref.run_id,
+                                "lane": _run_ref.lane,
+                                "provider": _run_ref.provider,
+                                "model": _run_ref.model,
+                                "status": "completed",
+                                "finished_at": finished_at,
+                                "input_tokens": _tokens[0],
+                                "output_tokens": _tokens[1],
+                                "cost_usd": 0.0,
+                                "native_tool_path": True,
+                            },
+                        )
+                        _run_memory_postprocess(_run_ref, _followup_text)
                     except Exception:
                         pass
 
@@ -1167,6 +1186,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     text_preview=_preview_text(visible_output_text),
                 )
                 _track_runtime_candidates(run, visible_output_text)
+                _run_memory_postprocess(run, visible_output_text)
             except Exception:
                 pass
             finally:
@@ -1192,6 +1212,112 @@ def _persist_session_assistant_message(run: VisibleRun, text: str) -> None:
     if not normalized:
         return
     append_chat_message(session_id=run.session_id, role="assistant", content=normalized)
+
+
+def _recent_internal_tool_context(session_id: str | None, *, limit: int = 6) -> str:
+    if not session_id:
+        return ""
+    try:
+        messages = recent_chat_tool_messages(session_id, limit=limit)
+    except Exception:
+        return ""
+    lines: list[str] = []
+    for item in messages[-limit:]:
+        content = " ".join(str(item.get("content") or "").split()).strip()
+        if not content:
+            continue
+        if len(content) > 300:
+            content = content[:299].rstrip() + "…"
+        lines.append(f"- {content}")
+    if not lines:
+        return ""
+    return "\n".join(
+        [
+            "Recent internal tool results from this chat.",
+            "These are Jarvis-only observations and are not visible user chat:",
+            *lines,
+        ]
+    )
+
+
+def _run_memory_postprocess(run: VisibleRun, assistant_text: str) -> None:
+    if not run.session_id:
+        return
+    distillation_result: dict[str, object] | None = None
+    consolidation_result: dict[str, object] | None = None
+    errors: list[str] = []
+
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            distill_session_carry,
+        )
+
+        distillation_result = distill_session_carry(
+            session_id=run.session_id,
+            run_id=run.run_id,
+        )
+    except Exception as exc:
+        errors.append(f"session_distillation:{type(exc).__name__}:{exc}")
+        event_bus.publish(
+            "memory.session_distillation_failed",
+            {
+                "session_id": run.session_id,
+                "run_id": run.run_id,
+                "error": str(exc) or type(exc).__name__,
+            },
+        )
+
+    try:
+        from apps.api.jarvis_api.services.end_of_run_memory_consolidation import (
+            consolidate_run_memory,
+        )
+
+        consolidation_result = consolidate_run_memory(
+            session_id=run.session_id,
+            run_id=run.run_id,
+            user_message=run.user_message,
+            assistant_response=assistant_text,
+            internal_context=_recent_internal_tool_context(run.session_id),
+        )
+    except Exception as exc:
+        errors.append(f"end_of_run_consolidation:{type(exc).__name__}:{exc}")
+        event_bus.publish(
+            "memory.end_of_run_consolidation_failed",
+            {
+                "session_id": run.session_id,
+                "run_id": run.run_id,
+                "error": str(exc) or type(exc).__name__,
+            },
+        )
+
+    event_bus.publish(
+        "memory.visible_run_postprocess_completed",
+        {
+            "session_id": run.session_id,
+            "run_id": run.run_id,
+            "distillation_ran": distillation_result is not None,
+            "consolidation_ran": consolidation_result is not None,
+            "errors": errors,
+            "private_brain_count": (
+                distillation_result or {}
+            ).get("private_brain_count"),
+            "workspace_memory_count": (
+                distillation_result or {}
+            ).get("workspace_memory_count"),
+            "candidate_count": (
+                consolidation_result or {}
+            ).get("candidate_count"),
+            "memory_updated": (
+                consolidation_result or {}
+            ).get("memory_updated"),
+            "user_updated": (
+                consolidation_result or {}
+            ).get("user_updated"),
+            "skipped_reason": (
+                consolidation_result or {}
+            ).get("skipped_reason"),
+        },
+    )
 
 
 def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
@@ -1634,28 +1760,6 @@ def _track_runtime_candidates(run: VisibleRun, assistant_text: str) -> None:
         )
     except Exception:
         return
-    try:
-        from apps.api.jarvis_api.services.session_distillation import (
-            distill_session_carry,
-        )
-        distill_session_carry(
-            session_id=run.session_id,
-            run_id=run.run_id,
-        )
-    except Exception:
-        pass
-    try:
-        from apps.api.jarvis_api.services.end_of_run_memory_consolidation import (
-            consolidate_run_memory,
-        )
-        consolidate_run_memory(
-            session_id=run.session_id,
-            run_id=run.run_id,
-            user_message=run.user_message,
-            assistant_response=assistant_text,
-        )
-    except Exception:
-        pass
 
 
 def _extract_capability_call(text: str) -> str | None:

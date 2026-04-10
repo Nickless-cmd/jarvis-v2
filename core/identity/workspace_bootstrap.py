@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import shutil
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from core.runtime.config import WORKSPACES_DIR, WORKSPACE_TEMPLATES_DIR
@@ -176,6 +176,55 @@ def read_daily_memory_lines(
             exc_info=True,
         )
         return []
+
+
+def read_recent_daily_memory_lines(
+    *,
+    name: str = "default",
+    days: int = 7,
+    limit: int = 24,
+) -> list[str]:
+    """Read bounded daily memory notes across a recent lookback window.
+
+    The single-day reader is useful for "today's scratchpad", but visible
+    continuity needs a short rolling window so reboot/session boundaries do
+    not erase context that was only written yesterday or earlier this week.
+    """
+    dirs = ensure_layered_memory_dirs(name=name)
+    daily_dir = dirs["daily_dir"]
+    if not daily_dir.exists():
+        return []
+
+    today = datetime.now(UTC).date()
+    collected: list[str] = []
+    for offset in range(max(days, 1)):
+        day = today - timedelta(days=offset)
+        path = daily_dir / f"{day.isoformat()}.md"
+        if not path.exists():
+            continue
+        try:
+            day_lines: list[str] = []
+            for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                stripped = raw.strip()
+                if not stripped:
+                    continue
+                if stripped.startswith("- ") or stripped.startswith("  - "):
+                    day_lines.append(stripped)
+            for line in reversed(day_lines):
+                collected.append(f"{day.isoformat()}: {line}")
+                if len(collected) >= max(limit, 1):
+                    return list(reversed(collected))
+        except Exception:
+            LOGGER.warning(
+                "Failed to read recent daily memory lines",
+                extra={
+                    "workspace": name,
+                    "target_path": str(path),
+                },
+                exc_info=True,
+            )
+            continue
+    return list(reversed(collected))
 
 
 def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:

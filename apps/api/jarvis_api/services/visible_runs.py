@@ -668,111 +668,211 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 content=f"[{sr['tool_name']}]: {result_text[:800]}",
                             )
 
-                # Build followup_messages with correct ordering.
-                # We use a user-message to deliver tool results instead of
-                # role:tool messages — many local models (glm, mistral, etc.)
-                # silently ignore role:tool messages and return empty content,
-                # which triggers the "Done." fallback.
-                tool_results_block = "\n\n".join(
+                # ── Agentic follow-up loop ────────────────────────────────────────────
+                # Runs up to _AGENTIC_MAX_ROUNDS LLM passes after the first-pass
+                # tool execution. Each pass may call more tools; if it does we
+                # execute them and continue. If the model produces text we stream
+                # it and stop. This lets Jarvis work through multi-step tasks
+                # without the user needing to send a new message for every tool.
+                import json as _json
+                import logging as _alog
+                from core.tools.simple_tools import get_tool_definitions as _get_tool_defs
+
+                _AGENTIC_MAX_ROUNDS = 5
+                _TOOL_CALL_MARKER = "__TOOL_CALLS__"
+                target = resolve_provider_router_target(lane="visible")
+                base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
+                _agentic_tools = _get_tool_defs()
+
+                # Seed the conversation for the first agentic pass:
+                # user-message format works reliably across local models.
+                _first_results_block = "\n\n".join(
                     f"[{sr['tool_name']}]:\n{_resolved_result_texts.get(_idx, sr['result_text'])}"
                     for _idx, sr in enumerate(simple_results)
                 )
-                followup_messages = base_messages + [
+                _agentic_messages: list[dict] = base_messages + [
                     {
                         "role": "user",
                         "content": (
                             f"Here are the tool results for your previous request:\n\n"
-                            f"{tool_results_block}\n\n"
-                            f"Please now provide your response based on these results."
+                            f"{_first_results_block}\n\n"
+                            f"Please respond based on these results. "
+                            f"You may call additional tools if you need more information."
                         ),
                     }
                 ]
+                _all_followup_parts: list[str] = []
 
-                # Second-pass: stream model response grounded in tool results
-                # Run in thread executor so we don't block the event loop.
-                import json as _json
-                target = resolve_provider_router_target(lane="visible")
-                base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
-                followup_payload: dict[str, object] = {
-                    "model": run.model,
-                    "messages": followup_messages,
-                    "stream": True,
-                    # Do NOT include tools here — we want the model to respond
-                    # with text based on the tool results, not call more tools.
-                }
+                for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
+                    _a_parts: list[str] = []
+                    _a_tool_calls: list[dict] = []
+                    _a_queue: asyncio.Queue = asyncio.Queue()
+                    _a_sentinel = object()
 
-                followup_req = urllib_request.Request(
-                    f"{base_url.rstrip('/')}/api/chat",
-                    data=_json.dumps(followup_payload, ensure_ascii=False).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
+                    _a_payload: dict[str, object] = {
+                        "model": run.model,
+                        "messages": _agentic_messages,
+                        "stream": True,
+                    }
+                    if _agentic_tools:
+                        _a_payload["tools"] = _agentic_tools
 
-                followup_parts: list[str] = []
-                followup_tool_calls: list[dict] = []
-                followup_queue: asyncio.Queue = asyncio.Queue()
-                followup_sentinel = object()
-                _TOOL_CALL_MARKER = "__TOOL_CALLS__"
+                    _a_req = urllib_request.Request(
+                        f"{base_url.rstrip('/')}/api/chat",
+                        data=_json.dumps(_a_payload, ensure_ascii=False).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
 
-                def _pump_followup() -> None:
-                    try:
-                        with urllib_request.urlopen(followup_req, timeout=90) as resp:
-                            for raw_line in resp:
-                                line = raw_line.decode("utf-8").strip()
-                                if not line:
-                                    continue
-                                ev = _json.loads(line)
-                                msg = ev.get("message") or {}
-                                delta = str(msg.get("content") or "")
-                                if delta:
-                                    loop.call_soon_threadsafe(
-                                        followup_queue.put_nowait, delta
-                                    )
-                                # Collect tool_calls from second pass
-                                tc = msg.get("tool_calls") or []
-                                if tc:
-                                    loop.call_soon_threadsafe(
-                                        followup_queue.put_nowait,
-                                        (_TOOL_CALL_MARKER, tc),
-                                    )
-                                if ev.get("done"):
-                                    break
-                    except Exception as _pump_exc:
-                        import logging as _logging
-                        _logging.getLogger(__name__).error(
-                            "second-pass _pump_followup failed: %s", _pump_exc, exc_info=True
-                        )
-                    finally:
-                        loop.call_soon_threadsafe(
-                            followup_queue.put_nowait, followup_sentinel
-                        )
+                    def _pump_agentic(
+                        req=_a_req,
+                        q=_a_queue,
+                        sentinel=_a_sentinel,
+                        rnd=_agentic_round,
+                    ) -> None:
+                        try:
+                            with urllib_request.urlopen(req, timeout=90) as resp:
+                                for raw_line in resp:
+                                    line = raw_line.decode("utf-8").strip()
+                                    if not line:
+                                        continue
+                                    ev = _json.loads(line)
+                                    msg = ev.get("message") or {}
+                                    delta = str(msg.get("content") or "")
+                                    if delta:
+                                        loop.call_soon_threadsafe(q.put_nowait, delta)
+                                    tc = msg.get("tool_calls") or []
+                                    if tc:
+                                        loop.call_soon_threadsafe(
+                                            q.put_nowait, (_TOOL_CALL_MARKER, tc)
+                                        )
+                                    if ev.get("done"):
+                                        break
+                        except Exception as _ae:
+                            _alog.getLogger(__name__).error(
+                                "agentic round %d failed: %s", rnd, _ae, exc_info=True
+                            )
+                        finally:
+                            loop.call_soon_threadsafe(q.put_nowait, sentinel)
 
-                loop.run_in_executor(None, _pump_followup)
+                    loop.run_in_executor(None, _pump_agentic)
 
-                # Read from queue with a timeout guard so we never hang forever
-                while True:
-                    try:
-                        item = await asyncio.wait_for(
-                            followup_queue.get(), timeout=100
-                        )
-                    except asyncio.TimeoutError:
+                    while True:
+                        try:
+                            _a_item = await asyncio.wait_for(_a_queue.get(), timeout=100)
+                        except asyncio.TimeoutError:
+                            break
+                        if _a_item is _a_sentinel:
+                            break
+                        if isinstance(_a_item, tuple) and _a_item[0] == _TOOL_CALL_MARKER:
+                            _a_tool_calls.extend(_a_item[1])
+                            continue
+                        _a_parts.append(_a_item)
+                        _all_followup_parts.append(_a_item)
+                        yield _sse("delta", {
+                            "type": "delta",
+                            "run_id": run.run_id,
+                            "delta": _a_item,
+                        })
+
+                    if not _a_tool_calls:
+                        # No more tool calls — this round produced the final response.
                         break
-                    if item is followup_sentinel:
-                        break
-                    if isinstance(item, tuple) and item[0] == _TOOL_CALL_MARKER:
-                        followup_tool_calls.extend(item[1])
-                        continue
-                    followup_parts.append(item)
-                    yield _sse("delta", {
-                        "type": "delta",
-                        "run_id": run.run_id,
-                        "delta": item,
-                    })
 
-                followup_text = "".join(followup_parts).strip()
-                # If the second pass produced no text (e.g. Ollama only returned
-                # tool_calls with no content), stream a minimal acknowledgement so
-                # the message doesn't disappear when loadSession() reloads from DB.
+                    # ── Execute tools for this agentic round ───────────────────────
+                    _a_results = _execute_simple_tool_calls(_a_tool_calls)
+                    _a_resolved: dict[int, str] = {}
+
+                    for _a_idx, _a_sr in enumerate(_a_results):
+                        if _a_sr["status"] == "approval_needed":
+                            if run.autonomous:
+                                _a_resolved[_a_idx] = (
+                                    f"[{_a_sr['tool_name']}]: skipped (autonomous)"
+                                )
+                                yield _sse("capability", {
+                                    "type": "tool_denied", "tool": _a_sr["tool_name"]
+                                })
+                                continue
+                            _a_apid = f"approval-{uuid4().hex[:12]}"
+                            _a_fut: asyncio.Future[str | None] = (
+                                asyncio.get_running_loop().create_future()
+                            )
+                            _PENDING_APPROVALS[_a_apid] = {
+                                "tool_name": _a_sr["tool_name"],
+                                "arguments": _a_sr["arguments"],
+                                "result": _a_sr["result"],
+                                "run_id": run.run_id,
+                                "session_id": run.session_id,
+                                "created_at": datetime.now(UTC).isoformat(),
+                                "future": _a_fut,
+                            }
+                            yield _sse("approval_request", {
+                                "type": "approval_request",
+                                "approval_id": _a_apid,
+                                "tool": _a_sr["tool_name"],
+                                "message": _a_sr["result"].get("message", ""),
+                                "detail": (
+                                    _a_sr["result"].get("path")
+                                    or _a_sr["result"].get("command", "")
+                                ),
+                            })
+                            try:
+                                _a_res = await asyncio.wait_for(_a_fut, timeout=300.0)
+                            except asyncio.TimeoutError:
+                                _a_res = None
+                            if _a_res is None:
+                                _a_resolved[_a_idx] = (
+                                    f"[{_a_sr['tool_name']}]: Tool call denied by user."
+                                )
+                                yield _sse("capability", {
+                                    "type": "tool_denied", "tool": _a_sr["tool_name"]
+                                })
+                            else:
+                                _a_resolved[_a_idx] = _a_res
+                                yield _sse("capability", {
+                                    "type": "tool_result",
+                                    "tool": _a_sr["tool_name"],
+                                    "status": "ok",
+                                })
+                            continue
+                        _a_resolved[_a_idx] = _a_sr["result_text"]
+                        yield _sse("capability", {
+                            "type": "tool_result",
+                            "tool": _a_sr["tool_name"],
+                            "status": _a_sr["status"],
+                        })
+
+                    # Persist tool results to DB
+                    if run.session_id:
+                        for _a_idx, _a_sr in enumerate(_a_results):
+                            _a_rt = _a_resolved.get(_a_idx, _a_sr.get("result_text", ""))
+                            if _a_rt:
+                                append_chat_message(
+                                    session_id=run.session_id,
+                                    role="tool",
+                                    content=f"[{_a_sr['tool_name']}]: {_a_rt[:800]}",
+                                )
+
+                    # Append this round's exchange to the conversation for next round
+                    _a_results_block = "\n\n".join(
+                        f"[{_a_sr['tool_name']}]:\n{_a_resolved.get(_a_idx, _a_sr['result_text'])}"
+                        for _a_idx, _a_sr in enumerate(_a_results)
+                    )
+                    _agentic_messages = _agentic_messages + [
+                        {
+                            "role": "assistant",
+                            "content": "".join(_a_parts) or "",
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Tool results:\n\n{_a_results_block}\n\nContinue."
+                            ),
+                        },
+                    ]
+                # ── End agentic loop ───────────────────────────────────────────────
+
+                followup_text = "".join(_all_followup_parts).strip()
                 if not followup_text:
                     followup_text = "Done."
                     yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": followup_text})

@@ -2791,21 +2791,29 @@ async function readSseStream(response, handlers = {}) {
         handlers.onDone?.(payload, assistantText)
         // Close the reader immediately — don't wait for HTTP connection to close
         try { reader.cancel() } catch (_) { /* ignore */ }
+        // persisted=true only for successful completion — backend persists before done.
+        // For failed/cancelled runs the backend may persist an error message, but
+        // the partial streamed text may not be in DB, so skip reload to keep local state.
+        const completedOk = !payload.status || payload.status === 'completed'
         return {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
           content: assistantText || 'No response content returned.',
           ts: nowLabel(),
+          persisted: completedOk,
         }
       }
     }
   }
 
+  // Stream ended without a done event (connection dropped, timeout, etc.)
+  // Return with persisted=false so the caller knows NOT to reload from DB.
   return {
     id: `assistant-${Date.now()}`,
     role: 'assistant',
     content: assistantText || failure || 'No response content returned.',
     ts: nowLabel(),
+    persisted: false,
   }
 }
 

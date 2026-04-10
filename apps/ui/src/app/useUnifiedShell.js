@@ -313,8 +313,12 @@ export function useUnifiedShell() {
             }))
           : current
       )
-      await loadSession(sessionId)
       streamApprovalMessagesRef.current = []
+      if (assistantMessage.persisted) {
+        // Backend persisted before done — safe to reload from DB
+        await loadSession(sessionId)
+      }
+      // If persisted=false (stream dropped), keep local state so message doesn't disappear
       await refreshShell()
     } catch (err) {
       const failure = err instanceof Error ? err.message : 'Chat failed'

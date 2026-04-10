@@ -46,7 +46,9 @@ def _recurring_tension(
     uncertainty = str(private_inner_note.get("uncertainty") or "medium").strip()
     if mistake_signal:
         return f"{mistake_signal}:{uncertainty}"[:64]
-    return f"stability:{uncertainty}"[:64]
+    # Invert uncertainty → stability: low uncertainty = high stability
+    stability = {"low": "high", "medium": "medium", "high": "low"}.get(uncertainty, "medium")
+    return f"stability:{stability}"[:64]
 
 
 def _growth_direction(private_growth_note: dict[str, str]) -> str:

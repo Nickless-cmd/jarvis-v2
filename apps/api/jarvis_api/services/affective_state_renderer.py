@@ -82,6 +82,30 @@ def _collect_signals() -> dict[str, object]:
     except Exception:
         pass
 
+    try:
+        from apps.api.jarvis_api.services.hardware_body import get_hardware_state
+        hw = get_hardware_state()
+        if hw:
+            if hw.get("cpu_pct") is not None:
+                signals["cpu_pct"] = hw["cpu_pct"]
+            if hw.get("ram_pct") is not None:
+                signals["ram_pct"] = hw["ram_pct"]
+            if hw.get("cpu_temp_c") is not None:
+                signals["cpu_temp_c"] = hw["cpu_temp_c"]
+            if hw.get("gpus"):
+                signals["gpus"] = [
+                    {
+                        "util_pct": g["util_pct"],
+                        "vram_pct": g["vram_pct"],
+                        "temp_c": g["temp_c"],
+                    }
+                    for g in hw["gpus"]
+                ]
+            if hw.get("pressure") and hw["pressure"] != "low":
+                signals["hardware_pressure"] = hw["pressure"]
+    except Exception:
+        pass
+
     return signals
 
 

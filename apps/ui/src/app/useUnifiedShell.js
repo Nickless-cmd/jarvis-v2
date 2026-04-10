@@ -178,6 +178,7 @@ export function useUnifiedShell() {
         'inner-voice-initiative-bridge',
         'jarvis-notify',
         'boredom-bridge',
+        'scheduled-task',
       ])
       if (!proactiveSources.has(String(payload.source || ''))) return
       if (String(payload.session_id || '') !== String(activeSessionId || '')) return

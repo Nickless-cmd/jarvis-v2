@@ -1277,7 +1277,16 @@ def _persist_session_assistant_message(run: VisibleRun, text: str) -> None:
     normalized = str(text or "").strip()
     if not normalized:
         return
-    append_chat_message(session_id=run.session_id, role="assistant", content=normalized)
+    message = append_chat_message(session_id=run.session_id, role="assistant", content=normalized)
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("channel.chat_message_appended", {
+            "session_id": run.session_id,
+            "message": message,
+            "source": "visible-run",
+        })
+    except Exception:
+        pass
 
 
 def _recent_internal_tool_context(session_id: str | None, *, limit: int = 6) -> str:

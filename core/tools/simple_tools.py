@@ -1777,13 +1777,13 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
         lines = [f"Found {len(rows)} message(s) matching '{query}':\n"]
         for row in rows:
             content = str(row["content"] or "")
-            preview = content[:300] + ("…" if len(content) > 300 else "")
+            preview = content[:2000] + ("…" if len(content) > 2000 else "")
             session_label = str(row["session_title"] or row["session_id"] or "")
             ts = str(row["created_at"] or "")[:16]
             lines.append(f"[{ts}] {row['role'].upper()} ({session_label}):\n{preview}\n")
             results.append({
                 "role": row["role"],
-                "content": content[:500],
+                "content": content[:4000],
                 "created_at": row["created_at"],
                 "session_id": row["session_id"],
                 "session_title": session_label,

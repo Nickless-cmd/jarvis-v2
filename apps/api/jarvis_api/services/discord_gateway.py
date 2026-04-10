@@ -30,6 +30,10 @@ _outbound_queue: queue.Queue = queue.Queue()  # (channel_id: int, text: str)
 _discord_sessions: dict[str, int] = {}
 _discord_sessions_lock = threading.Lock()
 
+# Channels currently typing: cleared when outbound message is sent
+_typing_channels: set[int] = set()
+_typing_lock = threading.Lock()
+
 # Rate limiting for non-owner users: {user_id → last_response_time}
 _user_last_response: dict[int, float] = {}
 _RATE_LIMIT_SECONDS = 10.0
@@ -82,15 +86,15 @@ def _get_or_create_discord_session(channel_id: int, is_dm: bool, owner_discord_i
         # Look for existing Discord DM session
         for s in list_chat_sessions():
             if s.get("title") == "Discord DM":
-                return str(s["session_id"])
-        return str(create_chat_session(title="Discord DM")["session_id"])
+                return str(s["id"])
+        return str(create_chat_session(title="Discord DM")["id"])
     else:
         # Public channel: one session per channel
         target_title = f"Discord #{channel_id}"
         for s in list_chat_sessions():
             if s.get("title") == target_title:
-                return str(s["session_id"])
-        return str(create_chat_session(title=target_title)["session_id"])
+                return str(s["id"])
+        return str(create_chat_session(title=target_title)["id"])
 
 
 def _split_message(text: str, limit: int) -> list[str]:
@@ -104,6 +108,32 @@ def _split_message(text: str, limit: int) -> list[str]:
     return chunks
 
 
+async def _typing_loop(channel_id: int) -> None:
+    """Keep showing 'typing...' indicator until the outbound message is sent."""
+    tick = 0
+    while True:
+        with _typing_lock:
+            if channel_id not in _typing_channels:
+                break
+        try:
+            if _client:
+                await _client.http.send_typing(channel_id)
+                if tick == 0:
+                    try:
+                        from core.eventbus.bus import event_bus as _ebus_t
+                        _ebus_t.publish("discord.typing_started", {"channel_id": str(channel_id)})
+                    except Exception:
+                        pass
+        except Exception as e:
+            try:
+                from core.eventbus.bus import event_bus as _ebus_t
+                _ebus_t.publish("discord.typing_error", {"channel_id": str(channel_id), "error": str(e)})
+            except Exception:
+                pass
+        tick += 1
+        await asyncio.sleep(8)
+
+
 async def _send_outbound_loop() -> None:
     """Asyncio coroutine that drains the outbound queue and sends to Discord."""
     while _thread_running:
@@ -112,6 +142,9 @@ async def _send_outbound_loop() -> None:
         except queue.Empty:
             await asyncio.sleep(0.2)
             continue
+        # Stop typing indicator before sending
+        with _typing_lock:
+            _typing_channels.discard(channel_id)
         try:
             if _client:
                 channel = _client.get_channel(channel_id)
@@ -178,23 +211,33 @@ async def _run_client(config: dict) -> None:
                 return
             # Determine channel type
             is_dm = isinstance(message.channel, _discord.DMChannel)
-            ch_id_log = getattr(message.channel, "id", "?")
-            guild_id_log = getattr(getattr(message, "guild", None), "id", "DM")
-            logger.debug(
-                "discord on_message: author=%s is_dm=%s guild=%s channel=%s content=%r",
-                message.author.id, is_dm, guild_id_log, ch_id_log, (message.content or "")[:60],
-            )
+            ch_id = getattr(message.channel, "id", "?")
+            guild_id_actual = getattr(getattr(message, "guild", None), "id", None)
+            content_raw = message.content or ""
+            # Diagnostic event — shows every check value
+            try:
+                from core.eventbus.bus import event_bus as _ebus2
+                _ebus2.publish("discord.debug_check", {
+                    "author": str(getattr(message.author, "id", "?")),
+                    "is_dm": is_dm,
+                    "guild_actual": str(guild_id_actual),
+                    "guild_expected": str(guild_id),
+                    "channel": str(ch_id),
+                    "channel_allowed": str(ch_id in allowed_channel_ids) if not is_dm else "n/a",
+                    "owner_match": str(message.author.id) == owner_discord_id,
+                    "content_len": len(content_raw),
+                    "owner_discord_id": owner_discord_id,
+                })
+            except Exception:
+                pass
             # For guild messages: only respond in allowed channels
             if not is_dm:
                 if message.guild is None or message.guild.id != guild_id:
-                    logger.debug("discord on_message: guild mismatch (%s != %s), ignoring", guild_id_log, guild_id)
                     return
                 if message.channel.id not in allowed_channel_ids:
-                    logger.debug("discord on_message: channel %s not in allowed %s, ignoring", ch_id_log, allowed_channel_ids)
                     return
             # DM: only accept from owner
             if is_dm and str(message.author.id) != owner_discord_id:
-                logger.debug("discord on_message: DM from non-owner %s, ignoring", message.author.id)
                 return
 
             is_owner = str(message.author.id) == owner_discord_id
@@ -204,13 +247,20 @@ async def _run_client(config: dict) -> None:
                 now = time.monotonic()
                 last = _user_last_response.get(message.author.id, 0.0)
                 if now - last < _RATE_LIMIT_SECONDS:
-                    logger.debug("discord on_message: rate-limiting user %s", message.author.id)
                     return
                 _user_last_response[message.author.id] = now
 
-            content = message.content.strip()
+            content = content_raw.strip()
             if not content:
-                logger.debug("discord on_message: empty content, ignoring")
+                try:
+                    from core.eventbus.bus import event_bus as _ebus3
+                    _ebus3.publish("discord.debug_empty_content", {
+                        "author": str(getattr(message.author, "id", "?")),
+                        "channel": str(ch_id),
+                        "is_dm": is_dm,
+                    })
+                except Exception:
+                    pass
                 return
 
             channel_id = message.channel.id
@@ -234,6 +284,11 @@ async def _run_client(config: dict) -> None:
                 "is_dm": is_dm,
             })
 
+            # Start typing indicator
+            with _typing_lock:
+                _typing_channels.add(channel_id)
+            asyncio.ensure_future(_typing_loop(channel_id))
+
             # Trigger autonomous run (fire-and-forget in its own thread)
             from apps.api.jarvis_api.services.visible_runs import start_autonomous_run
             threading.Thread(
@@ -246,6 +301,15 @@ async def _run_client(config: dict) -> None:
             logger.info("discord on_message: autonomous run started for session %s", session_id)
         except Exception as exc:
             logger.error("discord on_message: unhandled error: %s", exc, exc_info=True)
+            try:
+                import traceback
+                from core.eventbus.bus import event_bus as _ebus_err
+                _ebus_err.publish("discord.error", {
+                    "error": str(exc),
+                    "traceback": traceback.format_exc()[-500:],
+                })
+            except Exception:
+                pass
 
     # Run outbound loop alongside the client
     asyncio.ensure_future(_send_outbound_loop())

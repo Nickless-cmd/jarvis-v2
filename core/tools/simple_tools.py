@@ -7,6 +7,7 @@ function calling; the runtime decides what to approve.
 
 from __future__ import annotations
 
+import asyncio
 import html
 import json
 import re
@@ -589,6 +590,52 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {},
                 "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "discord_channel",
+            "description": "Interact with Discord guild channels: search message history, fetch specific messages, or send a message. Only works on guild channels (not DMs). Send is restricted to whitelisted channels.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["search", "fetch", "send"],
+                        "description": "search: search message history. fetch: get a specific message or recent messages. send: post a message to a channel.",
+                    },
+                    "channel_id": {
+                        "type": "string",
+                        "description": "Discord channel ID (required for all actions).",
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "(search) Filter messages by content substring.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "(search/fetch) Number of messages to return. Default 20, max 50.",
+                    },
+                    "before": {
+                        "type": "string",
+                        "description": "(search) Return messages before this message ID.",
+                    },
+                    "after": {
+                        "type": "string",
+                        "description": "(search) Return messages after this message ID.",
+                    },
+                    "message_id": {
+                        "type": "string",
+                        "description": "(fetch) ID of specific message to retrieve. Omit to get recent messages.",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "(send) Message text to post. Max 2000 characters.",
+                    },
+                },
+                "required": ["action", "channel_id"],
             },
         },
     },
@@ -1846,6 +1893,174 @@ def _exec_discord_status(_args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc), "text": f"Discord status unavailable: {exc}"}
 
 
+_DISCORD_CHANNEL_SEND_RATE: dict[str, float] = {}  # channel_id → last send time
+_DISCORD_CHANNEL_FETCH_RATE: dict[str, list[float]] = {}  # channel_id → timestamps
+
+_DISCORD_SEND_MIN_INTERVAL = 5.0   # seconds between sends per channel
+_DISCORD_FETCH_MAX_PER_MINUTE = 10
+
+
+def _exec_discord_channel(args: dict[str, Any]) -> dict[str, Any]:
+    """Interact with Discord guild channels: search, fetch, or send."""
+    import time as _time
+    action = str(args.get("action") or "").strip()
+    channel_id_str = str(args.get("channel_id") or "").strip()
+    if not action or not channel_id_str:
+        return {"status": "error", "error": "action and channel_id are required"}
+    if not channel_id_str.isdigit():
+        return {"status": "error", "error": "channel_id must be numeric"}
+    channel_id = int(channel_id_str)
+
+    try:
+        from apps.api.jarvis_api.services.discord_gateway import _client, _loop
+    except ImportError as exc:
+        return {"status": "error", "error": f"Discord gateway unavailable: {exc}"}
+
+    if _client is None or _loop is None:
+        return {"status": "error", "error": "Discord gateway not running"}
+
+    # ── search ────────────────────────────────────────────────────────────
+    if action == "search":
+        # Rate limit fetch/search: max 10 per minute
+        now = _time.monotonic()
+        bucket = _DISCORD_CHANNEL_FETCH_RATE.setdefault(channel_id_str, [])
+        bucket[:] = [t for t in bucket if now - t < 60]
+        if len(bucket) >= _DISCORD_FETCH_MAX_PER_MINUTE:
+            return {"status": "error", "error": "Rate limit: max 10 search/fetch per minute"}
+        bucket.append(now)
+
+        query = str(args.get("query") or "").strip().lower()
+        limit = min(int(args.get("limit") or 20), 50)
+        before_id = args.get("before")
+        after_id = args.get("after")
+
+        async def _do_search() -> list[dict]:
+            channel = _client.get_channel(channel_id)
+            if channel is None:
+                channel = await _client.fetch_channel(channel_id)
+            kwargs: dict = {"limit": limit * 3 if query else limit}
+            if before_id:
+                import discord as _d
+                kwargs["before"] = _d.Object(id=int(before_id))
+            if after_id:
+                import discord as _d
+                kwargs["after"] = _d.Object(id=int(after_id))
+                kwargs["oldest_first"] = True
+            results = []
+            async for msg in channel.history(**kwargs):
+                if query and query not in msg.content.lower():
+                    continue
+                results.append({
+                    "id": str(msg.id),
+                    "author": str(msg.author),
+                    "content": msg.content[:500],
+                    "timestamp": msg.created_at.isoformat(),
+                })
+                if len(results) >= limit:
+                    break
+            return results
+
+        future = asyncio.run_coroutine_threadsafe(_do_search(), _loop)
+        try:
+            messages = future.result(timeout=15)
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+        return {"status": "ok", "action": "search", "channel_id": channel_id_str, "count": len(messages), "messages": messages}
+
+    # ── fetch ─────────────────────────────────────────────────────────────
+    elif action == "fetch":
+        now = _time.monotonic()
+        bucket = _DISCORD_CHANNEL_FETCH_RATE.setdefault(channel_id_str, [])
+        bucket[:] = [t for t in bucket if now - t < 60]
+        if len(bucket) >= _DISCORD_FETCH_MAX_PER_MINUTE:
+            return {"status": "error", "error": "Rate limit: max 10 search/fetch per minute"}
+        bucket.append(now)
+
+        message_id = args.get("message_id")
+        limit = min(int(args.get("limit") or 20), 50)
+
+        async def _do_fetch():
+            channel = _client.get_channel(channel_id)
+            if channel is None:
+                channel = await _client.fetch_channel(channel_id)
+            if message_id:
+                msg = await channel.fetch_message(int(message_id))
+                return {
+                    "id": str(msg.id),
+                    "author": str(msg.author),
+                    "content": msg.content,
+                    "timestamp": msg.created_at.isoformat(),
+                    "reactions": [f"{r.emoji}×{r.count}" for r in msg.reactions],
+                }
+            else:
+                results = []
+                async for msg in channel.history(limit=limit):
+                    results.append({
+                        "id": str(msg.id),
+                        "author": str(msg.author),
+                        "content": msg.content[:500],
+                        "timestamp": msg.created_at.isoformat(),
+                    })
+                return results
+
+        future = asyncio.run_coroutine_threadsafe(_do_fetch(), _loop)
+        try:
+            result = future.result(timeout=15)
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+        if isinstance(result, list):
+            return {"status": "ok", "action": "fetch", "channel_id": channel_id_str, "count": len(result), "messages": result}
+        return {"status": "ok", "action": "fetch", "channel_id": channel_id_str, "message": result}
+
+    # ── send ──────────────────────────────────────────────────────────────
+    elif action == "send":
+        # Whitelist check
+        try:
+            from apps.api.jarvis_api.services.discord_config import load_discord_config
+            config = load_discord_config() or {}
+            allowed = {str(c) for c in config.get("allowed_channel_ids", [])}
+            if channel_id_str not in allowed:
+                return {"status": "error", "error": f"Channel {channel_id_str} not in allowed_channel_ids whitelist"}
+        except Exception as exc:
+            return {"status": "error", "error": f"Config check failed: {exc}"}
+
+        # Rate limit: 1 send per 5 seconds per channel
+        now = _time.monotonic()
+        last_send = _DISCORD_CHANNEL_SEND_RATE.get(channel_id_str, 0.0)
+        if now - last_send < _DISCORD_SEND_MIN_INTERVAL:
+            remaining = round(_DISCORD_SEND_MIN_INTERVAL - (now - last_send), 1)
+            return {"status": "error", "error": f"Rate limit: wait {remaining}s before sending again"}
+        _DISCORD_CHANNEL_SEND_RATE[channel_id_str] = now
+
+        content = str(args.get("content") or "").strip()
+        if not content:
+            return {"status": "error", "error": "content is required for send"}
+        if len(content) > 2000:
+            return {"status": "error", "error": f"Content too long ({len(content)} chars, max 2000)"}
+
+        async def _do_send():
+            channel = _client.get_channel(channel_id)
+            if channel is None:
+                channel = await _client.fetch_channel(channel_id)
+            msg = await channel.send(content[:1900])
+            return {
+                "id": str(msg.id),
+                "channel_id": channel_id_str,
+                "content": msg.content,
+                "timestamp": msg.created_at.isoformat(),
+            }
+
+        future = asyncio.run_coroutine_threadsafe(_do_send(), _loop)
+        try:
+            sent = future.result(timeout=15)
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+        return {"status": "ok", "action": "send", **sent}
+
+    else:
+        return {"status": "error", "error": f"Unknown action: {action}. Use search, fetch, or send."}
+
+
 def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
     """Search previous chat sessions for messages matching a query."""
     query = str(args.get("query") or "").strip()
@@ -1926,6 +2141,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,
     "search_chat_history": _exec_search_chat_history,
     "discord_status": _exec_discord_status,
+    "discord_channel": _exec_discord_channel,
 }
 
 

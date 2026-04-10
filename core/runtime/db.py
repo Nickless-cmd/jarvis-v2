@@ -1364,6 +1364,31 @@ def mark_scheduled_task_cancelled(task_id: str, cancelled_at: str, updated_at: s
         conn.commit()
 
 
+def update_scheduled_task(task_id: str, *, focus: str | None = None, run_at: str | None = None, updated_at: str) -> dict[str, object] | None:
+    """Update focus and/or run_at on a pending task. Returns updated task or None if not found/not pending."""
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        fields: list[str] = []
+        params: list[object] = []
+        if focus is not None:
+            fields.append("focus = ?")
+            params.append(focus)
+        if run_at is not None:
+            fields.append("run_at = ?")
+            params.append(run_at)
+        if not fields:
+            return get_scheduled_task(task_id)
+        fields.append("updated_at = ?")
+        params.append(updated_at)
+        params.append(task_id)
+        conn.execute(
+            f"UPDATE scheduled_tasks SET {', '.join(fields)} WHERE task_id = ? AND status = 'pending'",
+            params,
+        )
+        conn.commit()
+    return get_scheduled_task(task_id)
+
+
 def list_scheduled_tasks(limit: int = 20) -> list[dict[str, object]]:
     with connect() as conn:
         _ensure_scheduled_tasks_table(conn)

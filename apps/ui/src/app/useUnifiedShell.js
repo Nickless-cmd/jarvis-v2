@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { backend } from '../lib/adapters'
-import { appendMessagesToSession, updateSessionMessage, upsertSessionMessage } from '../lib/sessionState'
+import { appendMessagesToSession, insertMessageBeforePending, updateSessionMessage, upsertSessionMessage } from '../lib/sessionState'
 
 const ACTIVE_SESSION_KEY = 'jarvis-ui-active-session'
 const ACTIVE_VIEW_KEY = 'jarvis-ui-active-view'
@@ -184,7 +184,13 @@ export function useUnifiedShell() {
       if (String(payload.session_id || '') !== String(activeSessionId || '')) return
 
       const message = payload.message || {}
-      setActiveSession((current) => (current ? upsertSessionMessage(current, message) : current))
+      // During streaming, insert before the pending message so notification
+      // doesn't appear below an incomplete response.
+      setActiveSession((current) =>
+        current
+          ? (isStreaming ? insertMessageBeforePending(current, message) : upsertSessionMessage(current, message))
+          : current
+      )
       setSessions((current) =>
         current.map((session) =>
           session.id === String(payload.session_id || '')

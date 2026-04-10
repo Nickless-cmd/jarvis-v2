@@ -75,6 +75,8 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
     if get_chat_session(session_id) is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
     append_chat_message(session_id=session_id, role="user", content=request.message)
+    from apps.api.jarvis_api.services.notification_bridge import pin_session
+    pin_session(session_id)
     return StreamingResponse(
         start_visible_run(message=request.message, session_id=session_id),
         media_type="text/event-stream",

@@ -344,6 +344,68 @@ def _execute_source_edit_proposal(payload: dict) -> dict:
     }
 
 
+def _execute_git_commit_proposal(payload: dict) -> dict:
+    """Execute an approved git-commit proposal.
+
+    Payload schema:
+        {
+            "files": ["path/to/file", ...],  # relative paths to stage; ["."] for all
+            "message": "commit message",
+            "project_root": "/abs/path/to/repo",
+        }
+    """
+    import subprocess as _sp
+    from pathlib import Path as _Path
+
+    files = payload.get("files") or ["."]
+    message = str(payload.get("message") or "").strip()
+    project_root = str(payload.get("project_root") or "")
+
+    if not message:
+        return {"status": "error", "error": "commit message is required"}
+    if not project_root or not _Path(project_root).is_dir():
+        return {"status": "error", "error": f"project_root not found: {project_root}"}
+
+    # Stage files
+    add_cmd = ["git", "add", "--"] + [str(f) for f in files]
+    add_result = _sp.run(add_cmd, capture_output=True, text=True, cwd=project_root)
+    if add_result.returncode != 0:
+        return {
+            "status": "error",
+            "error": f"git add failed: {add_result.stderr.strip()}",
+        }
+
+    # Commit
+    commit_result = _sp.run(
+        ["git", "commit", "-m", message],
+        capture_output=True,
+        text=True,
+        cwd=project_root,
+    )
+    if commit_result.returncode != 0:
+        stderr = commit_result.stderr.strip()
+        stdout = commit_result.stdout.strip()
+        # "nothing to commit" is not an error
+        if "nothing to commit" in stdout or "nothing to commit" in stderr:
+            return {"status": "ok", "skipped": True, "reason": "nothing to commit"}
+        return {"status": "error", "error": f"git commit failed: {stderr or stdout}"}
+
+    output = commit_result.stdout.strip()
+    # Extract commit hash from output like "[main abc1234] message"
+    import re as _re
+    m = _re.search(r"\[(?:\S+)\s+([0-9a-f]+)\]", output)
+    commit_hash = m.group(1) if m else "unknown"
+
+    return {
+        "status": "executed",
+        "commit": commit_hash,
+        "message": message,
+        "files": files,
+        "output": output,
+    }
+
+
 # Register built-ins on import
 register_proposal_executor("memory-rewrite", _execute_memory_rewrite_proposal)
 register_proposal_executor("source-edit", _execute_source_edit_proposal)
+register_proposal_executor("git-commit", _execute_git_commit_proposal)

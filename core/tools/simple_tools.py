@@ -380,6 +380,32 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "propose_git_commit",
+            "description": "Propose a git commit for user approval in Mission Control. Stages the specified files and commits with the given message once approved. Use after implementing a fix or feature to persist the change to version control.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "The git commit message.",
+                    },
+                    "files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of file paths to stage (relative to project root). Use [\".\"] to stage all changes.",
+                    },
+                    "rationale": {
+                        "type": "string",
+                        "description": "Why this commit is needed — shown in the approval UI.",
+                    },
+                },
+                "required": ["message", "rationale"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_proposals",
             "description": "List pending autonomy proposals — proposed source edits and memory rewrites awaiting user approval in Mission Control.",
             "parameters": {
@@ -1416,6 +1442,61 @@ def _exec_propose_source_edit(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_propose_git_commit(args: dict[str, Any]) -> dict[str, Any]:
+    """File a git-commit autonomy proposal."""
+    message = str(args.get("message") or "").strip()
+    files = args.get("files") or ["."]
+    rationale = str(args.get("rationale") or "").strip()
+
+    if not message:
+        return {"status": "error", "error": "message is required"}
+    if not rationale:
+        return {"status": "error", "error": "rationale is required"}
+
+    # Validate files list
+    if not isinstance(files, list) or not files:
+        files = ["."]
+
+    # Check there's actually something to commit
+    import subprocess as _sp
+    status = _sp.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True, text=True, cwd=str(PROJECT_ROOT),
+    )
+    if not status.stdout.strip():
+        return {"status": "ok", "skipped": True, "reason": "nothing to commit — working tree clean"}
+
+    try:
+        from apps.api.jarvis_api.services.autonomy_proposal_queue import file_proposal
+        files_display = ", ".join(str(f) for f in files[:5])
+        if len(files) > 5:
+            files_display += f" (+{len(files) - 5} more)"
+        proposal = file_proposal(
+            kind="git-commit",
+            title=f"git commit: {message[:60]}",
+            rationale=rationale,
+            payload={
+                "files": files,
+                "message": message,
+                "project_root": str(PROJECT_ROOT),
+            },
+            created_by="jarvis-tool",
+        )
+        proposal_id = str(proposal.get("proposal_id") or "")
+        return {
+            "status": "filed",
+            "proposal_id": proposal_id,
+            "message": message,
+            "files": files,
+            "text": (
+                f"Git commit proposal filed [{proposal_id}]: \"{message}\" ({files_display}). "
+                f"Visible in Mission Control → Operations → Autonomy Proposals."
+            ),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 def _exec_list_proposals(_args: dict[str, Any]) -> dict[str, Any]:
     """List pending autonomy proposals."""
     try:
@@ -2128,6 +2209,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "adjust_mood": _exec_adjust_mood,
     "search_memory": _exec_search_memory,
     "propose_source_edit": _exec_propose_source_edit,
+    "propose_git_commit": _exec_propose_git_commit,
     "list_proposals": _exec_list_proposals,
     "schedule_task": _exec_schedule_task,
     "list_scheduled_tasks": _exec_list_scheduled_tasks,

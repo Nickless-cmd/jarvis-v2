@@ -88,7 +88,9 @@ def _collect_signals() -> dict[str, object]:
 def _render_via_llm(signals: dict[str, object]) -> str | None:
     """Call heartbeat model with signals, return natural Danish text."""
     try:
-        workspace_file = Path("workspace/default/AFFECTIVE_STATE.md")
+        from core.identity.workspace_bootstrap import ensure_default_workspace
+        workspace_dir = ensure_default_workspace()
+        workspace_file = workspace_dir / "AFFECTIVE_STATE.md"
         if workspace_file.exists():
             instructions = workspace_file.read_text(encoding="utf-8")
         else:

@@ -20,6 +20,16 @@ _boredom_stop = threading.Event()
 # Guard: only one boredom notification per productive episode
 _last_boredom_notification_level: str = "none"
 
+# The session currently active in the user's browser. When set, proactive
+# notifications are delivered here instead of guessing from list_chat_sessions().
+_pinned_session_id: str = ""
+
+
+def pin_session(session_id: str) -> None:
+    """Record which session the user is currently viewing. Call on every user message."""
+    global _pinned_session_id
+    _pinned_session_id = (session_id or "").strip()
+
 
 def send_session_notification(
     content: str,
@@ -40,8 +50,22 @@ def send_session_notification(
     if not content:
         return {"status": "error", "error": "empty content"}
 
-    sessions = list_chat_sessions()
-    session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
+    # Use the pinned session if set (e.g. the session currently active in the user's browser),
+    # otherwise fall back to the most recently updated session that has user messages
+    # (to avoid sending to autonomous-run-only sessions which the user may not be watching).
+    session_id = _pinned_session_id
+    if not session_id:
+        sessions = list_chat_sessions()
+        for s in sessions:
+            sid = str((s or {}).get("id") or "").strip()
+            if not sid:
+                continue
+            full = get_chat_session(sid)
+            if full and any(m.get("role") == "user" for m in (full.get("messages") or [])):
+                session_id = sid
+                break
+        if not session_id:
+            session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
     if not session_id or get_chat_session(session_id) is None:
         return {"status": "blocked", "error": "no active session"}
 

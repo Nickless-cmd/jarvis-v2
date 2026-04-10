@@ -44,6 +44,44 @@ export function updateSessionMessage(session, messageId, updater) {
   }
 }
 
+/**
+ * Insert a proactive notification message immediately before the last pending
+ * (still-streaming) message, so it doesn't appear below an incomplete response.
+ * Falls back to upsertSessionMessage when there's no pending message.
+ */
+export function insertMessageBeforePending(session, message) {
+  const normalized = {
+    id: String(message?.id || '').trim(),
+    role: String(message?.role || '').trim() || 'assistant',
+    content: String(message?.content || '').trim(),
+    ts: String(message?.ts || '').trim(),
+    created_at: String(message?.created_at || '').trim(),
+  }
+  if (!normalized.id || !normalized.content) return session
+
+  // If the message already exists, use upsert (update in place)
+  const existingIndex = session.messages.findIndex((m) => m.id === normalized.id)
+  if (existingIndex >= 0) return upsertSessionMessage(session, message)
+
+  const pendingIndex = session.messages.findLastIndex((m) => m.pending)
+  if (pendingIndex < 0) return upsertSessionMessage(session, message)
+
+  const nextMessages = [
+    ...session.messages.slice(0, pendingIndex),
+    normalized,
+    ...session.messages.slice(pendingIndex),
+  ]
+  const firstUser = nextMessages.find((m) => m.role === 'user')
+  const title = firstUser ? previewText(firstUser.content) : session.title
+  return {
+    ...session,
+    title,
+    message_count: nextMessages.length,
+    updated_at: normalized.created_at || session.updated_at,
+    messages: nextMessages,
+  }
+}
+
 export function upsertSessionMessage(session, message) {
   const normalized = {
     id: String(message?.id || '').trim(),

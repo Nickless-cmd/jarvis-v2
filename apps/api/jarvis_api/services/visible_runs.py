@@ -322,20 +322,57 @@ def start_autonomous_run(message: str, session_id: str | None = None) -> None:
         session_id=resolved_session,
         autonomous=True,
     )
+    event_bus.publish(
+        "runtime.autonomous_run_started",
+        {
+            "run_id": run.run_id,
+            "session_id": resolved_session,
+            "provider": run.provider,
+            "model": run.model,
+            "focus": run.user_message[:200],
+        },
+    )
 
     def _in_thread() -> None:
         import asyncio as _asyncio
 
         loop = _asyncio.new_event_loop()
+        consumed_frames = 0
+        failed = False
         try:
             async def _consume() -> None:
+                nonlocal consumed_frames
                 async for _ in _stream_visible_run(run):
-                    pass  # Discard SSE frames — we only care about side-effects
+                    consumed_frames += 1
 
             loop.run_until_complete(_consume())
-        except Exception:
-            pass
+        except Exception as exc:
+            failed = True
+            event_bus.publish(
+                "runtime.autonomous_run_failed",
+                {
+                    "run_id": run.run_id,
+                    "session_id": resolved_session,
+                    "provider": run.provider,
+                    "model": run.model,
+                    "focus": run.user_message[:200],
+                    "error": str(exc)[:500],
+                    "consumed_frames": consumed_frames,
+                },
+            )
         finally:
+            if not failed:
+                event_bus.publish(
+                    "runtime.autonomous_run_completed",
+                    {
+                        "run_id": run.run_id,
+                        "session_id": resolved_session,
+                        "provider": run.provider,
+                        "model": run.model,
+                        "focus": run.user_message[:200],
+                        "consumed_frames": consumed_frames,
+                    },
+                )
             loop.close()
 
     threading.Thread(target=_in_thread, name="jarvis-autonomous-run", daemon=True).start()

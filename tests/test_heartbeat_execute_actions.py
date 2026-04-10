@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 from datetime import UTC, datetime
@@ -139,6 +140,25 @@ def test_initiative_queue_retries_blocked_attempts(isolated_runtime) -> None:
     assert refreshed["attempt_count"] == 1
     assert refreshed["blocked_reason"] == "waiting-for-clearer-grounding"
     assert refreshed["next_attempt_at"]
+
+
+def test_initiative_queue_persists_across_module_reload(isolated_runtime) -> None:
+    import apps.api.jarvis_api.services.initiative_queue as initiative_queue
+
+    initiative_id = initiative_queue.push_initiative(
+        focus="Persist this initiative across runtime reload",
+        source="inner-voice",
+        source_id="voice-persist",
+        priority="high",
+    )
+
+    reloaded = importlib.reload(initiative_queue)
+    pending = reloaded.get_pending_initiatives()
+
+    assert any(item["initiative_id"] == initiative_id for item in pending)
+    persisted = isolated_runtime.db.get_runtime_initiative(initiative_id)
+    assert persisted is not None
+    assert persisted["focus"] == "Persist this initiative across runtime reload"
 
 
 def test_act_on_initiative_materializes_runtime_work(isolated_runtime) -> None:

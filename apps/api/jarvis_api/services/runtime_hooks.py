@@ -50,6 +50,21 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
     if event_kind == "heartbeat.initiative_pushed":
         focus = str(payload.get("focus") or "").strip() or "Follow queued initiative"
         priority = str(payload.get("priority") or "medium").strip().lower()
+        existing = _find_active_task(
+            kind="initiative-followup",
+            goal=focus,
+            scope=focus,
+        )
+        if existing is not None:
+            return runtime_db.record_runtime_hook_dispatch(
+                event_id=event_id,
+                event_kind=event_kind,
+                status="coalesced",
+                task_id=str(existing.get("task_id") or ""),
+                flow_id=str(existing.get("flow_id") or ""),
+                summary=f"Coalesced into existing initiative follow-up: {focus[:120]}",
+                created_at=created_at,
+            )
         task = runtime_tasks.create_task(
             kind="initiative-followup",
             goal=focus,
@@ -82,6 +97,8 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
         action_status = str(payload.get("action_status") or "").strip().lower()
         summary = str(payload.get("summary") or "").strip()
         blocked_reason = str(payload.get("blocked_reason") or "").strip()
+        goal = summary or blocked_reason or "Investigate blocked heartbeat action"
+        scope = str(payload.get("action_type") or "").strip()
         if action_status not in {"blocked", "failed"} and not blocked_reason:
             return runtime_db.record_runtime_hook_dispatch(
                 event_id=event_id,
@@ -90,11 +107,26 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
                 summary="Heartbeat tick had no blocked or failed follow-up condition.",
                 created_at=created_at,
             )
+        existing = _find_active_task(
+            kind="heartbeat-followup",
+            goal=goal,
+            scope=scope,
+        )
+        if existing is not None:
+            return runtime_db.record_runtime_hook_dispatch(
+                event_id=event_id,
+                event_kind=event_kind,
+                status="coalesced",
+                task_id=str(existing.get("task_id") or ""),
+                flow_id=str(existing.get("flow_id") or ""),
+                summary=f"Coalesced into existing heartbeat follow-up: {goal[:120]}",
+                created_at=created_at,
+            )
         task = runtime_tasks.create_task(
             kind="heartbeat-followup",
-            goal=summary or blocked_reason or "Investigate blocked heartbeat action",
+            goal=goal,
             origin=f"hook:{event_kind}",
-            scope=str(payload.get("action_type") or "").strip(),
+            scope=scope,
             priority="medium",
             run_id=str(payload.get("tick_id") or "").strip(),
             owner="runtime-hook",
@@ -127,3 +159,20 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
         summary="Event kind is not supported by runtime hook dispatch.",
         created_at=created_at,
     )
+
+
+def _find_active_task(
+    *,
+    kind: str,
+    goal: str,
+    scope: str,
+) -> dict[str, object] | None:
+    normalized_goal = " ".join(str(goal or "").split()).strip().lower()
+    normalized_scope = " ".join(str(scope or "").split()).strip().lower()
+    for status in ("queued", "running", "blocked"):
+        for task in runtime_tasks.list_tasks(status=status, kind=kind, limit=40):
+            task_goal = " ".join(str(task.get("goal") or "").split()).strip().lower()
+            task_scope = " ".join(str(task.get("scope") or "").split()).strip().lower()
+            if task_goal == normalized_goal and task_scope == normalized_scope:
+                return task
+    return None

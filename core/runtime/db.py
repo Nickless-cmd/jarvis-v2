@@ -928,8 +928,271 @@ def init_db() -> None:
         _ensure_runtime_remembered_fact_signal_table(conn)
         _ensure_runtime_memory_md_update_proposal_table(conn)
         _ensure_runtime_selfhood_proposal_table(conn)
+        _ensure_runtime_initiatives_table(conn)
         _ensure_autonomy_proposals_table(conn)
         conn.commit()
+
+
+def _ensure_runtime_initiatives_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS runtime_initiatives (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            initiative_id TEXT NOT NULL UNIQUE,
+            focus TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT '',
+            source_id TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'pending',
+            priority TEXT NOT NULL DEFAULT 'medium',
+            attempt_count INTEGER NOT NULL DEFAULT 0,
+            detected_at TEXT NOT NULL,
+            last_attempt_at TEXT NOT NULL DEFAULT '',
+            next_attempt_at TEXT NOT NULL DEFAULT '',
+            blocked_reason TEXT NOT NULL DEFAULT '',
+            acted_at TEXT NOT NULL DEFAULT '',
+            action_summary TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_initiatives_status_due
+        ON runtime_initiatives(status, next_attempt_at, id DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_runtime_initiatives_focus_status
+        ON runtime_initiatives(focus, status, id DESC)
+        """
+    )
+
+
+def _runtime_initiative_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "initiative_id": row["initiative_id"],
+        "focus": row["focus"],
+        "source": row["source"],
+        "source_id": row["source_id"],
+        "detected_at": row["detected_at"],
+        "status": row["status"],
+        "priority": row["priority"],
+        "attempt_count": int(row["attempt_count"] or 0),
+        "last_attempt_at": row["last_attempt_at"],
+        "next_attempt_at": row["next_attempt_at"],
+        "blocked_reason": row["blocked_reason"],
+        "acted_at": row["acted_at"],
+        "action_summary": row["action_summary"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def create_runtime_initiative(
+    *,
+    initiative_id: str,
+    focus: str,
+    source: str = "",
+    source_id: str = "",
+    status: str = "pending",
+    priority: str = "medium",
+    detected_at: str,
+    next_attempt_at: str = "",
+    updated_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_runtime_initiatives_table(conn)
+        conn.execute(
+            """
+            INSERT INTO runtime_initiatives (
+                initiative_id,
+                focus,
+                source,
+                source_id,
+                status,
+                priority,
+                detected_at,
+                next_attempt_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                initiative_id,
+                focus,
+                source,
+                source_id,
+                status,
+                priority,
+                detected_at,
+                next_attempt_at,
+                updated_at,
+            ),
+        )
+        conn.commit()
+    initiative = get_runtime_initiative(initiative_id)
+    if initiative is None:
+        raise RuntimeError("runtime initiative was not persisted")
+    return initiative
+
+
+def get_runtime_initiative(initiative_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_runtime_initiatives_table(conn)
+        row = conn.execute(
+            """
+            SELECT
+                initiative_id,
+                focus,
+                source,
+                source_id,
+                detected_at,
+                status,
+                priority,
+                attempt_count,
+                last_attempt_at,
+                next_attempt_at,
+                blocked_reason,
+                acted_at,
+                action_summary,
+                updated_at
+            FROM runtime_initiatives
+            WHERE initiative_id = ?
+            LIMIT 1
+            """,
+            (initiative_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _runtime_initiative_from_row(row)
+
+
+def find_pending_runtime_initiative_by_focus(focus: str) -> dict[str, object] | None:
+    normalized = str(focus or "").strip().lower()
+    if not normalized:
+        return None
+    with connect() as conn:
+        _ensure_runtime_initiatives_table(conn)
+        row = conn.execute(
+            """
+            SELECT
+                initiative_id,
+                focus,
+                source,
+                source_id,
+                detected_at,
+                status,
+                priority,
+                attempt_count,
+                last_attempt_at,
+                next_attempt_at,
+                blocked_reason,
+                acted_at,
+                action_summary,
+                updated_at
+            FROM runtime_initiatives
+            WHERE status = 'pending' AND lower(focus) = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (normalized,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _runtime_initiative_from_row(row)
+
+
+def list_runtime_initiatives(
+    *,
+    status: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, object]]:
+    clauses: list[str] = []
+    params: list[object] = []
+    if status:
+        clauses.append("status = ?")
+        params.append(status)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    with connect() as conn:
+        _ensure_runtime_initiatives_table(conn)
+        rows = conn.execute(
+            f"""
+            SELECT
+                initiative_id,
+                focus,
+                source,
+                source_id,
+                detected_at,
+                status,
+                priority,
+                attempt_count,
+                last_attempt_at,
+                next_attempt_at,
+                blocked_reason,
+                acted_at,
+                action_summary,
+                updated_at
+            FROM runtime_initiatives
+            {where_sql}
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (*params, max(limit, 1)),
+        ).fetchall()
+    return [_runtime_initiative_from_row(row) for row in rows]
+
+
+def update_runtime_initiative(
+    initiative_id: str,
+    *,
+    status: str | None = None,
+    priority: str | None = None,
+    detected_at: str | None = None,
+    attempt_count: int | None = None,
+    last_attempt_at: str | None = None,
+    next_attempt_at: str | None = None,
+    blocked_reason: str | None = None,
+    acted_at: str | None = None,
+    action_summary: str | None = None,
+    updated_at: str,
+) -> dict[str, object] | None:
+    updates: list[str] = ["updated_at = ?"]
+    params: list[object] = [updated_at]
+    field_map: dict[str, object | None] = {
+        "status": status,
+        "priority": priority,
+        "detected_at": detected_at,
+        "attempt_count": attempt_count,
+        "last_attempt_at": last_attempt_at,
+        "next_attempt_at": next_attempt_at,
+        "blocked_reason": blocked_reason,
+        "acted_at": acted_at,
+        "action_summary": action_summary,
+    }
+    for column, value in field_map.items():
+        if value is None:
+            continue
+        updates.append(f"{column} = ?")
+        params.append(value)
+    params.append(initiative_id)
+    with connect() as conn:
+        _ensure_runtime_initiatives_table(conn)
+        row = conn.execute(
+            "SELECT initiative_id FROM runtime_initiatives WHERE initiative_id = ? LIMIT 1",
+            (initiative_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            f"""
+            UPDATE runtime_initiatives
+            SET {', '.join(updates)}
+            WHERE initiative_id = ?
+            """,
+            tuple(params),
+        )
+        conn.commit()
+    return get_runtime_initiative(initiative_id)
 
 
 def _ensure_autonomy_proposals_table(conn: sqlite3.Connection) -> None:

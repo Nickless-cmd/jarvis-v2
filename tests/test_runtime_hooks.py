@@ -91,3 +91,48 @@ def test_runtime_hooks_dispatch_tick_blocked_events_into_followup_work(isolated_
     assert task is not None
     assert task["kind"] == "heartbeat-followup"
     assert task["run_id"] == "heartbeat-tick:def"
+
+
+def test_runtime_hooks_coalesce_duplicate_blocked_heartbeat_work(isolated_runtime) -> None:
+    runtime_hooks = __import__(
+        "apps.api.jarvis_api.services.runtime_hooks",
+        fromlist=["dispatch_unhandled_hook_events"],
+    )
+
+    payload = {
+        "blocked_reason": "cooldown-active",
+        "action_type": "webchat-proactive-question",
+        "trigger": "scheduled",
+    }
+    event_bus.publish(
+        "heartbeat.tick_blocked",
+        {"tick_id": "heartbeat-tick:one", **payload},
+    )
+    event_bus.publish(
+        "heartbeat.tick_blocked",
+        {"tick_id": "heartbeat-tick:two", **payload},
+    )
+
+    dispatches = runtime_hooks.dispatch_unhandled_hook_events(
+        event_kinds={"heartbeat.tick_blocked"},
+        limit=4,
+    )
+
+    dispatched = [item for item in dispatches if item["status"] == "dispatched"]
+    coalesced = [item for item in dispatches if item["status"] == "coalesced"]
+    assert len(dispatched) == 1
+    assert len(coalesced) == 1
+    assert coalesced[0]["task_id"] == dispatched[0]["task_id"]
+
+    tasks = isolated_runtime.db.list_runtime_tasks(
+        status="queued",
+        kind="heartbeat-followup",
+        limit=10,
+    )
+    matching = [
+        task
+        for task in tasks
+        if task["goal"] == "cooldown-active"
+        and task["scope"] == "webchat-proactive-question"
+    ]
+    assert len(matching) == 1

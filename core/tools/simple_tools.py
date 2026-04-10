@@ -554,6 +554,27 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_chat_history",
+            "description": "Search previous chat sessions for messages matching a keyword or phrase. Returns matching messages with session context. Use this to recall earlier conversations.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Keyword or phrase to search for in past messages",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results to return (default 10, max 30)",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
 
@@ -1724,6 +1745,55 @@ def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc), "text": f"Tick failed: {exc}"}
 
 
+def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
+    """Search previous chat sessions for messages matching a query."""
+    query = str(args.get("query") or "").strip()
+    if not query:
+        return {"error": "query is required", "status": "error"}
+
+    limit = min(int(args.get("limit") or 10), 30)
+
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT m.role, m.content, m.created_at, m.session_id,
+                       s.title AS session_title
+                FROM chat_messages m
+                LEFT JOIN chat_sessions s ON s.session_id = m.session_id
+                WHERE m.content LIKE ?
+                  AND m.role IN ('user', 'assistant')
+                ORDER BY m.id DESC
+                LIMIT ?
+                """,
+                (f"%{query}%", limit),
+            ).fetchall()
+
+        if not rows:
+            return {"status": "ok", "count": 0, "text": f"No messages found matching '{query}'", "results": []}
+
+        results = []
+        lines = [f"Found {len(rows)} message(s) matching '{query}':\n"]
+        for row in rows:
+            content = str(row["content"] or "")
+            preview = content[:300] + ("…" if len(content) > 300 else "")
+            session_label = str(row["session_title"] or row["session_id"] or "")
+            ts = str(row["created_at"] or "")[:16]
+            lines.append(f"[{ts}] {row['role'].upper()} ({session_label}):\n{preview}\n")
+            results.append({
+                "role": row["role"],
+                "content": content[:500],
+                "created_at": row["created_at"],
+                "session_id": row["session_id"],
+                "session_title": session_label,
+            })
+
+        return {"status": "ok", "count": len(rows), "results": results, "text": "\n".join(lines)}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
@@ -1753,6 +1823,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_self_state": _exec_read_self_state,
     "heartbeat_status": _exec_heartbeat_status,
     "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,
+    "search_chat_history": _exec_search_chat_history,
 }
 
 

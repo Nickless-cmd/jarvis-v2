@@ -243,6 +243,24 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "read_model_config",
+            "description": (
+                "Read the current model configuration for all runtime lanes. "
+                "Shows which LLM provider and model is active for each lane: "
+                "visible (the model running you right now in chat), local (inner voice, "
+                "heartbeat ticks), cheap (fast internal tasks), and coding. "
+                "Use this to know what model you're running on and what capabilities are available."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "read_mood",
             "description": (
                 "Read your current affective state: emotional baseline (confidence, curiosity, "
@@ -999,6 +1017,44 @@ def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_read_model_config(_args: dict[str, Any]) -> dict[str, Any]:
+    """Read the current model configuration for all runtime lanes."""
+    try:
+        from core.runtime.provider_router import resolve_provider_router_target
+    except Exception as exc:
+        return {"status": "error", "error": f"provider_router unavailable: {exc}"}
+
+    lanes = ["visible", "local", "cheap", "coding"]
+    lane_info: dict[str, dict[str, Any]] = {}
+    lines = ["Model configuration:"]
+
+    for lane in lanes:
+        try:
+            target = resolve_provider_router_target(lane=lane)
+            provider = str(target.get("provider") or "")
+            model = str(target.get("model") or "")
+            active = bool(target.get("active"))
+            creds = bool(target.get("credentials_ready"))
+            lane_info[lane] = {
+                "provider": provider,
+                "model": model,
+                "active": active,
+                "credentials_ready": creds,
+            }
+            status = "ready" if (active and creds) else ("no-creds" if active else "inactive")
+            marker = " ← YOU" if lane == "visible" else ""
+            lines.append(f"  [{lane}] {provider}/{model} ({status}){marker}")
+        except Exception as exc:
+            lane_info[lane] = {"error": str(exc)}
+            lines.append(f"  [{lane}] error: {exc}")
+
+    return {
+        "status": "ok",
+        "lanes": lane_info,
+        "text": "\n".join(lines),
+    }
+
+
 def _exec_read_mood(_args: dict[str, Any]) -> dict[str, Any]:
     """Read current affective/mood state."""
     import json as _json
@@ -1603,6 +1659,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "web_search": _exec_web_search,
     "list_initiatives": _exec_list_initiatives,
     "push_initiative": _exec_push_initiative,
+    "read_model_config": _exec_read_model_config,
     "read_mood": _exec_read_mood,
     "adjust_mood": _exec_adjust_mood,
     "search_memory": _exec_search_memory,

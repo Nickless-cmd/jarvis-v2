@@ -30066,3 +30066,48 @@ def list_cognitive_conflict_memories(*, limit: int = 15) -> list[dict[str, objec
              "jarvis_position": r["jarvis_position"], "user_position": r["user_position"],
              "resolution": r["resolution"], "lesson": r["lesson"],
              "created_at": r["created_at"]} for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Cached affective state
+# ---------------------------------------------------------------------------
+
+
+def _ensure_cached_affective_state_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cached_affective_state (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rendered_text TEXT NOT NULL,
+            signals_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+
+def save_cached_affective_state(rendered_text: str, signals_json: str) -> None:
+    now = datetime.now(UTC).isoformat()
+    with connect() as conn:
+        _ensure_cached_affective_state_table(conn)
+        conn.execute(
+            "INSERT INTO cached_affective_state (rendered_text, signals_json, created_at) VALUES (?, ?, ?)",
+            (rendered_text, signals_json, now),
+        )
+        conn.commit()
+
+
+def get_cached_affective_state(max_age_seconds: int = 300) -> str | None:
+    from datetime import timedelta
+    cutoff = (datetime.now(UTC) - timedelta(seconds=max_age_seconds)).isoformat()
+    with connect() as conn:
+        _ensure_cached_affective_state_table(conn)
+        row = conn.execute(
+            """
+            SELECT rendered_text FROM cached_affective_state
+            WHERE created_at >= ?
+            ORDER BY id DESC LIMIT 1
+            """,
+            (cutoff,),
+        ).fetchone()
+    return str(row["rendered_text"]) if row else None

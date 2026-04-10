@@ -31,6 +31,11 @@ def pin_session(session_id: str) -> None:
     _pinned_session_id = (session_id or "").strip()
 
 
+def get_pinned_session_id() -> str:
+    """Return the currently pinned session ID, or empty string if none."""
+    return _pinned_session_id
+
+
 def send_session_notification(
     content: str,
     *,

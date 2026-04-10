@@ -136,9 +136,7 @@ async def _run_client(config: dict) -> None:
 
     global _client
 
-    intents = discord.Intents.default()
-    intents.message_content = True
-    intents.dm_messages = True
+    intents = discord.Intents.all()
 
     _client = discord.Client(intents=intents)
     bot_token = config["bot_token"]
@@ -165,6 +163,14 @@ async def _run_client(config: dict) -> None:
 
     @_client.event
     async def on_message(message: Any) -> None:
+        try:
+            from core.eventbus.bus import event_bus as _ebus
+            _ebus.publish("discord.message_any", {
+                "author": str(getattr(message.author, "id", "?")),
+                "channel": str(getattr(message.channel, "id", "?")),
+            })
+        except Exception:
+            pass
         try:
             import discord as _discord
             # Ignore our own messages

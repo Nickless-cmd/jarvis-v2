@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -43,7 +44,26 @@ def create_app() -> FastAPI:
     ensure_default_workspace()
 
     mcp_app = create_mcp_app()
-    app = FastAPI(title="Jarvis V2 API", lifespan=mcp_app.lifespan)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        logger.info("jarvis api startup begin")
+        start_runtime_hook_runtime()
+        start_heartbeat_scheduler()
+        start_notification_bridge()
+        start_scheduled_tasks_service()
+        event_bus.publish("runtime.started", {"component": "api"})
+        logger.info("jarvis api startup complete")
+        async with mcp_app.lifespan(app):
+            yield
+        logger.info("jarvis api shutdown begin")
+        stop_heartbeat_scheduler()
+        stop_notification_bridge()
+        stop_scheduled_tasks_service()
+        stop_runtime_hook_runtime()
+        logger.info("jarvis api shutdown complete")
+
+    app = FastAPI(title="Jarvis V2 API", lifespan=lifespan)
 
     app.include_router(chat_router)
     app.include_router(health_router)
@@ -61,25 +81,6 @@ def create_app() -> FastAPI:
     _ui_dist = os.path.normpath(_ui_dist)
     if os.path.isdir(_ui_dist):
         app.mount("/", StaticFiles(directory=_ui_dist, html=True), name="ui")
-
-    @app.on_event("startup")
-    async def on_startup() -> None:
-        logger.info("jarvis api startup begin")
-        start_runtime_hook_runtime()
-        start_heartbeat_scheduler()
-        start_notification_bridge()
-        start_scheduled_tasks_service()
-        event_bus.publish("runtime.started", {"component": "api"})
-        logger.info("jarvis api startup complete")
-
-    @app.on_event("shutdown")
-    async def on_shutdown() -> None:
-        logger.info("jarvis api shutdown begin")
-        stop_heartbeat_scheduler()
-        stop_notification_bridge()
-        stop_scheduled_tasks_service()
-        stop_runtime_hook_runtime()
-        logger.info("jarvis api shutdown complete")
 
     return app
 

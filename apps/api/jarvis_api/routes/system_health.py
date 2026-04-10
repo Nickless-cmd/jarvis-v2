@@ -12,14 +12,22 @@ _REPO_ROOT = "/media/projects/jarvis-v2"
 
 @router.get("/system/health")
 def system_health() -> dict:
-    cpu_pct = psutil.cpu_percent(interval=0.1)
-    mem = psutil.virtual_memory()
-    disk = shutil.disk_usage("/")
-    return {
-        "cpu_pct": round(cpu_pct, 1),
-        "ram_pct": round(mem.percent, 1),
-        "disk_free_mb": round(disk.free / (1024 * 1024), 0),
+    from apps.api.jarvis_api.services.hardware_body import get_hardware_state
+    hw = get_hardware_state()
+    result: dict = {
+        "cpu_pct": hw.get("cpu_pct", 0.0),
+        "ram_pct": hw.get("ram_pct", 0.0),
+        "ram_used_gb": hw.get("ram_used_gb", 0.0),
+        "ram_total_gb": hw.get("ram_total_gb", 0.0),
+        "disk_free_mb": round(float(hw.get("disk_free_gb") or 0) * 1024, 0),
+        "disk_free_gb": hw.get("disk_free_gb", 0.0),
+        "pressure": hw.get("pressure", "low"),
     }
+    if hw.get("cpu_temp_c") is not None:
+        result["cpu_temp_c"] = hw["cpu_temp_c"]
+    if hw.get("gpus"):
+        result["gpus"] = hw["gpus"]
+    return result
 
 
 @router.get("/system/git")

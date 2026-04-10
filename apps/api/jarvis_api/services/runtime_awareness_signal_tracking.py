@@ -80,6 +80,9 @@ def refresh_runtime_awareness_signal_statuses() -> dict[str, int]:
 
 
 def build_runtime_awareness_signal_surface(*, limit: int = 8) -> dict[str, object]:
+    # Passivt refresh: opdater signaler baseret på aktuel runtime-tilstand
+    candidates = _extract_runtime_awareness_candidates()
+    _persist_runtime_awareness_signals(signals=candidates, session_id="", run_id="")
     refresh_runtime_awareness_signal_statuses()
     items = list_runtime_awareness_signals(limit=max(limit, 1))
     active = [item for item in items if str(item.get("status") or "") == "active"]
@@ -112,11 +115,35 @@ def build_runtime_awareness_signal_surface(*, limit: int = 8) -> dict[str, objec
     }
 
 
+def _machine_available_signal(*, heartbeat: dict[str, object]) -> dict[str, object]:
+    schedule_state = str(heartbeat.get("scheduleState") or heartbeat.get("scheduleStatus") or "unknown")
+    interval = heartbeat.get("intervalMinutes") or 0
+    return {
+        "signal_type": "machine-available",
+        "canonical_key": "runtime-awareness:machine-available",
+        "status": "active",
+        "title": "Runtime awareness: machine available",
+        "summary": "Machine is available and ready.",
+        "rationale": "Continuous machine-availability signal kept fresh by each visible turn.",
+        "source_kind": "runtime-health",
+        "confidence": "medium",
+        "evidence_summary": f"heartbeat_schedule={schedule_state} interval={interval}m",
+        "support_summary": "API is serving requests; machine is reachable.",
+        "support_count": 1,
+        "session_count": 1,
+        "status_reason": "Machine is available and serving.",
+    }
+
+
 def _extract_runtime_awareness_candidates() -> list[dict[str, object]]:
     readiness = visible_execution_readiness()
     local_lane = local_lane_execution_truth()
     heartbeat = heartbeat_runtime_surface().get("state") or {}
     signals: list[dict[str, object]] = []
+
+    machine_signal = _machine_available_signal(heartbeat=heartbeat)
+    if machine_signal:
+        signals.append(machine_signal)
 
     visible_signal = _visible_runtime_signal(readiness=readiness)
     if visible_signal:
@@ -458,9 +485,20 @@ def _browser_body_signal() -> dict[str, object] | None:
 def _layered_memory_signal() -> dict[str, object] | None:
     paths = workspace_memory_paths()
     curated = Path(paths["curated_memory"])
-    daily = Path(paths["daily_memory"])
+    daily_dir = Path(paths["daily_dir"])
     curated_exists = curated.exists()
-    daily_exists = daily.exists()
+
+    # Accept any daily file written within the last 7 days, not just today's
+    recent_daily: Path | None = None
+    today = datetime.now(UTC).date()
+    for days_back in range(8):
+        candidate = daily_dir / f"{(today - timedelta(days=days_back)).isoformat()}.md"
+        if candidate.exists() and candidate.stat().st_size > 0:
+            recent_daily = candidate
+            break
+    daily_exists = recent_daily is not None
+    daily_label = recent_daily.name if recent_daily else "none"
+
     if not curated_exists and not daily_exists:
         return None
     if not curated_exists or not daily_exists:
@@ -469,11 +507,11 @@ def _layered_memory_signal() -> dict[str, object] | None:
             "canonical_key": "runtime-awareness:layered-memory",
             "status": "constrained",
             "title": "Layered memory is only partially present",
-            "summary": "Jarvis' layered memory system is missing either curated memory or today's daily memory layer.",
+            "summary": "Jarvis' layered memory system is missing either curated memory or a recent daily memory layer.",
             "rationale": "Layered memory completeness is part of continuity and liveness, not just filesystem hygiene.",
             "source_kind": "memory-continuity",
             "confidence": "high",
-            "evidence_summary": f"curated_exists={str(curated_exists).lower()} daily_exists={str(daily_exists).lower()} daily_file={daily.name}",
+            "evidence_summary": f"curated_exists={str(curated_exists).lower()} daily_exists={str(daily_exists).lower()} daily_file={daily_label}",
             "support_summary": "One or more layered memory files are missing.",
             "support_count": 1,
             "session_count": 1,
@@ -484,11 +522,11 @@ def _layered_memory_signal() -> dict[str, object] | None:
         "canonical_key": "runtime-awareness:layered-memory",
         "status": "active",
         "title": "Layered memory is present",
-        "summary": "Jarvis currently has both curated memory and today's daily memory layer available.",
+        "summary": "Jarvis currently has both curated memory and a recent daily memory layer available.",
         "rationale": "A live layered memory stack strengthens continuity and runtime self-carry.",
         "source_kind": "memory-continuity",
         "confidence": "medium",
-        "evidence_summary": f"curated_exists=true daily_exists=true daily_file={daily.name}",
+        "evidence_summary": f"curated_exists=true daily_exists=true daily_file={daily_label}",
         "support_summary": "Curated and daily memory layers are both present.",
         "support_count": 2,
         "session_count": 1,

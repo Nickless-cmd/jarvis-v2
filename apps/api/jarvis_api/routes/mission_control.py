@@ -2648,8 +2648,14 @@ def _runtime_work_surface() -> dict[str, object]:
     blocked_flows = list_flows(status="blocked", limit=8)
     browser_body = next(iter(list_browser_bodies(limit=2)), {})
     memory_paths = workspace_memory_paths()
-    daily_exists = memory_paths["daily_memory"].exists()
     curated_exists = memory_paths["curated_memory"].exists()
+    # Accept any daily file written within the last 7 days
+    _today = datetime.now(UTC).date()
+    _daily_dir = memory_paths["daily_dir"]
+    daily_exists = any(
+        (_daily_dir / f"{(_today - timedelta(days=d)).isoformat()}.md").exists()
+        for d in range(8)
+    )
     current_focus = (
         str(
             (running_tasks or queued_tasks or blocked_tasks or [{}])[0].get("goal")

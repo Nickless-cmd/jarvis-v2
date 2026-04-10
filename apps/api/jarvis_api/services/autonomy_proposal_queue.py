@@ -94,7 +94,60 @@ def file_proposal(
         )
     except Exception:
         pass
+
+    # Notify via Discord DM if gateway is running
+    try:
+        _notify_discord_proposal(proposal_id, kind, title)
+    except Exception:
+        pass
+
     return proposal
+
+
+def _notify_discord_proposal(proposal_id: str, kind: str, title: str) -> None:
+    """Send a DM to the owner when a proposal is filed — fire and forget."""
+    from apps.api.jarvis_api.services.discord_gateway import (
+        _client, _loop, _discord_sessions, _discord_sessions_lock,
+    )
+    from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
+
+    if _client is None or _loop is None:
+        return
+
+    # Find the DM channel ID
+    channel_id: int | None = None
+    with _discord_sessions_lock:
+        for sess_id, ch_id in _discord_sessions.items():
+            sessions = list_chat_sessions()
+            for s in sessions:
+                if str(s.get("id")) == sess_id and s.get("title") == "Discord DM":
+                    channel_id = ch_id
+                    break
+            if channel_id:
+                break
+
+    if channel_id is None:
+        return
+
+    msg = (
+        f"Nyt forslag til godkendelse [{proposal_id}]\n"
+        f"**{kind}**: {title[:100]}\n"
+        f"Godkend i Mission Control → Operations → Autonomy Proposals\n"
+        f"eller svar `godkend {proposal_id}` her."
+    )
+
+    import asyncio as _asyncio
+
+    async def _send() -> None:
+        from apps.api.jarvis_api.services.discord_gateway import _client as _c
+        if _c is None:
+            return
+        ch = _c.get_channel(channel_id)
+        if ch is None:
+            ch = await _c.fetch_channel(channel_id)
+        await ch.send(msg)
+
+    _asyncio.run_coroutine_threadsafe(_send(), _loop)
 
 
 def list_pending_proposals(*, limit: int = 50) -> list[dict[str, object]]:

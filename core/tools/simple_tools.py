@@ -406,6 +406,27 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "approve_proposal",
+            "description": "Approve and immediately execute a pending autonomy proposal. Only call this when the user has explicitly said to approve or confirmed it — e.g. 'godkend', 'ja', 'approve'. Never self-approve.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "proposal_id": {
+                        "type": "string",
+                        "description": "The proposal ID (e.g. prop-abc123).",
+                    },
+                    "note": {
+                        "type": "string",
+                        "description": "Optional note from the user about the approval.",
+                    },
+                },
+                "required": ["proposal_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_proposals",
             "description": "List pending autonomy proposals — proposed source edits and memory rewrites awaiting user approval in Mission Control.",
             "parameters": {
@@ -1497,6 +1518,32 @@ def _exec_propose_git_commit(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_approve_proposal(args: dict[str, Any]) -> dict[str, Any]:
+    """Approve and execute a pending autonomy proposal."""
+    proposal_id = str(args.get("proposal_id") or "").strip()
+    note = str(args.get("note") or "").strip()
+    if not proposal_id:
+        return {"status": "error", "error": "proposal_id is required"}
+    try:
+        from apps.api.jarvis_api.services.autonomy_proposal_queue import approve_proposal
+        result = approve_proposal(proposal_id, resolution_note=note or "Approved via tool")
+        status = result.get("status", "unknown")
+        if status == "executed":
+            exec_result = result.get("execution_result") or {}
+            commit = exec_result.get("commit", "")
+            return {
+                "status": "ok",
+                "text": f"Proposal {proposal_id} executed successfully." + (f" Commit: {commit}" if commit else ""),
+                "result": result,
+            }
+        elif status == "approved":
+            return {"status": "ok", "text": f"Proposal {proposal_id} approved (no executor registered)."}
+        else:
+            return {"status": "error", "text": f"Proposal {proposal_id} result: {status}", "result": result}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 def _exec_list_proposals(_args: dict[str, Any]) -> dict[str, Any]:
     """List pending autonomy proposals."""
     try:
@@ -2210,6 +2257,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "search_memory": _exec_search_memory,
     "propose_source_edit": _exec_propose_source_edit,
     "propose_git_commit": _exec_propose_git_commit,
+    "approve_proposal": _exec_approve_proposal,
     "list_proposals": _exec_list_proposals,
     "schedule_task": _exec_schedule_task,
     "list_scheduled_tasks": _exec_list_scheduled_tasks,

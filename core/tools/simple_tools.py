@@ -210,6 +210,39 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "list_initiatives",
+            "description": "Read your initiative queue — the pending tasks and goals you've queued for autonomous heartbeat execution. Shows pending, recently acted, and queue health.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "push_initiative",
+            "description": "Add a task or goal to your initiative queue for autonomous heartbeat execution. The heartbeat scheduler will pick it up and act on it within the next tick cycle.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "focus": {
+                        "type": "string",
+                        "description": "What you want to do or investigate — a clear, actionable description",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "description": "Priority level: 'high', 'medium', or 'low' (default: medium)",
+                    },
+                },
+                "required": ["focus"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "read_chronicles",
             "description": "Read your own chronicle history — the autobiographical narrative entries generated during heartbeat ticks. Each entry covers a time period with a prose narrative, key events, and lessons learned.",
             "parameters": {
@@ -735,6 +768,74 @@ def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "result_count": len(results), "query": query, "status": "ok"}
 
 
+def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
+    """Return current initiative queue state."""
+    try:
+        from apps.api.jarvis_api.services.initiative_queue import get_initiative_queue_state
+        state = get_initiative_queue_state()
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    pending = state.get("pending", [])
+    recent_acted = state.get("recent_acted", [])
+    lines = [
+        f"Queue: {state.get('pending_count', 0)} pending / {state.get('acted_count', 0)} acted / {state.get('expired_count', 0)} expired",
+        f"Capacity: {state.get('pending_count', 0)}/{state.get('max_queue_size', 8)}",
+        "",
+    ]
+    if pending:
+        lines.append("### Pending")
+        for item in pending:
+            priority = item.get("priority", "medium")
+            focus = item.get("focus", "?")
+            attempts = item.get("attempt_count", 0)
+            lines.append(f"- [{priority}] {focus}" + (f" (attempts: {attempts})" if attempts else ""))
+    else:
+        lines.append("No pending initiatives.")
+
+    if recent_acted:
+        lines.append("")
+        lines.append("### Recently Acted")
+        for item in recent_acted:
+            focus = item.get("focus", "?")
+            summary = item.get("action_summary", "")
+            lines.append(f"- {focus}" + (f" → {summary}" if summary else ""))
+
+    return {
+        "status": "ok",
+        "pending_count": state.get("pending_count", 0),
+        "acted_count": state.get("acted_count", 0),
+        "pending": pending,
+        "text": "\n".join(lines).strip(),
+    }
+
+
+def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
+    """Push a new initiative to the queue."""
+    focus = str(args.get("focus") or "").strip()
+    if not focus:
+        return {"status": "error", "error": "focus is required"}
+    priority = str(args.get("priority") or "medium").strip().lower()
+    if priority not in {"low", "medium", "high"}:
+        priority = "medium"
+    try:
+        from apps.api.jarvis_api.services.initiative_queue import push_initiative
+        initiative_id = push_initiative(
+            focus=focus,
+            source="jarvis-tool",
+            priority=priority,
+        )
+        return {
+            "status": "ok",
+            "initiative_id": initiative_id,
+            "focus": focus,
+            "priority": priority,
+            "text": f"Initiative queued [{priority}]: {focus}",
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 def _exec_read_chronicles(args: dict[str, Any]) -> dict[str, Any]:
     """Return recent cognitive chronicle entries."""
     import json as _json
@@ -1015,6 +1116,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "bash": _exec_bash,
     "web_fetch": _exec_web_fetch,
     "web_search": _exec_web_search,
+    "list_initiatives": _exec_list_initiatives,
+    "push_initiative": _exec_push_initiative,
     "read_chronicles": _exec_read_chronicles,
     "read_dreams": _exec_read_dreams,
     "notify_user": _exec_notify_user,

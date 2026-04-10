@@ -325,7 +325,10 @@ def cmd_discord_setup(_: argparse.Namespace) -> None:
     try:
         req = urllib.request.Request(
             "https://discord.com/api/v10/users/@me",
-            headers={"Authorization": f"Bot {bot_token}"},
+            headers={
+                "Authorization": f"Bot {bot_token}",
+                "User-Agent": "DiscordBot (https://github.com/Rapptz/discord.py, 2.6.4)",
+            },
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
             bot_info = json.loads(resp.read())

@@ -291,6 +291,104 @@ def cmd_cancel_visible_run(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_discord_setup(_: argparse.Namespace) -> None:
+    """Interactive wizard to configure the Discord gateway."""
+    ensure_runtime_dirs()
+    init_db()
+
+    from apps.api.jarvis_api.services.discord_config import (
+        load_discord_config,
+        save_discord_config,
+    )
+
+    print("Discord Gateway Setup")
+    print("=" * 40)
+
+    existing = load_discord_config()
+    if existing:
+        print("Existing config found. Values in [brackets] are current — press Enter to keep.")
+    print()
+
+    def _prompt(label: str, current: str = "", secret: bool = False) -> str:
+        suffix = f" [{current}]" if current and not secret else (" [set]" if current and secret else "")
+        val = input(f"{label}{suffix}: ").strip()
+        return val if val else current
+
+    current_token = (existing or {}).get("bot_token", "")
+    bot_token = _prompt("Bot token", current_token, secret=True)
+    if not bot_token:
+        print("Error: bot token is required.")
+        sys.exit(1)
+
+    import urllib.request
+    import urllib.error
+    try:
+        req = urllib.request.Request(
+            "https://discord.com/api/v10/users/@me",
+            headers={"Authorization": f"Bot {bot_token}"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            bot_info = json.loads(resp.read())
+        print(f"Token valid — bot username: {bot_info.get('username', '?')}#{bot_info.get('discriminator', '0')}")
+    except urllib.error.HTTPError as exc:
+        print(f"Token validation failed: HTTP {exc.code}. Check your bot token.")
+        sys.exit(1)
+    except Exception as exc:
+        print(f"Token validation failed: {exc}")
+        sys.exit(1)
+
+    current_guild = (existing or {}).get("guild_id", "")
+    guild_id = _prompt("Guild ID", current_guild)
+    if not guild_id:
+        print("Error: guild ID is required.")
+        sys.exit(1)
+
+    current_channels = ",".join((existing or {}).get("allowed_channel_ids", []))
+    channels_input = _prompt("Allowed channel IDs (comma-separated)", current_channels)
+    allowed_channel_ids = [c.strip() for c in channels_input.split(",") if c.strip()]
+    if not allowed_channel_ids:
+        print("Error: at least one channel ID is required.")
+        sys.exit(1)
+
+    current_owner = (existing or {}).get("owner_discord_id", "")
+    owner_discord_id = _prompt("Owner Discord user ID", current_owner)
+    if not owner_discord_id:
+        print("Error: owner Discord user ID is required.")
+        sys.exit(1)
+
+    config = {
+        "bot_token": bot_token,
+        "guild_id": guild_id,
+        "allowed_channel_ids": allowed_channel_ids,
+        "owner_discord_id": owner_discord_id,
+        "enabled": True,
+    }
+    save_discord_config(config)
+    print()
+    print("Config saved to ~/.jarvis-v2/config/discord.json (chmod 600)")
+    print("Restart the API to activate: uvicorn apps.api.jarvis_api.app:app --reload")
+
+
+def cmd_discord_status(_: argparse.Namespace) -> None:
+    """Show Discord gateway config and connection status."""
+    ensure_runtime_dirs()
+    from apps.api.jarvis_api.services.discord_config import is_discord_configured, load_discord_config
+
+    if not is_discord_configured():
+        print("Discord is not configured. Run: python scripts/jarvis.py discord-setup")
+        return
+
+    cfg = load_discord_config()
+    print(json.dumps({
+        "configured": True,
+        "guild_id": cfg.get("guild_id"),
+        "allowed_channel_ids": cfg.get("allowed_channel_ids"),
+        "owner_discord_id": cfg.get("owner_discord_id"),
+        "enabled": cfg.get("enabled", True),
+        "bot_token": "[set]",
+    }, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -426,6 +524,12 @@ def build_parser() -> argparse.ArgumentParser:
     execute_capability_request = sub.add_parser("execute-capability-request")
     execute_capability_request.add_argument("request_id")
     execute_capability_request.set_defaults(func=cmd_execute_capability_request)
+
+    discord_setup = sub.add_parser("discord-setup", help="Configure the Discord gateway interactively")
+    discord_setup.set_defaults(func=cmd_discord_setup)
+
+    discord_status = sub.add_parser("discord-status", help="Show Discord gateway config and status")
+    discord_status.set_defaults(func=cmd_discord_status)
 
     return parser
 

@@ -754,15 +754,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     })
 
                 # Execute any tool_calls from second pass (e.g. write_file after read_file)
+                # Tool results are sent as capability events only — NOT as chat deltas.
+                # Jarvis's second-pass LLM text (already streamed above) is the visible output.
                 if followup_tool_calls:
                     second_round_results = _execute_simple_tool_calls(followup_tool_calls)
                     for sr in second_round_results:
                         if sr["status"] == "approval_needed":
                             if run.autonomous:
-                                summary = f"[{sr['tool_name']}]: Autonomous run cannot approve tool calls — skipped."
                                 yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
-                                followup_parts.append(summary)
-                                yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": f"\n{summary}"})
                                 continue
                             approval_id = f"approval-{uuid4().hex[:12]}"
                             _approval_future2: asyncio.Future[str | None] = (
@@ -792,10 +791,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             except asyncio.TimeoutError:
                                 _resolved2 = None
                             if _resolved2 is None:
-                                summary = f"[{sr['tool_name']}]: Tool call denied by user."
                                 yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
                             else:
-                                summary = f"[{sr['tool_name']}]: {_resolved2[:200]}"
                                 yield _sse("capability", {"type": "tool_result", "tool": sr["tool_name"], "status": "ok"})
                                 if run.session_id:
                                     append_chat_message(
@@ -803,20 +800,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                         role="tool",
                                         content=f"[{sr['tool_name']}]: {_resolved2[:800]}",
                                     )
-                            followup_parts.append(summary)
-                            yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": f"\n{summary}"})
                             continue
                         yield _sse("capability", {
                             "type": "tool_result",
                             "tool": sr["tool_name"],
                             "status": sr["status"],
-                        })
-                        summary = f"[{sr['tool_name']}]: {sr['result_text'][:200]}"
-                        followup_parts.append(summary)
-                        yield _sse("delta", {
-                            "type": "delta",
-                            "run_id": run.run_id,
-                            "delta": f"\n{summary}",
                         })
                         if run.session_id:
                             append_chat_message(
@@ -826,17 +814,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             )
 
                 followup_text = "".join(followup_parts).strip()
-                if not followup_text:
-                    summaries = [
-                        f"[{sr['tool_name']}]: {sr['result_text'][:200]}"
-                        for sr in simple_results
-                    ]
-                    followup_text = "\n".join(summaries) or "[tools executed, no response]"
-                    yield _sse("delta", {
-                        "type": "delta",
-                        "run_id": run.run_id,
-                        "delta": followup_text,
-                    })
 
                 total_input_tokens = result.input_tokens * 2
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)

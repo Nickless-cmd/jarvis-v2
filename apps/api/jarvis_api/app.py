@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from apps.api.jarvis_api.services.heartbeat_runtime import (
     start_heartbeat_scheduler,
@@ -42,6 +44,15 @@ def create_app() -> FastAPI:
     app.include_router(system_health_router, prefix="/mc")
     app.include_router(openai_compat_router)
     app.mount("/mcp", mcp_app)
+
+    # Serve the built React UI from apps/ui/dist — must be LAST so API routes
+    # take priority. html=True makes the SPA work (serves index.html for 404s).
+    _ui_dist = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "apps", "ui", "dist"
+    )
+    _ui_dist = os.path.normpath(_ui_dist)
+    if os.path.isdir(_ui_dist):
+        app.mount("/", StaticFiles(directory=_ui_dist, html=True), name="ui")
 
     @app.on_event("startup")
     async def on_startup() -> None:

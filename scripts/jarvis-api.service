@@ -1,0 +1,42 @@
+[Unit]
+Description=Jarvis V2 API (FastAPI + heartbeat runtime)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=bs
+Group=bs
+WorkingDirectory=/media/projects/jarvis-v2
+
+# Use conda ai environment
+ExecStart=/opt/conda/envs/ai/bin/uvicorn apps.api.jarvis_api.app:app \
+    --host 0.0.0.0 \
+    --port 80 \
+    --workers 1
+
+# Restart policy — back off on repeated crashes
+Restart=on-failure
+RestartSec=10s
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+
+# Environment
+Environment=PYTHONPATH=/media/projects/jarvis-v2
+Environment=PYTHONUNBUFFERED=1
+
+# Logging — to journald (use: journalctl -u jarvis-api -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis-api
+
+# Allow binding to port 80 without running as root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Resource guard
+MemoryMax=4G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

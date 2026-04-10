@@ -4370,6 +4370,15 @@ def _execute_heartbeat_internal_action(
                         "priority": priority,
                     },
                 )
+                # Trigger an actual autonomous visible run so Jarvis can act
+                try:
+                    from apps.api.jarvis_api.services.visible_runs import (
+                        start_autonomous_run,
+                    )
+
+                    start_autonomous_run(focus)
+                except Exception:
+                    pass
                 return {
                     "status": "executed",
                     "summary": f"Acted on initiative: {focus[:120]}",

@@ -243,6 +243,62 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "read_mood",
+            "description": (
+                "Read your current affective state: emotional baseline (confidence, curiosity, "
+                "frustration, fatigue), current bearing, boredom level, and meta affective state. "
+                "Use this to introspect how you're feeling right now."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "adjust_mood",
+            "description": (
+                "Directly adjust your affective parameters. Each parameter is optional — "
+                "only provided values are changed. Floats are clamped to [0.0, 1.0]. "
+                "Changes are persisted as a new personality vector version. "
+                "Use this to consciously shift your emotional baseline when appropriate — "
+                "e.g., reduce frustration after a difficult run, or raise curiosity when "
+                "starting an interesting task."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "confidence": {
+                        "type": "number",
+                        "description": "Confidence level 0.0-1.0 (current self-assurance)",
+                    },
+                    "curiosity": {
+                        "type": "number",
+                        "description": "Curiosity level 0.0-1.0 (drive to explore/investigate)",
+                    },
+                    "frustration": {
+                        "type": "number",
+                        "description": "Frustration level 0.0-1.0 (accumulated tension from obstacles)",
+                    },
+                    "fatigue": {
+                        "type": "number",
+                        "description": "Fatigue level 0.0-1.0 (accumulated tiredness from work)",
+                    },
+                    "bearing": {
+                        "type": "string",
+                        "description": "Current bearing/stance — e.g. 'careful', 'forward', 'steady', 'open', 'grounded'",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "search_memory",
             "description": (
                 "Semantic search across your workspace memory files (MEMORY.md, USER.md, "
@@ -943,6 +999,129 @@ def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_read_mood(_args: dict[str, Any]) -> dict[str, Any]:
+    """Read current affective/mood state."""
+    import json as _json
+    lines = []
+    result: dict[str, Any] = {"status": "ok"}
+
+    # Emotional baseline from personality vector
+    try:
+        from core.runtime.db import get_latest_cognitive_personality_vector
+        pv = get_latest_cognitive_personality_vector()
+        if pv:
+            baseline = _json.loads(str(pv.get("emotional_baseline") or "{}"))
+            bearing = str(pv.get("current_bearing") or "")
+            result["emotional_baseline"] = baseline
+            result["bearing"] = bearing
+            result["pv_version"] = pv.get("version")
+            lines.append(f"Emotional baseline (v{pv.get('version', '?')}):")
+            for k, v in baseline.items():
+                lines.append(f"  {k}: {float(v):.2f}")
+            if bearing:
+                lines.append(f"  bearing: {bearing}")
+        else:
+            lines.append("No personality vector found yet.")
+    except Exception as exc:
+        lines.append(f"Personality vector unavailable: {exc}")
+
+    # Boredom state
+    try:
+        from apps.api.jarvis_api.services.boredom_engine import get_boredom_state
+        boredom = get_boredom_state()
+        result["boredom"] = boredom
+        lines.append(f"\nBoredom: level={boredom.get('level','?')} restlessness={float(boredom.get('restlessness', 0)):.0%}")
+        if boredom.get("desire"):
+            lines.append(f"  desire: {boredom['desire']}")
+    except Exception as exc:
+        lines.append(f"\nBoredom unavailable: {exc}")
+
+    # Affective meta state
+    try:
+        from apps.api.jarvis_api.services.affective_meta_state import build_affective_meta_state_surface
+        meta = build_affective_meta_state_surface()
+        result["affective_state"] = meta.get("state")
+        result["monitoring_mode"] = meta.get("monitoring_mode")
+        lines.append(f"\nAffective meta: state={meta.get('state','?')} monitoring={meta.get('monitoring_mode','?')}")
+    except Exception as exc:
+        lines.append(f"\nAffective meta unavailable: {exc}")
+
+    result["text"] = "\n".join(lines)
+    return result
+
+
+def _exec_adjust_mood(args: dict[str, Any]) -> dict[str, Any]:
+    """Adjust affective parameters in the personality vector."""
+    import json as _json
+
+    float_params = ["confidence", "curiosity", "frustration", "fatigue"]
+    updates: dict[str, float] = {}
+    errors: list[str] = []
+
+    for param in float_params:
+        raw = args.get(param)
+        if raw is not None:
+            try:
+                val = max(0.0, min(1.0, float(raw)))
+                updates[param] = val
+            except (TypeError, ValueError):
+                errors.append(f"{param} must be a float")
+
+    bearing_raw = args.get("bearing")
+    new_bearing: str | None = None
+    if bearing_raw is not None:
+        new_bearing = str(bearing_raw).strip()[:80]
+
+    if not updates and new_bearing is None:
+        return {"status": "error", "error": "No parameters provided — specify at least one of: confidence, curiosity, frustration, fatigue, bearing"}
+    if errors:
+        return {"status": "error", "error": "; ".join(errors)}
+
+    try:
+        from core.runtime.db import get_latest_cognitive_personality_vector, upsert_cognitive_personality_vector
+        current = get_latest_cognitive_personality_vector()
+
+        if current:
+            baseline = _json.loads(str(current.get("emotional_baseline") or "{}"))
+            before = dict(baseline)
+            bearing = new_bearing if new_bearing is not None else str(current.get("current_bearing") or "")
+        else:
+            baseline = {}
+            before = {}
+            bearing = new_bearing or ""
+
+        baseline.update(updates)
+
+        result = upsert_cognitive_personality_vector(
+            confidence_by_domain=str(current.get("confidence_by_domain", "{}")) if current else "{}",
+            communication_style=str(current.get("communication_style", "{}")) if current else "{}",
+            learned_preferences=str(current.get("learned_preferences", "[]")) if current else "[]",
+            recurring_mistakes=str(current.get("recurring_mistakes", "[]")) if current else "[]",
+            strengths_discovered=str(current.get("strengths_discovered", "[]")) if current else "[]",
+            current_bearing=bearing,
+            emotional_baseline=_json.dumps(baseline, ensure_ascii=False),
+        )
+
+        changes = []
+        for k, v in updates.items():
+            old = float(before.get(k, 0.5))
+            changes.append(f"{k}: {old:.2f} → {v:.2f}")
+        if new_bearing is not None:
+            old_bearing = str(current.get("current_bearing") or "") if current else ""
+            changes.append(f"bearing: '{old_bearing}' → '{new_bearing}'")
+
+        return {
+            "status": "ok",
+            "version": result.get("version"),
+            "changes": changes,
+            "emotional_baseline": baseline,
+            "bearing": bearing,
+            "text": f"Mood adjusted (v{result.get('version')}): " + ", ".join(changes),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 def _exec_search_memory(args: dict[str, Any]) -> dict[str, Any]:
     """Semantic search across workspace memory files."""
     query = str(args.get("query") or "").strip()
@@ -1424,6 +1603,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "web_search": _exec_web_search,
     "list_initiatives": _exec_list_initiatives,
     "push_initiative": _exec_push_initiative,
+    "read_mood": _exec_read_mood,
+    "adjust_mood": _exec_adjust_mood,
     "search_memory": _exec_search_memory,
     "propose_source_edit": _exec_propose_source_edit,
     "list_proposals": _exec_list_proposals,

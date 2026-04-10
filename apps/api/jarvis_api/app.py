@@ -10,6 +10,10 @@ from apps.api.jarvis_api.services.heartbeat_runtime import (
     start_heartbeat_scheduler,
     stop_heartbeat_scheduler,
 )
+from apps.api.jarvis_api.services.notification_bridge import (
+    start_notification_bridge,
+    stop_notification_bridge,
+)
 from apps.api.jarvis_api.services.runtime_hook_runtime import (
     start_runtime_hook_runtime,
     stop_runtime_hook_runtime,
@@ -59,6 +63,7 @@ def create_app() -> FastAPI:
         logger.info("jarvis api startup begin")
         start_runtime_hook_runtime()
         start_heartbeat_scheduler()
+        start_notification_bridge()
         event_bus.publish("runtime.started", {"component": "api"})
         logger.info("jarvis api startup complete")
 
@@ -66,6 +71,7 @@ def create_app() -> FastAPI:
     async def on_shutdown() -> None:
         logger.info("jarvis api shutdown begin")
         stop_heartbeat_scheduler()
+        stop_notification_bridge()
         stop_runtime_hook_runtime()
         logger.info("jarvis api shutdown complete")
 

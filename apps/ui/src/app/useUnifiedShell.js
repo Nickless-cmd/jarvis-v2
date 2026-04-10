@@ -176,6 +176,8 @@ export function useUnifiedShell() {
         'heartbeat-ping-bridge',
         'heartbeat-propose-bridge',
         'inner-voice-initiative-bridge',
+        'jarvis-notify',
+        'boredom-bridge',
       ])
       if (!proactiveSources.has(String(payload.source || ''))) return
       if (String(payload.session_id || '') !== String(activeSessionId || '')) return

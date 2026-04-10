@@ -1498,8 +1498,11 @@ def _visible_capability_truth_instruction(*, compact: bool) -> str | None:
         "- If you need information, use tools proactively. Do not guess from fragments.",
         "- If a task needs multiple reads, call multiple tools. Continue autonomously instead of asking permission.",
         "- If the user asks for code analysis, read concrete code files — not just README or directory listings.",
-        "- Project root: " + str(PROJECT_ROOT),
-        "- Workspace: ~/.jarvis-v2/workspaces/default/",
+        "- Project root (source code): " + str(PROJECT_ROOT),
+        "- IMPORTANT: Your live workspace files (SOUL.md, MEMORY.md, USER.md, STANDING_ORDERS.md, SKILLS.md, etc.) "
+        "are at ~/.jarvis-v2/workspaces/default/ — NOT inside the project root. "
+        "The project contains a workspace/ template directory but those are NOT your live files. "
+        "Always use ~/.jarvis-v2/workspaces/default/ when reading or writing your own identity/memory files.",
     ]
     return "\n".join(lines)
 

@@ -78,7 +78,7 @@ def produce_signals_from_run(
             signal_type="visible_run_observed",
             canonical_key=f"witness:run:{run_id}",
             status="fresh",
-            title=user_message[:80] or "visible run",
+            title=f"Visible run observed ({outcome_status})",
             summary=f"Observed: {user_message[:60]} → {outcome_status}",
             rationale="Observation of completed visible run for witness lifecycle",
             source_kind="visible_run",

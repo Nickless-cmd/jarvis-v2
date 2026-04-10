@@ -1,0 +1,121 @@
+"""Scheduled tasks service — lets Jarvis schedule future reminders/actions.
+
+Jarvis can schedule a task to fire at a future time. When due, the task
+fires as a session notification (appears in chat) so Jarvis sees it and
+can act. A background poller checks every 60 seconds.
+"""
+from __future__ import annotations
+
+import logging
+import threading
+import time
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+from core.runtime import db as runtime_db
+
+logger = logging.getLogger(__name__)
+
+_POLL_INTERVAL_SECONDS = 60
+_poller_thread: threading.Thread | None = None
+_poller_stop = threading.Event()
+
+
+def push_scheduled_task(
+    *,
+    focus: str,
+    delay_minutes: int,
+    source: str = "jarvis-tool",
+) -> dict[str, object]:
+    """Schedule a task to fire after delay_minutes. Returns task info dict."""
+    now = datetime.now(UTC)
+    run_at = now + timedelta(minutes=max(delay_minutes, 1))
+    task_id = f"sched-{uuid4().hex[:10]}"
+    normalized_focus = focus[:300].strip() or "Follow up"
+
+    runtime_db.create_scheduled_task(
+        task_id=task_id,
+        focus=normalized_focus,
+        source=source,
+        run_at=run_at.isoformat(),
+        created_at=now.isoformat(),
+        updated_at=now.isoformat(),
+    )
+    logger.info("scheduled_tasks: created %s run_at=%s focus=%r", task_id, run_at.isoformat(), normalized_focus[:60])
+    return {
+        "task_id": task_id,
+        "focus": normalized_focus,
+        "run_at": run_at.isoformat(),
+        "delay_minutes": delay_minutes,
+    }
+
+
+def cancel_scheduled_task(task_id: str) -> bool:
+    """Cancel a pending task. Returns True if found and cancelled."""
+    task = runtime_db.get_scheduled_task(task_id)
+    if not task or task.get("status") != "pending":
+        return False
+    now = datetime.now(UTC).isoformat()
+    runtime_db.mark_scheduled_task_cancelled(task_id, cancelled_at=now, updated_at=now)
+    logger.info("scheduled_tasks: cancelled %s", task_id)
+    return True
+
+
+def get_scheduled_tasks_state() -> dict[str, object]:
+    """Return all scheduled tasks for observability."""
+    tasks = runtime_db.list_scheduled_tasks(limit=50)
+    pending = [t for t in tasks if t["status"] == "pending"]
+    fired = [t for t in tasks if t["status"] == "fired"]
+    cancelled = [t for t in tasks if t["status"] == "cancelled"]
+    return {
+        "pending": pending,
+        "recently_fired": fired[:5],
+        "cancelled_count": len(cancelled),
+        "total": len(tasks),
+    }
+
+
+def _fire_due_tasks() -> None:
+    now = datetime.now(UTC)
+    due = runtime_db.get_due_scheduled_tasks(now.isoformat())
+    if not due:
+        return
+
+    from apps.api.jarvis_api.services.notification_bridge import send_session_notification
+
+    for task in due:
+        task_id = str(task.get("task_id") or "")
+        focus = str(task.get("focus") or "")
+        try:
+            result = send_session_notification(
+                f"[scheduled reminder] {focus}",
+                source="scheduled-task",
+            )
+            now_iso = datetime.now(UTC).isoformat()
+            runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
+            logger.info("scheduled_tasks: fired %s → %s", task_id, result.get("status"))
+        except Exception as exc:
+            logger.error("scheduled_tasks: failed to fire %s: %s", task_id, exc)
+
+
+def _poller_loop() -> None:
+    while not _poller_stop.is_set():
+        try:
+            _fire_due_tasks()
+        except Exception as exc:
+            logger.error("scheduled_tasks: poller error: %s", exc)
+        _poller_stop.wait(_POLL_INTERVAL_SECONDS)
+
+
+def start_scheduled_tasks_service() -> None:
+    global _poller_thread
+    _poller_stop.clear()
+    t = threading.Thread(target=_poller_loop, daemon=True, name="scheduled-tasks-poller")
+    t.start()
+    _poller_thread = t
+    logger.info("scheduled_tasks: service started (poll interval %ds)", _POLL_INTERVAL_SECONDS)
+
+
+def stop_scheduled_tasks_service() -> None:
+    _poller_stop.set()
+    logger.info("scheduled_tasks: service stopped")

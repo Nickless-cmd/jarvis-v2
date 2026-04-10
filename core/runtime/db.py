@@ -930,6 +930,7 @@ def init_db() -> None:
         _ensure_runtime_selfhood_proposal_table(conn)
         _ensure_runtime_initiatives_table(conn)
         _ensure_autonomy_proposals_table(conn)
+        _ensure_scheduled_tasks_table(conn)
         conn.commit()
 
 
@@ -1249,6 +1250,132 @@ def _ensure_autonomy_proposals_table(conn: sqlite3.Connection) -> None:
         ON autonomy_proposals(kind, canonical_key, id DESC)
         """
     )
+
+
+def _ensure_scheduled_tasks_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS scheduled_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id TEXT NOT NULL UNIQUE,
+            focus TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'jarvis-tool',
+            status TEXT NOT NULL DEFAULT 'pending',
+            run_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            fired_at TEXT NOT NULL DEFAULT '',
+            cancelled_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_status_run_at
+        ON scheduled_tasks(status, run_at, id DESC)
+        """
+    )
+
+
+def _scheduled_task_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "task_id": row["task_id"],
+        "focus": row["focus"],
+        "source": row["source"],
+        "status": row["status"],
+        "run_at": row["run_at"],
+        "created_at": row["created_at"],
+        "fired_at": row["fired_at"],
+        "cancelled_at": row["cancelled_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def create_scheduled_task(
+    *,
+    task_id: str,
+    focus: str,
+    source: str = "jarvis-tool",
+    run_at: str,
+    created_at: str,
+    updated_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        conn.execute(
+            """
+            INSERT INTO scheduled_tasks (task_id, focus, source, status, run_at, created_at, updated_at)
+            VALUES (?, ?, ?, 'pending', ?, ?, ?)
+            """,
+            (task_id, focus, source, run_at, created_at, updated_at),
+        )
+        conn.commit()
+    return get_scheduled_task(task_id)
+
+
+def get_scheduled_task(task_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        row = conn.execute(
+            "SELECT * FROM scheduled_tasks WHERE task_id = ?", (task_id,)
+        ).fetchone()
+    return _scheduled_task_from_row(row) if row else None
+
+
+def get_due_scheduled_tasks(now_iso: str) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        rows = conn.execute(
+            """
+            SELECT * FROM scheduled_tasks
+            WHERE status = 'pending' AND run_at <= ?
+            ORDER BY run_at ASC
+            """,
+            (now_iso,),
+        ).fetchall()
+    return [_scheduled_task_from_row(r) for r in rows]
+
+
+def mark_scheduled_task_fired(task_id: str, fired_at: str, updated_at: str) -> None:
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        conn.execute(
+            """
+            UPDATE scheduled_tasks
+            SET status = 'fired', fired_at = ?, updated_at = ?
+            WHERE task_id = ?
+            """,
+            (fired_at, updated_at, task_id),
+        )
+        conn.commit()
+
+
+def mark_scheduled_task_cancelled(task_id: str, cancelled_at: str, updated_at: str) -> None:
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        conn.execute(
+            """
+            UPDATE scheduled_tasks
+            SET status = 'cancelled', cancelled_at = ?, updated_at = ?
+            WHERE task_id = ?
+            """,
+            (cancelled_at, updated_at, task_id),
+        )
+        conn.commit()
+
+
+def list_scheduled_tasks(limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        rows = conn.execute(
+            """
+            SELECT * FROM scheduled_tasks
+            ORDER BY run_at ASC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [_scheduled_task_from_row(r) for r in rows]
 
 
 def create_autonomy_proposal(

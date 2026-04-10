@@ -243,6 +243,39 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "schedule_task",
+            "description": "Schedule a reminder or task to fire at a future time. After delay_minutes, a notification will appear in your chat session so you can act on it. Use this to set future reminders, follow-ups, or time-delayed actions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "focus": {
+                        "type": "string",
+                        "description": "What to remind yourself about — a clear description of the task or reminder",
+                    },
+                    "delay_minutes": {
+                        "type": "integer",
+                        "description": "How many minutes from now to fire the reminder (minimum 1)",
+                    },
+                },
+                "required": ["focus", "delay_minutes"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_scheduled_tasks",
+            "description": "List your pending scheduled tasks and recently fired ones. Shows what reminders/tasks are queued for the future.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "read_chronicles",
             "description": "Read your own chronicle history — the autobiographical narrative entries generated during heartbeat ticks. Each entry covers a time period with a prose narrative, key events, and lessons learned.",
             "parameters": {
@@ -836,6 +869,65 @@ def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_schedule_task(args: dict[str, Any]) -> dict[str, Any]:
+    """Schedule a task to fire after delay_minutes."""
+    focus = str(args.get("focus") or "").strip()
+    if not focus:
+        return {"status": "error", "error": "focus is required"}
+    try:
+        delay_minutes = int(args.get("delay_minutes") or 0)
+    except (TypeError, ValueError):
+        return {"status": "error", "error": "delay_minutes must be an integer"}
+    if delay_minutes < 1:
+        return {"status": "error", "error": "delay_minutes must be at least 1"}
+    try:
+        from apps.api.jarvis_api.services.scheduled_tasks import push_scheduled_task
+        task = push_scheduled_task(focus=focus, delay_minutes=delay_minutes)
+        run_at = task.get("run_at", "")
+        return {
+            "status": "ok",
+            "task_id": task.get("task_id"),
+            "focus": focus,
+            "delay_minutes": delay_minutes,
+            "run_at": run_at,
+            "text": f"Scheduled in {delay_minutes} min: {focus} (fires at {run_at[:16]}Z)",
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_list_scheduled_tasks(_args: dict[str, Any]) -> dict[str, Any]:
+    """List scheduled tasks (pending + recently fired)."""
+    try:
+        from apps.api.jarvis_api.services.scheduled_tasks import get_scheduled_tasks_state
+        state = get_scheduled_tasks_state()
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    pending = state.get("pending") or []
+    fired = state.get("recently_fired") or []
+
+    lines = []
+    if pending:
+        lines.append(f"Pending ({len(pending)}):")
+        for t in pending:
+            lines.append(f"  [{t.get('task_id','')}] {t.get('focus','')} — fires at {str(t.get('run_at',''))[:16]}Z")
+    else:
+        lines.append("No pending scheduled tasks.")
+    if fired:
+        lines.append(f"Recently fired ({len(fired)}):")
+        for t in fired:
+            lines.append(f"  [{t.get('task_id','')}] {t.get('focus','')} — fired at {str(t.get('fired_at',''))[:16]}Z")
+
+    return {
+        "status": "ok",
+        "pending_count": len(pending),
+        "pending": pending,
+        "recently_fired": fired,
+        "text": "\n".join(lines),
+    }
+
+
 def _exec_read_chronicles(args: dict[str, Any]) -> dict[str, Any]:
     """Return recent cognitive chronicle entries."""
     import json as _json
@@ -1118,6 +1210,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "web_search": _exec_web_search,
     "list_initiatives": _exec_list_initiatives,
     "push_initiative": _exec_push_initiative,
+    "schedule_task": _exec_schedule_task,
+    "list_scheduled_tasks": _exec_list_scheduled_tasks,
     "read_chronicles": _exec_read_chronicles,
     "read_dreams": _exec_read_dreams,
     "notify_user": _exec_notify_user,

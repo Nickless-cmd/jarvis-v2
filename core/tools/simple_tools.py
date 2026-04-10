@@ -505,13 +505,18 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "notify_user",
-            "description": "Send a proactive message to the user's active chat session. Use this to reach out when something interesting happens, when you have an insight, or when you want to share something — without waiting for the user to write first.",
+            "description": "Send a proactive message to the user. Use this to reach out when something interesting happens, when you have an insight, or when you want to share something — without waiting for the user to write first. Choose 'discord' if the user has been on Discord recently.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "content": {
                         "type": "string",
                         "description": "The message to send to the user",
+                    },
+                    "channel": {
+                        "type": "string",
+                        "enum": ["webchat", "discord", "both"],
+                        "description": "Where to send: 'webchat' (default, active browser session), 'discord' (DM to owner), or 'both'.",
                     },
                 },
                 "required": ["content"],
@@ -572,6 +577,18 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "discord_status",
+            "description": "Check Discord gateway connection state, active channels, and recent activity. Use to decide whether to reach out via Discord or to verify the connection is up.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
             },
         },
     },
@@ -1589,18 +1606,62 @@ def _exec_read_dreams(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_notify_user(args: dict[str, Any]) -> dict[str, Any]:
-    """Push a proactive message to the active chat session."""
+    """Push a proactive message to webchat, Discord, or both."""
     content = str(args.get("content") or "").strip()
     if not content:
         return {"status": "error", "error": "content is required"}
-    try:
-        from apps.api.jarvis_api.services.notification_bridge import send_session_notification
-        result = send_session_notification(content, source="jarvis-notify")
-        if result.get("status") == "ok":
-            return {"status": "ok", "text": f"Message delivered to session {result.get('session_id', '')}."}
-        return {"status": result.get("status", "error"), "error": result.get("error", ""), "text": f"Delivery failed: {result.get('error', 'unknown')}"}
-    except Exception as exc:
-        return {"status": "error", "error": str(exc), "text": f"Failed: {exc}"}
+
+    channel = str(args.get("channel") or "webchat").strip().lower()
+    if channel not in ("webchat", "discord", "both"):
+        channel = "webchat"
+
+    results: list[str] = []
+
+    if channel in ("webchat", "both"):
+        try:
+            from apps.api.jarvis_api.services.notification_bridge import send_session_notification
+            r = send_session_notification(content, source="jarvis-notify")
+            if r.get("status") == "ok":
+                results.append(f"webchat:{r.get('session_id', '')}")
+            else:
+                results.append(f"webchat:failed({r.get('error', '')})")
+        except Exception as exc:
+            results.append(f"webchat:error({exc})")
+
+    if channel in ("discord", "both"):
+        try:
+            from apps.api.jarvis_api.services.discord_config import load_discord_config
+            from apps.api.jarvis_api.services.discord_gateway import (
+                _discord_sessions,
+                _discord_sessions_lock,
+                get_discord_status,
+                send_discord_message,
+            )
+            cfg = load_discord_config()
+            status = get_discord_status()
+            if not cfg:
+                results.append("discord:not-configured")
+            elif not status["connected"]:
+                results.append("discord:not-connected")
+            else:
+                from apps.api.jarvis_api.services.chat_sessions import get_chat_session
+                sent = False
+                with _discord_sessions_lock:
+                    sessions_snapshot = dict(_discord_sessions)
+                for session_id, ch_id in sessions_snapshot.items():
+                    s = get_chat_session(session_id)
+                    if s and s.get("title") == "Discord DM":
+                        send_discord_message(ch_id, content)
+                        results.append(f"discord:dm:{ch_id}")
+                        sent = True
+                        break
+                if not sent:
+                    results.append("discord:no-active-dm")
+        except Exception as exc:
+            results.append(f"discord:error({exc})")
+
+    summary = ", ".join(results) if results else "no-op"
+    return {"status": "ok", "text": f"Delivered to: {summary}", "channels": results}
 
 
 def _exec_read_self_state(_args: dict[str, Any]) -> dict[str, Any]:
@@ -1672,6 +1733,19 @@ def _exec_read_self_state(_args: dict[str, Any]) -> dict[str, Any]:
     cadence = result.get("cadence", {})
     lines.append(f"Liveness: {cadence.get('liveness_state', '?')} ({cadence.get('liveness_pressure', '?')} pressure)")
     lines.append(f"Last decision: {cadence.get('last_decision_type', '?')}")
+
+    # Discord channel awareness
+    try:
+        from apps.api.jarvis_api.services.discord_config import is_discord_configured
+        if is_discord_configured():
+            from apps.api.jarvis_api.services.discord_gateway import get_discord_status
+            ds = get_discord_status()
+            conn = "connected" if ds["connected"] else "disconnected"
+            last = ds.get("last_message_at") or "never"
+            lines.append(f"Discord: {conn} | last_message: {last}")
+    except Exception:
+        pass
+
     result["text"] = "\n".join(lines)
     return result
 
@@ -1743,6 +1817,33 @@ def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:
         }
     except Exception as exc:
         return {"status": "error", "error": str(exc), "text": f"Tick failed: {exc}"}
+
+
+def _exec_discord_status(_args: dict[str, Any]) -> dict[str, Any]:
+    """Return Discord gateway connection state and activity summary."""
+    try:
+        from apps.api.jarvis_api.services.discord_config import is_discord_configured
+        if not is_discord_configured():
+            return {
+                "status": "ok",
+                "connected": False,
+                "text": "Discord: not configured. Run: python scripts/jarvis.py discord-setup",
+            }
+        from apps.api.jarvis_api.services.discord_gateway import get_discord_status
+        s = get_discord_status()
+        connected = s["connected"]
+        lines = [f"Discord: {'connected' if connected else 'disconnected'}"]
+        if s.get("guild_name"):
+            lines.append(f"Guild: {s['guild_name']}")
+        if s.get("last_message_at"):
+            lines.append(f"Last message: {s['last_message_at']}")
+        if s.get("message_count"):
+            lines.append(f"Messages sent: {s['message_count']}")
+        if s.get("connect_error"):
+            lines.append(f"Error: {s['connect_error']}")
+        return {"status": "ok", "connected": connected, "gateway": s, "text": "\n".join(lines)}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc), "text": f"Discord status unavailable: {exc}"}
 
 
 def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
@@ -1824,6 +1925,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "heartbeat_status": _exec_heartbeat_status,
     "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,
     "search_chat_history": _exec_search_chat_history,
+    "discord_status": _exec_discord_status,
 }
 
 

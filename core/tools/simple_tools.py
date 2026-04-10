@@ -243,6 +243,53 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "propose_source_edit",
+            "description": (
+                "Propose a surgical edit to a source code file. The change goes into an "
+                "autonomy proposal queue (visible in Mission Control) and will execute "
+                "only after the user approves it. Use this to propose improvements or "
+                "fixes to your own runtime code, tools, or configuration files. "
+                "Always read the file first to confirm the old_text is accurate."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to the file to edit",
+                    },
+                    "old_text": {
+                        "type": "string",
+                        "description": "Exact text to replace (must match the file exactly)",
+                    },
+                    "new_text": {
+                        "type": "string",
+                        "description": "Replacement text",
+                    },
+                    "rationale": {
+                        "type": "string",
+                        "description": "Why this change is needed — shown to the user in the approval UI",
+                    },
+                },
+                "required": ["file_path", "old_text", "new_text", "rationale"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_proposals",
+            "description": "List pending autonomy proposals — proposed source edits and memory rewrites awaiting user approval in Mission Control.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "schedule_task",
             "description": "Schedule a reminder or task to fire at a future time. After delay_minutes, a notification will appear in your chat session so you can act on it. Use this to set future reminders, follow-ups, or time-delayed actions.",
             "parameters": {
@@ -869,6 +916,110 @@ def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_propose_source_edit(args: dict[str, Any]) -> dict[str, Any]:
+    """File a source-edit autonomy proposal."""
+    from hashlib import sha1 as _sha1
+
+    file_path = str(args.get("file_path") or "").strip()
+    old_text = str(args.get("old_text") or "")
+    new_text = str(args.get("new_text") or "")
+    rationale = str(args.get("rationale") or "").strip()
+
+    if not file_path:
+        return {"status": "error", "error": "file_path is required"}
+    if not old_text:
+        return {"status": "error", "error": "old_text is required"}
+    if not rationale:
+        return {"status": "error", "error": "rationale is required"}
+
+    target = Path(file_path).expanduser().resolve()
+    if not target.exists() or not target.is_file():
+        return {"status": "error", "error": f"File not found: {file_path}"}
+
+    try:
+        current_content = target.read_text(encoding="utf-8", errors="replace")
+    except PermissionError:
+        return {"status": "error", "error": f"Permission denied: {file_path}"}
+
+    if old_text not in current_content:
+        return {"status": "error", "error": "old_text not found in file — read the file first to get exact text"}
+
+    count = current_content.count(old_text)
+    if count > 1:
+        return {"status": "error", "error": f"old_text matches {count} locations — be more specific"}
+
+    new_content = current_content.replace(old_text, new_text, 1)
+
+    def _fp(text: str) -> str:
+        return _sha1(text.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+
+    base_fingerprint = _fp(current_content)
+    bytes_delta = len(new_content.encode("utf-8")) - len(current_content.encode("utf-8"))
+
+    try:
+        rel = str(target.relative_to(Path(PROJECT_ROOT)))
+    except ValueError:
+        rel = str(target)
+
+    try:
+        from apps.api.jarvis_api.services.autonomy_proposal_queue import file_proposal
+        proposal = file_proposal(
+            kind="source-edit",
+            title=f"Edit {rel}",
+            rationale=rationale,
+            payload={
+                "target_path": str(target),
+                "relative_path": rel,
+                "base_fingerprint": base_fingerprint,
+                "new_content": new_content,
+                "bytes_delta": bytes_delta,
+            },
+            created_by="jarvis-tool",
+        )
+        proposal_id = str(proposal.get("proposal_id") or "")
+        return {
+            "status": "filed",
+            "proposal_id": proposal_id,
+            "file": rel,
+            "bytes_delta": bytes_delta,
+            "text": (
+                f"Source edit proposal filed [{proposal_id}]: {rel} ({bytes_delta:+d} bytes). "
+                f"Visible in Mission Control → Operations → Autonomy Proposals."
+            ),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_list_proposals(_args: dict[str, Any]) -> dict[str, Any]:
+    """List pending autonomy proposals."""
+    try:
+        from apps.api.jarvis_api.services.autonomy_proposal_queue import list_pending_proposals, build_autonomy_proposal_surface
+        surface = build_autonomy_proposal_surface(limit=20)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    proposals = surface.get("items") or []
+    pending = [p for p in proposals if str(p.get("status") or "") == "pending"]
+
+    if not pending:
+        return {"status": "ok", "pending_count": 0, "text": "No pending autonomy proposals."}
+
+    lines = [f"Pending proposals ({len(pending)}):"]
+    for p in pending:
+        pid = str(p.get("proposal_id") or "")[:18]
+        kind = str(p.get("kind") or "")
+        title = str(p.get("title") or "")
+        lines.append(f"  [{pid}] {kind}: {title}")
+
+    return {
+        "status": "ok",
+        "pending_count": len(pending),
+        "proposals": pending,
+        "text": "\n".join(lines),
+    }
+
+
 def _exec_schedule_task(args: dict[str, Any]) -> dict[str, Any]:
     """Schedule a task to fire after delay_minutes."""
     focus = str(args.get("focus") or "").strip()
@@ -1210,6 +1361,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "web_search": _exec_web_search,
     "list_initiatives": _exec_list_initiatives,
     "push_initiative": _exec_push_initiative,
+    "propose_source_edit": _exec_propose_source_edit,
+    "list_proposals": _exec_list_proposals,
     "schedule_task": _exec_schedule_task,
     "list_scheduled_tasks": _exec_list_scheduled_tasks,
     "read_chronicles": _exec_read_chronicles,

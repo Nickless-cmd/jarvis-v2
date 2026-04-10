@@ -237,6 +237,7 @@ class VisibleRun:
     model: str
     user_message: str
     session_id: str | None = None
+    autonomous: bool = False  # True = heartbeat-triggered, no user present
 
 
 @dataclass(slots=True)
@@ -287,6 +288,57 @@ def start_visible_run(
         session_id=(session_id or "").strip() or None,
     )
     return _stream_visible_run(run)
+
+
+def start_autonomous_run(message: str, session_id: str | None = None) -> None:
+    """Trigger an autonomous (heartbeat-initiated) visible run in a background thread.
+
+    The run executes the visible model with tools available, persists results to
+    the given session (or the dedicated autonomous session), and auto-denies any
+    tool that requires user approval (no user is present). Fire-and-forget.
+    """
+    import threading
+
+    from apps.api.jarvis_api.services.chat_sessions import (
+        create_chat_session,
+        list_chat_sessions,
+    )
+
+    def _get_or_create_autonomous_session() -> str:
+        for s in list_chat_sessions():
+            if s.get("title") == "Autonomous":
+                return s["id"]
+        return create_chat_session(title="Autonomous")["id"]
+
+    resolved_session = (session_id or "").strip() or _get_or_create_autonomous_session()
+
+    settings = load_settings()
+    run = VisibleRun(
+        run_id=f"autonomous-{uuid4().hex}",
+        lane=settings.primary_model_lane,
+        provider=settings.visible_model_provider,
+        model=settings.visible_model_name,
+        user_message=(message or "").strip() or "Autonomous heartbeat check-in",
+        session_id=resolved_session,
+        autonomous=True,
+    )
+
+    def _in_thread() -> None:
+        import asyncio as _asyncio
+
+        loop = _asyncio.new_event_loop()
+        try:
+            async def _consume() -> None:
+                async for _ in _stream_visible_run(run):
+                    pass  # Discard SSE frames — we only care about side-effects
+
+            loop.run_until_complete(_consume())
+        except Exception:
+            pass
+        finally:
+            loop.close()
+
+    threading.Thread(target=_in_thread, name="jarvis-autonomous-run", daemon=True).start()
 
 
 async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
@@ -499,10 +551,22 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 )
 
                 # Send tool results as SSE events + persist as role:tool
-                # For approval_needed, send approval_request SSE instead
-                for sr in simple_results:
+                # For approval_needed, block the run until the user approves/denies.
+                _resolved_result_texts: dict[int, str] = {}
+
+                for _idx, sr in enumerate(simple_results):
                     if sr["status"] == "approval_needed":
+                        if run.autonomous:
+                            # No user present — auto-deny approval-needed tools immediately
+                            _resolved_result_texts[_idx] = (
+                                f"[{sr['tool_name']}]: Autonomous run cannot approve tool calls — skipped."
+                            )
+                            yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
+                            continue
                         approval_id = f"approval-{uuid4().hex[:12]}"
+                        _approval_future: asyncio.Future[str | None] = (
+                            asyncio.get_running_loop().create_future()
+                        )
                         _PENDING_APPROVALS[approval_id] = {
                             "tool_name": sr["tool_name"],
                             "arguments": sr["arguments"],
@@ -510,6 +574,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "run_id": run.run_id,
                             "session_id": run.session_id,
                             "created_at": datetime.now(UTC).isoformat(),
+                            "future": _approval_future,
                         }
                         yield _sse("approval_request", {
                             "type": "approval_request",
@@ -521,7 +586,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 or sr["result"].get("command", "")
                             ),
                         })
+                        # Block the generator until user approves or denies (5 min timeout)
+                        try:
+                            _resolved = await asyncio.wait_for(_approval_future, timeout=300.0)
+                        except asyncio.TimeoutError:
+                            _resolved = None
+                        if _resolved is None:
+                            _resolved_result_texts[_idx] = f"[{sr['tool_name']}]: Tool call denied by user."
+                            yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
+                        else:
+                            _resolved_result_texts[_idx] = _resolved
+                            yield _sse("capability", {"type": "tool_result", "tool": sr["tool_name"], "status": "ok"})
                         continue
+                    _resolved_result_texts[_idx] = sr["result_text"]
                     yield _sse("capability", {
                         "type": "tool_result",
                         "tool": sr["tool_name"],
@@ -553,11 +630,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     "tool_calls": _collected_native_tool_calls,
                 })
 
-                # Add tool results
-                for sr in simple_results:
+                # Add tool results — use resolved texts (real results for approved tools)
+                for _idx, sr in enumerate(simple_results):
                     followup_messages.append({
                         "role": "tool",
-                        "content": sr["result_text"],
+                        "content": _resolved_result_texts.get(_idx, sr["result_text"]),
                     })
 
                 # Second-pass: stream model response grounded in tool results
@@ -644,7 +721,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     second_round_results = _execute_simple_tool_calls(followup_tool_calls)
                     for sr in second_round_results:
                         if sr["status"] == "approval_needed":
+                            if run.autonomous:
+                                summary = f"[{sr['tool_name']}]: Autonomous run cannot approve tool calls — skipped."
+                                yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
+                                followup_parts.append(summary)
+                                yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": f"\n{summary}"})
+                                continue
                             approval_id = f"approval-{uuid4().hex[:12]}"
+                            _approval_future2: asyncio.Future[str | None] = (
+                                asyncio.get_running_loop().create_future()
+                            )
                             _PENDING_APPROVALS[approval_id] = {
                                 "tool_name": sr["tool_name"],
                                 "arguments": sr["arguments"],
@@ -652,6 +738,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 "run_id": run.run_id,
                                 "session_id": run.session_id,
                                 "created_at": datetime.now(UTC).isoformat(),
+                                "future": _approval_future2,
                             }
                             yield _sse("approval_request", {
                                 "type": "approval_request",
@@ -663,6 +750,24 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     or sr["result"].get("command", "")
                                 ),
                             })
+                            try:
+                                _resolved2 = await asyncio.wait_for(_approval_future2, timeout=300.0)
+                            except asyncio.TimeoutError:
+                                _resolved2 = None
+                            if _resolved2 is None:
+                                summary = f"[{sr['tool_name']}]: Tool call denied by user."
+                                yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
+                            else:
+                                summary = f"[{sr['tool_name']}]: {_resolved2[:200]}"
+                                yield _sse("capability", {"type": "tool_result", "tool": sr["tool_name"], "status": "ok"})
+                                if run.session_id:
+                                    append_chat_message(
+                                        session_id=run.session_id,
+                                        role="tool",
+                                        content=f"[{sr['tool_name']}]: {_resolved2[:800]}",
+                                    )
+                            followup_parts.append(summary)
+                            yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": f"\n{summary}"})
                             continue
                         yield _sse("capability", {
                             "type": "tool_result",
@@ -696,9 +801,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         "delta": followup_text,
                     })
 
-                # Send done FIRST, then persist in background
                 total_input_tokens = result.input_tokens * 2
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
+
+                # Persist the assistant message BEFORE done so loadSession()
+                # finds it immediately (avoids "message disappears" race).
+                try:
+                    _persist_session_assistant_message(run, followup_text)
+                except Exception:
+                    pass
+
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,
@@ -706,18 +818,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     "output_tokens": total_output_tokens,
                 })
 
-                # Background: persist and record cost
-                _followup_text_ref = followup_text
+                # Background: status update and cost recording only
                 _run_ref = run
                 _tokens = (total_input_tokens, total_output_tokens)
+                _followup_preview = followup_text[:140]
                 import threading as _threading
 
                 def _persist_tool_result() -> None:
                     try:
-                        _persist_session_assistant_message(_run_ref, _followup_text_ref)
                         set_last_visible_run_outcome(
                             _run_ref, status="completed",
-                            text_preview=_followup_text_ref[:140],
+                            text_preview=_followup_preview,
                         )
                         record_cost(
                             provider=_run_ref.provider,
@@ -994,6 +1105,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "status": "done",
             },
         )
+        # Persist the assistant message BEFORE sending done so that the
+        # frontend's loadSession() call immediately after done finds the
+        # message in the DB (avoids the "message disappears" race condition).
+        if visible_output_text:
+            try:
+                _persist_session_assistant_message(run, visible_output_text)
+            except Exception:
+                pass
         yield _sse(
             "done",
             {
@@ -1005,9 +1124,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 "total_tokens": total_input_tokens + total_output_tokens,
             },
         )
+    except Exception as _outer_exc:
+        # Catch any unhandled exception from tool execution or second-pass streaming
+        # and send a proper failed SSE so the browser gets a clean error instead of
+        # an abrupt connection close ("Error in input stream").
+        _outer_error = str(_outer_exc) or "unexpected-run-error"
+        set_last_visible_run_outcome(run, status="failed", error=_outer_error)
+        for _fail_chunk in _fail_visible_run(run, _outer_error):
+            yield _fail_chunk
+        unregister_visible_run(run.run_id)
+        return
     finally:
-        # Post-processing in finally so it runs after stream closes,
-        # and never blocks the done SSE event from reaching the client.
+        # Post-processing in finally: status update, candidate tracking, cleanup.
+        # Message persistence now happens synchronously before done (above).
         import threading
 
         def _post_process() -> None:
@@ -1017,7 +1146,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     status="completed",
                     text_preview=_preview_text(visible_output_text),
                 )
-                _persist_session_assistant_message(run, visible_output_text)
                 _track_runtime_candidates(run, visible_output_text)
             except Exception:
                 pass
@@ -1577,19 +1705,35 @@ def _execute_simple_tool_calls(
 
 
 def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
-    """Resolve a pending tool approval — execute if approved, discard if denied."""
+    """Resolve a pending tool approval.
+
+    Resolves the asyncio.Future stored with the pending approval so the blocked
+    streaming generator resumes. If approved, executes the tool and passes the
+    real result_text to the future. If denied, passes None.
+    """
     from core.tools.simple_tools import execute_tool_force, format_tool_result_for_model
 
     pending = _PENDING_APPROVALS.pop(approval_id, None)
     if not pending:
         return {"error": "Approval not found or expired", "status": "error"}
 
+    future: asyncio.Future | None = pending.get("future")
+
     if not approved:
+        if future and not future.done():
+            future.set_result(None)
+        event_bus.publish("tool.approval_resolved", {
+            "approval_id": approval_id,
+            "tool": pending["tool_name"],
+            "approved": False,
+            "status": "denied",
+        })
         return {"status": "denied", "tool": pending["tool_name"]}
 
     result = execute_tool_force(pending["tool_name"], pending["arguments"])
     result_text = format_tool_result_for_model(pending["tool_name"], result)
 
+    # Persist the tool result to the session transcript
     if pending.get("session_id"):
         try:
             append_chat_message(
@@ -1606,6 +1750,10 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
         "approved": True,
         "status": result.get("status", "ok"),
     })
+
+    # Wake the blocked generator with the real result
+    if future and not future.done():
+        future.set_result(result_text)
 
     return {
         "status": result.get("status", "ok"),

@@ -61,6 +61,32 @@ def cancel_scheduled_task(task_id: str) -> bool:
     return True
 
 
+def edit_scheduled_task(task_id: str, *, focus: str | None = None, delay_minutes: int | None = None) -> dict[str, object]:
+    """Edit an existing pending task. Returns updated task info or error dict."""
+    task = runtime_db.get_scheduled_task(task_id)
+    if not task:
+        return {"status": "error", "error": f"Task {task_id!r} not found"}
+    if task.get("status") != "pending":
+        return {"status": "error", "error": f"Task {task_id!r} is {task.get('status')}, cannot edit"}
+
+    now = datetime.now(UTC)
+    new_run_at: str | None = None
+    if delay_minutes is not None:
+        new_run_at = (now + timedelta(minutes=max(delay_minutes, 1))).isoformat()
+    new_focus = focus[:300].strip() if focus else None
+
+    updated = runtime_db.update_scheduled_task(
+        task_id,
+        focus=new_focus,
+        run_at=new_run_at,
+        updated_at=now.isoformat(),
+    )
+    if not updated:
+        return {"status": "error", "error": "Update failed — task may no longer be pending"}
+    logger.info("scheduled_tasks: edited %s focus=%r run_at=%r", task_id, new_focus, new_run_at)
+    return {"status": "ok", "task": updated, "text": f"Updated task {task_id}: {updated.get('focus')} — fires at {str(updated.get('run_at',''))[:16]}Z"}
+
+
 def get_scheduled_tasks_state() -> dict[str, object]:
     """Return all scheduled tasks for observability."""
     tasks = runtime_db.list_scheduled_tasks(limit=50)

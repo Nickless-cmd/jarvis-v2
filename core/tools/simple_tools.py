@@ -424,6 +424,48 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "cancel_task",
+            "description": "Cancel a pending scheduled task so it will not fire. Use list_scheduled_tasks first to get the task_id.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "The task_id of the pending task to cancel (from list_scheduled_tasks)",
+                    },
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_task",
+            "description": "Edit a pending scheduled task — change its reminder text and/or reschedule it. Provide at least one of focus or delay_minutes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "The task_id of the pending task to edit (from list_scheduled_tasks)",
+                    },
+                    "focus": {
+                        "type": "string",
+                        "description": "New reminder text (optional — omit to keep existing)",
+                    },
+                    "delay_minutes": {
+                        "type": "integer",
+                        "description": "New delay from now in minutes (optional — omit to keep existing schedule)",
+                    },
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "read_chronicles",
             "description": "Read your own chronicle history — the autobiographical narrative entries generated during heartbeat ticks. Each entry covers a time period with a prose narrative, key events, and lessons learned.",
             "parameters": {
@@ -1377,6 +1419,42 @@ def _exec_list_scheduled_tasks(_args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _exec_cancel_task(args: dict[str, Any]) -> dict[str, Any]:
+    """Cancel a pending scheduled task."""
+    task_id = str(args.get("task_id") or "").strip()
+    if not task_id:
+        return {"status": "error", "error": "task_id is required"}
+    try:
+        from apps.api.jarvis_api.services.scheduled_tasks import cancel_scheduled_task
+        cancelled = cancel_scheduled_task(task_id)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+    if cancelled:
+        return {"status": "ok", "task_id": task_id, "text": f"Task {task_id} cancelled."}
+    return {"status": "error", "error": f"Task {task_id!r} not found or not pending"}
+
+
+def _exec_edit_task(args: dict[str, Any]) -> dict[str, Any]:
+    """Edit a pending scheduled task."""
+    task_id = str(args.get("task_id") or "").strip()
+    if not task_id:
+        return {"status": "error", "error": "task_id is required"}
+    focus = args.get("focus")
+    delay_minutes = args.get("delay_minutes")
+    if focus is None and delay_minutes is None:
+        return {"status": "error", "error": "Provide at least one of: focus, delay_minutes"}
+    try:
+        from apps.api.jarvis_api.services.scheduled_tasks import edit_scheduled_task
+        result = edit_scheduled_task(
+            task_id,
+            focus=str(focus).strip() if focus is not None else None,
+            delay_minutes=int(delay_minutes) if delay_minutes is not None else None,
+        )
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+    return result
+
+
 def _exec_read_chronicles(args: dict[str, Any]) -> dict[str, Any]:
     """Return recent cognitive chronicle entries."""
     import json as _json
@@ -1667,6 +1745,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_proposals": _exec_list_proposals,
     "schedule_task": _exec_schedule_task,
     "list_scheduled_tasks": _exec_list_scheduled_tasks,
+    "cancel_task": _exec_cancel_task,
+    "edit_task": _exec_edit_task,
     "read_chronicles": _exec_read_chronicles,
     "read_dreams": _exec_read_dreams,
     "notify_user": _exec_notify_user,

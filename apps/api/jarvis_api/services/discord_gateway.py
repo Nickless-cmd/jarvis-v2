@@ -165,65 +165,81 @@ async def _run_client(config: dict) -> None:
 
     @_client.event
     async def on_message(message: Any) -> None:
-        import discord as _discord
-        # Ignore our own messages
-        if message.author == _client.user:
-            return
-        # Determine channel type
-        is_dm = isinstance(message.channel, _discord.DMChannel)
-        # For guild messages: only respond in allowed channels
-        if not is_dm:
-            if message.guild is None or message.guild.id != guild_id:
+        try:
+            import discord as _discord
+            # Ignore our own messages
+            if message.author == _client.user:
                 return
-            if message.channel.id not in allowed_channel_ids:
+            # Determine channel type
+            is_dm = isinstance(message.channel, _discord.DMChannel)
+            ch_id_log = getattr(message.channel, "id", "?")
+            guild_id_log = getattr(getattr(message, "guild", None), "id", "DM")
+            logger.debug(
+                "discord on_message: author=%s is_dm=%s guild=%s channel=%s content=%r",
+                message.author.id, is_dm, guild_id_log, ch_id_log, (message.content or "")[:60],
+            )
+            # For guild messages: only respond in allowed channels
+            if not is_dm:
+                if message.guild is None or message.guild.id != guild_id:
+                    logger.debug("discord on_message: guild mismatch (%s != %s), ignoring", guild_id_log, guild_id)
+                    return
+                if message.channel.id not in allowed_channel_ids:
+                    logger.debug("discord on_message: channel %s not in allowed %s, ignoring", ch_id_log, allowed_channel_ids)
+                    return
+            # DM: only accept from owner
+            if is_dm and str(message.author.id) != owner_discord_id:
+                logger.debug("discord on_message: DM from non-owner %s, ignoring", message.author.id)
                 return
-        # DM: only accept from owner
-        if is_dm and str(message.author.id) != owner_discord_id:
-            return
 
-        is_owner = str(message.author.id) == owner_discord_id
+            is_owner = str(message.author.id) == owner_discord_id
 
-        # Rate limit non-owner users
-        if not is_owner:
-            now = time.monotonic()
-            last = _user_last_response.get(message.author.id, 0.0)
-            if now - last < _RATE_LIMIT_SECONDS:
+            # Rate limit non-owner users
+            if not is_owner:
+                now = time.monotonic()
+                last = _user_last_response.get(message.author.id, 0.0)
+                if now - last < _RATE_LIMIT_SECONDS:
+                    logger.debug("discord on_message: rate-limiting user %s", message.author.id)
+                    return
+                _user_last_response[message.author.id] = now
+
+            content = message.content.strip()
+            if not content:
+                logger.debug("discord on_message: empty content, ignoring")
                 return
-            _user_last_response[message.author.id] = now
 
-        content = message.content.strip()
-        if not content:
-            return
+            channel_id = message.channel.id
+            logger.info("discord on_message: handling message from %s (owner=%s) in channel %s", message.author.id, is_owner, channel_id)
+            session_id = _get_or_create_discord_session(channel_id, is_dm, owner_discord_id)
 
-        channel_id = message.channel.id
-        session_id = _get_or_create_discord_session(channel_id, is_dm, owner_discord_id)
+            # Register this session so the eventbus listener knows to route responses here
+            with _discord_sessions_lock:
+                _discord_sessions[session_id] = channel_id
 
-        # Register this session so the eventbus listener knows to route responses here
-        with _discord_sessions_lock:
-            _discord_sessions[session_id] = channel_id
+            # Persist user message
+            from apps.api.jarvis_api.services.chat_sessions import append_chat_message
+            append_chat_message(session_id=session_id, role="user", content=content)
 
-        # Persist user message
-        from apps.api.jarvis_api.services.chat_sessions import append_chat_message
-        append_chat_message(session_id=session_id, role="user", content=content)
+            # Publish received event
+            from core.eventbus.bus import event_bus
+            event_bus.publish("discord.message_received", {
+                "channel_id": str(channel_id),
+                "user_id": str(message.author.id),
+                "is_owner": is_owner,
+                "is_dm": is_dm,
+            })
 
-        # Publish received event
-        from core.eventbus.bus import event_bus
-        event_bus.publish("discord.message_received", {
-            "channel_id": str(channel_id),
-            "user_id": str(message.author.id),
-            "is_owner": is_owner,
-            "is_dm": is_dm,
-        })
-
-        # Trigger autonomous run (fire-and-forget in its own thread)
-        from apps.api.jarvis_api.services.visible_runs import start_autonomous_run
-        threading.Thread(
-            target=start_autonomous_run,
-            args=(content,),
-            kwargs={"session_id": session_id},
-            daemon=True,
-            name=f"discord-run-{session_id[-8:]}",
-        ).start()
+            # Trigger autonomous run (fire-and-forget in its own thread)
+            from apps.api.jarvis_api.services.visible_runs import start_autonomous_run
+            threading.Thread(
+                target=start_autonomous_run,
+                args=(content,),
+                kwargs={"session_id": session_id},
+                daemon=True,
+                name=f"discord-run-{session_id[-8:]}",
+            ).start()
+            logger.info("discord on_message: autonomous run started for session %s", session_id)
+        except Exception as exc:
+            logger.error("discord on_message: unhandled error: %s", exc, exc_info=True)
 
     # Run outbound loop alongside the client
     asyncio.ensure_future(_send_outbound_loop())

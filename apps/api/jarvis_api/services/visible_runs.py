@@ -678,7 +678,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 import logging as _alog
                 from core.tools.simple_tools import get_tool_definitions as _get_tool_defs
 
-                _AGENTIC_MAX_ROUNDS = 15
+                _AGENTIC_MAX_ROUNDS = 40
                 _TOOL_CALL_MARKER = "__TOOL_CALLS__"
                 target = resolve_provider_router_target(lane="visible")
                 base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"

@@ -186,6 +186,31 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
     ]
 
 
+def recent_chat_tool_messages(session_id: str, *, limit: int = 6) -> list[dict[str, str]]:
+    normalized = (session_id or "").strip()
+    if not normalized:
+        return []
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT role, content, created_at
+            FROM chat_messages
+            WHERE session_id = ? AND role = 'tool'
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (normalized, max(limit, 1)),
+        ).fetchall()
+    return [
+        {
+            "role": str(row["role"]),
+            "content": str(row["content"]),
+            "created_at": str(row["created_at"]),
+        }
+        for row in reversed(rows)
+    ]
+
+
 def rename_chat_session(session_id: str, *, title: str) -> dict[str, object] | None:
     normalized = (session_id or "").strip()
     new_title = _normalize_title(title) or "New chat"

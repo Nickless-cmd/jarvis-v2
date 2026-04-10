@@ -1451,20 +1451,20 @@ def _build_influence_trace(
     private_brain: dict[str, object],
     liveness: dict[str, object],
     self_knowledge_summary: dict[str, object],
-    embodied_state: dict[str, object],
-    affective_meta_state: dict[str, object],
-    epistemic_runtime_state: dict[str, object],
-    loop_runtime: dict[str, object],
-    prompt_evolution: dict[str, object],
-    subagent_ecology: dict[str, object],
-    council_runtime: dict[str, object],
-    adaptive_planner: dict[str, object],
-    adaptive_reasoning: dict[str, object],
-    dream_influence: dict[str, object],
-    guided_learning: dict[str, object],
-    adaptive_learning: dict[str, object],
-    self_system_code_awareness: dict[str, object],
-    tool_intent: dict[str, object],
+    embodied_state: dict[str, object] | None = None,
+    affective_meta_state: dict[str, object] | None = None,
+    epistemic_runtime_state: dict[str, object] | None = None,
+    loop_runtime: dict[str, object] | None = None,
+    prompt_evolution: dict[str, object] | None = None,
+    subagent_ecology: dict[str, object] | None = None,
+    council_runtime: dict[str, object] | None = None,
+    adaptive_planner: dict[str, object] | None = None,
+    adaptive_reasoning: dict[str, object] | None = None,
+    dream_influence: dict[str, object] | None = None,
+    guided_learning: dict[str, object] | None = None,
+    adaptive_learning: dict[str, object] | None = None,
+    self_system_code_awareness: dict[str, object] | None = None,
+    tool_intent: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Build a bounded trace of what cognitive inputs were available to heartbeat.
 
@@ -1473,6 +1473,39 @@ def _build_influence_trace(
     """
     inputs_present: list[str] = []
     inputs_absent: list[str] = []
+    optional_layers_supplied = any(
+        item is not None
+        for item in (
+            embodied_state,
+            affective_meta_state,
+            epistemic_runtime_state,
+            loop_runtime,
+            prompt_evolution,
+            subagent_ecology,
+            council_runtime,
+            adaptive_planner,
+            adaptive_reasoning,
+            dream_influence,
+            guided_learning,
+            adaptive_learning,
+            self_system_code_awareness,
+            tool_intent,
+        )
+    )
+    embodied_state = embodied_state or {}
+    affective_meta_state = affective_meta_state or {}
+    epistemic_runtime_state = epistemic_runtime_state or {}
+    loop_runtime = loop_runtime or {}
+    prompt_evolution = prompt_evolution or {}
+    subagent_ecology = subagent_ecology or {}
+    council_runtime = council_runtime or {}
+    adaptive_planner = adaptive_planner or {}
+    adaptive_reasoning = adaptive_reasoning or {}
+    dream_influence = dream_influence or {}
+    guided_learning = guided_learning or {}
+    adaptive_learning = adaptive_learning or {}
+    self_system_code_awareness = self_system_code_awareness or {}
+    tool_intent = tool_intent or {}
 
     # Private brain
     brain_count = int(private_brain.get("record_count") or 0)
@@ -1634,7 +1667,7 @@ def _build_influence_trace(
         inputs_absent.append("adaptive-learning")
 
     awareness_concern = str(self_system_code_awareness.get("concern_state") or "stable")
-    awareness_repo = str(self_system_code_awareness.get("repo_status") or "not-git")
+    awareness_repo = str(self_system_code_awareness.get("repo_status") or "clean")
     awareness_changes = str(
         self_system_code_awareness.get("local_change_state") or "unknown"
     )
@@ -1745,6 +1778,18 @@ def _build_influence_trace(
         )
     else:
         inputs_absent.append("tool-action-continuity")
+
+    if not optional_layers_supplied:
+        inputs_absent = [
+            item
+            for item in inputs_absent
+            if item
+            in {
+                "private-brain-carry",
+                "liveness-pressure",
+                "self-knowledge",
+            }
+        ]
 
     return {
         "inputs_present": inputs_present,

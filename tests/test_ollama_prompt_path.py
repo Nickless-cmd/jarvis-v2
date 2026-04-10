@@ -552,6 +552,40 @@ def test_ollama_visible_prompt_includes_recent_transcript_slice_for_session_reca
     assert "Use the recent transcript slice as recent context, not as stable memory." in assembly.text
 
 
+def test_ollama_visible_prompt_marks_tool_results_as_internal_memory_context(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.chat_sessions import (
+        append_chat_message,
+        create_chat_session,
+    )
+
+    session = create_chat_session(title="Tool recall")
+    session_id = str(session["id"])
+    append_chat_message(session_id=session_id, role="user", content="check runtime events")
+    append_chat_message(
+        session_id=session_id,
+        role="tool",
+        content="[bash]: runtime event memory.end_of_run_consolidation missing",
+    )
+    append_chat_message(session_id=session_id, role="assistant", content="Jeg fandt manglen.")
+
+    assembly = isolated_runtime.prompt_contract.build_visible_chat_prompt_assembly(
+        provider="ollama",
+        model="qwen3.5:9b",
+        user_message="hvad fandt dit tool-kald?",
+        session_id=session_id,
+    )
+
+    assert "Tool lines are internal Jarvis-only observations" in assembly.text
+    assert (
+        "Internal tool result: [bash]: runtime event memory.end_of_run_consolidation missing"
+        in assembly.text
+    )
+    assert "Memory recall bundle:" in assembly.text
+    assert "Internal tool observations (Jarvis-only, not user-visible chat):" in assembly.text
+
+
 def test_ollama_visible_prompt_can_include_memory_for_danish_recall_queries(
     isolated_runtime,
 ) -> None:

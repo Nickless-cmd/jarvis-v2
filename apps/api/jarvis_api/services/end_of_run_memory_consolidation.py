@@ -33,6 +33,7 @@ def consolidate_run_memory(
     run_id: str = "",
     user_message: str = "",
     assistant_response: str = "",
+    internal_context: str = "",
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "consolidated": False,
@@ -46,9 +47,17 @@ def consolidate_run_memory(
         "skipped_reason": None,
     }
 
+    def _finish() -> dict[str, object]:
+        _publish_consolidation_event(
+            result,
+            session_id=session_id,
+            run_id=run_id,
+        )
+        return result
+
     if len(user_message) < 12 and len(assistant_response) < 40:
         result["skipped_reason"] = "conversation-too-short"
-        return result
+        return _finish()
 
     memory_paths = workspace_memory_paths()
     memory_path = memory_paths["curated_memory"]
@@ -59,17 +68,19 @@ def consolidate_run_memory(
     decision = _run_memory_consolidation_pass(
         user_message=user_message[:1800],
         assistant_response=assistant_response[:2600],
+        internal_context=internal_context[:1800],
         current_memory=current_memory,
         current_user=current_user,
         full_context=False,
     )
     if decision is None:
         result["skipped_reason"] = "model-unavailable"
-        return result
+        return _finish()
     if bool(decision.get("needs_full_context")):
         decision = _run_memory_consolidation_pass(
             user_message=user_message[:1800],
             assistant_response=assistant_response[:2600],
+            internal_context=internal_context[:1800],
             current_memory=current_memory,
             current_user=current_user,
             full_context=True,
@@ -77,13 +88,13 @@ def consolidate_run_memory(
         result["used_full_context"] = True
     if decision is None:
         result["skipped_reason"] = "unparseable-response"
-        return result
+        return _finish()
 
     items = _normalize_memory_items(decision.get("items"))
     if not items:
         result["consolidated"] = True
         result["skipped_reason"] = "no-new-memory-items"
-        return result
+        return _finish()
 
     persisted = _persist_memory_candidates(
         items=items,
@@ -109,25 +120,38 @@ def consolidate_run_memory(
     result["memory_updated"] = result["auto_applied_memory_count"] > 0
     result["daily_memory_logged"] = logged_daily
 
+    return _finish()
+
+
+def _publish_consolidation_event(
+    result: dict[str, object],
+    *,
+    session_id: str,
+    run_id: str,
+) -> None:
     event_bus.publish(
         "memory.end_of_run_consolidation",
         {
             "session_id": session_id,
             "run_id": run_id,
-            "candidate_count": len(persisted),
-            "memory_updated": result["memory_updated"],
-            "user_updated": result["user_updated"],
-            "daily_memory_logged": logged_daily,
-            "used_full_context": result["used_full_context"],
+            "consolidated": bool(result.get("consolidated")),
+            "candidate_count": int(result.get("candidate_count") or 0),
+            "memory_updated": bool(result.get("memory_updated")),
+            "user_updated": bool(result.get("user_updated")),
+            "daily_memory_logged": bool(result.get("daily_memory_logged")),
+            "used_full_context": bool(result.get("used_full_context")),
+            "skipped_reason": result.get("skipped_reason"),
+            "auto_applied_user_count": int(result.get("auto_applied_user_count") or 0),
+            "auto_applied_memory_count": int(result.get("auto_applied_memory_count") or 0),
         },
     )
-    return result
 
 
 def _run_memory_consolidation_pass(
     *,
     user_message: str,
     assistant_response: str,
+    internal_context: str,
     current_memory: str,
     current_user: str,
     full_context: bool,
@@ -137,6 +161,7 @@ def _run_memory_consolidation_pass(
     prompt = _build_consolidation_prompt(
         user_message=user_message,
         assistant_response=assistant_response,
+        internal_context=internal_context,
         current_memory=memory_slice,
         current_user=user_slice,
         full_context=full_context,
@@ -173,11 +198,17 @@ def _build_consolidation_prompt(
     *,
     user_message: str,
     assistant_response: str,
+    internal_context: str,
     current_memory: str,
     current_user: str,
     full_context: bool,
 ) -> str:
     context_label = "FULL FILE CONTEXT" if full_context else "BOUNDED FILE EXCERPTS"
+    internal_block = (
+        f"\nINTERNAL JARVIS-ONLY TOOL/RUNTIME CONTEXT:\n{internal_context}\n"
+        if str(internal_context or "").strip()
+        else ""
+    )
     return f"""You are a bounded memory consolidation agent for Jarvis.
 
 Your job is to decide whether this turn contains durable information that
@@ -193,10 +224,13 @@ CURRENT USER.md:
 TURN:
 User: {user_message}
 Assistant: {assistant_response}
+{internal_block}
 
 RULES:
 - Prefer generic judgment over hardcoded patterns.
 - Persist only durable facts, preferences, working context, or stable decisions.
+- Tool/runtime context is Jarvis-only context: use it as evidence for durable
+  work state or outcomes, but do not quote raw tool dumps into memory.
 - Do not store transient observations, inner voice, filler, praise, or paraphrases of temporary tasks.
 - USER.md is for durable user preferences or collaboration preferences.
 - MEMORY.md is for durable project facts, repo/workspace context, shared anchors, and stable decisions.

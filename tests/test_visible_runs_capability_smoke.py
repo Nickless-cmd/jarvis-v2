@@ -243,10 +243,13 @@ def test_visible_run_second_pass_strips_capability_markup_and_does_not_loop(
         monkeypatch=monkeypatch,
         text='<capability-call id="tool:read-workspace-user-profile" />',
         run_id="visible-cap-second-pass-loop-stop",
-        second_pass_text=(
-            'Jeg svarer nu grounded. '
-            '<capability-call id="tool:read-repository-readme" />'
-        ),
+        second_pass_text=[
+            (
+                'Jeg svarer nu grounded. '
+                '<capability-call id="tool:read-repository-readme" />'
+            ),
+            "Grounded fallback response.",
+        ],
     )
 
     capability_events = _parse_sse(chunks, "capability")

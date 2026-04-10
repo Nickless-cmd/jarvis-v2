@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from apps.api.jarvis_api.services.chat_sessions import recent_chat_session_messages
+from apps.api.jarvis_api.services.chat_sessions import (
+    recent_chat_session_messages,
+    recent_chat_tool_messages,
+)
 from apps.api.jarvis_api.services.inner_visible_support_signal_tracking import (
     build_runtime_inner_visible_support_signal_surface,
 )
@@ -167,6 +170,7 @@ from core.identity.workspace_bootstrap import (
     TEMPLATE_DIR,
     ensure_default_workspace,
     read_daily_memory_lines,
+    read_recent_daily_memory_lines,
 )
 from core.memory.private_retained_memory_projection import (
     build_private_retained_memory_projection,
@@ -178,6 +182,7 @@ from core.runtime.db import (
     list_runtime_awareness_signals,
     list_runtime_development_focuses,
     list_runtime_goal_signals,
+    list_runtime_contract_candidates,
     list_runtime_reflection_signals,
     list_runtime_world_model_signals,
     recent_private_growth_notes,
@@ -351,20 +356,28 @@ def build_visible_chat_prompt_assembly(
             elif memory_selection.fallback_used:
                 derived_inputs.append("heuristic memory entry selection fallback")
 
-        # Daily memory sidecar — short-lived session notes from today.
-        # Read separately from MEMORY.md so Jarvis has today's context
-        # without needing the full long-term memory file every turn.
-        daily_lines = _today_daily_memory_lines(limit=6 if compact else 10)
+        # Daily memory sidecar — rolling short-lived notes. Read separately
+        # from MEMORY.md so reboot/session boundaries do not drop recent work.
+        daily_lines = _recent_daily_memory_lines(limit=8 if compact else 12)
         if daily_lines:
             parts.append(
                 "\n".join(
                     [
-                        "Today's notes (memory/daily):",
+                        "Recent daily notes (memory/daily, newest 7-day window):",
                         *[f"  {line}" for line in daily_lines],
                     ]
                 )
             )
             derived_inputs.append("daily memory sidecar")
+
+        recall_bundle = _visible_memory_recall_bundle_section(
+            session_id=session_id,
+            user_message=user_message,
+            compact=compact,
+        )
+        if recall_bundle:
+            parts.append(recall_bundle)
+            derived_inputs.append("bounded memory recall bundle")
 
     if relevance.include_guidance:
         for filename in ("TOOLS.md", "SKILLS.md"):
@@ -581,12 +594,12 @@ def build_heartbeat_prompt_assembly(
         # Daily memory sidecar for heartbeat prompts too, so proactive
         # decisions can reference today's context without pulling in
         # the full long-term memory file.
-        daily_lines = _today_daily_memory_lines(limit=8)
+        daily_lines = _recent_daily_memory_lines(limit=10)
         if daily_lines:
             parts.append(
                 "\n".join(
                     [
-                        "Today's notes (memory/daily):",
+                        "Recent daily notes (memory/daily, newest 7-day window):",
                         *[f"  {line}" for line in daily_lines],
                     ]
                 )
@@ -738,12 +751,12 @@ def build_future_agent_task_prompt_assembly(
 
         # Daily memory sidecar so delegated agents see today's session
         # context, not just long-term curated facts.
-        daily_lines = _today_daily_memory_lines(limit=8)
+        daily_lines = _recent_daily_memory_lines(limit=10)
         if daily_lines:
             parts.append(
                 "\n".join(
                     [
-                        "Today's notes (memory/daily):",
+                        "Recent daily notes (memory/daily, newest 7-day window):",
                         *[f"  {line}" for line in daily_lines],
                     ]
                 )
@@ -1152,6 +1165,111 @@ def _today_daily_memory_lines(*, limit: int = 10) -> list[str]:
         return []
 
 
+def _recent_daily_memory_lines(*, limit: int = 12, days: int = 7) -> list[str]:
+    try:
+        return read_recent_daily_memory_lines(days=days, limit=limit)
+    except Exception:
+        return _today_daily_memory_lines(limit=limit)
+
+
+def _visible_memory_recall_bundle_section(
+    *,
+    session_id: str | None,
+    user_message: str,
+    compact: bool,
+) -> str | None:
+    lines: list[str] = ["Memory recall bundle:"]
+
+    private_brain = _private_brain_recall_lines(limit=3 if compact else 4)
+    if private_brain:
+        lines.append("- Private continuity:")
+        lines.extend(f"  - {line}" for line in private_brain)
+
+    tool_lines = _recent_tool_recall_lines(session_id, limit=3 if compact else 5)
+    if tool_lines:
+        lines.append("- Internal tool observations (Jarvis-only, not user-visible chat):")
+        lines.extend(f"  - {line}" for line in tool_lines)
+
+    candidate_lines = _memory_candidate_recall_lines(limit=2 if compact else 3)
+    if candidate_lines:
+        lines.append("- Pending memory candidates:")
+        lines.extend(f"  - {line}" for line in candidate_lines)
+
+    if len(lines) == 1:
+        return None
+    lines.append(
+        "Use this only as bounded continuity support. Workspace files and the user's latest message outrank it."
+    )
+    return "\n".join(lines)
+
+
+def _private_brain_recall_lines(*, limit: int) -> list[str]:
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            build_private_brain_context,
+        )
+
+        brain = build_private_brain_context(limit=limit)
+    except Exception:
+        return []
+    if not brain.get("active"):
+        return []
+    result: list[str] = []
+    summary = " ".join(str(brain.get("continuity_summary") or "").split()).strip()
+    if summary:
+        result.append(_clip_line(summary, limit=180))
+    for excerpt in list(brain.get("excerpts") or [])[:limit]:
+        text = " ".join(str(excerpt.get("summary") or "").split()).strip()
+        if not text:
+            continue
+        focus = " ".join(str(excerpt.get("focus") or "").split()).strip()
+        prefix = f"{focus}: " if focus else ""
+        result.append(_clip_line(prefix + text, limit=180))
+    return result[:limit]
+
+
+def _recent_tool_recall_lines(session_id: str | None, *, limit: int) -> list[str]:
+    if not session_id:
+        return []
+    try:
+        messages = recent_chat_tool_messages(session_id, limit=limit)
+    except Exception:
+        return []
+    result: list[str] = []
+    for item in messages[-limit:]:
+        content = " ".join(str(item.get("content") or "").split()).strip()
+        if not content:
+            continue
+        result.append(_clip_line(content, limit=220))
+    return result
+
+
+def _memory_candidate_recall_lines(*, limit: int) -> list[str]:
+    try:
+        candidates = list_runtime_contract_candidates(
+            candidate_type="memory_promotion",
+            target_file="MEMORY.md",
+            status="proposed",
+            limit=limit,
+        )
+    except Exception:
+        return []
+    lines: list[str] = []
+    for candidate in candidates[:limit]:
+        summary = " ".join(str(candidate.get("summary") or "").split()).strip()
+        confidence = str(candidate.get("confidence") or "unknown").strip()
+        if summary:
+            lines.append(_clip_line(f"{summary} (confidence={confidence})", limit=180))
+    return lines
+
+
+def _clip_line(value: str, *, limit: int) -> str:
+    text = " ".join(str(value or "").split()).strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "…"
+
+
 def _workspace_memory_entries(path: Path) -> list[str]:
     entries: list[str] = []
     for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -1190,11 +1308,21 @@ def _select_relevant_memory_entries(
     if backend_attempt.success and backend_attempt.result is not None:
         bounded_entries = entries[-8:]
         selected_indexes = backend_attempt.result.selected_indexes
-        ordered = [
+        backend_ordered = [
             bounded_entries[index]
             for index in selected_indexes
             if 0 <= index < len(bounded_entries)
         ]
+        heuristic_ordered = _heuristic_relevant_memory_entries(
+            entries,
+            user_message=user_message,
+            max_lines=max_lines,
+        )
+        ordered = _merge_ordered_memory_entries(
+            heuristic_ordered,
+            backend_ordered,
+            max_lines=max_lines,
+        )
     else:
         ordered = _heuristic_relevant_memory_entries(
             entries,
@@ -1219,6 +1347,25 @@ def _select_relevant_memory_entries(
         backend_status=backend_attempt.status,
         prompt_file_used=prompt_file_used,
     )
+
+
+def _merge_ordered_memory_entries(
+    primary: list[str],
+    secondary: list[str],
+    *,
+    max_lines: int,
+) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for entry in [*primary, *secondary]:
+        key = " ".join(str(entry or "").lower().split()).strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        merged.append(entry)
+        if len(merged) >= max(max_lines, 1):
+            break
+    return merged
 
 
 def _heuristic_relevant_memory_entries(
@@ -2497,13 +2644,14 @@ def _recent_transcript_section(
     lines = [
         "Recent transcript slice:",
         "Newest line is last.",
+        "Tool lines are internal Jarvis-only observations, not user-visible chat.",
     ]
     for item in history[-limit:]:
         raw_role = item["role"]
         if raw_role == "user":
             role = "User"
         elif raw_role == "tool":
-            role = "Tool"
+            role = "Internal tool result"
         else:
             role = "Jarvis"
         content = " ".join(str(item.get("content") or "").split())

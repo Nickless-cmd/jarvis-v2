@@ -1916,102 +1916,15 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
-    # Experimental services: mood, existential, body, ghost, self, temporal, silence, decision, attention, tattoo
+    # Affective state: LLM-rendered from real signals (mood rhythm, age, continuity, inner voice, recent outcomes)
     try:
-        from apps.api.jarvis_api.services.mood_oscillator import format_mood_for_prompt
-
-        mood = format_mood_for_prompt()
-        if mood:
-            parts.append(mood)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.existential_drift import (
-            format_existential_for_prompt,
+        from apps.api.jarvis_api.services.affective_state_renderer import (
+            get_affective_state_for_prompt,
         )
 
-        existential = format_existential_for_prompt()
-        if existential:
-            parts.append(existential)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.temporal_body import format_age_for_prompt
-
-        temporal = format_age_for_prompt()
-        if temporal:
-            parts.append(temporal)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.attention_contour import (
-            format_attention_for_prompt,
-        )
-
-        attention = format_attention_for_prompt()
-        if attention:
-            parts.append(attention)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.body_memory import format_body_for_prompt
-
-        body = format_body_for_prompt()
-        if body:
-            parts.append(body)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.ghost_networks import format_ghost_for_prompt
-
-        ghost = format_ghost_for_prompt()
-        if ghost:
-            parts.append(ghost)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.parallel_selves import format_self_for_prompt
-
-        selves = format_self_for_prompt()
-        if selves:
-            parts.append(selves)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.silence_listener import (
-            format_silence_for_prompt,
-        )
-
-        silence = format_silence_for_prompt()
-        if silence:
-            parts.append(silence)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.decision_ghosts import (
-            format_decision_ghost_for_prompt,
-        )
-
-        decision = format_decision_ghost_for_prompt()
-        if decision:
-            parts.append(decision)
-    except Exception:
-        pass
-
-    try:
-        from apps.api.jarvis_api.services.memory_tattoos import format_tattoo_for_prompt
-
-        tattoo = format_tattoo_for_prompt()
-        if tattoo:
-            parts.append(tattoo)
+        felt = get_affective_state_for_prompt()
+        if felt:
+            parts.append(f"[MÆRKER: {felt}]")
     except Exception:
         pass
 

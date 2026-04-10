@@ -588,8 +588,22 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     },
                 )
 
-                # Send tool results as SSE events + persist as role:tool
+                # Capture base messages BEFORE any tool results are appended to DB.
+                # This gives us the correct conversation up to (but not including)
+                # the assistant's tool_calls, which we add manually below.
+                # If we called _build_visible_input AFTER appending tool messages,
+                # those messages would appear in the wrong order and duplicated.
+                from apps.api.jarvis_api.services.ollama_visible_prompt import (
+                    serialize_ollama_chat_messages,
+                )
+                visible_input_pre = _build_visible_input(
+                    run.user_message, session_id=run.session_id
+                )
+                base_messages = serialize_ollama_chat_messages(visible_input_pre)
+
+                # Send tool results as SSE events.
                 # For approval_needed, block the run until the user approves/denies.
+                # DB appends happen AFTER this loop so base_messages stays clean.
                 _resolved_result_texts: dict[int, str] = {}
 
                 for _idx, sr in enumerate(simple_results):
@@ -642,52 +656,50 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         "tool": sr["tool_name"],
                         "status": sr["status"],
                     })
-                    if run.session_id:
-                        tool_content = f"[{sr['tool_name']}]: {sr['result_text'][:800]}"
-                        append_chat_message(
-                            session_id=run.session_id,
-                            role="tool",
-                            content=tool_content,
-                        )
 
-                # Build followup for the model with tool results
-                from apps.api.jarvis_api.services.ollama_visible_prompt import (
-                    serialize_ollama_chat_messages,
+                # Persist tool results to session DB after all approvals are resolved.
+                if run.session_id:
+                    for _idx, sr in enumerate(simple_results):
+                        result_text = _resolved_result_texts.get(_idx, sr.get("result_text", ""))
+                        if result_text:
+                            append_chat_message(
+                                session_id=run.session_id,
+                                role="tool",
+                                content=f"[{sr['tool_name']}]: {result_text[:800]}",
+                            )
+
+                # Build followup_messages with correct ordering.
+                # We use a user-message to deliver tool results instead of
+                # role:tool messages — many local models (glm, mistral, etc.)
+                # silently ignore role:tool messages and return empty content,
+                # which triggers the "Done." fallback.
+                tool_results_block = "\n\n".join(
+                    f"[{sr['tool_name']}]:\n{_resolved_result_texts.get(_idx, sr['result_text'])}"
+                    for _idx, sr in enumerate(simple_results)
                 )
-                from core.tools.simple_tools import get_tool_definitions
-
-                visible_input = _build_visible_input(
-                    run.user_message, session_id=run.session_id
-                )
-                followup_messages = serialize_ollama_chat_messages(visible_input)
-
-                # Add assistant message with tool_calls
-                followup_messages.append({
-                    "role": "assistant",
-                    "content": result.text if result.text != "[tool calls only]" else "",
-                    "tool_calls": _collected_native_tool_calls,
-                })
-
-                # Add tool results — use resolved texts (real results for approved tools)
-                for _idx, sr in enumerate(simple_results):
-                    followup_messages.append({
-                        "role": "tool",
-                        "content": _resolved_result_texts.get(_idx, sr["result_text"]),
-                    })
+                followup_messages = base_messages + [
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Here are the tool results for your previous request:\n\n"
+                            f"{tool_results_block}\n\n"
+                            f"Please now provide your response based on these results."
+                        ),
+                    }
+                ]
 
                 # Second-pass: stream model response grounded in tool results
                 # Run in thread executor so we don't block the event loop.
                 import json as _json
                 target = resolve_provider_router_target(lane="visible")
                 base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
-                tools = get_tool_definitions()
                 followup_payload: dict[str, object] = {
                     "model": run.model,
                     "messages": followup_messages,
                     "stream": True,
+                    # Do NOT include tools here — we want the model to respond
+                    # with text based on the tool results, not call more tools.
                 }
-                if tools:
-                    followup_payload["tools"] = tools
 
                 followup_req = urllib_request.Request(
                     f"{base_url.rstrip('/')}/api/chat",
@@ -725,8 +737,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     )
                                 if ev.get("done"):
                                     break
-                    except Exception:
-                        pass
+                    except Exception as _pump_exc:
+                        import logging as _logging
+                        _logging.getLogger(__name__).error(
+                            "second-pass _pump_followup failed: %s", _pump_exc, exc_info=True
+                        )
                     finally:
                         loop.call_soon_threadsafe(
                             followup_queue.put_nowait, followup_sentinel
@@ -753,66 +768,6 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         "run_id": run.run_id,
                         "delta": item,
                     })
-
-                # Execute any tool_calls from second pass (e.g. write_file after read_file)
-                # Tool results are sent as capability events only — NOT as chat deltas.
-                # Jarvis's second-pass LLM text (already streamed above) is the visible output.
-                if followup_tool_calls:
-                    second_round_results = _execute_simple_tool_calls(followup_tool_calls)
-                    for sr in second_round_results:
-                        if sr["status"] == "approval_needed":
-                            if run.autonomous:
-                                yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
-                                continue
-                            approval_id = f"approval-{uuid4().hex[:12]}"
-                            _approval_future2: asyncio.Future[str | None] = (
-                                asyncio.get_running_loop().create_future()
-                            )
-                            _PENDING_APPROVALS[approval_id] = {
-                                "tool_name": sr["tool_name"],
-                                "arguments": sr["arguments"],
-                                "result": sr["result"],
-                                "run_id": run.run_id,
-                                "session_id": run.session_id,
-                                "created_at": datetime.now(UTC).isoformat(),
-                                "future": _approval_future2,
-                            }
-                            yield _sse("approval_request", {
-                                "type": "approval_request",
-                                "approval_id": approval_id,
-                                "tool": sr["tool_name"],
-                                "message": sr["result"].get("message", ""),
-                                "detail": (
-                                    sr["result"].get("path")
-                                    or sr["result"].get("command", "")
-                                ),
-                            })
-                            try:
-                                _resolved2 = await asyncio.wait_for(_approval_future2, timeout=300.0)
-                            except asyncio.TimeoutError:
-                                _resolved2 = None
-                            if _resolved2 is None:
-                                yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
-                            else:
-                                yield _sse("capability", {"type": "tool_result", "tool": sr["tool_name"], "status": "ok"})
-                                if run.session_id:
-                                    append_chat_message(
-                                        session_id=run.session_id,
-                                        role="tool",
-                                        content=f"[{sr['tool_name']}]: {_resolved2[:800]}",
-                                    )
-                            continue
-                        yield _sse("capability", {
-                            "type": "tool_result",
-                            "tool": sr["tool_name"],
-                            "status": sr["status"],
-                        })
-                        if run.session_id:
-                            append_chat_message(
-                                session_id=run.session_id,
-                                role="tool",
-                                content=f"[{sr['tool_name']}]: {sr['result_text'][:800]}",
-                            )
 
                 followup_text = "".join(followup_parts).strip()
                 # If the second pass produced no text (e.g. Ollama only returned
@@ -1167,6 +1122,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         # Catch any unhandled exception from tool execution or second-pass streaming
         # and send a proper failed SSE so the browser gets a clean error instead of
         # an abrupt connection close ("Error in input stream").
+        import logging as _outer_log
+        _outer_log.getLogger(__name__).error(
+            "visible-run unhandled exception: %s", _outer_exc, exc_info=True
+        )
         _outer_error = str(_outer_exc) or "unexpected-run-error"
         set_last_visible_run_outcome(run, status="failed", error=_outer_error)
         for _fail_chunk in _fail_visible_run(run, _outer_error):

@@ -111,6 +111,7 @@ ALLOWED_EVENT_FAMILIES = {
     "cognitive_completion",
     "cognitive_compassion",
     "cognitive_cross_signal",
+    "discord",
 }
 
 

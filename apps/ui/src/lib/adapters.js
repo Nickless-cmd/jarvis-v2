@@ -1012,6 +1012,36 @@ function normalizeBodyState(raw) {
   }
 }
 
+function normalizeSurpriseState(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    lastSurprise: raw.last_surprise || '',
+    generatedAt: raw.generated_at || '',
+    surpriseType: raw.surprise_type || 'ingen',
+    historySize: raw.history_size ?? 0,
+  }
+}
+
+function normalizeTasteState(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestInsight: raw.latest_insight || '',
+    insightHistory: Array.isArray(raw.insight_history) ? raw.insight_history : [],
+    dominantModes: Array.isArray(raw.dominant_modes) ? raw.dominant_modes : [],
+    choiceCount: raw.choice_count ?? 0,
+  }
+}
+
+function normalizeIronyState(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    lastObservation: raw.last_observation || '',
+    generatedAt: raw.generated_at || '',
+    conditionMatched: raw.condition_matched || '',
+    observationsToday: raw.observations_today ?? 0,
+  }
+}
+
 function normalizeWonderAwareness(item = {}) {
   if (!item || !item.kind) return null
   return {
@@ -3030,7 +3060,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3041,6 +3071,9 @@ export const backend = {
       requestJson('/mc/experiential-runtime-context').catch(() => null),
       requestJson('/mc/inner-voice-daemon').catch(() => null),
       requestJson('/mc/body-state').catch(() => null),
+      requestJson('/mc/surprise-state').catch(() => null),
+      requestJson('/mc/taste-state').catch(() => null),
+      requestJson('/mc/irony-state').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -3917,6 +3950,9 @@ export const backend = {
       experientialRuntimeContext: normalizeExperientialRuntimeContext(experientialRuntimeContextSource || {}),
       innerVoiceDaemon: normalizeInnerVoiceDaemonState(innerVoiceDaemonPayload || {}),
       bodyState: normalizeBodyState(bodyStatePayload || null),
+      surpriseState: normalizeSurpriseState(surpriseStatePayload || null),
+      tasteState: normalizeTasteState(tasteStatePayload || null),
+      ironyState: normalizeIronyState(ironyStatePayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

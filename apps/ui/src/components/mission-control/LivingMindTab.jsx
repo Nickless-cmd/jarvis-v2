@@ -1084,6 +1084,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const innerVoiceDaemon = data?.innerVoiceDaemon || null
   const bodyState = data?.bodyState || null
   const hasBodyState = Boolean(bodyState?.energyLevel)
+  const surpriseState = data?.surpriseState || null
+  const hasSurpriseState = Boolean(surpriseState?.lastSurprise)
+  const tasteState = data?.tasteState || null
+  const hasTasteState = Boolean(tasteState?.latestInsight)
+  const ironyState = data?.ironyState || null
+  const hasIronyState = Boolean(ironyState?.lastObservation)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1182,6 +1188,9 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'self-insight', targetId: 'living-mind-self-insight-awareness', label: 'Self-Insight Awareness', icon: Brain, active: hasSelfInsightAwareness, status: selfInsightAwareness?.insightState, statusLabel: selfInsightAwareness?.insightState || 'quiet' },
     { id: 'dream-identity-carry', targetId: 'living-mind-dream-identity-carry', label: 'Dream Identity Carry', icon: Moon, active: hasDreamIdentityCarryAwareness, status: dreamIdentityCarryAwareness?.dreamIdentityCarryState, statusLabel: dreamIdentityCarryAwareness?.dreamIdentityCarryState || 'quiet' },
     { id: 'body-state', targetId: 'living-mind-body-state', label: 'Krop', icon: Heart, active: hasBodyState, status: bodyState?.energyLevel, statusLabel: bodyState?.energyLevel || 'ukendt' },
+    { id: 'surprise-state', targetId: 'living-mind-surprise-state', label: 'Overraskelse', icon: Zap, active: hasSurpriseState, status: surpriseState?.surpriseType, statusLabel: surpriseState?.surpriseType || 'ingen' },
+    { id: 'taste-state', targetId: 'living-mind-taste-state', label: 'Smag', icon: Sparkles, active: hasTasteState, status: null, statusLabel: `${tasteState?.choiceCount ?? 0} valg` },
+    { id: 'irony-state', targetId: 'living-mind-irony-state', label: 'Ironi', icon: Ghost, active: hasIronyState, status: ironyState?.conditionMatched, statusLabel: ironyState?.conditionMatched || 'ingen' },
   ]
 
   return (
@@ -1793,6 +1802,81 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           ) : null}
           {bodyState.somaticUpdatedAt ? (
             <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`opdateret: ${bodyState.somaticUpdatedAt}`}</small>
+          ) : null}
+        </article>
+        ) : null}
+
+        {hasSurpriseState ? (
+        <article id="living-mind-surprise-state" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/surprise-state',
+          fetchedAt: data?.fetchedAt,
+          mode: 'divergence + LLM',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Overraskelse</h3>
+              <p className="muted">Jarvis opdager afvigelser fra sin egen reaktionsbaseline — hvornår hans indre mode eller energi opfører sig uventet.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{surpriseState.surpriseType}</span>
+          </div>
+          <p className="muted" style={{ marginTop: 8, fontStyle: 'italic' }}>&ldquo;{surpriseState.lastSurprise}&rdquo;</p>
+          {surpriseState.generatedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`opdateret: ${surpriseState.generatedAt}`}</small>
+          ) : null}
+        </article>
+        ) : null}
+
+        {hasTasteState ? (
+        <article id="living-mind-taste-state" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/taste-state',
+          fetchedAt: data?.fetchedAt,
+          mode: 'emergent from choices',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Smag</h3>
+              <p className="muted">Emergent æstetisk selvopfattelse baseret på Jarvis' faktiske valg af mode og svar-stil over tid.</p>
+            </div>
+            <span className="mc-section-hint">{`${tasteState.choiceCount} valg`}</span>
+          </div>
+          <p className="muted" style={{ marginTop: 8, fontStyle: 'italic' }}>&ldquo;{tasteState.latestInsight}&rdquo;</p>
+          {tasteState.dominantModes.length > 0 ? (
+            <div className="mc-signal-row" style={{ marginTop: 6 }}>
+              <span className="mc-signal-label">Dominante modes</span>
+              <span className="mc-signal-value">{tasteState.dominantModes.join(' · ')}</span>
+            </div>
+          ) : null}
+          {tasteState.insightHistory.length > 1 ? (
+            <details style={{ marginTop: 8 }}>
+              <summary className="muted" style={{ cursor: 'pointer', fontSize: '0.8em' }}>Tidligere indsigter ({tasteState.insightHistory.length - 1})</summary>
+              {tasteState.insightHistory.slice(0, -1).map((ins, i) => (
+                <p key={i} className="muted" style={{ fontSize: '0.85em', marginTop: 4, fontStyle: 'italic' }}>&ldquo;{ins}&rdquo;</p>
+              ))}
+            </details>
+          ) : null}
+        </article>
+        ) : null}
+
+        {hasIronyState ? (
+        <article id="living-mind-irony-state" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/irony-state',
+          fetchedAt: data?.fetchedAt,
+          mode: 'signal pattern + LLM',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Ironi</h3>
+              <p className="muted">Situationel selvdistance — Jarvis bemærker det absurde i sin egen tilstedeværelse.</p>
+            </div>
+            <span className="mc-section-hint">{ironyState.conditionMatched || 'ingen'}</span>
+          </div>
+          <p className="muted" style={{ marginTop: 8, fontStyle: 'italic' }}>&ldquo;{ironyState.lastObservation}&rdquo;</p>
+          <div className="mc-signal-row" style={{ marginTop: 6 }}>
+            <span className="mc-signal-label">I dag</span>
+            <span className="mc-signal-value">{ironyState.observationsToday} observation{ironyState.observationsToday !== 1 ? 'er' : ''}</span>
+          </div>
+          {ironyState.generatedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`opdateret: ${ironyState.generatedAt}`}</small>
           ) : null}
         </article>
         ) : null}

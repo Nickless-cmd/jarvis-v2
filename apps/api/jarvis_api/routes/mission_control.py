@@ -60,11 +60,14 @@ from apps.api.jarvis_api.services.agent_runtime import (
     build_council_detail_surface,
     build_council_surface,
     create_council_session_runtime,
+    create_swarm_session_runtime,
     execute_agent_task,
     post_council_message,
     run_council_round,
     run_due_agent_schedules,
+    run_swarm_round,
     schedule_agent_task,
+    send_peer_message,
     send_message_to_agent,
     spawn_agent_task,
 )
@@ -1582,6 +1585,17 @@ def mc_message_agent(agent_id: str, payload: dict | None = None) -> dict:
     )
 
 
+@router.post("/runtime/agents/{agent_id}/peer-message")
+def mc_peer_message_agent(agent_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return send_peer_message(
+        from_agent_id=agent_id,
+        to_agent_id=str(payload.get("to_agent_id") or ""),
+        content=str(payload.get("content") or ""),
+        kind=str(payload.get("kind") or "peer-message"),
+    )
+
+
 @router.post("/runtime/agents/{agent_id}/schedule")
 def mc_schedule_agent(agent_id: str, payload: dict | None = None) -> dict:
     payload = payload or {}
@@ -1609,6 +1623,15 @@ def mc_spawn_council(payload: dict) -> dict:
     )
 
 
+@router.post("/runtime/swarm/spawn")
+def mc_spawn_swarm(payload: dict) -> dict:
+    return create_swarm_session_runtime(
+        topic=str(payload.get("topic") or ""),
+        roles=list(payload.get("roles") or []),
+        owner_agent_id=str(payload.get("owner_agent_id") or "jarvis"),
+    )
+
+
 @router.post("/runtime/council/{council_id}/message")
 def mc_message_council(council_id: str, payload: dict | None = None) -> dict:
     payload = payload or {}
@@ -1623,6 +1646,11 @@ def mc_message_council(council_id: str, payload: dict | None = None) -> dict:
 @router.post("/runtime/council/{council_id}/run-round")
 def mc_run_council_round(council_id: str) -> dict:
     return run_council_round(council_id)
+
+
+@router.post("/runtime/swarm/{council_id}/run-round")
+def mc_run_swarm_round(council_id: str) -> dict:
+    return run_swarm_round(council_id)
 
 
 @router.get("/adaptive-planner")

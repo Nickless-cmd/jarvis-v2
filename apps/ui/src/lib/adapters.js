@@ -4183,6 +4183,13 @@ export const backend = {
     })
   },
 
+  async peerMessageMissionControlAgent(agentId, payload) {
+    return requestJson(`/mc/runtime/agents/${encodeURIComponent(agentId)}/peer-message`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
+
   async scheduleMissionControlAgent(agentId, payload) {
     return requestJson(`/mc/runtime/agents/${encodeURIComponent(agentId)}/schedule`, {
       method: 'POST',
@@ -4204,6 +4211,13 @@ export const backend = {
     })
   },
 
+  async spawnMissionControlSwarm(payload) {
+    return requestJson('/mc/runtime/swarm/spawn', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
+
   async messageMissionControlCouncil(councilId, payload) {
     return requestJson(`/mc/runtime/council/${encodeURIComponent(councilId)}/message`, {
       method: 'POST',
@@ -4213,6 +4227,13 @@ export const backend = {
 
   async runMissionControlCouncilRound(councilId) {
     return requestJson(`/mc/runtime/council/${encodeURIComponent(councilId)}/run-round`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+  },
+
+  async runMissionControlSwarmRound(councilId) {
+    return requestJson(`/mc/runtime/swarm/${encodeURIComponent(councilId)}/run-round`, {
       method: 'POST',
       body: JSON.stringify({}),
     })

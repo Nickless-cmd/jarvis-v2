@@ -1917,6 +1917,13 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # User model daemon — theory of mind
+    try:
+        from apps.api.jarvis_api.services.user_model_daemon import tick_user_model_daemon
+        tick_user_model_daemon([])  # reads recent_visible_runs internally
+    except Exception:
+        pass
+
     # Desire daemon — emergent appetites
     try:
         from apps.api.jarvis_api.services.desire_daemon import tick_desire_daemon

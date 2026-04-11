@@ -1476,6 +1476,13 @@ def mc_development_narrative() -> dict:
     return build_development_narrative_surface()
 
 
+@router.get("/user-model")
+def mc_user_model() -> dict:
+    """Return Jarvis's current theory-of-mind model of the user."""
+    from apps.api.jarvis_api.services.user_model_daemon import build_user_model_surface
+    return build_user_model_surface()
+
+
 @router.get("/memory-decay")
 def mc_memory_decay() -> dict:
     """Return memory decay state and recent re-discoveries."""

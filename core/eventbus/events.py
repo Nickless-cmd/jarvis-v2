@@ -125,6 +125,7 @@ ALLOWED_EVENT_FAMILIES = {
     "absence",
     "creative_drift",
     "desire",
+    "user_model",
 }
 
 

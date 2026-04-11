@@ -30744,6 +30744,7 @@ def update_agent_registry_entry(
     *,
     status: str | None = None,
     next_wake_at: str | None = None,
+    schedule_json: str | None = None,
     tokens_burned_delta: int = 0,
     failure_increment: int = 0,
     last_error: str | None = None,
@@ -30758,6 +30759,9 @@ def update_agent_registry_entry(
     if next_wake_at is not None:
         fields.append("next_wake_at = ?")
         values.append(next_wake_at)
+    if schedule_json is not None:
+        fields.append("schedule_json = ?")
+        values.append(schedule_json)
     if tokens_burned_delta:
         fields.append("tokens_burned = tokens_burned + ?")
         values.append(int(tokens_burned_delta))
@@ -31086,6 +31090,118 @@ def list_agent_tool_calls(*, run_id: str = "", agent_id: str = "", limit: int = 
     return [_agent_tool_call_row_to_dict(row) for row in rows]
 
 
+def create_agent_schedule(
+    *,
+    schedule_id: str,
+    agent_id: str,
+    schedule_kind: str = "manual",
+    schedule_expr: str = "",
+    next_fire_at: str = "",
+    last_fire_at: str = "",
+    missed_run_policy: str = "fire-once",
+    active: bool = True,
+) -> dict[str, object]:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_agent_runtime_tables(conn)
+        conn.execute(
+            """
+            INSERT INTO agent_schedules (
+                schedule_id, agent_id, schedule_kind, schedule_expr, next_fire_at,
+                last_fire_at, missed_run_policy, active, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(schedule_id) DO UPDATE SET
+                agent_id = excluded.agent_id,
+                schedule_kind = excluded.schedule_kind,
+                schedule_expr = excluded.schedule_expr,
+                next_fire_at = excluded.next_fire_at,
+                last_fire_at = excluded.last_fire_at,
+                missed_run_policy = excluded.missed_run_policy,
+                active = excluded.active,
+                updated_at = excluded.updated_at
+            """,
+            (
+                schedule_id,
+                agent_id,
+                schedule_kind,
+                schedule_expr,
+                next_fire_at,
+                last_fire_at,
+                missed_run_policy,
+                1 if active else 0,
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+    return get_agent_schedule(schedule_id) or {}
+
+
+def get_agent_schedule(schedule_id: str) -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_agent_runtime_tables(conn)
+        row = conn.execute(
+            "SELECT * FROM agent_schedules WHERE schedule_id = ? LIMIT 1",
+            (schedule_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _agent_schedule_row_to_dict(row)
+
+
+def update_agent_schedule(
+    schedule_id: str,
+    *,
+    schedule_expr: str | None = None,
+    next_fire_at: str | None = None,
+    last_fire_at: str | None = None,
+    active: bool | None = None,
+) -> dict[str, object] | None:
+    fields = ["updated_at = ?"]
+    values: list[object] = [_now_iso()]
+    for name, value in (
+        ("schedule_expr", schedule_expr),
+        ("next_fire_at", next_fire_at),
+        ("last_fire_at", last_fire_at),
+    ):
+        if value is None:
+            continue
+        fields.append(f"{name} = ?")
+        values.append(value)
+    if active is not None:
+        fields.append("active = ?")
+        values.append(1 if active else 0)
+    values.append(schedule_id)
+    with connect() as conn:
+        _ensure_agent_runtime_tables(conn)
+        conn.execute(
+            f"UPDATE agent_schedules SET {', '.join(fields)} WHERE schedule_id = ?",
+            tuple(values),
+        )
+        conn.commit()
+    return get_agent_schedule(schedule_id)
+
+
+def list_agent_schedules(*, agent_id: str = "", active_only: bool = False, due_before: str = "", limit: int = 100) -> list[dict[str, object]]:
+    query = ["SELECT * FROM agent_schedules WHERE 1=1"]
+    params: list[object] = []
+    if agent_id:
+        query.append("AND agent_id = ?")
+        params.append(agent_id)
+    if active_only:
+        query.append("AND active = 1")
+    if due_before:
+        query.append("AND next_fire_at != '' AND next_fire_at <= ?")
+        params.append(due_before)
+    query.append("ORDER BY next_fire_at ASC, created_at ASC LIMIT ?")
+    params.append(int(limit))
+    with connect() as conn:
+        _ensure_agent_runtime_tables(conn)
+        rows = conn.execute("\n".join(query), tuple(params)).fetchall()
+    return [_agent_schedule_row_to_dict(row) for row in rows]
+
+
 def create_council_session(
     *,
     council_id: str,
@@ -31198,6 +31314,38 @@ def add_council_member(
     return get_council_member(council_id=council_id, agent_id=agent_id) or {}
 
 
+def update_council_member(
+    *,
+    council_id: str,
+    agent_id: str,
+    position_summary: str | None = None,
+    vote: str | None = None,
+    confidence: str | None = None,
+) -> dict[str, object] | None:
+    fields = []
+    values: list[object] = []
+    for name, value in (
+        ("position_summary", position_summary),
+        ("vote", vote),
+        ("confidence", confidence),
+    ):
+        if value is None:
+            continue
+        fields.append(f"{name} = ?")
+        values.append(value)
+    if not fields:
+        return get_council_member(council_id=council_id, agent_id=agent_id)
+    values.extend([council_id, agent_id])
+    with connect() as conn:
+        _ensure_agent_runtime_tables(conn)
+        conn.execute(
+            f"UPDATE council_members SET {', '.join(fields)} WHERE council_id = ? AND agent_id = ?",
+            tuple(values),
+        )
+        conn.commit()
+    return get_council_member(council_id=council_id, agent_id=agent_id)
+
+
 def get_council_member(*, council_id: str, agent_id: str) -> dict[str, object] | None:
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
@@ -31306,6 +31454,21 @@ def _agent_tool_call_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         "started_at": str(row["started_at"]),
         "finished_at": str(row["finished_at"]),
         "created_at": str(row["created_at"]),
+    }
+
+
+def _agent_schedule_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "schedule_id": str(row["schedule_id"]),
+        "agent_id": str(row["agent_id"]),
+        "schedule_kind": str(row["schedule_kind"]),
+        "schedule_expr": str(row["schedule_expr"]),
+        "next_fire_at": str(row["next_fire_at"]),
+        "last_fire_at": str(row["last_fire_at"]),
+        "missed_run_policy": str(row["missed_run_policy"]),
+        "active": bool(row["active"]),
+        "created_at": str(row["created_at"]),
+        "updated_at": str(row["updated_at"]),
     }
 
 

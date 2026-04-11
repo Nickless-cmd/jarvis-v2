@@ -4176,10 +4176,45 @@ export const backend = {
     })
   },
 
+  async messageMissionControlAgent(agentId, payload) {
+    return requestJson(`/mc/runtime/agents/${encodeURIComponent(agentId)}/message`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
+
+  async scheduleMissionControlAgent(agentId, payload) {
+    return requestJson(`/mc/runtime/agents/${encodeURIComponent(agentId)}/schedule`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
+
+  async runDueMissionControlAgents(payload) {
+    return requestJson('/mc/runtime/agents/run-due', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
+
   async spawnMissionControlCouncil(payload) {
     return requestJson('/mc/runtime/council/spawn', {
       method: 'POST',
       body: JSON.stringify(payload || {}),
+    })
+  },
+
+  async messageMissionControlCouncil(councilId, payload) {
+    return requestJson(`/mc/runtime/council/${encodeURIComponent(councilId)}/message`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
+
+  async runMissionControlCouncilRound(councilId) {
+    return requestJson(`/mc/runtime/council/${encodeURIComponent(councilId)}/run-round`, {
+      method: 'POST',
+      body: JSON.stringify({}),
     })
   },
 }

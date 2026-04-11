@@ -61,6 +61,11 @@ from apps.api.jarvis_api.services.agent_runtime import (
     build_council_surface,
     create_council_session_runtime,
     execute_agent_task,
+    post_council_message,
+    run_council_round,
+    run_due_agent_schedules,
+    schedule_agent_task,
+    send_message_to_agent,
     spawn_agent_task,
 )
 from apps.api.jarvis_api.services.adaptive_planner_runtime import (
@@ -1564,6 +1569,37 @@ def mc_execute_agent(agent_id: str, payload: dict | None = None) -> dict:
     )
 
 
+@router.post("/runtime/agents/{agent_id}/message")
+def mc_message_agent(agent_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return send_message_to_agent(
+        agent_id=agent_id,
+        content=str(payload.get("content") or ""),
+        role=str(payload.get("role") or "user"),
+        kind=str(payload.get("kind") or "jarvis-message"),
+        execution_mode=str(payload.get("execution_mode") or "solo-task"),
+        auto_execute=bool(payload.get("auto_execute", True)),
+    )
+
+
+@router.post("/runtime/agents/{agent_id}/schedule")
+def mc_schedule_agent(agent_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return schedule_agent_task(
+        agent_id=agent_id,
+        schedule_kind=str(payload.get("schedule_kind") or "interval-seconds"),
+        delay_seconds=int(payload.get("delay_seconds") or 900),
+        schedule_expr=str(payload.get("schedule_expr") or ""),
+        activate=bool(payload.get("activate", True)),
+    )
+
+
+@router.post("/runtime/agents/run-due")
+def mc_run_due_agents(payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return run_due_agent_schedules(limit=int(payload.get("limit") or 10))
+
+
 @router.post("/runtime/council/spawn")
 def mc_spawn_council(payload: dict) -> dict:
     return create_council_session_runtime(
@@ -1571,6 +1607,22 @@ def mc_spawn_council(payload: dict) -> dict:
         roles=list(payload.get("roles") or []),
         owner_agent_id=str(payload.get("owner_agent_id") or "jarvis"),
     )
+
+
+@router.post("/runtime/council/{council_id}/message")
+def mc_message_council(council_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return post_council_message(
+        council_id=council_id,
+        content=str(payload.get("content") or ""),
+        kind=str(payload.get("kind") or "jarvis-note"),
+        role=str(payload.get("role") or "user"),
+    )
+
+
+@router.post("/runtime/council/{council_id}/run-round")
+def mc_run_council_round(council_id: str) -> dict:
+    return run_council_round(council_id)
 
 
 @router.get("/adaptive-planner")

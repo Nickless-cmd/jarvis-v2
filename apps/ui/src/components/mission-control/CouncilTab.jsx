@@ -40,6 +40,8 @@ export function CouncilTab() {
   const [data, setData] = useState(null)
   const [selectedCouncilId, setSelectedCouncilId] = useState('')
   const [loading, setLoading] = useState(true)
+  const [draft, setDraft] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -61,6 +63,40 @@ export function CouncilTab() {
       clearInterval(timer)
     }
   }, [])
+
+  async function refresh() {
+    const result = await backend.getMissionControlCouncil()
+    setData(result)
+    setSelectedCouncilId((current) => current || result?.sessions?.[0]?.council_id || '')
+    return result
+  }
+
+  async function handleRunRound() {
+    if (!selected?.council_id || submitting) return
+    setSubmitting(true)
+    try {
+      const result = await backend.runMissionControlCouncilRound(selected.council_id)
+      await refresh()
+      setSelectedCouncilId(result?.council_id || selected.council_id)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleSendMessage() {
+    if (!selected?.council_id || !draft.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const result = await backend.messageMissionControlCouncil(selected.council_id, {
+        content: draft.trim(),
+      })
+      setDraft('')
+      await refresh()
+      setSelectedCouncilId(result?.council_id || selected.council_id)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const selected = useMemo(
     () => (data?.sessions || []).find((item) => item.council_id === selectedCouncilId) || data?.sessions?.[0] || null,
@@ -161,6 +197,34 @@ export function CouncilTab() {
               <div>
                 <div style={s({ fontSize: 11, fontWeight: 500, marginBottom: 6 })}>Outcome summary</div>
                 <SafeBlock text={selected.summary || '—'} />
+              </div>
+
+              <div style={s({ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 12px', borderRadius: 8, background: T.bgOverlay, border: `1px solid ${T.border0}` })}>
+                <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 })}>
+                  <div style={s({ fontSize: 11, fontWeight: 500 })}>Jarvis controls</div>
+                  <button
+                    onClick={handleRunRound}
+                    disabled={submitting}
+                    style={s({ borderRadius: 8, border: `1px solid ${T.accent}`, background: T.accentDim, color: T.text1, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+                  >
+                    koer council round
+                  </button>
+                </div>
+                <textarea
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder="Skriv note fra Jarvis til council..."
+                  style={s({ width: '100%', minHeight: 72, resize: 'vertical', borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: 10, ...mono, fontSize: 10 })}
+                />
+                <div>
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={submitting || !draft.trim()}
+                    style={s({ borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text2, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+                  >
+                    send note
+                  </button>
+                </div>
               </div>
 
               <div>

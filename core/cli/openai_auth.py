@@ -25,7 +25,7 @@ from core.auth.profiles import (
 from core.runtime.bootstrap import ensure_runtime_dirs
 from core.runtime.db import init_db
 
-_PROVIDER = "openai"
+_PROVIDER = "openai-codex"
 _CREATED_BY = "jarvis-cli"
 
 

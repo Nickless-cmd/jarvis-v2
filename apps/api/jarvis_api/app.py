@@ -63,6 +63,13 @@ def create_app() -> FastAPI:
         start_scheduled_tasks_service()
         start_mood_listener()
         start_discord_gateway()
+        try:
+            from apps.api.jarvis_api.services.agent_runtime import recover_crashed_agents
+            recovery = recover_crashed_agents()
+            if recovery["recovered"]:
+                logger.info("agent recovery: %s", recovery)
+        except Exception as _exc:
+            logger.warning("agent recovery failed: %s", _exc)
         event_bus.publish("runtime.started", {"component": "api"})
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):

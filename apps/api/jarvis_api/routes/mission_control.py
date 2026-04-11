@@ -59,10 +59,14 @@ from apps.api.jarvis_api.services.agent_runtime import (
     build_agent_runtime_surface,
     build_council_detail_surface,
     build_council_surface,
+    cancel_agent,
     create_council_session_runtime,
     create_swarm_session_runtime,
     execute_agent_task,
+    expire_agent,
     post_council_message,
+    promote_agent_result,
+    resume_agent,
     run_council_round,
     run_due_agent_schedules,
     run_swarm_round,
@@ -70,6 +74,7 @@ from apps.api.jarvis_api.services.agent_runtime import (
     send_peer_message,
     send_message_to_agent,
     spawn_agent_task,
+    suspend_agent,
 )
 from apps.api.jarvis_api.services.adaptive_planner_runtime import (
     build_adaptive_planner_runtime_surface,
@@ -1612,6 +1617,35 @@ def mc_schedule_agent(agent_id: str, payload: dict | None = None) -> dict:
 def mc_run_due_agents(payload: dict | None = None) -> dict:
     payload = payload or {}
     return run_due_agent_schedules(limit=int(payload.get("limit") or 10))
+
+
+@router.post("/runtime/agents/{agent_id}/cancel")
+def mc_cancel_agent(agent_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return cancel_agent(agent_id, note=str(payload.get("note") or ""))
+
+
+@router.post("/runtime/agents/{agent_id}/suspend")
+def mc_suspend_agent(agent_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return suspend_agent(agent_id, note=str(payload.get("note") or ""))
+
+
+@router.post("/runtime/agents/{agent_id}/resume")
+def mc_resume_agent(agent_id: str) -> dict:
+    return resume_agent(agent_id)
+
+
+@router.post("/runtime/agents/{agent_id}/expire")
+def mc_expire_agent(agent_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return expire_agent(agent_id, reason=str(payload.get("reason") or ""))
+
+
+@router.post("/runtime/agents/{agent_id}/promote")
+def mc_promote_agent_result(agent_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return promote_agent_result(agent_id, note=str(payload.get("note") or ""))
 
 
 @router.post("/runtime/council/spawn")

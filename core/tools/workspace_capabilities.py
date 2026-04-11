@@ -116,6 +116,8 @@ APPROVED_MUTATING_EXEC_ALLOWLIST = {
 }
 APPROVED_SUDO_EXEC_ALLOWLIST = {
     "chmod",
+    "systemctl",
+    "docker",
 }
 MUTATING_EXEC_PROPOSAL_TOKENS = {
     "sudo",

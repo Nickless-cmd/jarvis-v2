@@ -1564,6 +1564,8 @@ def mc_spawn_agent(payload: dict) -> dict:
         result_contract=dict(payload.get("result_contract") or {}),
         execution_mode=str(payload.get("execution_mode") or "solo-task"),
         auto_execute=bool(payload.get("auto_execute", True)),
+        provider=str(payload.get("provider") or ""),
+        model=str(payload.get("model") or ""),
     )
 
 
@@ -1654,6 +1656,7 @@ def mc_spawn_council(payload: dict) -> dict:
         topic=str(payload.get("topic") or ""),
         roles=list(payload.get("roles") or []),
         owner_agent_id=str(payload.get("owner_agent_id") or "jarvis"),
+        member_models=list(payload.get("member_models") or []),
     )
 
 
@@ -1663,6 +1666,7 @@ def mc_spawn_swarm(payload: dict) -> dict:
         topic=str(payload.get("topic") or ""),
         roles=list(payload.get("roles") or []),
         owner_agent_id=str(payload.get("owner_agent_id") or "jarvis"),
+        member_models=list(payload.get("member_models") or []),
     )
 
 

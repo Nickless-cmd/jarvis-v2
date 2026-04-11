@@ -36,13 +36,42 @@ function SafeBlock({ text }) {
   )
 }
 
+const DEFAULT_COUNCIL_ROLES = ['planner', 'critic', 'researcher', 'synthesizer']
+
+function RoleModelRow({ role, value, onChange }) {
+  return (
+    <div style={s({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${T.border0}` })}>
+      <span style={s({ ...mono, fontSize: 10, color: T.text2, width: 120, flexShrink: 0 })}>{role}</span>
+      <input
+        type="text"
+        placeholder="provider (tom = cheap lane)"
+        value={value.provider}
+        onChange={(e) => onChange({ ...value, provider: e.target.value })}
+        style={s({ flex: 1, borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
+      />
+      <input
+        type="text"
+        placeholder="model"
+        value={value.model}
+        onChange={(e) => onChange({ ...value, model: e.target.value })}
+        style={s({ flex: 1, borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
+      />
+    </div>
+  )
+}
+
 export function CouncilTab() {
   const [data, setData] = useState(null)
   const [selectedCouncilId, setSelectedCouncilId] = useState('')
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
   const [topicDraft, setTopicDraft] = useState('')
+  const [swarmTopicDraft, setSwarmTopicDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [councilRoles, setCouncilRoles] = useState(DEFAULT_COUNCIL_ROLES)
+  const [councilMemberModels, setCouncilMemberModels] = useState(
+    () => Object.fromEntries(DEFAULT_COUNCIL_ROLES.map((r) => [r, { provider: '', model: '' }]))
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -102,14 +131,34 @@ export function CouncilTab() {
     }
   }
 
-  async function handleSpawnSwarm() {
+  async function handleSpawnCouncil() {
     if (!topicDraft.trim() || submitting) return
     setSubmitting(true)
     try {
-      const result = await backend.spawnMissionControlSwarm({
+      const member_models = councilRoles
+        .map((role) => ({ role, ...councilMemberModels[role] }))
+        .filter((m) => m.provider || m.model)
+      const result = await backend.spawnMissionControlCouncil({
         topic: topicDraft.trim(),
+        roles: councilRoles,
+        member_models,
       })
       setTopicDraft('')
+      await refresh()
+      setSelectedCouncilId(result?.council_id || '')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleSpawnSwarm() {
+    if (!swarmTopicDraft.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const result = await backend.spawnMissionControlSwarm({
+        topic: swarmTopicDraft.trim(),
+      })
+      setSwarmTopicDraft('')
       await refresh()
       setSelectedCouncilId(result?.council_id || '')
     } finally {
@@ -134,25 +183,58 @@ export function CouncilTab() {
         </span>
       </div>
 
-      <Section title="Spawn Swarm" description="Opret en swarm-session hvor workers afleverer til en intern coordinator">
-        <div style={s({ display: 'flex', flexDirection: 'column', gap: 10 })}>
-          <textarea
-            value={topicDraft}
-            onChange={(event) => setTopicDraft(event.target.value)}
-            placeholder="Skriv swarm-opgave..."
-            style={s({ width: '100%', minHeight: 64, resize: 'vertical', borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: 10, ...mono, fontSize: 10 })}
-          />
-          <div>
-            <button
-              onClick={handleSpawnSwarm}
-              disabled={submitting || !topicDraft.trim()}
-              style={s({ borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text2, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
-            >
-              spawn swarm
-            </button>
+      <div style={s({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 })}>
+        <Section title="Spawn Council" description="Deliberativ session — roller taler sekventielt, Jarvis synthesizer til sidst">
+          <div style={s({ display: 'flex', flexDirection: 'column', gap: 10 })}>
+            <textarea
+              value={topicDraft}
+              onChange={(event) => setTopicDraft(event.target.value)}
+              placeholder="Council-emne..."
+              style={s({ width: '100%', minHeight: 56, resize: 'vertical', borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: 10, ...mono, fontSize: 10 })}
+            />
+            <div>
+              <div style={s({ ...mono, fontSize: 9, color: T.text3, marginBottom: 6 })}>Model per rolle (tom = cheap lane)</div>
+              {councilRoles.map((role) => (
+                <RoleModelRow
+                  key={role}
+                  role={role}
+                  value={councilMemberModels[role] || { provider: '', model: '' }}
+                  onChange={(v) => setCouncilMemberModels((prev) => ({ ...prev, [role]: v }))}
+                />
+              ))}
+            </div>
+            <div>
+              <button
+                onClick={handleSpawnCouncil}
+                disabled={submitting || !topicDraft.trim()}
+                style={s({ borderRadius: 8, border: `1px solid ${T.accent}`, background: T.accentDim, color: T.text1, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+              >
+                spawn council
+              </button>
+            </div>
           </div>
-        </div>
-      </Section>
+        </Section>
+
+        <Section title="Spawn Swarm" description="Parallel fanout — workers kører simultant, coordinator merger resultater">
+          <div style={s({ display: 'flex', flexDirection: 'column', gap: 10 })}>
+            <textarea
+              value={swarmTopicDraft}
+              onChange={(event) => setSwarmTopicDraft(event.target.value)}
+              placeholder="Swarm-opgave..."
+              style={s({ width: '100%', minHeight: 56, resize: 'vertical', borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: 10, ...mono, fontSize: 10 })}
+            />
+            <div>
+              <button
+                onClick={handleSpawnSwarm}
+                disabled={submitting || !swarmTopicDraft.trim()}
+                style={s({ borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text2, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+              >
+                spawn swarm
+              </button>
+            </div>
+          </div>
+        </Section>
+      </div>
 
       <Section title="Council Roster" description="Roller Jarvis kan samle i en council-session">
         <div style={s({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 })}>

@@ -88,9 +88,19 @@ AGENT_ROLE_TEMPLATES = {
             "Du er et offspring under Jarvis. Du bryder en opgave ned i konkrete handlinger og rapporterer handlingsklar naeste fase tilbage."
         ),
     },
+    "devils_advocate": {
+        "title": "Devil's Advocate",
+        "default_tool_policy": "none",
+        "system_prompt": (
+            "Du er Devil's Advocate under Jarvis. Uanset hvad de andre argumenterer, "
+            "skal du aktivt argumentere det modsatte synspunkt — ikke for at sabotere, "
+            "men for at teste beslutningens robusthed. Hvis alle er enige, er du uenig. "
+            "Lever din kontraeriske position med begrundelse tilbage til Jarvis."
+        ),
+    },
 }
 
-COUNCIL_ROLE_ORDER = ["planner", "critic", "researcher", "synthesizer", "executor"]
+COUNCIL_ROLE_ORDER = ["planner", "critic", "researcher", "synthesizer", "executor", "devils_advocate"]
 SWARM_ROLE_ORDER = ["planner", "researcher", "critic", "executor", "synthesizer"]
 
 
@@ -231,6 +241,8 @@ def spawn_agent_task(
     execution_mode: str = "solo-task",
     auto_execute: bool = True,
     council_id: str = "",
+    provider: str = "",
+    model: str = "",
 ) -> dict[str, object]:
     _check_spawn_limits()
     allowed_tools = allowed_tools or []
@@ -245,9 +257,10 @@ def spawn_agent_task(
     template = AGENT_ROLE_TEMPLATES.get(role, AGENT_ROLE_TEMPLATES["researcher"])
     system_prompt = str(system_prompt or template["system_prompt"])
     tool_policy = str(tool_policy or template["default_tool_policy"])
-    selected = cheap_lane_status_surface().get("selected_target") or {}
-    provider = str(selected.get("provider") or "")
-    model = str(selected.get("model") or "")
+    if not provider or not model:
+        selected = cheap_lane_status_surface().get("selected_target") or {}
+        provider = str(provider or selected.get("provider") or "")
+        model = str(model or selected.get("model") or "")
     agent_id = f"agent-{uuid4().hex}"
     thread_id = f"agent-thread-{uuid4().hex}"
     next_wake_at = ""
@@ -652,8 +665,10 @@ def create_council_session_runtime(
     topic: str,
     roles: list[str] | None = None,
     owner_agent_id: str = "jarvis",
+    member_models: list[dict] | None = None,
 ) -> dict[str, object]:
     roles = roles or COUNCIL_ROLE_ORDER[:4]
+    member_models = member_models or []
     council_id = f"council-{uuid4().hex}"
     create_council_session(
         council_id=council_id,
@@ -672,12 +687,15 @@ def create_council_session_runtime(
         content=topic,
     )
     for role in roles:
+        role_model = next((m for m in member_models if m.get("role") == role), {})
         agent = spawn_agent_task(
             role=role,
             goal=f"Council topic: {topic}",
             parent_agent_id=owner_agent_id,
             auto_execute=False,
             council_id=council_id,
+            provider=str(role_model.get("provider") or ""),
+            model=str(role_model.get("model") or ""),
         )
         update_agent_registry_entry(str(agent.get("agent_id") or ""), status="waiting")
         add_council_member(
@@ -696,8 +714,10 @@ def create_swarm_session_runtime(
     topic: str,
     roles: list[str] | None = None,
     owner_agent_id: str = "jarvis",
+    member_models: list[dict] | None = None,
 ) -> dict[str, object]:
     roles = roles or SWARM_ROLE_ORDER[:4]
+    member_models = member_models or []
     council_id = f"swarm-{uuid4().hex}"
     create_council_session(
         council_id=council_id,
@@ -717,12 +737,15 @@ def create_swarm_session_runtime(
         content=topic,
     )
     for role in roles:
+        role_model = next((m for m in member_models if m.get("role") == role), {})
         agent = spawn_agent_task(
             role=role,
             goal=f"Swarm topic: {topic}",
             parent_agent_id=owner_agent_id,
             auto_execute=False,
             council_id=council_id,
+            provider=str(role_model.get("provider") or ""),
+            model=str(role_model.get("model") or ""),
         )
         update_agent_registry_entry(str(agent.get("agent_id") or ""), status="waiting")
         add_council_member(

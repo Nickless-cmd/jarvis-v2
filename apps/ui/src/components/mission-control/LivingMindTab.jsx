@@ -1082,6 +1082,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const experientialInfluence = experientialRuntimeContext?.experientialInfluence || null
   const experientialSupport = experientialRuntimeContext?.experientialSupport || null
   const innerVoiceDaemon = data?.innerVoiceDaemon || null
+  const bodyState = data?.bodyState || null
+  const hasBodyState = Boolean(bodyState?.energyLevel)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1179,6 +1181,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'longing', targetId: 'living-mind-longing-awareness', label: 'Longing Awareness', icon: Ghost, active: hasLongingAwareness, status: longingAwareness?.longingState, statusLabel: longingAwareness?.longingState || 'quiet' },
     { id: 'self-insight', targetId: 'living-mind-self-insight-awareness', label: 'Self-Insight Awareness', icon: Brain, active: hasSelfInsightAwareness, status: selfInsightAwareness?.insightState, statusLabel: selfInsightAwareness?.insightState || 'quiet' },
     { id: 'dream-identity-carry', targetId: 'living-mind-dream-identity-carry', label: 'Dream Identity Carry', icon: Moon, active: hasDreamIdentityCarryAwareness, status: dreamIdentityCarryAwareness?.dreamIdentityCarryState, statusLabel: dreamIdentityCarryAwareness?.dreamIdentityCarryState || 'quiet' },
+    { id: 'body-state', targetId: 'living-mind-body-state', label: 'Krop', icon: Heart, active: hasBodyState, status: bodyState?.energyLevel, statusLabel: bodyState?.energyLevel || 'ukendt' },
   ]
 
   return (
@@ -1751,6 +1754,46 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           </div>
           {dreamIdentityCarryAwareness.narrative ? <ExpandableText text={dreamIdentityCarryAwareness.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${dreamIdentityCarryAwareness.authority} · kind: ${dreamIdentityCarryAwareness.kind}`}</small>
+        </article>
+        ) : null}
+
+        {hasBodyState ? (
+        <article id="living-mind-body-state" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/body-state',
+          fetchedAt: data?.fetchedAt,
+          mode: 'circadian + somatic daemon',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Krop</h3>
+              <p className="muted">Cirkadiansk energiniveau og somatisk selvopfattelse baseret på hardware og aktivitetsmønster.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{bodyState.energyLevel}</span>
+          </div>
+          <div className="compact-grid compact-grid-3">
+            <div className="compact-metric">
+              <span>Energi</span>
+              <strong>{bodyState.energyLevel}</strong>
+            </div>
+            {bodyState.clockPhase ? (
+              <div className="compact-metric">
+                <span>Fase</span>
+                <strong>{bodyState.clockPhase}</strong>
+              </div>
+            ) : null}
+            {bodyState.drainLabel ? (
+              <div className="compact-metric">
+                <span>Drain</span>
+                <strong>{bodyState.drainLabel}</strong>
+              </div>
+            ) : null}
+          </div>
+          {bodyState.somaticPhrase ? (
+            <p className="muted" style={{ marginTop: 8, fontStyle: 'italic' }}>&ldquo;{bodyState.somaticPhrase}&rdquo;</p>
+          ) : null}
+          {bodyState.somaticUpdatedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`opdateret: ${bodyState.somaticUpdatedAt}`}</small>
+          ) : null}
         </article>
         ) : null}
       </section>

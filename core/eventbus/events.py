@@ -112,6 +112,8 @@ ALLOWED_EVENT_FAMILIES = {
     "cognitive_compassion",
     "cognitive_cross_signal",
     "discord",
+    "circadian",
+    "somatic",
 }
 
 

@@ -107,46 +107,54 @@ _TASK_EXPIRY_HOURS = 24
 def _fire_due_tasks() -> None:
     now = datetime.now(UTC)
     due = runtime_db.get_due_scheduled_tasks(now.isoformat())
-    if not due:
-        return
+    if due:
+        from apps.api.jarvis_api.services.notification_bridge import send_session_notification
 
-    from apps.api.jarvis_api.services.notification_bridge import send_session_notification
+        for task in due:
+            task_id = str(task.get("task_id") or "")
+            focus = str(task.get("focus") or "")
+            now_iso = datetime.now(UTC).isoformat()
 
-    for task in due:
-        task_id = str(task.get("task_id") or "")
-        focus = str(task.get("focus") or "")
-        now_iso = datetime.now(UTC).isoformat()
+            # Expire tasks that have been undeliverable for too long
+            run_at_str = str(task.get("run_at") or "")
+            try:
+                run_at_dt = datetime.fromisoformat(run_at_str)
+                if run_at_dt.tzinfo is None:
+                    run_at_dt = run_at_dt.replace(tzinfo=UTC)
+                if (now - run_at_dt).total_seconds() > _TASK_EXPIRY_HOURS * 3600:
+                    runtime_db.mark_scheduled_task_cancelled(task_id, cancelled_at=now_iso, updated_at=now_iso)
+                    logger.info("scheduled_tasks: expired %s (overdue >%dh)", task_id, _TASK_EXPIRY_HOURS)
+                    continue
+            except (ValueError, TypeError):
+                pass
 
-        # Expire tasks that have been undeliverable for too long
-        run_at_str = str(task.get("run_at") or "")
-        try:
-            run_at_dt = datetime.fromisoformat(run_at_str)
-            if run_at_dt.tzinfo is None:
-                run_at_dt = run_at_dt.replace(tzinfo=UTC)
-            if (now - run_at_dt).total_seconds() > _TASK_EXPIRY_HOURS * 3600:
-                runtime_db.mark_scheduled_task_cancelled(task_id, cancelled_at=now_iso, updated_at=now_iso)
-                logger.info("scheduled_tasks: expired %s (overdue >%dh)", task_id, _TASK_EXPIRY_HOURS)
-                continue
-        except (ValueError, TypeError):
-            pass
-
-        try:
-            result = send_session_notification(
-                f"[scheduled reminder] {focus}",
-                source="scheduled-task",
-            )
-            if result.get("status") == "ok":
-                runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
-                logger.info("scheduled_tasks: fired %s → delivered", task_id)
-            else:
-                # Delivery failed (no active session etc.) — leave pending, retry next poll
-                logger.warning(
-                    "scheduled_tasks: %s delivery failed (%s) — will retry",
-                    task_id,
-                    result.get("error", "unknown"),
+            try:
+                result = send_session_notification(
+                    f"[scheduled reminder] {focus}",
+                    source="scheduled-task",
                 )
-        except Exception as exc:
-            logger.error("scheduled_tasks: failed to fire %s: %s", task_id, exc)
+                if result.get("status") == "ok":
+                    runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
+                    logger.info("scheduled_tasks: fired %s → delivered", task_id)
+                else:
+                    # Delivery failed (no active session etc.) — leave pending, retry next poll
+                    logger.warning(
+                        "scheduled_tasks: %s delivery failed (%s) — will retry",
+                        task_id,
+                        result.get("error", "unknown"),
+                    )
+            except Exception as exc:
+                logger.error("scheduled_tasks: failed to fire %s: %s", task_id, exc)
+
+    try:
+        from apps.api.jarvis_api.services.agent_runtime import run_due_agent_schedules
+
+        fired = run_due_agent_schedules(limit=10)
+        count = int(fired.get("triggered_count") or 0)
+        if count:
+            logger.info("scheduled_tasks: fired %s due agent schedules", count)
+    except Exception as exc:
+        logger.error("scheduled_tasks: agent schedule poller error: %s", exc)
 
 
 def _poller_loop() -> None:

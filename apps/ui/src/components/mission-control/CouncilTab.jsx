@@ -41,6 +41,7 @@ export function CouncilTab() {
   const [selectedCouncilId, setSelectedCouncilId] = useState('')
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
+  const [topicDraft, setTopicDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -75,7 +76,10 @@ export function CouncilTab() {
     if (!selected?.council_id || submitting) return
     setSubmitting(true)
     try {
-      const result = await backend.runMissionControlCouncilRound(selected.council_id)
+      const result =
+        selected?.mode === 'swarm'
+          ? await backend.runMissionControlSwarmRound(selected.council_id)
+          : await backend.runMissionControlCouncilRound(selected.council_id)
       await refresh()
       setSelectedCouncilId(result?.council_id || selected.council_id)
     } finally {
@@ -98,6 +102,21 @@ export function CouncilTab() {
     }
   }
 
+  async function handleSpawnSwarm() {
+    if (!topicDraft.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const result = await backend.spawnMissionControlSwarm({
+        topic: topicDraft.trim(),
+      })
+      setTopicDraft('')
+      await refresh()
+      setSelectedCouncilId(result?.council_id || '')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const selected = useMemo(
     () => (data?.sessions || []).find((item) => item.council_id === selectedCouncilId) || data?.sessions?.[0] || null,
     [data, selectedCouncilId],
@@ -111,9 +130,29 @@ export function CouncilTab() {
         <Crown size={16} color={T.accent} />
         <span style={s({ fontSize: 14, fontWeight: 500, color: T.text1 })}>Council</span>
         <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>
-          {data?.summary?.session_count || 0} sessions · {data?.summary?.active_count || 0} aktive
+          {data?.summary?.session_count || 0} sessions · {data?.summary?.active_count || 0} aktive · {data?.summary?.swarm_count || 0} swarms
         </span>
       </div>
+
+      <Section title="Spawn Swarm" description="Opret en swarm-session hvor workers afleverer til en intern coordinator">
+        <div style={s({ display: 'flex', flexDirection: 'column', gap: 10 })}>
+          <textarea
+            value={topicDraft}
+            onChange={(event) => setTopicDraft(event.target.value)}
+            placeholder="Skriv swarm-opgave..."
+            style={s({ width: '100%', minHeight: 64, resize: 'vertical', borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: 10, ...mono, fontSize: 10 })}
+          />
+          <div>
+            <button
+              onClick={handleSpawnSwarm}
+              disabled={submitting || !topicDraft.trim()}
+              style={s({ borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text2, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+            >
+              spawn swarm
+            </button>
+          </div>
+        </div>
+      </Section>
 
       <Section title="Council Roster" description="Roller Jarvis kan samle i en council-session">
         <div style={s({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 })}>
@@ -153,6 +192,7 @@ export function CouncilTab() {
                     <div style={s({ fontSize: 11, fontWeight: 600 })}>{session.topic || 'Council session'}</div>
                     <StatusPill status={session.status || 'forming'} />
                   </div>
+                  <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 4 })}>{session.mode || 'council'}</div>
                   <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 4 })}>
                     {(session.members || []).map((item) => item.role).join(', ') || 'no members'}
                   </div>
@@ -171,7 +211,7 @@ export function CouncilTab() {
               <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 })}>
                 <div>
                   <div style={s({ fontSize: 13, fontWeight: 600 })}>{selected.topic || 'Council session'}</div>
-                  <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 3 })}>{selected.council_id}</div>
+                  <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 3 })}>{selected.council_id} · {selected.mode || 'council'}</div>
                 </div>
                 <StatusPill status={selected.status || 'forming'} />
               </div>
@@ -207,7 +247,7 @@ export function CouncilTab() {
                     disabled={submitting}
                     style={s({ borderRadius: 8, border: `1px solid ${T.accent}`, background: T.accentDim, color: T.text1, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
                   >
-                    koer council round
+                    {selected?.mode === 'swarm' ? 'koer swarm round' : 'koer council round'}
                   </button>
                 </div>
                 <textarea

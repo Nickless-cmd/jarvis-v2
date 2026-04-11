@@ -80,6 +80,7 @@ AGENT_ROLE_TEMPLATES = {
 }
 
 COUNCIL_ROLE_ORDER = ["planner", "critic", "researcher", "synthesizer", "executor"]
+SWARM_ROLE_ORDER = ["planner", "researcher", "critic", "executor", "synthesizer"]
 
 
 def _now_iso() -> str:
@@ -177,6 +178,8 @@ def build_council_surface(limit: int = 40) -> dict[str, object]:
             "session_count": len(sessions),
             "active_count": sum(1 for item in sessions if item.get("status") in {"forming", "deliberating", "merging", "reporting"}),
             "closed_count": sum(1 for item in sessions if item.get("status") == "closed"),
+            "council_count": sum(1 for item in sessions if item.get("mode") == "council"),
+            "swarm_count": sum(1 for item in sessions if item.get("mode") == "swarm"),
         },
     }
 
@@ -293,6 +296,10 @@ def _agent_thread_id(agent_id: str) -> str:
     return f"agent-thread-{agent_id}"
 
 
+def _council_thread_id(council_id: str) -> str:
+    return f"council-thread-{council_id}"
+
+
 def _format_messages(messages: list[dict[str, object]], *, limit: int = 14) -> str:
     selected = messages[-limit:]
     lines: list[str] = []
@@ -318,8 +325,29 @@ def _trim(text: str, limit: int = 400) -> str:
     return value[:limit]
 
 
+def _parse_percent_confidence(text: str) -> str:
+    lowered = str(text or "").lower()
+    for marker in ("% sikker", "% confidence", "% confident"):
+        if marker not in lowered:
+            continue
+        token = lowered.split(marker, 1)[0].rsplit(" ", 1)[-1]
+        try:
+            value = int(token)
+        except Exception:
+            return ""
+        if value >= 75:
+            return "high"
+        if value >= 40:
+            return "medium"
+        return "low"
+    return ""
+
+
 def _extract_confidence(text: str) -> str:
     lowered = str(text or "").lower()
+    percent = _parse_percent_confidence(text)
+    if percent:
+        return percent
     for label in ("high", "medium", "low"):
         if f"confidence: {label}" in lowered or f"confidence={label}" in lowered:
             return label
@@ -344,6 +372,17 @@ def _extract_vote(text: str) -> str:
     if "udskyd" in lowered:
         return "hold"
     return ""
+
+
+def _format_peer_context(messages: list[dict[str, object]], *, target_agent_id: str = "", limit: int = 16) -> str:
+    relevant: list[dict[str, object]] = []
+    for message in messages:
+        peer_agent_id = str(message.get("peer_agent_id") or "")
+        agent_id = str(message.get("agent_id") or "")
+        if target_agent_id and peer_agent_id not in {"", target_agent_id} and agent_id != target_agent_id:
+            continue
+        relevant.append(message)
+    return _format_messages(relevant, limit=limit)
 
 
 def _build_agent_prompt(
@@ -482,6 +521,34 @@ def send_message_to_agent(
     return execute_agent_task(agent_id=agent_id, thread_id=resolved_thread_id, execution_mode=execution_mode)
 
 
+def send_peer_message(
+    *,
+    from_agent_id: str,
+    to_agent_id: str,
+    content: str,
+    kind: str = "peer-message",
+) -> dict[str, object]:
+    source_agent = get_agent_registry_entry(from_agent_id)
+    target_agent = get_agent_registry_entry(to_agent_id)
+    if source_agent is None or target_agent is None:
+        raise RuntimeError("unknown-agent")
+    if str(source_agent.get("council_id") or "") != str(target_agent.get("council_id") or ""):
+        raise RuntimeError("peer-scope-mismatch")
+    council_id = str(source_agent.get("council_id") or "")
+    thread_id = _council_thread_id(council_id) if council_id else _agent_thread_id(to_agent_id)
+    return create_agent_message(
+        message_id=f"agent-msg-{uuid4().hex}",
+        thread_id=thread_id,
+        council_id=council_id,
+        agent_id=from_agent_id,
+        peer_agent_id=to_agent_id,
+        direction="agent->agent",
+        role="assistant",
+        kind=kind,
+        content=str(content or "").strip(),
+    )
+
+
 def schedule_agent_task(
     *,
     agent_id: str,
@@ -605,6 +672,51 @@ def create_council_session_runtime(
     return build_council_detail_surface(council_id) or {}
 
 
+def create_swarm_session_runtime(
+    *,
+    topic: str,
+    roles: list[str] | None = None,
+    owner_agent_id: str = "jarvis",
+) -> dict[str, object]:
+    roles = roles or SWARM_ROLE_ORDER[:4]
+    council_id = f"swarm-{uuid4().hex}"
+    create_council_session(
+        council_id=council_id,
+        owner_agent_id=owner_agent_id,
+        topic=topic,
+        status="forming",
+        mode="swarm",
+        summary=f"Swarm formed around: {topic}",
+    )
+    create_agent_message(
+        message_id=f"agent-msg-{uuid4().hex}",
+        thread_id=_council_thread_id(council_id),
+        council_id=council_id,
+        direction="jarvis->swarm",
+        role="system",
+        kind="swarm-brief",
+        content=topic,
+    )
+    for role in roles:
+        agent = spawn_agent_task(
+            role=role,
+            goal=f"Swarm topic: {topic}",
+            parent_agent_id=owner_agent_id,
+            auto_execute=False,
+            council_id=council_id,
+        )
+        update_agent_registry_entry(str(agent.get("agent_id") or ""), status="waiting")
+        add_council_member(
+            council_id=council_id,
+            agent_id=str(agent.get("agent_id") or ""),
+            role=role,
+            position_summary="awaiting swarm dispatch",
+            confidence="pending",
+        )
+    update_council_session(council_id, status="deliberating")
+    return build_council_detail_surface(council_id) or {}
+
+
 def post_council_message(
     *,
     council_id: str,
@@ -628,40 +740,45 @@ def post_council_message(
     return build_council_detail_surface(council_id) or session
 
 
-def run_council_round(council_id: str) -> dict[str, object]:
+def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
     session = get_council_session(council_id)
     if session is None:
         raise RuntimeError(f"unknown council: {council_id}")
-    thread_id = f"council-thread-{council_id}"
-    messages = list_agent_messages(council_id=council_id, thread_id=thread_id, limit=120)
+    thread_id = _council_thread_id(council_id)
+    messages = list_agent_messages(council_id=council_id, thread_id=thread_id, limit=160)
     members = list_council_members(council_id=council_id)
     update_council_session(council_id, status="deliberating")
     round_outputs: list[dict[str, str]] = []
+    coordinator = members[-1] if mode == "swarm" and members else None
 
     for member in members:
         agent_id = str(member.get("agent_id") or "")
         agent = get_agent_registry_entry(agent_id)
         if agent is None:
             continue
+        member_role = str(member.get("role") or agent.get("role") or "member")
+        is_coordinator = coordinator is not None and str(coordinator.get("agent_id") or "") == agent_id
+        if mode == "swarm" and is_coordinator:
+            continue
         update_agent_registry_entry(agent_id, status="active", last_error="")
         prompt = (
             f"System prompt:\n{agent.get('system_prompt') or ''}\n\n"
-            f"Council topic: {session.get('topic') or ''}\n"
-            f"Your role: {member.get('role') or agent.get('role') or 'member'}\n\n"
-            "Council transcript so far:\n"
+            f"{'Swarm' if mode == 'swarm' else 'Council'} topic: {session.get('topic') or ''}\n"
+            f"Your role: {member_role}\n\n"
+            f"{'Collective' if mode == 'swarm' else 'Council'} transcript so far:\n"
             f"{_format_messages(messages, limit=18)}\n\n"
-            "Respond to the council. Include compact sections for summary, recommendation, confidence, and vote."
+            f"Respond to the {'swarm' if mode == 'swarm' else 'council'}. Include compact sections for summary, recommendation, confidence, and vote."
         )
         run_id = f"agent-run-{uuid4().hex}"
         create_agent_run(
             run_id=run_id,
             agent_id=agent_id,
             status="starting",
-            execution_mode="council",
+            execution_mode=mode,
             provider=str(agent.get("provider") or ""),
             model=str(agent.get("model") or ""),
             input_summary=str(session.get("topic") or ""),
-            input_payload_json=json.dumps({"prompt": prompt, "council_id": council_id}),
+            input_payload_json=json.dumps({"prompt": prompt, "council_id": council_id, "mode": mode}),
             started_at=_now_iso(),
         )
         try:
@@ -673,11 +790,18 @@ def run_council_round(council_id: str) -> dict[str, object]:
                 run_id=run_id,
                 council_id=council_id,
                 agent_id=agent_id,
-                direction="agent->council",
+                direction="agent->council" if mode == "council" else "agent->swarm",
                 role="assistant",
-                kind="council-position",
+                kind="council-position" if mode == "council" else "swarm-work",
                 content=text,
             )
+            if mode == "swarm" and coordinator is not None:
+                send_peer_message(
+                    from_agent_id=agent_id,
+                    to_agent_id=str(coordinator.get("agent_id") or ""),
+                    content=f"{member_role}: {_trim(text, 220)}",
+                    kind="swarm-hand-off",
+                )
             update_agent_run(
                 run_id,
                 status="completed",
@@ -702,8 +826,8 @@ def run_council_round(council_id: str) -> dict[str, object]:
                 vote=_extract_vote(text),
                 confidence=_extract_confidence(text),
             )
-            messages.append({"direction": "agent->council", "kind": "council-position", "content": text})
-            round_outputs.append({"role": str(member.get("role") or ""), "text": text})
+            messages.append({"direction": "agent->collective", "kind": mode, "content": text, "agent_id": agent_id})
+            round_outputs.append({"role": member_role, "text": text})
         except Exception as exc:
             message = str(exc)
             create_agent_message(
@@ -712,14 +836,81 @@ def run_council_round(council_id: str) -> dict[str, object]:
                 run_id=run_id,
                 council_id=council_id,
                 agent_id=agent_id,
-                direction="agent->council",
+                direction="agent->council" if mode == "council" else "agent->swarm",
                 role="assistant",
-                kind="council-failure",
+                kind="council-failure" if mode == "council" else "swarm-failure",
                 content=message,
             )
             update_agent_run(run_id, status="failed", finished_at=_now_iso(), failure_reason=message, provider_status="failed")
             update_agent_registry_entry(agent_id, status="failed", failure_increment=1, last_error=message)
             update_council_member(council_id=council_id, agent_id=agent_id, position_summary=f"failed: {_trim(message)}", confidence="low")
+
+    if mode == "swarm" and coordinator is not None:
+        coordinator_id = str(coordinator.get("agent_id") or "")
+        coordinator_agent = get_agent_registry_entry(coordinator_id)
+        if coordinator_agent is not None:
+            peer_messages = list_agent_messages(council_id=council_id, thread_id=thread_id, limit=200)
+            handoffs = _format_peer_context(peer_messages, target_agent_id=coordinator_id, limit=22)
+            update_agent_registry_entry(coordinator_id, status="active", last_error="")
+            prompt = (
+                f"System prompt:\n{coordinator_agent.get('system_prompt') or ''}\n\n"
+                f"Swarm topic: {session.get('topic') or ''}\n"
+                "Your role: swarm coordinator / synthesizer\n\n"
+                "Worker handoffs:\n"
+                f"{handoffs}\n\n"
+                "Produce the merged swarm result back to Jarvis. Include summary, findings, recommendation, confidence, and blockers."
+            )
+            run_id = f"agent-run-{uuid4().hex}"
+            create_agent_run(
+                run_id=run_id,
+                agent_id=coordinator_id,
+                status="starting",
+                execution_mode="swarm",
+                provider=str(coordinator_agent.get("provider") or ""),
+                model=str(coordinator_agent.get("model") or ""),
+                input_summary=str(session.get("topic") or ""),
+                input_payload_json=json.dumps({"prompt": prompt, "council_id": council_id, "mode": "swarm", "coordinator": True}),
+                started_at=_now_iso(),
+            )
+            result = execute_cheap_lane(message=prompt)
+            synthesis = str(result.get("text") or "").strip()
+            create_agent_message(
+                message_id=f"agent-msg-{uuid4().hex}",
+                thread_id=thread_id,
+                run_id=run_id,
+                council_id=council_id,
+                agent_id=coordinator_id,
+                direction="swarm->jarvis",
+                role="assistant",
+                kind="swarm-synthesis",
+                content=synthesis,
+            )
+            update_agent_run(
+                run_id,
+                status="completed",
+                output_summary=_trim(synthesis),
+                output_payload_json=json.dumps(result),
+                finished_at=_now_iso(),
+                input_tokens=int(result.get("input_tokens") or 0),
+                output_tokens=int(result.get("output_tokens") or 0),
+                cost_usd=float(result.get("cost_usd") or 0.0),
+                provider_status=str(result.get("status") or "completed"),
+            )
+            update_agent_registry_entry(
+                coordinator_id,
+                status="waiting",
+                tokens_burned_delta=int(result.get("input_tokens") or 0) + int(result.get("output_tokens") or 0),
+                completed_at=_now_iso(),
+            )
+            update_council_member(
+                council_id=council_id,
+                agent_id=coordinator_id,
+                position_summary=_trim(synthesis),
+                vote=_extract_vote(synthesis),
+                confidence=_extract_confidence(synthesis),
+            )
+            update_council_session(council_id, status="reporting", summary=_trim(synthesis, 600))
+            return build_council_detail_surface(council_id) or {}
 
     if round_outputs:
         synthesis = " | ".join(f"{item['role']}: {_trim(item['text'], 180)}" for item in round_outputs[:5])
@@ -734,8 +925,16 @@ def run_council_round(council_id: str) -> dict[str, object]:
         )
         update_council_session(council_id, status="reporting", summary=synthesis)
     else:
-        update_council_session(council_id, status="reporting", summary="No council outputs produced in the latest round.")
+        update_council_session(council_id, status="reporting", summary=f"No {mode} outputs produced in the latest round.")
     return build_council_detail_surface(council_id) or {}
+
+
+def run_council_round(council_id: str) -> dict[str, object]:
+    return _run_collective_round(council_id, mode="council")
+
+
+def run_swarm_round(council_id: str) -> dict[str, object]:
+    return _run_collective_round(council_id, mode="swarm")
 
 
 def _progress_label(*, agent: dict[str, object], latest_run: dict[str, object] | None) -> str:

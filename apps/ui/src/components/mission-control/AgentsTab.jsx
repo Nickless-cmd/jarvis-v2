@@ -85,6 +85,8 @@ export function AgentsTab() {
   const [selectedId, setSelectedId] = useState('')
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
+  const [peerDraft, setPeerDraft] = useState('')
+  const [peerTargetId, setPeerTargetId] = useState('')
   const [scheduleDelay, setScheduleDelay] = useState('900')
   const [submitting, setSubmitting] = useState(false)
 
@@ -161,10 +163,44 @@ export function AgentsTab() {
     }
   }
 
+  async function handlePeerMessage() {
+    if (!selected?.agent_id || !peerTargetId || !peerDraft.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      await backend.peerMessageMissionControlAgent(selected.agent_id, {
+        to_agent_id: peerTargetId,
+        content: peerDraft.trim(),
+      })
+      setPeerDraft('')
+      await refresh()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const selected = useMemo(
     () => (data?.agents || []).find((item) => item.agent_id === selectedId) || data?.agents?.[0] || null,
     [data, selectedId],
   )
+
+  const peerCandidates = useMemo(
+    () =>
+      (data?.agents || []).filter(
+        (item) =>
+          item.agent_id !== selected?.agent_id &&
+          Boolean(selected?.council_id) &&
+          item.council_id === selected?.council_id,
+      ),
+    [data, selected],
+  )
+
+  useEffect(() => {
+    if (!peerCandidates.length) {
+      setPeerTargetId('')
+      return
+    }
+    setPeerTargetId((current) => (peerCandidates.some((item) => item.agent_id === current) ? current : peerCandidates[0].agent_id))
+  }, [peerCandidates])
 
   if (loading) return <div style={s({ padding: 24, color: T.text3, ...mono, fontSize: 11 })}>Indlæser agents...</div>
 
@@ -228,6 +264,7 @@ export function AgentsTab() {
                 <div>
                   <KV label="Provider / model" value={`${selected.provider || 'none'} / ${selected.model || 'none'}`} />
                   <KV label="Lane" value={selected.lane} />
+                  <KV label="Council / swarm" value={selected.council_id || '—'} />
                   <KV label="Tool policy" value={selected.tool_policy} />
                   <KV label="Token burn" value={selected.tokens_burned || 0} />
                   <KV label="Budget" value={selected.budget_tokens || 0} />
@@ -304,6 +341,38 @@ export function AgentsTab() {
                   </button>
                 </div>
               </div>
+
+              {peerCandidates.length ? (
+                <div style={s({ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 12px', borderRadius: 8, background: T.bgOverlay, border: `1px solid ${T.border0}` })}>
+                  <div style={s({ fontSize: 11, fontWeight: 500 })}>Peer messaging</div>
+                  <select
+                    value={peerTargetId}
+                    onChange={(event) => setPeerTargetId(event.target.value)}
+                    style={s({ borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '6px 8px', ...mono, fontSize: 9 })}
+                  >
+                    {peerCandidates.map((item) => (
+                      <option key={item.agent_id} value={item.agent_id}>
+                        {item.role} · {item.agent_id}
+                      </option>
+                    ))}
+                  </select>
+                  <textarea
+                    value={peerDraft}
+                    onChange={(event) => setPeerDraft(event.target.value)}
+                    placeholder="Skriv agent-til-agent besked..."
+                    style={s({ width: '100%', minHeight: 64, resize: 'vertical', borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: 10, ...mono, fontSize: 10 })}
+                  />
+                  <div>
+                    <button
+                      onClick={handlePeerMessage}
+                      disabled={submitting || !peerDraft.trim() || !peerTargetId}
+                      style={s({ borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text2, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+                    >
+                      send peer message
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               <div>
                 <div style={s({ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 })}>

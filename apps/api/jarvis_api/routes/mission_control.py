@@ -54,6 +54,15 @@ from apps.api.jarvis_api.services.subagent_ecology import (
 from apps.api.jarvis_api.services.council_runtime import (
     build_council_runtime_surface,
 )
+from apps.api.jarvis_api.services.agent_runtime import (
+    build_agent_detail_surface,
+    build_agent_runtime_surface,
+    build_council_detail_surface,
+    build_council_surface,
+    create_council_session_runtime,
+    execute_agent_task,
+    spawn_agent_task,
+)
 from apps.api.jarvis_api.services.adaptive_planner_runtime import (
     build_adaptive_planner_runtime_surface,
 )
@@ -1450,6 +1459,118 @@ def mc_subagent_ecology() -> dict:
 def mc_council_runtime() -> dict:
     """Return the current bounded internal council runtime state."""
     return build_council_runtime_surface()
+
+
+@router.get("/agents")
+def mc_agents(limit: int = 100) -> dict:
+    """Return live and persistent agent runtime state for Mission Control."""
+    return build_agent_runtime_surface(limit=limit)
+
+
+@router.get("/agents/{agent_id}")
+def mc_agent_detail(agent_id: str) -> dict:
+    payload = build_agent_detail_surface(agent_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="agent-not-found")
+    return payload
+
+
+@router.get("/agents/{agent_id}/messages")
+def mc_agent_messages(agent_id: str) -> dict:
+    payload = build_agent_detail_surface(agent_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="agent-not-found")
+    return {
+        "agent_id": agent_id,
+        "messages": payload.get("messages") or [],
+        "count": payload.get("message_count") or 0,
+    }
+
+
+@router.get("/agents/{agent_id}/runs")
+def mc_agent_runs(agent_id: str) -> dict:
+    payload = build_agent_detail_surface(agent_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="agent-not-found")
+    return {
+        "agent_id": agent_id,
+        "runs": payload.get("runs") or [],
+    }
+
+
+@router.get("/agents/{agent_id}/tool-calls")
+def mc_agent_tool_calls(agent_id: str) -> dict:
+    payload = build_agent_detail_surface(agent_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="agent-not-found")
+    return {
+        "agent_id": agent_id,
+        "tool_calls": payload.get("tool_calls") or [],
+        "count": payload.get("tool_call_count") or 0,
+    }
+
+
+@router.get("/council")
+def mc_council(limit: int = 40) -> dict:
+    """Return roster and council sessions for Mission Control."""
+    return build_council_surface(limit=limit)
+
+
+@router.get("/council/{council_id}")
+def mc_council_detail(council_id: str) -> dict:
+    payload = build_council_detail_surface(council_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="council-not-found")
+    return payload
+
+
+@router.get("/council/{council_id}/messages")
+def mc_council_messages(council_id: str) -> dict:
+    payload = build_council_detail_surface(council_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="council-not-found")
+    return {
+        "council_id": council_id,
+        "messages": payload.get("messages") or [],
+    }
+
+
+@router.post("/runtime/agents/spawn")
+def mc_spawn_agent(payload: dict) -> dict:
+    return spawn_agent_task(
+        role=str(payload.get("role") or "researcher"),
+        goal=str(payload.get("goal") or ""),
+        system_prompt=str(payload.get("system_prompt") or ""),
+        tool_policy=str(payload.get("tool_policy") or ""),
+        allowed_tools=list(payload.get("allowed_tools") or []),
+        parent_agent_id=str(payload.get("parent_agent_id") or "jarvis"),
+        persistent=bool(payload.get("persistent", False)),
+        ttl_seconds=int(payload.get("ttl_seconds") or 0),
+        budget_tokens=int(payload.get("budget_tokens") or 0),
+        context=dict(payload.get("context") or {}),
+        result_contract=dict(payload.get("result_contract") or {}),
+        execution_mode=str(payload.get("execution_mode") or "solo-task"),
+        auto_execute=bool(payload.get("auto_execute", True)),
+    )
+
+
+@router.post("/runtime/agents/{agent_id}/execute")
+def mc_execute_agent(agent_id: str, payload: dict | None = None) -> dict:
+    payload = payload or {}
+    return execute_agent_task(
+        agent_id=agent_id,
+        thread_id=str(payload.get("thread_id") or ""),
+        execution_mode=str(payload.get("execution_mode") or "solo-task"),
+    )
+
+
+@router.post("/runtime/council/spawn")
+def mc_spawn_council(payload: dict) -> dict:
+    return create_council_session_runtime(
+        topic=str(payload.get("topic") or ""),
+        roles=list(payload.get("roles") or []),
+        owner_agent_id=str(payload.get("owner_agent_id") or "jarvis"),
+    )
 
 
 @router.get("/adaptive-planner")

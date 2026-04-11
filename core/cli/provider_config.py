@@ -145,6 +145,38 @@ def cmd_configure_openai_oauth_coding_lane(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_configure_codex_cli_coding_lane(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    result = configure_provider_router_entry(
+        provider="codex-cli",
+        model=args.model,
+        auth_mode="none",
+        auth_profile="",
+        base_url="",
+        api_key="",
+        lane="coding",
+        set_visible=False,
+    )
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "configured": result,
+                "coding_lane": {
+                    "provider": "codex-cli",
+                    "lane": "coding",
+                    "auth_mode": "none",
+                    "model": args.model,
+                    "subscription_backend": True,
+                },
+                "provider_router": provider_router_summary(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_configure_local_lane(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     result = configure_provider_router_entry(

@@ -12,6 +12,7 @@ from core.auth.openai_oauth import (
     exchange_openai_callback_code,
     get_openai_callback_url,
     get_openai_oauth_truth,
+    import_openai_codex_session,
     load_openai_oauth_config,
     refresh_openai_access_token,
     save_openai_callback,
@@ -246,6 +247,29 @@ def cmd_print_openai_callback_url(args: argparse.Namespace) -> None:
                 "provider": _PROVIDER,
                 "auth_profile": args.auth_profile,
                 "callback_url": get_openai_callback_url(profile=args.auth_profile),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def cmd_import_openai_codex_session(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+    credentials = import_openai_codex_session(profile=args.auth_profile)
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": _PROVIDER,
+                "auth_profile": args.auth_profile,
+                "requested_action": "import-openai-codex-session",
+                "has_access_token": bool(str(credentials.get("access_token") or "").strip()),
+                "has_refresh_token": bool(str(credentials.get("refresh_token") or "").strip()),
+                "expires_at": str(credentials.get("expires_at") or ""),
+                "account_id": str(credentials.get("account_id") or ""),
+                "profile_state": get_provider_state_view(profile=args.auth_profile, provider=_PROVIDER),
             },
             indent=2,
             ensure_ascii=False,

@@ -46,6 +46,7 @@ from core.cli.openai_auth import (
     cmd_await_openai_oauth_callback,
     cmd_configure_openai_oauth_client,
     cmd_exchange_openai_oauth_code,
+    cmd_import_openai_codex_session,
     cmd_intake_openai_oauth_callback,
     cmd_launch_openai_oauth_browser,
     cmd_openai_auth_status,
@@ -61,6 +62,7 @@ from core.cli.provider_config import (
     cmd_configure_cheap_provider,
     cmd_configure_coding_lane,
     cmd_configure_copilot_coding_lane,
+    cmd_configure_codex_cli_coding_lane,
     cmd_configure_local_lane,
     cmd_configure_openai_oauth_coding_lane,
     cmd_configure_provider,
@@ -464,6 +466,10 @@ def build_parser() -> argparse.ArgumentParser:
     configure_openai_oauth_coding_lane.add_argument("--base-url", default="https://api.openai.com/v1")
     configure_openai_oauth_coding_lane.set_defaults(func=cmd_configure_openai_oauth_coding_lane)
 
+    configure_codex_cli_coding_lane = sub.add_parser("configure-codex-cli-coding-lane")
+    configure_codex_cli_coding_lane.add_argument("--model", default="gpt-5.4")
+    configure_codex_cli_coding_lane.set_defaults(func=cmd_configure_codex_cli_coding_lane)
+
     configure_local_lane = sub.add_parser("configure-local-lane")
     configure_local_lane.add_argument("--model", default="qwen3.5:9b")
     configure_local_lane.add_argument("--base-url", default="http://127.0.0.1:11434")
@@ -559,6 +565,10 @@ def build_parser() -> argparse.ArgumentParser:
     openai_auth_status = sub.add_parser("openai-auth-status")
     openai_auth_status.add_argument("--auth-profile", default="codex")
     openai_auth_status.set_defaults(func=cmd_openai_auth_status)
+
+    import_openai_codex_session = sub.add_parser("import-openai-codex-session")
+    import_openai_codex_session.add_argument("--auth-profile", default="codex")
+    import_openai_codex_session.set_defaults(func=cmd_import_openai_codex_session)
 
     start_openai_oauth_launch_intent = sub.add_parser("start-openai-oauth-launch-intent")
     start_openai_oauth_launch_intent.add_argument("--auth-profile", default="codex")

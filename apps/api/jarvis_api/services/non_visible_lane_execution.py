@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib import error as urllib_error
@@ -107,6 +109,8 @@ def _lane_status(target: dict[str, object]) -> str:
     provider = str(target.get("provider") or "").strip()
     if provider == "phase1-runtime":
         return "ready"
+    if provider == "codex-cli":
+        return "ready"
     if provider in {"openai", "openrouter"}:
         return "ready" if bool(target.get("credentials_ready")) else "auth-not-ready"
     return "unsupported-provider"
@@ -170,6 +174,29 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "live_verified": False,
             "provider_status": "local-fallback",
             "checked_at": None,
+        }
+
+    if provider == "codex-cli":
+        return {
+            "status": str(probe["provider_status"]),
+            "can_execute": bool(probe["provider_ready"]),
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "auth_state": "not-required",
+            "auth_material_kind": "not-required",
+            "oauth_state": "not-applicable",
+            "credentials_ready": True,
+            "auth_status": "not-required",
+            "provider_ready": bool(probe["provider_ready"]),
+            "coding_auth_path": coding_auth_path,
+            "launch_result_state": "not-applicable",
+            "launch_freshness": "not-applicable",
+            "callback_validation_state": "not-applicable",
+            "exchange_readiness": "not-applicable",
+            "callback_intent_consistency": "not-applicable",
+            "live_verified": bool(probe["live_verified"]),
+            "provider_status": str(probe["provider_status"]),
+            "checked_at": probe["checked_at"],
         }
 
     if provider == "github-copilot":
@@ -359,6 +386,8 @@ def _local_lane_readiness(target: dict[str, object]) -> dict[str, object]:
 
 
 def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
+    if provider == "codex-cli":
+        return "codex-cli-local-session"
     if provider == "openai" and auth_mode == "api-key":
         return "openai-api-key"
     if provider == "openai-codex" and auth_mode == "oauth":
@@ -492,6 +521,9 @@ def _coding_lane_probe(
     credentials_ready: bool,
     base_url: str,
 ) -> dict[str, object]:
+    if provider == "codex-cli":
+        return _probe_codex_cli_target(model=model)
+
     if provider in {"openai", "openai-codex"}:
         if not credentials_ready:
             return {
@@ -520,6 +552,38 @@ def _coding_lane_probe(
         "live_verified": False,
         "provider_status": "unsupported-provider",
         "checked_at": None,
+    }
+
+
+def _probe_codex_cli_target(*, model: str) -> dict[str, object]:
+    checked_at = datetime.now(UTC).isoformat()
+    auth_path = Path.home() / ".codex" / "auth.json"
+    if not auth_path.exists():
+        return {
+            "provider_ready": False,
+            "live_verified": False,
+            "provider_status": "missing-codex-auth",
+            "checked_at": checked_at,
+        }
+    result = subprocess.run(
+        ["codex", "--version"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if result.returncode != 0:
+        return {
+            "provider_ready": False,
+            "live_verified": False,
+            "provider_status": "codex-cli-unavailable",
+            "checked_at": checked_at,
+        }
+    return {
+        "provider_ready": True,
+        "live_verified": False,
+        "provider_status": "ready",
+        "checked_at": checked_at,
     }
 
 
@@ -628,6 +692,14 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
             f"{lane.capitalize()} lane received: {message}"
         )
         output_tokens = _estimate_tokens(text)
+    elif provider == "codex-cli":
+        data = _execute_codex_cli(
+            message=message,
+            model=model,
+        )
+        text = str(data["text"])
+        input_tokens = int(data["input_tokens"])
+        output_tokens = int(data["output_tokens"])
     elif provider in {"openai", "openai-codex"}:
         profile = str(target.get("auth_profile") or "").strip()
         api_key = _load_provider_api_key(provider=provider, profile=profile)
@@ -698,6 +770,46 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
         "output_tokens": output_tokens,
         "cost_usd": cost_usd,
     }
+
+
+def _execute_codex_cli(*, message: str, model: str) -> dict[str, object]:
+    with tempfile.NamedTemporaryFile(prefix="jarvis-codex-", suffix=".txt", delete=False) as tmp:
+        output_path = Path(tmp.name)
+    cmd = [
+        "codex",
+        "exec",
+        "-C",
+        str(Path.cwd()),
+        "-o",
+        str(output_path),
+        message,
+    ]
+    if str(model or "").strip():
+        cmd[2:2] = ["-m", str(model).strip()]
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=False,
+        )
+        if result.returncode != 0:
+            stderr = (result.stderr or result.stdout or "").strip()
+            raise RuntimeError(f"codex-cli execution failed: {stderr}")
+        text = output_path.read_text(encoding="utf-8").strip()
+        if not text:
+            raise RuntimeError("codex-cli execution returned empty output")
+        return {
+            "text": text,
+            "input_tokens": _estimate_tokens(message),
+            "output_tokens": _estimate_tokens(text),
+        }
+    finally:
+        try:
+            output_path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 def _load_provider_api_key(*, provider: str, profile: str) -> str:

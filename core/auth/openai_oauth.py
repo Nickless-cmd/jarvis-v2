@@ -5,6 +5,7 @@ import hashlib
 import json
 import secrets
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
@@ -33,6 +34,7 @@ _DEFAULT_SCOPES = "openid profile email offline_access"
 _DEFAULT_AUDIENCE = "https://api.openai.com/v1"
 _DEFAULT_REDIRECT_BASE_URL = "http://localhost:1455"
 _DEFAULT_CALLBACK_PATH = "/auth/callback"
+_CODEX_AUTH_PATH = Path.home() / ".codex" / "auth.json"
 
 
 def get_openai_oauth_truth(*, profile: str) -> dict[str, Any]:
@@ -303,6 +305,43 @@ def get_openai_bearer_token(*, profile: str) -> str:
     raise RuntimeError("OpenAI credentials missing usable api_key or oauth access_token")
 
 
+def import_openai_codex_session(*, profile: str) -> dict[str, Any]:
+    if not _CODEX_AUTH_PATH.exists():
+        raise FileNotFoundError(f"Codex auth session not found at {_CODEX_AUTH_PATH}")
+
+    data = json.loads(_CODEX_AUTH_PATH.read_text(encoding="utf-8"))
+    tokens = dict(data.get("tokens") or {})
+    access_token = str(tokens.get("access_token") or "").strip()
+    refresh_token = str(tokens.get("refresh_token") or "").strip()
+    account_id = str(tokens.get("account_id") or "").strip()
+    id_token = str(tokens.get("id_token") or "").strip()
+    last_refresh = str(data.get("last_refresh") or "").strip()
+    if not access_token:
+        raise RuntimeError("Codex auth session is missing access_token")
+
+    expires_at = _jwt_expiry_iso(access_token)
+    credentials = {
+        "oauth_state": "real-stored",
+        "real_oauth": True,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "account_id": account_id,
+        "id_token": id_token,
+        "expires_at": expires_at,
+        "oauth_imported_from": str(_CODEX_AUTH_PATH),
+        "oauth_imported_at": datetime.now(UTC).isoformat(),
+        "oauth_client_id": _jwt_claim(access_token, "client_id"),
+        "oauth_last_refresh": last_refresh,
+        "created_by": "jarvis-import-openai-codex-session",
+    }
+    save_provider_credentials(
+        profile=profile,
+        provider=PROVIDER_ID,
+        credentials=credentials,
+    )
+    return credentials
+
+
 def _post_openai_token_request(*, token_url: str, payload: dict[str, str]) -> dict[str, Any]:
     encoded = urllib_parse.urlencode(payload).encode("utf-8")
     req = urllib_request.Request(
@@ -322,6 +361,35 @@ def _post_openai_token_request(*, token_url: str, payload: dict[str, str]) -> di
         raise RuntimeError(f"OpenAI OAuth token request failed: HTTP {exc.code}: {body}")
     except Exception as exc:
         raise RuntimeError(f"OpenAI OAuth token request failed: {exc}")
+
+
+def _jwt_claim(token: str, key: str) -> Any:
+    payload = _decode_jwt_payload(token)
+    return payload.get(key)
+
+
+def _jwt_expiry_iso(token: str) -> str:
+    payload = _decode_jwt_payload(token)
+    exp = payload.get("exp")
+    if not exp:
+        return ""
+    return datetime.fromtimestamp(int(exp), tz=UTC).isoformat()
+
+
+def _decode_jwt_payload(token: str) -> dict[str, Any]:
+    parts = str(token or "").split(".")
+    if len(parts) < 2:
+        return {}
+    payload = parts[1]
+    padding = "=" * (-len(payload) % 4)
+    try:
+        decoded = base64.urlsafe_b64decode(payload + padding)
+        data = json.loads(decoded.decode("utf-8"))
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        return {}
+    return {}
 
 
 def _store_openai_token_response(

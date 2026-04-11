@@ -36,6 +36,7 @@ function SafeBlock({ text }) {
   )
 }
 
+const ALL_COUNCIL_ROLES = ['planner', 'critic', 'researcher', 'synthesizer', 'executor', 'devils_advocate', 'watcher']
 const DEFAULT_COUNCIL_ROLES = ['planner', 'critic', 'researcher', 'synthesizer']
 
 const SELECT_STYLE = { borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 6px', ...mono, fontSize: 9, flex: 1 }
@@ -76,7 +77,7 @@ export function CouncilTab() {
   const [submitting, setSubmitting] = useState(false)
   const [councilRoles, setCouncilRoles] = useState(DEFAULT_COUNCIL_ROLES)
   const [councilMemberModels, setCouncilMemberModels] = useState(
-    () => Object.fromEntries(DEFAULT_COUNCIL_ROLES.map((r) => [r, { provider: '', model: '' }]))
+    () => Object.fromEntries(ALL_COUNCIL_ROLES.map((r) => [r, { provider: '', model: '' }]))
   )
   const [configDraft, setConfigDraft] = useState(null) // null = not loaded yet
   const [configSaving, setConfigSaving] = useState(false)
@@ -127,7 +128,7 @@ export function CouncilTab() {
       setModelsByProvider(byProvider)
 
       // Load saved config
-      const allRoles = [...new Set([...DEFAULT_COUNCIL_ROLES, 'devils_advocate', 'watcher', 'executor'])]
+      const allRoles = ALL_COUNCIL_ROLES
       const map = Object.fromEntries(allRoles.map((r) => [r, { provider: '', model: '' }]))
       for (const item of cfg?.role_models || []) {
         if (item.role) map[item.role] = { provider: item.provider || '', model: item.model || '' }
@@ -250,6 +251,20 @@ export function CouncilTab() {
               style={s({ width: '100%', minHeight: 56, resize: 'vertical', borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: 10, ...mono, fontSize: 10 })}
             />
             <div>
+              <div style={s({ ...mono, fontSize: 9, color: T.text3, marginBottom: 6 })}>Roller</div>
+              <div style={s({ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 })}>
+                {ALL_COUNCIL_ROLES.map((role) => (
+                  <label key={role} style={s({ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', ...mono, fontSize: 9, color: councilRoles.includes(role) ? T.text1 : T.text3, background: councilRoles.includes(role) ? T.accentDim : T.bgOverlay, border: `1px solid ${councilRoles.includes(role) ? T.accent : T.border0}`, borderRadius: 6, padding: '3px 8px' })}>
+                    <input
+                      type="checkbox"
+                      checked={councilRoles.includes(role)}
+                      onChange={(e) => setCouncilRoles((prev) => e.target.checked ? [...prev, role] : prev.filter((r) => r !== role))}
+                      style={{ margin: 0, accentColor: T.accent }}
+                    />
+                    {role}
+                  </label>
+                ))}
+              </div>
               <div style={s({ ...mono, fontSize: 9, color: T.text3, marginBottom: 6 })}>Model per rolle (tom = cheap lane)</div>
               {councilRoles.map((role) => (
                 <RoleModelRow

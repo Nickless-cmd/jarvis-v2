@@ -4,6 +4,7 @@ import argparse
 import json
 import webbrowser
 from datetime import UTC, datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib import parse as urllib_parse
 
 from core.auth.openai_oauth import (
@@ -57,6 +58,7 @@ def cmd_configure_openai_oauth_client(args: argparse.Namespace) -> None:
         scopes=str(args.scopes or "").strip(),
         audience=str(args.audience or "").strip(),
         redirect_base_url=str(args.redirect_base_url or "").strip(),
+        callback_path=str(args.callback_path or "").strip(),
     )
     print(json.dumps({"ok": True, "provider": _PROVIDER, "oauth_config": config}, indent=2, ensure_ascii=False))
 
@@ -244,6 +246,69 @@ def cmd_print_openai_callback_url(args: argparse.Namespace) -> None:
                 "provider": _PROVIDER,
                 "auth_profile": args.auth_profile,
                 "callback_url": get_openai_callback_url(profile=args.auth_profile),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
+def cmd_await_openai_oauth_callback(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    init_db()
+
+    callback_url = get_openai_callback_url(profile=args.auth_profile)
+    parsed = urllib_parse.urlsplit(callback_url)
+    host = parsed.hostname or "127.0.0.1"
+    port = int(parsed.port or (443 if parsed.scheme == "https" else 80))
+    path = parsed.path or "/auth/callback"
+    deadline = datetime.now(UTC).timestamp() + float(args.timeout_seconds)
+    received: dict[str, str] = {}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # type: ignore[override]
+            request_path = urllib_parse.urlsplit(self.path).path
+            if request_path != path:
+                self.send_response(404)
+                self.end_headers()
+                return
+            full_url = f"http://{self.headers.get('Host', f'{host}:{port}')}{self.path}"
+            save_openai_callback(profile=args.auth_profile, callback_url=full_url)
+            received["callback_url"] = full_url
+            body = (
+                "<html><body style='font-family:sans-serif;padding:2rem'>"
+                "<h1>OpenAI OAuth callback received</h1>"
+                "<p>Du kan lukke dette vindue.</p>"
+                "</body></html>"
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A003
+            return
+
+    server = ThreadingHTTPServer((host, port), Handler)
+    server.timeout = 1.0
+    try:
+        while datetime.now(UTC).timestamp() < deadline and not received:
+            server.handle_request()
+    finally:
+        server.server_close()
+
+    if not received:
+        raise TimeoutError(f"Timed out waiting for OpenAI OAuth callback on {callback_url}")
+
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "provider": _PROVIDER,
+                "auth_profile": args.auth_profile,
+                "callback_url": received["callback_url"],
+                "profile_state": get_provider_state_view(profile=args.auth_profile, provider=_PROVIDER),
             },
             indent=2,
             ensure_ascii=False,

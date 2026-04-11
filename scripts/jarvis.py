@@ -43,6 +43,7 @@ from core.cli.copilot_auth import (
     cmd_start_copilot_oauth_launch_intent,
 )
 from core.cli.openai_auth import (
+    cmd_await_openai_oauth_callback,
     cmd_configure_openai_oauth_client,
     cmd_exchange_openai_oauth_code,
     cmd_intake_openai_oauth_callback,
@@ -552,6 +553,7 @@ def build_parser() -> argparse.ArgumentParser:
     configure_openai_oauth_client.add_argument("--scopes", default="")
     configure_openai_oauth_client.add_argument("--audience", default="")
     configure_openai_oauth_client.add_argument("--redirect-base-url", default="")
+    configure_openai_oauth_client.add_argument("--callback-path", default="")
     configure_openai_oauth_client.set_defaults(func=cmd_configure_openai_oauth_client)
 
     openai_auth_status = sub.add_parser("openai-auth-status")
@@ -565,6 +567,11 @@ def build_parser() -> argparse.ArgumentParser:
     launch_openai_oauth_browser = sub.add_parser("launch-openai-oauth-browser")
     launch_openai_oauth_browser.add_argument("--auth-profile", default="codex")
     launch_openai_oauth_browser.set_defaults(func=cmd_launch_openai_oauth_browser)
+
+    await_openai_oauth_callback = sub.add_parser("await-openai-oauth-callback")
+    await_openai_oauth_callback.add_argument("--auth-profile", default="codex")
+    await_openai_oauth_callback.add_argument("--timeout-seconds", type=int, default=180)
+    await_openai_oauth_callback.set_defaults(func=cmd_await_openai_oauth_callback)
 
     reset_openai_oauth_launch = sub.add_parser("reset-openai-oauth-launch")
     reset_openai_oauth_launch.add_argument("--auth-profile", default="codex")

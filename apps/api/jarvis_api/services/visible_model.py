@@ -11,6 +11,7 @@ from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from core.auth.copilot_oauth import get_copilot_oauth_truth
+from core.auth.openai_oauth import get_openai_bearer_token, get_openai_oauth_truth
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
     _extract_github_copilot_text,
@@ -1052,13 +1053,10 @@ def _load_openai_api_key() -> str:
 
 
 def _load_openai_api_key_for_profile(profile: str) -> str:
-    state = get_provider_state(profile=profile, provider="openai")
-    credentials_path = Path(str(state.get("credentials_path", "")))
-    credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
-    api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
-    if api_key:
-        return api_key
-    raise RuntimeError("OpenAI visible execution not ready: missing-credentials")
+    try:
+        return get_openai_bearer_token(profile=profile)
+    except Exception as exc:
+        raise RuntimeError(f"OpenAI visible execution not ready: {exc}")
 
 
 def _resolve_openai_profile() -> tuple[str | None, str]:
@@ -1090,6 +1088,9 @@ def _openai_profile_status(profile: str) -> tuple[str | None, str]:
     if not credentials_path.exists():
         return profile, "missing-credentials"
 
+    oauth_truth = get_openai_oauth_truth(profile=profile)
+    if bool(oauth_truth.get("has_real_credentials")):
+        return profile, "ready"
     credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
     api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
     if not api_key:

@@ -4165,6 +4165,17 @@ export const backend = {
     return requestJson('/mc/council')
   },
 
+  async getCouncilModelConfig() {
+    return requestJson('/mc/council-model-config')
+  },
+
+  async saveCouncilModelConfig(roleModels) {
+    return requestJson('/mc/council-model-config', {
+      method: 'POST',
+      body: JSON.stringify({ role_models: roleModels }),
+    })
+  },
+
   async getMissionControlCouncilSession(councilId) {
     return requestJson(`/mc/council/${encodeURIComponent(councilId)}`)
   },

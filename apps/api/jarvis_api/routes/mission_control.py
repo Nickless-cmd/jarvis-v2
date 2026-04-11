@@ -1523,6 +1523,40 @@ def mc_agent_tool_calls(agent_id: str) -> dict:
     }
 
 
+@router.get("/council-model-config")
+def mc_get_council_model_config() -> dict:
+    """Return persisted per-role model overrides."""
+    import json
+    from core.runtime.config import CONFIG_DIR
+    path = CONFIG_DIR / "council_models.json"
+    if path.exists():
+        try:
+            return json.loads(path.read_text())
+        except Exception:
+            pass
+    return {"role_models": []}
+
+
+@router.post("/council-model-config")
+def mc_set_council_model_config(payload: dict) -> dict:
+    """Persist per-role model overrides. payload: {role_models: [{role, provider, model}]}"""
+    import json
+    from core.runtime.config import CONFIG_DIR
+    role_models = [
+        {
+            "role": str(item.get("role") or ""),
+            "provider": str(item.get("provider") or ""),
+            "model": str(item.get("model") or ""),
+        }
+        for item in (payload.get("role_models") or [])
+        if item.get("role")
+    ]
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    path = CONFIG_DIR / "council_models.json"
+    path.write_text(json.dumps({"role_models": role_models}, indent=2))
+    return {"role_models": role_models, "saved": True}
+
+
 @router.get("/council")
 def mc_council(limit: int = 40) -> dict:
     """Return roster and council sessions for Mission Control."""

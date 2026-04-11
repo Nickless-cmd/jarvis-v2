@@ -801,6 +801,25 @@ def classify_command(command: str) -> str:
         if all(_segment_is_safe(s) for s in segments if s):
             return "auto"
 
+    # Sudo commands with allowlisted subcommands are auto-approved.
+    # This mirrors APPROVED_SUDO_EXEC_ALLOWLIST from workspace_capabilities.py.
+    _SUDO_AUTO_APPROVE_SUBCOMMANDS = {
+        "chmod", "chown", "systemctl", "journalctl", "docker",
+        "apt", "apt-get", "dpkg", "pip", "pip3", "npm", "nvm",
+        "snap", "flatpak", "dnf", "yum", "brew", "make", "cargo", "go",
+        "kubectl", "tee", "cp", "mv", "mkdir", "rmdir", "ln", "tar",
+        "curl", "wget", "mount", "umount", "fdisk", "parted", "lsblk",
+        "blkid", "cryptsetup", "ufw", "iptables", "ip", "ip6tables",
+        "ss", "netstat", "nginx", "apache2", "supervisorctl", "crontab",
+        "useradd", "usermod", "userdel", "groupadd", "groupdel", "passwd",
+        "visudo", "sed", "awk", "cat", "find", "install", "rsync", "dd",
+    }
+    sudo_match = re.match(r"sudo\s+(\S+)", normalized)
+    if sudo_match:
+        subcmd = sudo_match.group(1).lower()
+        if subcmd in _SUDO_AUTO_APPROVE_SUBCOMMANDS:
+            return "auto"
+
     return "approval"
 
 

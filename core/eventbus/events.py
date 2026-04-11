@@ -119,6 +119,8 @@ ALLOWED_EVENT_FAMILIES = {
     "thought_action_proposal",
     "conflict",
     "reflection",
+    "curiosity",
+    "meta_reflection",
 }
 
 

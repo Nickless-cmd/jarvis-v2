@@ -1743,6 +1743,28 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Thought stream
+    try:
+        from apps.api.jarvis_api.services.thought_stream_daemon import (
+            tick_thought_stream_daemon,
+            get_latest_thought_fragment,
+        )
+        from apps.api.jarvis_api.services.inner_voice_daemon import get_inner_voice_daemon_state
+        _iv_ts = get_inner_voice_daemon_state()
+        _iv_mode_ts = str((_iv_ts.get("last_result") or {}).get("mode") or "")
+        _energy_ts = ""
+        try:
+            from core.runtime.circadian_state import get_circadian_context as _gcc2
+            _energy_ts = str(_gcc2().get("energy_level") or "")
+        except Exception:
+            pass
+        tick_thought_stream_daemon(energy_level=_energy_ts, inner_voice_mode=_iv_mode_ts)
+        _fragment = get_latest_thought_fragment()
+        if _fragment:
+            inputs_present.append(f"tankestrøm: {_fragment[:80]}")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

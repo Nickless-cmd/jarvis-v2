@@ -115,6 +115,7 @@ ALLOWED_EVENT_FAMILIES = {
     "circadian",
     "somatic",
     "irony",
+    "thought_stream",
 }
 
 

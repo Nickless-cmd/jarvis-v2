@@ -1042,6 +1042,16 @@ function normalizeIronyState(raw) {
   }
 }
 
+function normalizeThoughtStream(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestFragment: raw.latest_fragment || '',
+    fragmentBuffer: Array.isArray(raw.fragment_buffer) ? raw.fragment_buffer : [],
+    fragmentCount: raw.fragment_count ?? 0,
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
 function normalizeWonderAwareness(item = {}) {
   if (!item || !item.kind) return null
   return {
@@ -3060,7 +3070,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3074,6 +3084,7 @@ export const backend = {
       requestJson('/mc/surprise-state').catch(() => null),
       requestJson('/mc/taste-state').catch(() => null),
       requestJson('/mc/irony-state').catch(() => null),
+      requestJson('/mc/thought-stream').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -3953,6 +3964,7 @@ export const backend = {
       surpriseState: normalizeSurpriseState(surpriseStatePayload || null),
       tasteState: normalizeTasteState(tasteStatePayload || null),
       ironyState: normalizeIronyState(ironyStatePayload || null),
+      thoughtStream: normalizeThoughtStream(thoughtStreamPayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

@@ -232,6 +232,14 @@ def approve_proposal(
         )
     except Exception:
         pass
+
+    # Auto-commit after successful source-edit execution
+    if kind == "source-edit" and isinstance(result, dict) and result.get("status") == "executed":
+        try:
+            _auto_commit_after_source_edit(proposal, result)
+        except Exception as exc:
+            logger.warning("auto-commit after source-edit failed for %s: %s", proposal_id, exc)
+
     return {"status": "executed", "proposal": resolved}
 
 
@@ -397,6 +405,75 @@ def _execute_source_edit_proposal(payload: dict) -> dict:
     }
 
 
+def _auto_commit_after_source_edit(proposal: dict, result: dict) -> None:
+    """Auto-commit the file changed by a source-edit proposal.
+
+    Stages only the changed file and commits with a message derived
+    from the proposal metadata.  Uses the project_root from the
+    proposal payload to locate the git repo.
+    """
+    import subprocess as _sp
+    from pathlib import Path as _Path
+
+    payload = proposal.get("payload") or {}
+    target_path = str(payload.get("target_path") or "")
+    rationale = str(proposal.get("rationale") or "source-edit").strip()[:72]
+    project_root = str(payload.get("project_root") or "")
+
+    # Derive project_root from target_path if not in payload
+    if not project_root and target_path:
+        # Walk up from target_path to find a .git directory
+        p = _Path(target_path).resolve()
+        for parent in [p.parent] + list(p.parents):
+            if (parent / ".git").is_dir():
+                project_root = str(parent)
+                break
+
+    if not project_root:
+        logger.warning("auto-commit: could not determine project_root for %s", target_path)
+        return
+
+    if not _Path(project_root).is_dir():
+        logger.warning("auto-commit: project_root not found: %s", project_root)
+        return
+
+    # Derive relative path for the commit
+    relative_path = str(payload.get("relative_path") or "")
+    if not relative_path and target_path:
+        try:
+            relative_path = str(_Path(target_path).resolve().relative_to(_Path(project_root).resolve()))
+        except ValueError:
+            relative_path = target_path
+
+    # Stage and commit just the changed file
+    add_cmd = ["git", "add", "--", relative_path]
+    add_result = _sp.run(add_cmd, capture_output=True, text=True, cwd=project_root)
+    if add_result.returncode != 0:
+        logger.warning("auto-commit: git add failed: %s", add_result.stderr.strip())
+        return
+
+    # Build commit message from proposal metadata
+    proposal_id = str(proposal.get("proposal_id") or "unknown")
+    commit_msg = f"source-edit: {rationale}\n\nProposal: {proposal_id}"
+
+    commit_result = _sp.run(
+        ["git", "commit", "-m", commit_msg],
+        capture_output=True,
+        text=True,
+        cwd=project_root,
+    )
+    if commit_result.returncode != 0:
+        stdout = commit_result.stdout.strip()
+        stderr = commit_result.stderr.strip()
+        if "nothing to commit" in stdout or "nothing to commit" in stderr:
+            logger.info("auto-commit: nothing to commit for %s", proposal_id)
+            return
+        logger.warning("auto-commit: git commit failed: %s", stderr or stdout)
+        return
+
+    logger.info("auto-commit: committed %s for proposal %s", relative_path, proposal_id)
+
+
 def _execute_git_commit_proposal(payload: dict) -> dict:
     """Execute an approved git-commit proposal.
 
@@ -456,6 +533,7 @@ def _execute_git_commit_proposal(payload: dict) -> dict:
         "files": files,
         "output": output,
     }
+
 
 
 # Register built-ins on import

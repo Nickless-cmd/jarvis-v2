@@ -1906,6 +1906,17 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Memory decay daemon — selective forgetting + re-discovery
+    try:
+        from apps.api.jarvis_api.services.memory_decay_daemon import tick_memory_decay_daemon, maybe_rediscover
+        from apps.api.jarvis_api.services.thought_stream_daemon import inject_rediscovery_fragment
+        tick_memory_decay_daemon()
+        _rediscovered = maybe_rediscover()
+        if _rediscovered and _rediscovered.get("summary"):
+            inject_rediscovery_fragment(_rediscovered["summary"])
+    except Exception:
+        pass
+
     # Desire daemon — emergent appetites
     try:
         from apps.api.jarvis_api.services.desire_daemon import tick_desire_daemon

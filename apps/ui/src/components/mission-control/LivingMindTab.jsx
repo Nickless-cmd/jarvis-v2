@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame, Archive } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1110,6 +1110,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasCreativeDrift = Boolean(creativeDrift?.latestDrift)
   const desires = data?.desires || null
   const hasDesires = Boolean(desires?.appetites?.length > 0)
+  const memoryDecay = data?.memoryDecay || null
+  const hasMemoryDecay = Boolean(memoryDecay?.lastRediscovery || memoryDecay?.rediscoveryBuffer?.length > 0)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1221,6 +1223,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'absence-state', targetId: 'living-mind-absence-state', label: 'Fravær', icon: Wind, active: hasAbsenceState, status: null, statusLabel: absenceState?.absenceLabel || 'ingen signal' },
     { id: 'creative-drift', targetId: 'living-mind-creative-drift', label: 'Drift', icon: Shuffle, active: hasCreativeDrift, status: null, statusLabel: `${creativeDrift?.driftCountToday ?? 0} i dag` },
     { id: 'desires', targetId: 'living-mind-desires', label: 'Appetitter', icon: Flame, active: hasDesires, status: null, statusLabel: `${desires?.activeCount ?? 0} aktive` },
+    { id: 'memory-decay', targetId: 'living-mind-memory-decay', label: 'Glemsel', icon: Archive, active: hasMemoryDecay, status: null, statusLabel: memoryDecay?.lastRediscovery ? 'genfundet' : 'stille' },
   ]
 
   return (
@@ -2194,6 +2197,41 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
               </li>
             ))}
           </ul>
+        </article>
+      </section>
+      ) : null}
+
+      {hasMemoryDecay ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-memory-decay" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/memory-decay',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence 24h',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Selektiv glemsel</h3>
+              <p className="muted">Hukommelser der fades og genfindes</p>
+            </div>
+          </div>
+          {memoryDecay.lastRediscovery ? (
+            <div style={{ marginTop: 8 }}>
+              <small className="muted" style={{ display: 'block', marginBottom: 4 }}>Genfundet minde:</small>
+              <blockquote style={{ margin: 0, fontStyle: 'italic', borderLeft: '3px solid var(--accent-text)', paddingLeft: 12 }}>
+                {memoryDecay.lastRediscovery}
+              </blockquote>
+            </div>
+          ) : null}
+          {memoryDecay.rediscoveryBuffer.length > 0 ? (
+            <ul style={{ margin: '8px 0 0', padding: '0 0 0 16px', fontSize: 12 }}>
+              {memoryDecay.rediscoveryBuffer.map((r, i) => (
+                <li key={i} className="muted" style={{ marginBottom: 4 }}>{r.summary}</li>
+              ))}
+            </ul>
+          ) : null}
+          {memoryDecay.lastDecayAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`sidst afviklet: ${memoryDecay.lastDecayAt}`}</small>
+          ) : null}
         </article>
       </section>
       ) : null}

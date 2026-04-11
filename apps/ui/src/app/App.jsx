@@ -4,6 +4,7 @@ import { ChatPage } from './ChatPage'
 import { MissionControlPage } from './MissionControlPage'
 import { useUnifiedShell } from './useUnifiedShell'
 import { useRef } from 'react'
+import { AmbientPresence } from '../components/AmbientPresence'
 
 export function App() {
   const {
@@ -93,6 +94,7 @@ export function App() {
           initialTab={mcInitialTabRef.current}
         />
       )}
+      <AmbientPresence />
     </AppShell>
   )
 }

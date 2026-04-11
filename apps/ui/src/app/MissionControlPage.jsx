@@ -22,6 +22,7 @@ import { CognitiveStateTab } from '../components/mission-control/CognitiveStateT
 import { RelationshipTab } from '../components/mission-control/RelationshipTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
+import { AmbientPresence } from '../components/AmbientPresence'
 
 export function MissionControlPage({ selection, onSelectionChange, initialTab, onViewChange }) {
   const {
@@ -84,6 +85,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: T.bgBase, fontFamily: T.sans, color: T.text1, overflow: 'hidden' })}>
+      <AmbientPresence />
 
         {/* ── Header (52px, compact) ── */}
         <div

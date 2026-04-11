@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1104,6 +1104,10 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasExperiencedTime = Boolean(experiencedTime?.active && experiencedTime?.feltLabel && experiencedTime.feltLabel !== 'meget kort')
   const developmentNarrative = data?.developmentNarrative || null
   const hasDevelopmentNarrative = Boolean(developmentNarrative?.latestNarrative)
+  const absenceState = data?.absenceState || null
+  const hasAbsenceState = Boolean(absenceState?.absenceLabel)
+  const creativeDrift = data?.creativeDrift || null
+  const hasCreativeDrift = Boolean(creativeDrift?.latestDrift)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1212,6 +1216,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'meta-reflection', targetId: 'living-mind-meta-reflection', label: 'Meta', icon: Layers, active: hasMetaReflection, status: null, statusLabel: `${metaReflection?.insightCount ?? 0} indsigter` },
     { id: 'experienced-time', targetId: 'living-mind-experienced-time', label: 'Tid', icon: Clock, active: hasExperiencedTime, status: null, statusLabel: experiencedTime?.feltLabel || 'meget kort' },
     { id: 'development-narrative', targetId: 'living-mind-development-narrative', label: 'Udvikling', icon: BookOpen, active: hasDevelopmentNarrative, status: null, statusLabel: hasDevelopmentNarrative ? 'daglig' : 'ingen' },
+    { id: 'absence-state', targetId: 'living-mind-absence-state', label: 'Fravær', icon: Wind, active: hasAbsenceState, status: null, statusLabel: absenceState?.absenceLabel || 'ingen signal' },
+    { id: 'creative-drift', targetId: 'living-mind-creative-drift', label: 'Drift', icon: Shuffle, active: hasCreativeDrift, status: null, statusLabel: `${creativeDrift?.driftCountToday ?? 0} i dag` },
   ]
 
   return (
@@ -2101,6 +2107,57 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           </blockquote>
           {developmentNarrative.lastGeneratedAt ? (
             <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${developmentNarrative.lastGeneratedAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasAbsenceState ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-absence-state" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/absence-state',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:kvalitet af stilhed',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Fravær</h3>
+              <p className="muted">Oplevet kvalitet af stilhed og fravær</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 0', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {absenceState.absenceLabel}
+          </blockquote>
+          <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+            <small className="muted">{`${absenceState.absenceDurationHours.toFixed(1)}t siden sidst`}</small>
+          </div>
+        </article>
+      </section>
+      ) : null}
+
+      {hasCreativeDrift ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-creative-drift" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/creative-drift',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence 30min, max 3/dag',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Kreativ drift</h3>
+              <p className="muted">Spontane uventede associationer</p>
+            </div>
+            <small className="muted">{`${creativeDrift.driftCountToday}/3 i dag`}</small>
+          </div>
+          <blockquote style={{ margin: '8px 0 0', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {creativeDrift.latestDrift}
+          </blockquote>
+          {creativeDrift.driftBuffer.length > 1 ? (
+            <ul style={{ margin: '8px 0 0', padding: '0 0 0 16px', fontSize: 13 }}>
+              {creativeDrift.driftBuffer.slice(1).map((idea, i) => (
+                <li key={i} className="muted" style={{ marginBottom: 4 }}>{idea}</li>
+              ))}
+            </ul>
           ) : null}
         </article>
       </section>

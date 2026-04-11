@@ -1139,6 +1139,26 @@ function normalizeDevelopmentNarrative(raw) {
   }
 }
 
+function normalizeAbsenceState(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    absenceLabel: raw.absence_label || '',
+    absenceDurationHours: raw.absence_duration_hours ?? 0,
+    lastInteractionAt: raw.last_interaction_at || '',
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
+function normalizeCreativeDrift(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestDrift: raw.latest_drift || '',
+    driftBuffer: Array.isArray(raw.drift_buffer) ? raw.drift_buffer : [],
+    driftCountToday: raw.drift_count_today ?? 0,
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
 function normalizeWonderAwareness(item = {}) {
   if (!item || !item.kind) return null
   return {
@@ -3157,7 +3177,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload, absenceStatePayload, creativeDriftPayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3179,6 +3199,8 @@ export const backend = {
       requestJson('/mc/meta-reflection').catch(() => null),
       requestJson('/mc/experienced-time').catch(() => null),
       requestJson('/mc/development-narrative').catch(() => null),
+      requestJson('/mc/absence-state').catch(() => null),
+      requestJson('/mc/creative-drift').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -4066,6 +4088,8 @@ export const backend = {
       metaReflection: normalizeMetaReflection(metaReflectionPayload || null),
       experiencedTime: normalizeExperiencedTime(experiencedTimePayload || null),
       developmentNarrative: normalizeDevelopmentNarrative(developmentNarrativePayload || null),
+      absenceState: normalizeAbsenceState(absenceStatePayload || null),
+      creativeDrift: normalizeCreativeDrift(creativeDriftPayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

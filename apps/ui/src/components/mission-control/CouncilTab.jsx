@@ -72,6 +72,9 @@ export function CouncilTab() {
   const [councilMemberModels, setCouncilMemberModels] = useState(
     () => Object.fromEntries(DEFAULT_COUNCIL_ROLES.map((r) => [r, { provider: '', model: '' }]))
   )
+  const [configDraft, setConfigDraft] = useState(null) // null = not loaded yet
+  const [configSaving, setConfigSaving] = useState(false)
+  const [configSaved, setConfigSaved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -93,6 +96,33 @@ export function CouncilTab() {
       clearInterval(timer)
     }
   }, [])
+
+  useEffect(() => {
+    async function loadConfig() {
+      const cfg = await backend.getCouncilModelConfig()
+      const allRoles = [...new Set([...DEFAULT_COUNCIL_ROLES, 'devils_advocate', 'watcher', 'executor'])]
+      const map = Object.fromEntries(allRoles.map((r) => [r, { provider: '', model: '' }]))
+      for (const item of cfg?.role_models || []) {
+        if (item.role) map[item.role] = { provider: item.provider || '', model: item.model || '' }
+      }
+      setConfigDraft(map)
+    }
+    loadConfig()
+  }, [])
+
+  async function handleSaveConfig() {
+    if (!configDraft || configSaving) return
+    setConfigSaving(true)
+    try {
+      const role_models = Object.entries(configDraft)
+        .map(([role, v]) => ({ role, provider: v.provider, model: v.model }))
+      await backend.saveCouncilModelConfig(role_models)
+      setConfigSaved(true)
+      setTimeout(() => setConfigSaved(false), 2000)
+    } finally {
+      setConfigSaving(false)
+    }
+  }
 
   async function refresh() {
     const result = await backend.getMissionControlCouncil()
@@ -235,6 +265,48 @@ export function CouncilTab() {
           </div>
         </Section>
       </div>
+
+      <Section title="Council Model Config" description="Persistent model-override per rolle — tom = Jarvis vælger selv (cheap lane). Ændrer ikke Jarvis' autonomi.">
+        {configDraft ? (
+          <div style={s({ display: 'flex', flexDirection: 'column', gap: 4 })}>
+            <div style={s({ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 8, marginBottom: 4 })}>
+              <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>rolle</span>
+              <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>provider</span>
+              <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>model</span>
+            </div>
+            {Object.keys(configDraft).map((role) => (
+              <div key={role} style={s({ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 8, alignItems: 'center' })}>
+                <span style={s({ ...mono, fontSize: 10, color: T.text2 })}>{role}</span>
+                <input
+                  type="text"
+                  placeholder="tom = cheap lane"
+                  value={configDraft[role].provider}
+                  onChange={(e) => setConfigDraft((prev) => ({ ...prev, [role]: { ...prev[role], provider: e.target.value } }))}
+                  style={s({ borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
+                />
+                <input
+                  type="text"
+                  placeholder="model"
+                  value={configDraft[role].model}
+                  onChange={(e) => setConfigDraft((prev) => ({ ...prev, [role]: { ...prev[role], model: e.target.value } }))}
+                  style={s({ borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
+                />
+              </div>
+            ))}
+            <div style={s({ marginTop: 8 })}>
+              <button
+                onClick={handleSaveConfig}
+                disabled={configSaving}
+                style={s({ borderRadius: 8, border: `1px solid ${configSaved ? T.green : T.accent}`, background: configSaved ? `${T.green}22` : T.accentDim, color: T.text1, padding: '6px 14px', cursor: 'pointer', ...mono, fontSize: 9 })}
+              >
+                {configSaved ? 'gemt ✓' : configSaving ? 'gemmer...' : 'gem config'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={s({ ...mono, fontSize: 10, color: T.text3 })}>Indlæser...</div>
+        )}
+      </Section>
 
       <Section title="Council Roster" description="Roller Jarvis kan samle i en council-session">
         <div style={s({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 })}>

@@ -660,6 +660,19 @@ def run_due_agent_schedules(*, limit: int = 10) -> dict[str, object]:
     }
 
 
+def _load_council_model_config() -> list[dict]:
+    """Read ~/.jarvis-v2/config/council_models.json, return role_models list."""
+    try:
+        import json
+        from core.runtime.config import CONFIG_DIR
+        path = CONFIG_DIR / "council_models.json"
+        if path.exists():
+            return json.loads(path.read_text()).get("role_models") or []
+    except Exception:
+        pass
+    return []
+
+
 def create_council_session_runtime(
     *,
     topic: str,
@@ -668,7 +681,8 @@ def create_council_session_runtime(
     member_models: list[dict] | None = None,
 ) -> dict[str, object]:
     roles = roles or COUNCIL_ROLE_ORDER[:4]
-    member_models = member_models or []
+    # Fall back to persisted config if caller didn't supply explicit overrides
+    member_models = member_models if member_models is not None else _load_council_model_config()
     council_id = f"council-{uuid4().hex}"
     create_council_session(
         council_id=council_id,

@@ -1100,6 +1100,26 @@ function normalizeReflectionCycle(raw) {
   }
 }
 
+function normalizeCuriosityState(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestCuriosity: raw.latest_curiosity || '',
+    openQuestions: Array.isArray(raw.open_questions) ? raw.open_questions : [],
+    curiosityCount: raw.curiosity_count ?? 0,
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
+function normalizeMetaReflection(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestInsight: raw.latest_insight || '',
+    insightBuffer: Array.isArray(raw.insight_buffer) ? raw.insight_buffer : [],
+    insightCount: raw.insight_count ?? 0,
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
 function normalizeWonderAwareness(item = {}) {
   if (!item || !item.kind) return null
   return {
@@ -3118,7 +3138,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3136,6 +3156,8 @@ export const backend = {
       requestJson('/mc/thought-proposals').catch(() => null),
       requestJson('/mc/conflict-signal').catch(() => null),
       requestJson('/mc/reflection-cycle').catch(() => null),
+      requestJson('/mc/curiosity-state').catch(() => null),
+      requestJson('/mc/meta-reflection').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -4019,6 +4041,8 @@ export const backend = {
       thoughtProposals: normalizeThoughtProposals(thoughtProposalsPayload || null),
       conflictSignal: normalizeConflictSignal(conflictSignalPayload || null),
       reflectionCycle: normalizeReflectionCycle(reflectionCyclePayload || null),
+      curiosityState: normalizeCuriosityState(curiosityPayload || null),
+      metaReflection: normalizeMetaReflection(metaReflectionPayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

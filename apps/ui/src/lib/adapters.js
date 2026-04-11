@@ -1139,6 +1139,24 @@ function normalizeDevelopmentNarrative(raw) {
   }
 }
 
+function normalizeDreamInsights(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestInsight: raw.latest_insight || '',
+    insightBuffer: Array.isArray(raw.insight_buffer) ? raw.insight_buffer : [],
+    lastPersistedSignalId: raw.last_persisted_signal_id || '',
+  }
+}
+
+function normalizeCodeAesthetic(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestReflection: raw.latest_reflection || '',
+    reflectionBuffer: Array.isArray(raw.reflection_buffer) ? raw.reflection_buffer : [],
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
 function normalizeUserModel(raw) {
   if (!raw || typeof raw !== 'object') return null
   return {
@@ -3210,7 +3228,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload, absenceStatePayload, creativeDriftPayload, desiresPayload, memoryDecayPayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload, absenceStatePayload, creativeDriftPayload, desiresPayload, memoryDecayPayload, dreamInsightsPayload, codeAestheticPayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3236,6 +3254,8 @@ export const backend = {
       requestJson('/mc/creative-drift').catch(() => null),
       requestJson('/mc/desires').catch(() => null),
       requestJson('/mc/memory-decay').catch(() => null),
+      requestJson('/mc/dream-insights').catch(() => null),
+      requestJson('/mc/code-aesthetic').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -4127,6 +4147,8 @@ export const backend = {
       creativeDrift: normalizeCreativeDrift(creativeDriftPayload || null),
       desires: normalizeDesires(desiresPayload || null),
       memoryDecay: normalizeMemoryDecay(memoryDecayPayload || null),
+      dreamInsights: normalizeDreamInsights(dreamInsightsPayload || null),
+      codeAesthetic: normalizeCodeAesthetic(codeAestheticPayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

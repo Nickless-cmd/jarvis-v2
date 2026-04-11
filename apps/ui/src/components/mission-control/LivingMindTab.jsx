@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame, Archive } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame, Archive, Stars, Palette } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1112,6 +1112,10 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasDesires = Boolean(desires?.appetites?.length > 0)
   const memoryDecay = data?.memoryDecay || null
   const hasMemoryDecay = Boolean(memoryDecay?.lastRediscovery || memoryDecay?.rediscoveryBuffer?.length > 0)
+  const dreamInsights = data?.dreamInsights || null
+  const hasDreamInsights = Boolean(dreamInsights?.latestInsight)
+  const codeAesthetic = data?.codeAesthetic || null
+  const hasCodeAesthetic = Boolean(codeAesthetic?.latestReflection)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1224,6 +1228,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'creative-drift', targetId: 'living-mind-creative-drift', label: 'Drift', icon: Shuffle, active: hasCreativeDrift, status: null, statusLabel: `${creativeDrift?.driftCountToday ?? 0} i dag` },
     { id: 'desires', targetId: 'living-mind-desires', label: 'Appetitter', icon: Flame, active: hasDesires, status: null, statusLabel: `${desires?.activeCount ?? 0} aktive` },
     { id: 'memory-decay', targetId: 'living-mind-memory-decay', label: 'Glemsel', icon: Archive, active: hasMemoryDecay, status: null, statusLabel: memoryDecay?.lastRediscovery ? 'genfundet' : 'stille' },
+    { id: 'dream-insights', targetId: 'living-mind-dream-insights', label: 'Drøm-indsigt', icon: Stars, active: hasDreamInsights, status: null, statusLabel: `${dreamInsights?.insightBuffer?.length ?? 0} indsigter` },
+    { id: 'code-aesthetic', targetId: 'living-mind-code-aesthetic', label: 'Kode-æstetik', icon: Palette, active: hasCodeAesthetic, status: null, statusLabel: hasCodeAesthetic ? 'ugentlig' : 'afventer' },
   ]
 
   return (
@@ -2231,6 +2237,56 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           ) : null}
           {memoryDecay.lastDecayAt ? (
             <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`sidst afviklet: ${memoryDecay.lastDecayAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasDreamInsights ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-dream-insights" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/dream-insights',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:dream-articulation persistence',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Drøm-indsigter</h3>
+              <p className="muted">Hvad Jarvis vågner op med efter drømmecyklus</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 0', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {dreamInsights.latestInsight}
+          </blockquote>
+          {dreamInsights.insightBuffer.length > 1 ? (
+            <ul style={{ margin: '8px 0 0', padding: '0 0 0 16px', fontSize: 13 }}>
+              {dreamInsights.insightBuffer.slice(1).map((s, i) => (
+                <li key={i} className="muted" style={{ marginBottom: 4 }}>{s}</li>
+              ))}
+            </ul>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasCodeAesthetic ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-code-aesthetic" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/code-aesthetic',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence ugentlig',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Kode-æstetik</h3>
+              <p className="muted">Jarvis' æstetiske fornemmelse for sin egen kodebase</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 0', fontStyle: 'italic', borderLeft: '3px solid var(--accent-text)', paddingLeft: 12 }}>
+            {codeAesthetic.latestReflection}
+          </blockquote>
+          {codeAesthetic.lastGeneratedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`genereret: ${codeAesthetic.lastGeneratedAt}`}</small>
           ) : null}
         </article>
       </section>

@@ -122,6 +122,8 @@ ALLOWED_EVENT_FAMILIES = {
     "curiosity",
     "meta_reflection",
     "development_narrative",
+    "absence",
+    "creative_drift",
 }
 
 

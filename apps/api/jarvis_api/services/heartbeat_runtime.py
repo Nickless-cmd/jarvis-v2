@@ -1885,6 +1885,27 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Absence daemon — quality of silence
+    try:
+        from apps.api.jarvis_api.services.absence_daemon import tick_absence_daemon, get_latest_absence
+        _absence_result = tick_absence_daemon()
+        _absence_label = get_latest_absence()
+        if _absence_label:
+            inputs_present.append(f"fravær: {_absence_label[:60]}")
+    except Exception:
+        pass
+
+    # Creative drift daemon — spontaneous unexpected associations
+    try:
+        from apps.api.jarvis_api.services.creative_drift_daemon import tick_creative_drift_daemon, get_latest_drift
+        _ts_frags_for_drift = _tss.get("fragment_buffer", []) if "_tss" in dir() else []
+        tick_creative_drift_daemon(_ts_frags_for_drift)
+        _drift_idea = get_latest_drift()
+        if _drift_idea:
+            inputs_present.append(f"kreativ-drift: {_drift_idea[:60]}")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

@@ -1476,6 +1476,20 @@ def mc_development_narrative() -> dict:
     return build_development_narrative_surface()
 
 
+@router.get("/absence-state")
+def mc_absence_state() -> dict:
+    """Return Jarvis's current absence quality signal."""
+    from apps.api.jarvis_api.services.absence_daemon import build_absence_surface
+    return build_absence_surface()
+
+
+@router.get("/creative-drift")
+def mc_creative_drift() -> dict:
+    """Return Jarvis's latest spontaneous creative drift idea."""
+    from apps.api.jarvis_api.services.creative_drift_daemon import build_creative_drift_surface
+    return build_creative_drift_surface()
+
+
 @router.get("/curiosity-state")
 def mc_curiosity_state() -> dict:
     """Return Jarvis's latest curiosity signal and open questions."""

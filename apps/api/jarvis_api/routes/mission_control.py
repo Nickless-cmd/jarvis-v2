@@ -1557,6 +1557,38 @@ def mc_set_council_model_config(payload: dict) -> dict:
     return {"role_models": role_models, "saved": True}
 
 
+@router.get("/council-activation-config")
+def mc_get_council_activation_config() -> dict:
+    """Return council activation sensitivity config."""
+    import json
+    from core.runtime.config import CONFIG_DIR as _cfg_dir
+    path = _cfg_dir / "council_activation.json"
+    defaults: dict = {"sensitivity": "balanced", "auto_convene": True}
+    if path.exists():
+        try:
+            saved = json.loads(path.read_text())
+            return {**defaults, **saved}
+        except Exception:
+            pass
+    return defaults
+
+
+@router.post("/council-activation-config")
+def mc_set_council_activation_config(payload: dict) -> dict:
+    """Persist council activation sensitivity config."""
+    import json
+    from core.runtime.config import CONFIG_DIR as _cfg_dir
+    allowed_sensitivities = {"conservative", "balanced", "minimal"}
+    sensitivity = str(payload.get("sensitivity") or "balanced")
+    if sensitivity not in allowed_sensitivities:
+        sensitivity = "balanced"
+    auto_convene = bool(payload.get("auto_convene", True))
+    config = {"sensitivity": sensitivity, "auto_convene": auto_convene}
+    _cfg_dir.mkdir(parents=True, exist_ok=True)
+    (_cfg_dir / "council_activation.json").write_text(json.dumps(config, indent=2))
+    return {**config, "saved": True}
+
+
 @router.get("/council")
 def mc_council(limit: int = 40) -> dict:
     """Return roster and council sessions for Mission Control."""

@@ -18,6 +18,10 @@ from apps.api.jarvis_api.services.non_visible_lane_execution import (
     _post_github_copilot_chat_completion,
     fetch_github_copilot_models,
 )
+from apps.api.jarvis_api.services.cheap_provider_runtime import (
+    list_provider_models as list_live_provider_models,
+    supported_cheap_providers,
+)
 from apps.api.jarvis_api.services.prompt_contract import (
     build_visible_chat_prompt_assembly,
 )
@@ -239,6 +243,10 @@ def _configured_provider_models(provider: str) -> list[str]:
 def available_provider_models(*, provider: str, auth_profile: str = "") -> dict[str, object]:
     normalized_provider = str(provider or "").strip()
     normalized_profile = str(auth_profile or "").strip()
+    cheap_providers = {
+        str(item.get("provider") or "").strip()
+        for item in supported_cheap_providers()
+    }
     if not normalized_provider:
         return {
             "provider": "",
@@ -301,6 +309,12 @@ def available_provider_models(*, provider: str, auth_profile: str = "") -> dict[
                 if str(item).strip()
             ],
         }
+
+    if normalized_provider in cheap_providers:
+        return list_live_provider_models(
+            provider=normalized_provider,
+            auth_profile=normalized_profile,
+        )
 
     configured_models = _configured_provider_models(normalized_provider)
     return {

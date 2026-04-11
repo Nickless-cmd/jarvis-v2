@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 
 from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
 from apps.api.jarvis_api.services.non_visible_lane_execution import (
+    cheap_lane_execution_truth,
     coding_lane_execution_truth,
     local_lane_execution_truth,
 )
@@ -42,11 +43,17 @@ from core.cli.copilot_auth import (
     cmd_start_copilot_oauth_launch_intent,
 )
 from core.cli.provider_config import (
+    cmd_cheap_lane_status,
+    cmd_cheap_lane_smoke,
+    cmd_configure_cheap_provider,
     cmd_configure_coding_lane,
     cmd_configure_copilot_coding_lane,
     cmd_configure_local_lane,
     cmd_configure_provider,
+    cmd_list_cheap_providers,
+    cmd_list_provider_models,
     cmd_select_main_agent,
+    cmd_test_provider,
 )
 from core.cli.http_fallback import (
     cancel_visible_run_via_api,
@@ -442,6 +449,32 @@ def build_parser() -> argparse.ArgumentParser:
     configure_local_lane.add_argument("--base-url", default="http://127.0.0.1:11434")
     configure_local_lane.set_defaults(func=cmd_configure_local_lane)
 
+    configure_cheap_provider = sub.add_parser("configure-cheap-provider")
+    configure_cheap_provider.add_argument("--provider", required=True)
+    configure_cheap_provider.add_argument("--model", required=True)
+    configure_cheap_provider.add_argument("--auth-profile", default="")
+    configure_cheap_provider.add_argument("--api-key", default="")
+    configure_cheap_provider.add_argument("--base-url", default="")
+    configure_cheap_provider.add_argument("--account-id", default="")
+    configure_cheap_provider.set_defaults(func=cmd_configure_cheap_provider)
+
+    list_provider_models = sub.add_parser("list-provider-models")
+    list_provider_models.add_argument("--provider", required=True)
+    list_provider_models.add_argument("--auth-profile", default="")
+    list_provider_models.add_argument("--base-url", default="")
+    list_provider_models.set_defaults(func=cmd_list_provider_models)
+
+    test_provider = sub.add_parser("test-provider")
+    test_provider.add_argument("--provider", required=True)
+    test_provider.add_argument("--model", required=True)
+    test_provider.add_argument("--auth-profile", required=True)
+    test_provider.add_argument("--base-url", default="")
+    test_provider.add_argument("--message", default="Return exactly: cheap-lane-ok")
+    test_provider.set_defaults(func=cmd_test_provider)
+
+    cheap_providers = sub.add_parser("list-cheap-providers")
+    cheap_providers.set_defaults(func=cmd_list_cheap_providers)
+
     select_main_agent = sub.add_parser("select-main-agent")
     select_main_agent.add_argument("--provider", required=True)
     select_main_agent.add_argument("--model", required=True)
@@ -506,6 +539,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     local_lane_status = sub.add_parser("local-lane-status")
     local_lane_status.set_defaults(func=cmd_local_lane_status)
+
+    cheap_lane_status = sub.add_parser("cheap-lane-status")
+    cheap_lane_status.set_defaults(func=cmd_cheap_lane_status)
+
+    cheap_lane_smoke = sub.add_parser("cheap-lane-smoke")
+    cheap_lane_smoke.add_argument("--message", default="Return exactly: cheap-lane-ok")
+    cheap_lane_smoke.set_defaults(func=cmd_cheap_lane_smoke)
 
     workspace = sub.add_parser("workspace")
     workspace.add_argument("--name", default="default")

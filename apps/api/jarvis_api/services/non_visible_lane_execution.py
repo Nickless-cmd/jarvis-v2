@@ -12,24 +12,35 @@ from core.auth.profiles import (
 )
 from core.auth.copilot_oauth import get_copilot_oauth_truth
 from core.runtime.provider_router import resolve_provider_router_target
+from apps.api.jarvis_api.services.cheap_provider_runtime import (
+    cheap_lane_status_surface,
+    execute_cheap_lane_via_pool,
+    select_cheap_lane_target,
+)
 
 
 def cheap_lane_execution_truth() -> dict[str, object]:
     lane = "cheap"
-    target = resolve_provider_router_target(lane=lane)
-    status = _lane_status(target)
+    target = select_cheap_lane_target()
+    status_surface = cheap_lane_status_surface()
+    selected_provider = str(target.get("provider") or "").strip()
+    selected_model = str(target.get("model") or "").strip()
+    active = bool(selected_provider and selected_model and bool(target.get("active", True)))
+    status = str(target.get("status") or target.get("selection_reason") or "no-healthy-provider")
     return {
         "active": True,
         "lane": lane,
         "consumer": "provider-router-internal-fallback-lane",
         "status": status,
-        "can_execute": status == "ready",
+        "can_execute": active,
         "target": target,
+        "provider_count": int(status_surface.get("provider_count") or 0),
+        "providers": list(status_surface.get("providers") or []),
     }
 
 
 def execute_cheap_lane(*, message: str) -> dict[str, object]:
-    return _execute_lane(message=message, truth=cheap_lane_execution_truth())
+    return execute_cheap_lane_via_pool(message=message)
 
 
 def local_lane_execution_truth() -> dict[str, object]:

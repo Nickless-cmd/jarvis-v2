@@ -1476,6 +1476,13 @@ def mc_development_narrative() -> dict:
     return build_development_narrative_surface()
 
 
+@router.get("/existential-wonder")
+def mc_existential_wonder() -> dict:
+    """Return Jarvis's latest existential wonder question."""
+    from apps.api.jarvis_api.services.existential_wonder_daemon import build_existential_wonder_surface
+    return build_existential_wonder_surface()
+
+
 @router.get("/dream-insights")
 def mc_dream_insights() -> dict:
     """Return persisted dream articulation insights."""

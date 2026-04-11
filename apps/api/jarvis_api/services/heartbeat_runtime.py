@@ -1906,6 +1906,20 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Existential wonder daemon — open unanswered questions from self-observation
+    try:
+        from apps.api.jarvis_api.services.existential_wonder_daemon import tick_existential_wonder_daemon
+        from apps.api.jarvis_api.services.absence_daemon import build_absence_surface as _abs_surface
+        _abs = _abs_surface()
+        _wonder_absence_hours = float(_abs.get("absence_duration_hours") or 0)
+        _wonder_frag_count = int((_tss.get("fragment_count") or 0) if "_tss" in dir() else 0)
+        tick_existential_wonder_daemon(
+            absence_hours=_wonder_absence_hours,
+            fragment_count=_wonder_frag_count,
+        )
+    except Exception:
+        pass
+
     # Dream insight daemon — persist dream articulation output as private brain records
     try:
         from apps.api.jarvis_api.services.dream_insight_daemon import tick_dream_insight_daemon

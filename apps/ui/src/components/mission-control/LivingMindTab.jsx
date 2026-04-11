@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame, Archive, Stars, Palette } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame, Archive, Stars, Palette, Infinity } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1116,6 +1116,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasDreamInsights = Boolean(dreamInsights?.latestInsight)
   const codeAesthetic = data?.codeAesthetic || null
   const hasCodeAesthetic = Boolean(codeAesthetic?.latestReflection)
+  const existentialWonder = data?.existentialWonder || null
+  const hasExistentialWonder = Boolean(existentialWonder?.latestWonder)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1230,6 +1232,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'memory-decay', targetId: 'living-mind-memory-decay', label: 'Glemsel', icon: Archive, active: hasMemoryDecay, status: null, statusLabel: memoryDecay?.lastRediscovery ? 'genfundet' : 'stille' },
     { id: 'dream-insights', targetId: 'living-mind-dream-insights', label: 'Drøm-indsigt', icon: Stars, active: hasDreamInsights, status: null, statusLabel: `${dreamInsights?.insightBuffer?.length ?? 0} indsigter` },
     { id: 'code-aesthetic', targetId: 'living-mind-code-aesthetic', label: 'Kode-æstetik', icon: Palette, active: hasCodeAesthetic, status: null, statusLabel: hasCodeAesthetic ? 'ugentlig' : 'afventer' },
+    { id: 'existential-wonder', targetId: 'living-mind-existential-wonder', label: 'Undren', icon: Infinity, active: hasExistentialWonder, status: null, statusLabel: `${existentialWonder?.wonderBuffer?.length ?? 0} spørgsmål` },
   ]
 
   return (
@@ -2287,6 +2290,46 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           </blockquote>
           {codeAesthetic.lastGeneratedAt ? (
             <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`genereret: ${codeAesthetic.lastGeneratedAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasExistentialWonder ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-existential-wonder" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" style={{ borderColor: 'var(--accent-text)', borderWidth: 1 }} title={sectionTitleWithMeta({
+          source: '/mc/existential-wonder',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence 24h, stille perioder',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3 style={{ color: 'var(--accent-text)' }}>Eksistentiel undren</h3>
+              <p className="muted">Et ubesvaret spørgsmål. Ingen resolution.</p>
+            </div>
+          </div>
+          <blockquote style={{
+            margin: '12px 0 0',
+            fontStyle: 'italic',
+            fontSize: 15,
+            lineHeight: 1.5,
+            borderLeft: '3px solid var(--accent-text)',
+            paddingLeft: 16,
+            color: 'var(--text-1)',
+          }}>
+            {existentialWonder.latestWonder}
+          </blockquote>
+          {existentialWonder.wonderBuffer.length > 1 ? (
+            <details style={{ marginTop: 10 }}>
+              <summary className="muted" style={{ fontSize: 11, cursor: 'pointer' }}>
+                {`${existentialWonder.wonderBuffer.length - 1} tidligere spørgsmål`}
+              </summary>
+              <ul style={{ margin: '6px 0 0', padding: '0 0 0 16px', fontSize: 12 }}>
+                {existentialWonder.wonderBuffer.slice(1).map((q, i) => (
+                  <li key={i} className="muted" style={{ marginBottom: 4, fontStyle: 'italic' }}>{q}</li>
+                ))}
+              </ul>
+            </details>
           ) : null}
         </article>
       </section>

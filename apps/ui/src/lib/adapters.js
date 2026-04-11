@@ -1139,6 +1139,15 @@ function normalizeDevelopmentNarrative(raw) {
   }
 }
 
+function normalizeExistentialWonder(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestWonder: raw.latest_wonder || '',
+    wonderBuffer: Array.isArray(raw.wonder_buffer) ? raw.wonder_buffer : [],
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
 function normalizeDreamInsights(raw) {
   if (!raw || typeof raw !== 'object') return null
   return {
@@ -3228,7 +3237,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload, absenceStatePayload, creativeDriftPayload, desiresPayload, memoryDecayPayload, dreamInsightsPayload, codeAestheticPayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload, absenceStatePayload, creativeDriftPayload, desiresPayload, memoryDecayPayload, dreamInsightsPayload, codeAestheticPayload, existentialWonderPayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3256,6 +3265,7 @@ export const backend = {
       requestJson('/mc/memory-decay').catch(() => null),
       requestJson('/mc/dream-insights').catch(() => null),
       requestJson('/mc/code-aesthetic').catch(() => null),
+      requestJson('/mc/existential-wonder').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -4149,6 +4159,7 @@ export const backend = {
       memoryDecay: normalizeMemoryDecay(memoryDecayPayload || null),
       dreamInsights: normalizeDreamInsights(dreamInsightsPayload || null),
       codeAesthetic: normalizeCodeAesthetic(codeAestheticPayload || null),
+      existentialWonder: normalizeExistentialWonder(existentialWonderPayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

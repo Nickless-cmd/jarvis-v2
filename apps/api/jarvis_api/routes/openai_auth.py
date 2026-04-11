@@ -12,13 +12,13 @@ router = APIRouter(prefix="/auth/openai", tags=["auth"])
 
 @router.get("/launch")
 async def openai_oauth_launch(
-    profile: str = Query(default="default"),
+    profile: str = Query(default="codex"),
 ) -> JSONResponse:
     launch = build_openai_launch_intent(profile=profile)
     return JSONResponse(
         content={
             "ok": True,
-            "provider": "openai",
+            "provider": "openai-codex",
             "profile": profile,
             "launch": launch,
         }

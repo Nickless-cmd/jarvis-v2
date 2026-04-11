@@ -61,6 +61,7 @@ from core.cli.provider_config import (
     cmd_configure_coding_lane,
     cmd_configure_copilot_coding_lane,
     cmd_configure_local_lane,
+    cmd_configure_openai_oauth_coding_lane,
     cmd_configure_provider,
     cmd_list_cheap_providers,
     cmd_list_provider_models,
@@ -456,6 +457,12 @@ def build_parser() -> argparse.ArgumentParser:
     configure_copilot_coding_lane.add_argument("--auth-profile", default="copilot")
     configure_copilot_coding_lane.set_defaults(func=cmd_configure_copilot_coding_lane)
 
+    configure_openai_oauth_coding_lane = sub.add_parser("configure-openai-oauth-coding-lane")
+    configure_openai_oauth_coding_lane.add_argument("--model", required=True)
+    configure_openai_oauth_coding_lane.add_argument("--auth-profile", default="codex")
+    configure_openai_oauth_coding_lane.add_argument("--base-url", default="https://api.openai.com/v1")
+    configure_openai_oauth_coding_lane.set_defaults(func=cmd_configure_openai_oauth_coding_lane)
+
     configure_local_lane = sub.add_parser("configure-local-lane")
     configure_local_lane.add_argument("--model", default="qwen3.5:9b")
     configure_local_lane.add_argument("--base-url", default="http://127.0.0.1:11434")
@@ -548,40 +555,40 @@ def build_parser() -> argparse.ArgumentParser:
     configure_openai_oauth_client.set_defaults(func=cmd_configure_openai_oauth_client)
 
     openai_auth_status = sub.add_parser("openai-auth-status")
-    openai_auth_status.add_argument("--auth-profile", default="default")
+    openai_auth_status.add_argument("--auth-profile", default="codex")
     openai_auth_status.set_defaults(func=cmd_openai_auth_status)
 
     start_openai_oauth_launch_intent = sub.add_parser("start-openai-oauth-launch-intent")
-    start_openai_oauth_launch_intent.add_argument("--auth-profile", default="default")
+    start_openai_oauth_launch_intent.add_argument("--auth-profile", default="codex")
     start_openai_oauth_launch_intent.set_defaults(func=cmd_start_openai_oauth_launch_intent)
 
     launch_openai_oauth_browser = sub.add_parser("launch-openai-oauth-browser")
-    launch_openai_oauth_browser.add_argument("--auth-profile", default="default")
+    launch_openai_oauth_browser.add_argument("--auth-profile", default="codex")
     launch_openai_oauth_browser.set_defaults(func=cmd_launch_openai_oauth_browser)
 
     reset_openai_oauth_launch = sub.add_parser("reset-openai-oauth-launch")
-    reset_openai_oauth_launch.add_argument("--auth-profile", default="default")
+    reset_openai_oauth_launch.add_argument("--auth-profile", default="codex")
     reset_openai_oauth_launch.set_defaults(func=cmd_reset_openai_oauth_launch)
 
     intake_openai_oauth_callback = sub.add_parser("intake-openai-oauth-callback")
-    intake_openai_oauth_callback.add_argument("--auth-profile", default="default")
+    intake_openai_oauth_callback.add_argument("--auth-profile", default="codex")
     intake_openai_oauth_callback.add_argument("--callback", required=True)
     intake_openai_oauth_callback.set_defaults(func=cmd_intake_openai_oauth_callback)
 
     exchange_openai_oauth_code = sub.add_parser("exchange-openai-oauth-code")
-    exchange_openai_oauth_code.add_argument("--auth-profile", default="default")
+    exchange_openai_oauth_code.add_argument("--auth-profile", default="codex")
     exchange_openai_oauth_code.set_defaults(func=cmd_exchange_openai_oauth_code)
 
     refresh_openai_oauth_token = sub.add_parser("refresh-openai-oauth-token")
-    refresh_openai_oauth_token.add_argument("--auth-profile", default="default")
+    refresh_openai_oauth_token.add_argument("--auth-profile", default="codex")
     refresh_openai_oauth_token.set_defaults(func=cmd_refresh_openai_oauth_token)
 
     revoke_openai_oauth = sub.add_parser("revoke-openai-oauth")
-    revoke_openai_oauth.add_argument("--auth-profile", default="default")
+    revoke_openai_oauth.add_argument("--auth-profile", default="codex")
     revoke_openai_oauth.set_defaults(func=cmd_revoke_openai_oauth)
 
     print_openai_callback_url = sub.add_parser("print-openai-callback-url")
-    print_openai_callback_url.add_argument("--auth-profile", default="default")
+    print_openai_callback_url.add_argument("--auth-profile", default="codex")
     print_openai_callback_url.set_defaults(func=cmd_print_openai_callback_url)
 
     start_copilot_device_flow = sub.add_parser("start-copilot-device-flow")

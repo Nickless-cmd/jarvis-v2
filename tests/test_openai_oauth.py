@@ -17,7 +17,7 @@ def test_build_openai_launch_intent_stores_pkce_material(isolated_runtime) -> No
     )
 
     intent = openai_oauth.build_openai_launch_intent(profile="default")
-    credentials = auth_profiles.get_provider_credentials(profile="default", provider="openai")
+    credentials = auth_profiles.get_provider_credentials(profile="default", provider="openai-codex")
 
     assert intent["launch_url"].startswith("https://auth.example.test/authorize?")
     assert credentials is not None
@@ -44,7 +44,7 @@ def test_openai_refresh_reuses_refresh_token_and_updates_expiry(
     )
     auth_profiles.save_provider_credentials(
         profile="default",
-        provider="openai",
+        provider="openai-codex",
         credentials={
             "oauth_state": "real-stored",
             "access_token": "expired_token",
@@ -72,7 +72,7 @@ def test_openai_refresh_reuses_refresh_token_and_updates_expiry(
     )
 
     token = openai_oauth.get_openai_bearer_token(profile="default")
-    credentials = auth_profiles.get_provider_credentials(profile="default", provider="openai")
+    credentials = auth_profiles.get_provider_credentials(profile="default", provider="openai-codex")
 
     assert token == "fresh_access_token"
     assert credentials is not None

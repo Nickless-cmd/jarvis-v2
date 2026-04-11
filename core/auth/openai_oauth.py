@@ -25,13 +25,13 @@ from core.auth.profiles import (
 )
 from core.runtime.config import CONFIG_DIR
 
-PROVIDER_ID = "openai"
+PROVIDER_ID = "openai-codex"
 _CONFIG_PATH = CONFIG_DIR / "provider_auth_config.json"
-_DEFAULT_AUTHORIZE_URL = "https://auth.openai.com/api/accounts/authorize"
+_DEFAULT_AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize"
 _DEFAULT_TOKEN_URL = "https://auth.openai.com/oauth/token"
 _DEFAULT_SCOPES = "openid profile email offline_access"
 _DEFAULT_AUDIENCE = "https://api.openai.com/v1"
-_DEFAULT_REDIRECT_BASE_URL = "http://127.0.0.1:8000"
+_DEFAULT_REDIRECT_BASE_URL = "http://127.0.0.1"
 
 
 def get_openai_oauth_truth(*, profile: str) -> dict[str, Any]:
@@ -156,6 +156,9 @@ def build_openai_launch_intent(*, profile: str) -> dict[str, Any]:
         "code_challenge": challenge,
         "code_challenge_method": "S256",
         "audience": str(config.get("audience") or _DEFAULT_AUDIENCE),
+        "id_token_add_organizations": "true",
+        "codex_cli_simplified_flow": "true",
+        "originator": "jarvis",
     }
     launch_url = f"{str(config['authorize_url']).rstrip('?')}?{urllib_parse.urlencode(params)}"
     launched_at = datetime.now(UTC).isoformat()

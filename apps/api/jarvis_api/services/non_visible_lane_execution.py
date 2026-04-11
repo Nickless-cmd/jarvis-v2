@@ -208,6 +208,45 @@ def _coding_lane_readiness(target: dict[str, object]) -> dict[str, object]:
             "checked_at": None,
         }
 
+    if provider == "openai-codex":
+        oauth_truth = get_openai_oauth_truth(profile=auth_profile)
+        oauth_state = str(oauth_truth["oauth_state"])
+        auth_state = _github_copilot_auth_state(oauth_state=oauth_state)
+        auth_material_kind = str(oauth_truth["auth_material_kind"])
+        launch_result_state = str(oauth_truth["launch_result_state"])
+        launch_freshness = str(oauth_truth["launch_freshness"])
+        callback_validation_state = str(oauth_truth["callback_validation_state"])
+        exchange_readiness = str(oauth_truth["exchange_readiness"])
+        callback_intent_consistency = str(oauth_truth["callback_intent_consistency"])
+        provider_ready = bool(probe["provider_ready"])
+        provider_status = str(probe["provider_status"])
+        return {
+            "status": provider_status
+            if provider_ready
+            else _github_copilot_status(auth_state=auth_state),
+            "can_execute": provider_ready,
+            "auth_mode": auth_mode,
+            "auth_profile": auth_profile,
+            "auth_state": auth_state,
+            "auth_material_kind": auth_material_kind,
+            "oauth_state": oauth_state,
+            "credentials_ready": credentials_ready,
+            "auth_status": _github_copilot_auth_status(
+                auth_state=auth_state,
+                exchange_readiness=exchange_readiness,
+            ),
+            "provider_ready": provider_ready,
+            "coding_auth_path": coding_auth_path,
+            "launch_result_state": launch_result_state,
+            "launch_freshness": launch_freshness,
+            "callback_validation_state": callback_validation_state,
+            "exchange_readiness": exchange_readiness,
+            "callback_intent_consistency": callback_intent_consistency,
+            "live_verified": bool(probe["live_verified"]),
+            "provider_status": provider_status,
+            "checked_at": probe["checked_at"],
+        }
+
     if provider in {"openai", "openrouter"}:
         auth_status = "ready" if credentials_ready else "auth-not-ready"
         provider_ready = bool(probe["provider_ready"])
@@ -321,9 +360,9 @@ def _local_lane_readiness(target: dict[str, object]) -> dict[str, object]:
 
 def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
     if provider == "openai" and auth_mode == "api-key":
-        return "openai-codex-api-key"
-    if provider == "openai" and auth_mode == "oauth":
-        return "openai-oauth"
+        return "openai-api-key"
+    if provider == "openai-codex" and auth_mode == "oauth":
+        return "openai-codex-oauth"
     if provider == "github-copilot" and auth_mode == "oauth":
         return "github-copilot-oauth"
     if provider == "openrouter" and auth_mode == "api-key":
@@ -453,7 +492,7 @@ def _coding_lane_probe(
     credentials_ready: bool,
     base_url: str,
 ) -> dict[str, object]:
-    if provider == "openai":
+    if provider in {"openai", "openai-codex"}:
         if not credentials_ready:
             return {
                 "provider_ready": False,
@@ -462,6 +501,7 @@ def _coding_lane_probe(
                 "checked_at": None,
             }
         return _probe_openai_coding_target(
+            provider=provider,
             model=model,
             auth_profile=auth_profile,
             base_url=base_url,
@@ -525,10 +565,10 @@ def _probe_ollama_local_target(*, model: str, base_url: str) -> dict[str, object
 
 
 def _probe_openai_coding_target(
-    *, model: str, auth_profile: str, base_url: str
+    *, provider: str, model: str, auth_profile: str, base_url: str
 ) -> dict[str, object]:
     checked_at = datetime.now(UTC).isoformat()
-    api_key = _load_provider_api_key(provider="openai", profile=auth_profile)
+    api_key = _load_provider_api_key(provider=provider, profile=auth_profile)
     root = (base_url or "https://api.openai.com/v1").rstrip("/")
     model_ref = urllib_parse.quote(model, safe="")
     req = urllib_request.Request(
@@ -588,7 +628,7 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
             f"{lane.capitalize()} lane received: {message}"
         )
         output_tokens = _estimate_tokens(text)
-    elif provider == "openai":
+    elif provider in {"openai", "openai-codex"}:
         profile = str(target.get("auth_profile") or "").strip()
         api_key = _load_provider_api_key(provider=provider, profile=profile)
         data = _post_openai_responses(
@@ -661,7 +701,7 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
 
 
 def _load_provider_api_key(*, provider: str, profile: str) -> str:
-    if provider == "openai":
+    if provider == "openai-codex":
         try:
             return get_openai_bearer_token(profile=profile)
         except Exception as exc:

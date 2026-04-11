@@ -5907,7 +5907,7 @@ def _extract_openrouter_text(data: dict[str, Any]) -> str:
 
 
 def _load_provider_api_key(*, provider: str, profile: str) -> str:
-    if provider == "openai":
+    if provider == "openai-codex":
         from core.auth.openai_oauth import get_openai_bearer_token
 
         try:

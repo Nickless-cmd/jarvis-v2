@@ -112,6 +112,39 @@ def cmd_configure_copilot_coding_lane(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_configure_openai_oauth_coding_lane(args: argparse.Namespace) -> None:
+    ensure_runtime_dirs()
+    result = configure_provider_router_entry(
+        provider="openai-codex",
+        model=args.model,
+        auth_mode="oauth",
+        auth_profile=args.auth_profile,
+        base_url=args.base_url,
+        api_key="",
+        lane="coding",
+        set_visible=False,
+    )
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "configured": result,
+                "coding_lane": {
+                    "provider": "openai-codex",
+                    "lane": "coding",
+                    "auth_mode": "oauth",
+                    "auth_profile": args.auth_profile,
+                    "base_url": args.base_url,
+                    "subscription_auth": True,
+                },
+                "provider_router": provider_router_summary(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+
+
 def cmd_configure_local_lane(args: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     result = configure_provider_router_entry(

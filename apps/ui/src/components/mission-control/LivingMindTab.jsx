@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1096,6 +1096,10 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasConflictSignal = Boolean(conflictSignal?.lastConflict)
   const reflectionCycle = data?.reflectionCycle || null
   const hasReflectionCycle = Boolean(reflectionCycle?.latestReflection)
+  const curiosityState = data?.curiosityState || null
+  const hasCuriosityState = Boolean(curiosityState?.latestCuriosity)
+  const metaReflection = data?.metaReflection || null
+  const hasMetaReflection = Boolean(metaReflection?.latestInsight)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1200,6 +1204,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'thought-stream', targetId: 'living-mind-thought-stream', label: 'Tankestrøm', icon: Brain, active: hasThoughtStream, status: null, statusLabel: `${thoughtStream?.fragmentCount ?? 0} fragmenter` },
     { id: 'conflict-signal', targetId: 'living-mind-conflict-signal', label: 'Konflikt', icon: Swords, active: hasConflictSignal, status: conflictSignal?.conflictType, statusLabel: conflictSignal?.conflictType || 'ingen' },
     { id: 'reflection-cycle', targetId: 'living-mind-reflection-cycle', label: 'Refleksion', icon: Eye, active: hasReflectionCycle, status: null, statusLabel: `${reflectionCycle?.reflectionCount ?? 0} cyklusser` },
+    { id: 'curiosity-state', targetId: 'living-mind-curiosity-state', label: 'Nysgerrighed', icon: Compass, active: hasCuriosityState, status: null, statusLabel: `${curiosityState?.curiosityCount ?? 0} spørgsmål` },
+    { id: 'meta-reflection', targetId: 'living-mind-meta-reflection', label: 'Meta', icon: Layers, active: hasMetaReflection, status: null, statusLabel: `${metaReflection?.insightCount ?? 0} indsigter` },
   ]
 
   return (
@@ -1975,6 +1981,72 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           )}
           {reflectionCycle.lastGeneratedAt ? (
             <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${reflectionCycle.lastGeneratedAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasCuriosityState ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-curiosity-state" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/curiosity-state',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence 5min',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Nysgerrighed</h3>
+              <p className="muted">Ubesvarede spørgsmål fra tankestrømmen</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 0', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {curiosityState.latestCuriosity}
+          </blockquote>
+          {curiosityState.openQuestions.length > 1 && (
+            <details style={{ marginTop: 12 }}>
+              <summary className="muted" style={{ cursor: 'pointer', fontSize: 12 }}>Alle {curiosityState.openQuestions.length} åbne spørgsmål</summary>
+              <ol style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                {curiosityState.openQuestions.map((q, i) => (
+                  <li key={i} style={{ fontSize: 12, marginBottom: 4, color: 'var(--text-2)', fontStyle: 'italic' }}>{q}</li>
+                ))}
+              </ol>
+            </details>
+          )}
+          {curiosityState.lastGeneratedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${curiosityState.lastGeneratedAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasMetaReflection ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-meta-reflection" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/meta-reflection',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence 30min',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Meta-refleksion</h3>
+              <p className="muted">Mønstre på tværs af signaler</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 16px', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {metaReflection.latestInsight}
+          </blockquote>
+          {metaReflection.insightBuffer.length > 1 && (
+            <details>
+              <summary className="muted" style={{ cursor: 'pointer', fontSize: 12 }}>Seneste {metaReflection.insightBuffer.length} indsigter</summary>
+              <ol style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                {metaReflection.insightBuffer.map((r, i) => (
+                  <li key={i} style={{ fontSize: 12, marginBottom: 4, color: 'var(--text-2)', fontStyle: 'italic' }}>{r}</li>
+                ))}
+              </ol>
+            </details>
+          )}
+          {metaReflection.lastGeneratedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${metaReflection.lastGeneratedAt}`}</small>
           ) : null}
         </article>
       </section>

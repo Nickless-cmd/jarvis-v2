@@ -13,7 +13,8 @@ def test_build_openai_launch_intent_stores_pkce_material(isolated_runtime) -> No
         token_url="https://auth.example.test/token",
         scopes="openid offline_access",
         audience="https://api.openai.com/v1",
-        redirect_base_url="http://127.0.0.1:8000",
+        redirect_base_url="http://127.0.0.1:1455",
+        callback_path="/auth/callback",
     )
 
     intent = openai_oauth.build_openai_launch_intent(profile="default")
@@ -24,7 +25,7 @@ def test_build_openai_launch_intent_stores_pkce_material(isolated_runtime) -> No
     assert credentials["oauth_state"] == "launch-intent-created"
     assert credentials["oauth_pkce_code_verifier"]
     assert credentials["oauth_expected_state"]
-    assert credentials["oauth_redirect_uri"].endswith("/auth/openai/callback/default")
+    assert credentials["oauth_redirect_uri"].endswith("/auth/callback")
 
 
 def test_openai_refresh_reuses_refresh_token_and_updates_expiry(
@@ -40,7 +41,8 @@ def test_openai_refresh_reuses_refresh_token_and_updates_expiry(
         token_url="https://auth.example.test/token",
         scopes="openid offline_access",
         audience="https://api.openai.com/v1",
-        redirect_base_url="http://127.0.0.1:8000",
+        redirect_base_url="http://127.0.0.1:1455",
+        callback_path="/auth/callback",
     )
     auth_profiles.save_provider_credentials(
         profile="default",

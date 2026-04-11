@@ -31,7 +31,8 @@ _DEFAULT_AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize"
 _DEFAULT_TOKEN_URL = "https://auth.openai.com/oauth/token"
 _DEFAULT_SCOPES = "openid profile email offline_access"
 _DEFAULT_AUDIENCE = "https://api.openai.com/v1"
-_DEFAULT_REDIRECT_BASE_URL = "http://127.0.0.1"
+_DEFAULT_REDIRECT_BASE_URL = "http://127.0.0.1:1455"
+_DEFAULT_CALLBACK_PATH = "/auth/callback"
 
 
 def get_openai_oauth_truth(*, profile: str) -> dict[str, Any]:
@@ -93,6 +94,7 @@ def load_openai_oauth_config() -> dict[str, Any]:
     scopes = str(section.get("scopes") or env.get("JARVIS_OPENAI_OAUTH_SCOPES", _DEFAULT_SCOPES)).strip()
     audience = str(section.get("audience") or env.get("JARVIS_OPENAI_OAUTH_AUDIENCE", _DEFAULT_AUDIENCE)).strip()
     redirect_base_url = str(section.get("redirect_base_url") or env.get("JARVIS_OPENAI_OAUTH_REDIRECT_BASE_URL", _DEFAULT_REDIRECT_BASE_URL)).strip()
+    callback_path = str(section.get("callback_path") or env.get("JARVIS_OPENAI_OAUTH_CALLBACK_PATH", _DEFAULT_CALLBACK_PATH)).strip()
     return {
         "client_id": client_id,
         "authorize_url": authorize_url,
@@ -100,6 +102,7 @@ def load_openai_oauth_config() -> dict[str, Any]:
         "scopes": scopes,
         "audience": audience,
         "redirect_base_url": redirect_base_url.rstrip("/"),
+        "callback_path": "/" + callback_path.lstrip("/"),
     }
 
 
@@ -111,6 +114,7 @@ def save_openai_oauth_config(
     scopes: str = _DEFAULT_SCOPES,
     audience: str = _DEFAULT_AUDIENCE,
     redirect_base_url: str = _DEFAULT_REDIRECT_BASE_URL,
+    callback_path: str = _DEFAULT_CALLBACK_PATH,
 ) -> dict[str, Any]:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     data: dict[str, Any] = {}
@@ -126,6 +130,7 @@ def save_openai_oauth_config(
         "scopes": str(scopes).strip(),
         "audience": str(audience).strip(),
         "redirect_base_url": str(redirect_base_url).strip().rstrip("/"),
+        "callback_path": "/" + str(callback_path).strip().lstrip("/"),
         "updated_at": datetime.now(UTC).isoformat(),
     }
     _CONFIG_PATH.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
@@ -134,7 +139,7 @@ def save_openai_oauth_config(
 
 def get_openai_callback_url(*, profile: str) -> str:
     config = load_openai_oauth_config()
-    return f"{config['redirect_base_url']}/auth/openai/callback/{urllib_parse.quote(profile, safe='')}"
+    return f"{config['redirect_base_url']}{config['callback_path']}"
 
 
 def build_openai_launch_intent(*, profile: str) -> dict[str, Any]:

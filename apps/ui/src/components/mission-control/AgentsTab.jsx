@@ -84,6 +84,9 @@ export function AgentsTab() {
   const [data, setData] = useState(null)
   const [selectedId, setSelectedId] = useState('')
   const [loading, setLoading] = useState(true)
+  const [draft, setDraft] = useState('')
+  const [scheduleDelay, setScheduleDelay] = useState('900')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -106,6 +109,57 @@ export function AgentsTab() {
       clearInterval(timer)
     }
   }, [selectedId])
+
+  async function refresh() {
+    const result = await backend.getMissionControlAgents()
+    setData(result)
+    setSelectedId((current) => current || result?.agents?.[0]?.agent_id || '')
+    return result
+  }
+
+  async function handleSendMessage() {
+    if (!selected?.agent_id || !draft.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const result = await backend.messageMissionControlAgent(selected.agent_id, {
+        content: draft.trim(),
+        execution_mode: 'solo-task',
+        auto_execute: true,
+      })
+      setDraft('')
+      await refresh()
+      setSelectedId(result?.agent_id || selected.agent_id)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleSchedule() {
+    if (!selected?.agent_id || submitting) return
+    setSubmitting(true)
+    try {
+      const delay = Math.max(30, Number(scheduleDelay || 0) || 900)
+      const result = await backend.scheduleMissionControlAgent(selected.agent_id, {
+        schedule_kind: 'interval-seconds',
+        delay_seconds: delay,
+      })
+      await refresh()
+      setSelectedId(result?.agent_id || selected.agent_id)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleRunDue() {
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      await backend.runDueMissionControlAgents({ limit: 10 })
+      await refresh()
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const selected = useMemo(
     () => (data?.agents || []).find((item) => item.agent_id === selectedId) || data?.agents?.[0] || null,
@@ -178,6 +232,7 @@ export function AgentsTab() {
                   <KV label="Token burn" value={selected.tokens_burned || 0} />
                   <KV label="Budget" value={selected.budget_tokens || 0} />
                   <KV label="Next wake" value={selected.next_wake_at || '—'} />
+                  <KV label="Schedule" value={selected.latest_schedule?.schedule_kind || selected.schedule?.schedule_kind || '—'} />
                 </div>
                 <div>
                   <KV label="Progress" value={selected.progress_label} />
@@ -207,6 +262,46 @@ export function AgentsTab() {
                 <div>
                   <div style={s({ fontSize: 11, fontWeight: 500, marginBottom: 6 })}>Context package</div>
                   <SafeJson value={selected.context || {}} />
+                </div>
+              </div>
+
+              <div style={s({ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 12px', borderRadius: 8, background: T.bgOverlay, border: `1px solid ${T.border0}` })}>
+                <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 })}>
+                  <div style={s({ fontSize: 11, fontWeight: 500 })}>Jarvis controls</div>
+                  <button
+                    onClick={handleRunDue}
+                    disabled={submitting}
+                    style={s({ borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text2, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+                  >
+                    fire due schedules
+                  </button>
+                </div>
+                <textarea
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder="Skriv besked fra Jarvis til agenten..."
+                  style={s({ width: '100%', minHeight: 88, resize: 'vertical', borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: 10, ...mono, fontSize: 10 })}
+                />
+                <div style={s({ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' })}>
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={submitting || !draft.trim()}
+                    style={s({ borderRadius: 8, border: `1px solid ${T.accent}`, background: T.accentDim, color: T.text1, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+                  >
+                    send og koer
+                  </button>
+                  <input
+                    value={scheduleDelay}
+                    onChange={(event) => setScheduleDelay(event.target.value)}
+                    style={s({ width: 96, borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '6px 8px', ...mono, fontSize: 9 })}
+                  />
+                  <button
+                    onClick={handleSchedule}
+                    disabled={submitting}
+                    style={s({ borderRadius: 8, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text2, padding: '6px 10px', cursor: 'pointer', ...mono, fontSize: 9 })}
+                  >
+                    schedule sek.
+                  </button>
                 </div>
               </div>
 
@@ -267,6 +362,26 @@ export function AgentsTab() {
                       <div style={s({ padding: 16, color: T.text3, ...mono, fontSize: 10 })}>Ingen tool calls endnu</div>
                     )}
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <div style={s({ fontSize: 11, fontWeight: 500, marginBottom: 6 })}>Schedules</div>
+                <div style={s({ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 180, overflow: 'auto' })}>
+                  {(selected.schedules || []).length ? (
+                    (selected.schedules || []).map((schedule) => (
+                      <div key={schedule.schedule_id} style={s({ padding: '8px 10px', borderRadius: 8, background: T.bgOverlay, border: `1px solid ${T.border0}` })}>
+                        <div style={s({ display: 'flex', justifyContent: 'space-between', gap: 8 })}>
+                          <span style={s({ ...mono, fontSize: 9, color: T.text2 })}>{schedule.schedule_kind}</span>
+                          <span style={s({ ...mono, fontSize: 9, color: schedule.active ? T.green : T.text3 })}>{schedule.active ? 'active' : 'inactive'}</span>
+                        </div>
+                        <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 4 })}>expr: {schedule.schedule_expr || '—'}</div>
+                        <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 4 })}>next: {schedule.next_fire_at || '—'}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={s({ padding: 16, color: T.text3, ...mono, fontSize: 10 })}>Ingen schedules endnu</div>
+                  )}
                 </div>
               </div>
             </div>

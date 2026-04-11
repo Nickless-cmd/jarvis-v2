@@ -24,6 +24,7 @@ from apps.api.jarvis_api.services.prompt_contract import (
 from apps.api.jarvis_api.services.embodied_state import (
     build_embodied_state_surface,
 )
+from apps.api.jarvis_api.services.somatic_daemon import build_body_state_surface
 from apps.api.jarvis_api.services.affective_meta_state import (
     build_affective_meta_state_surface,
 )
@@ -1407,6 +1408,12 @@ def mc_runtime_self_model() -> dict:
 def mc_embodied_state() -> dict:
     """Return the current bounded embodied host/body state."""
     return build_embodied_state_surface()
+
+
+@router.get("/body-state")
+def mc_body_state() -> dict:
+    """Return Jarvis's circadian energy level and somatic phrase."""
+    return build_body_state_surface()
 
 
 @router.get("/affective-meta-state")

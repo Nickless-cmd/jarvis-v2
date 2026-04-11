@@ -1120,6 +1120,25 @@ function normalizeMetaReflection(raw) {
   }
 }
 
+function normalizeExperiencedTime(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    feltLabel: raw.felt_label || 'meget kort',
+    sessionEventCount: raw.session_event_count ?? 0,
+    sessionNoveltyCount: raw.session_novelty_count ?? 0,
+    baseMinutes: raw.base_minutes ?? 0,
+    active: raw.active ?? false,
+  }
+}
+
+function normalizeDevelopmentNarrative(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestNarrative: raw.latest_narrative || '',
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
 function normalizeWonderAwareness(item = {}) {
   if (!item || !item.kind) return null
   return {
@@ -3138,7 +3157,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3158,6 +3177,8 @@ export const backend = {
       requestJson('/mc/reflection-cycle').catch(() => null),
       requestJson('/mc/curiosity-state').catch(() => null),
       requestJson('/mc/meta-reflection').catch(() => null),
+      requestJson('/mc/experienced-time').catch(() => null),
+      requestJson('/mc/development-narrative').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -4043,6 +4064,8 @@ export const backend = {
       reflectionCycle: normalizeReflectionCycle(reflectionCyclePayload || null),
       curiosityState: normalizeCuriosityState(curiosityPayload || null),
       metaReflection: normalizeMetaReflection(metaReflectionPayload || null),
+      experiencedTime: normalizeExperiencedTime(experiencedTimePayload || null),
+      developmentNarrative: normalizeDevelopmentNarrative(developmentNarrativePayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

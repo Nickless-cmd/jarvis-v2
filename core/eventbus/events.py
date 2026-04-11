@@ -116,6 +116,7 @@ ALLOWED_EVENT_FAMILIES = {
     "somatic",
     "irony",
     "thought_stream",
+    "thought_action_proposal",
 }
 
 

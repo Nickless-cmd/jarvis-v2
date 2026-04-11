@@ -1765,6 +1765,22 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Thought-action proposals
+    try:
+        from apps.api.jarvis_api.services.thought_action_proposal_daemon import (
+            tick_thought_action_proposal_daemon,
+            get_pending_proposals,
+        )
+        from apps.api.jarvis_api.services.thought_stream_daemon import get_latest_thought_fragment as _get_ts_fragment
+        _ts_fragment = _get_ts_fragment()
+        if _ts_fragment:
+            tick_thought_action_proposal_daemon(_ts_fragment)
+        _pending = get_pending_proposals()
+        if _pending:
+            inputs_present.append(f"handlingsforslag: {len(_pending)} afventer")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

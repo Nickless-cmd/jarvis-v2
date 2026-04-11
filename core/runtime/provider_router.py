@@ -209,9 +209,21 @@ def select_main_agent_target(
         model=model_name,
     )
     if configured_target is None:
-        raise ValueError(
-            "main agent target must exist in configured provider-router targets"
-        )
+        # For ollama: allow any model that exists in the live Ollama instance
+        if provider_id == "ollama" and _ollama_model_exists(registry=registry, model=model_name):
+            configured_target = {
+                "provider": "ollama",
+                "model": model_name,
+                "auth_mode": "none",
+                "auth_profile": None,
+                "base_url": _provider_base_url(provider="ollama", registry=registry) or "http://127.0.0.1:11434",
+                "credentials_ready": True,
+                "readiness_hint": "ollama-live",
+            }
+        else:
+            raise ValueError(
+                "main agent target must exist in configured provider-router targets"
+            )
 
     configured_profile = str(configured_target.get("auth_profile") or "").strip()
     if profile_name and configured_profile and profile_name != configured_profile:
@@ -526,6 +538,21 @@ def _normalize_auth_mode(value: str) -> str:
     if normalized not in {"none", "api-key", "oauth"}:
         raise ValueError("auth_mode must be one of: none, api-key, oauth")
     return normalized
+
+
+def _ollama_model_exists(*, registry: dict[str, object], model: str) -> bool:
+    """Return True if *model* is available in the live Ollama instance."""
+    import urllib.request as _req
+    import urllib.error as _uerr
+
+    base_url = (_provider_base_url(provider="ollama", registry=registry) or "http://127.0.0.1:11434").rstrip("/")
+    try:
+        with _req.urlopen(f"{base_url}/api/tags", timeout=3) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        names = {str(item.get("name") or "").strip() for item in data.get("models", [])}
+        return model in names
+    except Exception:
+        return False
 
 
 def _normalize_profile(value: str) -> str:

@@ -74,6 +74,13 @@ export function Composer({
     [configuredTargets, selection?.currentProvider]
   )
   const models = useMemo(() => {
+    // For ollama: use the full live model list (includes cloud models) instead of only configured targets
+    if (provider === 'ollama') {
+      const ollamaModels = (selection?.ollamaModels || [])
+        .filter((m) => m.name && !m.family?.includes('bert') && !m.name.includes('embed'))
+        .map((m) => ({ model: m.name, label: m.name }))
+      if (ollamaModels.length) return ollamaModels
+    }
     const forProvider = configuredTargets.filter((x) => x.provider === provider)
     return forProvider.length
       ? forProvider.map((x) => ({ model: x.model, label: x.model }))

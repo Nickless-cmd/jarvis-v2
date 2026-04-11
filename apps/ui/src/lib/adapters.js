@@ -4176,6 +4176,17 @@ export const backend = {
     })
   },
 
+  async getCouncilActivationConfig() {
+    return requestJson('/mc/council-activation-config')
+  },
+
+  async saveCouncilActivationConfig(config) {
+    return requestJson('/mc/council-activation-config', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    })
+  },
+
   async getMissionControlCouncilSession(councilId) {
     return requestJson(`/mc/council/${encodeURIComponent(councilId)}`)
   },

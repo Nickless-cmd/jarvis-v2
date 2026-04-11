@@ -84,6 +84,9 @@ export function CouncilTab() {
   const [configSaved, setConfigSaved] = useState(false)
   const [providers, setProviders] = useState([])
   const [modelsByProvider, setModelsByProvider] = useState({})
+  const [activation, setActivation] = useState({ sensitivity: 'balanced', auto_convene: true })
+  const [activationSaving, setActivationSaving] = useState(false)
+  const [activationSaved, setActivationSaved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -108,10 +111,17 @@ export function CouncilTab() {
 
   useEffect(() => {
     async function loadConfig() {
-      const [cfg, sel] = await Promise.all([
+      const [cfg, sel, activationCfg] = await Promise.all([
         backend.getCouncilModelConfig(),
         backend.getShell().catch(() => null),
+        backend.getCouncilActivationConfig().catch(() => null),
       ])
+      if (activationCfg) {
+        setActivation({
+          sensitivity: activationCfg.sensitivity || 'balanced',
+          auto_convene: activationCfg.auto_convene !== false,
+        })
+      }
 
       // Build provider list + models-by-provider from selection
       const selection = sel?.selection || {}
@@ -149,6 +159,18 @@ export function CouncilTab() {
       setTimeout(() => setConfigSaved(false), 2000)
     } finally {
       setConfigSaving(false)
+    }
+  }
+
+  async function handleSaveActivation() {
+    if (activationSaving) return
+    setActivationSaving(true)
+    try {
+      await backend.saveCouncilActivationConfig(activation)
+      setActivationSaved(true)
+      setTimeout(() => setActivationSaved(false), 2000)
+    } finally {
+      setActivationSaving(false)
     }
   }
 
@@ -309,6 +331,39 @@ export function CouncilTab() {
           </div>
         </Section>
       </div>
+
+      <Section title="Council Activation" description="Styrer hvornår Jarvis bruger council og quick_council_check autonomt. Tom auto-convene = han beslutter selv.">
+        <div style={s({ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' })}>
+          <div style={s({ display: 'flex', alignItems: 'center', gap: 8 })}>
+            <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>sensitivitet</span>
+            <select
+              value={activation.sensitivity}
+              onChange={(e) => setActivation((prev) => ({ ...prev, sensitivity: e.target.value }))}
+              style={s({ borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
+            >
+              <option value="conservative">conservative — tjek alt over trivielt</option>
+              <option value="balanced">balanced — tjek ved vigtige beslutninger</option>
+              <option value="minimal">minimal — kun kritiske handlinger</option>
+            </select>
+          </div>
+          <label style={s({ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', ...mono, fontSize: 9, color: T.text2 })}>
+            <input
+              type="checkbox"
+              checked={activation.auto_convene}
+              onChange={(e) => setActivation((prev) => ({ ...prev, auto_convene: e.target.checked }))}
+              style={{ accentColor: T.accent }}
+            />
+            auto-convene aktivt
+          </label>
+          <button
+            onClick={handleSaveActivation}
+            disabled={activationSaving}
+            style={s({ borderRadius: 8, border: `1px solid ${activationSaved ? T.green : T.border0}`, background: activationSaved ? `${T.green}22` : T.bgBase, color: T.text2, padding: '5px 12px', cursor: 'pointer', ...mono, fontSize: 9 })}
+          >
+            {activationSaved ? 'gemt ✓' : 'gem'}
+          </button>
+        </div>
+      </Section>
 
       <Section title="Council Model Config" description="Persistent model-override per rolle — tom = Jarvis vælger selv (cheap lane). Ændrer ikke Jarvis' autonomi.">
         {configDraft ? (

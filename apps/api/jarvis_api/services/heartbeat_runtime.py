@@ -1826,6 +1826,41 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Curiosity daemon
+    try:
+        from apps.api.jarvis_api.services.curiosity_daemon import tick_curiosity_daemon, get_latest_curiosity
+        _ts_fragments = _tss.get("fragment_buffer", []) if "_tss" in dir() else []
+        tick_curiosity_daemon(_ts_fragments)
+        _curiosity = get_latest_curiosity()
+        if _curiosity:
+            inputs_present.append(f"nysgerrighed: {_curiosity[:60]}")
+    except Exception:
+        pass
+
+    # Meta-reflection daemon
+    try:
+        from apps.api.jarvis_api.services.meta_reflection_daemon import tick_meta_reflection_daemon, get_latest_meta_insight
+        from apps.api.jarvis_api.services.aesthetic_taste_daemon import build_taste_surface as _taste_surface
+        from apps.api.jarvis_api.services.irony_daemon import build_irony_surface as _irony_surface
+        _taste = _taste_surface()
+        _irony = _irony_surface()
+        _meta_snap = {
+            "energy_level": _energy_ts,
+            "inner_voice_mode": _iv_mode_ts,
+            "latest_fragment": _tss.get("latest_fragment", "") if "_tss" in dir() else "",
+            "last_surprise": _surp.get("last_surprise", "") if "_surp" in dir() else "",
+            "last_conflict": _conflict if "_conflict" in dir() else "",
+            "last_irony": _irony.get("last_observation", ""),
+            "last_taste": _taste.get("latest_insight", ""),
+            "curiosity_signal": _curiosity if "_curiosity" in dir() else "",
+        }
+        tick_meta_reflection_daemon(_meta_snap)
+        _meta = get_latest_meta_insight()
+        if _meta:
+            inputs_present.append(f"meta-refleksion: {_meta[:60]}")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

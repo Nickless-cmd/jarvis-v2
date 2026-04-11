@@ -1462,6 +1462,20 @@ def mc_resolve_thought_proposal(proposal_id: str, body: dict) -> dict:
     return {"ok": ok}
 
 
+@router.get("/curiosity-state")
+def mc_curiosity_state() -> dict:
+    """Return Jarvis's latest curiosity signal and open questions."""
+    from apps.api.jarvis_api.services.curiosity_daemon import build_curiosity_surface
+    return build_curiosity_surface()
+
+
+@router.get("/meta-reflection")
+def mc_meta_reflection() -> dict:
+    """Return Jarvis's latest cross-signal meta-insight."""
+    from apps.api.jarvis_api.services.meta_reflection_daemon import build_meta_reflection_surface
+    return build_meta_reflection_surface()
+
+
 @router.get("/conflict-signal")
 def mc_conflict_signal() -> dict:
     """Return Jarvis's latest detected inner conflict."""

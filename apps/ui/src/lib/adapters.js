@@ -1139,6 +1139,15 @@ function normalizeDevelopmentNarrative(raw) {
   }
 }
 
+function normalizeUserModel(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    modelSummary: raw.model_summary || '',
+    userModel: raw.user_model || {},
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
 function normalizeMemoryDecay(raw) {
   if (!raw || typeof raw !== 'object') return null
   return {
@@ -4326,7 +4335,7 @@ export const backend = {
       procedures, temporalContext, negotiations, forgettingCurve,
       conversationRhythm, selfExperiments, anticipatoryContext,
       contractEvolution, dreamCarryOver, apopheniaGuard,
-      cognitiveStateInjection,
+      cognitiveStateInjection, userModelPayload,
     ] = await Promise.all([
       requestJson('/mc/personality-vector').catch(() => ({})),
       requestJson('/mc/taste-profile').catch(() => ({})),
@@ -4355,6 +4364,7 @@ export const backend = {
       requestJson('/mc/dream-carry-over').catch(() => ({})),
       requestJson('/mc/apophenia-guard').catch(() => ({})),
       requestJson('/mc/cognitive-state-injection').catch(() => ({})),
+      requestJson('/mc/user-model').catch(() => null),
     ])
     return {
       fetchedAt: new Date().toISOString(),
@@ -4365,6 +4375,7 @@ export const backend = {
       conversationRhythm, selfExperiments, anticipatoryContext,
       contractEvolution, dreamCarryOver, apopheniaGuard,
       cognitiveStateInjection,
+      userModel: normalizeUserModel(userModelPayload ?? null),
     }
   },
 

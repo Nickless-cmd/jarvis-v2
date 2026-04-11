@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Heart, Smile, AlertTriangle, TrendingUp, BookOpen, MessageSquare, FlaskConical, Target, Undo2, Moon } from 'lucide-react'
+import { Heart, Smile, AlertTriangle, TrendingUp, BookOpen, MessageSquare, FlaskConical, Target, Undo2, Moon, Brain } from 'lucide-react'
 import { s, T, mono } from '../../shared/theme/tokens'
 import { backend } from '../../lib/adapters'
 
@@ -212,6 +212,27 @@ export function RelationshipTab() {
           ))}
         </Section>
       )}
+
+      {/* User Model — Theory of Mind */}
+      {data.userModel?.modelSummary ? (
+        <Section icon={Brain} title="Bruger-model (Theory of Mind)">
+          <div style={s({ ...mono, fontSize: 11, color: T.text1, marginBottom: 8, fontStyle: 'italic' })}>
+            {data.userModel.modelSummary}
+          </div>
+          {data.userModel.userModel?.communication_style ? (
+            <KV label="Kommunikationsstil" value={data.userModel.userModel.communication_style} accent />
+          ) : null}
+          {data.userModel.userModel?.question_heavy !== undefined ? (
+            <KV label="Spørgsmålstung" value={data.userModel.userModel.question_heavy ? 'ja' : 'nej'} />
+          ) : null}
+          {data.userModel.userModel?.avg_message_length ? (
+            <KV label="Gns. beskedlængde" value={`${data.userModel.userModel.avg_message_length} tegn`} />
+          ) : null}
+          {data.userModel.lastGeneratedAt ? (
+            <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 6 })}>{`opdateret: ${data.userModel.lastGeneratedAt}`}</div>
+          ) : null}
+        </Section>
+      ) : null}
     </div>
   )
 }

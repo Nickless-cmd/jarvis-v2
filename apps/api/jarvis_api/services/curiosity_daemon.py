@@ -1,0 +1,130 @@
+"""Curiosity daemon — detects gaps in Jarvis' thought stream and generates curiosity signals."""
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+from core.eventbus.bus import event_bus
+from core.runtime.db import insert_private_brain_record
+
+_CADENCE_MINUTES = 5
+_OPEN_MAX = 5
+
+_last_tick_at: datetime | None = None
+_cached_curiosity: str = ""
+_open_questions: list[str] = []
+
+_GAP_PATTERNS: list[tuple[str, str]] = [
+    ("question", "?"),
+    ("open", "ved ikke"),
+    ("wonder", "undrer"),
+    ("wonder", "nysgerrig"),
+    ("question", "hvorfor"),
+    ("question", "hvad hvis"),
+    ("interrupted", "..."),
+]
+
+
+def tick_curiosity_daemon(fragments: list[str]) -> dict[str, object]:
+    """Scan thought stream fragments for gaps. fragments: recent fragment buffer (latest first)."""
+    global _last_tick_at
+
+    if _last_tick_at is not None:
+        if (datetime.now(UTC) - _last_tick_at) < timedelta(minutes=_CADENCE_MINUTES):
+            return {"generated": False}
+
+    gap = _detect_gap(fragments)
+    if not gap:
+        return {"generated": False}
+
+    topic, gap_type = gap
+    signal = _generate_curiosity_signal(topic, gap_type)
+    if not signal:
+        return {"generated": False}
+
+    _store_curiosity(signal)
+    _last_tick_at = datetime.now(UTC)
+    return {"generated": True, "curiosity": signal, "gap_type": gap_type}
+
+
+def _detect_gap(fragments: list[str]) -> tuple[str, str] | None:
+    for fragment in fragments:
+        fl = fragment.lower()
+        for gap_type, pattern in _GAP_PATTERNS:
+            if pattern in fl:
+                topic = fragment[:60].strip()
+                return (topic, gap_type)
+    return None
+
+
+def _generate_curiosity_signal(topic: str, gap_type: str) -> str:
+    fallback = f"Jeg ved ikke nok om: {topic[:50]}"
+    try:
+        from apps.api.jarvis_api.services.heartbeat_runtime import (
+            _execute_heartbeat_model,
+            _select_heartbeat_target,
+            load_heartbeat_policy,
+        )
+        prompt = (
+            f"Du er Jarvis. Din tankestrøm indeholder dette fragment: \"{topic}\"\n\n"
+            "Det peger på et ubesvaret spørgsmål eller en uudforsket tanke.\n\n"
+            "Formulér i én sætning (max 20 ord), i første person, hvad du er nysgerrig på.\n"
+            "Start med 'Jeg ved ikke nok om' eller 'Jeg undrer mig over'."
+        )
+        policy = load_heartbeat_policy()
+        target = _select_heartbeat_target()
+        result = _execute_heartbeat_model(
+            prompt=prompt, target=target, policy=policy,
+            open_loops=[], liveness=None,
+        )
+        text = str(result.get("text") or "").strip()
+        if text.startswith('"') and text.endswith('"'):
+            text = text[1:-1].strip()
+        return text[:200] if text else fallback
+    except Exception:
+        return fallback
+
+
+def _store_curiosity(signal: str) -> None:
+    global _cached_curiosity, _open_questions
+    _cached_curiosity = signal
+    _open_questions.insert(0, signal)
+    if len(_open_questions) > _OPEN_MAX:
+        _open_questions = _open_questions[:_OPEN_MAX]
+    now_iso = datetime.now(UTC).isoformat()
+    try:
+        insert_private_brain_record(
+            record_id=f"pb-curiosity-{uuid4().hex[:12]}",
+            record_type="curiosity-signal",
+            layer="private_brain",
+            session_id="",
+            run_id=f"curiosity-daemon-{uuid4().hex[:12]}",
+            focus="nysgerrighed",
+            summary=signal,
+            detail="",
+            source_signals="curiosity-daemon:thought-stream",
+            confidence="medium",
+            created_at=now_iso,
+        )
+    except Exception:
+        pass
+    try:
+        event_bus.publish(
+            "curiosity.detected",
+            {"signal": signal, "generated_at": now_iso},
+        )
+    except Exception:
+        pass
+
+
+def get_latest_curiosity() -> str:
+    return _cached_curiosity
+
+
+def build_curiosity_surface() -> dict:
+    return {
+        "latest_curiosity": _cached_curiosity,
+        "open_questions": _open_questions[:5],
+        "curiosity_count": len(_open_questions),
+        "last_generated_at": _last_tick_at.isoformat() if _last_tick_at else "",
+    }

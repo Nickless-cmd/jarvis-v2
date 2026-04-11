@@ -1000,6 +1000,18 @@ function normalizeFlowStateAwareness(item = {}) {
   }
 }
 
+function normalizeBodyState(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    energyLevel: raw.energy_level || '',
+    clockPhase: raw.clock_phase || '',
+    drainLabel: raw.drain_label || '',
+    drainScore: raw.drain_score ?? 0,
+    somaticPhrase: raw.somatic_phrase || '',
+    somaticUpdatedAt: raw.somatic_updated_at || '',
+  }
+}
+
 function normalizeWonderAwareness(item = {}) {
   if (!item || !item.kind) return null
   return {
@@ -3018,7 +3030,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3028,6 +3040,7 @@ export const backend = {
       requestJson('/mc/self-system-code-awareness').catch(() => null),
       requestJson('/mc/experiential-runtime-context').catch(() => null),
       requestJson('/mc/inner-voice-daemon').catch(() => null),
+      requestJson('/mc/body-state').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -3903,6 +3916,7 @@ export const backend = {
       selfSystemCodeAwareness: normalizeSelfSystemCodeAwareness(selfSystemCodeAwarenessSource || {}),
       experientialRuntimeContext: normalizeExperientialRuntimeContext(experientialRuntimeContextSource || {}),
       innerVoiceDaemon: normalizeInnerVoiceDaemonState(innerVoiceDaemonPayload || {}),
+      bodyState: normalizeBodyState(bodyStatePayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

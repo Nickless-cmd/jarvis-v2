@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronRight, ChevronDown, ChevronUp, Lightbulb, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import { useState } from 'react'
 import { MainAgentPanel } from '../shared/MainAgentPanel'
 import { AutonomyProposalsPanel } from './AutonomyProposalsPanel'
@@ -202,6 +202,91 @@ function toolIntentRow(item, onOpen) {
   )
 }
 
+function ThoughtProposalsPanel({ proposals, onResolve }) {
+  if (!proposals) return null
+  const { pendingProposals, resolvedProposals, needsApprovalCount } = proposals
+
+  if (pendingProposals.length === 0 && resolvedProposals.length === 0) {
+    return (
+      <div style={s({ fontSize: 11, color: T.text3, padding: '8px 0' })}>
+        Ingen handlingsforslag endnu — tankestrømmen genererer dem løbende.
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {pendingProposals.length > 0 && (
+        <div style={s({ marginBottom: 12 })}>
+          {needsApprovalCount > 0 && (
+            <div style={s({ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8, fontSize: 10, color: T.amber })}>
+              <AlertTriangle size={11} />
+              <span>{needsApprovalCount} kræver approval</span>
+            </div>
+          )}
+          {pendingProposals.map(p => (
+            <div key={p.id} style={s({
+              border: `1px solid ${p.proposalType === 'needs_approval' ? T.amber + '50' : T.border0}`,
+              borderRadius: 8,
+              padding: '8px 10px',
+              marginBottom: 6,
+              background: T.bgRaised,
+            })}>
+              <div style={s({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 })}>
+                <div style={s({ flex: 1, minWidth: 0 })}>
+                  <div style={s({ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 })}>
+                    <Lightbulb size={11} color={p.proposalType === 'needs_approval' ? T.amber : T.text3} />
+                    <span style={s({ fontSize: 10, fontWeight: 600, color: p.proposalType === 'needs_approval' ? T.amber : T.text2 })}>
+                      {p.actionDescription}
+                    </span>
+                    {p.proposalType === 'needs_approval' && (
+                      <StatusBadge status="approval" />
+                    )}
+                  </div>
+                  <div style={s({ fontSize: 10, color: T.text3, fontStyle: 'italic', lineHeight: 1.4 })}>
+                    "{p.fragmentExcerpt.length > 80 ? p.fragmentExcerpt.slice(0, 80) + '…' : p.fragmentExcerpt}"
+                  </div>
+                </div>
+                <div style={s({ display: 'flex', gap: 4, flexShrink: 0 })}>
+                  <button
+                    onClick={() => onResolve(p.id, 'approved')}
+                    title="Godkend"
+                    style={s({ background: 'none', border: 'none', cursor: 'pointer', color: T.green, padding: 2 })}
+                  >
+                    <CheckCircle size={14} />
+                  </button>
+                  <button
+                    onClick={() => onResolve(p.id, 'dismissed')}
+                    title="Afvis"
+                    style={s({ background: 'none', border: 'none', cursor: 'pointer', color: T.text3, padding: 2 })}
+                  >
+                    <XCircle size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {resolvedProposals.length > 0 && (
+        <details>
+          <summary style={s({ fontSize: 10, color: T.text3, cursor: 'pointer' })}>
+            Seneste {resolvedProposals.length} løste forslag
+          </summary>
+          <div style={s({ marginTop: 6 })}>
+            {resolvedProposals.map(p => (
+              <div key={p.id} style={s({ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${T.border0}`, fontSize: 10 })}>
+                <span style={s({ color: T.text3 })}>{p.actionDescription}</span>
+                <span style={s({ color: p.status === 'approved' ? T.green : T.text3 })}>{p.status}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  )
+}
+
 export function OperationsTab({
   data,
   selection,
@@ -213,6 +298,8 @@ export function OperationsTab({
   onToolIntentAction,
   toolIntentActionBusy,
   toolIntentActionError,
+  thoughtProposals,
+  onResolveThoughtProposal,
 }) {
   const activeRunId = data?.runs?.activeRun?.runId || ''
   const recentRuns = (data?.runs?.recentRuns || []).filter((run) => run.runId !== activeRunId)
@@ -255,6 +342,19 @@ export function OperationsTab({
   return (
     <div className="mc-tab-page">
       <section className="mc-section-grid mc-operations-grid">
+        <article className="support-card" id="thought-proposals" style={{ gridColumn: '1 / -1' }}>
+          <div className="panel-header">
+            <div>
+              <h3>Handlingsforslag</h3>
+              <p className="muted">Jarvis' tanker der indeholder handlingsimpulser</p>
+            </div>
+          </div>
+          <ThoughtProposalsPanel
+            proposals={thoughtProposals}
+            onResolve={onResolveThoughtProposal || (() => {})}
+          />
+        </article>
+
         <article className="support-card" id="autonomy-proposals" style={{ gridColumn: '1 / -1' }}>
           <AutonomyProposalsPanel />
         </article>

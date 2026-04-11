@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1092,6 +1092,10 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasIronyState = Boolean(ironyState?.lastObservation)
   const thoughtStream = data?.thoughtStream || null
   const hasThoughtStream = Boolean(thoughtStream?.latestFragment)
+  const conflictSignal = data?.conflictSignal || null
+  const hasConflictSignal = Boolean(conflictSignal?.lastConflict)
+  const reflectionCycle = data?.reflectionCycle || null
+  const hasReflectionCycle = Boolean(reflectionCycle?.latestReflection)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1194,6 +1198,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'taste-state', targetId: 'living-mind-taste-state', label: 'Smag', icon: Sparkles, active: hasTasteState, status: null, statusLabel: `${tasteState?.choiceCount ?? 0} valg` },
     { id: 'irony-state', targetId: 'living-mind-irony-state', label: 'Ironi', icon: Ghost, active: hasIronyState, status: ironyState?.conditionMatched, statusLabel: ironyState?.conditionMatched || 'ingen' },
     { id: 'thought-stream', targetId: 'living-mind-thought-stream', label: 'Tankestrøm', icon: Brain, active: hasThoughtStream, status: null, statusLabel: `${thoughtStream?.fragmentCount ?? 0} fragmenter` },
+    { id: 'conflict-signal', targetId: 'living-mind-conflict-signal', label: 'Konflikt', icon: Swords, active: hasConflictSignal, status: conflictSignal?.conflictType, statusLabel: conflictSignal?.conflictType || 'ingen' },
+    { id: 'reflection-cycle', targetId: 'living-mind-reflection-cycle', label: 'Refleksion', icon: Eye, active: hasReflectionCycle, status: null, statusLabel: `${reflectionCycle?.reflectionCount ?? 0} cyklusser` },
   ]
 
   return (
@@ -1913,6 +1919,62 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           )}
           {thoughtStream.lastGeneratedAt ? (
             <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${thoughtStream.lastGeneratedAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasConflictSignal ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-conflict-signal" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/conflict-signal',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cooldown 10min',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Indre konflikt</h3>
+              <p className="muted">{conflictSignal.conflictType || 'uspecificeret'}</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 0', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {conflictSignal.lastConflict}
+          </blockquote>
+          {conflictSignal.generatedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${conflictSignal.generatedAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasReflectionCycle ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-reflection-cycle" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/reflection-cycle',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence 10min',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Refleksion</h3>
+              <p className="muted">Hvad oplever Jarvis lige nu</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 16px', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {reflectionCycle.latestReflection}
+          </blockquote>
+          {reflectionCycle.reflectionBuffer.length > 1 && (
+            <details>
+              <summary className="muted" style={{ cursor: 'pointer', fontSize: 12 }}>Seneste {reflectionCycle.reflectionBuffer.length} refleksioner</summary>
+              <ol style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                {reflectionCycle.reflectionBuffer.map((r, i) => (
+                  <li key={i} style={{ fontSize: 12, marginBottom: 4, color: 'var(--text-2)', fontStyle: 'italic' }}>{r}</li>
+                ))}
+              </ol>
+            </details>
+          )}
+          {reflectionCycle.lastGeneratedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${reflectionCycle.lastGeneratedAt}`}</small>
           ) : null}
         </article>
       </section>

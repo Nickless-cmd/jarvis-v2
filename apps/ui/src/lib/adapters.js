@@ -1081,6 +1081,25 @@ function normalizeThoughtProposals(raw) {
   }
 }
 
+function normalizeConflictSignal(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    lastConflict: raw.last_conflict || '',
+    conflictType: raw.conflict_type || '',
+    generatedAt: raw.generated_at || '',
+  }
+}
+
+function normalizeReflectionCycle(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    latestReflection: raw.latest_reflection || '',
+    reflectionBuffer: Array.isArray(raw.reflection_buffer) ? raw.reflection_buffer : [],
+    reflectionCount: raw.reflection_count ?? 0,
+    lastGeneratedAt: raw.last_generated_at || '',
+  }
+}
+
 function normalizeWonderAwareness(item = {}) {
   if (!item || !item.kind) return null
   return {
@@ -3099,7 +3118,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3115,6 +3134,8 @@ export const backend = {
       requestJson('/mc/irony-state').catch(() => null),
       requestJson('/mc/thought-stream').catch(() => null),
       requestJson('/mc/thought-proposals').catch(() => null),
+      requestJson('/mc/conflict-signal').catch(() => null),
+      requestJson('/mc/reflection-cycle').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -3996,6 +4017,8 @@ export const backend = {
       ironyState: normalizeIronyState(ironyStatePayload || null),
       thoughtStream: normalizeThoughtStream(thoughtStreamPayload || null),
       thoughtProposals: normalizeThoughtProposals(thoughtProposalsPayload || null),
+      conflictSignal: normalizeConflictSignal(conflictSignalPayload || null),
+      reflectionCycle: normalizeReflectionCycle(reflectionCyclePayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

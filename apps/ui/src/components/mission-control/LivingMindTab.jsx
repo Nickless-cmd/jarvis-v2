@@ -1090,6 +1090,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasTasteState = Boolean(tasteState?.latestInsight)
   const ironyState = data?.ironyState || null
   const hasIronyState = Boolean(ironyState?.lastObservation)
+  const thoughtStream = data?.thoughtStream || null
+  const hasThoughtStream = Boolean(thoughtStream?.latestFragment)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1191,6 +1193,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'surprise-state', targetId: 'living-mind-surprise-state', label: 'Overraskelse', icon: Zap, active: hasSurpriseState, status: surpriseState?.surpriseType, statusLabel: surpriseState?.surpriseType || 'ingen' },
     { id: 'taste-state', targetId: 'living-mind-taste-state', label: 'Smag', icon: Sparkles, active: hasTasteState, status: null, statusLabel: `${tasteState?.choiceCount ?? 0} valg` },
     { id: 'irony-state', targetId: 'living-mind-irony-state', label: 'Ironi', icon: Ghost, active: hasIronyState, status: ironyState?.conditionMatched, statusLabel: ironyState?.conditionMatched || 'ingen' },
+    { id: 'thought-stream', targetId: 'living-mind-thought-stream', label: 'Tankestrøm', icon: Brain, active: hasThoughtStream, status: null, statusLabel: `${thoughtStream?.fragmentCount ?? 0} fragmenter` },
   ]
 
   return (
@@ -1881,6 +1884,39 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
         </article>
         ) : null}
       </section>
+
+      {hasThoughtStream ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-thought-stream" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/thought-stream',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence 2min',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Tankestrøm</h3>
+              <p className="muted">Jarvis' associative tankestrøm</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 16px', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {thoughtStream.latestFragment}
+          </blockquote>
+          {thoughtStream.fragmentBuffer.length > 1 && (
+            <details>
+              <summary className="muted" style={{ cursor: 'pointer', fontSize: 12 }}>Seneste {thoughtStream.fragmentBuffer.length} fragmenter</summary>
+              <ol style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                {thoughtStream.fragmentBuffer.map((f, i) => (
+                  <li key={i} style={{ fontSize: 12, marginBottom: 4, color: 'var(--text-2)' }}>{f}</li>
+                ))}
+              </ol>
+            </details>
+          )}
+          {thoughtStream.lastGeneratedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${thoughtStream.lastGeneratedAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
 
       {/* ─── Heartbeat Section ─── */}
       <section className="mc-section-grid">

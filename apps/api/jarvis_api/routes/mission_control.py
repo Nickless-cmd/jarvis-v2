@@ -1437,6 +1437,13 @@ def mc_irony_state() -> dict:
     return build_irony_surface()
 
 
+@router.get("/thought-stream")
+def mc_thought_stream() -> dict:
+    """Return Jarvis's latest thought stream fragment and buffer."""
+    from apps.api.jarvis_api.services.thought_stream_daemon import build_thought_stream_surface
+    return build_thought_stream_surface()
+
+
 @router.get("/affective-meta-state")
 def mc_affective_meta_state() -> dict:
     """Return the current bounded affective/meta runtime state."""

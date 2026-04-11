@@ -1052,6 +1052,35 @@ function normalizeThoughtStream(raw) {
   }
 }
 
+function normalizeThoughtProposals(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    pendingProposals: Array.isArray(raw.pending_proposals)
+      ? raw.pending_proposals.map(p => ({
+          id: p.id || '',
+          fragmentExcerpt: p.fragment_excerpt || '',
+          actionDescription: p.action_description || '',
+          proposalType: p.proposal_type || 'non_destructive',
+          destructiveScore: p.destructive_score ?? 0,
+          destructiveReason: p.destructive_reason || '',
+          status: p.status || 'pending',
+          createdAt: p.created_at || '',
+        }))
+      : [],
+    resolvedProposals: Array.isArray(raw.resolved_proposals)
+      ? raw.resolved_proposals.map(p => ({
+          id: p.id || '',
+          actionDescription: p.action_description || '',
+          proposalType: p.proposal_type || 'non_destructive',
+          status: p.status || 'dismissed',
+          resolvedAt: p.resolved_at || '',
+        }))
+      : [],
+    pendingCount: raw.pending_count ?? 0,
+    needsApprovalCount: raw.needs_approval_count ?? 0,
+  }
+}
+
 function normalizeWonderAwareness(item = {}) {
   if (!item || !item.kind) return null
   return {
@@ -3070,7 +3099,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3085,6 +3114,7 @@ export const backend = {
       requestJson('/mc/taste-state').catch(() => null),
       requestJson('/mc/irony-state').catch(() => null),
       requestJson('/mc/thought-stream').catch(() => null),
+      requestJson('/mc/thought-proposals').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -3965,6 +3995,7 @@ export const backend = {
       tasteState: normalizeTasteState(tasteStatePayload || null),
       ironyState: normalizeIronyState(ironyStatePayload || null),
       thoughtStream: normalizeThoughtStream(thoughtStreamPayload || null),
+      thoughtProposals: normalizeThoughtProposals(thoughtProposalsPayload || null),
       wonderAwareness: normalizeWonderAwareness(selfModelPayload?.wonder_awareness || {}),
       supportStreamAwareness: normalizeSupportStreamAwareness(selfModelPayload?.support_stream_awareness || {}),
       minenessOwnership: normalizeMinenessOwnership(selfModelPayload?.mineness_ownership || {}),

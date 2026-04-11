@@ -168,6 +168,17 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
               onToolIntentAction={actOnToolIntent}
               toolIntentActionBusy={toolIntentActionBusy}
               toolIntentActionError={toolIntentActionError}
+              thoughtProposals={sections.jarvis?.thoughtProposals || null}
+              onResolveThoughtProposal={async (id, decision) => {
+                try {
+                  await fetch(`/mc/thought-proposals/${id}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ decision }),
+                  })
+                  refreshAll()
+                } catch (_) {}
+              }}
             />
           ) : null}
 

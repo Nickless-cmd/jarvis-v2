@@ -126,6 +126,7 @@ ALLOWED_EVENT_FAMILIES = {
     "creative_drift",
     "desire",
     "user_model",
+    "existential_wonder",
 }
 
 

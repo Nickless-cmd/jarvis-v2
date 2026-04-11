@@ -162,8 +162,6 @@ def build_openai_launch_intent(*, profile: str) -> dict[str, Any]:
         "code_challenge_method": "S256",
         "audience": str(config.get("audience") or _DEFAULT_AUDIENCE),
         "id_token_add_organizations": "true",
-        "codex_cli_simplified_flow": "true",
-        "originator": "jarvis",
     }
     launch_url = f"{str(config['authorize_url']).rstrip('?')}?{urllib_parse.urlencode(params)}"
     launched_at = datetime.now(UTC).isoformat()

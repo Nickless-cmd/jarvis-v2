@@ -1906,6 +1906,25 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Dream insight daemon — persist dream articulation output as private brain records
+    try:
+        from apps.api.jarvis_api.services.dream_insight_daemon import tick_dream_insight_daemon
+        from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_surface
+        _da_surface = build_dream_articulation_surface()
+        _da_signal_id = str(_da_surface.get("signal_id") or "")
+        _da_summary = str(_da_surface.get("signal_summary") or "")
+        if _da_signal_id and _da_summary:
+            tick_dream_insight_daemon(signal_id=_da_signal_id, signal_summary=_da_summary)
+    except Exception:
+        pass
+
+    # Code aesthetic daemon — weekly codebase aesthetic reflection
+    try:
+        from apps.api.jarvis_api.services.code_aesthetic_daemon import tick_code_aesthetic_daemon
+        tick_code_aesthetic_daemon()
+    except Exception:
+        pass
+
     # Memory decay daemon — selective forgetting + re-discovery
     try:
         from apps.api.jarvis_api.services.memory_decay_daemon import tick_memory_decay_daemon, maybe_rediscover

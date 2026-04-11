@@ -1476,6 +1476,20 @@ def mc_development_narrative() -> dict:
     return build_development_narrative_surface()
 
 
+@router.get("/dream-insights")
+def mc_dream_insights() -> dict:
+    """Return persisted dream articulation insights."""
+    from apps.api.jarvis_api.services.dream_insight_daemon import build_dream_insight_surface
+    return build_dream_insight_surface()
+
+
+@router.get("/code-aesthetic")
+def mc_code_aesthetic() -> dict:
+    """Return Jarvis's latest code aesthetic reflection."""
+    from apps.api.jarvis_api.services.code_aesthetic_daemon import build_code_aesthetic_surface
+    return build_code_aesthetic_surface()
+
+
 @router.get("/user-model")
 def mc_user_model() -> dict:
     """Return Jarvis's current theory-of-mind model of the user."""

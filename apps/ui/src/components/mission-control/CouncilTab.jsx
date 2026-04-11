@@ -38,24 +38,30 @@ function SafeBlock({ text }) {
 
 const DEFAULT_COUNCIL_ROLES = ['planner', 'critic', 'researcher', 'synthesizer']
 
-function RoleModelRow({ role, value, onChange }) {
+const SELECT_STYLE = { borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 6px', ...mono, fontSize: 9, flex: 1 }
+
+function RoleModelRow({ role, value, onChange, providers, modelsByProvider }) {
+  const models = value.provider ? (modelsByProvider[value.provider] || []) : []
   return (
-    <div style={s({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${T.border0}` })}>
-      <span style={s({ ...mono, fontSize: 10, color: T.text2, width: 120, flexShrink: 0 })}>{role}</span>
-      <input
-        type="text"
-        placeholder="provider (tom = cheap lane)"
+    <div style={s({ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 8, alignItems: 'center', padding: '5px 0', borderBottom: `1px solid ${T.border0}` })}>
+      <span style={s({ ...mono, fontSize: 10, color: T.text2 })}>{role}</span>
+      <select
         value={value.provider}
-        onChange={(e) => onChange({ ...value, provider: e.target.value })}
-        style={s({ flex: 1, borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
-      />
-      <input
-        type="text"
-        placeholder="model"
+        onChange={(e) => onChange({ provider: e.target.value, model: '' })}
+        style={s(SELECT_STYLE)}
+      >
+        <option value="">— cheap lane —</option>
+        {providers.map((p) => <option key={p} value={p}>{p}</option>)}
+      </select>
+      <select
         value={value.model}
         onChange={(e) => onChange({ ...value, model: e.target.value })}
-        style={s({ flex: 1, borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
-      />
+        disabled={!models.length}
+        style={s({ ...SELECT_STYLE, opacity: models.length ? 1 : 0.4 })}
+      >
+        <option value="">— vælg model —</option>
+        {models.map((m) => <option key={m} value={m}>{m}</option>)}
+      </select>
     </div>
   )
 }
@@ -75,6 +81,8 @@ export function CouncilTab() {
   const [configDraft, setConfigDraft] = useState(null) // null = not loaded yet
   const [configSaving, setConfigSaving] = useState(false)
   const [configSaved, setConfigSaved] = useState(false)
+  const [providers, setProviders] = useState([])
+  const [modelsByProvider, setModelsByProvider] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -99,7 +107,26 @@ export function CouncilTab() {
 
   useEffect(() => {
     async function loadConfig() {
-      const cfg = await backend.getCouncilModelConfig()
+      const [cfg, sel] = await Promise.all([
+        backend.getCouncilModelConfig(),
+        backend.getShell().catch(() => null),
+      ])
+
+      // Build provider list + models-by-provider from selection
+      const selection = sel?.selection || {}
+      const targets = selection?.availableConfiguredTargets || []
+      const ollamaModels = (selection?.ollamaModels || []).map((m) => m.name).filter(Boolean)
+      const byProvider = {}
+      for (const t of targets) {
+        if (!t.provider) continue
+        byProvider[t.provider] = byProvider[t.provider] || []
+        byProvider[t.provider].push(t.model)
+      }
+      if (ollamaModels.length) byProvider['ollama'] = ollamaModels
+      setProviders(Object.keys(byProvider))
+      setModelsByProvider(byProvider)
+
+      // Load saved config
       const allRoles = [...new Set([...DEFAULT_COUNCIL_ROLES, 'devils_advocate', 'watcher', 'executor'])]
       const map = Object.fromEntries(allRoles.map((r) => [r, { provider: '', model: '' }]))
       for (const item of cfg?.role_models || []) {
@@ -230,6 +257,8 @@ export function CouncilTab() {
                   role={role}
                   value={councilMemberModels[role] || { provider: '', model: '' }}
                   onChange={(v) => setCouncilMemberModels((prev) => ({ ...prev, [role]: v }))}
+                  providers={providers}
+                  modelsByProvider={modelsByProvider}
                 />
               ))}
             </div>
@@ -268,30 +297,21 @@ export function CouncilTab() {
 
       <Section title="Council Model Config" description="Persistent model-override per rolle — tom = Jarvis vælger selv (cheap lane). Ændrer ikke Jarvis' autonomi.">
         {configDraft ? (
-          <div style={s({ display: 'flex', flexDirection: 'column', gap: 4 })}>
+          <div style={s({ display: 'flex', flexDirection: 'column', gap: 2 })}>
             <div style={s({ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 8, marginBottom: 4 })}>
               <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>rolle</span>
               <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>provider</span>
               <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>model</span>
             </div>
             {Object.keys(configDraft).map((role) => (
-              <div key={role} style={s({ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 8, alignItems: 'center' })}>
-                <span style={s({ ...mono, fontSize: 10, color: T.text2 })}>{role}</span>
-                <input
-                  type="text"
-                  placeholder="tom = cheap lane"
-                  value={configDraft[role].provider}
-                  onChange={(e) => setConfigDraft((prev) => ({ ...prev, [role]: { ...prev[role], provider: e.target.value } }))}
-                  style={s({ borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
-                />
-                <input
-                  type="text"
-                  placeholder="model"
-                  value={configDraft[role].model}
-                  onChange={(e) => setConfigDraft((prev) => ({ ...prev, [role]: { ...prev[role], model: e.target.value } }))}
-                  style={s({ borderRadius: 6, border: `1px solid ${T.border0}`, background: T.bgBase, color: T.text1, padding: '4px 8px', ...mono, fontSize: 9 })}
-                />
-              </div>
+              <RoleModelRow
+                key={role}
+                role={role}
+                value={configDraft[role]}
+                onChange={(v) => setConfigDraft((prev) => ({ ...prev, [role]: v }))}
+                providers={providers}
+                modelsByProvider={modelsByProvider}
+              />
             ))}
             <div style={s({ marginTop: 8 })}>
               <button

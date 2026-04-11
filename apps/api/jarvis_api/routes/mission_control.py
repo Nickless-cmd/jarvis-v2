@@ -1462,6 +1462,20 @@ def mc_resolve_thought_proposal(proposal_id: str, body: dict) -> dict:
     return {"ok": ok}
 
 
+@router.get("/experienced-time")
+def mc_experienced_time() -> dict:
+    """Return Jarvis's current subjective felt time for the session."""
+    from apps.api.jarvis_api.services.experienced_time_daemon import build_experienced_time_surface
+    return build_experienced_time_surface()
+
+
+@router.get("/development-narrative")
+def mc_development_narrative() -> dict:
+    """Return Jarvis's latest self-development narrative."""
+    from apps.api.jarvis_api.services.development_narrative_daemon import build_development_narrative_surface
+    return build_development_narrative_surface()
+
+
 @router.get("/curiosity-state")
 def mc_curiosity_state() -> dict:
     """Return Jarvis's latest curiosity signal and open questions."""

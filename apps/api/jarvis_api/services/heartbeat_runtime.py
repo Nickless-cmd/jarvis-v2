@@ -1906,6 +1906,18 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Desire daemon — emergent appetites
+    try:
+        from apps.api.jarvis_api.services.desire_daemon import tick_desire_daemon
+        _desire_signals = {
+            "curiosity": _curiosity if "_curiosity" in dir() else "",
+            "craft": _drift_idea if "_drift_idea" in dir() else "",
+            "connection": (_tss.get("latest_fragment", "") if "_tss" in dir() else "")[:80],
+        }
+        tick_desire_daemon(_desire_signals)
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

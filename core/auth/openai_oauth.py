@@ -31,7 +31,7 @@ _DEFAULT_AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize"
 _DEFAULT_TOKEN_URL = "https://auth.openai.com/oauth/token"
 _DEFAULT_SCOPES = "openid profile email offline_access"
 _DEFAULT_AUDIENCE = "https://api.openai.com/v1"
-_DEFAULT_REDIRECT_BASE_URL = "http://127.0.0.1:1455"
+_DEFAULT_REDIRECT_BASE_URL = "http://localhost:1455"
 _DEFAULT_CALLBACK_PATH = "/auth/callback"
 
 

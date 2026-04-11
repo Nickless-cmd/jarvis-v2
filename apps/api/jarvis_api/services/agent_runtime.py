@@ -1,8 +1,19 @@
 from __future__ import annotations
 
 import json
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
+
+# ── Spawn / budget limits ──────────────────────────────────────────────
+MAX_CONCURRENT_AGENTS = 12
+MAX_SWARM_WORKERS = 8
+MAX_COUNCIL_MEMBERS = 6
+MAX_OFFSPRING_DEPTH = 3
+RETRY_BASE_SECONDS = 60      # doubles per failure, capped at 1 h
 
 from apps.api.jarvis_api.services.cheap_provider_runtime import cheap_lane_status_surface
 from apps.api.jarvis_api.services.non_visible_lane_execution import execute_cheap_lane
@@ -221,6 +232,7 @@ def spawn_agent_task(
     auto_execute: bool = True,
     council_id: str = "",
 ) -> dict[str, object]:
+    _check_spawn_limits()
     allowed_tools = allowed_tools or []
     context = context or {}
     result_contract = result_contract or {
@@ -459,12 +471,15 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             cost_usd=float(result.get("cost_usd") or 0.0),
             provider_status=str(result.get("status") or "completed"),
         )
+        tokens_used = input_tokens + output_tokens
         update_agent_registry_entry(
             agent_id,
             status="scheduled" if bool(agent.get("persistent")) and str(agent.get("next_wake_at") or "") else "completed",
-            tokens_burned_delta=input_tokens + output_tokens,
+            tokens_burned_delta=tokens_used,
             completed_at=_now_iso(),
         )
+        # Budget enforcement: expire if over token budget
+        _check_budget_and_expire(agent_id, tokens_used=tokens_used)
     except Exception as exc:
         message = str(exc)
         create_agent_message(
@@ -490,6 +505,10 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             failure_increment=1,
             last_error=message,
         )
+        # Retry backoff for persistent agents
+        refreshed = get_agent_registry_entry(agent_id)
+        if refreshed and bool(refreshed.get("persistent")):
+            _schedule_retry_backoff(agent_id, failure_count=int(refreshed.get("failure_count") or 1))
     return build_agent_detail_surface(agent_id) or {}
 
 
@@ -750,16 +769,18 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
     update_council_session(council_id, status="deliberating")
     round_outputs: list[dict[str, str]] = []
     coordinator = members[-1] if mode == "swarm" and members else None
+    workers = [
+        m for m in members
+        if coordinator is None or str(m.get("agent_id") or "") != str(coordinator.get("agent_id") or "")
+    ]
 
-    for member in members:
+    # ── Worker execution ───────────────────────────────────────────────
+    def _run_one_worker(member: dict) -> dict[str, str] | None:
         agent_id = str(member.get("agent_id") or "")
         agent = get_agent_registry_entry(agent_id)
         if agent is None:
-            continue
+            return None
         member_role = str(member.get("role") or agent.get("role") or "member")
-        is_coordinator = coordinator is not None and str(coordinator.get("agent_id") or "") == agent_id
-        if mode == "swarm" and is_coordinator:
-            continue
         update_agent_registry_entry(agent_id, status="active", last_error="")
         prompt = (
             f"System prompt:\n{agent.get('system_prompt') or ''}\n\n"
@@ -767,15 +788,12 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             f"Your role: {member_role}\n\n"
             f"{'Collective' if mode == 'swarm' else 'Council'} transcript so far:\n"
             f"{_format_messages(messages, limit=18)}\n\n"
-            f"Respond to the {'swarm' if mode == 'swarm' else 'council'}. Include compact sections for summary, recommendation, confidence, and vote."
+            "Respond to the collective. Include compact sections for summary, recommendation, confidence, and vote."
         )
         run_id = f"agent-run-{uuid4().hex}"
         create_agent_run(
-            run_id=run_id,
-            agent_id=agent_id,
-            status="starting",
-            execution_mode=mode,
-            provider=str(agent.get("provider") or ""),
+            run_id=run_id, agent_id=agent_id, status="starting",
+            execution_mode=mode, provider=str(agent.get("provider") or ""),
             model=str(agent.get("model") or ""),
             input_summary=str(session.get("topic") or ""),
             input_payload_json=json.dumps({"prompt": prompt, "council_id": council_id, "mode": mode}),
@@ -785,11 +803,8 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             result = execute_cheap_lane(message=prompt)
             text = str(result.get("text") or "").strip()
             create_agent_message(
-                message_id=f"agent-msg-{uuid4().hex}",
-                thread_id=thread_id,
-                run_id=run_id,
-                council_id=council_id,
-                agent_id=agent_id,
+                message_id=f"agent-msg-{uuid4().hex}", thread_id=thread_id,
+                run_id=run_id, council_id=council_id, agent_id=agent_id,
                 direction="agent->council" if mode == "council" else "agent->swarm",
                 role="assistant",
                 kind="council-position" if mode == "council" else "swarm-work",
@@ -803,129 +818,139 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
                     kind="swarm-hand-off",
                 )
             update_agent_run(
-                run_id,
-                status="completed",
-                output_summary=_trim(text),
-                output_payload_json=json.dumps(result),
-                finished_at=_now_iso(),
+                run_id, status="completed", output_summary=_trim(text),
+                output_payload_json=json.dumps(result), finished_at=_now_iso(),
                 input_tokens=int(result.get("input_tokens") or 0),
                 output_tokens=int(result.get("output_tokens") or 0),
                 cost_usd=float(result.get("cost_usd") or 0.0),
                 provider_status=str(result.get("status") or "completed"),
             )
             update_agent_registry_entry(
-                agent_id,
-                status="waiting",
+                agent_id, status="waiting",
                 tokens_burned_delta=int(result.get("input_tokens") or 0) + int(result.get("output_tokens") or 0),
                 completed_at=_now_iso(),
             )
             update_council_member(
-                council_id=council_id,
-                agent_id=agent_id,
+                council_id=council_id, agent_id=agent_id,
                 position_summary=_trim(text),
-                vote=_extract_vote(text),
-                confidence=_extract_confidence(text),
+                vote=_extract_vote(text), confidence=_extract_confidence(text),
             )
-            messages.append({"direction": "agent->collective", "kind": mode, "content": text, "agent_id": agent_id})
-            round_outputs.append({"role": member_role, "text": text})
+            return {"role": member_role, "agent_id": agent_id, "text": text, "vote": _extract_vote(text)}
         except Exception as exc:
-            message = str(exc)
+            err = str(exc)
             create_agent_message(
-                message_id=f"agent-msg-{uuid4().hex}",
-                thread_id=thread_id,
-                run_id=run_id,
-                council_id=council_id,
-                agent_id=agent_id,
+                message_id=f"agent-msg-{uuid4().hex}", thread_id=thread_id,
+                run_id=run_id, council_id=council_id, agent_id=agent_id,
                 direction="agent->council" if mode == "council" else "agent->swarm",
                 role="assistant",
                 kind="council-failure" if mode == "council" else "swarm-failure",
-                content=message,
+                content=err,
             )
-            update_agent_run(run_id, status="failed", finished_at=_now_iso(), failure_reason=message, provider_status="failed")
-            update_agent_registry_entry(agent_id, status="failed", failure_increment=1, last_error=message)
-            update_council_member(council_id=council_id, agent_id=agent_id, position_summary=f"failed: {_trim(message)}", confidence="low")
+            update_agent_run(run_id, status="failed", finished_at=_now_iso(), failure_reason=err, provider_status="failed")
+            update_agent_registry_entry(agent_id, status="failed", failure_increment=1, last_error=err)
+            update_council_member(council_id=council_id, agent_id=agent_id, position_summary=f"failed: {_trim(err)}", confidence="low")
+            return None
 
+    # Swarm: parallel fanout; Council: sequential (preserves deliberation order)
+    if mode == "swarm" and len(workers) > 1:
+        with ThreadPoolExecutor(max_workers=min(len(workers), MAX_SWARM_WORKERS)) as pool:
+            futures = [pool.submit(_run_one_worker, m) for m in workers]
+            for fut in as_completed(futures):
+                try:
+                    out = fut.result()
+                    if out:
+                        round_outputs.append(out)
+                except Exception as exc:
+                    logger.warning("swarm worker thread failed: %s", exc)
+    else:
+        for member in workers:
+            out = _run_one_worker(member)
+            if out:
+                round_outputs.append(out)
+
+    # ── Swarm coordinator merge ────────────────────────────────────────
     if mode == "swarm" and coordinator is not None:
         coordinator_id = str(coordinator.get("agent_id") or "")
         coordinator_agent = get_agent_registry_entry(coordinator_id)
         if coordinator_agent is not None:
             peer_messages = list_agent_messages(council_id=council_id, thread_id=thread_id, limit=200)
             handoffs = _format_peer_context(peer_messages, target_agent_id=coordinator_id, limit=22)
+            conflicts = _detect_swarm_conflicts(round_outputs)
+            conflict_note = ""
+            if conflicts["has_disagreement"]:
+                conflict_note = (
+                    "\n\nNote: Workers show disagreement. Capture dissent explicitly in your synthesis."
+                    f" Conflicting signals: {json.dumps(conflicts['vote_split'])}"
+                )
             update_agent_registry_entry(coordinator_id, status="active", last_error="")
             prompt = (
                 f"System prompt:\n{coordinator_agent.get('system_prompt') or ''}\n\n"
                 f"Swarm topic: {session.get('topic') or ''}\n"
                 "Your role: swarm coordinator / synthesizer\n\n"
                 "Worker handoffs:\n"
-                f"{handoffs}\n\n"
-                "Produce the merged swarm result back to Jarvis. Include summary, findings, recommendation, confidence, and blockers."
+                f"{handoffs}{conflict_note}\n\n"
+                "Produce the merged swarm result back to Jarvis. Include summary, findings, "
+                "recommendation, confidence, blockers, and any dissenting_opinions."
             )
             run_id = f"agent-run-{uuid4().hex}"
             create_agent_run(
-                run_id=run_id,
-                agent_id=coordinator_id,
-                status="starting",
+                run_id=run_id, agent_id=coordinator_id, status="starting",
                 execution_mode="swarm",
                 provider=str(coordinator_agent.get("provider") or ""),
                 model=str(coordinator_agent.get("model") or ""),
                 input_summary=str(session.get("topic") or ""),
-                input_payload_json=json.dumps({"prompt": prompt, "council_id": council_id, "mode": "swarm", "coordinator": True}),
+                input_payload_json=json.dumps({
+                    "prompt": prompt, "council_id": council_id, "mode": "swarm",
+                    "coordinator": True, "conflicts": conflicts,
+                }),
                 started_at=_now_iso(),
             )
             result = execute_cheap_lane(message=prompt)
             synthesis = str(result.get("text") or "").strip()
             create_agent_message(
-                message_id=f"agent-msg-{uuid4().hex}",
-                thread_id=thread_id,
-                run_id=run_id,
-                council_id=council_id,
-                agent_id=coordinator_id,
-                direction="swarm->jarvis",
-                role="assistant",
-                kind="swarm-synthesis",
+                message_id=f"agent-msg-{uuid4().hex}", thread_id=thread_id,
+                run_id=run_id, council_id=council_id, agent_id=coordinator_id,
+                direction="swarm->jarvis", role="assistant", kind="swarm-synthesis",
                 content=synthesis,
             )
             update_agent_run(
-                run_id,
-                status="completed",
-                output_summary=_trim(synthesis),
-                output_payload_json=json.dumps(result),
-                finished_at=_now_iso(),
+                run_id, status="completed", output_summary=_trim(synthesis),
+                output_payload_json=json.dumps(result), finished_at=_now_iso(),
                 input_tokens=int(result.get("input_tokens") or 0),
                 output_tokens=int(result.get("output_tokens") or 0),
                 cost_usd=float(result.get("cost_usd") or 0.0),
                 provider_status=str(result.get("status") or "completed"),
             )
             update_agent_registry_entry(
-                coordinator_id,
-                status="waiting",
+                coordinator_id, status="waiting",
                 tokens_burned_delta=int(result.get("input_tokens") or 0) + int(result.get("output_tokens") or 0),
                 completed_at=_now_iso(),
             )
             update_council_member(
-                council_id=council_id,
-                agent_id=coordinator_id,
+                council_id=council_id, agent_id=coordinator_id,
                 position_summary=_trim(synthesis),
-                vote=_extract_vote(synthesis),
-                confidence=_extract_confidence(synthesis),
+                vote=_extract_vote(synthesis), confidence=_extract_confidence(synthesis),
             )
-            update_council_session(council_id, status="reporting", summary=_trim(synthesis, 600))
+            summary_with_meta = _trim(synthesis, 600)
+            if conflicts["has_disagreement"]:
+                summary_with_meta += f" [conflicts: {json.dumps(conflicts['vote_split'])}]"
+            update_council_session(council_id, status="reporting", summary=summary_with_meta)
             return build_council_detail_surface(council_id) or {}
 
+    # ── Council synthesis ──────────────────────────────────────────────
     if round_outputs:
+        conflicts = _detect_swarm_conflicts(round_outputs)
         synthesis = " | ".join(f"{item['role']}: {_trim(item['text'], 180)}" for item in round_outputs[:5])
+        if conflicts["has_disagreement"]:
+            synthesis += f" [dissent: {json.dumps(conflicts['vote_split'])}]"
         create_agent_message(
-            message_id=f"agent-msg-{uuid4().hex}",
-            thread_id=thread_id,
-            council_id=council_id,
-            direction="council->jarvis",
-            role="assistant",
-            kind="council-synthesis",
-            content=synthesis,
+            message_id=f"agent-msg-{uuid4().hex}", thread_id=thread_id,
+            council_id=council_id, direction="council->jarvis",
+            role="assistant", kind="council-synthesis", content=synthesis,
         )
         update_council_session(council_id, status="reporting", summary=synthesis)
     else:
-        update_council_session(council_id, status="reporting", summary=f"No {mode} outputs produced in the latest round.")
+        update_council_session(council_id, status="reporting", summary=f"No {mode} outputs produced.")
     return build_council_detail_surface(council_id) or {}
 
 
@@ -952,3 +977,235 @@ def _progress_label(*, agent: dict[str, object], latest_run: dict[str, object] |
     if status == "expired":
         return "expired"
     return status
+
+
+# ── Phase 4+5: lifecycle, limits, budget, retry, promotion, recovery ──
+
+_ACTIVE_STATUSES = {"queued", "starting", "active", "waiting", "blocked"}
+
+
+def _check_spawn_limits() -> None:
+    all_agents = list_agent_registry_entries(include_completed=False, limit=200)
+    active_count = sum(1 for a in all_agents if a.get("status") in _ACTIVE_STATUSES)
+    if active_count >= MAX_CONCURRENT_AGENTS:
+        raise ValueError(
+            f"spawn limit reached: {active_count}/{MAX_CONCURRENT_AGENTS} concurrent agents active"
+        )
+
+
+def _check_budget_and_expire(agent_id: str, *, tokens_used: int) -> bool:
+    """Expire agent if it has exceeded its token budget. Returns True if expired."""
+    agent = get_agent_registry_entry(agent_id)
+    if agent is None:
+        return False
+    budget = int(agent.get("budget_tokens") or 0)
+    if budget <= 0:
+        return False
+    burned = int(agent.get("tokens_burned") or 0)
+    if burned >= budget:
+        update_agent_registry_entry(
+            agent_id,
+            status="expired",
+            expired_at=_now_iso(),
+            last_error=f"budget exhausted: {burned}/{budget} tokens",
+        )
+        create_agent_message(
+            message_id=f"agent-msg-{uuid4().hex}",
+            thread_id=_agent_thread_id(agent_id),
+            agent_id=agent_id,
+            direction="runtime->agent",
+            role="system",
+            kind="budget-expired",
+            content=f"Agent expired: token budget exhausted ({burned}/{budget})",
+        )
+        logger.info("agent %s expired: budget exhausted %d/%d", agent_id, burned, budget)
+        return True
+    return False
+
+
+def _schedule_retry_backoff(agent_id: str, failure_count: int) -> int:
+    """Schedule a retry with exponential backoff. Returns delay seconds."""
+    delay = min(RETRY_BASE_SECONDS * (2 ** min(failure_count - 1, 6)), 3600)
+    next_fire = (datetime.now(UTC) + timedelta(seconds=delay)).isoformat()
+    update_agent_registry_entry(agent_id, status="scheduled", next_wake_at=next_fire)
+    update_agent_schedule(
+        f"agent-schedule-{agent_id}",
+        last_fire_at=_now_iso(),
+        next_fire_at=next_fire,
+        active=True,
+    )
+    logger.info("agent %s retry backoff: %ds (failure #%d)", agent_id, delay, failure_count)
+    return delay
+
+
+def _detect_swarm_conflicts(outputs: list[dict]) -> dict:
+    """Detect disagreements across swarm/council outputs."""
+    _DISSENT_WORDS = {"disagree", "against", "however", "risk", "caution", "contradict", "concern", "but"}
+    votes = [str(o.get("vote") or "").strip().lower() for o in outputs if o.get("vote")]
+    vote_counts: dict[str, int] = {}
+    for v in votes:
+        if v:
+            vote_counts[v] = vote_counts.get(v, 0) + 1
+    has_vote_split = len(set(v for v in votes if v)) > 1
+    disagreements = []
+    for out in outputs:
+        text = (out.get("text") or "").lower()
+        if any(w in text for w in _DISSENT_WORDS):
+            disagreements.append({"role": out.get("role", "?"), "excerpt": (out.get("text") or "")[:120]})
+    return {
+        "has_disagreement": bool(disagreements) or has_vote_split,
+        "disagreements": disagreements[:4],
+        "vote_split": vote_counts,
+    }
+
+
+def cancel_agent(agent_id: str, *, note: str = "") -> dict:
+    agent = get_agent_registry_entry(agent_id)
+    if agent is None:
+        raise RuntimeError(f"unknown agent: {agent_id}")
+    if str(agent.get("status") or "") in {"completed", "cancelled", "expired"}:
+        raise RuntimeError(f"agent already terminal: {agent.get('status')}")
+    create_agent_message(
+        message_id=f"agent-msg-{uuid4().hex}",
+        thread_id=_agent_thread_id(agent_id),
+        agent_id=agent_id,
+        direction="runtime->agent",
+        role="system",
+        kind="lifecycle",
+        content=f"Cancelled by Jarvis. {note}".strip(),
+    )
+    update_agent_registry_entry(agent_id, status="cancelled", completed_at=_now_iso(), last_error=note or "")
+    return build_agent_detail_surface(agent_id) or {}
+
+
+def suspend_agent(agent_id: str, *, note: str = "") -> dict:
+    agent = get_agent_registry_entry(agent_id)
+    if agent is None:
+        raise RuntimeError(f"unknown agent: {agent_id}")
+    create_agent_message(
+        message_id=f"agent-msg-{uuid4().hex}",
+        thread_id=_agent_thread_id(agent_id),
+        agent_id=agent_id,
+        direction="runtime->agent",
+        role="system",
+        kind="lifecycle",
+        content=f"Suspended. {note}".strip(),
+    )
+    update_agent_registry_entry(agent_id, status="suspended", last_error=note or "")
+    return build_agent_detail_surface(agent_id) or {}
+
+
+def resume_agent(agent_id: str) -> dict:
+    agent = get_agent_registry_entry(agent_id)
+    if agent is None:
+        raise RuntimeError(f"unknown agent: {agent_id}")
+    if str(agent.get("status") or "") not in {"suspended", "failed", "waiting", "scheduled"}:
+        raise RuntimeError(f"agent not resumable from status: {agent.get('status')}")
+    create_agent_message(
+        message_id=f"agent-msg-{uuid4().hex}",
+        thread_id=_agent_thread_id(agent_id),
+        agent_id=agent_id,
+        direction="runtime->agent",
+        role="system",
+        kind="lifecycle",
+        content="Resumed by Jarvis.",
+    )
+    update_agent_registry_entry(agent_id, status="queued", last_error="")
+    return execute_agent_task(agent_id=agent_id)
+
+
+def expire_agent(agent_id: str, *, reason: str = "") -> dict:
+    agent = get_agent_registry_entry(agent_id)
+    if agent is None:
+        raise RuntimeError(f"unknown agent: {agent_id}")
+    create_agent_message(
+        message_id=f"agent-msg-{uuid4().hex}",
+        thread_id=_agent_thread_id(agent_id),
+        agent_id=agent_id,
+        direction="runtime->agent",
+        role="system",
+        kind="lifecycle",
+        content=f"Expired. {reason}".strip(),
+    )
+    update_agent_registry_entry(
+        agent_id,
+        status="expired",
+        expired_at=_now_iso(),
+        last_error=reason or "expired by runtime",
+    )
+    return build_agent_detail_surface(agent_id) or {}
+
+
+def promote_agent_result(agent_id: str, *, note: str = "") -> dict:
+    """File an autonomy proposal to promote the agent's latest result to Jarvis memory."""
+    from apps.api.jarvis_api.services.autonomy_proposal_queue import file_proposal
+
+    agent = get_agent_registry_entry(agent_id)
+    if agent is None:
+        raise RuntimeError(f"unknown agent: {agent_id}")
+    messages = list_agent_messages(agent_id=agent_id, limit=20)
+    results = [m for m in messages if m.get("kind") in {"result", "swarm-synthesis", "council-synthesis"}]
+    if not results:
+        raise RuntimeError("no result message found for this agent")
+    content = str(results[-1].get("content") or "").strip()
+    if not content:
+        raise RuntimeError("agent result is empty")
+    title = f"Promote agent finding: {agent.get('role', 'agent')} / {str(agent.get('goal') or '')[:60]}"
+    proposal = file_proposal(
+        kind="memory-rewrite",
+        title=title,
+        rationale=(
+            f"Agent {agent_id} ({agent.get('role')}) completed with finding:\n"
+            f"{content[:600]}\n\n{note}".strip()
+        ),
+        payload={
+            "agent_id": agent_id,
+            "role": agent.get("role"),
+            "goal": agent.get("goal"),
+            "content": content,
+            "target": "MEMORY.md",
+        },
+        created_by=agent_id,
+    )
+    return {"status": "filed", "proposal_id": proposal.get("proposal_id"), "agent_id": agent_id}
+
+
+def recover_crashed_agents() -> dict:
+    """Called on API startup: reset agents that were mid-execution when the process died."""
+    all_agents = list_agent_registry_entries(limit=500)
+    crashed = [a for a in all_agents if str(a.get("status") or "") in {"starting", "active", "blocked"}]
+    recovered_ids: list[str] = []
+    requeued_ids: list[str] = []
+    for agent in crashed:
+        aid = str(agent.get("agent_id") or "")
+        if not aid:
+            continue
+        create_agent_message(
+            message_id=f"agent-msg-{uuid4().hex}",
+            thread_id=_agent_thread_id(aid),
+            agent_id=aid,
+            direction="runtime->agent",
+            role="system",
+            kind="recovery",
+            content=f"Runtime restarted while agent was in status '{agent.get('status')}'. Recovering.",
+        )
+        if bool(agent.get("persistent")):
+            update_agent_registry_entry(aid, status="queued", last_error="recovered after restart")
+            requeued_ids.append(aid)
+        else:
+            update_agent_registry_entry(
+                aid,
+                status="failed",
+                last_error="process restarted while agent was active",
+                completed_at=_now_iso(),
+            )
+            recovered_ids.append(aid)
+    logger.info(
+        "recover_crashed_agents: %d failed, %d requeued",
+        len(recovered_ids), len(requeued_ids),
+    )
+    return {
+        "recovered": len(recovered_ids) + len(requeued_ids),
+        "failed": recovered_ids,
+        "requeued": requeued_ids,
+    }

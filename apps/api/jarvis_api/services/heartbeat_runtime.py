@@ -1861,6 +1861,30 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Experienced time daemon
+    try:
+        from apps.api.jarvis_api.services.experienced_time_daemon import tick_experienced_time_daemon
+        _et_result = tick_experienced_time_daemon(
+            event_count=len(inputs_present),
+            new_signal_count=1 if "_tss" in dir() and _tss.get("fragment_count", 0) > 0 else 0,
+            energy_level=_energy_ts,
+        )
+        _felt_label = _et_result.get("felt_label", "")
+        if _felt_label and _felt_label not in ("meget kort", ""):
+            inputs_present.append(f"oplevet tid: {_felt_label}")
+    except Exception:
+        pass
+
+    # Development narrative daemon
+    try:
+        from apps.api.jarvis_api.services.development_narrative_daemon import tick_development_narrative_daemon, get_latest_development_narrative
+        tick_development_narrative_daemon()
+        _dev_narr = get_latest_development_narrative()
+        if _dev_narr:
+            inputs_present.append(f"selvudvikling: {_dev_narr[:60]}")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

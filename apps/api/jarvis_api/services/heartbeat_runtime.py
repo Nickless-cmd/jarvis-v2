@@ -1677,6 +1677,72 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Reaction surprise
+    try:
+        from apps.api.jarvis_api.services.surprise_daemon import (
+            tick_surprise_daemon,
+            get_latest_surprise,
+        )
+        from apps.api.jarvis_api.services.inner_voice_daemon import (
+            get_inner_voice_daemon_state,
+        )
+        _iv_state_s = get_inner_voice_daemon_state()
+        _iv_mode_s = str((_iv_state_s.get("last_result") or {}).get("mode") or "")
+        _energy_s = ""
+        try:
+            from core.runtime.circadian_state import get_circadian_context as _gcc
+            _energy_s = str(_gcc().get("energy_level") or "")
+        except Exception:
+            pass
+        tick_surprise_daemon(inner_voice_mode=_iv_mode_s, somatic_energy=_energy_s)
+        _surprise = get_latest_surprise()
+        if _surprise:
+            inputs_present.append(f"overraskelse: {_surprise}")
+    except Exception:
+        pass
+
+    # Aesthetic taste
+    try:
+        from apps.api.jarvis_api.services.aesthetic_taste_daemon import (
+            record_choice,
+            tick_taste_daemon,
+            get_latest_taste_insight,
+        )
+        from apps.api.jarvis_api.services.inner_voice_daemon import (
+            get_inner_voice_daemon_state,
+        )
+        from core.runtime.db import recent_visible_runs
+        _iv_state_t = get_inner_voice_daemon_state()
+        _iv_mode_t = str((_iv_state_t.get("last_result") or {}).get("mode") or "")
+        _style_signals: list[str] = []
+        _last_runs = recent_visible_runs(limit=1)
+        if _last_runs:
+            _preview = str(_last_runs[0].get("text_preview") or "")
+            _style_signals.append("short" if len(_preview.split()) < 100 else "long")
+            _style_signals.append("code_heavy" if "```" in _preview else "prose_heavy")
+            _dk = sum(1 for w in ["jeg", "er", "og", "det", "at", "en"] if w in _preview.lower())
+            _style_signals.append("danish" if _dk >= 2 else "english")
+        record_choice(mode=_iv_mode_t, style_signals=_style_signals)
+        tick_taste_daemon()
+        _taste = get_latest_taste_insight()
+        if _taste:
+            inputs_present.append(f"smagstendens: {_taste}")
+    except Exception:
+        pass
+
+    # Irony
+    try:
+        from apps.api.jarvis_api.services.irony_daemon import (
+            tick_irony_daemon,
+            get_latest_irony_observation,
+        )
+        tick_irony_daemon()
+        _irony = get_latest_irony_observation()
+        if _irony:
+            inputs_present.append(f"ironisk note: {_irony}")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

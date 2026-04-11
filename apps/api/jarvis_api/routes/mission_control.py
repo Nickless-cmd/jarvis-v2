@@ -1416,6 +1416,27 @@ def mc_body_state() -> dict:
     return build_body_state_surface()
 
 
+@router.get("/surprise-state")
+def mc_surprise_state() -> dict:
+    """Return Jarvis's latest self-surprise observation."""
+    from apps.api.jarvis_api.services.surprise_daemon import build_surprise_surface
+    return build_surprise_surface()
+
+
+@router.get("/taste-state")
+def mc_taste_state() -> dict:
+    """Return Jarvis's emergent aesthetic taste profile."""
+    from apps.api.jarvis_api.services.aesthetic_taste_daemon import build_taste_surface
+    return build_taste_surface()
+
+
+@router.get("/irony-state")
+def mc_irony_state() -> dict:
+    """Return Jarvis's latest ironic observation."""
+    from apps.api.jarvis_api.services.irony_daemon import build_irony_surface
+    return build_irony_surface()
+
+
 @router.get("/affective-meta-state")
 def mc_affective_meta_state() -> dict:
     """Return the current bounded affective/meta runtime state."""

@@ -1611,6 +1611,46 @@ def _build_influence_trace(
     else:
         inputs_absent.append("council-runtime")
 
+    # Latest closed council conclusion + activation guidance
+    try:
+        import json as _json
+        from apps.api.jarvis_api.services.council_runtime import get_latest_council_conclusion
+        from core.runtime.config import CONFIG_DIR as _cfg_dir
+        _conclusion = get_latest_council_conclusion()
+        if _conclusion and _conclusion.get("summary"):
+            inputs_present.append(
+                f"last-council ({_conclusion['mode']}, topic={_conclusion['topic'][:60]!r}): "
+                f"{_conclusion['summary'][:200]}"
+            )
+        _activation_path = _cfg_dir / "council_activation.json"
+        _activation: dict = {}
+        if _activation_path.exists():
+            try:
+                _activation = _json.loads(_activation_path.read_text())
+            except Exception:
+                pass
+        _sensitivity = str(_activation.get("sensitivity") or "balanced")
+        _auto_convene = bool(_activation.get("auto_convene", True))
+        if _auto_convene:
+            _guidance_map = {
+                "conservative": (
+                    "Use convene_council for any non-trivial decision. "
+                    "Use quick_council_check before most actions."
+                ),
+                "balanced": (
+                    "Use convene_council for significant decisions (identity, memory rewrites, multi-step plans). "
+                    "Use quick_council_check for uncertain moderate actions."
+                ),
+                "minimal": (
+                    "Use convene_council only for critical or irreversible decisions."
+                ),
+            }
+            _guidance = _guidance_map.get(_sensitivity, "")
+            if _guidance:
+                inputs_present.append(f"council-guidance ({_sensitivity}): {_guidance}")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

@@ -353,3 +353,23 @@ def _safe_conflict_trace() -> dict[str, object] | None:
         return get_last_conflict_trace()
     except Exception:
         return None
+
+
+def get_latest_council_conclusion() -> dict[str, object] | None:
+    """Return the most recent closed council session summary, or None."""
+    try:
+        from core.runtime.db import list_council_sessions
+        sessions = list_council_sessions(limit=20)
+        closed = [s for s in sessions if str(s.get("status") or "") == "closed"]
+        if not closed:
+            return None
+        latest = closed[0]
+        return {
+            "council_id": str(latest.get("council_id") or ""),
+            "topic": str(latest.get("topic") or ""),
+            "summary": str(latest.get("summary") or ""),
+            "updated_at": str(latest.get("updated_at") or ""),
+            "mode": str(latest.get("mode") or "council"),
+        }
+    except Exception:
+        return None

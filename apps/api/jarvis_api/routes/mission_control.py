@@ -1444,6 +1444,24 @@ def mc_thought_stream() -> dict:
     return build_thought_stream_surface()
 
 
+@router.get("/thought-proposals")
+def mc_thought_proposals() -> dict:
+    """Return pending and resolved thought-action proposals."""
+    from apps.api.jarvis_api.services.thought_action_proposal_daemon import build_proposal_surface
+    return build_proposal_surface()
+
+
+@router.post("/thought-proposals/{proposal_id}/resolve")
+def mc_resolve_thought_proposal(proposal_id: str, body: dict) -> dict:
+    """Approve or dismiss a thought-action proposal. Body: {decision: 'approved'|'dismissed'}"""
+    from apps.api.jarvis_api.services.thought_action_proposal_daemon import resolve_proposal
+    decision = str(body.get("decision") or "dismissed")
+    if decision not in ("approved", "dismissed"):
+        return {"ok": False, "error": "decision must be 'approved' or 'dismissed'"}
+    ok = resolve_proposal(proposal_id, decision)
+    return {"ok": ok}
+
+
 @router.get("/affective-meta-state")
 def mc_affective_meta_state() -> dict:
     """Return the current bounded affective/meta runtime state."""

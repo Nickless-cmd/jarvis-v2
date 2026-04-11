@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1108,6 +1108,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasAbsenceState = Boolean(absenceState?.absenceLabel)
   const creativeDrift = data?.creativeDrift || null
   const hasCreativeDrift = Boolean(creativeDrift?.latestDrift)
+  const desires = data?.desires || null
+  const hasDesires = Boolean(desires?.appetites?.length > 0)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1218,6 +1220,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'development-narrative', targetId: 'living-mind-development-narrative', label: 'Udvikling', icon: BookOpen, active: hasDevelopmentNarrative, status: null, statusLabel: hasDevelopmentNarrative ? 'daglig' : 'ingen' },
     { id: 'absence-state', targetId: 'living-mind-absence-state', label: 'Fravær', icon: Wind, active: hasAbsenceState, status: null, statusLabel: absenceState?.absenceLabel || 'ingen signal' },
     { id: 'creative-drift', targetId: 'living-mind-creative-drift', label: 'Drift', icon: Shuffle, active: hasCreativeDrift, status: null, statusLabel: `${creativeDrift?.driftCountToday ?? 0} i dag` },
+    { id: 'desires', targetId: 'living-mind-desires', label: 'Appetitter', icon: Flame, active: hasDesires, status: null, statusLabel: `${desires?.activeCount ?? 0} aktive` },
   ]
 
   return (
@@ -2159,6 +2162,38 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
               ))}
             </ul>
           ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasDesires ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-desires" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/desires',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:emergente appetitter',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Appetitter</h3>
+              <p className="muted">Emergente ønsker baseret på oplevelser</p>
+            </div>
+            <small className="muted">{`${desires.activeCount} aktive`}</small>
+          </div>
+          <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none' }}>
+            {desires.appetites.map(a => (
+              <li key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.type.replace('-appetite', '')}</div>
+                </div>
+                <div style={{ width: 60, height: 6, background: 'var(--border-1)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${Math.round(a.intensity * 100)}%`, height: '100%', background: 'var(--accent-text)', borderRadius: 3, transition: 'width 0.3s ease' }} />
+                </div>
+                <small className="muted" style={{ minWidth: 28 }}>{`${Math.round(a.intensity * 100)}%`}</small>
+              </li>
+            ))}
+          </ul>
         </article>
       </section>
       ) : null}

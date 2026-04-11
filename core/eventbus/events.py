@@ -124,6 +124,7 @@ ALLOWED_EVENT_FAMILIES = {
     "development_narrative",
     "absence",
     "creative_drift",
+    "desire",
 }
 
 

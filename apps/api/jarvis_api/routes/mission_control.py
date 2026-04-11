@@ -1476,6 +1476,13 @@ def mc_development_narrative() -> dict:
     return build_development_narrative_surface()
 
 
+@router.get("/desires")
+def mc_desires() -> dict:
+    """Return Jarvis's current emergent appetites."""
+    from apps.api.jarvis_api.services.desire_daemon import build_desire_surface
+    return build_desire_surface()
+
+
 @router.get("/absence-state")
 def mc_absence_state() -> dict:
     """Return Jarvis's current absence quality signal."""

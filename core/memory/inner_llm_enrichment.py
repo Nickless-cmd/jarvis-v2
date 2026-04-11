@@ -205,13 +205,13 @@ def _resolve_auth_header(target: dict) -> dict[str, str]:
             logger.warning("inner-llm-enrichment: failed to get github copilot token")
     elif provider == "openai":
         try:
-            from core.runtime.settings import get_setting
+            from core.auth.openai_oauth import get_openai_bearer_token
 
-            api_key = get_setting("openai_api_key", "")
+            api_key = get_openai_bearer_token(profile=auth_profile or "default")
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
         except Exception:
-            logger.warning("inner-llm-enrichment: failed to get openai api key")
+            logger.warning("inner-llm-enrichment: failed to get openai bearer token")
 
     return headers
 

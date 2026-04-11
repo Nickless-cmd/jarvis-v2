@@ -29,6 +29,7 @@ def isolated_runtime(
         "core.runtime.bootstrap",
         "core.auth.profiles",
         "core.auth.copilot_oauth",
+        "core.auth.openai_oauth",
         "core.runtime.provider_router",
         "core.identity.workspace_bootstrap",
         "core.identity.visible_identity",
@@ -134,6 +135,7 @@ def isolated_runtime(
         bootstrap=runtime_bootstrap,
         auth_profiles=modules["core.auth.profiles"],
         copilot_oauth=modules["core.auth.copilot_oauth"],
+        openai_oauth=modules["core.auth.openai_oauth"],
         provider_router=modules["core.runtime.provider_router"],
         runtime_surface_cache=importlib.import_module(
             "apps.api.jarvis_api.services.runtime_surface_cache"

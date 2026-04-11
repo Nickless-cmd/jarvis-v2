@@ -11,6 +11,7 @@ from core.auth.profiles import (
     get_provider_state,
 )
 from core.auth.copilot_oauth import get_copilot_oauth_truth
+from core.auth.openai_oauth import get_openai_bearer_token, get_openai_oauth_truth
 from core.runtime.provider_router import resolve_provider_router_target
 from apps.api.jarvis_api.services.cheap_provider_runtime import (
     cheap_lane_status_surface,
@@ -321,6 +322,8 @@ def _local_lane_readiness(target: dict[str, object]) -> dict[str, object]:
 def _coding_auth_path(*, provider: str, auth_mode: str) -> str:
     if provider == "openai" and auth_mode == "api-key":
         return "openai-codex-api-key"
+    if provider == "openai" and auth_mode == "oauth":
+        return "openai-oauth"
     if provider == "github-copilot" and auth_mode == "oauth":
         return "github-copilot-oauth"
     if provider == "openrouter" and auth_mode == "api-key":
@@ -658,6 +661,11 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
 
 
 def _load_provider_api_key(*, provider: str, profile: str) -> str:
+    if provider == "openai":
+        try:
+            return get_openai_bearer_token(profile=profile)
+        except Exception as exc:
+            raise RuntimeError(f"{provider} internal fallback lane not ready: {exc}")
     state = get_provider_state(profile=profile, provider=provider)
     if state is None:
         raise RuntimeError(f"{provider} internal fallback lane not ready: missing-profile")

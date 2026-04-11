@@ -5907,6 +5907,13 @@ def _extract_openrouter_text(data: dict[str, Any]) -> str:
 
 
 def _load_provider_api_key(*, provider: str, profile: str) -> str:
+    if provider == "openai":
+        from core.auth.openai_oauth import get_openai_bearer_token
+
+        try:
+            return get_openai_bearer_token(profile=profile)
+        except Exception as exc:
+            raise RuntimeError(f"{provider} heartbeat execution not ready: {exc}")
     state = get_provider_state(profile=profile, provider=provider)
     if state is None:
         raise RuntimeError(f"{provider} heartbeat execution not ready: missing-profile")

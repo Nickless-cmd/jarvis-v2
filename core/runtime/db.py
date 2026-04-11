@@ -28245,11 +28245,18 @@ def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
             source_signals TEXT NOT NULL DEFAULT '',
             confidence TEXT NOT NULL DEFAULT 'medium',
             status TEXT NOT NULL DEFAULT 'active',
+            salience REAL NOT NULL DEFAULT 1.0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
         """
     )
+    # Add salience column to existing tables (idempotent)
+    try:
+        conn.execute("ALTER TABLE private_brain_records ADD COLUMN salience REAL NOT NULL DEFAULT 1.0")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_private_brain_records_status
@@ -28357,21 +28364,70 @@ def get_private_brain_record(record_id: str) -> dict[str, object] | None:
 
 
 def _private_brain_record_from_row(row: sqlite3.Row) -> dict[str, object]:
+    d = dict(row)
     return {
-        "record_id": row["record_id"],
-        "record_type": row["record_type"],
-        "layer": row["layer"],
-        "session_id": row["session_id"],
-        "run_id": row["run_id"],
-        "focus": row["focus"],
-        "summary": row["summary"],
-        "detail": row["detail"],
-        "source_signals": row["source_signals"],
-        "confidence": row["confidence"],
-        "status": row["status"],
-        "created_at": row["created_at"],
-        "updated_at": row["updated_at"],
+        "record_id": d.get("record_id", ""),
+        "record_type": d.get("record_type", ""),
+        "layer": d.get("layer", ""),
+        "session_id": d.get("session_id", ""),
+        "run_id": d.get("run_id", ""),
+        "focus": d.get("focus", ""),
+        "summary": d.get("summary", ""),
+        "detail": d.get("detail", ""),
+        "source_signals": d.get("source_signals", ""),
+        "confidence": d.get("confidence", ""),
+        "status": d.get("status", "active"),
+        "salience": float(d.get("salience") or 1.0),
+        "created_at": d.get("created_at", ""),
+        "updated_at": d.get("updated_at", ""),
     }
+
+
+def update_private_brain_record_salience(record_id: str, salience: float) -> None:
+    """Set salience (0.0–1.0) for a private brain record."""
+    salience = max(0.0, min(1.0, salience))
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        conn.execute(
+            "UPDATE private_brain_records SET salience = ?, updated_at = ? WHERE record_id = ?",
+            (salience, datetime.now(UTC).isoformat(), record_id),
+        )
+        conn.commit()
+
+
+def get_salient_private_brain_records(
+    threshold: float = 0.3, limit: int = 20
+) -> list[dict[str, object]]:
+    """Return active records with salience >= threshold, ordered by salience desc."""
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM private_brain_records WHERE status = 'active' AND salience >= ? ORDER BY salience DESC LIMIT ?",
+            (threshold, limit),
+        ).fetchall()
+    return [_private_brain_record_from_row(r) for r in rows]
+
+
+def decay_private_brain_records(decay_rate: float = 0.05, limit: int = 100) -> int:
+    """Reduce salience of old active records. Returns number of records updated."""
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        now_iso = datetime.now(UTC).isoformat()
+        # Decay all active records with salience > 0
+        rows = conn.execute(
+            "SELECT record_id, salience FROM private_brain_records WHERE status = 'active' AND salience > 0 LIMIT ?",
+            (limit,),
+        ).fetchall()
+        updated = 0
+        for row in rows:
+            new_salience = max(0.0, float(row["salience"]) - decay_rate)
+            conn.execute(
+                "UPDATE private_brain_records SET salience = ?, updated_at = ? WHERE record_id = ?",
+                (new_salience, now_iso, row["record_id"]),
+            )
+            updated += 1
+        conn.commit()
+    return updated
 
 
 # ---------------------------------------------------------------------------

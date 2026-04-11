@@ -1476,6 +1476,21 @@ def mc_development_narrative() -> dict:
     return build_development_narrative_surface()
 
 
+@router.get("/memory-decay")
+def mc_memory_decay() -> dict:
+    """Return memory decay state and recent re-discoveries."""
+    from apps.api.jarvis_api.services.memory_decay_daemon import build_memory_decay_surface
+    return build_memory_decay_surface()
+
+
+@router.post("/memory-decay/hold-fast/{record_id}")
+def mc_memory_hold_fast(record_id: str) -> dict:
+    """Hold fast a memory — prevent it from decaying (salience reset to 1.0)."""
+    from apps.api.jarvis_api.services.memory_decay_daemon import hold_fast
+    hold_fast(record_id)
+    return {"ok": True, "record_id": record_id}
+
+
 @router.get("/desires")
 def mc_desires() -> dict:
     """Return Jarvis's current emergent appetites."""

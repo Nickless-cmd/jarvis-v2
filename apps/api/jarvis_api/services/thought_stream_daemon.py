@@ -109,6 +109,16 @@ def get_latest_thought_fragment() -> str:
     return _cached_fragment
 
 
+def inject_rediscovery_fragment(summary: str) -> None:
+    """Inject a re-discovered memory as a thought fragment."""
+    global _cached_fragment, _fragment_buffer
+    fragment = f"[genfundet minde] {summary[:120]}"
+    _cached_fragment = fragment
+    _fragment_buffer.insert(0, fragment)
+    if len(_fragment_buffer) > _BUFFER_MAX:
+        _fragment_buffer = _fragment_buffer[:_BUFFER_MAX]
+
+
 def build_thought_stream_surface() -> dict:
     return {
         "latest_fragment": _cached_fragment,

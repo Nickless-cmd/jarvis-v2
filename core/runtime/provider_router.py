@@ -144,6 +144,11 @@ def provider_router_summary() -> dict[str, object]:
             },
         },
         "lane_targets": provider_router_lane_targets(),
+        "lane_pools": {
+            "cheap": list_provider_router_targets(lane="cheap"),
+            "local": list_provider_router_targets(lane="local"),
+            "coding": list_provider_router_targets(lane="coding"),
+        },
     }
 
 
@@ -296,6 +301,41 @@ def resolve_provider_router_target(*, lane: str) -> dict[str, object]:
 def provider_router_lane_targets() -> dict[str, dict[str, object]]:
     lanes = ["visible", "cheap", "coding", "premium", "local"]
     return {lane: resolve_provider_router_target(lane=lane) for lane in lanes}
+
+
+def list_provider_router_targets(*, lane: str) -> list[dict[str, object]]:
+    normalized_lane = _normalize_lane(lane)
+    registry = load_provider_router_registry()
+    items = [
+        item
+        for item in registry.get("models") or []
+        if bool(item.get("enabled", True))
+        and str(item.get("lane") or "").strip() == normalized_lane
+    ]
+    items.sort(key=lambda item: str(item.get("updated_at") or ""), reverse=True)
+    results: list[dict[str, object]] = []
+    for item in items:
+        provider = str(item.get("provider") or "").strip()
+        provider_entry = _provider_entry(registry=registry, provider=provider) or {}
+        auth_profile = str(provider_entry.get("auth_profile") or "").strip()
+        results.append(
+            {
+                "active": True,
+                "lane": normalized_lane,
+                "source": "provider-router-registry",
+                "provider": provider,
+                "model": str(item.get("model") or "").strip(),
+                "auth_profile": auth_profile,
+                "auth_mode": str(provider_entry.get("auth_mode") or "").strip(),
+                "base_url": str(provider_entry.get("base_url") or "").strip(),
+                "credentials_ready": _credentials_ready(
+                    provider=provider,
+                    auth_profile=auth_profile,
+                ),
+                "updated_at": str(item.get("updated_at") or ""),
+            }
+        )
+    return results
 
 
 def _provider_surface(item: dict[str, Any]) -> dict[str, object]:

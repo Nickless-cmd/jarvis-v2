@@ -35,6 +35,7 @@ def isolated_runtime(
         "core.tools.workspace_capabilities",
         "apps.api.jarvis_api.services.prompt_contract",
         "apps.api.jarvis_api.services.visible_model",
+        "apps.api.jarvis_api.services.cheap_provider_runtime",
         "apps.api.jarvis_api.services.heartbeat_runtime",
         "apps.api.jarvis_api.services.candidate_tracking",
         "apps.api.jarvis_api.services.non_visible_lane_execution",
@@ -142,6 +143,9 @@ def isolated_runtime(
         workspace_capabilities=modules["core.tools.workspace_capabilities"],
         prompt_contract=modules["apps.api.jarvis_api.services.prompt_contract"],
         visible_model=modules["apps.api.jarvis_api.services.visible_model"],
+        cheap_provider_runtime=modules[
+            "apps.api.jarvis_api.services.cheap_provider_runtime"
+        ],
         heartbeat_runtime=modules["apps.api.jarvis_api.services.heartbeat_runtime"],
         candidate_tracking=modules["apps.api.jarvis_api.services.candidate_tracking"],
         non_visible_lane_execution=modules[

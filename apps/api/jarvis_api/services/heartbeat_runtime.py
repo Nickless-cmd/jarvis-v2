@@ -1651,6 +1651,32 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Circadian energy
+    try:
+        from core.runtime.circadian_state import get_circadian_context, record_activity_event
+        record_activity_event()
+        _energy_ctx = get_circadian_context()
+        if _energy_ctx:
+            inputs_present.append(
+                f"krops-energi ({_energy_ctx['energy_level']}): "
+                f"{_energy_ctx['clock_phase']}, drain={_energy_ctx['drain_label']}"
+            )
+    except Exception:
+        pass
+
+    # Somatic phrase
+    try:
+        from apps.api.jarvis_api.services.somatic_daemon import (
+            get_latest_somatic_phrase,
+            tick_somatic_daemon,
+        )
+        tick_somatic_daemon()
+        _somatic = get_latest_somatic_phrase()
+        if _somatic:
+            inputs_present.append(f"somatisk: {_somatic}")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

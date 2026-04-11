@@ -114,6 +114,7 @@ ALLOWED_EVENT_FAMILIES = {
     "discord",
     "circadian",
     "somatic",
+    "irony",
 }
 
 

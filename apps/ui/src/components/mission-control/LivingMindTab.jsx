@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1100,6 +1100,10 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasCuriosityState = Boolean(curiosityState?.latestCuriosity)
   const metaReflection = data?.metaReflection || null
   const hasMetaReflection = Boolean(metaReflection?.latestInsight)
+  const experiencedTime = data?.experiencedTime || null
+  const hasExperiencedTime = Boolean(experiencedTime?.active && experiencedTime?.feltLabel && experiencedTime.feltLabel !== 'meget kort')
+  const developmentNarrative = data?.developmentNarrative || null
+  const hasDevelopmentNarrative = Boolean(developmentNarrative?.latestNarrative)
   const wonderAwareness = data?.wonderAwareness || null
   const hasWonderAwareness = Boolean(
     wonderAwareness &&
@@ -1206,6 +1210,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'reflection-cycle', targetId: 'living-mind-reflection-cycle', label: 'Refleksion', icon: Eye, active: hasReflectionCycle, status: null, statusLabel: `${reflectionCycle?.reflectionCount ?? 0} cyklusser` },
     { id: 'curiosity-state', targetId: 'living-mind-curiosity-state', label: 'Nysgerrighed', icon: Compass, active: hasCuriosityState, status: null, statusLabel: `${curiosityState?.curiosityCount ?? 0} spørgsmål` },
     { id: 'meta-reflection', targetId: 'living-mind-meta-reflection', label: 'Meta', icon: Layers, active: hasMetaReflection, status: null, statusLabel: `${metaReflection?.insightCount ?? 0} indsigter` },
+    { id: 'experienced-time', targetId: 'living-mind-experienced-time', label: 'Tid', icon: Clock, active: hasExperiencedTime, status: null, statusLabel: experiencedTime?.feltLabel || 'meget kort' },
+    { id: 'development-narrative', targetId: 'living-mind-development-narrative', label: 'Udvikling', icon: BookOpen, active: hasDevelopmentNarrative, status: null, statusLabel: hasDevelopmentNarrative ? 'daglig' : 'ingen' },
   ]
 
   return (
@@ -2047,6 +2053,54 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           )}
           {metaReflection.lastGeneratedAt ? (
             <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${metaReflection.lastGeneratedAt}`}</small>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasExperiencedTime ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-experienced-time" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/experienced-time',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:per-tick accumulation',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Oplevet tid</h3>
+              <p className="muted">Subjektiv tidsfornemmelse for sessionen</p>
+            </div>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <span style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent-text)' }}>{experiencedTime.feltLabel}</span>
+            <div style={{ marginTop: 8, display: 'flex', gap: 16 }}>
+              <small className="muted">{`${experiencedTime.sessionEventCount} signaler`}</small>
+              <small className="muted">{`${experiencedTime.sessionNoveltyCount} nye`}</small>
+              <small className="muted">{`${experiencedTime.baseMinutes} min faktisk`}</small>
+            </div>
+          </div>
+        </article>
+      </section>
+      ) : null}
+
+      {hasDevelopmentNarrative ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-development-narrative" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/development-narrative',
+          fetchedAt: data?.fetchedAt,
+          mode: 'daemon:cadence 24h',
+        })}>
+          <div className="panel-header">
+            <div>
+              <h3>Selvudvikling</h3>
+              <p className="muted">Daglig narrativ om Jarvis' udvikling</p>
+            </div>
+          </div>
+          <blockquote style={{ margin: '8px 0 0', fontStyle: 'italic', borderLeft: '3px solid var(--border-1)', paddingLeft: 12 }}>
+            {developmentNarrative.latestNarrative}
+          </blockquote>
+          {developmentNarrative.lastGeneratedAt ? (
+            <small className="muted" style={{ display: 'block', marginTop: 8 }}>{`opdateret: ${developmentNarrative.lastGeneratedAt}`}</small>
           ) : null}
         </article>
       </section>

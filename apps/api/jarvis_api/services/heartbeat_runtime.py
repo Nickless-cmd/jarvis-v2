@@ -1781,6 +1781,51 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # Inner conflict
+    try:
+        from apps.api.jarvis_api.services.conflict_daemon import tick_conflict_daemon, get_latest_conflict
+        from apps.api.jarvis_api.services.somatic_daemon import build_body_state_surface
+        from apps.api.jarvis_api.services.surprise_daemon import build_surprise_surface
+        from apps.api.jarvis_api.services.thought_action_proposal_daemon import build_proposal_surface as _tap_surface
+        from apps.api.jarvis_api.services.thought_stream_daemon import build_thought_stream_surface as _ts_surface
+        _body = build_body_state_surface()
+        _surp = build_surprise_surface()
+        _tap = _tap_surface()
+        _tss = _ts_surface()
+        _conflict_snap = {
+            "energy_level": _body.get("energy_level", ""),
+            "inner_voice_mode": _iv_mode_ts,
+            "pending_proposals_count": _tap.get("pending_count", 0),
+            "latest_fragment": _tss.get("latest_fragment", ""),
+            "last_surprise": _surp.get("last_surprise", ""),
+            "last_surprise_at": _surp.get("generated_at", ""),
+            "fragment_count": _tss.get("fragment_count", 0),
+        }
+        tick_conflict_daemon(_conflict_snap)
+        _conflict = get_latest_conflict()
+        if _conflict:
+            inputs_present.append(f"indre konflikt: {_conflict[:60]}")
+    except Exception:
+        pass
+
+    # Reflection cycle
+    try:
+        from apps.api.jarvis_api.services.reflection_cycle_daemon import tick_reflection_cycle_daemon, get_latest_reflection
+        from apps.api.jarvis_api.services.conflict_daemon import get_latest_conflict as _get_conflict
+        _reflect_snap = {
+            "energy_level": _energy_ts,
+            "inner_voice_mode": _iv_mode_ts,
+            "latest_fragment": _tss.get("latest_fragment", "") if "_tss" in dir() else "",
+            "last_conflict": _get_conflict(),
+            "last_surprise": _surp.get("last_surprise", "") if "_surp" in dir() else "",
+        }
+        tick_reflection_cycle_daemon(_reflect_snap)
+        _reflection = get_latest_reflection()
+        if _reflection:
+            inputs_present.append(f"refleksion: {_reflection[:60]}")
+    except Exception:
+        pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

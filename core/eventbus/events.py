@@ -117,6 +117,8 @@ ALLOWED_EVENT_FAMILIES = {
     "irony",
     "thought_stream",
     "thought_action_proposal",
+    "conflict",
+    "reflection",
 }
 
 

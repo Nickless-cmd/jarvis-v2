@@ -1462,6 +1462,20 @@ def mc_resolve_thought_proposal(proposal_id: str, body: dict) -> dict:
     return {"ok": ok}
 
 
+@router.get("/conflict-signal")
+def mc_conflict_signal() -> dict:
+    """Return Jarvis's latest detected inner conflict."""
+    from apps.api.jarvis_api.services.conflict_daemon import build_conflict_surface
+    return build_conflict_surface()
+
+
+@router.get("/reflection-cycle")
+def mc_reflection_cycle() -> dict:
+    """Return Jarvis's latest pure experience reflection."""
+    from apps.api.jarvis_api.services.reflection_cycle_daemon import build_reflection_surface
+    return build_reflection_surface()
+
+
 @router.get("/affective-meta-state")
 def mc_affective_meta_state() -> dict:
     """Return the current bounded affective/meta runtime state."""

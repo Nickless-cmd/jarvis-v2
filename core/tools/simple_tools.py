@@ -686,6 +686,62 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "convene_council",
+            "description": (
+                "Convene a council of agents to deliberate on a decision or topic. "
+                "Use this when facing a significant or complex decision that warrants "
+                "multiple perspectives before acting. The council runs synchronously "
+                "and returns a summary recommendation. "
+                "Suitable for: identity changes, multi-step plans, ambiguous tradeoffs, "
+                "actions with lasting consequences."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "The decision or question to deliberate. Be specific.",
+                    },
+                    "urgency": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"],
+                        "description": "low=full deliberation (5 roles), medium=4 roles, high=critic+planner only",
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional explicit role list. Omit to use urgency defaults.",
+                    },
+                },
+                "required": ["topic"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "quick_council_check",
+            "description": (
+                "Run a single Devil's Advocate agent to stress-test a decision before acting. "
+                "Faster and cheaper than a full council. Use this for moderate-risk decisions "
+                "where you want a sanity check without full deliberation. "
+                "Returns the objection raised (if any) and whether escalation to full council is recommended."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": "The action or decision you are about to take.",
+                    },
+                },
+                "required": ["action"],
+            },
+        },
+    },
 ]
 
 
@@ -2285,6 +2341,84 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_convene_council(args: dict[str, Any]) -> dict[str, Any]:
+    topic = str(args.get("topic") or "").strip()
+    if not topic:
+        return {"status": "error", "error": "topic is required"}
+    urgency = str(args.get("urgency") or "medium")
+    explicit_roles: list[str] = list(args.get("roles") or [])
+
+    if explicit_roles:
+        roles = explicit_roles
+    elif urgency == "high":
+        roles = ["critic", "planner"]
+    elif urgency == "low":
+        roles = ["planner", "critic", "researcher", "synthesizer", "devils_advocate"]
+    else:  # medium
+        roles = ["planner", "critic", "researcher", "synthesizer"]
+
+    try:
+        from apps.api.jarvis_api.services.agent_runtime import (
+            create_council_session_runtime,
+            run_council_round,
+        )
+        session = create_council_session_runtime(topic=topic, roles=roles)
+        council_id = str(session.get("council_id") or "")
+        if not council_id:
+            return {"status": "error", "error": "failed to create council session"}
+        result = run_council_round(council_id)
+        summary = str(result.get("summary") or "No summary produced.")
+        members = result.get("members") or []
+        positions = [
+            f"{m.get('role')}: {str(m.get('position_summary') or '')[:120]}"
+            for m in members
+        ]
+        return {
+            "status": "ok",
+            "council_id": council_id,
+            "summary": summary,
+            "positions": positions,
+            "member_count": len(members),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_quick_council_check(args: dict[str, Any]) -> dict[str, Any]:
+    action = str(args.get("action") or "").strip()
+    if not action:
+        return {"status": "error", "error": "action is required"}
+
+    try:
+        from apps.api.jarvis_api.services.agent_runtime import spawn_agent_task
+        result = spawn_agent_task(
+            role="devils_advocate",
+            goal=(
+                f"Jarvis is about to take the following action:\n\n{action}\n\n"
+                "Argue the strongest possible case AGAINST this action. "
+                "Be specific. End your response with one of: "
+                "ESCALATE (full council needed) or PROCEED (action seems defensible)."
+            ),
+            auto_execute=True,
+            budget_tokens=2000,
+        )
+        text = ""
+        messages = result.get("messages") or []
+        for msg in reversed(messages):
+            if str(msg.get("direction") or "") == "agent->jarvis":
+                text = str(msg.get("content") or "")
+                break
+        escalate = "ESCALATE" in text.upper()
+        return {
+            "status": "ok",
+            "objection": text[:600] if text else "No objection raised.",
+            "escalate_to_council": escalate,
+            "agent_id": str(result.get("agent_id") or ""),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
@@ -2319,6 +2453,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "search_chat_history": _exec_search_chat_history,
     "discord_status": _exec_discord_status,
     "discord_channel": _exec_discord_channel,
+    "convene_council": _exec_convene_council,
+    "quick_council_check": _exec_quick_council_check,
 }
 
 

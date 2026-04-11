@@ -16,6 +16,8 @@ import { ObservabilityTab } from '../components/mission-control/ObservabilityTab
 import { OperationsTab } from '../components/mission-control/OperationsTab'
 import { OverviewTab } from '../components/mission-control/OverviewTab'
 import { SkillsTab } from '../components/mission-control/SkillsTab'
+import { AgentsTab } from '../components/mission-control/AgentsTab'
+import { CouncilTab } from '../components/mission-control/CouncilTab'
 import { CognitiveStateTab } from '../components/mission-control/CognitiveStateTab'
 import { RelationshipTab } from '../components/mission-control/RelationshipTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
@@ -220,6 +222,8 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
             <DevelopmentTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
           ) : null}
 
+          {activeTab === 'agents' ? <AgentsTab /> : null}
+          {activeTab === 'council' ? <CouncilTab /> : null}
           {activeTab === 'memory' ? <MemoryTab /> : null}
           {activeTab === 'skills' ? <SkillsTab /> : null}
           {activeTab === 'hardening' ? <HardeningTab /> : null}

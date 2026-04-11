@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import tempfile
 from datetime import UTC, datetime
@@ -565,8 +566,16 @@ def _probe_codex_cli_target(*, model: str) -> dict[str, object]:
             "provider_status": "missing-codex-auth",
             "checked_at": checked_at,
         }
+    codex_exec = _resolve_codex_cli_executable()
+    if codex_exec is None:
+        return {
+            "provider_ready": False,
+            "live_verified": False,
+            "provider_status": "codex-cli-unavailable",
+            "checked_at": checked_at,
+        }
     result = subprocess.run(
-        ["codex", "--version"],
+        [codex_exec, "--version"],
         capture_output=True,
         text=True,
         timeout=15,
@@ -773,10 +782,13 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
 
 
 def _execute_codex_cli(*, message: str, model: str) -> dict[str, object]:
+    codex_exec = _resolve_codex_cli_executable()
+    if codex_exec is None:
+        raise RuntimeError("codex-cli executable not found")
     with tempfile.NamedTemporaryFile(prefix="jarvis-codex-", suffix=".txt", delete=False) as tmp:
         output_path = Path(tmp.name)
     cmd = [
-        "codex",
+        codex_exec,
         "exec",
         "-C",
         str(Path.cwd()),
@@ -810,6 +822,21 @@ def _execute_codex_cli(*, message: str, model: str) -> dict[str, object]:
             output_path.unlink(missing_ok=True)
         except Exception:
             pass
+
+
+def _resolve_codex_cli_executable() -> str | None:
+    direct = shutil.which("codex")
+    if direct:
+        return direct
+
+    fallback_candidates = [
+        Path.home() / ".npm-global" / "bin" / "codex",
+        Path("/home/bs/.npm-global/bin/codex"),
+    ]
+    for candidate in fallback_candidates:
+        if candidate.exists() and candidate.is_file():
+            return str(candidate)
+    return None
 
 
 def _load_provider_api_key(*, provider: str, profile: str) -> str:

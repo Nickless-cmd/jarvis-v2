@@ -4152,4 +4152,34 @@ export const backend = {
       cognitiveStateInjection,
     }
   },
+
+  async getMissionControlAgents() {
+    return requestJson('/mc/agents')
+  },
+
+  async getMissionControlAgent(agentId) {
+    return requestJson(`/mc/agents/${encodeURIComponent(agentId)}`)
+  },
+
+  async getMissionControlCouncil() {
+    return requestJson('/mc/council')
+  },
+
+  async getMissionControlCouncilSession(councilId) {
+    return requestJson(`/mc/council/${encodeURIComponent(councilId)}`)
+  },
+
+  async spawnMissionControlAgent(payload) {
+    return requestJson('/mc/runtime/agents/spawn', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
+
+  async spawnMissionControlCouncil(payload) {
+    return requestJson('/mc/runtime/council/spawn', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    })
+  },
 }

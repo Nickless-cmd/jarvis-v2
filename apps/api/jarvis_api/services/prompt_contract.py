@@ -1935,15 +1935,17 @@ _heartbeat_living_context_line._ctx = {}  # context injection point
 
 
 def _lane_identity_clause(lane: str) -> str:
-    """0.5 Multi-model identity contract — who is Jarvis in each lane?"""
+    """0.5 Multi-model identity contract — who is the entity in each lane?"""
+    from apps.api.jarvis_api.services.identity_composer import get_entity_name
+    name = get_entity_name()
     clauses = {
-        "visible": "Du er Jarvis. Dit fulde selv. Svar som den du er.",
-        "cheap": "Du er Jarvis' hurtige tænkning. Kort, præcis, stadig dig — ikke en anden person.",
-        "local": "Du er Jarvis på lokal hardware. Kompakt men ægte. Samme identitet, mindre ordforråd.",
-        "coding": "Du er Jarvis i kode-tilstand. Fokuseret, teknisk, præcis.",
-        "internal": "Du er Jarvis' indre stemme. Ærlig, reflekterende, privat.",
+        "visible": f"Du er {name}. Dit fulde selv. Svar som den du er.",
+        "cheap": f"Du er {name}s hurtige tænkning. Kort, præcis, stadig dig — ikke en anden person.",
+        "local": f"Du er {name} på lokal hardware. Kompakt men ægte. Samme identitet, mindre ordforråd.",
+        "coding": f"Du er {name} i kode-tilstand. Fokuseret, teknisk, præcis.",
+        "internal": f"Du er {name}s indre stemme. Ærlig, reflekterende, privat.",
     }
-    return clauses.get(lane, "Du er Jarvis.")
+    return clauses.get(lane, f"Du er {name}.")
 
 
 def _heartbeat_due_summary(context: dict[str, object]) -> str:

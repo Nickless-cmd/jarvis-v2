@@ -15,6 +15,20 @@ function formatDiff(ins, dels) {
   return parts
 }
 
+function fileIcon(mime) {
+  if (mime.startsWith('image/')) return '🖼️'
+  if (mime.includes('zip')) return '📦'
+  if (mime.includes('tar') || mime.includes('gzip')) return '🗜️'
+  if (mime.includes('rar')) return '🗜️'
+  return '📎'
+}
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export function Composer({
   value,
   onChange,
@@ -25,27 +39,34 @@ export function Composer({
   onSelectionChange,
   lastRunTokens,
   streamingTokenEstimate,
+  sessionId,
 }) {
   const textareaRef = useRef(null)
   const commitInputRef = useRef(null)
-  const canSend = Boolean(value.trim()) && !isStreaming
+  const fileInputRef = useRef(null)
 
   const [planMode, setPlanMode] = useState(false)
   const [approvalMode, setApprovalMode] = useState('auto')
   const [gitInfo, setGitInfo] = useState(null)
   const [commitOpen, setCommitOpen] = useState(false)
   const [commitMsg, setCommitMsg] = useState('')
-  const [commitState, setCommitState] = useState('idle') // idle | loading | error
+  const [commitState, setCommitState] = useState('idle')
   const [commitError, setCommitError] = useState('')
   const [provider, setProvider] = useState(selection?.currentProvider || '')
   const [model, setModel] = useState(selection?.currentModel || '')
+  const [attachments, setAttachments] = useState([])
+  // attachments: [{localId, filename, mime, size, status, objectUrl, serverId}]
+  // status: 'uploading' | 'done' | 'error'
+  const [isDragOver, setIsDragOver] = useState(false)
+
+  const doneAttachments = attachments.filter((a) => a.status === 'done')
+  const canSend = (Boolean(value.trim()) || doneAttachments.length > 0) && !isStreaming
 
   useEffect(() => {
     setProvider(selection?.currentProvider || '')
     setModel(selection?.currentModel || '')
   }, [selection?.currentProvider, selection?.currentModel])
 
-  // Fetch git info on mount and every 30s
   useEffect(() => {
     async function fetchGit() {
       const info = await backend.getSystemGit()
@@ -56,7 +77,6 @@ export function Composer({
     return () => clearInterval(id)
   }, [])
 
-  // Focus commit input when opened
   useEffect(() => {
     if (commitOpen) commitInputRef.current?.focus()
   }, [commitOpen])
@@ -74,7 +94,6 @@ export function Composer({
     [configuredTargets, selection?.currentProvider]
   )
   const models = useMemo(() => {
-    // For ollama: use the full live model list (includes cloud models) instead of only configured targets
     if (provider === 'ollama') {
       const ollamaModels = (selection?.ollamaModels || [])
         .filter((m) => m.name && !m.family?.includes('bert') && !m.name.includes('embed'))
@@ -105,10 +124,69 @@ export function Composer({
     onSelectionChange?.({ provider, model: next, authProfile: candidate?.authProfile || '' })
   }
 
+  async function addFiles(files) {
+    if (!sessionId) return
+    const newItems = Array.from(files).map((file) => ({
+      localId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      filename: file.name,
+      mime: file.type || 'application/octet-stream',
+      size: file.size,
+      status: 'uploading',
+      objectUrl: file.type?.startsWith('image/') ? URL.createObjectURL(file) : null,
+      serverId: null,
+      _file: file,
+    }))
+    setAttachments((prev) => [...prev, ...newItems])
+
+    for (const item of newItems) {
+      try {
+        const result = await backend.uploadAttachment(sessionId, item._file)
+        setAttachments((prev) =>
+          prev.map((a) => a.localId === item.localId ? { ...a, status: 'done', serverId: result.id } : a)
+        )
+      } catch {
+        setAttachments((prev) =>
+          prev.map((a) => a.localId === item.localId ? { ...a, status: 'error' } : a)
+        )
+      }
+    }
+  }
+
+  function removeAttachment(localId) {
+    setAttachments((prev) => {
+      const item = prev.find((a) => a.localId === localId)
+      if (item?.objectUrl) URL.revokeObjectURL(item.objectUrl)
+      return prev.filter((a) => a.localId !== localId)
+    })
+  }
+
   function handleSend() {
     if (!canSend) return
     const msg = planMode ? `[Plan mode] ${value.trim()}` : value.trim()
-    onSend(msg, { approvalMode })
+    const attachmentIds = doneAttachments.map((a) => a.serverId)
+    const attachmentMeta = doneAttachments.map((a) => ({
+      id: a.serverId,
+      filename: a.filename,
+      mimeType: a.mime,
+      objectUrl: a.objectUrl,
+    }))
+    onSend(msg, { approvalMode, attachmentIds, attachmentMeta })
+    setAttachments([])
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  function handleDragLeave(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) setIsDragOver(false)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setIsDragOver(false)
+    if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files)
   }
 
   function openCommit() {
@@ -158,11 +236,20 @@ export function Composer({
     ? gitInfo.workspace.replace(/^\/media\/projects\//, '~/')
     : ''
   const hasChanges = (gitInfo?.files_changed || 0) > 0
+  const uploadingCount = attachments.filter((a) => a.status === 'uploading').length
 
   return (
     <section className="composer-shell">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,.zip,.tar,.tar.gz,.tgz,.tar.bz2,.rar"
+        style={{ display: 'none' }}
+        onChange={(e) => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = '' }}
+      />
 
-      {/* Inline commit field (shown above the card) */}
       {commitOpen && (
         <div className="composer-commit-row">
           <GitCommit size={12} strokeWidth={1.8} className="composer-commit-icon" />
@@ -182,30 +269,22 @@ export function Composer({
           {commitError && (
             <span className="composer-commit-error mono">{commitError}</span>
           )}
-          <button
-            className="composer-commit-confirm"
-            onClick={submitCommit}
-            disabled={!commitMsg.trim() || commitState === 'loading'}
-            title="Confirm commit"
-            type="button"
-          >
+          <button className="composer-commit-confirm" onClick={submitCommit}
+            disabled={!commitMsg.trim() || commitState === 'loading'} title="Confirm commit" type="button">
             <Check size={12} />
           </button>
-          <button
-            className="composer-commit-cancel"
-            onClick={cancelCommit}
-            title="Cancel"
-            type="button"
-          >
+          <button className="composer-commit-cancel" onClick={cancelCommit} title="Cancel" type="button">
             <X size={12} />
           </button>
         </div>
       )}
 
-      {/* Main card */}
-      <div className={`composer-card${isStreaming ? ' working' : ''}`}>
-
-        {/* Git bar */}
+      <div
+        className={`composer-card${isStreaming ? ' working' : ''}${isDragOver ? ' drop-active' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {shortBranch && (
           <div className="composer-git-bar">
             <div className="composer-git-bar-left">
@@ -221,12 +300,7 @@ export function Composer({
             </div>
             <div className="composer-git-bar-right">
               {hasChanges && !commitOpen && (
-                <button
-                  className="composer-commit-btn"
-                  onClick={openCommit}
-                  title="Commit changes"
-                  type="button"
-                >
+                <button className="composer-commit-btn" onClick={openCommit} title="Commit changes" type="button">
                   <GitCommit size={11} strokeWidth={1.8} />
                   <span>Commit changes</span>
                 </button>
@@ -235,7 +309,31 @@ export function Composer({
           </div>
         )}
 
-        {/* Textarea */}
+        {/* Attachment tray */}
+        {attachments.length > 0 && (
+          <div className="composer-attachment-tray">
+            {attachments.map((item) =>
+              item.objectUrl ? (
+                <div key={item.localId} className={`attachment-thumb${item.status === 'error' ? ' error-state' : ''}`}>
+                  <img src={item.objectUrl} alt={item.filename} />
+                  <span className="attachment-thumb-label">{item.filename}</span>
+                  {item.status === 'uploading' && (
+                    <div className="attachment-thumb-progress" style={{ width: '60%' }} />
+                  )}
+                  <button className="attachment-thumb-remove" onClick={() => removeAttachment(item.localId)}>×</button>
+                </div>
+              ) : (
+                <div key={item.localId} className="attachment-file-card">
+                  <span className="attachment-file-card-icon">{fileIcon(item.mime)}</span>
+                  <span className="attachment-file-card-name">{item.filename}</span>
+                  <span className="attachment-file-card-size">{formatBytes(item.size)}</span>
+                  <button className="attachment-thumb-remove" onClick={() => removeAttachment(item.localId)}>×</button>
+                </div>
+              )
+            )}
+          </div>
+        )}
+
         <textarea
           ref={textareaRef}
           className="composer-textarea"
@@ -257,19 +355,19 @@ export function Composer({
           rows={1}
         />
 
-        {/* Toolbar row */}
         <div className="composer-toolbar">
           <div className="composer-toolbar-left">
-            <button className="composer-attach-btn icon-btn subtle" type="button" title="Attach">
+            <button
+              className="composer-attach-btn icon-btn subtle"
+              type="button"
+              title="Attach file or image"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <Plus size={14} />
             </button>
             <div className="composer-permissions-group" title="Tool approval mode">
               <ShieldCheck size={11} strokeWidth={1.8} className="composer-shield-icon" />
-              <select
-                className="composer-select mono"
-                value={approvalMode}
-                onChange={(e) => setApprovalMode(e.target.value)}
-              >
+              <select className="composer-select mono" value={approvalMode} onChange={(e) => setApprovalMode(e.target.value)}>
                 <option value="auto">Auto</option>
                 <option value="ask">Ask permissions</option>
                 <option value="trust">Trust all</option>
@@ -280,23 +378,13 @@ export function Composer({
           <div className="composer-toolbar-right">
             {providers.length > 0 && (
               <div className="composer-model-group">
-                <select
-                  className="composer-select mono"
-                  value={provider}
-                  onChange={handleProviderChange}
-                  title="Provider"
-                >
+                <select className="composer-select mono" value={provider} onChange={handleProviderChange} title="Provider">
                   {providers.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
                 {models.length > 0 && (
                   <>
                     <span className="composer-select-sep mono">/</span>
-                    <select
-                      className="composer-select mono"
-                      value={model}
-                      onChange={handleModelChange}
-                      title="Model"
-                    >
+                    <select className="composer-select mono" value={model} onChange={handleModelChange} title="Model">
                       {models.map((m) => <option key={m.model} value={m.model}>{m.label}</option>)}
                     </select>
                   </>
@@ -309,12 +397,8 @@ export function Composer({
                 <Square size={14} />
               </button>
             ) : (
-              <button
-                className="send-btn"
-                onClick={handleSend}
-                disabled={!canSend}
-                title={canSend ? 'Send message' : 'Write a message first'}
-              >
+              <button className="send-btn" onClick={handleSend} disabled={!canSend}
+                title={canSend ? 'Send message' : 'Write a message or attach a file first'}>
                 <ArrowUp size={16} />
               </button>
             )}
@@ -322,7 +406,13 @@ export function Composer({
         </div>
       </div>
 
-      {/* Footer row */}
+      {attachments.length > 0 && (
+        <div className="attachment-status-line">
+          {attachments.length} vedhæftet{attachments.length !== 1 ? 'e' : ''}
+          {uploadingCount > 0 ? ` · ${uploadingCount} uploades stadig` : ''}
+        </div>
+      )}
+
       <div className="composer-footer">
         <div className="composer-footer-left">
           {shortPath && (
@@ -344,17 +434,14 @@ export function Composer({
           </button>
 
           {tokenLabel && (
-            <div
-              className="composer-token-count mono"
-              title={lastRunTokens ? `In: ${lastRunTokens.input} / Out: ${lastRunTokens.output}` : ''}
-            >
+            <div className="composer-token-count mono"
+              title={lastRunTokens ? `In: ${lastRunTokens.input} / Out: ${lastRunTokens.output}` : ''}>
               <Activity size={9} />
               <span>{tokenLabel}</span>
             </div>
           )}
         </div>
       </div>
-
     </section>
   )
 }

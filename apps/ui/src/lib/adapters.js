@@ -4284,16 +4284,28 @@ export const backend = {
     return data.session
   },
 
-  async streamMessage({ sessionId, content, onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {
+  async streamMessage({ sessionId, content, attachmentIds = [], onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {
     const response = await fetch('/chat/stream', {
       method: 'POST',
       headers: JSON_HEADERS,
-      body: JSON.stringify({ message: content, session_id: sessionId }),
+      body: JSON.stringify({ message: content, session_id: sessionId, attachment_ids: attachmentIds }),
     })
     if (!response.ok) {
       throw new Error(`/chat/stream: ${response.status} ${response.statusText}`)
     }
     return readSseStream(response, { onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest })
+  },
+
+  async uploadAttachment(sessionId, file) {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('session_id', sessionId)
+    const response = await fetch('/attachments/upload', { method: 'POST', body: form })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err.detail || `Upload failed: ${response.status}`)
+    }
+    return response.json()
   },
 
   async cancelRun(runId) {

@@ -1,43 +1,57 @@
-"""Text-to-speech using edge-tts with British male voices."""
+"""Text-to-speech — ElevenLabs (primary) with edge-tts fallback."""
 
 import asyncio
 import subprocess
 import tempfile
 from pathlib import Path
 
-# Preferred voices: Danish male first, British male fallback
-VOICES = ["da-DK-JeppeNeural", "en-GB-RyanNeural"]
-DEFAULT_VOICE = VOICES[0]
-
-
-async def synthesize(text: str, voice: str = DEFAULT_VOICE, output_path: str | None = None) -> str:
-    """Synthesize text to speech and return path to audio file."""
-    import edge_tts
-
-    if output_path is None:
-        output_path = tempfile.mktemp(suffix=".mp3", prefix="jarvis_voice_")
-
-    communicate = edge_tts.Communicate(text, voice)
-    await communicate.save(output_path)
-    return output_path
-
-
-def say(text: str, voice: str = DEFAULT_VOICE, blocking: bool = True) -> str:
-    """Synthesize and play audio. Returns the audio file path."""
-    output_path = asyncio.run(synthesize(text, voice))
-
-    if blocking:
-        play_audio(output_path)
-    else:
-        import threading
-        threading.Thread(target=play_audio, args=(output_path,), daemon=True).start()
-
-    return output_path
-
+# ElevenLabs: George — British, warm, captivating (fits Jarvis well)
+ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
+# edge-tts fallback voices
+EDGE_VOICES = ["da-DK-JeppeNeural", "en-GB-RyanNeural"]
 
 _FFMPEG = "/home/linuxbrew/.linuxbrew/bin/ffmpeg"
 _PAPLAY = "/home/linuxbrew/.linuxbrew/bin/paplay"
 _FFPLAY = "/home/linuxbrew/.linuxbrew/bin/ffplay"
+
+
+def _get_elevenlabs_key() -> str | None:
+    try:
+        import json
+        from pathlib import Path as P
+        cfg = P.home() / ".jarvis-v2" / "config" / "runtime.json"
+        return json.loads(cfg.read_text()).get("elevenlabs_api_key")
+    except Exception:
+        return None
+
+
+def _synthesize_elevenlabs(text: str) -> str:
+    """Generate MP3 via ElevenLabs API. Returns path to temp file."""
+    from elevenlabs.client import ElevenLabs
+    key = _get_elevenlabs_key()
+    if not key:
+        raise RuntimeError("No ElevenLabs API key")
+    client = ElevenLabs(api_key=key)
+    audio = client.text_to_speech.convert(
+        voice_id=ELEVENLABS_VOICE_ID,
+        text=text,
+        model_id="eleven_multilingual_v2",
+        output_format="mp3_44100_128",
+    )
+    path = tempfile.mktemp(suffix=".mp3", prefix="jarvis_el_")
+    with open(path, "wb") as f:
+        for chunk in audio:
+            f.write(chunk)
+    return path
+
+
+async def _synthesize_edge(text: str) -> str:
+    """Generate MP3 via edge-tts. Returns path to temp file."""
+    import edge_tts
+    path = tempfile.mktemp(suffix=".mp3", prefix="jarvis_edge_")
+    communicate = edge_tts.Communicate(text, EDGE_VOICES[0])
+    await communicate.save(path)
+    return path
 
 
 def _pipewire_env() -> dict:
@@ -46,7 +60,7 @@ def _pipewire_env() -> dict:
 
 
 def play_audio(path: str) -> None:
-    """Play an audio file through PulseAudio/PipeWire default sink."""
+    """Play an audio file through PipeWire/PulseAudio default sink."""
     wav_path = path + ".play.wav"
     subprocess.run(
         [_FFMPEG, "-y", "-i", path, "-ar", "48000", "-ac", "2", wav_path],
@@ -74,3 +88,25 @@ def play_audio(path: str) -> None:
             Path(wav_path).unlink()
         except OSError:
             pass
+
+
+def say(text: str, blocking: bool = True) -> str:
+    """Synthesize and play text. ElevenLabs primary, edge-tts fallback."""
+    try:
+        path = _synthesize_elevenlabs(text)
+    except Exception as e:
+        print(f"[tts] ElevenLabs failed ({e}), falling back to edge-tts")
+        path = asyncio.run(_synthesize_edge(text))
+
+    if blocking:
+        play_audio(path)
+    else:
+        import threading
+        threading.Thread(target=play_audio, args=(path,), daemon=True).start()
+
+    try:
+        Path(path).unlink()
+    except OSError:
+        pass
+
+    return path

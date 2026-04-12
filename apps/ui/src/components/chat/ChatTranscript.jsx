@@ -60,7 +60,10 @@ export function ChatTranscript({ messages, workingSteps }) {
   useEffect(() => {
     const node = transcriptRef.current
     if (!node) return
-    node.scrollTop = node.scrollHeight
+    // Only auto-scroll if the user is already near the bottom (within 120px).
+    // This prevents hijacking the scroll position when the user scrolls up to read.
+    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight
+    if (distanceFromBottom < 120) node.scrollTop = node.scrollHeight
   }, [messages])
 
   if (!messages.length) {

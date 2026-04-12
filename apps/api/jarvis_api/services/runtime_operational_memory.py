@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import math
+import re
+from datetime import UTC, datetime
 from typing import Any
 
 from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import (
@@ -30,6 +33,8 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
     continuity = visible_session_continuity()
     user_facts = remembered_user_facts(limit=min(limit, 3))
     work_context = active_work_context(limit=min(limit, 5))
+    recent_notes = recent_visible_work_notes(limit=min(limit, 6))
+    note_loop_synergies = summarize_note_loop_synergies(loops=loops, notes=recent_notes)
 
     return {
         "open_loops": loops,
@@ -41,6 +46,7 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
         "executive_feedback": executive_feedback,
         "executive_feedback_summary": executive_feedback_summary,
         "work_context": work_context,
+        "note_loop_synergies": note_loop_synergies,
         "visible_continuity": continuity,
         "summary": {
             "open_loop_count": len(loops),
@@ -49,6 +55,7 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
             "initiative_count": len(initiatives),
             "pressure_count": len(tensions),
             "contradiction_count": len(contradictions),
+            "note_loop_synergy_count": len(note_loop_synergies),
             "memory_context_stale": (
                 len(outcomes) == 0
                 and len(executive_feedback) == 0
@@ -151,36 +158,57 @@ def summarize_executive_feedback(
 ) -> dict[str, Any]:
     normalized = list(items or [])
     latest = normalized[0] if normalized else {}
+    now = datetime.now(UTC)
     action_stats: dict[str, dict[str, Any]] = {}
     for item in normalized:
         action_id = str(item.get("action_id") or "").strip()
         if not action_id:
             continue
         status = str(item.get("result_status") or "unknown").strip() or "unknown"
+        recorded_at = str(item.get("recorded_at") or "")
+        recency_weight = _feedback_recency_weight(recorded_at, now=now)
+        no_change_detected = _outcome_looks_like_no_change(item)
         bucket = action_stats.setdefault(
             action_id,
             {
                 "count": 0,
                 "latest_status": status,
+                "latest_recorded_at": recorded_at,
+                "latest_age_seconds": _feedback_age_seconds(recorded_at, now=now),
                 "success_count": 0,
                 "blocked_count": 0,
                 "failed_count": 0,
+                "no_change_count": 0,
                 "executed_count": 0,
                 "proposed_count": 0,
+                "success_weight": 0.0,
+                "blocked_weight": 0.0,
+                "failed_weight": 0.0,
+                "no_change_weight": 0.0,
             },
         )
         bucket["count"] += 1
         bucket["latest_status"] = bucket.get("latest_status") or status
+        if not bucket.get("latest_recorded_at"):
+            bucket["latest_recorded_at"] = recorded_at
+        if bucket.get("latest_age_seconds") is None:
+            bucket["latest_age_seconds"] = _feedback_age_seconds(recorded_at, now=now)
         if status in {"executed", "recorded", "sent"}:
             bucket["success_count"] += 1
+            bucket["success_weight"] += recency_weight
         if status == "blocked":
             bucket["blocked_count"] += 1
+            bucket["blocked_weight"] += recency_weight
         if status == "failed":
             bucket["failed_count"] += 1
+            bucket["failed_weight"] += recency_weight
         if status == "executed":
             bucket["executed_count"] += 1
         if status == "proposed":
             bucket["proposed_count"] += 1
+        if no_change_detected:
+            bucket["no_change_count"] += 1
+            bucket["no_change_weight"] += recency_weight
     repeat_action_detected = False
     blocked_action_detected = False
     if len(normalized) >= 2:
@@ -199,3 +227,159 @@ def summarize_executive_feedback(
         "blocked_action_detected": blocked_action_detected,
         "action_stats": action_stats,
     }
+
+
+def summarize_note_loop_synergies(
+    *,
+    loops: list[dict[str, Any]] | None,
+    notes: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    loop_items = list(loops or [])
+    note_items = list(notes or [])
+    if not loop_items or not note_items:
+        return []
+
+    now = datetime.now(UTC)
+    synergies: list[dict[str, Any]] = []
+    for loop in loop_items:
+        loop_id = str(loop.get("loop_id") or "").strip()
+        canonical_key = str(loop.get("canonical_key") or "").strip()
+        title = str(loop.get("title") or loop.get("summary") or "").strip()
+        domain_key = _domain_key(loop_id=loop_id, canonical_key=canonical_key)
+        loop_tokens = _signal_tokens(" ".join(part for part in (canonical_key, title) if part))
+        if domain_key:
+            loop_tokens.add(domain_key.lower())
+        best_match: dict[str, Any] | None = None
+        for note in note_items:
+            preview = str(note.get("work_preview") or "").strip()
+            if not preview:
+                continue
+            note_tokens = _signal_tokens(preview)
+            overlap = sorted(loop_tokens & note_tokens)
+            if domain_key and domain_key.lower() in preview.lower():
+                overlap.append(domain_key.lower())
+            overlap = list(dict.fromkeys(overlap))
+            if not overlap:
+                continue
+            age_seconds = _feedback_age_seconds(
+                str(note.get("finished_at") or note.get("created_at") or ""),
+                now=now,
+            )
+            recency_weight = _feedback_recency_weight(
+                str(note.get("finished_at") or note.get("created_at") or ""),
+                now=now,
+            )
+            match_score = min(0.3, 0.08 * len(overlap)) * recency_weight
+            if match_score <= 0.02:
+                continue
+            candidate = {
+                "loop_id": loop_id,
+                "canonical_key": canonical_key,
+                "title": title[:200],
+                "note_id": str(note.get("note_id") or ""),
+                "note_preview": preview[:220],
+                "projection_source": str(note.get("projection_source") or ""),
+                "matched_terms": overlap[:6],
+                "match_score": round(match_score, 4),
+                "age_seconds": age_seconds,
+            }
+            if best_match is None or float(candidate["match_score"]) > float(best_match["match_score"]):
+                best_match = candidate
+        if best_match is not None:
+            synergies.append(best_match)
+    synergies.sort(key=lambda item: float(item.get("match_score") or 0.0), reverse=True)
+    return synergies
+
+
+def _feedback_recency_weight(recorded_at: str, *, now: datetime) -> float:
+    age_seconds = _feedback_age_seconds(recorded_at, now=now)
+    half_life_seconds = 6 * 60 * 60
+    if age_seconds <= 0:
+        return 1.0
+    return max(0.05, math.exp(-math.log(2) * (age_seconds / half_life_seconds)))
+
+
+def _feedback_age_seconds(recorded_at: str, *, now: datetime) -> float:
+    timestamp = _parse_iso_datetime(recorded_at)
+    if timestamp is None:
+        return 0.0
+    return max((now - timestamp).total_seconds(), 0.0)
+
+
+def _parse_iso_datetime(value: str) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _outcome_looks_like_no_change(item: dict[str, Any]) -> bool:
+    summary = str(item.get("result_summary") or "")
+    result = item.get("result_json") or item.get("result") or {}
+    payload = item.get("payload_json") or item.get("payload") or {}
+    haystack = " ".join(
+        str(part)
+        for part in (
+            summary,
+            result,
+            payload,
+        )
+    ).lower()
+    return any(
+        token in haystack
+        for token in (
+            "intet nyt",
+            "nothing new",
+            "no change",
+            "no changes",
+            "no new",
+            "clean working tree",
+            "upstream=in-sync",
+            "in-sync",
+        )
+    )
+
+
+def _domain_key(*, loop_id: str, canonical_key: str) -> str:
+    raw = canonical_key.strip() or loop_id.strip()
+    if not raw:
+        return ""
+    parts = raw.split(":")
+    return parts[-1].strip()
+
+
+def _signal_tokens(value: str) -> set[str]:
+    tokens = {
+        token
+        for token in re.findall(r"[a-z0-9]{3,}", value.lower())
+        if token not in _STOP_TOKENS
+    }
+    return tokens
+
+
+_STOP_TOKENS = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "that",
+    "this",
+    "from",
+    "into",
+    "runtime",
+    "executive",
+    "note",
+    "mode",
+    "carrying",
+    "before",
+    "next",
+    "step",
+    "loop",
+    "open",
+}

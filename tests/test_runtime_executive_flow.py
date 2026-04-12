@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 
@@ -117,6 +118,104 @@ def test_decision_engine_penalizes_recent_blocked_repo_inspection(
     )
 
 
+def test_decision_engine_learns_from_no_change_repo_outcomes(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_decision_engine import (
+        RuntimeDecisionInput,
+        decide_next_action,
+    )
+
+    decision = decide_next_action(
+        RuntimeDecisionInput(
+            cognitive_frame={"summary": {"current_mode": "watch"}},
+            operational_memory={
+                "open_loops": [
+                    {
+                        "loop_id": "open-loop:repo-status",
+                        "title": "Inspect repo drift before next step",
+                        "runtime_status": "active",
+                        "canonical_key": "open-loop:repo-status",
+                    }
+                ],
+                "executive_feedback_summary": {
+                    "latest_action": "inspect_repo_context",
+                    "latest_status": "executed",
+                    "action_stats": {
+                        "inspect_repo_context": {
+                            "blocked_count": 0,
+                            "blocked_weight": 0.0,
+                            "failed_count": 0,
+                            "failed_weight": 0.0,
+                            "success_count": 2,
+                            "success_weight": 1.5,
+                            "no_change_count": 2,
+                            "no_change_weight": 1.5,
+                        }
+                    },
+                },
+                "summary": {"recent_outcome_count": 2},
+            },
+            loop_runtime={"items": []},
+            initiative_state={"pending": []},
+            visible_state={"summary": {"active": False}},
+            tool_intent_state={"summary": {"pending_count": 0}},
+            timestamp_iso="2026-04-12T10:08:00+00:00",
+        )
+    )
+
+    assert decision.action_id == "follow_open_loop"
+    inspect_reason = next(
+        item["reason"]
+        for item in decision.considered
+        if item["action_id"] == "inspect_repo_context"
+    )
+    assert "Outcome learning lowers repo inspection baseline" in str(inspect_reason)
+
+
+def test_decision_engine_boosts_follow_open_loop_from_note_synergy(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_decision_engine import (
+        RuntimeDecisionInput,
+        decide_next_action,
+    )
+
+    decision = decide_next_action(
+        RuntimeDecisionInput(
+            cognitive_frame={"summary": {"current_mode": "watch"}},
+            operational_memory={
+                "open_loops": [
+                    {
+                        "loop_id": "open-loop:repo-status",
+                        "title": "Inspect repo drift before next step",
+                        "runtime_status": "active",
+                        "canonical_key": "open-loop:repo-status",
+                    }
+                ],
+                "note_loop_synergies": [
+                    {
+                        "loop_id": "open-loop:repo-status",
+                        "canonical_key": "open-loop:repo-status",
+                        "title": "Inspect repo drift before next step",
+                        "match_score": 0.16,
+                        "matched_terms": ["repo", "drift"],
+                    }
+                ],
+                "summary": {"recent_outcome_count": 1},
+            },
+            loop_runtime={"items": []},
+            initiative_state={"pending": []},
+            visible_state={"summary": {"active": False}},
+            tool_intent_state={"summary": {"pending_count": 0}},
+            timestamp_iso="2026-04-12T10:09:00+00:00",
+        )
+    )
+
+    assert decision.action_id == "follow_open_loop"
+    assert "Recent persisted work note reinforces this loop" in str(decision.reason)
+
+
 def test_operational_memory_summarizes_recent_executive_feedback(
     isolated_runtime,
 ) -> None:
@@ -152,6 +251,117 @@ def test_operational_memory_summarizes_recent_executive_feedback(
     assert feedback_summary["latest_action"] == "follow_open_loop"
     assert feedback_summary["action_stats"]["inspect_repo_context"]["blocked_count"] == 1
     assert feedback_summary["action_stats"]["follow_open_loop"]["executed_count"] == 1
+
+
+def test_operational_memory_applies_time_decay_to_old_feedback(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_operational_memory import (
+        summarize_executive_feedback,
+    )
+
+    now = datetime.now(UTC)
+    summary = summarize_executive_feedback(
+        [
+            {
+                "action_id": "inspect_repo_context",
+                "result_status": "failed",
+                "result_summary": "Repo inspection failed.",
+                "recorded_at": now.isoformat(),
+            },
+            {
+                "action_id": "inspect_repo_context",
+                "result_status": "failed",
+                "result_summary": "Repo inspection failed.",
+                "recorded_at": (now - timedelta(hours=24)).isoformat(),
+            },
+        ]
+    )
+
+    stats = summary["action_stats"]["inspect_repo_context"]
+    assert stats["failed_count"] == 2
+    assert 1.0 < stats["failed_weight"] < 1.1
+
+
+def test_operational_memory_detects_note_loop_synergy(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    import apps.api.jarvis_api.services.runtime_operational_memory as operational_memory
+
+    monkeypatch.setattr(
+        operational_memory,
+        "recent_open_loops",
+        lambda limit=6: [
+            {
+                "loop_id": "open-loop:repo-status",
+                "title": "Inspect repo drift before next step",
+                "runtime_status": "active",
+                "canonical_key": "open-loop:repo-status",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "recent_visible_outcomes",
+        lambda limit=6: [],
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "active_internal_pressures",
+        lambda limit=4: [],
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "active_executive_contradictions",
+        lambda limit=4: [],
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "queued_initiatives",
+        lambda limit=4: [],
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "recent_executive_feedback",
+        lambda limit=6: [],
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "remembered_user_facts",
+        lambda limit=3: [],
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "active_work_context",
+        lambda limit=5: [],
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "visible_session_continuity",
+        lambda: {},
+    )
+    monkeypatch.setattr(
+        operational_memory,
+        "recent_visible_work_notes",
+        lambda limit=6: [
+            {
+                "note_id": "note-1",
+                "projection_source": "runtime-executive-note",
+                "work_preview": (
+                    "Executive note: runtime is in watch mode and is carrying "
+                    "inspect repo drift before next step; quiet runtime state."
+                ),
+                "finished_at": datetime.now(UTC).isoformat(),
+            }
+        ],
+    )
+
+    snapshot = operational_memory.build_operational_memory_snapshot(limit=6)
+
+    assert snapshot["summary"]["note_loop_synergy_count"] == 1
+    assert snapshot["note_loop_synergies"][0]["loop_id"] == "open-loop:repo-status"
+    assert "repo" in snapshot["note_loop_synergies"][0]["matched_terms"]
 
 
 def test_executor_and_outcome_tracking_persist_visible_proposal(

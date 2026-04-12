@@ -221,7 +221,11 @@ def _reflection_candidates(
             action_id="write_internal_work_note",
             score=0.35,
             reason="Quiet runtime state benefits from a small internal note rather than silence.",
-            payload={"current_mode": current_mode, "reason": "quiet runtime state"},
+            payload={
+                "current_mode": current_mode,
+                "reason": "quiet runtime state",
+                "title": _top_open_loop_title(inputs),
+            },
             mode="execute",
         )
     ]
@@ -247,6 +251,7 @@ def _apply_feedback(
     stats = dict(action_stats.get(candidate.action_id) or {})
     latest_action = str(feedback_summary.get("latest_action") or "")
     latest_status = str(feedback_summary.get("latest_status") or "")
+    note_synergy = _matching_note_loop_synergy(candidate, inputs)
 
     score = float(candidate.score)
     reasons = [candidate.reason]
@@ -259,28 +264,48 @@ def _apply_feedback(
 
     blocked_count = int(stats.get("blocked_count") or 0)
     failed_count = int(stats.get("failed_count") or 0)
-    if blocked_count > 0:
-        score -= min(0.22, 0.11 * blocked_count)
-        reasons.append(
-            f"Recent blocked feedback penalizes {candidate.action_id} ({blocked_count} blocked outcome(s))."
-        )
-    if failed_count > 0:
-        score -= min(0.28, 0.14 * failed_count)
-        reasons.append(
-            f"Recent failed feedback penalizes {candidate.action_id} ({failed_count} failed outcome(s))."
-        )
-
+    blocked_weight = float(stats.get("blocked_weight") or 0.0) or float(blocked_count)
+    failed_weight = float(stats.get("failed_weight") or 0.0) or float(failed_count)
+    no_change_count = int(stats.get("no_change_count") or 0)
+    no_change_weight = float(stats.get("no_change_weight") or 0.0) or float(no_change_count)
     success_count = int(stats.get("success_count") or 0)
-    if success_count > 0 and candidate.action_id == "refresh_memory_context":
-        score -= min(0.12, 0.06 * success_count)
+    success_weight = float(stats.get("success_weight") or 0.0) or float(success_count)
+    if blocked_weight > 0:
+        score -= min(0.22, 0.11 * blocked_weight)
+        reasons.append(
+            "Recent blocked feedback penalizes "
+            f"{candidate.action_id} ({blocked_count} blocked outcome(s), weight={blocked_weight:.2f})."
+        )
+    if failed_weight > 0:
+        score -= min(0.28, 0.14 * failed_weight)
+        reasons.append(
+            "Recent failed feedback penalizes "
+            f"{candidate.action_id} ({failed_count} failed outcome(s), weight={failed_weight:.2f})."
+        )
+    if no_change_weight > 0 and candidate.action_id == "inspect_repo_context":
+        score -= min(0.26, 0.18 * no_change_weight)
+        reasons.append(
+            "Outcome learning lowers repo inspection baseline because recent inspections "
+            f"kept finding nothing new ({no_change_count} no-change outcome(s), weight={no_change_weight:.2f})."
+        )
+    if success_weight > 0 and candidate.action_id == "refresh_memory_context":
+        score -= min(0.12, 0.06 * success_weight)
         reasons.append(
             "Memory refresh already succeeded recently, so refresh is temporarily deprioritized."
         )
-    if success_count > 0 and candidate.action_id == "bounded_self_check":
-        score -= min(0.10, 0.05 * success_count)
+    if success_weight > 0 and candidate.action_id == "bounded_self_check":
+        score -= min(0.10, 0.05 * success_weight)
         reasons.append(
             "A recent bounded self-check already ran, so repeating it immediately is less valuable."
         )
+    if note_synergy is not None and candidate.action_id == "follow_open_loop":
+        synergy_boost = min(0.18, float(note_synergy.get("match_score") or 0.0))
+        if synergy_boost > 0:
+            score += synergy_boost
+            reasons.append(
+                "Recent persisted work note reinforces this loop "
+                f"via matched terms {list(note_synergy.get('matched_terms') or [])[:4]}."
+            )
 
     return RuntimeActionCandidate(
         action_id=candidate.action_id,
@@ -289,3 +314,30 @@ def _apply_feedback(
         payload=dict(candidate.payload),
         mode=candidate.mode,
     )
+
+
+def _matching_note_loop_synergy(
+    candidate: RuntimeActionCandidate,
+    inputs: RuntimeDecisionInput,
+) -> dict[str, Any] | None:
+    if candidate.action_id != "follow_open_loop":
+        return None
+    loop_id = str(candidate.payload.get("loop_id") or "")
+    canonical_key = str(candidate.payload.get("canonical_key") or "")
+    title = str(candidate.payload.get("title") or "")
+    for item in list(inputs.operational_memory.get("note_loop_synergies") or []):
+        if loop_id and str(item.get("loop_id") or "") == loop_id:
+            return dict(item)
+        if canonical_key and str(item.get("canonical_key") or "") == canonical_key:
+            return dict(item)
+        if title and str(item.get("title") or "") == title:
+            return dict(item)
+    return None
+
+
+def _top_open_loop_title(inputs: RuntimeDecisionInput) -> str:
+    loops = list(inputs.operational_memory.get("open_loops") or [])
+    if not loops:
+        return ""
+    top_loop = loops[0]
+    return str(top_loop.get("title") or top_loop.get("summary") or "").strip()[:200]

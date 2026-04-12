@@ -22,10 +22,13 @@ function MessageWithActions({ message, workingSteps }) {
   return (
     <div className="message-group">
       <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
-        {message.pending && workingSteps?.length > 0 ? (
-          <span className="working-shimmer">
-            {workingSteps.find((s) => s.status === 'running')?.detail ||
-              workingSteps.find((s) => s.status === 'running')?.action ||
+        {message.pending ? (
+          <span
+            className="working-shimmer"
+            style={{ visibility: workingSteps?.some(s => s.status === 'running') ? 'visible' : 'hidden' }}
+          >
+            {workingSteps?.find((s) => s.status === 'running')?.detail ||
+              workingSteps?.find((s) => s.status === 'running')?.action ||
               'working…'}
           </span>
         ) : null}
@@ -57,20 +60,31 @@ function MessageWithActions({ message, workingSteps }) {
 export function ChatTranscript({ messages, workingSteps }) {
   const transcriptRef = useRef(null)
 
-  // On first message load, always scroll to bottom unconditionally.
-  // On subsequent updates, only scroll if the user is already near the bottom.
   const hasInitialScrolled = useRef(false)
+  const prevMessageCount = useRef(0)
 
   useEffect(() => {
     const node = transcriptRef.current
     if (!node || messages.length === 0) return
 
+    // First load: always scroll to bottom
     if (!hasInitialScrolled.current) {
       node.scrollTop = node.scrollHeight
       hasInitialScrolled.current = true
+      prevMessageCount.current = messages.length
       return
     }
 
+    // New message added (user sent or Jarvis reply started): always scroll
+    if (messages.length > prevMessageCount.current) {
+      node.scrollTop = node.scrollHeight
+      prevMessageCount.current = messages.length
+      return
+    }
+
+    prevMessageCount.current = messages.length
+
+    // Streaming update to existing message: only scroll if near bottom
     const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight
     if (distanceFromBottom < 120) node.scrollTop = node.scrollHeight
   }, [messages])

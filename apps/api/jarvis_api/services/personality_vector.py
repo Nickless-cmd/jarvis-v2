@@ -162,9 +162,13 @@ def _deterministic_update(
     """Fallback: small deterministic adjustments without LLM."""
     baseline = json.loads(str(current.get("emotional_baseline") or "{}")) if current else {}
 
+    # Natural decay — fatigue and frustration drift toward 0 over time
+    baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) * 0.95)
+    baseline["frustration"] = max(0.0, float(baseline.get("frustration", 0.0)) * 0.95)
+
     if outcome_status in ("completed", "success"):
         baseline["confidence"] = min(1.0, float(baseline.get("confidence", 0.5)) + 0.02)
-        baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) + 0.01)
+        baseline["fatigue"] = min(1.0, float(baseline.get("fatigue", 0.0)) + 0.01)
     elif outcome_status in ("failed", "error"):
         baseline["confidence"] = max(0.0, float(baseline.get("confidence", 0.5)) - 0.05)
         baseline["frustration"] = min(1.0, float(baseline.get("frustration", 0.0)) + 0.03)

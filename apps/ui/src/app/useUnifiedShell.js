@@ -223,7 +223,7 @@ export function useUnifiedShell() {
     }
   }
 
-  async function handleSend(content) {
+  async function handleSend(content, { attachmentIds = [], attachmentMeta = [] } = {}) {
     if (!activeSession || isStreaming) return
 
     const sessionId = activeSession.id
@@ -232,6 +232,7 @@ export function useUnifiedShell() {
       role: 'user',
       content,
       ts: nowLabel(),
+      attachments: attachmentMeta,
     }
     const assistantMessageId = `assistant-stream-${Date.now()}`
     const pendingAssistantMessage = {
@@ -257,6 +258,7 @@ export function useUnifiedShell() {
       const assistantMessage = await backend.streamMessage({
         sessionId,
         content,
+        attachmentIds,
         onRun: (payload) => {
           if (payload?.run_id) setActiveRunId(payload.run_id)
         },

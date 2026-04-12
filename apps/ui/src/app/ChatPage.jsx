@@ -43,15 +43,15 @@ export function ChatPage({
 
         {error ? <div className="inline-error">{error}</div> : null}
 
-        <ChatTranscript messages={activeSession?.messages || []} workingSteps={workingSteps} />
+        <ChatTranscript messages={activeSession?.messages || []} workingSteps={workingSteps} sessionId={activeSession?.id} />
 
         <Composer
           value={draft}
           onChange={setDraft}
           isStreaming={isStreaming}
-          onSend={(msg) => {
+          onSend={(msg, opts) => {
             if (isStreaming) return
-            onSend(msg)
+            onSend(msg, opts)
             setDraft('')
           }}
           onCancel={onCancel}
@@ -59,6 +59,7 @@ export function ChatPage({
           onSelectionChange={onSelectionChange}
           lastRunTokens={lastRunTokens}
           streamingTokenEstimate={streamingTokenEstimate}
+          sessionId={activeSession?.id}
         />
       </main>
 

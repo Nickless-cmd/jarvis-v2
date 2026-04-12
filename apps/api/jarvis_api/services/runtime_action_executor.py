@@ -220,7 +220,11 @@ def execute_review_recent_conversations(payload: dict[str, Any]) -> RuntimeExecu
 
 def execute_write_internal_work_note(payload: dict[str, Any]) -> RuntimeExecutionResult:
     current_mode = str(payload.get("current_mode") or "watch")
-    emphasis = str(payload.get("reason") or payload.get("title") or "").strip()
+    focus_hint = str(payload.get("title") or payload.get("focus_hint") or "").strip()
+    reason = str(payload.get("reason") or "").strip()
+    emphasis = focus_hint or reason
+    if reason and focus_hint and focus_hint.lower() not in reason.lower():
+        emphasis = f"{focus_hint}; {reason}"
     note = _build_internal_work_note(current_mode=current_mode, emphasis=emphasis)
     now = datetime.now(UTC).isoformat()
     persisted = record_visible_work_note(

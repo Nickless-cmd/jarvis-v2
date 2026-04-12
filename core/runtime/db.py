@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json as _json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -190,6 +191,29 @@ def init_db() -> None:
                 created_at TEXT NOT NULL,
                 finished_at TEXT NOT NULL
             )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS runtime_action_outcomes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                outcome_id TEXT NOT NULL UNIQUE,
+                action_id TEXT NOT NULL,
+                decision_mode TEXT NOT NULL,
+                decision_reason TEXT NOT NULL DEFAULT '',
+                decision_score REAL NOT NULL DEFAULT 0,
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                result_status TEXT NOT NULL,
+                result_summary TEXT NOT NULL DEFAULT '',
+                result_json TEXT NOT NULL DEFAULT '{}',
+                recorded_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_runtime_action_outcomes_lookup
+            ON runtime_action_outcomes(action_id, recorded_at DESC)
             """
         )
         conn.execute(
@@ -2382,6 +2406,30 @@ def recent_visible_work_notes(limit: int = 5) -> list[dict[str, object]]:
         }
         for row in rows
     ]
+
+
+def recent_runtime_action_outcomes(limit: int = 10) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                outcome_id,
+                action_id,
+                decision_mode,
+                decision_reason,
+                decision_score,
+                payload_json,
+                result_status,
+                result_summary,
+                result_json,
+                recorded_at
+            FROM runtime_action_outcomes
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [_runtime_action_outcome_from_row(row) for row in rows]
 
 
 def record_private_inner_note(
@@ -24131,6 +24179,74 @@ def upsert_heartbeat_runtime_state(
     return state
 
 
+def record_runtime_action_outcome(
+    *,
+    action_id: str,
+    decision_mode: str,
+    decision_reason: str,
+    decision_score: float,
+    payload_json: dict[str, object] | None,
+    result_status: str,
+    result_summary: str,
+    result_json: dict[str, object] | None,
+    recorded_at: str,
+) -> dict[str, object]:
+    outcome_id = f"rao-{uuid4().hex[:12]}"
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO runtime_action_outcomes (
+                outcome_id,
+                action_id,
+                decision_mode,
+                decision_reason,
+                decision_score,
+                payload_json,
+                result_status,
+                result_summary,
+                result_json,
+                recorded_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                outcome_id,
+                action_id,
+                decision_mode,
+                decision_reason,
+                float(decision_score or 0.0),
+                _json.dumps(payload_json or {}, ensure_ascii=False, sort_keys=True),
+                result_status,
+                result_summary,
+                _json.dumps(result_json or {}, ensure_ascii=False, sort_keys=True),
+                recorded_at,
+            ),
+        )
+        conn.commit()
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                outcome_id,
+                action_id,
+                decision_mode,
+                decision_reason,
+                decision_score,
+                payload_json,
+                result_status,
+                result_summary,
+                result_json,
+                recorded_at
+            FROM runtime_action_outcomes
+            WHERE outcome_id = ?
+            """,
+            (outcome_id,),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("runtime action outcome was not persisted")
+    return _runtime_action_outcome_from_row(row)
+
+
 def record_heartbeat_runtime_tick(
     *,
     tick_id: str,
@@ -24277,6 +24393,31 @@ def get_heartbeat_runtime_tick(tick_id: str) -> dict[str, object] | None:
     if row is None:
         return None
     return _heartbeat_runtime_tick_from_row(row)
+
+
+def _runtime_action_outcome_from_row(row: sqlite3.Row) -> dict[str, object]:
+    payload_raw = str(row["payload_json"] or "{}")
+    result_raw = str(row["result_json"] or "{}")
+    try:
+        payload = _json.loads(payload_raw)
+    except Exception:
+        payload = {}
+    try:
+        result = _json.loads(result_raw)
+    except Exception:
+        result = {}
+    return {
+        "outcome_id": row["outcome_id"],
+        "action_id": row["action_id"],
+        "decision_mode": row["decision_mode"],
+        "decision_reason": row["decision_reason"],
+        "decision_score": float(row["decision_score"] or 0.0),
+        "payload": payload if isinstance(payload, dict) else {},
+        "result_status": row["result_status"],
+        "result_summary": row["result_summary"],
+        "result": result if isinstance(result, dict) else {},
+        "recorded_at": row["recorded_at"],
+    }
 
 
 def recent_heartbeat_runtime_ticks(limit: int = 10) -> list[dict[str, object]]:

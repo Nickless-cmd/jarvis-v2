@@ -29,7 +29,12 @@ function MermaidBlock({ code, streaming }) {
     const id = `mermaid-${Math.random().toString(36).slice(2)}`
     mermaid
       .render(id, code)
-      .then(({ svg }) => {
+      .then(({ svg: raw }) => {
+        // Disable mermaid's built-in looping animations in the SVG
+        const svg = raw.replace(
+          /(<style[^>]*>)/,
+          '$1* { animation: none !important; transition: none !important; }'
+        )
         const blob = new Blob([svg], { type: 'image/svg+xml' })
         const url = URL.createObjectURL(blob)
         setSvgUrl((prev) => {

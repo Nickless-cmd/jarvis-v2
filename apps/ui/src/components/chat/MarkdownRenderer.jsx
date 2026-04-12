@@ -10,19 +10,20 @@ mermaid.initialize({ startOnLoad: false, theme: 'dark' })
 
 /**
  * Renders a mermaid fenced block as an inline SVG diagram.
- * Skips rendering while streaming (code changes every token → flicker).
- * After rendering, scrolls the nearest .transcript to bottom so the
- * async SVG insert doesn't leave content hidden behind the composer.
- * Falls back to raw code text on render errors.
+ * - Single stable DOM node (no conditional unmount → no flicker)
+ * - Skips render while streaming; renders exactly once when stream ends
+ * - After async SVG insert, re-scrolls .transcript to bottom
+ * - Click opens a fullscreen overlay for large diagrams
  */
 function MermaidBlock({ code, streaming }) {
   const ref = useRef(null)
   const lastRendered = useRef(null)
+  const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
-    if (streaming) return          // wait until stream is done
+    if (streaming) return
     if (!ref.current) return
-    if (lastRendered.current === code) return  // already rendered this exact code
+    if (lastRendered.current === code) return
 
     const id = `mermaid-${Math.random().toString(36).slice(2)}`
     mermaid
@@ -31,7 +32,6 @@ function MermaidBlock({ code, streaming }) {
         if (!ref.current) return
         ref.current.innerHTML = svg
         lastRendered.current = code
-        // Re-scroll transcript after async SVG insert
         const transcript = ref.current.closest('.transcript')
         if (transcript) transcript.scrollTop = transcript.scrollHeight
       })
@@ -40,15 +40,27 @@ function MermaidBlock({ code, streaming }) {
       })
   }, [code, streaming])
 
-  if (streaming) {
-    return (
-      <div className="mermaid-block mermaid-pending">
-        <span style={{ color: '#6e7681', fontSize: '12px' }}>mermaid diagram…</span>
+  return (
+    <>
+      <div
+        ref={ref}
+        className={`mermaid-block${streaming ? ' mermaid-pending' : ''}`}
+        onClick={() => !streaming && setFullscreen(true)}
+        title={streaming ? undefined : 'Klik for at forstørre'}
+      >
+        {streaming && <span style={{ color: '#6e7681', fontSize: '12px' }}>mermaid diagram…</span>}
       </div>
-    )
-  }
-
-  return <div ref={ref} className="mermaid-block" />
+      {fullscreen && (
+        <div className="mermaid-overlay" onClick={() => setFullscreen(false)}>
+          <div
+            className="mermaid-overlay-inner"
+            dangerouslySetInnerHTML={{ __html: ref.current?.innerHTML || '' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
+  )
 }
 
 /**

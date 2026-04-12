@@ -1170,6 +1170,18 @@ button { cursor: pointer; }
 }
 .mermaid-block svg { max-width: 100%; height: auto; }
 .mermaid-block.mermaid-pending { min-height: 0; padding: 8px 16px; }
+.mermaid-block:not(.mermaid-pending) { cursor: zoom-in; }
+.mermaid-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.82); display: flex;
+  align-items: center; justify-content: center;
+  cursor: zoom-out;
+}
+.mermaid-overlay-inner {
+  background: #1e1e1e; border-radius: 10px; padding: 32px;
+  max-width: 90vw; max-height: 90vh; overflow: auto; cursor: default;
+}
+.mermaid-overlay-inner svg { max-width: 100%; height: auto; display: block; }
 
 /* Message actions hover toolbar */
 .message-group { display: flex; flex-direction: column; }

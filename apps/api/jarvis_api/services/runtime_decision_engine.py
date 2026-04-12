@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
+from apps.api.jarvis_api.services.runtime_learning_signals import action_family
+
 
 DecisionMode = Literal["execute", "propose", "defer", "noop"]
 
@@ -249,6 +251,7 @@ def _apply_feedback(
     feedback_summary = dict(inputs.operational_memory.get("executive_feedback_summary") or {})
     action_stats = dict(feedback_summary.get("action_stats") or {})
     stats = dict(action_stats.get(candidate.action_id) or {})
+    runtime_learning_summary = dict(inputs.operational_memory.get("runtime_learning_summary") or {})
     semantic_feedback = dict(inputs.operational_memory.get("semantic_feedback_summary") or {})
     signal_stats = dict(semantic_feedback.get("signal_stats") or {})
     latest_action = str(feedback_summary.get("latest_action") or "")
@@ -308,6 +311,8 @@ def _apply_feedback(
                 "Recent persisted work note reinforces this loop "
                 f"via matched terms {list(note_synergy.get('matched_terms') or [])[:4]}."
             )
+    score, family_reasons = _apply_persistent_learning(candidate, runtime_learning_summary, score=score)
+    reasons.extend(family_reasons)
     score, semantic_reasons = _apply_semantic_feedback(
         candidate,
         inputs,
@@ -406,6 +411,53 @@ def _apply_semantic_feedback(
         reasons.append(
             "A recent visible proposal already went out, so repeating that move is slightly deprioritized."
         )
+    return adjusted, reasons
+
+
+def _apply_persistent_learning(
+    candidate: RuntimeActionCandidate,
+    runtime_learning_summary: dict[str, Any],
+    *,
+    score: float,
+) -> tuple[float, list[str]]:
+    reasons: list[str] = []
+    adjusted = float(score)
+    family = action_family(candidate.action_id)
+    family_stats = dict((runtime_learning_summary.get("family_signal_stats") or {}).get(family) or {})
+    action_stats = dict((runtime_learning_summary.get("action_signal_stats") or {}).get(candidate.action_id) or {})
+
+    family_blocked = _signal_weight(family_stats, "family_blocked")
+    family_failed = _signal_weight(family_stats, "family_failed")
+    family_no_change = _signal_weight(family_stats, "family_no_change")
+    family_succeeded = _signal_weight(family_stats, "family_succeeded")
+    action_no_change = _signal_weight(action_stats, "action_no_change")
+
+    if family_blocked > 0:
+        adjusted -= min(0.16, 0.08 * family_blocked)
+        reasons.append(
+            f"Persistent family-level blocking dampens similar {family} actions (weight={family_blocked:.2f})."
+        )
+    if family_failed > 0:
+        adjusted -= min(0.18, 0.09 * family_failed)
+        reasons.append(
+            f"Persistent family-level failures dampen similar {family} actions (weight={family_failed:.2f})."
+        )
+    if family_no_change > 0 and candidate.action_id == "inspect_repo_context":
+        adjusted -= min(0.12, 0.07 * family_no_change)
+        reasons.append(
+            f"Persistent repo no-change learning keeps similar {family} actions conservative (weight={family_no_change:.2f})."
+        )
+    if action_no_change > 0 and candidate.action_id == "inspect_repo_context":
+        adjusted -= min(0.12, 0.08 * action_no_change)
+        reasons.append(
+            "Persistent action-level no-change learning further lowers this exact repo inspection."
+        )
+    if family_succeeded > 0 and candidate.action_id in {"follow_open_loop", "propose_next_user_step"}:
+        adjusted += min(0.08, 0.04 * family_succeeded)
+        reasons.append(
+            f"Persistent family success slightly boosts similar {family} actions (weight={family_succeeded:.2f})."
+        )
+
     return adjusted, reasons
 
 

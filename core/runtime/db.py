@@ -218,6 +218,29 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS runtime_learning_signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                signal_id TEXT NOT NULL UNIQUE,
+                outcome_id TEXT NOT NULL,
+                source_action_id TEXT NOT NULL,
+                target_action_id TEXT NOT NULL DEFAULT '',
+                target_family TEXT NOT NULL DEFAULT '',
+                signal_key TEXT NOT NULL,
+                signal_weight REAL NOT NULL DEFAULT 0,
+                signal_count INTEGER NOT NULL DEFAULT 1,
+                metadata_json TEXT NOT NULL DEFAULT '{}',
+                recorded_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_runtime_learning_signals_lookup
+            ON runtime_learning_signals(signal_key, target_family, target_action_id, recorded_at DESC)
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS runtime_tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 task_id TEXT NOT NULL UNIQUE,
@@ -2538,6 +2561,30 @@ def recent_runtime_action_outcomes(limit: int = 10) -> list[dict[str, object]]:
             (max(limit, 1),),
         ).fetchall()
     return [_runtime_action_outcome_from_row(row) for row in rows]
+
+
+def recent_runtime_learning_signals(limit: int = 25) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                signal_id,
+                outcome_id,
+                source_action_id,
+                target_action_id,
+                target_family,
+                signal_key,
+                signal_weight,
+                signal_count,
+                metadata_json,
+                recorded_at
+            FROM runtime_learning_signals
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(limit, 1),),
+        ).fetchall()
+    return [_runtime_learning_signal_from_row(row) for row in rows]
 
 
 def record_private_inner_note(
@@ -24355,6 +24402,74 @@ def record_runtime_action_outcome(
     return _runtime_action_outcome_from_row(row)
 
 
+def record_runtime_learning_signal(
+    *,
+    outcome_id: str,
+    source_action_id: str,
+    target_action_id: str,
+    target_family: str,
+    signal_key: str,
+    signal_weight: float,
+    signal_count: int,
+    metadata_json: dict[str, object] | None,
+    recorded_at: str,
+) -> dict[str, object]:
+    signal_id = f"rls-{uuid4().hex[:12]}"
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO runtime_learning_signals (
+                signal_id,
+                outcome_id,
+                source_action_id,
+                target_action_id,
+                target_family,
+                signal_key,
+                signal_weight,
+                signal_count,
+                metadata_json,
+                recorded_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                signal_id,
+                outcome_id,
+                source_action_id,
+                target_action_id,
+                target_family,
+                signal_key,
+                float(signal_weight or 0.0),
+                int(signal_count or 1),
+                _json.dumps(metadata_json or {}, ensure_ascii=False, sort_keys=True),
+                recorded_at,
+            ),
+        )
+        conn.commit()
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                signal_id,
+                outcome_id,
+                source_action_id,
+                target_action_id,
+                target_family,
+                signal_key,
+                signal_weight,
+                signal_count,
+                metadata_json,
+                recorded_at
+            FROM runtime_learning_signals
+            WHERE signal_id = ?
+            """,
+            (signal_id,),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("runtime learning signal was not persisted")
+    return _runtime_learning_signal_from_row(row)
+
+
 def record_heartbeat_runtime_tick(
     *,
     tick_id: str,
@@ -24524,6 +24639,26 @@ def _runtime_action_outcome_from_row(row: sqlite3.Row) -> dict[str, object]:
         "result_status": row["result_status"],
         "result_summary": row["result_summary"],
         "result": result if isinstance(result, dict) else {},
+        "recorded_at": row["recorded_at"],
+    }
+
+
+def _runtime_learning_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
+    metadata_raw = str(row["metadata_json"] or "{}")
+    try:
+        metadata = _json.loads(metadata_raw)
+    except Exception:
+        metadata = {}
+    return {
+        "signal_id": row["signal_id"],
+        "outcome_id": row["outcome_id"],
+        "source_action_id": row["source_action_id"],
+        "target_action_id": row["target_action_id"],
+        "target_family": row["target_family"],
+        "signal_key": row["signal_key"],
+        "signal_weight": float(row["signal_weight"] or 0.0),
+        "signal_count": int(row["signal_count"] or 1),
+        "metadata": metadata if isinstance(metadata, dict) else {},
         "recorded_at": row["recorded_at"],
     }
 

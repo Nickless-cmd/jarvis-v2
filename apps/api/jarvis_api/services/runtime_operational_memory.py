@@ -14,6 +14,7 @@ from apps.api.jarvis_api.services.private_initiative_tension_signal_tracking imp
     build_runtime_private_initiative_tension_signal_surface,
 )
 from core.runtime.db import (
+    recent_runtime_learning_signals,
     recent_runtime_action_outcomes,
     recent_visible_runs,
     recent_visible_work_notes,
@@ -30,6 +31,8 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
     initiatives = queued_initiatives(limit=min(limit, 4))
     executive_feedback = recent_executive_feedback(limit=min(limit, 6))
     executive_feedback_summary = summarize_executive_feedback(executive_feedback)
+    runtime_learning = recent_persisted_learning(limit=min(limit * 4, 32))
+    runtime_learning_summary = summarize_runtime_learning_signals(runtime_learning)
     semantic_feedback_summary = summarize_semantic_feedback(executive_feedback)
     continuity = visible_session_continuity()
     user_facts = remembered_user_facts(limit=min(limit, 3))
@@ -46,6 +49,8 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
         "queued_initiatives": initiatives,
         "executive_feedback": executive_feedback,
         "executive_feedback_summary": executive_feedback_summary,
+        "runtime_learning": runtime_learning,
+        "runtime_learning_summary": runtime_learning_summary,
         "semantic_feedback_summary": semantic_feedback_summary,
         "work_context": work_context,
         "note_loop_synergies": note_loop_synergies,
@@ -69,6 +74,7 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
             "repeat_action_detected": executive_feedback_summary["repeat_action_detected"],
             "blocked_action_detected": executive_feedback_summary["blocked_action_detected"],
             "semantic_signal_count": int(semantic_feedback_summary.get("signal_count") or 0),
+            "persistent_learning_signal_count": int(runtime_learning_summary.get("signal_count") or 0),
         },
     }
 
@@ -154,6 +160,10 @@ def queued_initiatives(*, limit: int = 5) -> list[dict[str, Any]]:
 
 def recent_executive_feedback(*, limit: int = 6) -> list[dict[str, Any]]:
     return recent_runtime_action_outcomes(limit=max(limit, 1))[: max(limit, 1)]
+
+
+def recent_persisted_learning(*, limit: int = 24) -> list[dict[str, Any]]:
+    return recent_runtime_learning_signals(limit=max(limit, 1))[: max(limit, 1)]
 
 
 def summarize_executive_feedback(
@@ -294,6 +304,39 @@ def summarize_note_loop_synergies(
     return synergies
 
 
+def summarize_runtime_learning_signals(
+    items: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    normalized = list(items or [])
+    signal_stats: dict[str, dict[str, Any]] = {}
+    family_signal_stats: dict[str, dict[str, dict[str, Any]]] = {}
+    action_signal_stats: dict[str, dict[str, dict[str, Any]]] = {}
+    for item in normalized:
+        signal_key = str(item.get("signal_key") or "").strip()
+        if not signal_key:
+            continue
+        signal_weight = float(item.get("signal_weight") or 0.0)
+        signal_count = int(item.get("signal_count") or 1)
+        _accumulate_signal_bucket(signal_stats, signal_key, signal_weight, signal_count)
+
+        target_family = str(item.get("target_family") or "").strip()
+        if target_family:
+            family_bucket = family_signal_stats.setdefault(target_family, {})
+            _accumulate_signal_bucket(family_bucket, signal_key, signal_weight, signal_count)
+
+        target_action_id = str(item.get("target_action_id") or "").strip()
+        if target_action_id:
+            action_bucket = action_signal_stats.setdefault(target_action_id, {})
+            _accumulate_signal_bucket(action_bucket, signal_key, signal_weight, signal_count)
+
+    return {
+        "signal_count": len(normalized),
+        "signal_stats": signal_stats,
+        "family_signal_stats": family_signal_stats,
+        "action_signal_stats": action_signal_stats,
+    }
+
+
 def summarize_semantic_feedback(
     items: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
@@ -427,6 +470,23 @@ def _extract_semantic_signals(item: dict[str, Any]) -> list[str]:
     ):
         signals.append("repo_actionable_change")
     return list(dict.fromkeys(signals))
+
+
+def _accumulate_signal_bucket(
+    buckets: dict[str, dict[str, Any]],
+    signal_key: str,
+    signal_weight: float,
+    signal_count: int,
+) -> None:
+    bucket = buckets.setdefault(
+        signal_key,
+        {
+            "count": 0,
+            "weight": 0.0,
+        },
+    )
+    bucket["count"] += int(signal_count or 1)
+    bucket["weight"] += float(signal_weight or 0.0)
 
 
 def _domain_key(*, loop_id: str, canonical_key: str) -> str:

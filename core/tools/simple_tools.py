@@ -278,6 +278,23 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "wolfram_query",
+            "description": "Query Wolfram Alpha for mathematical calculations, unit conversions, scientific facts, statistics, and precise factual answers. Use this for anything requiring computation or exact numerical answers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The question or calculation, e.g. 'integral of x^2', 'speed of light in km/h', 'population of Denmark'",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_initiatives",
             "description": "Read your initiative queue — the pending tasks and goals you've queued for autonomous heartbeat execution. Shows pending, recently acted, and queue health.",
             "parameters": {
@@ -1571,6 +1588,33 @@ def _exec_get_news(args: dict[str, Any]) -> dict[str, Any]:
         lines.append(f"{i}. **{title}** ({source}, {published})\n   {description}\n   {url_a}")
     text = "\n\n".join(lines) if lines else "[no articles found]"
     return {"text": text, "article_count": len(articles), "query": query, "status": "ok"}
+
+
+def _exec_wolfram_query(args: dict[str, Any]) -> dict[str, Any]:
+    """Precise answers via Wolfram Alpha Short Answers API."""
+    query = str(args.get("query") or "").strip()
+    if not query:
+        return {"error": "query is required", "status": "error"}
+
+    app_id = _read_api_key("wolframalpha_app_id")
+    if not app_id:
+        return {"error": "wolframalpha_app_id not configured in runtime.json", "status": "error"}
+
+    url = (
+        f"https://api.wolframalpha.com/v1/result"
+        f"?appid={app_id}&i={urllib_request.quote(query)}"
+    )
+    try:
+        with urllib_request.urlopen(urllib_request.Request(url), timeout=15) as resp:
+            answer = resp.read().decode("utf-8", errors="replace").strip()
+    except urllib_error.HTTPError as exc:
+        if exc.code == 501:
+            return {"error": "Wolfram Alpha could not interpret this query", "status": "error"}
+        return {"error": f"Wolfram Alpha error: {exc}", "status": "error"}
+    except (urllib_error.URLError, OSError) as exc:
+        return {"error": f"Wolfram Alpha fetch failed: {exc}", "status": "error"}
+
+    return {"answer": answer, "query": query, "status": "ok"}
 
 
 def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
@@ -2906,6 +2950,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "get_weather": _exec_get_weather,
     "get_exchange_rate": _exec_get_exchange_rate,
     "get_news": _exec_get_news,
+    "wolfram_query": _exec_wolfram_query,
     "list_initiatives": _exec_list_initiatives,
     "push_initiative": _exec_push_initiative,
     "read_model_config": _exec_read_model_config,

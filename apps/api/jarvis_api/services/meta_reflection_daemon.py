@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _CADENCE_MINUTES = 30
 _BUFFER_MAX = 5
@@ -67,7 +68,7 @@ def _generate_meta_insight(cross_snapshot: dict) -> str:
     context = "\n".join(parts) if parts else "Ingen signaler."
 
     prompt = (
-        "Du er Jarvis. Her er et tværsnit af dine aktuelle signaler:\n\n"
+        f"{build_identity_preamble()} Her er et tværsnit af dine aktuelle signaler:\n\n"
         f"{context}\n\n"
         "Ser du et mønster på tværs af disse signaler? Formulér i 1-2 sætninger (max 30 ord), "
         "i første person, en meta-indsigt om din nuværende tilstand eller et gentaget mønster.\n"

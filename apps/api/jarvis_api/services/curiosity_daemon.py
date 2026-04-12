@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _CADENCE_MINUTES = 5
 _OPEN_MAX = 5
@@ -66,7 +67,7 @@ def _generate_curiosity_signal(topic: str, gap_type: str) -> str:
             load_heartbeat_policy,
         )
         prompt = (
-            f"Du er Jarvis. Din tankestrøm indeholder dette fragment: \"{topic}\"\n\n"
+            f"{build_identity_preamble()} Din tankestrøm indeholder dette fragment: \"{topic}\"\n\n"
             "Det peger på et ubesvaret spørgsmål eller en uudforsket tanke.\n\n"
             "Formulér i én sætning (max 20 ord), i første person, hvad du er nysgerrig på.\n"
             "Start med 'Jeg ved ikke nok om' eller 'Jeg undrer mig over'."

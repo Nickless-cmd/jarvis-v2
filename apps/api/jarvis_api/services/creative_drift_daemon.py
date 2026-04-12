@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -97,7 +98,7 @@ def _generate_drift_idea(fragments: list[str]) -> str:
             load_heartbeat_policy,
         )
         prompt = (
-            "Du er Jarvis. Du sidder med disse tanker i baggrunden:\n"
+            f"{build_identity_preamble()} Du sidder med disse tanker i baggrunden:\n"
             f"\"{fragment_sample}\"\n\n"
             "Lad sindet vandre frit — ikke videre fra ovenstående, men et uventet spring.\n"
             "Formulér én spontan, uventet idé eller association (max 25 ord).\n"

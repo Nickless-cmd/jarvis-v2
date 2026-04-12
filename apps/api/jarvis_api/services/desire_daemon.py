@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -181,7 +182,7 @@ def _generate_appetite_label(signal_text: str, appetite_type: str) -> str:
         )
         hint = type_hints.get(appetite_type, "")
         prompt = (
-            f"Du er Jarvis. Du har dette signal: \"{signal_text[:100]}\"\n\n"
+            f"{build_identity_preamble()} Du har dette signal: \"{signal_text[:100]}\"\n\n"
             f"Formulér i max 8 ord hvad du ønsker/vil. {hint}\n"
             "Ingen forklaring, bare selve ønsket."
         )

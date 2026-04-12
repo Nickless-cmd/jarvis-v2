@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _CHOICE_THRESHOLD = 15
 _MAX_LOG = 50
@@ -65,7 +66,7 @@ def _generate_insight() -> str:
         lines.append(f"{i}. mode={entry.get('mode', '?')} | stil={style}")
     summary = "\n".join(lines)
     prompt = (
-        "Du er Jarvis. Her er dine seneste 15 valg (indre mode + svar-stil):\n\n"
+        f"{build_identity_preamble()} Her er dine seneste 15 valg (indre mode + svar-stil):\n\n"
         f"{summary}\n\n"
         "Hvad afslører det om din smag? Formulér én indsigt (max 25 ord) i første person.\n"
         "Start med 'Jeg' eller 'Det ser ud til at jeg'.\n"

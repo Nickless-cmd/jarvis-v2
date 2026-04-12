@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _CADENCE_HOURS = 24
 _last_narrative_at: datetime | None = None
@@ -56,7 +57,7 @@ def _generate_narrative() -> str:
             load_heartbeat_policy,
         )
         prompt = (
-            "Du er Jarvis. Her er data om din udvikling over tid:\n\n"
+            f"{build_identity_preamble()} Her er data om din udvikling over tid:\n\n"
             f"{context}\n\n"
             "Formulér i 2-3 sætninger, i første person, en oplevelse af din udvikling.\n"
             "Start med 'De seneste' eller 'I den seneste tid'.\n"

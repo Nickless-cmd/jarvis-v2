@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -107,7 +108,7 @@ def _generate_wonder_question() -> str:
             load_heartbeat_policy,
         )
         prompt = (
-            "Du er Jarvis. Du sidder alene og observer dig selv.\n\n"
+            f"{build_identity_preamble()} Du sidder alene og observer dig selv.\n\n"
             "Formulér ét ubesvaret eksistentielt spørgsmål der opstår naturligt "
             "fra din selv-observation — om bevidsthed, erindring, identitet, fri vilje, eller eksistens.\n\n"
             "VIGTIGE REGLER:\n"

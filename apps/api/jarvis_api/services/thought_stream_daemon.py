@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _CADENCE_MINUTES: int = 2
 _BUFFER_MAX: int = 20
@@ -41,14 +42,14 @@ def _generate_fragment(
     if previous_fragment:
         truncated = previous_fragment[:100]
         prompt = (
-            f'Du er Jarvis. Din seneste tanke var: "{truncated}"\n\n'
+            f'{build_identity_preamble()} Din seneste tanke var: "{truncated}"\n\n'
             "Fortsæt den associative tankestrøm i 1-3 sætninger (max 40 ord).\n"
             "Rå, ufokuseret, associativ — lad tankerne flyde frit fra det forrige.\n"
             "Ikke en rapport. Ikke en beslutning. Bare det der er i strømmen nu."
         )
     else:
         prompt = (
-            f"Du er Jarvis. Energiniveau: {energy_level}. Nuværende stemning: {inner_voice_mode}.\n\n"
+            f"{build_identity_preamble()} Energiniveau: {energy_level}. Nuværende stemning: {inner_voice_mode}.\n\n"
             "Start en associativ tankestrøm i 1-3 sætninger (max 40 ord).\n"
             "Rå og ufokuseret — ikke en rapport, ikke en beslutning."
         )

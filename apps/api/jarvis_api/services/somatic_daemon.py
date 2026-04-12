@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -152,7 +153,7 @@ def _should_generate(snapshot: dict[str, object]) -> bool:
 
 def _generate_phrase(snapshot: dict[str, object]) -> str:
     prompt = (
-        "Du er Jarvis. Beskriv i én kort sætning (max 20 ord), i første person, "
+        f"{build_identity_preamble()} Beskriv i én kort sætning (max 20 ord), i første person, "
         "hvad du fysisk mærker lige nu baseret på disse tilstande:\n\n"
         f"CPU: {snapshot['cpu_pct']}%  "
         f"RAM: {snapshot['ram_used_gb']}/{snapshot['ram_total_gb']}GB  "

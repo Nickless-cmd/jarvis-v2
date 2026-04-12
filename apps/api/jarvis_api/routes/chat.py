@@ -24,6 +24,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 class ChatStreamRequest(BaseModel):
     message: str = ""
     session_id: str = ""
+    attachment_ids: list[str] = []
 
 
 class ChatSessionCreateRequest(BaseModel):
@@ -74,11 +75,25 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
         raise HTTPException(status_code=400, detail="session_id must be a non-empty string")
     if get_chat_session(session_id) is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
-    append_chat_message(session_id=session_id, role="user", content=request.message)
+
+    # Build attachment context block and prepend to message
+    effective_message = request.message
+    if request.attachment_ids:
+        from apps.api.jarvis_api.routes.attachments import get_attachment
+        parts: list[str] = []
+        for aid in request.attachment_ids:
+            meta = get_attachment(aid)
+            if meta:
+                size_mb = f"{meta.size_bytes / 1_048_576:.1f}MB"
+                parts.append(f"{meta.filename} ({meta.mime_type}, {size_mb}, path={meta.server_path})")
+        if parts:
+            effective_message = "[Attached files: " + ", ".join(parts) + "]\n\n" + request.message
+
+    append_chat_message(session_id=session_id, role="user", content=effective_message)
     from apps.api.jarvis_api.services.notification_bridge import pin_session
     pin_session(session_id)
     return StreamingResponse(
-        start_visible_run(message=request.message, session_id=session_id),
+        start_visible_run(message=effective_message, session_id=session_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

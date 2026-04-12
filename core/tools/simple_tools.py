@@ -1536,9 +1536,9 @@ def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _read_user_location() -> str:
-    """Read Location from workspace/default/USER.md."""
+    """Read Location from the live workspace USER.md."""
     try:
-        user_md = PROJECT_ROOT / "workspace" / "default" / "USER.md"
+        user_md = WORKSPACE_DIR / "USER.md"
         for line in user_md.read_text(encoding="utf-8").splitlines():
             if line.startswith("Location:"):
                 return line.split(":", 1)[1].strip()

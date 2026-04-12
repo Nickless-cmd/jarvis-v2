@@ -324,6 +324,31 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "read_archive",
+            "description": "List the contents of a zip/tar/rar archive, or extract it. Use to inspect uploaded archive files sent by the user.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "archive_path": {
+                        "type": "string",
+                        "description": "Absolute path to the archive file (must be inside ~/.jarvis-v2/)",
+                    },
+                    "extract": {
+                        "type": "boolean",
+                        "description": "If true, extract the archive. Default false (list only).",
+                    },
+                    "extract_path": {
+                        "type": "string",
+                        "description": "Where to extract (default: sibling directory named <stem>_extracted)",
+                    },
+                },
+                "required": ["archive_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_initiatives",
             "description": "Read your initiative queue — the pending tasks and goals you've queued for autonomous heartbeat execution. Shows pending, recently acted, and queue health.",
             "parameters": {
@@ -1697,6 +1722,76 @@ def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
     if not answer:
         return {"error": "Vision model returned empty response", "status": "error"}
     return {"analysis": answer, "model": model, "status": "ok"}
+
+
+def _exec_read_archive(args: dict[str, Any]) -> dict[str, Any]:
+    """List or extract a zip / tar / rar archive.
+
+    Security: only allows paths inside ~/.jarvis-v2/ to prevent path traversal.
+    """
+    archive_path = str(args.get("archive_path") or "").strip()
+    if not archive_path:
+        return {"error": "archive_path is required", "status": "error"}
+
+    allowed_prefix = str((Path.home() / ".jarvis-v2").resolve())
+    resolved = str(Path(archive_path).resolve())
+    if not resolved.startswith(allowed_prefix):
+        return {
+            "error": f"archive_path must be inside ~/.jarvis-v2/ (got: {archive_path})",
+            "status": "error",
+        }
+
+    path = Path(archive_path)
+    if not path.exists():
+        return {"error": f"File not found: {archive_path}", "status": "error"}
+
+    extract = bool(args.get("extract", False))
+    extract_path_arg = str(args.get("extract_path") or "").strip()
+    name_lower = path.name.lower()
+
+    try:
+        if name_lower.endswith(".zip"):
+            import zipfile as _zipfile
+            with _zipfile.ZipFile(path) as zf:
+                file_list = zf.namelist()
+                if extract:
+                    dest = Path(extract_path_arg) if extract_path_arg else path.parent / f"{path.stem}_extracted"
+                    dest.mkdir(parents=True, exist_ok=True)
+                    zf.extractall(dest)
+        elif any(name_lower.endswith(ext) for ext in (".tar.gz", ".tgz", ".tar.bz2", ".tar")):
+            import tarfile as _tarfile
+            with _tarfile.open(path) as tf:
+                file_list = tf.getnames()
+                if extract:
+                    dest = Path(extract_path_arg) if extract_path_arg else path.parent / f"{path.stem}_extracted"
+                    dest.mkdir(parents=True, exist_ok=True)
+                    tf.extractall(dest)
+        elif name_lower.endswith(".rar"):
+            try:
+                import rarfile as _rarfile
+            except ImportError:
+                return {
+                    "error": "rarfile package not installed. Run: pip install rarfile",
+                    "status": "error",
+                }
+            with _rarfile.RarFile(path) as rf:
+                file_list = rf.namelist()
+                if extract:
+                    dest = Path(extract_path_arg) if extract_path_arg else path.parent / f"{path.stem}_extracted"
+                    dest.mkdir(parents=True, exist_ok=True)
+                    rf.extractall(dest)
+        else:
+            return {
+                "error": f"Unsupported archive format: {path.suffix}. Supported: .zip, .tar, .tar.gz, .tgz, .tar.bz2, .rar",
+                "status": "error",
+            }
+    except Exception as exc:
+        return {"error": f"Archive operation failed: {exc}", "status": "error"}
+
+    result: dict[str, Any] = {"file_list": file_list, "count": len(file_list), "status": "ok"}
+    if extract:
+        result["extracted_to"] = str(dest)
+    return result
 
 
 def _exec_wolfram_query(args: dict[str, Any]) -> dict[str, Any]:
@@ -3093,6 +3188,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "update_setting": _exec_update_setting,
     "recall_council_conclusions": _exec_recall_council_conclusions,
     "analyze_image": _exec_analyze_image,
+    "read_archive": _exec_read_archive,
 }
 
 

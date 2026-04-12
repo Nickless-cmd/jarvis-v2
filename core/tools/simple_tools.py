@@ -2983,6 +2983,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "eventbus_recent": _exec_eventbus_recent,
     "update_setting": _exec_update_setting,
     "recall_council_conclusions": _exec_recall_council_conclusions,
+    "analyze_image": _exec_analyze_image,
 }
 
 

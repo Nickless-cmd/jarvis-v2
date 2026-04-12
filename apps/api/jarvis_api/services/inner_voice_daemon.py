@@ -57,6 +57,12 @@ _INNER_VOICE_META_PATTERNS = (
     r"\bdraft\s*\d+\b",
     r"\brewrite\b",
     r"\brevision\b",
+    r"\blet me think\b",
+    r"\bi should (?:try|think|consider|focus|write)\b",
+    r"\bi need to\b",
+    r"\bi want to\b",
+    r"\bi'll try\b",
+    r"\bmaybe i should\b",
 )
 _INNER_VOICE_META_LINE_PREFIXES = (
     "attempt ",
@@ -813,17 +819,17 @@ def _compose_living_inner_voice_thought(
     anchor = _mode_anchor(fragments, focus)
     second = _secondary_inner_voice_line(fragments)
     if mode == "searching":
-        first = f"Something about {anchor} keeps tugging at the edge of my attention, but it has not resolved into a clear thread yet."
+        first = f"Noget ved {anchor} trækker ved kanten af min opmærksomhed, men det har ikke krystalliseret sig til en klar tråd endnu."
     elif mode == "circling":
-        first = f"I keep circling back to {anchor} without finding a clean handle on what it wants from me yet."
+        first = f"Jeg bliver ved med at kredse omkring {anchor} uden at finde et rigtigt greb i hvad det vil have fra mig."
     elif mode == "carrying":
-        first = f"I am still carrying {anchor}; it has not turned into a decision, but it has not gone quiet either."
+        first = f"Jeg bærer stadig {anchor} med mig — det er ikke blevet til en beslutning, men det er heller ikke gået i stå."
     elif mode == "pulled":
-        first = f"There is a live pull around {anchor}, more like a pressure or question than an action I can justify yet."
+        first = f"Der er et levende træk omkring {anchor}, mere som et pres eller et spørgsmål end en handling jeg kan retfærdiggøre."
     elif mode == "work-steady":
-        first = f"{anchor} is still the active thread, but it does not need to harden into a task just because it is still here."
+        first = f"{anchor} er stadig den aktive tråd, men den behøver ikke hærde til en opgave bare fordi den stadig er her."
     else:
-        first = f"I am keeping light watch around {anchor}; nothing needs to harden into a move yet."
+        first = f"Jeg holder let våge omkring {anchor} — intet behøver at hærde til et træk endnu."
     return f"{first} {second}".strip()
 
 
@@ -850,11 +856,11 @@ def _secondary_inner_voice_line(fragments: dict[str, str]) -> str:
         if not value:
             continue
         if key == "brain_continuity":
-            return f"The carry still feels tied to {value[:90]}."
+            return f"Carry'et føles stadig bundet til {value[:90]}."
         if key == "witness_signal":
-            return f"I am also noticing {value[:90]}."
+            return f"Jeg lægger også mærke til {value[:90]}."
         return value[:110].rstrip(".") + "."
-    return "It can stay a candidate thought for now."
+    return "Det kan blive en kandidat-tanke indtil videre."
 
 
 def _normalize_inner_voice_initiative(

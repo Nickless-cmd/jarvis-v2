@@ -31,6 +31,10 @@ from apps.api.jarvis_api.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
 )
+from apps.api.jarvis_api.services.voice_daemon import (
+    start_voice_daemon,
+    stop_voice_daemon,
+)
 from apps.api.jarvis_api.routes.attachments import router as attachments_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
@@ -64,6 +68,7 @@ def create_app() -> FastAPI:
         start_scheduled_tasks_service()
         start_mood_listener()
         start_discord_gateway()
+        start_voice_daemon()
         try:
             from apps.api.jarvis_api.services.agent_runtime import recover_crashed_agents
             recovery = recover_crashed_agents()
@@ -80,6 +85,7 @@ def create_app() -> FastAPI:
         stop_notification_bridge()
         stop_scheduled_tasks_service()
         stop_discord_gateway()
+        stop_voice_daemon()
         stop_mood_listener()
         stop_runtime_hook_runtime()
         logger.info("jarvis api shutdown complete")

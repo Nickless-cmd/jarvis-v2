@@ -2011,6 +2011,14 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    if _dm.is_enabled("autonomous_council"):
+        try:
+            from apps.api.jarvis_api.services.autonomous_council_daemon import tick_autonomous_council_daemon
+            _ac_result = tick_autonomous_council_daemon()
+            _dm.record_daemon_tick("autonomous_council", _ac_result or {})
+        except Exception:
+            pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

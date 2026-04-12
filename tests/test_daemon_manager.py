@@ -17,6 +17,7 @@ def test_registry_contains_all_daemons():
         "meta_reflection", "experienced_time", "development_narrative",
         "absence", "creative_drift", "existential_wonder", "dream_insight",
         "code_aesthetic", "memory_decay", "user_model", "desire",
+        "autonomous_council",
     }
     assert names == expected
 
@@ -25,7 +26,7 @@ def test_get_all_daemon_states_returns_correct_fields(tmp_path):
     from apps.api.jarvis_api.services import daemon_manager
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         states = daemon_manager.get_all_daemon_states()
-    assert len(states) == 20
+    assert len(states) == 21
     for s in states:
         assert "name" in s
         assert "enabled" in s

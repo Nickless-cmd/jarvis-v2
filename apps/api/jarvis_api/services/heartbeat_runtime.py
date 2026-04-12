@@ -945,6 +945,23 @@ def _run_heartbeat_tick_locked(
         now_iso=now.isoformat(),
     )
     executive_result = _execute_executive_decision(executive_decision)
+    executive_outcome = {}
+    if str(executive_decision.get("action_id") or "").strip():
+        try:
+            from apps.api.jarvis_api.services.runtime_action_outcome_tracking import (
+                record_runtime_action_outcome,
+            )
+
+            executive_outcome = record_runtime_action_outcome(
+                action_id=str(executive_decision.get("action_id") or ""),
+                mode=str(executive_decision.get("mode") or "noop"),
+                reason=str(executive_decision.get("reason") or ""),
+                score=float(executive_decision.get("score") or 0.0),
+                payload=dict(executive_decision.get("payload") or {}),
+                result=dict(executive_result),
+            )
+        except Exception:
+            executive_outcome = {}
     _log_debug(
         "heartbeat context built",
         trigger=trigger,
@@ -961,6 +978,7 @@ def _run_heartbeat_tick_locked(
         executive_action_id=executive_decision.get("action_id"),
         executive_mode=executive_decision.get("mode"),
         executive_status=executive_result.get("status"),
+        executive_outcome_id=executive_outcome.get("outcome_id"),
     )
     assembly = build_heartbeat_prompt_assembly(heartbeat_context=context, name=name)
     prompt = _heartbeat_prompt_text(assembly.text or "")

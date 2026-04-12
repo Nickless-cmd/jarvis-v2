@@ -11,8 +11,8 @@ PAREC_BIN = "/home/linuxbrew/.linuxbrew/bin/parec"
 SAMPLE_RATE = 16000
 CLIP_SECONDS = 2  # window size for each Whisper transcription
 
-# Words Whisper might hear instead of "jarvis" (typos/homophones from tiny model)
-TRIGGER_WORDS = ["jarvis", "jarvi", "jarv", "davis", "travis"]
+# Minimum RMS to bother running Whisper (filters hallucinations on silence)
+MIN_RMS = 0.02
 
 _model: WhisperModel | None = None
 _model_lock = threading.Lock()
@@ -28,7 +28,10 @@ def _get_model() -> WhisperModel:
 
 def _is_wake_word(text: str) -> bool:
     t = text.lower()
-    return any(w in t for w in TRIGGER_WORDS)
+    # Require "jarvis" (or close homophone) AND some preceding word
+    has_jarvis = any(w in t for w in ["jarvis", "jarvi"])
+    has_trigger = any(w in t for w in ["hey", "hej", "hi", "yo", "ok", "okay"])
+    return has_jarvis and has_trigger
 
 
 def listen(callback=None, interrupt_event=None):
@@ -69,6 +72,9 @@ def listen(callback=None, interrupt_event=None):
             if not raw:
                 break
             audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+            # Skip Whisper if audio is too quiet — prevents hallucinations on silence
+            if float(np.sqrt(np.mean(audio ** 2))) < MIN_RMS:
+                continue
             segs, _ = model.transcribe(
                 audio,
                 language="en",

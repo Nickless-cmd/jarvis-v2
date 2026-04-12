@@ -30,6 +30,7 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
     initiatives = queued_initiatives(limit=min(limit, 4))
     executive_feedback = recent_executive_feedback(limit=min(limit, 6))
     executive_feedback_summary = summarize_executive_feedback(executive_feedback)
+    semantic_feedback_summary = summarize_semantic_feedback(executive_feedback)
     continuity = visible_session_continuity()
     user_facts = remembered_user_facts(limit=min(limit, 3))
     work_context = active_work_context(limit=min(limit, 5))
@@ -45,6 +46,7 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
         "queued_initiatives": initiatives,
         "executive_feedback": executive_feedback,
         "executive_feedback_summary": executive_feedback_summary,
+        "semantic_feedback_summary": semantic_feedback_summary,
         "work_context": work_context,
         "note_loop_synergies": note_loop_synergies,
         "visible_continuity": continuity,
@@ -66,6 +68,7 @@ def build_operational_memory_snapshot(*, limit: int = 12) -> dict[str, Any]:
             "latest_executive_status": executive_feedback_summary["latest_status"],
             "repeat_action_detected": executive_feedback_summary["repeat_action_detected"],
             "blocked_action_detected": executive_feedback_summary["blocked_action_detected"],
+            "semantic_signal_count": int(semantic_feedback_summary.get("signal_count") or 0),
         },
     }
 
@@ -291,6 +294,38 @@ def summarize_note_loop_synergies(
     return synergies
 
 
+def summarize_semantic_feedback(
+    items: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    normalized = list(items or [])
+    now = datetime.now(UTC)
+    signal_stats: dict[str, dict[str, Any]] = {}
+    for item in normalized:
+        recorded_at = str(item.get("recorded_at") or "")
+        recency_weight = _feedback_recency_weight(recorded_at, now=now)
+        action_id = str(item.get("action_id") or "").strip()
+        for signal in _extract_semantic_signals(item):
+            bucket = signal_stats.setdefault(
+                signal,
+                {
+                    "count": 0,
+                    "weight": 0.0,
+                    "latest_action": action_id,
+                    "latest_recorded_at": recorded_at,
+                },
+            )
+            bucket["count"] += 1
+            bucket["weight"] += recency_weight
+            if not bucket.get("latest_action"):
+                bucket["latest_action"] = action_id
+            if not bucket.get("latest_recorded_at"):
+                bucket["latest_recorded_at"] = recorded_at
+    return {
+        "signal_count": len(signal_stats),
+        "signal_stats": signal_stats,
+    }
+
+
 def _feedback_recency_weight(recorded_at: str, *, now: datetime) -> float:
     age_seconds = _feedback_age_seconds(recorded_at, now=now)
     half_life_seconds = 6 * 60 * 60
@@ -344,6 +379,54 @@ def _outcome_looks_like_no_change(item: dict[str, Any]) -> bool:
             "in-sync",
         )
     )
+
+
+def _extract_semantic_signals(item: dict[str, Any]) -> list[str]:
+    result = item.get("result_json") or item.get("result") or {}
+    details = result.get("details") if isinstance(result, dict) else {}
+    side_effects = result.get("side_effects") if isinstance(result, dict) else []
+    summary = str(item.get("result_summary") or "")
+    haystack = " ".join(
+        str(part)
+        for part in (
+            summary,
+            result,
+            details,
+            side_effects,
+        )
+    ).lower()
+
+    signals: list[str] = []
+    side_effect_list = [str(effect or "").strip() for effect in list(side_effects or [])]
+    if "runtime-task-created" in side_effect_list:
+        signals.append("task_created")
+    if "visible-work-note-persisted" in side_effect_list or "internal-work-note" in side_effect_list:
+        signals.append("note_persisted")
+    if "repo-context-inspected" in side_effect_list:
+        signals.append("repo_context_inspected")
+    if "workspace-capability-blocked" in side_effect_list:
+        signals.append("repo_capability_blocked")
+    if "visible-proposal" in side_effect_list or "initiative-promoted" in side_effect_list:
+        signals.append("visible_proposal_made")
+    if "repo-context-inspected" in side_effect_list and _outcome_looks_like_no_change(item):
+        signals.append("repo_no_change")
+    if "repo-context-inspected" in side_effect_list and any(
+        token in haystack
+        for token in (
+            "modified",
+            "untracked",
+            "dirty",
+            "ahead",
+            "behind",
+            "diverged",
+            "anomaly",
+            "changes=",
+            " m ",
+            " ?? ",
+        )
+    ):
+        signals.append("repo_actionable_change")
+    return list(dict.fromkeys(signals))
 
 
 def _domain_key(*, loop_id: str, canonical_key: str) -> str:

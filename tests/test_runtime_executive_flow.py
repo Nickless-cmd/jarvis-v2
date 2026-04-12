@@ -216,6 +216,90 @@ def test_decision_engine_boosts_follow_open_loop_from_note_synergy(
     assert "Recent persisted work note reinforces this loop" in str(decision.reason)
 
 
+def test_decision_engine_uses_repo_change_signal_to_boost_follow_open_loop(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_decision_engine import (
+        RuntimeActionCandidate,
+        RuntimeDecisionInput,
+        _apply_feedback,
+    )
+
+    base_candidate = RuntimeActionCandidate(
+        action_id="follow_open_loop",
+        score=0.85,
+        reason="Active open loop requires carry-forward.",
+        payload={
+            "loop_id": "open-loop:repo-status",
+            "title": "Inspect repo drift before next step",
+            "canonical_key": "open-loop:repo-status",
+        },
+        mode="execute",
+    )
+    boosted = _apply_feedback(
+        base_candidate,
+        RuntimeDecisionInput(
+            cognitive_frame={"summary": {"current_mode": "watch"}},
+            operational_memory={
+                "semantic_feedback_summary": {
+                    "signal_stats": {
+                        "repo_actionable_change": {"weight": 1.0},
+                    }
+                }
+            },
+            loop_runtime={"items": []},
+            initiative_state={"pending": []},
+            visible_state={"summary": {"active": False}},
+            tool_intent_state={"summary": {"pending_count": 0}},
+            timestamp_iso="2026-04-12T10:10:00+00:00",
+        ),
+    )
+
+    assert boosted.score > base_candidate.score
+    assert "Recent repo inspection surfaced actionable change" in boosted.reason
+
+
+def test_decision_engine_dampens_internal_note_after_task_and_note_feedback(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_decision_engine import (
+        RuntimeActionCandidate,
+        RuntimeDecisionInput,
+        _apply_feedback,
+    )
+
+    base_candidate = RuntimeActionCandidate(
+        action_id="write_internal_work_note",
+        score=0.35,
+        reason="Quiet runtime state benefits from a small internal note rather than silence.",
+        payload={"current_mode": "watch"},
+        mode="execute",
+    )
+    dampened = _apply_feedback(
+        base_candidate,
+        RuntimeDecisionInput(
+            cognitive_frame={"summary": {"current_mode": "watch"}},
+            operational_memory={
+                "semantic_feedback_summary": {
+                    "signal_stats": {
+                        "task_created": {"weight": 1.0},
+                        "note_persisted": {"weight": 1.0},
+                    }
+                }
+            },
+            loop_runtime={"items": []},
+            initiative_state={"pending": []},
+            visible_state={"summary": {"active": False}},
+            tool_intent_state={"summary": {"pending_count": 0}},
+            timestamp_iso="2026-04-12T10:11:00+00:00",
+        ),
+    )
+
+    assert dampened.score < base_candidate.score
+    assert "Recent note persistence lowers the value" in dampened.reason
+    assert "recently created runtime task already externalized work" in dampened.reason.lower()
+
+
 def test_operational_memory_summarizes_recent_executive_feedback(
     isolated_runtime,
 ) -> None:
@@ -281,6 +365,44 @@ def test_operational_memory_applies_time_decay_to_old_feedback(
     stats = summary["action_stats"]["inspect_repo_context"]
     assert stats["failed_count"] == 2
     assert 1.0 < stats["failed_weight"] < 1.1
+
+
+def test_operational_memory_summarizes_semantic_feedback_from_side_effects(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_operational_memory import (
+        summarize_semantic_feedback,
+    )
+
+    summary = summarize_semantic_feedback(
+        [
+            {
+                "action_id": "inspect_repo_context",
+                "result_summary": "Repo status found modified files.",
+                "recorded_at": datetime.now(UTC).isoformat(),
+                "result_json": {
+                    "side_effects": ["repo-context-inspected", "workspace-capability-invoked"],
+                    "details": {
+                        "repo_command_preview": " M apps/api/jarvis_api/services/runtime_action_executor.py",
+                    },
+                },
+            },
+            {
+                "action_id": "follow_open_loop",
+                "result_summary": "Created follow-up task.",
+                "recorded_at": datetime.now(UTC).isoformat(),
+                "result_json": {
+                    "side_effects": ["runtime-task-created"],
+                },
+            },
+        ]
+    )
+
+    signals = summary["signal_stats"]
+    assert summary["signal_count"] >= 3
+    assert signals["repo_context_inspected"]["count"] == 1
+    assert signals["repo_actionable_change"]["count"] == 1
+    assert signals["task_created"]["count"] == 1
 
 
 def test_operational_memory_detects_note_loop_synergy(

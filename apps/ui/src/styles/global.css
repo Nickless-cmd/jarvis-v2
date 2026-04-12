@@ -1179,9 +1179,9 @@ button { cursor: pointer; }
 }
 .mermaid-overlay-inner {
   background: #1e1e1e; border-radius: 10px; padding: 32px;
-  max-width: 90vw; max-height: 90vh; overflow: auto; cursor: default;
+  width: min(90vw, 1200px); max-height: 90vh; overflow: auto; cursor: default;
 }
-.mermaid-overlay-inner svg { max-width: 100%; height: auto; display: block; }
+.mermaid-overlay-inner svg { width: 100% !important; height: auto !important; display: block; }
 
 /* Message actions hover toolbar */
 .message-group { display: flex; flex-direction: column; }

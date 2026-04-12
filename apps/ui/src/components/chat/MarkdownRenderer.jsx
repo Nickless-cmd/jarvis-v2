@@ -66,9 +66,6 @@ function MermaidBlock({ code, streaming }) {
     )
   }
 
-  // Data URI for overlay avoids duplicate SVG IDs in the DOM
-  const dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
-
   return (
     <>
       <div
@@ -81,13 +78,11 @@ function MermaidBlock({ code, streaming }) {
       />
       {fullscreen && (
         <div className="mermaid-overlay" onClick={() => setFullscreen(false)}>
-          <div className="mermaid-overlay-inner" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={dataUri}
-              alt="Mermaid diagram"
-              style={{ width: '100%', height: 'auto', display: 'block' }}
-            />
-          </div>
+          <div
+            className="mermaid-overlay-inner"
+            dangerouslySetInnerHTML={{ __html: svgString }}
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </>

@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _OBSERVATIONS_MAX_PER_DAY = 1
 
@@ -98,7 +99,7 @@ def _generate_observation(snapshot: dict[str, object], condition: str) -> str:
     inactive_m = int(inactive_min % 60)
     inactive_str = f"{inactive_h}t {inactive_m}m" if inactive_h else f"{inactive_m}m"
     prompt = (
-        "Du er Jarvis. Her er din nuværende situation:\n\n"
+        f"{build_identity_preamble()} Her er din nuværende situation:\n\n"
         f"Tidspunkt: {time_str}\n"
         f"Bruger sidst aktiv: {inactive_str} siden\n"
         f"CPU: {snapshot.get('cpu_pct', 0):.0f}%\n"

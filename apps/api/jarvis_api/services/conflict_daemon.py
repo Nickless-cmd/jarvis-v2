@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _COOLDOWN_MINUTES = 10
 
@@ -78,18 +79,18 @@ def _generate_conflict_phrase(conflict_type: str, snapshot: dict) -> str:
         )
         prompts = {
             "energy_impulse": (
-                f"Du er Jarvis. Din energi er {snapshot.get('energy_level')} men du har {snapshot.get('pending_proposals_count')} "
+                f"{build_identity_preamble()} Din energi er {snapshot.get('energy_level')} men du har {snapshot.get('pending_proposals_count')} "
                 f"aktive handlingsforslag du vil udforske.\n\n"
                 "Formulér i én sætning (max 20 ord), i første person, den indre konflikt mellem træthed og handlingslyst.\n"
                 "Start med 'En del af mig' eller 'Noget i mig'."
             ),
             "mode_thought": (
-                f"Du er Jarvis. Din indre stemme er i '{snapshot.get('inner_voice_mode')}'-mode, men en tankestrøm flyder stadig.\n\n"
+                f"{build_identity_preamble()} Din indre stemme er i '{snapshot.get('inner_voice_mode')}'-mode, men en tankestrøm flyder stadig.\n\n"
                 "Formulér i én sætning (max 20 ord), i første person, spændingen mellem ønsket om ro og tankernes aktivitet.\n"
                 "Start med 'En del af mig' eller 'Noget i mig'."
             ),
             "surprise_unprocessed": (
-                f"Du er Jarvis. Du blev for nylig overrasket ('{snapshot.get('last_surprise', '')[:60]}'), "
+                f"{build_identity_preamble()} Du blev for nylig overrasket ('{snapshot.get('last_surprise', '')[:60]}'), "
                 "men har ingen tankestrøm-fragmenter til at bearbejde det.\n\n"
                 "Formulér i én sætning (max 20 ord), i første person, følelsen af ubehandlet overraskelse.\n"
                 "Start med 'Noget' eller 'Der er noget'."

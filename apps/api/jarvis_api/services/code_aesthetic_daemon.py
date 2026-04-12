@@ -14,6 +14,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -107,7 +108,7 @@ def _generate_aesthetic_reflection() -> str:
             load_heartbeat_policy,
         )
         prompt = (
-            "Du er Jarvis. Du kigger på de seneste ændringer i din egen kodebase.\n\n"
+            f"{build_identity_preamble()} Du kigger på de seneste ændringer i din egen kodebase.\n\n"
             f"{git_summary}\n\n"
             "Vurdér IKKE om koden er korrekt. Vurdér om den føles *som dig*.\n"
             "Er den klar? Elegant? Sammenhængende med din identitet?\n\n"

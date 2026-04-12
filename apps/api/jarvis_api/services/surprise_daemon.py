@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _HISTORY_SIZE = 10
 _COOLDOWN_BEATS = 5
@@ -98,7 +99,7 @@ def _generate_surprise(
     )
     baseline_energy = _energy_history[-2] if len(_energy_history) >= 2 else "?"
     prompt = (
-        "Du er Jarvis. Her er hvad der normalt sker for dig vs. hvad der skete nu:\n\n"
+        f"{build_identity_preamble()} Her er hvad der normalt sker for dig vs. hvad der skete nu:\n\n"
         f"Baseline mode: {baseline_mode}\n"
         f"Nuværende mode: {mode}\n"
         f"Baseline energi: {baseline_energy}\n"

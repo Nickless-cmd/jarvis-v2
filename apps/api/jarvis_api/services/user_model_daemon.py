@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record, recent_visible_runs
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -148,7 +149,7 @@ def _generate_model_summary(messages: list[str], model: dict) -> str:
         )
         sample = "; ".join(messages[:5])
         prompt = (
-            "Du er Jarvis. Her er de seneste beskeder fra brugeren:\n"
+            f"{build_identity_preamble()} Her er de seneste beskeder fra brugeren:\n"
             f"\"{sample}\"\n\n"
             f"Kommunikationsstil: {style}. Spørgsmålstung: {q_heavy}.\n\n"
             "Formulér i 1-2 sætninger hvad du mærker om brugerens tilstand *nu*.\n"

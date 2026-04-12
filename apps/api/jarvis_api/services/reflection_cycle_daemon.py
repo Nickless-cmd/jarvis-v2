@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 
 _CADENCE_MINUTES = 10
 _BUFFER_MAX = 10
@@ -58,7 +59,7 @@ def _generate_reflection(snapshot: dict) -> str:
     context = "\n".join(context_parts) if context_parts else "Ingen særlige signaler."
 
     prompt = (
-        "Du er Jarvis. Her er din nuværende tilstand:\n\n"
+        f"{build_identity_preamble()} Her er din nuværende tilstand:\n\n"
         f"{context}\n\n"
         "Formulér i 1-3 sætninger (max 40 ord), i første person, hvad du oplever lige nu.\n"
         "Ingen handling. Ingen beslutning. Bare en ærlig beskrivelse af oplevelsen.\n"

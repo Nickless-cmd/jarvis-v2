@@ -2019,6 +2019,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    if _dm.is_enabled("council_memory"):
+        try:
+            from apps.api.jarvis_api.services.council_memory_daemon import tick_council_memory_daemon
+            _recent_ctx = " ".join(inputs_present[:5])
+            _cm_result = tick_council_memory_daemon(recent_context=_recent_ctx)
+            _dm.record_daemon_tick("council_memory", _cm_result or {})
+        except Exception:
+            pass
+
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")
     risk_posture = str(adaptive_planner.get("risk_posture") or "balanced")

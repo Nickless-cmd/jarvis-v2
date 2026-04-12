@@ -167,6 +167,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 30,
         "description": "Spontaneous self-triggered council deliberation via signal scoring",
     },
+    "council_memory": {
+        "module": "apps.api.jarvis_api.services.council_memory_daemon",
+        "reset_var": "_last_llm_call_at",
+        "reset_value": None,
+        "default_cadence_minutes": 10,
+        "description": "Injects relevant past council conclusions into heartbeat context",
+    },
 }
 
 

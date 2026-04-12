@@ -986,6 +986,21 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             role="assistant", kind="council-synthesis", content=synthesis,
         )
         update_council_session(council_id, status="reporting", summary=synthesis)
+        # Persist to council memory
+        try:
+            from apps.api.jarvis_api.services.council_memory_service import append_council_conclusion
+            _members_list = [str(m.get("role") or "") for m in members]
+            append_council_conclusion(
+                topic=str(session.get("topic") or ""),
+                score=0.0,
+                members=_members_list,
+                signals=[],
+                transcript="\n".join(f"{o['role']}: {o['text'][:300]}" for o in round_outputs[:6]),
+                conclusion=synthesis[:600],
+                initiative=None,
+            )
+        except Exception:
+            pass
     else:
         update_council_session(council_id, status="reporting", summary=f"No {mode} outputs produced.")
     return build_council_detail_surface(council_id) or {}

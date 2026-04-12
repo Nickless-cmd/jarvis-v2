@@ -19,9 +19,32 @@ def action_family(action_id: str) -> str:
     return ACTION_FAMILIES.get(str(action_id or "").strip(), "generic")
 
 
+def action_domain(*, action_id: str, outcome: dict[str, Any]) -> str:
+    payload = outcome.get("payload") or outcome.get("payload_json") or {}
+    result = outcome.get("result") or outcome.get("result_json") or {}
+    details = result.get("details") if isinstance(result, dict) else {}
+
+    for candidate in (
+        _coerce_domain_key(payload.get("canonical_key")),
+        _coerce_domain_key(payload.get("loop_id")),
+        _coerce_domain_key(payload.get("initiative_id")),
+        _coerce_domain_key(details.get("canonical_key") if isinstance(details, dict) else ""),
+        _coerce_domain_key(details.get("loop_id") if isinstance(details, dict) else ""),
+        _coerce_domain_key(details.get("initiative_id") if isinstance(details, dict) else ""),
+    ):
+        if candidate:
+            return candidate
+    if action_id == "inspect_repo_context":
+        focus = str(payload.get("focus") or payload.get("title") or "").strip().lower()
+        if "repo" in focus or "git" in focus:
+            return "repo:general"
+    return action_family(action_id)
+
+
 def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, Any]]:
     action_id = str(outcome.get("action_id") or "").strip()
     family = action_family(action_id)
+    domain = action_domain(action_id=action_id, outcome=outcome)
     outcome_id = str(outcome.get("outcome_id") or "").strip()
     recorded_at = str(outcome.get("recorded_at") or "").strip()
     result_status = str(outcome.get("result_status") or "").strip()
@@ -34,6 +57,7 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
                     outcome_id=outcome_id,
                     source_action_id=action_id,
                     target_action_id=action_id,
+                    target_domain=domain,
                     signal_key="action_blocked",
                     weight=1.0,
                     recorded_at=recorded_at,
@@ -42,6 +66,7 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
                     outcome_id=outcome_id,
                     source_action_id=action_id,
                     target_family=family,
+                    target_domain=domain,
                     signal_key="family_blocked",
                     weight=0.9,
                     recorded_at=recorded_at,
@@ -55,6 +80,7 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
                     outcome_id=outcome_id,
                     source_action_id=action_id,
                     target_action_id=action_id,
+                    target_domain=domain,
                     signal_key="action_failed",
                     weight=1.0,
                     recorded_at=recorded_at,
@@ -63,6 +89,7 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
                     outcome_id=outcome_id,
                     source_action_id=action_id,
                     target_family=family,
+                    target_domain=domain,
                     signal_key="family_failed",
                     weight=0.9,
                     recorded_at=recorded_at,
@@ -75,6 +102,7 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
                 outcome_id=outcome_id,
                 source_action_id=action_id,
                 target_family=family,
+                target_domain=domain,
                 signal_key="family_succeeded",
                 weight=0.6,
                 recorded_at=recorded_at,
@@ -87,6 +115,7 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
                     outcome_id=outcome_id,
                     source_action_id=action_id,
                     target_action_id=action_id,
+                    target_domain=domain,
                     signal_key="action_no_change",
                     weight=0.8,
                     recorded_at=recorded_at,
@@ -95,6 +124,7 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
                     outcome_id=outcome_id,
                     source_action_id=action_id,
                     target_family=family,
+                    target_domain=domain,
                     signal_key="family_no_change",
                     weight=0.7,
                     recorded_at=recorded_at,
@@ -109,6 +139,7 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
                 outcome_id=outcome_id,
                 source_action_id=action_id,
                 target_family=target_family,
+                target_domain=domain,
                 signal_key=signal_key,
                 weight=weight,
                 recorded_at=recorded_at,
@@ -116,12 +147,13 @@ def extract_runtime_learning_signals(outcome: dict[str, Any]) -> list[dict[str, 
         )
 
     deduped: list[dict[str, Any]] = []
-    seen: set[tuple[str, str, str, str]] = set()
+    seen: set[tuple[str, str, str, str, str]] = set()
     for item in signals:
         key = (
             str(item.get("source_action_id") or ""),
             str(item.get("target_action_id") or ""),
             str(item.get("target_family") or ""),
+            str(item.get("target_domain") or ""),
             str(item.get("signal_key") or ""),
         )
         if key in seen:
@@ -140,6 +172,7 @@ def _signal(
     recorded_at: str,
     target_action_id: str = "",
     target_family: str = "",
+    target_domain: str = "",
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
@@ -147,6 +180,7 @@ def _signal(
         "source_action_id": source_action_id,
         "target_action_id": target_action_id,
         "target_family": target_family,
+        "target_domain": target_domain,
         "signal_key": signal_key,
         "signal_weight": float(weight),
         "signal_count": 1,
@@ -214,3 +248,14 @@ def _outcome_looks_like_no_change(outcome: dict[str, Any]) -> bool:
             "in-sync",
         )
     )
+
+
+def _coerce_domain_key(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if ":" in text:
+        parts = [part.strip() for part in text.split(":") if part.strip()]
+        if len(parts) >= 2:
+            return ":".join(parts[-2:])
+    return text[:80]

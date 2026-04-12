@@ -310,6 +310,7 @@ def summarize_runtime_learning_signals(
     normalized = list(items or [])
     signal_stats: dict[str, dict[str, Any]] = {}
     family_signal_stats: dict[str, dict[str, dict[str, Any]]] = {}
+    domain_signal_stats: dict[str, dict[str, dict[str, Any]]] = {}
     action_signal_stats: dict[str, dict[str, dict[str, Any]]] = {}
     for item in normalized:
         signal_key = str(item.get("signal_key") or "").strip()
@@ -324,6 +325,11 @@ def summarize_runtime_learning_signals(
             family_bucket = family_signal_stats.setdefault(target_family, {})
             _accumulate_signal_bucket(family_bucket, signal_key, signal_weight, signal_count)
 
+        target_domain = str(item.get("target_domain") or "").strip()
+        if target_domain:
+            domain_bucket = domain_signal_stats.setdefault(target_domain, {})
+            _accumulate_signal_bucket(domain_bucket, signal_key, signal_weight, signal_count)
+
         target_action_id = str(item.get("target_action_id") or "").strip()
         if target_action_id:
             action_bucket = action_signal_stats.setdefault(target_action_id, {})
@@ -333,6 +339,7 @@ def summarize_runtime_learning_signals(
         "signal_count": len(normalized),
         "signal_stats": signal_stats,
         "family_signal_stats": family_signal_stats,
+        "domain_signal_stats": domain_signal_stats,
         "action_signal_stats": action_signal_stats,
     }
 

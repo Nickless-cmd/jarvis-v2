@@ -68,7 +68,8 @@ def build_action_candidates(inputs: RuntimeDecisionInput) -> list[RuntimeActionC
                 mode="noop",
             )
         )
-    return sorted(candidates, key=lambda item: item.score, reverse=True)
+    adjusted = [_apply_feedback(candidate, inputs) for candidate in candidates]
+    return sorted(adjusted, key=lambda item: item.score, reverse=True)
 
 
 def choose_best_candidate(candidates: list[RuntimeActionCandidate]) -> RuntimeDecision:
@@ -234,4 +235,57 @@ def _looks_repo_focused(loop: dict[str, Any]) -> bool:
     return any(
         token in haystack
         for token in ("repo", "git", "working tree", "branch", "commit", "code", "workspace")
+    )
+
+
+def _apply_feedback(
+    candidate: RuntimeActionCandidate,
+    inputs: RuntimeDecisionInput,
+) -> RuntimeActionCandidate:
+    feedback_summary = dict(inputs.operational_memory.get("executive_feedback_summary") or {})
+    action_stats = dict(feedback_summary.get("action_stats") or {})
+    stats = dict(action_stats.get(candidate.action_id) or {})
+    latest_action = str(feedback_summary.get("latest_action") or "")
+    latest_status = str(feedback_summary.get("latest_status") or "")
+
+    score = float(candidate.score)
+    reasons = [candidate.reason]
+
+    if latest_action == candidate.action_id and latest_status in {"executed", "proposed"}:
+        score -= 0.14
+        reasons.append(
+            f"Recent feedback dampens repetition because {candidate.action_id} just ended as {latest_status}."
+        )
+
+    blocked_count = int(stats.get("blocked_count") or 0)
+    failed_count = int(stats.get("failed_count") or 0)
+    if blocked_count > 0:
+        score -= min(0.22, 0.11 * blocked_count)
+        reasons.append(
+            f"Recent blocked feedback penalizes {candidate.action_id} ({blocked_count} blocked outcome(s))."
+        )
+    if failed_count > 0:
+        score -= min(0.28, 0.14 * failed_count)
+        reasons.append(
+            f"Recent failed feedback penalizes {candidate.action_id} ({failed_count} failed outcome(s))."
+        )
+
+    success_count = int(stats.get("success_count") or 0)
+    if success_count > 0 and candidate.action_id == "refresh_memory_context":
+        score -= min(0.12, 0.06 * success_count)
+        reasons.append(
+            "Memory refresh already succeeded recently, so refresh is temporarily deprioritized."
+        )
+    if success_count > 0 and candidate.action_id == "bounded_self_check":
+        score -= min(0.10, 0.05 * success_count)
+        reasons.append(
+            "A recent bounded self-check already ran, so repeating it immediately is less valuable."
+        )
+
+    return RuntimeActionCandidate(
+        action_id=candidate.action_id,
+        score=max(score, 0.0),
+        reason=" ".join(reasons),
+        payload=dict(candidate.payload),
+        mode=candidate.mode,
     )

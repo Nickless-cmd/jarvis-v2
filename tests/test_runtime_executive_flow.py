@@ -70,6 +70,90 @@ def test_decision_engine_prefers_repo_inspection_for_repo_focused_open_loop(
     assert decision.score > 0.9
 
 
+def test_decision_engine_penalizes_recent_blocked_repo_inspection(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_decision_engine import (
+        RuntimeDecisionInput,
+        decide_next_action,
+    )
+
+    decision = decide_next_action(
+        RuntimeDecisionInput(
+            cognitive_frame={"summary": {"current_mode": "watch"}},
+            operational_memory={
+                "open_loops": [
+                    {
+                        "loop_id": "open-loop:repo-status",
+                        "title": "Inspect repo drift before next step",
+                        "runtime_status": "active",
+                        "canonical_key": "open-loop:repo-status",
+                    }
+                ],
+                "executive_feedback_summary": {
+                    "latest_action": "inspect_repo_context",
+                    "latest_status": "blocked",
+                    "action_stats": {
+                        "inspect_repo_context": {
+                            "blocked_count": 1,
+                            "failed_count": 0,
+                            "success_count": 0,
+                        }
+                    },
+                },
+                "summary": {"recent_outcome_count": 1},
+            },
+            loop_runtime={"items": []},
+            initiative_state={"pending": []},
+            visible_state={"summary": {"active": False}},
+            tool_intent_state={"summary": {"pending_count": 0}},
+            timestamp_iso="2026-04-12T10:05:00+00:00",
+        )
+    )
+
+    assert decision.action_id == "follow_open_loop"
+    assert "blocked feedback penalizes inspect_repo_context" in str(
+        decision.considered[1]["reason"]
+    )
+
+
+def test_operational_memory_summarizes_recent_executive_feedback(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_action_outcome_tracking import (
+        record_runtime_action_outcome,
+    )
+    from apps.api.jarvis_api.services.runtime_operational_memory import (
+        build_operational_memory_snapshot,
+    )
+
+    record_runtime_action_outcome(
+        action_id="inspect_repo_context",
+        mode="execute",
+        reason="Need repo truth.",
+        score=0.9,
+        payload={"focus": "repo drift"},
+        result={"status": "blocked", "summary": "Repo command was blocked."},
+    )
+    record_runtime_action_outcome(
+        action_id="follow_open_loop",
+        mode="execute",
+        reason="Carry the loop.",
+        score=0.8,
+        payload={"loop_id": "open-loop:memory"},
+        result={"status": "executed", "summary": "Created follow-up task."},
+    )
+
+    snapshot = build_operational_memory_snapshot(limit=6)
+    summary = snapshot["summary"]
+    feedback_summary = snapshot["executive_feedback_summary"]
+
+    assert summary["executive_outcome_count"] >= 2
+    assert feedback_summary["latest_action"] == "follow_open_loop"
+    assert feedback_summary["action_stats"]["inspect_repo_context"]["blocked_count"] == 1
+    assert feedback_summary["action_stats"]["follow_open_loop"]["executed_count"] == 1
+
+
 def test_executor_and_outcome_tracking_persist_visible_proposal(
     isolated_runtime,
     monkeypatch,

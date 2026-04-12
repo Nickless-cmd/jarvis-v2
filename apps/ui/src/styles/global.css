@@ -1197,3 +1197,195 @@ button { cursor: pointer; }
 }
 .message-actions button:hover { color: #5ab8a0; background: rgba(40,177,163,0.08); }
 .message-actions button.liked { color: #5ab8a0; }
+
+/* ── Attachment tray (Composer) ──────────────────────────────── */
+
+.composer-attachment-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.attachment-thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a1a;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.attachment-thumb-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.55);
+  font-size: 8px;
+  color: #ccc;
+  padding: 2px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.attachment-thumb-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.7);
+  border: none;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.attachment-thumb:hover .attachment-thumb-remove,
+.attachment-file-card:hover .attachment-thumb-remove {
+  opacity: 1;
+}
+
+.attachment-thumb-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: #40b3b3;
+}
+
+.attachment-thumb.error-state {
+  border: 1px solid #c04040;
+}
+
+.attachment-file-card {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  background: #1e2a2a;
+  border: 1px solid #2d4040;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.attachment-file-card-icon { font-size: 22px; line-height: 1; }
+
+.attachment-file-card-name {
+  font-size: 8px;
+  color: #aaa;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.attachment-file-card-size { font-size: 8px; color: #666; }
+
+.attachment-status-line {
+  font-size: 10px;
+  color: #666;
+  padding: 0 12px 6px;
+}
+
+.composer-card.drop-active {
+  border-color: #40b3b3 !important;
+  box-shadow: 0 0 0 1px #40b3b3 inset;
+}
+
+/* ── Attachment thumbnails in transcript ─────────────────────── */
+
+.message-attachment-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.message-attachment-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.message-attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.15s;
+}
+
+.message-attachment-thumb:hover img { opacity: 0.85; }
+
+.message-attachment-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(64,179,179,0.08);
+  border: 1px solid rgba(64,179,179,0.2);
+  border-radius: 20px;
+  padding: 3px 10px 3px 6px;
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 4px;
+  margin-right: 4px;
+}
+
+/* ── Attachment lightbox overlay ─────────────────────────────── */
+
+.attachment-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: zoom-out;
+}
+
+.attachment-lightbox-inner {
+  width: min(90vw, 1200px);
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attachment-lightbox-inner img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}

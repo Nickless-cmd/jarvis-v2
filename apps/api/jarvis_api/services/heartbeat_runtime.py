@@ -939,6 +939,11 @@ def _run_heartbeat_tick_locked(
     context = _build_heartbeat_context(
         policy=policy, merged_state=merged_before, trigger=trigger
     )
+    executive_decision = _decide_executive_action(
+        merged_state=merged_before,
+        context=context,
+        now_iso=now.isoformat(),
+    )
     _log_debug(
         "heartbeat context built",
         trigger=trigger,
@@ -952,6 +957,8 @@ def _run_heartbeat_tick_locked(
         liveness_signal_count=(context.get("liveness") or {}).get(
             "liveness_signal_count"
         ),
+        executive_action_id=executive_decision.get("action_id"),
+        executive_mode=executive_decision.get("mode"),
     )
     assembly = build_heartbeat_prompt_assembly(heartbeat_context=context, name=name)
     prompt = _heartbeat_prompt_text(assembly.text or "")
@@ -2305,6 +2312,92 @@ def _build_heartbeat_cognitive_frame(
                 "gated_affordances": 0,
                 "inner_forces": 0,
             },
+        }
+
+
+def _build_executive_visible_state(
+    *,
+    merged_state: dict[str, object],
+    context: dict[str, object],
+) -> dict[str, object]:
+    recent_events = list(context.get("recent_events") or [])
+    return {
+        "summary": {
+            "active": bool(
+                recent_events
+                or str(merged_state.get("schedule_status") or "") == "live"
+            ),
+            "schedule_status": str(merged_state.get("schedule_status") or "idle"),
+            "continuity_summary": str(context.get("continuity_summary") or ""),
+        },
+        "recent_events": recent_events[:5],
+    }
+
+
+def _decide_executive_action(
+    *,
+    merged_state: dict[str, object],
+    context: dict[str, object],
+    now_iso: str,
+) -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.initiative_queue import (
+            get_initiative_queue_state,
+        )
+        from apps.api.jarvis_api.services.runtime_decision_engine import (
+            RuntimeDecisionInput,
+            decide_next_action,
+        )
+        from apps.api.jarvis_api.services.runtime_operational_memory import (
+            build_operational_memory_snapshot,
+        )
+
+        operational_memory = build_operational_memory_snapshot(limit=8)
+        visible_state = _build_executive_visible_state(
+            merged_state=merged_state,
+            context=context,
+        )
+        decision = decide_next_action(
+            RuntimeDecisionInput(
+                cognitive_frame=dict(context.get("cognitive_frame") or {}),
+                operational_memory=operational_memory,
+                loop_runtime=dict(context.get("loop_runtime") or {}),
+                initiative_state=get_initiative_queue_state(),
+                visible_state=visible_state,
+                tool_intent_state=dict(context.get("tool_intent") or {}),
+                timestamp_iso=now_iso,
+            )
+        )
+        payload = {
+            "mode": decision.mode,
+            "action_id": decision.action_id,
+            "reason": decision.reason,
+            "score": decision.score,
+            "payload": dict(decision.payload),
+            "considered": list(decision.considered),
+            "operational_memory": operational_memory,
+            "visible_state": visible_state,
+        }
+        event_bus.publish(
+            "runtime.executive_decision_produced",
+            {
+                "mode": decision.mode,
+                "action_id": decision.action_id,
+                "reason": decision.reason,
+                "score": decision.score,
+            },
+        )
+        return payload
+    except Exception as exc:
+        return {
+            "mode": "noop",
+            "action_id": "",
+            "reason": f"Executive decision unavailable: {exc}",
+            "score": 0.0,
+            "payload": {},
+            "considered": [],
+            "operational_memory": {},
+            "visible_state": {},
         }
 
 

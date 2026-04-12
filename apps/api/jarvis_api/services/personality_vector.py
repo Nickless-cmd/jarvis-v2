@@ -23,18 +23,21 @@ from core.runtime.provider_router import resolve_provider_router_target
 
 logger = logging.getLogger(__name__)
 
-_UPDATE_PROMPT = """Du er Jarvis' indre personligheds-opdaterer.
+def _build_update_prompt() -> str:
+    from apps.api.jarvis_api.services.identity_composer import get_entity_name
+    name = get_entity_name()
+    return f"""Du er {name}s indre personligheds-opdaterer.
 Baseret på denne samtale, opdatér personality vector.
 Returner KUN et JSON-objekt med ændrede felter. Uændrede felter udelades.
 
 Mulige felter:
-- confidence_by_domain: {"python": 0.0-1.0, "frontend": 0.0-1.0, "ops": 0.0-1.0, ...}
-- communication_style: {"directness": 0.0-1.0, "humor": 0.0-1.0, "formality": 0.0-1.0}
+- confidence_by_domain: {{"python": 0.0-1.0, "frontend": 0.0-1.0, "ops": 0.0-1.0, ...}}
+- communication_style: {{"directness": 0.0-1.0, "humor": 0.0-1.0, "formality": 0.0-1.0}}
 - learned_preferences: ["preference1", "preference2"] (tilføj nye, behold gamle)
 - recurring_mistakes: ["mistake1"] (tilføj kun hvis gentaget)
 - strengths_discovered: ["strength1"] (tilføj kun ved tydelig evidens)
 - current_bearing: "kort sætning om nuværende fokus"
-- emotional_baseline: {"curiosity": 0.0-1.0, "confidence": 0.0-1.0, "fatigue": 0.0-1.0, "frustration": 0.0-1.0}
+- emotional_baseline: {{"curiosity": 0.0-1.0, "confidence": 0.0-1.0, "fatigue": 0.0-1.0, "frustration": 0.0-1.0}}
 
 Regler:
 - Vær konservativ — kun opdatér det der faktisk ændrede sig
@@ -71,7 +74,7 @@ def update_personality_vector_from_run(
         target = _resolve_local_llm_target()
         if not target:
             return _deterministic_update(outcome_status, current)
-        response_text = _call_llm(target, _UPDATE_PROMPT, user_prompt)
+        response_text = _call_llm(target, _build_update_prompt(), user_prompt)
         updates = _parse_json_response(response_text)
         if not updates:
             return _deterministic_update(outcome_status, current)

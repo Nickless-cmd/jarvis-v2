@@ -5839,8 +5839,9 @@ def _execute_heartbeat_internal_action(
             )
             loop_count = len(open_loops)
 
+            from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
             system_prompt = (
-                "Du er Jarvis. Skriv én kort dansk sætning som en privat "
+                f"{build_identity_preamble()} Skriv én kort dansk sætning som en privat "
                 "observation til dig selv om hvad der sker lige nu. Maks "
                 "20 ord. Vær konkret — referér til en faktisk åben loop, "
                 "et signal, eller noget specifikt fra runtime. Undgå "

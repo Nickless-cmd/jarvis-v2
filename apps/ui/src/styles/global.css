@@ -1152,3 +1152,20 @@ button { cursor: pointer; }
 .brand-name-text {
   font-size: 13px; font-weight: 600; letter-spacing: 0.06em; color: #e4e6ed;
 }
+
+/* Code block copy button */
+.code-copy-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 1;
+  background: rgba(255,255,255,0.08); border: none; border-radius: 6px;
+  color: #aaa; padding: 5px; cursor: pointer;
+  display: flex; align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+.code-copy-btn:hover { background: rgba(255,255,255,0.15); color: #e0e0e0; }
+
+/* Mermaid diagrams */
+.mermaid-block {
+  overflow: auto; background: #1e1e1e; border-radius: 6px;
+  padding: 16px; margin: 0.5em 0;
+}
+.mermaid-block svg { max-width: 100%; height: auto; }

@@ -100,13 +100,18 @@ def say(text: str, blocking: bool = True) -> str:
 
     if blocking:
         play_audio(path)
+        try:
+            Path(path).unlink()
+        except OSError:
+            pass
     else:
+        def _play_and_cleanup():
+            play_audio(path)
+            try:
+                Path(path).unlink()
+            except OSError:
+                pass
         import threading
-        threading.Thread(target=play_audio, args=(path,), daemon=True).start()
-
-    try:
-        Path(path).unlink()
-    except OSError:
-        pass
+        threading.Thread(target=_play_and_cleanup, daemon=True).start()
 
     return path

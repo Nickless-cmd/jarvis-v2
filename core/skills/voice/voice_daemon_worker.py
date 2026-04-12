@@ -57,13 +57,17 @@ def ask_jarvis(session_id: str, text: str) -> str:
 
 
 def on_wake_word(word: str):
+    import re
     say("Ja?", blocking=True)
 
     print("[stt] optager...", flush=True)
-    text = listen_and_transcribe(duration=5.0)
-    if not text:
+    text = listen_and_transcribe(duration=5.0, language="da")
+    # Filter out pure noise/sound-effect descriptions like "(baggrundsstøj)"
+    text_clean = re.sub(r"\([^)]*\)", "", text).strip()
+    if not text_clean:
         say("Jeg hørte ikke noget.", blocking=True)
         return
+    text = text_clean
 
     print(f"[stt] hørt: {text}", flush=True)
     say("Et øjeblik.", blocking=False)

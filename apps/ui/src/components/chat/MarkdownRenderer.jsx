@@ -10,51 +10,65 @@ mermaid.initialize({ startOnLoad: false, theme: 'dark' })
 
 /**
  * Renders a mermaid fenced block as an inline SVG diagram.
- * - Single stable DOM node (no conditional unmount → no flicker)
+ * - SVG stored in React state → stable, no DOM thrashing → no flicker
  * - Skips render while streaming; renders exactly once when stream ends
- * - After async SVG insert, re-scrolls .transcript to bottom
- * - Click opens a fullscreen overlay for large diagrams
+ * - Strips hardcoded SVG width/height so CSS can control the size
+ * - After SVG is ready, re-scrolls .transcript to bottom
+ * - Click opens a fullscreen overlay
  */
 function MermaidBlock({ code, streaming }) {
-  const ref = useRef(null)
-  const lastRendered = useRef(null)
+  const [svg, setSvg] = useState(null)
   const [fullscreen, setFullscreen] = useState(false)
+  const lastCode = useRef(null)
+  const containerRef = useRef(null)
 
   useEffect(() => {
     if (streaming) return
-    if (!ref.current) return
-    if (lastRendered.current === code) return
+    if (lastCode.current === code) return
+    lastCode.current = code
 
     const id = `mermaid-${Math.random().toString(36).slice(2)}`
     mermaid
       .render(id, code)
-      .then(({ svg }) => {
-        if (!ref.current) return
-        ref.current.innerHTML = svg
-        lastRendered.current = code
-        const transcript = ref.current.closest('.transcript')
-        if (transcript) transcript.scrollTop = transcript.scrollHeight
+      .then(({ svg: raw }) => {
+        // Remove hardcoded width/height so CSS controls sizing
+        const scalable = raw
+          .replace(/\s+width="[^"]*"/, '')
+          .replace(/\s+height="[^"]*"/, '')
+        setSvg(scalable)
       })
-      .catch(() => {
-        if (ref.current) ref.current.textContent = code
-      })
+      .catch(() => setSvg(null))
   }, [code, streaming])
+
+  // Scroll transcript after SVG lands in DOM
+  useEffect(() => {
+    if (!svg || !containerRef.current) return
+    const transcript = containerRef.current.closest('.transcript')
+    if (transcript) transcript.scrollTop = transcript.scrollHeight
+  }, [svg])
+
+  if (streaming || !svg) {
+    return (
+      <div className="mermaid-block mermaid-pending">
+        <span style={{ color: '#6e7681', fontSize: '12px' }}>mermaid diagram…</span>
+      </div>
+    )
+  }
 
   return (
     <>
       <div
-        ref={ref}
-        className={`mermaid-block${streaming ? ' mermaid-pending' : ''}`}
-        onClick={() => !streaming && setFullscreen(true)}
-        title={streaming ? undefined : 'Klik for at forstørre'}
-      >
-        {streaming && <span style={{ color: '#6e7681', fontSize: '12px' }}>mermaid diagram…</span>}
-      </div>
+        ref={containerRef}
+        className="mermaid-block"
+        dangerouslySetInnerHTML={{ __html: svg }}
+        onClick={() => setFullscreen(true)}
+        title="Klik for at forstørre"
+      />
       {fullscreen && (
         <div className="mermaid-overlay" onClick={() => setFullscreen(false)}>
           <div
             className="mermaid-overlay-inner"
-            dangerouslySetInnerHTML={{ __html: ref.current?.innerHTML || '' }}
+            dangerouslySetInnerHTML={{ __html: svg }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>

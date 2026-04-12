@@ -35,24 +35,36 @@ def say(text: str, voice: str = DEFAULT_VOICE, blocking: bool = True) -> str:
     return output_path
 
 
+_FFMPEG = "/home/linuxbrew/.linuxbrew/bin/ffmpeg"
+_PAPLAY = "/home/linuxbrew/.linuxbrew/bin/paplay"
+_FFPLAY = "/home/linuxbrew/.linuxbrew/bin/ffplay"
+
+
+def _pipewire_env() -> dict:
+    import os
+    return {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
+
+
 def play_audio(path: str) -> None:
     """Play an audio file through PulseAudio/PipeWire default sink."""
-    # Convert to WAV first so paplay can handle any source format
     wav_path = path + ".play.wav"
     subprocess.run(
-        ["ffmpeg", "-y", "-i", path, "-ar", "48000", "-ac", "2", wav_path],
+        [_FFMPEG, "-y", "-i", path, "-ar", "48000", "-ac", "2", wav_path],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=True,
     )
     try:
-        # paplay routes to system default sink (Bluetooth, analog — whatever is active)
-        subprocess.run(["paplay", wav_path], check=True,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except FileNotFoundError:
-        # Fallback to ffplay
         subprocess.run(
-            ["ffplay", "-nodisp", "-autoexit", wav_path],
+            [_PAPLAY, wav_path],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=_pipewire_env(),
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        subprocess.run(
+            [_FFPLAY, "-nodisp", "-autoexit", wav_path],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=True,

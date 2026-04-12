@@ -8,6 +8,7 @@ SAMPLE_RATE = 16000
 
 # PipeWire source for USB camera mic (picks up voice reliably)
 MIC_SOURCE = "alsa_input.usb-Generic_USB_Camera2_200901010001-03.iec958-stereo"
+PAREC_BIN = "/home/linuxbrew/.linuxbrew/bin/parec"
 
 
 def get_model(model_size: str = MODEL_SIZE, device: str = "cpu", compute_type: str = "int8") -> WhisperModel:
@@ -17,14 +18,16 @@ def get_model(model_size: str = MODEL_SIZE, device: str = "cpu", compute_type: s
 
 def record_audio(duration: float = 5.0, sample_rate: int = SAMPLE_RATE) -> np.ndarray:
     """Record audio from USB mic via parec and return as float32 at 16 kHz."""
-    import subprocess
+    import subprocess, os
     print(f"🎙️  Recording for {duration}s...")
     n_bytes = int(duration * SAMPLE_RATE) * 2  # s16le
+    env = {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
     proc = subprocess.Popen(
-        ["parec", f"--device={MIC_SOURCE}", f"--rate={SAMPLE_RATE}",
+        [PAREC_BIN, f"--device={MIC_SOURCE}", f"--rate={SAMPLE_RATE}",
          "--channels=1", "--format=s16le"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
+        env=env,
     )
     raw = proc.stdout.read(n_bytes)
     proc.terminate()

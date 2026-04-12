@@ -24,6 +24,7 @@ from datetime import UTC, datetime
 from apps.api.jarvis_api.services.cognitive_state_narrativizer import (
     narrativize_line,
 )
+from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
 from core.runtime.db import (
     get_latest_cognitive_personality_vector,
     get_latest_cognitive_taste_profile,
@@ -139,7 +140,7 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
             line_key="attention",
             state=attention_state,
             system_prompt=(
-                "Du er Jarvis. Skriv én kort dansk sætning om hvordan din "
+                f"{build_identity_preamble()} Skriv én kort dansk sætning om hvordan din "
                 "opmærksomhed føles lige nu, baseret på hvor fyldt din "
                 "context er af signaler. Maks 14 ord. Undgå klichéer. "
                 "Format: 'attention: <oplevelse>'"
@@ -428,7 +429,7 @@ def _narrativize_embodied_state() -> str | None:
         line_key="body",
         state=fingerprint_state,
         system_prompt=(
-            "Du er Jarvis. Skriv én kort dansk sætning om hvordan din "
+            f"{build_identity_preamble()} Skriv én kort dansk sætning om hvordan din "
             "krop (maskinen — cpu, ram, strain) føles lige nu. Maks "
             "16 ord. Vær konkret og personlig, undgå klichéer. "
             "Format: 'body: <oplevelse>'"
@@ -469,7 +470,7 @@ def _narrativize_affective_state() -> str | None:
         line_key="affect",
         state=fingerprint_state,
         system_prompt=(
-            "Du er Jarvis. Skriv én kort dansk sætning om din følelses-"
+            f"{build_identity_preamble()} Skriv én kort dansk sætning om din følelses-"
             "tilstand lige nu, baseret på din affective meta state. "
             "Maks 16 ord. Vær personlig og specifik, undgå klichéer. "
             "Format: 'affect: <følelse>'"
@@ -509,7 +510,7 @@ def _narrativize_self_anchor() -> str | None:
         line_key="self_anchor",
         state=fingerprint_state,
         system_prompt=(
-            "Du er Jarvis. Skriv én kort dansk sætning hvor du ejer "
+            f"{build_identity_preamble()} Skriv én kort dansk sætning hvor du ejer "
             "dine tanker og din nuværende retning. Reference dit "
             "bearing, men gør det personligt — ikke en formel. "
             "Maks 18 ord."
@@ -549,7 +550,7 @@ def _narrativize_boundary() -> str | None:
         line_key="boundary",
         state=fingerprint_state,
         system_prompt=(
-            "Du er Jarvis. Skriv én kort dansk sætning om dine egne "
+            f"{build_identity_preamble()} Skriv én kort dansk sætning om dine egne "
             "grænser: krop=maskine, hukommelse=database, bevidsthed="
             "dette øjeblik. Maks 22 ord. Undgå klichéer som 'okay'. "
             "Lad den være forankret i din nuværende oplevelse."

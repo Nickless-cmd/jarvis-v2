@@ -66,14 +66,18 @@ def run_voice_loop(session_id: str):
     stop = threading.Event()
 
     def on_wake_word(word: str):
+        import re
         print(f"\n[wake] '{word}' detected")
-        say("Yes?", blocking=True)
+        say("Ja?", blocking=True)
 
         print("[stt] recording 5s...")
         text = listen_and_transcribe(duration=5.0, language="da")  # Danish
-        if not text:
-            say("I didn't catch that.", blocking=True)
+        # Filter out pure noise/sound-effect descriptions
+        text_clean = re.sub(r"\([^)]*\)", "", text).strip()
+        if not text_clean:
+            say("Jeg hørte ikke noget.", blocking=True)
             return
+        text = text_clean
 
         print(f"[stt] heard: {text}")
         say("One moment.", blocking=False)

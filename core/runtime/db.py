@@ -225,6 +225,7 @@ def init_db() -> None:
                 source_action_id TEXT NOT NULL,
                 target_action_id TEXT NOT NULL DEFAULT '',
                 target_family TEXT NOT NULL DEFAULT '',
+                target_domain TEXT NOT NULL DEFAULT '',
                 signal_key TEXT NOT NULL,
                 signal_weight REAL NOT NULL DEFAULT 0,
                 signal_count INTEGER NOT NULL DEFAULT 1,
@@ -239,6 +240,15 @@ def init_db() -> None:
             ON runtime_learning_signals(signal_key, target_family, target_action_id, recorded_at DESC)
             """
         )
+        try:
+            conn.execute(
+                """
+                ALTER TABLE runtime_learning_signals
+                ADD COLUMN target_domain TEXT NOT NULL DEFAULT ''
+                """
+            )
+        except sqlite3.OperationalError:
+            pass
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS runtime_tasks (
@@ -2573,6 +2583,7 @@ def recent_runtime_learning_signals(limit: int = 25) -> list[dict[str, object]]:
                 source_action_id,
                 target_action_id,
                 target_family,
+                target_domain,
                 signal_key,
                 signal_weight,
                 signal_count,
@@ -24408,6 +24419,7 @@ def record_runtime_learning_signal(
     source_action_id: str,
     target_action_id: str,
     target_family: str,
+    target_domain: str,
     signal_key: str,
     signal_weight: float,
     signal_count: int,
@@ -24424,13 +24436,14 @@ def record_runtime_learning_signal(
                 source_action_id,
                 target_action_id,
                 target_family,
+                target_domain,
                 signal_key,
                 signal_weight,
                 signal_count,
                 metadata_json,
                 recorded_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 signal_id,
@@ -24438,6 +24451,7 @@ def record_runtime_learning_signal(
                 source_action_id,
                 target_action_id,
                 target_family,
+                target_domain,
                 signal_key,
                 float(signal_weight or 0.0),
                 int(signal_count or 1),
@@ -24455,6 +24469,7 @@ def record_runtime_learning_signal(
                 source_action_id,
                 target_action_id,
                 target_family,
+                target_domain,
                 signal_key,
                 signal_weight,
                 signal_count,
@@ -24655,6 +24670,7 @@ def _runtime_learning_signal_from_row(row: sqlite3.Row) -> dict[str, object]:
         "source_action_id": row["source_action_id"],
         "target_action_id": row["target_action_id"],
         "target_family": row["target_family"],
+        "target_domain": row["target_domain"],
         "signal_key": row["signal_key"],
         "signal_weight": float(row["signal_weight"] or 0.0),
         "signal_count": int(row["signal_count"] or 1),

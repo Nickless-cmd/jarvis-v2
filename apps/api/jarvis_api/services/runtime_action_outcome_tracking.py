@@ -107,6 +107,7 @@ def _persist_learning_signals(outcome: dict[str, Any]) -> list[dict[str, Any]]:
                 source_action_id=str(signal.get("source_action_id") or ""),
                 target_action_id=str(signal.get("target_action_id") or ""),
                 target_family=str(signal.get("target_family") or ""),
+                target_domain=str(signal.get("target_domain") or ""),
                 signal_key=str(signal.get("signal_key") or ""),
                 signal_weight=float(signal.get("signal_weight") or 0.0),
                 signal_count=int(signal.get("signal_count") or 1),

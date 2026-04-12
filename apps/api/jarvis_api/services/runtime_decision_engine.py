@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
-from apps.api.jarvis_api.services.runtime_learning_signals import action_family
+from apps.api.jarvis_api.services.runtime_learning_signals import action_domain, action_family
 
 
 DecisionMode = Literal["execute", "propose", "defer", "noop"]
@@ -423,15 +423,41 @@ def _apply_persistent_learning(
     reasons: list[str] = []
     adjusted = float(score)
     family = action_family(candidate.action_id)
+    domain = _candidate_learning_domain(candidate)
+    domain_stats = dict((runtime_learning_summary.get("domain_signal_stats") or {}).get(domain) or {})
     family_stats = dict((runtime_learning_summary.get("family_signal_stats") or {}).get(family) or {})
     action_stats = dict((runtime_learning_summary.get("action_signal_stats") or {}).get(candidate.action_id) or {})
 
+    domain_blocked = _signal_weight(domain_stats, "family_blocked")
+    domain_failed = _signal_weight(domain_stats, "family_failed")
+    domain_no_change = _signal_weight(domain_stats, "family_no_change")
+    domain_succeeded = _signal_weight(domain_stats, "family_succeeded")
     family_blocked = _signal_weight(family_stats, "family_blocked")
     family_failed = _signal_weight(family_stats, "family_failed")
     family_no_change = _signal_weight(family_stats, "family_no_change")
     family_succeeded = _signal_weight(family_stats, "family_succeeded")
     action_no_change = _signal_weight(action_stats, "action_no_change")
 
+    if domain_blocked > 0:
+        adjusted -= min(0.14, 0.08 * domain_blocked)
+        reasons.append(
+            f"Persistent domain-level blocking dampens this exact context ({domain}, weight={domain_blocked:.2f})."
+        )
+    if domain_failed > 0:
+        adjusted -= min(0.16, 0.09 * domain_failed)
+        reasons.append(
+            f"Persistent domain-level failures dampen this exact context ({domain}, weight={domain_failed:.2f})."
+        )
+    if domain_no_change > 0 and candidate.action_id == "inspect_repo_context":
+        adjusted -= min(0.14, 0.08 * domain_no_change)
+        reasons.append(
+            f"Persistent domain no-change learning keeps this repo context conservative ({domain}, weight={domain_no_change:.2f})."
+        )
+    if domain_succeeded > 0 and candidate.action_id in {"follow_open_loop", "propose_next_user_step"}:
+        adjusted += min(0.10, 0.05 * domain_succeeded)
+        reasons.append(
+            f"Persistent domain success slightly boosts this exact context ({domain}, weight={domain_succeeded:.2f})."
+        )
     if family_blocked > 0:
         adjusted -= min(0.16, 0.08 * family_blocked)
         reasons.append(
@@ -474,4 +500,14 @@ def _candidate_is_repo_focused(candidate: RuntimeActionCandidate) -> bool:
     return any(
         token in haystack
         for token in ("repo", "git", "working tree", "branch", "commit", "code", "workspace")
+    )
+
+
+def _candidate_learning_domain(candidate: RuntimeActionCandidate) -> str:
+    return action_domain(
+        action_id=candidate.action_id,
+        outcome={
+            "payload": dict(candidate.payload),
+            "result": {},
+        },
     )

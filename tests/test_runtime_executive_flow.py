@@ -341,6 +341,69 @@ def test_decision_engine_dampens_similar_actions_from_persistent_family_failures
     assert "Persistent family-level failures dampen similar visible_prompting actions" in dampened.reason
 
 
+def test_decision_engine_prefers_domain_specific_learning_over_broad_family_penalty(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_decision_engine import (
+        RuntimeActionCandidate,
+        RuntimeDecisionInput,
+        _apply_feedback,
+    )
+
+    matching_domain = RuntimeActionCandidate(
+        action_id="inspect_repo_context",
+        score=0.92,
+        reason="Repo-focused open loop benefits from bounded repo inspection first.",
+        payload={
+            "loop_id": "open-loop:repo-status",
+            "canonical_key": "open-loop:repo-status",
+            "title": "Inspect repo drift before next step",
+            "focus": "repo status drift",
+        },
+        mode="execute",
+    )
+    other_domain = RuntimeActionCandidate(
+        action_id="inspect_repo_context",
+        score=0.92,
+        reason="Repo-focused open loop benefits from bounded repo inspection first.",
+        payload={
+            "loop_id": "open-loop:repo-health",
+            "canonical_key": "open-loop:repo-health",
+            "title": "Inspect repo health before next step",
+            "focus": "repo health",
+        },
+        mode="execute",
+    )
+    inputs = RuntimeDecisionInput(
+        cognitive_frame={"summary": {"current_mode": "watch"}},
+        operational_memory={
+                "runtime_learning_summary": {
+                    "domain_signal_stats": {
+                        "open-loop:repo-status": {
+                            "family_failed": {"weight": 1.0},
+                        }
+                    },
+                "family_signal_stats": {
+                    "repo_observation": {
+                        "family_failed": {"weight": 0.2},
+                    }
+                },
+            }
+        },
+        loop_runtime={"items": []},
+        initiative_state={"pending": []},
+        visible_state={"summary": {"active": False}},
+        tool_intent_state={"summary": {"pending_count": 0}},
+        timestamp_iso="2026-04-12T10:13:00+00:00",
+    )
+
+    matching_adjusted = _apply_feedback(matching_domain, inputs)
+    other_adjusted = _apply_feedback(other_domain, inputs)
+
+    assert matching_adjusted.score < other_adjusted.score
+    assert "Persistent domain-level failures dampen this exact context" in matching_adjusted.reason
+
+
 def test_operational_memory_summarizes_recent_executive_feedback(
     isolated_runtime,
 ) -> None:
@@ -477,6 +540,41 @@ def test_operational_memory_reads_persisted_runtime_learning_signals(
     assert snapshot["summary"]["persistent_learning_signal_count"] >= 2
     assert visible_family["family_failed"]["count"] == 1
     assert visible_family["family_failed"]["weight"] > 0.8
+
+
+def test_operational_memory_summarizes_domain_specific_learning_signals(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_action_outcome_tracking import (
+        record_runtime_action_outcome,
+    )
+    from apps.api.jarvis_api.services.runtime_operational_memory import (
+        build_operational_memory_snapshot,
+    )
+
+    record_runtime_action_outcome(
+        action_id="inspect_repo_context",
+        mode="execute",
+        reason="Repo status check failed.",
+        score=0.9,
+        payload={
+            "loop_id": "open-loop:repo-status",
+            "canonical_key": "open-loop:repo-status",
+            "focus": "repo status",
+        },
+        result={
+            "status": "failed",
+            "summary": "Repo status inspection failed.",
+            "side_effects": ["repo-context-inspected"],
+            "details": {"loop_id": "open-loop:repo-status"},
+        },
+    )
+
+    snapshot = build_operational_memory_snapshot(limit=8)
+    domain_stats = snapshot["runtime_learning_summary"]["domain_signal_stats"]
+
+    assert "open-loop:repo-status" in domain_stats
+    assert domain_stats["open-loop:repo-status"]["family_failed"]["count"] == 1
 
 
 def test_operational_memory_detects_note_loop_synergy(

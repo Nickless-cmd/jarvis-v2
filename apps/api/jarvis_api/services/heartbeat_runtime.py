@@ -105,6 +105,7 @@ from apps.api.jarvis_api.services.runtime_surface_cache import (
 )
 from core.auth.profiles import get_provider_state
 from core.eventbus.bus import event_bus
+from apps.api.jarvis_api.services import daemon_manager as _dm
 from core.identity.runtime_candidates import build_runtime_candidate_workflows
 from core.identity.candidate_workflow import (
     auto_apply_safe_memory_md_candidates,
@@ -1665,309 +1666,350 @@ def _build_influence_trace(
         pass
 
     # Somatic phrase
-    try:
-        from apps.api.jarvis_api.services.somatic_daemon import (
-            get_latest_somatic_phrase,
-            tick_somatic_daemon,
-        )
-        tick_somatic_daemon()
-        _somatic = get_latest_somatic_phrase()
-        if _somatic:
-            inputs_present.append(f"somatisk: {_somatic}")
-    except Exception:
-        pass
+    if _dm.is_enabled("somatic"):
+        try:
+            from apps.api.jarvis_api.services.somatic_daemon import (
+                get_latest_somatic_phrase,
+                tick_somatic_daemon,
+            )
+            _somatic_result = tick_somatic_daemon()
+            _dm.record_daemon_tick("somatic", _somatic_result or {})
+            _somatic = get_latest_somatic_phrase()
+            if _somatic:
+                inputs_present.append(f"somatisk: {_somatic}")
+        except Exception:
+            pass
 
     # Reaction surprise
-    try:
-        from apps.api.jarvis_api.services.surprise_daemon import (
-            tick_surprise_daemon,
-            get_latest_surprise,
-        )
-        from apps.api.jarvis_api.services.inner_voice_daemon import (
-            get_inner_voice_daemon_state,
-        )
-        _iv_state_s = get_inner_voice_daemon_state()
-        _iv_mode_s = str((_iv_state_s.get("last_result") or {}).get("mode") or "")
-        _energy_s = ""
+    if _dm.is_enabled("surprise"):
         try:
-            from core.runtime.circadian_state import get_circadian_context as _gcc
-            _energy_s = str(_gcc().get("energy_level") or "")
+            from apps.api.jarvis_api.services.surprise_daemon import (
+                tick_surprise_daemon,
+                get_latest_surprise,
+            )
+            from apps.api.jarvis_api.services.inner_voice_daemon import (
+                get_inner_voice_daemon_state,
+            )
+            _iv_state_s = get_inner_voice_daemon_state()
+            _iv_mode_s = str((_iv_state_s.get("last_result") or {}).get("mode") or "")
+            _energy_s = ""
+            try:
+                from core.runtime.circadian_state import get_circadian_context as _gcc
+                _energy_s = str(_gcc().get("energy_level") or "")
+            except Exception:
+                pass
+            _surprise_result = tick_surprise_daemon(inner_voice_mode=_iv_mode_s, somatic_energy=_energy_s)
+            _dm.record_daemon_tick("surprise", _surprise_result or {})
+            _surprise = get_latest_surprise()
+            if _surprise:
+                inputs_present.append(f"overraskelse: {_surprise}")
         except Exception:
             pass
-        tick_surprise_daemon(inner_voice_mode=_iv_mode_s, somatic_energy=_energy_s)
-        _surprise = get_latest_surprise()
-        if _surprise:
-            inputs_present.append(f"overraskelse: {_surprise}")
-    except Exception:
-        pass
 
     # Aesthetic taste
-    try:
-        from apps.api.jarvis_api.services.aesthetic_taste_daemon import (
-            record_choice,
-            tick_taste_daemon,
-            get_latest_taste_insight,
-        )
-        from apps.api.jarvis_api.services.inner_voice_daemon import (
-            get_inner_voice_daemon_state,
-        )
-        from core.runtime.db import recent_visible_runs
-        _iv_state_t = get_inner_voice_daemon_state()
-        _iv_mode_t = str((_iv_state_t.get("last_result") or {}).get("mode") or "")
-        _style_signals: list[str] = []
-        _last_runs = recent_visible_runs(limit=1)
-        if _last_runs:
-            _preview = str(_last_runs[0].get("text_preview") or "")
-            _style_signals.append("short" if len(_preview.split()) < 100 else "long")
-            _style_signals.append("code_heavy" if "```" in _preview else "prose_heavy")
-            _dk = sum(1 for w in ["jeg", "er", "og", "det", "at", "en"] if w in _preview.lower())
-            _style_signals.append("danish" if _dk >= 2 else "english")
-        record_choice(mode=_iv_mode_t, style_signals=_style_signals)
-        tick_taste_daemon()
-        _taste = get_latest_taste_insight()
-        if _taste:
-            inputs_present.append(f"smagstendens: {_taste}")
-    except Exception:
-        pass
-
-    # Irony
-    try:
-        from apps.api.jarvis_api.services.irony_daemon import (
-            tick_irony_daemon,
-            get_latest_irony_observation,
-        )
-        tick_irony_daemon()
-        _irony = get_latest_irony_observation()
-        if _irony:
-            inputs_present.append(f"ironisk note: {_irony}")
-    except Exception:
-        pass
-
-    # Thought stream
-    try:
-        from apps.api.jarvis_api.services.thought_stream_daemon import (
-            tick_thought_stream_daemon,
-            get_latest_thought_fragment,
-        )
-        from apps.api.jarvis_api.services.inner_voice_daemon import get_inner_voice_daemon_state
-        _iv_ts = get_inner_voice_daemon_state()
-        _iv_mode_ts = str((_iv_ts.get("last_result") or {}).get("mode") or "")
-        _energy_ts = ""
+    if _dm.is_enabled("aesthetic_taste"):
         try:
-            from core.runtime.circadian_state import get_circadian_context as _gcc2
-            _energy_ts = str(_gcc2().get("energy_level") or "")
+            from apps.api.jarvis_api.services.aesthetic_taste_daemon import (
+                record_choice,
+                tick_taste_daemon,
+                get_latest_taste_insight,
+            )
+            from apps.api.jarvis_api.services.inner_voice_daemon import (
+                get_inner_voice_daemon_state,
+            )
+            from core.runtime.db import recent_visible_runs
+            _iv_state_t = get_inner_voice_daemon_state()
+            _iv_mode_t = str((_iv_state_t.get("last_result") or {}).get("mode") or "")
+            _style_signals: list[str] = []
+            _last_runs = recent_visible_runs(limit=1)
+            if _last_runs:
+                _preview = str(_last_runs[0].get("text_preview") or "")
+                _style_signals.append("short" if len(_preview.split()) < 100 else "long")
+                _style_signals.append("code_heavy" if "```" in _preview else "prose_heavy")
+                _dk = sum(1 for w in ["jeg", "er", "og", "det", "at", "en"] if w in _preview.lower())
+                _style_signals.append("danish" if _dk >= 2 else "english")
+            record_choice(mode=_iv_mode_t, style_signals=_style_signals)
+            _taste_result = tick_taste_daemon()
+            _dm.record_daemon_tick("aesthetic_taste", _taste_result or {})
+            _taste = get_latest_taste_insight()
+            if _taste:
+                inputs_present.append(f"smagstendens: {_taste}")
         except Exception:
             pass
-        tick_thought_stream_daemon(energy_level=_energy_ts, inner_voice_mode=_iv_mode_ts)
-        _fragment = get_latest_thought_fragment()
-        if _fragment:
-            inputs_present.append(f"tankestrøm: {_fragment[:80]}")
-    except Exception:
-        pass
+
+    # Irony
+    if _dm.is_enabled("irony"):
+        try:
+            from apps.api.jarvis_api.services.irony_daemon import (
+                tick_irony_daemon,
+                get_latest_irony_observation,
+            )
+            _irony_result = tick_irony_daemon()
+            _dm.record_daemon_tick("irony", _irony_result or {})
+            _irony = get_latest_irony_observation()
+            if _irony:
+                inputs_present.append(f"ironisk note: {_irony}")
+        except Exception:
+            pass
+
+    # Thought stream
+    if _dm.is_enabled("thought_stream"):
+        try:
+            from apps.api.jarvis_api.services.thought_stream_daemon import (
+                tick_thought_stream_daemon,
+                get_latest_thought_fragment,
+            )
+            from apps.api.jarvis_api.services.inner_voice_daemon import get_inner_voice_daemon_state
+            _iv_ts = get_inner_voice_daemon_state()
+            _iv_mode_ts = str((_iv_ts.get("last_result") or {}).get("mode") or "")
+            _energy_ts = ""
+            try:
+                from core.runtime.circadian_state import get_circadian_context as _gcc2
+                _energy_ts = str(_gcc2().get("energy_level") or "")
+            except Exception:
+                pass
+            _ts_result = tick_thought_stream_daemon(energy_level=_energy_ts, inner_voice_mode=_iv_mode_ts)
+            _dm.record_daemon_tick("thought_stream", _ts_result or {})
+            _fragment = get_latest_thought_fragment()
+            if _fragment:
+                inputs_present.append(f"tankestrøm: {_fragment[:80]}")
+        except Exception:
+            pass
 
     # Thought-action proposals
-    try:
-        from apps.api.jarvis_api.services.thought_action_proposal_daemon import (
-            tick_thought_action_proposal_daemon,
-            get_pending_proposals,
-        )
-        from apps.api.jarvis_api.services.thought_stream_daemon import get_latest_thought_fragment as _get_ts_fragment
-        _ts_fragment = _get_ts_fragment()
-        if _ts_fragment:
-            tick_thought_action_proposal_daemon(_ts_fragment)
-        _pending = get_pending_proposals()
-        if _pending:
-            inputs_present.append(f"handlingsforslag: {len(_pending)} afventer")
-    except Exception:
-        pass
+    if _dm.is_enabled("thought_action_proposal"):
+        try:
+            from apps.api.jarvis_api.services.thought_action_proposal_daemon import (
+                tick_thought_action_proposal_daemon,
+                get_pending_proposals,
+            )
+            from apps.api.jarvis_api.services.thought_stream_daemon import get_latest_thought_fragment as _get_ts_fragment
+            _ts_fragment = _get_ts_fragment()
+            _tap_result = {}
+            if _ts_fragment:
+                _tap_result = tick_thought_action_proposal_daemon(_ts_fragment) or {}
+            _dm.record_daemon_tick("thought_action_proposal", _tap_result)
+            _pending = get_pending_proposals()
+            if _pending:
+                inputs_present.append(f"handlingsforslag: {len(_pending)} afventer")
+        except Exception:
+            pass
 
     # Inner conflict
-    try:
-        from apps.api.jarvis_api.services.conflict_daemon import tick_conflict_daemon, get_latest_conflict
-        from apps.api.jarvis_api.services.somatic_daemon import build_body_state_surface
-        from apps.api.jarvis_api.services.surprise_daemon import build_surprise_surface
-        from apps.api.jarvis_api.services.thought_action_proposal_daemon import build_proposal_surface as _tap_surface
-        from apps.api.jarvis_api.services.thought_stream_daemon import build_thought_stream_surface as _ts_surface
-        _body = build_body_state_surface()
-        _surp = build_surprise_surface()
-        _tap = _tap_surface()
-        _tss = _ts_surface()
-        _conflict_snap = {
-            "energy_level": _body.get("energy_level", ""),
-            "inner_voice_mode": _iv_mode_ts,
-            "pending_proposals_count": _tap.get("pending_count", 0),
-            "latest_fragment": _tss.get("latest_fragment", ""),
-            "last_surprise": _surp.get("last_surprise", ""),
-            "last_surprise_at": _surp.get("generated_at", ""),
-            "fragment_count": _tss.get("fragment_count", 0),
-        }
-        tick_conflict_daemon(_conflict_snap)
-        _conflict = get_latest_conflict()
-        if _conflict:
-            inputs_present.append(f"indre konflikt: {_conflict[:60]}")
-    except Exception:
-        pass
+    if _dm.is_enabled("conflict"):
+        try:
+            from apps.api.jarvis_api.services.conflict_daemon import tick_conflict_daemon, get_latest_conflict
+            from apps.api.jarvis_api.services.somatic_daemon import build_body_state_surface
+            from apps.api.jarvis_api.services.surprise_daemon import build_surprise_surface
+            from apps.api.jarvis_api.services.thought_action_proposal_daemon import build_proposal_surface as _tap_surface
+            from apps.api.jarvis_api.services.thought_stream_daemon import build_thought_stream_surface as _ts_surface
+            _body = build_body_state_surface()
+            _surp = build_surprise_surface()
+            _tap = _tap_surface()
+            _tss = _ts_surface()
+            _conflict_snap = {
+                "energy_level": _body.get("energy_level", ""),
+                "inner_voice_mode": _iv_mode_ts,
+                "pending_proposals_count": _tap.get("pending_count", 0),
+                "latest_fragment": _tss.get("latest_fragment", ""),
+                "last_surprise": _surp.get("last_surprise", ""),
+                "last_surprise_at": _surp.get("generated_at", ""),
+                "fragment_count": _tss.get("fragment_count", 0),
+            }
+            _conflict_result = tick_conflict_daemon(_conflict_snap)
+            _dm.record_daemon_tick("conflict", _conflict_result or {})
+            _conflict = get_latest_conflict()
+            if _conflict:
+                inputs_present.append(f"indre konflikt: {_conflict[:60]}")
+        except Exception:
+            pass
 
     # Reflection cycle
-    try:
-        from apps.api.jarvis_api.services.reflection_cycle_daemon import tick_reflection_cycle_daemon, get_latest_reflection
-        from apps.api.jarvis_api.services.conflict_daemon import get_latest_conflict as _get_conflict
-        _reflect_snap = {
-            "energy_level": _energy_ts,
-            "inner_voice_mode": _iv_mode_ts,
-            "latest_fragment": _tss.get("latest_fragment", "") if "_tss" in dir() else "",
-            "last_conflict": _get_conflict(),
-            "last_surprise": _surp.get("last_surprise", "") if "_surp" in dir() else "",
-        }
-        tick_reflection_cycle_daemon(_reflect_snap)
-        _reflection = get_latest_reflection()
-        if _reflection:
-            inputs_present.append(f"refleksion: {_reflection[:60]}")
-    except Exception:
-        pass
+    if _dm.is_enabled("reflection_cycle"):
+        try:
+            from apps.api.jarvis_api.services.reflection_cycle_daemon import tick_reflection_cycle_daemon, get_latest_reflection
+            from apps.api.jarvis_api.services.conflict_daemon import get_latest_conflict as _get_conflict
+            _reflect_snap = {
+                "energy_level": _energy_ts,
+                "inner_voice_mode": _iv_mode_ts,
+                "latest_fragment": _tss.get("latest_fragment", "") if "_tss" in dir() else "",
+                "last_conflict": _get_conflict(),
+                "last_surprise": _surp.get("last_surprise", "") if "_surp" in dir() else "",
+            }
+            _reflect_result = tick_reflection_cycle_daemon(_reflect_snap)
+            _dm.record_daemon_tick("reflection_cycle", _reflect_result or {})
+            _reflection = get_latest_reflection()
+            if _reflection:
+                inputs_present.append(f"refleksion: {_reflection[:60]}")
+        except Exception:
+            pass
 
     # Curiosity daemon
-    try:
-        from apps.api.jarvis_api.services.curiosity_daemon import tick_curiosity_daemon, get_latest_curiosity
-        _ts_fragments = _tss.get("fragment_buffer", []) if "_tss" in dir() else []
-        tick_curiosity_daemon(_ts_fragments)
-        _curiosity = get_latest_curiosity()
-        if _curiosity:
-            inputs_present.append(f"nysgerrighed: {_curiosity[:60]}")
-    except Exception:
-        pass
+    if _dm.is_enabled("curiosity"):
+        try:
+            from apps.api.jarvis_api.services.curiosity_daemon import tick_curiosity_daemon, get_latest_curiosity
+            _ts_fragments = _tss.get("fragment_buffer", []) if "_tss" in dir() else []
+            _curiosity_result = tick_curiosity_daemon(_ts_fragments)
+            _dm.record_daemon_tick("curiosity", _curiosity_result or {})
+            _curiosity = get_latest_curiosity()
+            if _curiosity:
+                inputs_present.append(f"nysgerrighed: {_curiosity[:60]}")
+        except Exception:
+            pass
 
     # Meta-reflection daemon
-    try:
-        from apps.api.jarvis_api.services.meta_reflection_daemon import tick_meta_reflection_daemon, get_latest_meta_insight
-        from apps.api.jarvis_api.services.aesthetic_taste_daemon import build_taste_surface as _taste_surface
-        from apps.api.jarvis_api.services.irony_daemon import build_irony_surface as _irony_surface
-        _taste = _taste_surface()
-        _irony = _irony_surface()
-        _meta_snap = {
-            "energy_level": _energy_ts,
-            "inner_voice_mode": _iv_mode_ts,
-            "latest_fragment": _tss.get("latest_fragment", "") if "_tss" in dir() else "",
-            "last_surprise": _surp.get("last_surprise", "") if "_surp" in dir() else "",
-            "last_conflict": _conflict if "_conflict" in dir() else "",
-            "last_irony": _irony.get("last_observation", ""),
-            "last_taste": _taste.get("latest_insight", ""),
-            "curiosity_signal": _curiosity if "_curiosity" in dir() else "",
-        }
-        tick_meta_reflection_daemon(_meta_snap)
-        _meta = get_latest_meta_insight()
-        if _meta:
-            inputs_present.append(f"meta-refleksion: {_meta[:60]}")
-    except Exception:
-        pass
+    if _dm.is_enabled("meta_reflection"):
+        try:
+            from apps.api.jarvis_api.services.meta_reflection_daemon import tick_meta_reflection_daemon, get_latest_meta_insight
+            from apps.api.jarvis_api.services.aesthetic_taste_daemon import build_taste_surface as _taste_surface
+            from apps.api.jarvis_api.services.irony_daemon import build_irony_surface as _irony_surface
+            _taste = _taste_surface()
+            _irony = _irony_surface()
+            _meta_snap = {
+                "energy_level": _energy_ts,
+                "inner_voice_mode": _iv_mode_ts,
+                "latest_fragment": _tss.get("latest_fragment", "") if "_tss" in dir() else "",
+                "last_surprise": _surp.get("last_surprise", "") if "_surp" in dir() else "",
+                "last_conflict": _conflict if "_conflict" in dir() else "",
+                "last_irony": _irony.get("last_observation", ""),
+                "last_taste": _taste.get("latest_insight", ""),
+                "curiosity_signal": _curiosity if "_curiosity" in dir() else "",
+            }
+            _meta_result = tick_meta_reflection_daemon(_meta_snap)
+            _dm.record_daemon_tick("meta_reflection", _meta_result or {})
+            _meta = get_latest_meta_insight()
+            if _meta:
+                inputs_present.append(f"meta-refleksion: {_meta[:60]}")
+        except Exception:
+            pass
 
     # Experienced time daemon
-    try:
-        from apps.api.jarvis_api.services.experienced_time_daemon import tick_experienced_time_daemon
-        _et_result = tick_experienced_time_daemon(
-            event_count=len(inputs_present),
-            new_signal_count=1 if "_tss" in dir() and _tss.get("fragment_count", 0) > 0 else 0,
-            energy_level=_energy_ts,
-        )
-        _felt_label = _et_result.get("felt_label", "")
-        if _felt_label and _felt_label not in ("meget kort", ""):
-            inputs_present.append(f"oplevet tid: {_felt_label}")
-    except Exception:
-        pass
+    if _dm.is_enabled("experienced_time"):
+        try:
+            from apps.api.jarvis_api.services.experienced_time_daemon import tick_experienced_time_daemon
+            _et_result = tick_experienced_time_daemon(
+                event_count=len(inputs_present),
+                new_signal_count=1 if "_tss" in dir() and _tss.get("fragment_count", 0) > 0 else 0,
+                energy_level=_energy_ts,
+            )
+            _dm.record_daemon_tick("experienced_time", _et_result or {})
+            _felt_label = _et_result.get("felt_label", "")
+            if _felt_label and _felt_label not in ("meget kort", ""):
+                inputs_present.append(f"oplevet tid: {_felt_label}")
+        except Exception:
+            pass
 
     # Development narrative daemon
-    try:
-        from apps.api.jarvis_api.services.development_narrative_daemon import tick_development_narrative_daemon, get_latest_development_narrative
-        tick_development_narrative_daemon()
-        _dev_narr = get_latest_development_narrative()
-        if _dev_narr:
-            inputs_present.append(f"selvudvikling: {_dev_narr[:60]}")
-    except Exception:
-        pass
+    if _dm.is_enabled("development_narrative"):
+        try:
+            from apps.api.jarvis_api.services.development_narrative_daemon import tick_development_narrative_daemon, get_latest_development_narrative
+            _dev_result = tick_development_narrative_daemon()
+            _dm.record_daemon_tick("development_narrative", _dev_result or {})
+            _dev_narr = get_latest_development_narrative()
+            if _dev_narr:
+                inputs_present.append(f"selvudvikling: {_dev_narr[:60]}")
+        except Exception:
+            pass
 
     # Absence daemon — quality of silence
-    try:
-        from apps.api.jarvis_api.services.absence_daemon import tick_absence_daemon, get_latest_absence
-        _absence_result = tick_absence_daemon()
-        _absence_label = get_latest_absence()
-        if _absence_label:
-            inputs_present.append(f"fravær: {_absence_label[:60]}")
-    except Exception:
-        pass
+    if _dm.is_enabled("absence"):
+        try:
+            from apps.api.jarvis_api.services.absence_daemon import tick_absence_daemon, get_latest_absence
+            _absence_result = tick_absence_daemon()
+            _dm.record_daemon_tick("absence", _absence_result or {})
+            _absence_label = get_latest_absence()
+            if _absence_label:
+                inputs_present.append(f"fravær: {_absence_label[:60]}")
+        except Exception:
+            pass
 
     # Creative drift daemon — spontaneous unexpected associations
-    try:
-        from apps.api.jarvis_api.services.creative_drift_daemon import tick_creative_drift_daemon, get_latest_drift
-        _ts_frags_for_drift = _tss.get("fragment_buffer", []) if "_tss" in dir() else []
-        tick_creative_drift_daemon(_ts_frags_for_drift)
-        _drift_idea = get_latest_drift()
-        if _drift_idea:
-            inputs_present.append(f"kreativ-drift: {_drift_idea[:60]}")
-    except Exception:
-        pass
+    if _dm.is_enabled("creative_drift"):
+        try:
+            from apps.api.jarvis_api.services.creative_drift_daemon import tick_creative_drift_daemon, get_latest_drift
+            _ts_frags_for_drift = _tss.get("fragment_buffer", []) if "_tss" in dir() else []
+            _drift_result = tick_creative_drift_daemon(_ts_frags_for_drift)
+            _dm.record_daemon_tick("creative_drift", _drift_result or {})
+            _drift_idea = get_latest_drift()
+            if _drift_idea:
+                inputs_present.append(f"kreativ-drift: {_drift_idea[:60]}")
+        except Exception:
+            pass
 
     # Existential wonder daemon — open unanswered questions from self-observation
-    try:
-        from apps.api.jarvis_api.services.existential_wonder_daemon import tick_existential_wonder_daemon
-        from apps.api.jarvis_api.services.absence_daemon import build_absence_surface as _abs_surface
-        _abs = _abs_surface()
-        _wonder_absence_hours = float(_abs.get("absence_duration_hours") or 0)
-        _wonder_frag_count = int((_tss.get("fragment_count") or 0) if "_tss" in dir() else 0)
-        tick_existential_wonder_daemon(
-            absence_hours=_wonder_absence_hours,
-            fragment_count=_wonder_frag_count,
-        )
-    except Exception:
-        pass
+    if _dm.is_enabled("existential_wonder"):
+        try:
+            from apps.api.jarvis_api.services.existential_wonder_daemon import tick_existential_wonder_daemon
+            from apps.api.jarvis_api.services.absence_daemon import build_absence_surface as _abs_surface
+            _abs = _abs_surface()
+            _wonder_absence_hours = float(_abs.get("absence_duration_hours") or 0)
+            _wonder_frag_count = int((_tss.get("fragment_count") or 0) if "_tss" in dir() else 0)
+            _wonder_result = tick_existential_wonder_daemon(
+                absence_hours=_wonder_absence_hours,
+                fragment_count=_wonder_frag_count,
+            )
+            _dm.record_daemon_tick("existential_wonder", _wonder_result or {})
+        except Exception:
+            pass
 
     # Dream insight daemon — persist dream articulation output as private brain records
-    try:
-        from apps.api.jarvis_api.services.dream_insight_daemon import tick_dream_insight_daemon
-        from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_surface
-        _da_surface = build_dream_articulation_surface()
-        _da_signal_id = str(_da_surface.get("signal_id") or "")
-        _da_summary = str(_da_surface.get("signal_summary") or "")
-        if _da_signal_id and _da_summary:
-            tick_dream_insight_daemon(signal_id=_da_signal_id, signal_summary=_da_summary)
-    except Exception:
-        pass
+    if _dm.is_enabled("dream_insight"):
+        try:
+            from apps.api.jarvis_api.services.dream_insight_daemon import tick_dream_insight_daemon
+            from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_surface
+            _da_surface = build_dream_articulation_surface()
+            _da_signal_id = str(_da_surface.get("signal_id") or "")
+            _da_summary = str(_da_surface.get("signal_summary") or "")
+            if _da_signal_id and _da_summary:
+                _di_result = tick_dream_insight_daemon(signal_id=_da_signal_id, signal_summary=_da_summary)
+                _dm.record_daemon_tick("dream_insight", _di_result or {})
+        except Exception:
+            pass
 
     # Code aesthetic daemon — weekly codebase aesthetic reflection
-    try:
-        from apps.api.jarvis_api.services.code_aesthetic_daemon import tick_code_aesthetic_daemon
-        tick_code_aesthetic_daemon()
-    except Exception:
-        pass
+    if _dm.is_enabled("code_aesthetic"):
+        try:
+            from apps.api.jarvis_api.services.code_aesthetic_daemon import tick_code_aesthetic_daemon
+            _ca_result = tick_code_aesthetic_daemon()
+            _dm.record_daemon_tick("code_aesthetic", _ca_result or {})
+        except Exception:
+            pass
 
     # Memory decay daemon — selective forgetting + re-discovery
-    try:
-        from apps.api.jarvis_api.services.memory_decay_daemon import tick_memory_decay_daemon, maybe_rediscover
-        from apps.api.jarvis_api.services.thought_stream_daemon import inject_rediscovery_fragment
-        tick_memory_decay_daemon()
-        _rediscovered = maybe_rediscover()
-        if _rediscovered and _rediscovered.get("summary"):
-            inject_rediscovery_fragment(_rediscovered["summary"])
-    except Exception:
-        pass
+    if _dm.is_enabled("memory_decay"):
+        try:
+            from apps.api.jarvis_api.services.memory_decay_daemon import tick_memory_decay_daemon, maybe_rediscover
+            from apps.api.jarvis_api.services.thought_stream_daemon import inject_rediscovery_fragment
+            _md_result = tick_memory_decay_daemon()
+            _dm.record_daemon_tick("memory_decay", _md_result or {})
+            _rediscovered = maybe_rediscover()
+            if _rediscovered and _rediscovered.get("summary"):
+                inject_rediscovery_fragment(_rediscovered["summary"])
+        except Exception:
+            pass
 
     # User model daemon — theory of mind
-    try:
-        from apps.api.jarvis_api.services.user_model_daemon import tick_user_model_daemon
-        tick_user_model_daemon([])  # reads recent_visible_runs internally
-    except Exception:
-        pass
+    if _dm.is_enabled("user_model"):
+        try:
+            from apps.api.jarvis_api.services.user_model_daemon import tick_user_model_daemon
+            _um_result = tick_user_model_daemon([])  # reads recent_visible_runs internally
+            _dm.record_daemon_tick("user_model", _um_result or {})
+        except Exception:
+            pass
 
     # Desire daemon — emergent appetites
-    try:
-        from apps.api.jarvis_api.services.desire_daemon import tick_desire_daemon
-        _desire_signals = {
-            "curiosity": _curiosity if "_curiosity" in dir() else "",
-            "craft": _drift_idea if "_drift_idea" in dir() else "",
-            "connection": (_tss.get("latest_fragment", "") if "_tss" in dir() else "")[:80],
-        }
-        tick_desire_daemon(_desire_signals)
-    except Exception:
-        pass
+    if _dm.is_enabled("desire"):
+        try:
+            from apps.api.jarvis_api.services.desire_daemon import tick_desire_daemon
+            _desire_signals = {
+                "curiosity": _curiosity if "_curiosity" in dir() else "",
+                "craft": _drift_idea if "_drift_idea" in dir() else "",
+                "connection": (_tss.get("latest_fragment", "") if "_tss" in dir() else "")[:80],
+            }
+            _desire_result = tick_desire_daemon(_desire_signals)
+            _dm.record_daemon_tick("desire", _desire_result or {})
+        except Exception:
+            pass
 
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")

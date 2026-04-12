@@ -32,7 +32,8 @@ def _stub_modules():
 
     db_mod = sys.modules["core.runtime.db"]
     db_mod.recent_visible_runs = MagicMock(return_value=[])
-    db_mod.insert_private_brain_record = MagicMock()
+    if not hasattr(db_mod, "insert_private_brain_record"):
+        db_mod.insert_private_brain_record = MagicMock()
 
 
 _stub_modules()

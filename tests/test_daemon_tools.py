@@ -17,7 +17,7 @@ def _call_handler(name: str, args: dict):
 def test_daemon_status_returns_all_daemons():
     result = _call_handler("daemon_status", {})
     assert "daemons" in result
-    assert len(result["daemons"]) == 20
+    assert len(result["daemons"]) == 21
     names = {d["name"] for d in result["daemons"]}
     assert "curiosity" in names
     assert "desire" in names

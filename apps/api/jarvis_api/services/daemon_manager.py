@@ -160,6 +160,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 8,
         "description": "Emergent appetites with intensity-based lifecycle",
     },
+    "autonomous_council": {
+        "module": "apps.api.jarvis_api.services.autonomous_council_daemon",
+        "reset_var": "_last_council_at",
+        "reset_value": None,
+        "default_cadence_minutes": 30,
+        "description": "Spontaneous self-triggered council deliberation via signal scoring",
+    },
 }
 
 
@@ -243,7 +250,7 @@ def _hours_since(iso: str | None) -> float | None:
 
 
 def get_all_daemon_states() -> list[dict[str, Any]]:
-    """Return status for all 20 daemons."""
+    """Return status for all registered daemons."""
     file_state = _load_state()
     result = []
     for name, reg in _REGISTRY.items():

@@ -1,16 +1,78 @@
+import { useState, useEffect, useRef } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { Copy, Check } from 'lucide-react'
+import mermaid from 'mermaid'
+
+mermaid.initialize({ startOnLoad: false, theme: 'dark' })
+
+/**
+ * Renders a mermaid fenced block as an inline SVG diagram.
+ * Falls back to raw code text on render errors.
+ */
+function MermaidBlock({ code }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!ref.current) return
+    const id = `mermaid-${Math.random().toString(36).slice(2)}`
+    mermaid
+      .render(id, code)
+      .then(({ svg }) => {
+        if (ref.current) ref.current.innerHTML = svg
+      })
+      .catch(() => {
+        if (ref.current) ref.current.textContent = code
+      })
+  }, [code])
+
+  return <div ref={ref} className="mermaid-block" />
+}
+
+/**
+ * Renders a syntax-highlighted code block with a floating copy button
+ * and a 300px max-height with scroll for long blocks.
+ */
+function CodeBlock({ language, code }) {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button onClick={handleCopy} className="code-copy-btn" title="Kopiér kode">
+        {copied ? <Check size={13} /> : <Copy size={13} />}
+      </button>
+      <SyntaxHighlighter
+        style={oneDark}
+        language={language || 'text'}
+        PreTag="div"
+        customStyle={{
+          margin: '0.5em 0',
+          borderRadius: '6px',
+          fontSize: '0.85em',
+          maxHeight: '300px',
+          overflowY: 'auto',
+        }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  )
+}
 
 /**
  * Renders markdown content in chat bubbles.
- * Supports paragraphs, bold, italic, lists, links, inline code, and fenced code blocks
- * with syntax highlighting.
- *
- * react-markdown v10 no longer passes an `inline` prop to code components.
- * Instead we override `pre` to handle block-level code (fenced blocks) and
- * let the `code` component handle only inline code (`backtick`).
+ * Supports paragraphs, bold, italic, lists, links, tables (remark-gfm),
+ * inline code, fenced code blocks with syntax highlighting,
+ * copy button, 300px scroll cap, and mermaid diagram rendering.
  */
 export function MarkdownRenderer({ content }) {
   if (!content) return null
@@ -21,30 +83,21 @@ export function MarkdownRenderer({ content }) {
       components={{
         // Block-level code: <pre><code class="language-x">…</code></pre>
         pre({ children }) {
-          // children is typically a single <code> element rendered by react-markdown
           const codeChild = children?.props
           if (!codeChild) return <pre>{children}</pre>
 
           const className = codeChild.className || ''
           const match = /language-(\w+)/.exec(className)
+          const language = match ? match[1] : 'text'
           const codeText = String(codeChild.children || '').replace(/\n$/, '')
 
-          return (
-            <SyntaxHighlighter
-              style={oneDark}
-              language={match ? match[1] : 'text'}
-              PreTag="div"
-              customStyle={{
-                margin: '0.5em 0',
-                borderRadius: '6px',
-                fontSize: '0.85em',
-              }}
-            >
-              {codeText}
-            </SyntaxHighlighter>
-          )
+          if (language === 'mermaid') {
+            return <MermaidBlock code={codeText} />
+          }
+
+          return <CodeBlock language={language} code={codeText} />
         },
-        // Inline code: `backtick` — rendered as simple <code>
+        // Inline code: `backtick`
         code({ children, ...props }) {
           return (
             <code className="inline-code" {...props}>

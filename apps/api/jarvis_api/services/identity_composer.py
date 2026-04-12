@@ -8,7 +8,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-_IDENTITY_FILE = Path("workspace/default/IDENTITY.md")
+from core.runtime.config import WORKSPACES_DIR
+
+_IDENTITY_FILE = WORKSPACES_DIR / "default" / "IDENTITY.md"
 _FALLBACK_NAME = "the entity"
 
 _name_cache: str | None = None

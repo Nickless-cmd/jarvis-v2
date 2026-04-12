@@ -295,6 +295,35 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "analyze_image",
+            "description": "Analyze or describe an image using a local vision-capable model (Ollama). Use for image understanding, OCR, visual Q&A, or describing what's in a picture.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "image_path": {
+                        "type": "string",
+                        "description": "Absolute path to a local image file (jpg, png, etc.)",
+                    },
+                    "image_url": {
+                        "type": "string",
+                        "description": "URL of an image to fetch and analyze",
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "description": "What to ask about the image (default: 'Describe this image in detail.')",
+                    },
+                    "model": {
+                        "type": "string",
+                        "description": "Ollama model name to use (auto-detected if omitted)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_initiatives",
             "description": "Read your initiative queue — the pending tasks and goals you've queued for autonomous heartbeat execution. Shows pending, recently acted, and queue health.",
             "parameters": {
@@ -1588,6 +1617,86 @@ def _exec_get_news(args: dict[str, Any]) -> dict[str, Any]:
         lines.append(f"{i}. **{title}** ({source}, {published})\n   {description}\n   {url_a}")
     text = "\n\n".join(lines) if lines else "[no articles found]"
     return {"text": text, "article_count": len(articles), "query": query, "status": "ok"}
+
+
+def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
+    """Analyze an image using a vision-capable model via Ollama.
+
+    Requires a vision model to be running (e.g. llava, moondream, gemma4).
+    Accepts a local file path or a URL.
+    """
+    import base64
+
+    image_path = str(args.get("image_path") or "").strip()
+    image_url = str(args.get("image_url") or "").strip()
+    prompt = str(args.get("prompt") or "Describe this image in detail.").strip()
+    model = str(args.get("model") or "").strip()
+
+    if not model:
+        # Try to pick a vision-capable model from running Ollama models
+        try:
+            with urllib_request.urlopen("http://127.0.0.1:11434/api/tags", timeout=5) as resp:
+                tags = json.loads(resp.read())
+            names = [m["name"] for m in tags.get("models", [])]
+            vision_keywords = ("llava", "moondream", "bakllava", "gemma4", "minicpm", "vision")
+            model = next((n for n in names if any(k in n.lower() for k in vision_keywords)), "")
+        except Exception:
+            pass
+        if not model:
+            return {
+                "error": (
+                    "No vision-capable model found. Pull one with: "
+                    "ollama pull llava  or  ollama pull moondream"
+                ),
+                "status": "error",
+            }
+
+    # Load image as base64
+    image_b64: str | None = None
+    if image_path:
+        try:
+            image_b64 = base64.b64encode(Path(image_path).read_bytes()).decode()
+        except OSError as exc:
+            return {"error": f"Could not read image file: {exc}", "status": "error"}
+    elif image_url:
+        try:
+            req = urllib_request.Request(
+                image_url, headers={"User-Agent": "Jarvis/2.0"}
+            )
+            with urllib_request.urlopen(req, timeout=15) as resp:
+                image_b64 = base64.b64encode(resp.read()).decode()
+        except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+            return {"error": f"Could not fetch image URL: {exc}", "status": "error"}
+    else:
+        return {"error": "image_path or image_url is required", "status": "error"}
+
+    payload = json.dumps({
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt,
+                "images": [image_b64],
+            }
+        ],
+        "stream": False,
+    }).encode()
+
+    req = urllib_request.Request(
+        "http://127.0.0.1:11434/api/chat",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=60) as resp:
+            result = json.loads(resp.read())
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+        return {"error": f"Vision model call failed: {exc}", "status": "error"}
+
+    answer = result.get("message", {}).get("content", "").strip()
+    if not answer:
+        return {"error": "Vision model returned empty response", "status": "error"}
+    return {"analysis": answer, "model": model, "status": "ok"}
 
 
 def _exec_wolfram_query(args: dict[str, Any]) -> dict[str, Any]:

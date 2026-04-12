@@ -53,10 +53,12 @@ function MermaidBlock({ code, streaming }) {
   }, [code, streaming])
 
   useEffect(() => {
-    if (!svgString || !containerRef.current) return
+    if (!svgString || !containerRef.current || fullscreen) return
     const transcript = containerRef.current.closest('.transcript')
-    if (transcript) transcript.scrollTop = transcript.scrollHeight
-  }, [svgString])
+    if (!transcript) return
+    const distanceFromBottom = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight
+    if (distanceFromBottom < 120) transcript.scrollTop = transcript.scrollHeight
+  }, [svgString, fullscreen])
 
   if (streaming || !svgString) {
     return (

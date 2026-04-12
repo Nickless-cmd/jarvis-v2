@@ -31,7 +31,7 @@ function MessageWithActions({ message, workingSteps }) {
         ) : null}
         {message.content ? (
           <div className="message-content">
-            <MarkdownRenderer content={message.content} />
+            <MarkdownRenderer content={message.content} streaming={!!message.pending} />
             {message.pending && <span className="streaming-cursor" />}
           </div>
         ) : null}

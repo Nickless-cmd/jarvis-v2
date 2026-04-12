@@ -10,23 +10,43 @@ mermaid.initialize({ startOnLoad: false, theme: 'dark' })
 
 /**
  * Renders a mermaid fenced block as an inline SVG diagram.
+ * Skips rendering while streaming (code changes every token → flicker).
+ * After rendering, scrolls the nearest .transcript to bottom so the
+ * async SVG insert doesn't leave content hidden behind the composer.
  * Falls back to raw code text on render errors.
  */
-function MermaidBlock({ code }) {
+function MermaidBlock({ code, streaming }) {
   const ref = useRef(null)
+  const lastRendered = useRef(null)
 
   useEffect(() => {
+    if (streaming) return          // wait until stream is done
     if (!ref.current) return
+    if (lastRendered.current === code) return  // already rendered this exact code
+
     const id = `mermaid-${Math.random().toString(36).slice(2)}`
     mermaid
       .render(id, code)
       .then(({ svg }) => {
-        if (ref.current) ref.current.innerHTML = svg
+        if (!ref.current) return
+        ref.current.innerHTML = svg
+        lastRendered.current = code
+        // Re-scroll transcript after async SVG insert
+        const transcript = ref.current.closest('.transcript')
+        if (transcript) transcript.scrollTop = transcript.scrollHeight
       })
       .catch(() => {
         if (ref.current) ref.current.textContent = code
       })
-  }, [code])
+  }, [code, streaming])
+
+  if (streaming) {
+    return (
+      <div className="mermaid-block mermaid-pending">
+        <span style={{ color: '#6e7681', fontSize: '12px' }}>mermaid diagram…</span>
+      </div>
+    )
+  }
 
   return <div ref={ref} className="mermaid-block" />
 }
@@ -74,7 +94,7 @@ function CodeBlock({ language, code }) {
  * inline code, fenced code blocks with syntax highlighting,
  * copy button, 300px scroll cap, and mermaid diagram rendering.
  */
-export function MarkdownRenderer({ content }) {
+export function MarkdownRenderer({ content, streaming = false }) {
   if (!content) return null
 
   return (
@@ -92,7 +112,7 @@ export function MarkdownRenderer({ content }) {
           const codeText = String(codeChild.children || '').replace(/\n$/, '')
 
           if (language === 'mermaid') {
-            return <MermaidBlock code={codeText} />
+            return <MermaidBlock code={codeText} streaming={streaming} />
           }
 
           return <CodeBlock language={language} code={codeText} />

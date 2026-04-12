@@ -1169,6 +1169,7 @@ button { cursor: pointer; }
   padding: 16px; margin: 0.5em 0;
 }
 .mermaid-block svg { max-width: 100%; height: auto; }
+.mermaid-block.mermaid-pending { min-height: 0; padding: 8px 16px; }
 
 /* Message actions hover toolbar */
 .message-group { display: flex; flex-direction: column; }

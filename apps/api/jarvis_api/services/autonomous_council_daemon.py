@@ -245,6 +245,20 @@ def _run_autonomous_council(*, topic: str, members: list[str]) -> dict[str, Any]
     council_id = str(surface.get("council_id") or "")
     result = run_council_round(council_id)
     conclusion = str((result or {}).get("summary") or "")
+    # Persist conclusion to council memory (best-effort)
+    try:
+        from apps.api.jarvis_api.services.council_memory_service import append_council_conclusion
+        append_council_conclusion(
+            topic=topic,
+            score=0.0,
+            members=members,
+            signals=[],
+            transcript="",
+            conclusion=conclusion,
+            initiative=None,
+        )
+    except Exception:
+        pass
     return {"council_id": council_id, "conclusion": conclusion}
 
 

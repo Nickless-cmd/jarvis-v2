@@ -883,6 +883,20 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "name": "recall_council_conclusions",
+        "description": "Retrieve past council deliberations relevant to a given topic. Returns full transcripts and conclusions.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "description": "Topic or question to match against past council deliberations",
+                },
+            },
+            "required": ["topic"],
+        },
+    },
 ]
 
 
@@ -2657,6 +2671,35 @@ def _exec_update_setting(args: dict[str, Any]) -> dict[str, Any]:
     return {"key": key, "old": old_value, "new": value}
 
 
+def _exec_recall_council_conclusions(args: dict[str, Any]) -> dict[str, Any]:
+    topic = str(args.get("topic") or "").strip()
+    if not topic:
+        return {"error": "topic is required", "entries": []}
+    from apps.api.jarvis_api.services.council_memory_service import read_all_entries
+    from apps.api.jarvis_api.services.council_memory_daemon import (
+        _call_similarity_llm,
+        _parse_indices,
+    )
+    entries = read_all_entries()
+    if not entries:
+        return {"entries": [], "message": "Ingen rådskonklusioner gemt endnu"}
+
+    index_lines = []
+    for i, entry in enumerate(entries, 1):
+        summary = str(entry.get("conclusion") or "")[:120]
+        index_lines.append(f"{i}. [{entry.get('timestamp', '')}] {entry.get('topic', '')} — {summary}")
+    index_text = "\n".join(index_lines)
+
+    llm_response = _call_similarity_llm(recent_context=topic, index_text=index_text)
+    indices = _parse_indices(llm_response, max_idx=len(entries))
+
+    if not indices:
+        return {"entries": [], "message": "Ingen relevante rådskonklusioner fundet"}
+
+    matched = [entries[i - 1] for i in indices]
+    return {"entries": matched}
+
+
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
@@ -2699,6 +2742,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_signal_surface": _exec_read_signal_surface,
     "eventbus_recent": _exec_eventbus_recent,
     "update_setting": _exec_update_setting,
+    "recall_council_conclusions": _exec_recall_council_conclusions,
 }
 
 

@@ -17,7 +17,7 @@ def _call_handler(name: str, args: dict):
 def test_daemon_status_returns_all_daemons():
     result = _call_handler("daemon_status", {})
     assert "daemons" in result
-    assert len(result["daemons"]) == 21
+    assert len(result["daemons"]) == 22
     names = {d["name"] for d in result["daemons"]}
     assert "curiosity" in names
     assert "desire" in names
@@ -129,3 +129,35 @@ def test_update_setting_unknown_key_returns_error():
     result = _call_handler("update_setting", {"key": "not_a_real_key", "value": "x"})
     assert "error" in result
     assert "valid_keys" in result
+
+
+# ── recall_council_conclusions ─────────────────────────────────────────
+
+def test_recall_council_conclusions_returns_matches():
+    from unittest.mock import patch
+    entries = [
+        {"topic": "Autonomy", "conclusion": "Focus.", "timestamp": "2026-04-01T10:00:00",
+         "transcript": "long text", "initiative": None, "score": 0.72, "members": [], "signals": []},
+    ]
+    with (
+        patch("apps.api.jarvis_api.services.council_memory_service.read_all_entries", return_value=entries),
+        patch("apps.api.jarvis_api.services.council_memory_daemon._call_similarity_llm", return_value="1"),
+    ):
+        result = _call_handler("recall_council_conclusions", {"topic": "autonomy and limits"})
+    assert "entries" in result
+    assert len(result["entries"]) == 1
+
+
+def test_recall_council_conclusions_returns_empty_on_no_match():
+    from unittest.mock import patch
+    entries = [
+        {"topic": "Autonomy", "conclusion": "Focus.", "timestamp": "2026-04-01T10:00:00",
+         "transcript": "long text", "initiative": None, "score": 0.72, "members": [], "signals": []},
+    ]
+    with (
+        patch("apps.api.jarvis_api.services.council_memory_service.read_all_entries", return_value=entries),
+        patch("apps.api.jarvis_api.services.council_memory_daemon._call_similarity_llm", return_value="ingen"),
+    ):
+        result = _call_handler("recall_council_conclusions", {"topic": "something unrelated"})
+    assert result["entries"] == []
+    assert "message" in result

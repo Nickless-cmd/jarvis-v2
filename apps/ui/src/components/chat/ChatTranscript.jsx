@@ -1,6 +1,58 @@
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Copy, Check, ThumbsUp } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ApprovalCard } from './ApprovalCard'
+
+/**
+ * Renders a single assistant message bubble with a hover toolbar.
+ * Toolbar shows: Copy message | Thumbs up
+ * Only rendered for non-pending assistant messages.
+ */
+function MessageWithActions({ message, workingSteps }) {
+  const [copied, setCopied] = useState(false)
+  const [liked, setLiked] = useState(false)
+
+  function handleCopy() {
+    navigator.clipboard.writeText(message.content || '').then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <div className="message-group">
+      <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
+        {message.pending && workingSteps?.length > 0 ? (
+          <span className="working-shimmer">
+            {workingSteps.find((s) => s.status === 'running')?.detail ||
+              workingSteps.find((s) => s.status === 'running')?.action ||
+              'working…'}
+          </span>
+        ) : null}
+        {message.content ? (
+          <div className="message-content">
+            <MarkdownRenderer content={message.content} />
+            {message.pending && <span className="streaming-cursor" />}
+          </div>
+        ) : null}
+      </div>
+      {!message.pending && (
+        <div className="message-actions">
+          <button onClick={handleCopy} title="Kopiér besked">
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+          </button>
+          <button
+            onClick={() => setLiked((l) => !l)}
+            title="Synes godt om"
+            className={liked ? 'liked' : ''}
+          >
+            <ThumbsUp size={12} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function ChatTranscript({ messages, workingSteps }) {
   const transcriptRef = useRef(null)
@@ -37,21 +89,17 @@ export function ChatTranscript({ messages, workingSteps }) {
             <div className="message-name">
               {message.role === 'assistant' ? 'Jarvis' : 'Du'}
             </div>
-            <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
-              {message.pending && workingSteps?.length > 0 ? (
-                <span className="working-shimmer">
-                  {workingSteps.find(s => s.status === 'running')?.detail
-                    || workingSteps.find(s => s.status === 'running')?.action
-                    || 'working…'}
-                </span>
-              ) : null}
-              {message.content ? (
-                <div className="message-content">
-                  <MarkdownRenderer content={message.content} />
-                  {message.pending && <span className="streaming-cursor" />}
-                </div>
-              ) : null}
-            </div>
+            {message.role === 'assistant' ? (
+              <MessageWithActions message={message} workingSteps={workingSteps} />
+            ) : (
+              <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
+                {message.content ? (
+                  <div className="message-content">
+                    <MarkdownRenderer content={message.content} />
+                  </div>
+                ) : null}
+              </div>
+            )}
             <div className="message-time">{message.ts}</div>
           </article>
         )

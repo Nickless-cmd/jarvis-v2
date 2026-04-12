@@ -742,6 +742,147 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "daemon_status",
+            "description": (
+                "List all 20 internal daemons with their current state: enabled/disabled, "
+                "cadence (default and override), last_run_at, hours_since_last_run, and "
+                "last_result_summary. Use this to see which daemons are running and when "
+                "they last fired."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "control_daemon",
+            "description": (
+                "Control a specific daemon. Actions: 'enable' — turn it on; 'disable' — turn it off; "
+                "'restart' — clear its cooldown so it fires on next heartbeat tick; "
+                "'set_interval' — override its default cadence (requires interval_minutes). "
+                "Use daemon_status to see daemon names."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Daemon name (e.g. 'curiosity', 'desire', 'somatic')",
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": ["enable", "disable", "restart", "set_interval"],
+                        "description": "Action to perform",
+                    },
+                    "interval_minutes": {
+                        "type": "integer",
+                        "description": "New cadence in minutes. Required for set_interval, ignored otherwise.",
+                    },
+                },
+                "required": ["name", "action"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_signal_surfaces",
+            "description": (
+                "Read a compact overview of all registered signal surfaces — mood signals, "
+                "goal signals, relation signals, autonomy pressure, and more. "
+                "Returns all surface names with their current key fields. "
+                "Use read_signal_surface to get full detail on a specific surface."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_signal_surface",
+            "description": (
+                "Read the full current state of a specific named signal surface. "
+                "Use list_signal_surfaces first to see available names. "
+                "Returns the complete surface dict for the named surface."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Surface name (e.g. 'autonomy_pressure', 'relation_state', 'desire')",
+                    },
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "eventbus_recent",
+            "description": (
+                "Read recent events from your internal eventbus. Optionally filter by event family "
+                "(kind prefix). Event families include: heartbeat, tool, channel, memory, cost, "
+                "approvals, council, self-review, goal_signal, dream_hypothesis_signal, and more. "
+                "Default limit is 20, max is 100."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "description": "Filter by event family prefix (e.g. 'heartbeat', 'tool', 'memory')",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of events to return (default: 20, max: 100)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_setting",
+            "description": (
+                "Update a runtime setting. Returns old and new values on success. "
+                "Sensitive keys (auth profiles, credentials, approval policies) require "
+                "explicit user approval before taking effect. "
+                "Valid keys: app_name, environment, host, port, database_url, "
+                "primary_model_lane, cheap_model_lane, visible_model_provider, "
+                "visible_model_name, visible_auth_profile, heartbeat_model_provider, "
+                "heartbeat_model_name, heartbeat_auth_profile, heartbeat_local_only, "
+                "relevance_model_name."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Setting key to update",
+                    },
+                    "value": {
+                        "description": "New value (string, int, or bool depending on the setting)",
+                    },
+                },
+                "required": ["key", "value"],
+            },
+        },
+    },
 ]
 
 
@@ -2419,6 +2560,103 @@ def _exec_quick_council_check(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+# ── Self-tools handlers ────────────────────────────────────────────────
+
+def _exec_daemon_status(_args: dict[str, Any]) -> dict[str, Any]:
+    from apps.api.jarvis_api.services.daemon_manager import get_all_daemon_states
+    return {"daemons": get_all_daemon_states()}
+
+
+def _exec_control_daemon(args: dict[str, Any]) -> dict[str, Any]:
+    from apps.api.jarvis_api.services.daemon_manager import control_daemon, get_daemon_names
+    name = str(args.get("name", ""))
+    action = str(args.get("action", ""))
+    interval_minutes = args.get("interval_minutes")
+    if interval_minutes is not None:
+        interval_minutes = int(interval_minutes)
+    try:
+        return control_daemon(name, action, interval_minutes=interval_minutes)
+    except ValueError as exc:
+        valid = sorted(get_daemon_names())
+        return {"error": str(exc), "valid": valid}
+
+
+def _exec_list_signal_surfaces(_args: dict[str, Any]) -> dict[str, Any]:
+    from apps.api.jarvis_api.services.signal_surface_router import list_all_surfaces
+    return {"surfaces": list_all_surfaces()}
+
+
+def _exec_read_signal_surface(args: dict[str, Any]) -> dict[str, Any]:
+    from apps.api.jarvis_api.services.signal_surface_router import read_surface
+    name = str(args.get("name", ""))
+    return read_surface(name)
+
+
+def _exec_eventbus_recent(args: dict[str, Any]) -> dict[str, Any]:
+    from core.eventbus.bus import event_bus
+    raw_limit = args.get("limit", 20)
+    limit = min(int(raw_limit), 100)
+    kind_filter = str(args.get("kind", "")).strip()
+    events = event_bus.recent(limit=100 if kind_filter else limit)
+    if kind_filter:
+        events = [e for e in events if str(e.get("kind", "")).startswith(kind_filter)]
+        events = events[:limit]
+    return {"events": events, "count": len(events)}
+
+
+_SENSITIVE_SETTING_PATTERNS = [
+    "auth_profile",
+    "credential",
+    "approval",
+    "auth_",
+]
+
+
+def _is_sensitive_setting(key: str) -> bool:
+    key_lower = key.lower()
+    return any(pat in key_lower for pat in _SENSITIVE_SETTING_PATTERNS)
+
+
+def _exec_update_setting(args: dict[str, Any]) -> dict[str, Any]:
+    import json as _json
+    import core.runtime.config as _cfg
+    from core.runtime.settings import load_settings
+
+    key = str(args.get("key", "")).strip()
+    value = args.get("value")
+
+    settings = load_settings()
+    valid_keys = list(settings.to_dict().keys())
+
+    if key not in valid_keys:
+        return {"error": f"unknown setting '{key}'", "valid_keys": valid_keys}
+
+    if _is_sensitive_setting(key):
+        return {
+            "requires_approval": True,
+            "key": key,
+            "requested_value": value,
+            "message": (
+                f"Setting '{key}' is sensitive (auth/credentials). "
+                "Please confirm you want to update it."
+            ),
+        }
+
+    old_value = settings.to_dict()[key]
+    settings_file = _cfg.SETTINGS_FILE
+
+    if settings_file.exists():
+        raw = _json.loads(settings_file.read_text(encoding="utf-8"))
+    else:
+        raw = settings.to_dict()
+
+    raw[key] = value
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    settings_file.write_text(_json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return {"key": key, "old": old_value, "new": value}
+
+
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
@@ -2455,6 +2693,12 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "discord_channel": _exec_discord_channel,
     "convene_council": _exec_convene_council,
     "quick_council_check": _exec_quick_council_check,
+    "daemon_status": _exec_daemon_status,
+    "control_daemon": _exec_control_daemon,
+    "list_signal_surfaces": _exec_list_signal_surfaces,
+    "read_signal_surface": _exec_read_signal_surface,
+    "eventbus_recent": _exec_eventbus_recent,
+    "update_setting": _exec_update_setting,
 }
 
 

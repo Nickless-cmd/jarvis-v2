@@ -1169,3 +1169,18 @@ button { cursor: pointer; }
   padding: 16px; margin: 0.5em 0;
 }
 .mermaid-block svg { max-width: 100%; height: auto; }
+
+/* Message actions hover toolbar */
+.message-group { display: flex; flex-direction: column; }
+.message-actions {
+  display: flex; gap: 6px; padding: 2px 4px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.message-group:hover .message-actions { opacity: 1; }
+.message-actions button {
+  background: none; border: none; color: #666;
+  cursor: pointer; padding: 3px 6px; border-radius: 4px;
+  display: flex; align-items: center; gap: 3px; font-size: 11px;
+}
+.message-actions button:hover { color: #aaa; background: rgba(255,255,255,0.05); }
+.message-actions button.liked { color: #6b9fff; }

@@ -1,4 +1,5 @@
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
@@ -16,6 +17,7 @@ export function MarkdownRenderer({ content }) {
 
   return (
     <Markdown
+      remarkPlugins={[remarkGfm]}
       components={{
         // Block-level code: <pre><code class="language-x">…</code></pre>
         pre({ children }) {

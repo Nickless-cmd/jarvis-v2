@@ -57,17 +57,20 @@ function MessageWithActions({ message, workingSteps }) {
 export function ChatTranscript({ messages, workingSteps }) {
   const transcriptRef = useRef(null)
 
-  // Scroll to bottom on initial mount (page load / session switch)
-  useEffect(() => {
-    const node = transcriptRef.current
-    if (node) node.scrollTop = node.scrollHeight
-  }, [])
+  // On first message load, always scroll to bottom unconditionally.
+  // On subsequent updates, only scroll if the user is already near the bottom.
+  const hasInitialScrolled = useRef(false)
 
-  // Smart scroll on message updates: only follow if already near the bottom.
-  // This prevents hijacking scroll position when the user scrolls up to read.
   useEffect(() => {
     const node = transcriptRef.current
-    if (!node) return
+    if (!node || messages.length === 0) return
+
+    if (!hasInitialScrolled.current) {
+      node.scrollTop = node.scrollHeight
+      hasInitialScrolled.current = true
+      return
+    }
+
     const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight
     if (distanceFromBottom < 120) node.scrollTop = node.scrollHeight
   }, [messages])

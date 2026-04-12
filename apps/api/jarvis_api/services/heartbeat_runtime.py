@@ -1080,6 +1080,25 @@ def _run_heartbeat_tick_locked(
         workspace_dir=workspace_dir,
         tick_id=f"heartbeat-tick:{uuid.uuid4()}",
     )
+    executive_action_id = str(executive_decision.get("action_id") or "").strip()
+    if executive_action_id:
+        persisted_action_type = executive_action_id
+        persisted_action_status = str(
+            executive_result.get("status") or outcome["action_status"] or "unknown"
+        )
+        persisted_action_summary = str(
+            executive_result.get("summary") or outcome["action_summary"] or ""
+        )
+        persisted_action_artifact = str(
+            executive_outcome.get("outcome_id")
+            or outcome["action_artifact"]
+            or ""
+        )
+    else:
+        persisted_action_type = str(outcome["action_type"] or "")
+        persisted_action_status = str(outcome["action_status"] or "")
+        persisted_action_summary = str(outcome["action_summary"] or "")
+        persisted_action_artifact = str(outcome["action_artifact"] or "")
     tick_status = "completed" if not outcome["blocked_reason"] else "blocked"
     finished_at = datetime.now(UTC).isoformat()
     tick = _record_heartbeat_outcome(
@@ -1105,10 +1124,10 @@ def _run_heartbeat_tick_locked(
         parse_status=parse_status,
         ping_eligible=outcome["ping_eligible"],
         ping_result=outcome["ping_result"],
-        action_status=outcome["action_status"],
-        action_summary=outcome["action_summary"],
-        action_type=outcome["action_type"],
-        action_artifact=outcome["action_artifact"],
+        action_status=persisted_action_status,
+        action_summary=persisted_action_summary,
+        action_type=persisted_action_type,
+        action_artifact=persisted_action_artifact,
         raw_response=raw_response,
         input_tokens=int(result.get("input_tokens") or 0),
         output_tokens=int(result.get("output_tokens") or 0),
@@ -1125,7 +1144,7 @@ def _run_heartbeat_tick_locked(
                 "tick_id": tick["tick_id"],
                 "decision_type": decision["decision_type"],
                 "blocked_reason": outcome["blocked_reason"],
-                "action_type": outcome["action_type"],
+                "action_type": persisted_action_type,
                 "trigger": trigger,
                 "lane": target["lane"],
                 "provider": target["provider"],
@@ -1150,8 +1169,8 @@ def _run_heartbeat_tick_locked(
                 "decision_type": decision["decision_type"],
                 "tick_status": tick["tick_status"],
                 "summary": tick["decision_summary"],
-                "action_type": outcome["action_type"],
-                "action_status": outcome["action_status"],
+                "action_type": persisted_action_type,
+                "action_status": persisted_action_status,
                 "lane": target["lane"],
                 "provider": target["provider"],
                 "model": target["model"],
@@ -1175,9 +1194,9 @@ def _run_heartbeat_tick_locked(
                 "tick_id": tick["tick_id"],
                 "decision_type": decision["decision_type"],
                 "summary": decision["summary"],
-                "action_status": outcome["action_status"],
-                "action_type": outcome["action_type"],
-                "action_artifact": outcome["action_artifact"],
+                "action_status": persisted_action_status,
+                "action_type": persisted_action_type,
+                "action_artifact": persisted_action_artifact,
                 "ping_result": outcome["ping_result"],
                 "lane": target["lane"],
                 "provider": target["provider"],

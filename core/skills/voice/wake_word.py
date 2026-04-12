@@ -86,7 +86,11 @@ def listen(callback=None, interrupt_event=None):
                 if callback:
                     callback("hey_jarvis")
                 if not interrupt_event.is_set():
-                    # Fresh parec — no stale "Hey Jarvis" in buffer
+                    # Cooldown: wait for TTS to finish playing before re-arming,
+                    # otherwise the speaker output re-triggers the wake word
+                    import time
+                    time.sleep(3.0)
+                    # Fresh parec — no stale audio in buffer
                     proc = _make_proc()
     finally:
         proc.terminate()

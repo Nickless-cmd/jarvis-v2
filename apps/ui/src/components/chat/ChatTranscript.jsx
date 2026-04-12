@@ -5,8 +5,6 @@ import { ApprovalCard } from './ApprovalCard'
 
 /**
  * Renders a single assistant message bubble with a hover toolbar.
- * Toolbar shows: Copy message | Thumbs up
- * Only rendered for non-pending assistant messages.
  */
 function MessageWithActions({ message, workingSteps }) {
   const [copied, setCopied] = useState(false)
@@ -57,17 +55,60 @@ function MessageWithActions({ message, workingSteps }) {
   )
 }
 
-export function ChatTranscript({ messages, workingSteps }) {
-  const transcriptRef = useRef(null)
+/**
+ * Renders attachment thumbnails above a user message bubble.
+ * Images are clickable to open the lightbox.
+ */
+function AttachmentStrip({ attachments, sessionId, onOpenLightbox }) {
+  if (!attachments || attachments.length === 0) return null
 
+  const images = attachments.filter((a) => a.mimeType?.startsWith('image/'))
+  const files = attachments.filter((a) => !a.mimeType?.startsWith('image/'))
+
+  function srcFor(a) {
+    if (a.objectUrl) return a.objectUrl
+    if (a.id && sessionId) return `/attachments/${a.id}?session_id=${sessionId}`
+    return null
+  }
+
+  return (
+    <div>
+      {images.length > 0 && (
+        <div className="message-attachment-strip">
+          {images.map((a) => {
+            const src = srcFor(a)
+            return src ? (
+              <div
+                key={a.id}
+                className="message-attachment-thumb"
+                onClick={() => onOpenLightbox({ src, filename: a.filename })}
+                title={a.filename}
+              >
+                <img src={src} alt={a.filename} loading="lazy" />
+              </div>
+            ) : null
+          })}
+        </div>
+      )}
+      {files.map((a) => (
+        <span key={a.id} className="message-attachment-pill">
+          📎 {a.filename}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+export function ChatTranscript({ messages, workingSteps, sessionId }) {
+  const transcriptRef = useRef(null)
   const hasInitialScrolled = useRef(false)
   const prevMessageCount = useRef(0)
+  const [lightbox, setLightbox] = useState(null) // {src, filename} or null
 
   useEffect(() => {
     const node = transcriptRef.current
     if (!node || messages.length === 0) return
 
-    // First load: always scroll to bottom
     if (!hasInitialScrolled.current) {
       node.scrollTop = node.scrollHeight
       hasInitialScrolled.current = true
@@ -75,7 +116,6 @@ export function ChatTranscript({ messages, workingSteps }) {
       return
     }
 
-    // New message added (user sent or Jarvis reply started): always scroll
     if (messages.length > prevMessageCount.current) {
       node.scrollTop = node.scrollHeight
       prevMessageCount.current = messages.length
@@ -84,7 +124,6 @@ export function ChatTranscript({ messages, workingSteps }) {
 
     prevMessageCount.current = messages.length
 
-    // Streaming update to existing message: only scroll if near bottom
     const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight
     if (distanceFromBottom < 120) node.scrollTop = node.scrollHeight
   }, [messages])
@@ -102,34 +141,51 @@ export function ChatTranscript({ messages, workingSteps }) {
   }
 
   return (
-    <section ref={transcriptRef} className="transcript">
-      {messages.filter((m) => m.role !== 'tool').map((message) =>
-        message.role === 'approval_request' ? (
-          <article key={message.id} className="message-row assistant">
-            <div className="message-bubble">
-              <ApprovalCard approval={message} />
-            </div>
-          </article>
-        ) : (
-          <article key={message.id} className={`message-row ${message.role}`}>
-            <div className="message-name">
-              {message.role === 'assistant' ? 'Jarvis' : 'Du'}
-            </div>
-            {message.role === 'assistant' ? (
-              <MessageWithActions message={message} workingSteps={workingSteps} />
-            ) : (
-              <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
-                {message.content ? (
-                  <div className="message-content">
-                    <MarkdownRenderer content={message.content} />
-                  </div>
-                ) : null}
+    <>
+      <section ref={transcriptRef} className="transcript">
+        {messages.filter((m) => m.role !== 'tool').map((message) =>
+          message.role === 'approval_request' ? (
+            <article key={message.id} className="message-row assistant">
+              <div className="message-bubble">
+                <ApprovalCard approval={message} />
               </div>
-            )}
-            <div className="message-time">{message.ts}</div>
-          </article>
-        )
+            </article>
+          ) : (
+            <article key={message.id} className={`message-row ${message.role}`}>
+              <div className="message-name">
+                {message.role === 'assistant' ? 'Jarvis' : 'Du'}
+              </div>
+              {message.role === 'assistant' ? (
+                <MessageWithActions message={message} workingSteps={workingSteps} />
+              ) : (
+                <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
+                  {message.attachments?.length > 0 && (
+                    <AttachmentStrip
+                      attachments={message.attachments}
+                      sessionId={sessionId}
+                      onOpenLightbox={setLightbox}
+                    />
+                  )}
+                  {message.content ? (
+                    <div className="message-content">
+                      <MarkdownRenderer content={message.content} />
+                    </div>
+                  ) : null}
+                </div>
+              )}
+              <div className="message-time">{message.ts}</div>
+            </article>
+          )
+        )}
+      </section>
+
+      {lightbox && (
+        <div className="attachment-lightbox-overlay" onClick={() => setLightbox(null)}>
+          <div className="attachment-lightbox-inner" onClick={(e) => e.stopPropagation()}>
+            <img src={lightbox.src} alt={lightbox.filename} />
+          </div>
+        </div>
       )}
-    </section>
+    </>
   )
 }

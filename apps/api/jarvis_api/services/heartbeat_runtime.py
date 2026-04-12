@@ -944,6 +944,7 @@ def _run_heartbeat_tick_locked(
         context=context,
         now_iso=now.isoformat(),
     )
+    executive_result = _execute_executive_decision(executive_decision)
     _log_debug(
         "heartbeat context built",
         trigger=trigger,
@@ -959,6 +960,7 @@ def _run_heartbeat_tick_locked(
         ),
         executive_action_id=executive_decision.get("action_id"),
         executive_mode=executive_decision.get("mode"),
+        executive_status=executive_result.get("status"),
     )
     assembly = build_heartbeat_prompt_assembly(heartbeat_context=context, name=name)
     prompt = _heartbeat_prompt_text(assembly.text or "")
@@ -2398,6 +2400,46 @@ def _decide_executive_action(
             "considered": [],
             "operational_memory": {},
             "visible_state": {},
+        }
+
+
+def _execute_executive_decision(executive_decision: dict[str, object]) -> dict[str, object]:
+    action_id = str(executive_decision.get("action_id") or "").strip()
+    mode = str(executive_decision.get("mode") or "noop").strip()
+    if not action_id or mode not in {"execute", "propose"}:
+        return {
+            "status": "skipped",
+            "action_id": action_id,
+            "summary": "Executive action was not executed for this tick.",
+            "details": {"mode": mode},
+            "side_effects": [],
+            "error": "",
+        }
+    try:
+        from apps.api.jarvis_api.services.runtime_action_executor import (
+            execute_runtime_action,
+        )
+
+        result = execute_runtime_action(
+            action_id=action_id,
+            payload=dict(executive_decision.get("payload") or {}),
+        )
+        return {
+            "status": result.status,
+            "action_id": result.action_id,
+            "summary": result.summary,
+            "details": dict(result.details),
+            "side_effects": list(result.side_effects),
+            "error": result.error,
+        }
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "action_id": action_id,
+            "summary": "Executive action execution failed.",
+            "details": {"mode": mode},
+            "side_effects": [],
+            "error": str(exc),
         }
 
 

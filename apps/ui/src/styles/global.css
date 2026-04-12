@@ -1173,14 +1173,14 @@ button { cursor: pointer; }
 /* Message actions hover toolbar */
 .message-group { display: flex; flex-direction: column; }
 .message-actions {
-  display: flex; gap: 6px; padding: 2px 4px;
+  display: flex; gap: 2px; padding: 2px 2px;
   opacity: 0; transition: opacity 0.15s;
 }
 .message-group:hover .message-actions { opacity: 1; }
 .message-actions button {
-  background: none; border: none; color: #666;
-  cursor: pointer; padding: 3px 6px; border-radius: 4px;
-  display: flex; align-items: center; gap: 3px; font-size: 11px;
+  background: none; border: none; color: #6e7681;
+  cursor: pointer; padding: 3px 5px; border-radius: 4px;
+  display: flex; align-items: center; transition: background 0.12s, color 0.12s;
 }
-.message-actions button:hover { color: #aaa; background: rgba(255,255,255,0.05); }
-.message-actions button.liked { color: #6b9fff; }
+.message-actions button:hover { color: #5ab8a0; background: rgba(40,177,163,0.08); }
+.message-actions button.liked { color: #5ab8a0; }

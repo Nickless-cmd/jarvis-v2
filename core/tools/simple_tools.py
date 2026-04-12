@@ -195,13 +195,80 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "web_search",
-            "description": "Search the web for information. Returns search result summaries.",
+            "description": "Search the web using Tavily. Returns clean summaries and source URLs. Use for current events, facts, documentation lookups.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
                         "description": "Search query",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Number of results to return (default 5, max 10)",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather and short forecast for a city. Defaults to the user's location (Svendborg, Denmark) if no city given. Always returns Celsius.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "City name, e.g. 'Copenhagen' or 'London, UK'. Omit to use user's default location.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_exchange_rate",
+            "description": "Get current currency exchange rates.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "base": {
+                        "type": "string",
+                        "description": "Base currency code, e.g. 'DKK', 'USD', 'EUR'",
+                    },
+                    "targets": {
+                        "type": "string",
+                        "description": "Comma-separated target currency codes, e.g. 'USD,EUR,GBP'. Omit for top 10 currencies.",
+                    },
+                },
+                "required": ["base"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_news",
+            "description": "Search for recent news articles on a topic using NewsAPI.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Topic or keywords to search for",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "Language code: 'da' (Danish), 'en' (English), etc. Default 'en'.",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Number of articles to return (default 5, max 10)",
                     },
                 },
                 "required": ["query"],
@@ -1347,38 +1414,163 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "url": url, "chars": len(text), "status": "ok"}
 
 
+def _read_api_key(key: str) -> str:
+    """Read an API key directly from runtime.json."""
+    from core.runtime.config import SETTINGS_FILE
+    try:
+        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+        return str(data.get(key) or "")
+    except Exception:
+        return ""
+
+
 def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
+    """Web search via Tavily API."""
     query = str(args.get("query") or "").strip()
     if not query:
         return {"error": "query is required", "status": "error"}
+    max_results = min(int(args.get("max_results") or 5), 10)
 
-    # Web search requires an external API (Google, Bing, SearXNG, etc).
-    # For now, fall back to a DuckDuckGo HTML fetch.
-    search_url = f"https://html.duckduckgo.com/html/?q={urllib_request.quote(query)}"
+    api_key = _read_api_key("tavily_api_key")
+    if not api_key:
+        return {"error": "tavily_api_key not configured in runtime.json", "status": "error"}
+
+    payload = json.dumps({
+        "query": query,
+        "max_results": max_results,
+        "search_depth": "basic",
+        "include_answer": True,
+    }).encode()
     req = urllib_request.Request(
-        search_url,
-        headers={"User-Agent": "Jarvis/2.0 (personal assistant)"},
+        "https://api.tavily.com/search",
+        data=payload,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
     )
     try:
-        with urllib_request.urlopen(req, timeout=15) as response:
-            raw = response.read().decode("utf-8", errors="replace")
+        with urllib_request.urlopen(req, timeout=20) as response:
+            data = json.loads(response.read())
     except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
         return {"error": f"Search failed: {exc}", "status": "error"}
 
-    # Extract result snippets from DuckDuckGo HTML
-    results: list[str] = []
-    for match in re.finditer(
-        r'class="result__snippet"[^>]*>(.*?)</[^>]+>', raw, re.DOTALL
-    ):
-        snippet = re.sub(r"<[^>]+>", "", match.group(1)).strip()
-        snippet = html.unescape(snippet)
-        if snippet:
-            results.append(snippet)
-        if len(results) >= 8:
-            break
+    lines: list[str] = []
+    if data.get("answer"):
+        lines.append(f"**Summary:** {data['answer']}\n")
+    for i, r in enumerate(data.get("results", []), 1):
+        title = r.get("title", "")
+        url = r.get("url", "")
+        content = r.get("content", "")[:300]
+        lines.append(f"{i}. **{title}**\n   {content}\n   {url}")
+    text = "\n\n".join(lines) if lines else "[no results]"
+    return {"text": text, "result_count": len(data.get("results", [])), "query": query, "status": "ok"}
 
-    text = "\n\n".join(f"{i+1}. {r}" for i, r in enumerate(results)) if results else "[no results]"
-    return {"text": text, "result_count": len(results), "query": query, "status": "ok"}
+
+def _read_user_location() -> str:
+    """Read Location from workspace/default/USER.md."""
+    try:
+        user_md = PROJECT_ROOT / "workspace" / "default" / "USER.md"
+        for line in user_md.read_text(encoding="utf-8").splitlines():
+            if line.startswith("Location:"):
+                return line.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return "Svendborg, Denmark"
+
+
+def _exec_get_weather(args: dict[str, Any]) -> dict[str, Any]:
+    """Current weather via OpenWeatherMap."""
+    city = str(args.get("city") or "").strip() or _read_user_location()
+
+    api_key = _read_api_key("openweathermap_api_key")
+    if not api_key:
+        return {"error": "openweathermap_api_key not configured in runtime.json", "status": "error"}
+
+    url = (
+        f"https://api.openweathermap.org/data/2.5/weather"
+        f"?q={urllib_request.quote(city)}&appid={api_key}&units=metric&lang=en"
+    )
+    try:
+        with urllib_request.urlopen(urllib_request.Request(url), timeout=10) as resp:
+            data = json.loads(resp.read())
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+        return {"error": f"Weather fetch failed: {exc}", "status": "error"}
+
+    main = data.get("main", {})
+    weather = data.get("weather", [{}])[0]
+    wind = data.get("wind", {})
+    name = data.get("name", city)
+    country = data.get("sys", {}).get("country", "")
+    return {
+        "city": f"{name}, {country}",
+        "description": weather.get("description", ""),
+        "temp_c": main.get("temp"),
+        "feels_like_c": main.get("feels_like"),
+        "humidity_pct": main.get("humidity"),
+        "wind_ms": wind.get("speed"),
+        "status": "ok",
+    }
+
+
+def _exec_get_exchange_rate(args: dict[str, Any]) -> dict[str, Any]:
+    """Currency exchange rates via exchangerate.host."""
+    base = str(args.get("base") or "DKK").strip().upper()
+    targets = str(args.get("targets") or "").strip().upper()
+
+    api_key = _read_api_key("exchangerate_api_key")
+    if not api_key:
+        return {"error": "exchangerate_api_key not configured in runtime.json", "status": "error"}
+
+    url = f"https://api.exchangerate.host/live?access_key={api_key}&source={base}"
+    if targets:
+        url += f"&currencies={targets}"
+    try:
+        with urllib_request.urlopen(urllib_request.Request(url), timeout=10) as resp:
+            data = json.loads(resp.read())
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+        return {"error": f"Exchange rate fetch failed: {exc}", "status": "error"}
+
+    if not data.get("success"):
+        return {"error": data.get("error", {}).get("info", "API error"), "status": "error"}
+
+    quotes = data.get("quotes", {})
+    # Strip source prefix from keys (e.g. "DKKUSD" → "USD")
+    rates = {k[len(base):]: v for k, v in quotes.items()}
+    return {"base": base, "rates": rates, "status": "ok"}
+
+
+def _exec_get_news(args: dict[str, Any]) -> dict[str, Any]:
+    """Recent news via NewsAPI."""
+    query = str(args.get("query") or "").strip()
+    if not query:
+        return {"error": "query is required", "status": "error"}
+    language = str(args.get("language") or "en").strip()
+    max_results = min(int(args.get("max_results") or 5), 10)
+
+    api_key = _read_api_key("newsapi_api_key")
+    if not api_key:
+        return {"error": "newsapi_api_key not configured in runtime.json", "status": "error"}
+
+    url = (
+        f"https://newsapi.org/v2/everything"
+        f"?q={urllib_request.quote(query)}&language={language}"
+        f"&pageSize={max_results}&sortBy=publishedAt&apiKey={api_key}"
+    )
+    try:
+        with urllib_request.urlopen(urllib_request.Request(url), timeout=15) as resp:
+            data = json.loads(resp.read())
+    except (urllib_error.URLError, urllib_error.HTTPError, OSError) as exc:
+        return {"error": f"News fetch failed: {exc}", "status": "error"}
+
+    articles = data.get("articles", [])
+    lines: list[str] = []
+    for i, a in enumerate(articles, 1):
+        title = a.get("title", "")
+        source = a.get("source", {}).get("name", "")
+        published = a.get("publishedAt", "")[:10]
+        description = (a.get("description") or "")[:200]
+        url_a = a.get("url", "")
+        lines.append(f"{i}. **{title}** ({source}, {published})\n   {description}\n   {url_a}")
+    text = "\n\n".join(lines) if lines else "[no articles found]"
+    return {"text": text, "article_count": len(articles), "query": query, "status": "ok"}
 
 
 def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
@@ -2711,6 +2903,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "bash": _exec_bash,
     "web_fetch": _exec_web_fetch,
     "web_search": _exec_web_search,
+    "get_weather": _exec_get_weather,
+    "get_exchange_rate": _exec_get_exchange_rate,
+    "get_news": _exec_get_news,
     "list_initiatives": _exec_list_initiatives,
     "push_initiative": _exec_push_initiative,
     "read_model_config": _exec_read_model_config,

@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from typing import Any, Literal
+
+
+DecisionMode = Literal["execute", "propose", "defer", "noop"]
+
+
+@dataclass(slots=True)
+class RuntimeDecisionInput:
+    cognitive_frame: dict[str, Any]
+    operational_memory: dict[str, Any]
+    loop_runtime: dict[str, Any]
+    initiative_state: dict[str, Any]
+    visible_state: dict[str, Any]
+    tool_intent_state: dict[str, Any]
+    timestamp_iso: str
+
+
+@dataclass(slots=True)
+class RuntimeActionCandidate:
+    action_id: str
+    score: float
+    reason: str
+    payload: dict[str, Any]
+    mode: DecisionMode
+
+
+@dataclass(slots=True)
+class RuntimeDecision:
+    mode: DecisionMode
+    action_id: str
+    reason: str
+    score: float
+    payload: dict[str, Any]
+    considered: list[dict[str, Any]]
+
+
+def decide_next_action(inputs: RuntimeDecisionInput) -> RuntimeDecision:
+    candidates = build_action_candidates(inputs)
+    return choose_best_candidate(candidates)
+
+
+def build_action_candidates(inputs: RuntimeDecisionInput) -> list[RuntimeActionCandidate]:
+    visible_active = bool((inputs.visible_state.get("summary") or {}).get("active"))
+    approval_pending = bool((inputs.tool_intent_state.get("summary") or {}).get("pending_count"))
+
+    candidates: list[RuntimeActionCandidate] = []
+    candidates.extend(_open_loop_candidates(inputs, visible_active=visible_active))
+    candidates.extend(_initiative_candidates(inputs, visible_active=visible_active))
+    candidates.extend(_memory_candidates(inputs, visible_active=visible_active))
+    candidates.extend(
+        _reflection_candidates(
+            inputs,
+            visible_active=visible_active,
+            approval_pending=approval_pending,
+        )
+    )
+
+    if not candidates:
+        candidates.append(
+            RuntimeActionCandidate(
+                action_id="noop",
+                score=0.0,
+                reason="No bounded action candidates were available.",
+                payload={},
+                mode="noop",
+            )
+        )
+    return sorted(candidates, key=lambda item: item.score, reverse=True)
+
+
+def choose_best_candidate(candidates: list[RuntimeActionCandidate]) -> RuntimeDecision:
+    if not candidates:
+        return RuntimeDecision(
+            mode="noop",
+            action_id="noop",
+            reason="No candidates were considered.",
+            score=0.0,
+            payload={},
+            considered=[],
+        )
+    winner = candidates[0]
+    return RuntimeDecision(
+        mode=winner.mode,
+        action_id=winner.action_id,
+        reason=winner.reason,
+        score=winner.score,
+        payload=dict(winner.payload),
+        considered=[asdict(candidate) for candidate in candidates],
+    )
+
+
+def _open_loop_candidates(
+    inputs: RuntimeDecisionInput,
+    *,
+    visible_active: bool,
+) -> list[RuntimeActionCandidate]:
+    loops = list(inputs.operational_memory.get("open_loops") or [])
+    if not loops:
+        return []
+    top_loop = loops[0]
+    status = str(top_loop.get("runtime_status") or top_loop.get("status") or "active")
+    title = str(top_loop.get("title") or top_loop.get("summary") or "Open loop").strip()
+    return [
+        RuntimeActionCandidate(
+            action_id="follow_open_loop",
+            score=0.85,
+            reason=f"Active open loop requires carry-forward: {title[:120]} ({status}).",
+            payload={
+                "loop_id": str(top_loop.get("loop_id") or ""),
+                "title": title[:200],
+                "status": status,
+            },
+            mode="propose" if visible_active else "execute",
+        )
+    ]
+
+
+def _initiative_candidates(
+    inputs: RuntimeDecisionInput,
+    *,
+    visible_active: bool,
+) -> list[RuntimeActionCandidate]:
+    initiatives = list(inputs.initiative_state.get("pending") or [])
+    if not initiatives:
+        return []
+    top_initiative = initiatives[0]
+    focus = str(top_initiative.get("focus") or "Pending initiative").strip()
+    initiative_id = str(top_initiative.get("initiative_id") or "")
+    return [
+        RuntimeActionCandidate(
+            action_id="promote_initiative_to_visible_lane",
+            score=0.8 if visible_active else 0.7,
+            reason=f"Queued initiative is waiting for bounded follow-up: {focus[:120]}.",
+            payload={
+                "initiative_id": initiative_id,
+                "focus": focus[:200],
+                "priority": str(top_initiative.get("priority") or "medium"),
+            },
+            mode="propose" if visible_active else "execute",
+        )
+    ]
+
+
+def _memory_candidates(
+    inputs: RuntimeDecisionInput,
+    *,
+    visible_active: bool,
+) -> list[RuntimeActionCandidate]:
+    summary = inputs.operational_memory.get("summary") or {}
+    stale = bool(summary.get("memory_context_stale"))
+    recent_outcomes = int(summary.get("recent_outcome_count") or 0)
+    if not stale and recent_outcomes > 0:
+        return []
+    return [
+        RuntimeActionCandidate(
+            action_id="refresh_memory_context",
+            score=0.55,
+            reason="Operational memory context is thin or stale, so refresh before larger moves.",
+            payload={"reason": "stale-operational-memory"},
+            mode="propose" if visible_active else "execute",
+        )
+    ]
+
+
+def _reflection_candidates(
+    inputs: RuntimeDecisionInput,
+    *,
+    visible_active: bool,
+    approval_pending: bool,
+) -> list[RuntimeActionCandidate]:
+    frame_summary = inputs.cognitive_frame.get("summary") or {}
+    current_mode = str(frame_summary.get("current_mode") or inputs.cognitive_frame.get("current_mode") or "watch")
+    contradiction_count = int((inputs.operational_memory.get("summary") or {}).get("contradiction_count") or 0)
+    if approval_pending or contradiction_count > 0 or current_mode == "clarify":
+        return [
+            RuntimeActionCandidate(
+                action_id="bounded_self_check",
+                score=0.65,
+                reason="Current state indicates clarification or contradiction pressure before action.",
+                payload={
+                    "current_mode": current_mode,
+                    "contradiction_count": contradiction_count,
+                },
+                mode="execute",
+            )
+        ]
+    if visible_active:
+        return [
+            RuntimeActionCandidate(
+                action_id="propose_next_user_step",
+                score=0.4,
+                reason="Visible lane is active but no stronger autonomous move dominates.",
+                payload={"current_mode": current_mode},
+                mode="propose",
+            )
+        ]
+    return [
+        RuntimeActionCandidate(
+            action_id="write_internal_work_note",
+            score=0.35,
+            reason="Quiet runtime state benefits from a small internal note rather than silence.",
+            payload={"current_mode": current_mode},
+            mode="execute",
+        )
+    ]

@@ -797,6 +797,11 @@ def post_council_message(
 
 
 def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
+    from apps.api.jarvis_api.services.council_deliberation_controller import (
+        DeliberationController,
+        DeliberationResult,
+    )
+
     session = get_council_session(council_id)
     if session is None:
         raise RuntimeError(f"unknown council: {council_id}")
@@ -974,7 +979,68 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             update_council_session(council_id, status="reporting", summary=summary_with_meta)
             return build_council_detail_surface(council_id) or {}
 
-    # ── Council synthesis ──────────────────────────────────────────────
+    # ── Council deliberation (controller-based) ────────────────────────
+    if mode == "council":
+        member_map = {str(m.get("role") or "member"): m for m in workers}
+
+        class _RuntimeController(DeliberationController):
+            def _run_round(self_inner) -> list[str]:
+                outputs = []
+                for role in self_inner.active_members:
+                    member = member_map.get(role)
+                    if member is None:
+                        continue
+                    out = _run_one_worker(member)
+                    if out:
+                        outputs.append(f"{out['role']}: {out['text'][:300]}")
+                return outputs or [f"(no output from {', '.join(self_inner.active_members)})"]
+
+            def _synthesize(self_inner, *, forced: bool = False) -> str:
+                transcript = "\n".join(self_inner._transcript_lines[-12:])
+                forced_note = (
+                    "\n\nNote: Rådet er gået i stå. Konkluder på baggrund af hvad der foreligger."
+                    if forced else ""
+                )
+                prompt = (
+                    f"Council topic: {str(session.get('topic') or '')}\n"
+                    f"Your role: synthesizer\n\n"
+                    f"Council transcript:\n{transcript}{forced_note}\n\n"
+                    "Produce a council conclusion in 2-4 sentences."
+                )
+                result = execute_cheap_lane(message=prompt)
+                return str(result.get("text") or "").strip()
+
+        ctrl = _RuntimeController(
+            topic=str(session.get("topic") or ""),
+            members=[str(m.get("role") or "member") for m in workers],
+            max_rounds=8,
+        )
+        dr: DeliberationResult = ctrl.run()
+        synthesis = dr.conclusion
+
+        create_agent_message(
+            message_id=f"agent-msg-{uuid4().hex}", thread_id=thread_id,
+            council_id=council_id, direction="council->jarvis",
+            role="assistant", kind="council-synthesis", content=synthesis,
+        )
+        update_council_session(council_id, status="reporting", summary=synthesis)
+        # Persist to council memory
+        try:
+            from apps.api.jarvis_api.services.council_memory_service import append_council_conclusion
+            append_council_conclusion(
+                topic=str(session.get("topic") or ""),
+                score=0.0,
+                members=[str(m.get("role") or "") for m in members],
+                signals=[],
+                transcript=dr.transcript[:1200],
+                conclusion=synthesis[:600],
+                initiative=None,
+            )
+        except Exception:
+            pass
+        return build_council_detail_surface(council_id) or {}
+
+    # ── Council synthesis (fallback for non-council modes) ─────────────
     if round_outputs:
         conflicts = _detect_swarm_conflicts(round_outputs)
         synthesis = " | ".join(f"{item['role']}: {_trim(item['text'], 180)}" for item in round_outputs[:5])
@@ -986,21 +1052,6 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             role="assistant", kind="council-synthesis", content=synthesis,
         )
         update_council_session(council_id, status="reporting", summary=synthesis)
-        # Persist to council memory
-        try:
-            from apps.api.jarvis_api.services.council_memory_service import append_council_conclusion
-            _members_list = [str(m.get("role") or "") for m in members]
-            append_council_conclusion(
-                topic=str(session.get("topic") or ""),
-                score=0.0,
-                members=_members_list,
-                signals=[],
-                transcript="\n".join(f"{o['role']}: {o['text'][:300]}" for o in round_outputs[:6]),
-                conclusion=synthesis[:600],
-                initiative=None,
-            )
-        except Exception:
-            pass
     else:
         update_council_session(council_id, status="reporting", summary=f"No {mode} outputs produced.")
     return build_council_detail_surface(council_id) or {}

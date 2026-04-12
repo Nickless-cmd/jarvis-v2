@@ -249,6 +249,8 @@ def _apply_feedback(
     feedback_summary = dict(inputs.operational_memory.get("executive_feedback_summary") or {})
     action_stats = dict(feedback_summary.get("action_stats") or {})
     stats = dict(action_stats.get(candidate.action_id) or {})
+    semantic_feedback = dict(inputs.operational_memory.get("semantic_feedback_summary") or {})
+    signal_stats = dict(semantic_feedback.get("signal_stats") or {})
     latest_action = str(feedback_summary.get("latest_action") or "")
     latest_status = str(feedback_summary.get("latest_status") or "")
     note_synergy = _matching_note_loop_synergy(candidate, inputs)
@@ -306,6 +308,13 @@ def _apply_feedback(
                 "Recent persisted work note reinforces this loop "
                 f"via matched terms {list(note_synergy.get('matched_terms') or [])[:4]}."
             )
+    score, semantic_reasons = _apply_semantic_feedback(
+        candidate,
+        inputs,
+        score=score,
+        signal_stats=signal_stats,
+    )
+    reasons.extend(semantic_reasons)
 
     return RuntimeActionCandidate(
         action_id=candidate.action_id,
@@ -341,3 +350,76 @@ def _top_open_loop_title(inputs: RuntimeDecisionInput) -> str:
         return ""
     top_loop = loops[0]
     return str(top_loop.get("title") or top_loop.get("summary") or "").strip()[:200]
+
+
+def _apply_semantic_feedback(
+    candidate: RuntimeActionCandidate,
+    inputs: RuntimeDecisionInput,
+    *,
+    score: float,
+    signal_stats: dict[str, dict[str, Any]],
+) -> tuple[float, list[str]]:
+    reasons: list[str] = []
+    adjusted = float(score)
+
+    task_created = _signal_weight(signal_stats, "task_created")
+    note_persisted = _signal_weight(signal_stats, "note_persisted")
+    repo_change = _signal_weight(signal_stats, "repo_actionable_change")
+    repo_blocked = _signal_weight(signal_stats, "repo_capability_blocked")
+    visible_proposal = _signal_weight(signal_stats, "visible_proposal_made")
+
+    if candidate.action_id == "follow_open_loop" and task_created > 0:
+        adjusted -= min(0.16, 0.10 * task_created)
+        reasons.append(
+            "Recent runtime-task-created feedback reduces immediate loop repetition "
+            f"(weight={task_created:.2f})."
+        )
+    if candidate.action_id == "write_internal_work_note" and note_persisted > 0:
+        adjusted -= min(0.12, 0.07 * note_persisted)
+        reasons.append(
+            "Recent note persistence lowers the value of writing another internal note immediately "
+            f"(weight={note_persisted:.2f})."
+        )
+    if candidate.action_id == "write_internal_work_note" and task_created > 0:
+        adjusted -= min(0.08, 0.05 * task_created)
+        reasons.append(
+            "A recently created runtime task already externalized work, so another note is less useful right now."
+        )
+    if (
+        candidate.action_id == "follow_open_loop"
+        and _candidate_is_repo_focused(candidate)
+        and repo_change > 0
+    ):
+        adjusted += min(0.14, 0.08 * repo_change)
+        reasons.append(
+            "Recent repo inspection surfaced actionable change, so carrying the loop forward is more timely "
+            f"(weight={repo_change:.2f})."
+        )
+    if candidate.action_id == "propose_next_user_step" and repo_blocked > 0:
+        adjusted += min(0.12, 0.08 * repo_blocked)
+        reasons.append(
+            "Recent repo capability blocking shifts value toward a visible next-step proposal "
+            f"(weight={repo_blocked:.2f})."
+        )
+    if candidate.action_id == "propose_next_user_step" and visible_proposal > 0:
+        adjusted -= min(0.10, 0.06 * visible_proposal)
+        reasons.append(
+            "A recent visible proposal already went out, so repeating that move is slightly deprioritized."
+        )
+    return adjusted, reasons
+
+
+def _signal_weight(signal_stats: dict[str, dict[str, Any]], signal: str) -> float:
+    bucket = dict(signal_stats.get(signal) or {})
+    return float(bucket.get("weight") or bucket.get("count") or 0.0)
+
+
+def _candidate_is_repo_focused(candidate: RuntimeActionCandidate) -> bool:
+    haystack = " ".join(
+        str(candidate.payload.get(key) or "")
+        for key in ("title", "focus", "canonical_key", "loop_id")
+    ).lower()
+    return any(
+        token in haystack
+        for token in ("repo", "git", "working tree", "branch", "commit", "code", "workspace")
+    )

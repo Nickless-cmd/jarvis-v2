@@ -10,7 +10,7 @@ import threading
 import urllib.request
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from core.skills.voice import wake_word
 from core.skills.voice.stt import listen_and_transcribe

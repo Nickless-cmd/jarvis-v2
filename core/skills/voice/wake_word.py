@@ -7,6 +7,7 @@ from faster_whisper import WhisperModel
 
 # PipeWire source for the USB camera microphone (picks up voice reliably)
 MIC_SOURCE = "alsa_input.usb-Generic_USB_Camera2_200901010001-03.iec958-stereo"
+PAREC_BIN = "/home/linuxbrew/.linuxbrew/bin/parec"
 SAMPLE_RATE = 16000
 CLIP_SECONDS = 2  # window size for each Whisper transcription
 
@@ -42,24 +43,15 @@ def listen(callback=None, interrupt_event=None):
     model = _get_model()
     frame_bytes = SAMPLE_RATE * CLIP_SECONDS * 2  # s16le = 2 bytes/sample
 
-    proc = subprocess.Popen(
-        [
-            "parec",
-            f"--device={MIC_SOURCE}",
-            f"--rate={SAMPLE_RATE}",
-            "--channels=1",
-            "--format=s16le",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-    )
+    import os
+    env = {**os.environ, "XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}"}
 
     print(f"👂 Listening for 'Hey Jarvis'...")
 
     def _make_proc():
         return subprocess.Popen(
             [
-                "parec",
+                PAREC_BIN,
                 f"--device={MIC_SOURCE}",
                 f"--rate={SAMPLE_RATE}",
                 "--channels=1",
@@ -67,6 +59,7 @@ def listen(callback=None, interrupt_event=None):
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
+            env=env,
         )
 
     proc = _make_proc()

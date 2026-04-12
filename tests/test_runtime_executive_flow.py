@@ -300,6 +300,47 @@ def test_decision_engine_dampens_internal_note_after_task_and_note_feedback(
     assert "recently created runtime task already externalized work" in dampened.reason.lower()
 
 
+def test_decision_engine_dampens_similar_actions_from_persistent_family_failures(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_decision_engine import (
+        RuntimeActionCandidate,
+        RuntimeDecisionInput,
+        _apply_feedback,
+    )
+
+    base_candidate = RuntimeActionCandidate(
+        action_id="propose_next_user_step",
+        score=0.4,
+        reason="Visible lane is active but no stronger autonomous move dominates.",
+        payload={"current_mode": "respond"},
+        mode="propose",
+    )
+    dampened = _apply_feedback(
+        base_candidate,
+        RuntimeDecisionInput(
+            cognitive_frame={"summary": {"current_mode": "respond"}},
+            operational_memory={
+                "runtime_learning_summary": {
+                    "family_signal_stats": {
+                        "visible_prompting": {
+                            "family_failed": {"weight": 1.0},
+                        }
+                    }
+                }
+            },
+            loop_runtime={"items": []},
+            initiative_state={"pending": []},
+            visible_state={"summary": {"active": True}},
+            tool_intent_state={"summary": {"pending_count": 0}},
+            timestamp_iso="2026-04-12T10:12:00+00:00",
+        ),
+    )
+
+    assert dampened.score < base_candidate.score
+    assert "Persistent family-level failures dampen similar visible_prompting actions" in dampened.reason
+
+
 def test_operational_memory_summarizes_recent_executive_feedback(
     isolated_runtime,
 ) -> None:
@@ -403,6 +444,39 @@ def test_operational_memory_summarizes_semantic_feedback_from_side_effects(
     assert signals["repo_context_inspected"]["count"] == 1
     assert signals["repo_actionable_change"]["count"] == 1
     assert signals["task_created"]["count"] == 1
+
+
+def test_operational_memory_reads_persisted_runtime_learning_signals(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_action_outcome_tracking import (
+        record_runtime_action_outcome,
+    )
+    from apps.api.jarvis_api.services.runtime_operational_memory import (
+        build_operational_memory_snapshot,
+    )
+
+    record_runtime_action_outcome(
+        action_id="promote_initiative_to_visible_lane",
+        mode="execute",
+        reason="Visible follow-up is blocked.",
+        score=0.7,
+        payload={"initiative_id": "init-1"},
+        result={
+            "status": "failed",
+            "summary": "Visible initiative promotion failed.",
+            "side_effects": [],
+            "details": {},
+        },
+    )
+
+    snapshot = build_operational_memory_snapshot(limit=8)
+    learning_summary = snapshot["runtime_learning_summary"]
+    visible_family = learning_summary["family_signal_stats"]["visible_prompting"]
+
+    assert snapshot["summary"]["persistent_learning_signal_count"] >= 2
+    assert visible_family["family_failed"]["count"] == 1
+    assert visible_family["family_failed"]["weight"] > 0.8
 
 
 def test_operational_memory_detects_note_loop_synergy(

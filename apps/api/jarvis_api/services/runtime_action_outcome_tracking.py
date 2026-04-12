@@ -3,6 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from apps.api.jarvis_api.services.runtime_learning_signals import (
+    extract_runtime_learning_signals,
+)
 from core.eventbus.bus import event_bus
 
 
@@ -31,6 +34,7 @@ def record_runtime_action_outcome(
     }
 
     stored = _persist_runtime_action_outcome(normalized)
+    learning_signals = _persist_learning_signals(stored)
     event_bus.publish(
         "runtime.executive_action_outcome_recorded",
         {
@@ -39,6 +43,7 @@ def record_runtime_action_outcome(
             "result_status": normalized["result_status"],
             "result_summary": normalized["result_summary"],
             "recorded_at": recorded_at,
+            "learning_signal_count": len(learning_signals),
         },
     )
     return stored
@@ -86,3 +91,27 @@ def _persist_runtime_action_outcome(outcome: dict[str, Any]) -> dict[str, Any]:
         result_json=outcome.get("result") or {},
         recorded_at=str(outcome.get("recorded_at") or ""),
     )
+
+
+def _persist_learning_signals(outcome: dict[str, Any]) -> list[dict[str, Any]]:
+    from core.runtime import db as runtime_db
+
+    writer = getattr(runtime_db, "record_runtime_learning_signal", None)
+    if not callable(writer):
+        return []
+    stored: list[dict[str, Any]] = []
+    for signal in extract_runtime_learning_signals(outcome):
+        stored.append(
+            writer(
+                outcome_id=str(signal.get("outcome_id") or ""),
+                source_action_id=str(signal.get("source_action_id") or ""),
+                target_action_id=str(signal.get("target_action_id") or ""),
+                target_family=str(signal.get("target_family") or ""),
+                signal_key=str(signal.get("signal_key") or ""),
+                signal_weight=float(signal.get("signal_weight") or 0.0),
+                signal_count=int(signal.get("signal_count") or 1),
+                metadata_json=signal.get("metadata") or {},
+                recorded_at=str(signal.get("recorded_at") or ""),
+            )
+        )
+    return stored

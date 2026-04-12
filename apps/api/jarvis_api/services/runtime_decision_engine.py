@@ -103,7 +103,7 @@ def _open_loop_candidates(
     top_loop = loops[0]
     status = str(top_loop.get("runtime_status") or top_loop.get("status") or "active")
     title = str(top_loop.get("title") or top_loop.get("summary") or "Open loop").strip()
-    return [
+    candidates = [
         RuntimeActionCandidate(
             action_id="follow_open_loop",
             score=0.85,
@@ -112,10 +112,28 @@ def _open_loop_candidates(
                 "loop_id": str(top_loop.get("loop_id") or ""),
                 "title": title[:200],
                 "status": status,
+                "canonical_key": str(top_loop.get("canonical_key") or ""),
             },
             mode="propose" if visible_active else "execute",
         )
     ]
+    if _looks_repo_focused(top_loop):
+        candidates.append(
+            RuntimeActionCandidate(
+                action_id="inspect_repo_context",
+                score=0.92 if not visible_active else 0.74,
+                reason=f"Repo-focused open loop benefits from bounded repo inspection first: {title[:120]}.",
+                payload={
+                    "loop_id": str(top_loop.get("loop_id") or ""),
+                    "title": title[:200],
+                    "status": status,
+                    "canonical_key": str(top_loop.get("canonical_key") or ""),
+                    "focus": title[:200],
+                },
+                mode="execute" if not visible_active else "propose",
+            )
+        )
+    return candidates
 
 
 def _initiative_candidates(
@@ -202,7 +220,18 @@ def _reflection_candidates(
             action_id="write_internal_work_note",
             score=0.35,
             reason="Quiet runtime state benefits from a small internal note rather than silence.",
-            payload={"current_mode": current_mode},
+            payload={"current_mode": current_mode, "reason": "quiet runtime state"},
             mode="execute",
         )
     ]
+
+
+def _looks_repo_focused(loop: dict[str, Any]) -> bool:
+    haystack = " ".join(
+        str(loop.get(key) or "")
+        for key in ("title", "summary", "canonical_key", "reason_code", "loop_id")
+    ).lower()
+    return any(
+        token in haystack
+        for token in ("repo", "git", "working tree", "branch", "commit", "code", "workspace")
+    )

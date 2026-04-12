@@ -2408,6 +2408,114 @@ def recent_visible_work_notes(limit: int = 5) -> list[dict[str, object]]:
     ]
 
 
+def record_visible_work_note(
+    *,
+    note_id: str,
+    work_id: str,
+    run_id: str,
+    status: str,
+    lane: str,
+    provider: str,
+    model: str,
+    user_message_preview: str = "",
+    capability_id: str = "",
+    work_preview: str = "",
+    projection_source: str = "",
+    created_at: str,
+    finished_at: str,
+) -> dict[str, object]:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO visible_work_notes (
+                note_id,
+                work_id,
+                run_id,
+                status,
+                lane,
+                provider,
+                model,
+                user_message_preview,
+                capability_id,
+                work_preview,
+                projection_source,
+                created_at,
+                finished_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                note_id=excluded.note_id,
+                work_id=excluded.work_id,
+                status=excluded.status,
+                lane=excluded.lane,
+                provider=excluded.provider,
+                model=excluded.model,
+                user_message_preview=excluded.user_message_preview,
+                capability_id=excluded.capability_id,
+                work_preview=excluded.work_preview,
+                projection_source=excluded.projection_source,
+                created_at=excluded.created_at,
+                finished_at=excluded.finished_at
+            """,
+            (
+                note_id,
+                work_id,
+                run_id,
+                status,
+                lane,
+                provider,
+                model,
+                user_message_preview,
+                capability_id,
+                work_preview,
+                projection_source,
+                created_at,
+                finished_at,
+            ),
+        )
+        conn.commit()
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                note_id,
+                work_id,
+                run_id,
+                status,
+                lane,
+                provider,
+                model,
+                user_message_preview,
+                capability_id,
+                work_preview,
+                projection_source,
+                created_at,
+                finished_at
+            FROM visible_work_notes
+            WHERE run_id = ?
+            LIMIT 1
+            """,
+            (run_id,),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("visible work note was not persisted")
+    return {
+        "note_id": row["note_id"],
+        "work_id": row["work_id"],
+        "run_id": row["run_id"],
+        "status": row["status"],
+        "lane": row["lane"],
+        "provider": row["provider"],
+        "model": row["model"],
+        "user_message_preview": row["user_message_preview"],
+        "capability_id": row["capability_id"],
+        "work_preview": row["work_preview"],
+        "projection_source": row["projection_source"],
+        "created_at": row["created_at"],
+        "finished_at": row["finished_at"],
+    }
+
+
 def recent_runtime_action_outcomes(limit: int = 10) -> list[dict[str, object]]:
     with connect() as conn:
         rows = conn.execute(

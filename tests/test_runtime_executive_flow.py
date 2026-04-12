@@ -15,8 +15,8 @@ def test_decision_engine_prefers_live_open_loop(isolated_runtime) -> None:
             operational_memory={
                 "open_loops": [
                     {
-                        "loop_id": "open-loop:repo",
-                        "title": "Inspect repo drift",
+                        "loop_id": "open-loop:memory",
+                        "title": "Carry the memory thread forward",
                         "runtime_status": "active",
                     }
                 ],
@@ -33,6 +33,41 @@ def test_decision_engine_prefers_live_open_loop(isolated_runtime) -> None:
     assert decision.action_id == "follow_open_loop"
     assert decision.mode == "execute"
     assert decision.score > 0.8
+
+
+def test_decision_engine_prefers_repo_inspection_for_repo_focused_open_loop(
+    isolated_runtime,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_decision_engine import (
+        RuntimeDecisionInput,
+        decide_next_action,
+    )
+
+    decision = decide_next_action(
+        RuntimeDecisionInput(
+            cognitive_frame={"summary": {"current_mode": "watch"}},
+            operational_memory={
+                "open_loops": [
+                    {
+                        "loop_id": "open-loop:repo-status",
+                        "title": "Inspect repo drift before next step",
+                        "runtime_status": "active",
+                        "canonical_key": "open-loop:repo-status",
+                    }
+                ],
+                "summary": {"recent_outcome_count": 1},
+            },
+            loop_runtime={"items": []},
+            initiative_state={"pending": []},
+            visible_state={"summary": {"active": False}},
+            tool_intent_state={"summary": {"pending_count": 0}},
+            timestamp_iso="2026-04-12T10:00:00+00:00",
+        )
+    )
+
+    assert decision.action_id == "inspect_repo_context"
+    assert decision.mode == "execute"
+    assert decision.score > 0.9
 
 
 def test_executor_and_outcome_tracking_persist_visible_proposal(
@@ -81,6 +116,105 @@ def test_executor_and_outcome_tracking_persist_visible_proposal(
     assert stored["action_id"] == "propose_next_user_step"
     assert recent[0]["outcome_id"] == stored["outcome_id"]
     assert recent[0]["result_status"] == "proposed"
+
+
+def test_executor_persists_internal_work_note(isolated_runtime) -> None:
+    from apps.api.jarvis_api.services.runtime_action_executor import (
+        execute_runtime_action,
+    )
+    from core.runtime.db import recent_visible_work_notes
+
+    result = execute_runtime_action(
+        action_id="write_internal_work_note",
+        payload={"current_mode": "watch", "reason": "repo follow-up pressure"},
+    )
+    recent = recent_visible_work_notes(limit=1)
+
+    assert result.status == "executed"
+    assert result.summary == "Persisted executive work note."
+    assert recent[0]["projection_source"] == "runtime-executive-note"
+    assert "repo follow-up pressure" in str(recent[0]["work_preview"])
+
+
+def test_executor_uses_repo_capability_and_bounded_surface(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    from apps.api.jarvis_api.services.runtime_action_executor import (
+        execute_runtime_action,
+    )
+
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.services.runtime_action_executor.invoke_workspace_capability",
+        lambda capability_id, **kwargs: {
+            "status": "executed",
+            "detail": "ok",
+            "result": {"text": " M apps/api/jarvis_api/services/runtime_action_executor.py"},
+        },
+    )
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.services.runtime_action_executor.build_self_system_code_awareness_surface",
+        lambda: {"host_context": {"repo_root": "/media/projects/jarvis-v2", "git_present": True}},
+    )
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.services.runtime_action_executor.build_bounded_repo_tool_execution_surface",
+        lambda intent_surface, awareness_surface=None: {
+            "execution_summary": "Repo status on main: repo=dirty, changes=modified, upstream=in-sync.",
+            "execution_state": "read-only-completed",
+            "execution_excerpt": ["branch=main"],
+        },
+    )
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.services.runtime_action_executor.load_workspace_capabilities",
+        lambda name="default": {"callable_capability_ids": ["tool:run-non-destructive-command"]},
+    )
+
+    result = execute_runtime_action(
+        action_id="inspect_repo_context",
+        payload={"focus": "inspect repo drift"},
+    )
+
+    assert result.status == "executed"
+    assert result.details["workspace_capability_id"] == "tool:run-non-destructive-command"
+    assert result.details["repo_operation"] == "inspect-repo-status"
+    assert result.details["bounded_repo_surface"]["execution_state"] == "read-only-completed"
+
+
+def test_executor_turns_open_loop_into_runtime_task(isolated_runtime, monkeypatch) -> None:
+    from apps.api.jarvis_api.services.runtime_action_executor import (
+        execute_runtime_action,
+    )
+
+    monkeypatch.setattr(
+        "apps.api.jarvis_api.services.runtime_action_executor.build_runtime_open_loop_closure_proposal_surface",
+        lambda limit=8: {
+            "items": [
+                {
+                    "canonical_key": "open-loop-closure-proposal:close-now:repo-status",
+                    "summary": "Close the repo-status loop with a bounded inspection follow-up.",
+                    "closure_confidence": "high",
+                }
+            ]
+        },
+    )
+
+    result = execute_runtime_action(
+        action_id="follow_open_loop",
+        payload={
+            "loop_id": "open-loop:repo-status",
+            "canonical_key": "open-loop:repo-status",
+            "title": "Inspect repo drift",
+            "status": "active",
+        },
+    )
+
+    task = result.details["task"]
+    assert result.status == "executed"
+    assert task["kind"] == "open-loop-follow-up"
+    assert task["origin"] == "runtime-executive"
+    assert task["priority"] == "high"
+    assert task["scope"] == "open-loop:repo-status"
+    assert result.details["closure_proposal"]["closure_confidence"] == "high"
 
 
 def test_heartbeat_tick_persists_executive_action_metadata(

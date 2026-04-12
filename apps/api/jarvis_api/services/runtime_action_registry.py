@@ -51,7 +51,7 @@ _ACTION_SPECS: tuple[RuntimeActionSpec, ...] = (
         allowed_when_visible_active=False,
         allowed_when_idle=True,
         max_per_hour=4,
-        requires_capability="project_grep",
+        requires_capability="tool:run-non-destructive-command",
     ),
     RuntimeActionSpec(
         action_id="review_recent_conversations",

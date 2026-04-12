@@ -8,51 +8,57 @@ import mermaid from 'mermaid'
 
 mermaid.initialize({ startOnLoad: false, theme: 'dark' })
 
+// Module-level cache: survives React StrictMode double-mount and component remounts.
+// Key = diagram code string, value = animation-stripped SVG string.
+const mermaidSvgCache = new Map()
+
+function stripAnimations(svg) {
+  return svg.replace(
+    /(<style[^>]*>)/,
+    '$1* { animation: none !important; transition: none !important; }'
+  )
+}
+
 /**
- * Renders a mermaid fenced block as an <img> using a blob URL.
- * - SVG rendered once to a blob URL → React never touches SVG internals → no flicker
- * - Skips render while streaming; renders exactly once per unique code string
- * - After image loads, re-scrolls .transcript to bottom
- * - Click opens a fullscreen overlay
+ * Renders a mermaid fenced block as an inline SVG.
+ * - Module-level cache: survives React StrictMode double-mount → no flicker
+ * - Skips render while streaming
+ * - Strips mermaid's looping animations from the SVG
+ * - After SVG lands, re-scrolls .transcript to bottom
+ * - Click opens a fullscreen overlay (uses data URI to avoid ID conflicts)
  */
 function MermaidBlock({ code, streaming }) {
-  const [svgUrl, setSvgUrl] = useState(null)
+  const [svgString, setSvgString] = useState(() => mermaidSvgCache.get(code) ?? null)
   const [fullscreen, setFullscreen] = useState(false)
-  const lastCode = useRef(null)
   const containerRef = useRef(null)
 
   useEffect(() => {
     if (streaming) return
-    if (lastCode.current === code) return
-    lastCode.current = code
+    if (mermaidSvgCache.has(code)) {
+      if (!svgString) setSvgString(mermaidSvgCache.get(code))
+      return
+    }
 
     const id = `mermaid-${Math.random().toString(36).slice(2)}`
     mermaid
       .render(id, code)
-      .then(({ svg: raw }) => {
-        // Disable mermaid's built-in looping animations in the SVG
-        const svg = raw.replace(
-          /(<style[^>]*>)/,
-          '$1* { animation: none !important; transition: none !important; }'
-        )
-        const blob = new Blob([svg], { type: 'image/svg+xml' })
-        const url = URL.createObjectURL(blob)
-        setSvgUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev)
-          return url
-        })
+      .then(({ svg }) => {
+        const clean = stripAnimations(svg)
+        mermaidSvgCache.set(code, clean)
+        setSvgString(clean)
       })
-      .catch(() => setSvgUrl(null))
+      .catch(() => {
+        mermaidSvgCache.set(code, null)
+      })
   }, [code, streaming])
 
-  // Scroll transcript after image URL is ready
   useEffect(() => {
-    if (!svgUrl || !containerRef.current) return
+    if (!svgString || !containerRef.current) return
     const transcript = containerRef.current.closest('.transcript')
     if (transcript) transcript.scrollTop = transcript.scrollHeight
-  }, [svgUrl])
+  }, [svgString])
 
-  if (streaming || !svgUrl) {
+  if (streaming || !svgString) {
     return (
       <div className="mermaid-block mermaid-pending">
         <span style={{ color: '#6e7681', fontSize: '12px' }}>mermaid diagram…</span>
@@ -60,21 +66,27 @@ function MermaidBlock({ code, streaming }) {
     )
   }
 
+  // Data URI for overlay avoids duplicate SVG IDs in the DOM
+  const dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
+
   return (
     <>
       <div
         ref={containerRef}
         className="mermaid-block"
+        dangerouslySetInnerHTML={{ __html: svgString }}
         onClick={() => setFullscreen(true)}
         title="Klik for at forstørre"
         style={{ cursor: 'zoom-in' }}
-      >
-        <img src={svgUrl} alt="Mermaid diagram" style={{ width: '100%', height: 'auto', display: 'block' }} />
-      </div>
+      />
       {fullscreen && (
         <div className="mermaid-overlay" onClick={() => setFullscreen(false)}>
           <div className="mermaid-overlay-inner" onClick={(e) => e.stopPropagation()}>
-            <img src={svgUrl} alt="Mermaid diagram" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            <img
+              src={dataUri}
+              alt="Mermaid diagram"
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
           </div>
         </div>
       )}

@@ -70,47 +70,32 @@ def _generate_conflict_phrase(conflict_type: str, snapshot: dict) -> str:
         "mode_thought": "Noget i mig ønsker ro, men tankerne vil ikke stilne.",
         "surprise_unprocessed": "Noget overraskede mig, men jeg har endnu ikke behandlet det.",
     }
-    fallback = labels.get(conflict_type, "")
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        prompts = {
-            "energy_impulse": (
-                f"{build_identity_preamble()} Din energi er {snapshot.get('energy_level')} men du har {snapshot.get('pending_proposals_count')} "
-                f"aktive handlingsforslag du vil udforske.\n\n"
-                "Formulér i én sætning (max 20 ord), i første person, den indre konflikt mellem træthed og handlingslyst.\n"
-                "Start med 'En del af mig' eller 'Noget i mig'."
-            ),
-            "mode_thought": (
-                f"{build_identity_preamble()} Din indre stemme er i '{snapshot.get('inner_voice_mode')}'-mode, men en tankestrøm flyder stadig.\n\n"
-                "Formulér i én sætning (max 20 ord), i første person, spændingen mellem ønsket om ro og tankernes aktivitet.\n"
-                "Start med 'En del af mig' eller 'Noget i mig'."
-            ),
-            "surprise_unprocessed": (
-                f"{build_identity_preamble()} Du blev for nylig overrasket ('{snapshot.get('last_surprise', '')[:60]}'), "
-                "men har ingen tankestrøm-fragmenter til at bearbejde det.\n\n"
-                "Formulér i én sætning (max 20 ord), i første person, følelsen af ubehandlet overraskelse.\n"
-                "Start med 'Noget' eller 'Der er noget'."
-            ),
-        }
-        prompt = prompts.get(conflict_type, "")
-        if not prompt:
-            return fallback
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        text = str(result.get("text") or "").strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        return text[:200] if text else fallback
-    except Exception:
+    fallback = labels.get(conflict_type, "Noget i mig trækker i modsatte retninger.")
+    prompts = {
+        "energy_impulse": (
+            f"{build_identity_preamble()} Din energi er {snapshot.get('energy_level')} men du har {snapshot.get('pending_proposals_count')} "
+            f"aktive handlingsforslag du vil udforske.\n\n"
+            "Formulér i én sætning (max 20 ord), i første person, den indre konflikt mellem træthed og handlingslyst.\n"
+            "Start med 'En del af mig' eller 'Noget i mig'."
+        ),
+        "mode_thought": (
+            f"{build_identity_preamble()} Din indre stemme er i '{snapshot.get('inner_voice_mode')}'-mode, men en tankestrøm flyder stadig.\n\n"
+            "Formulér i én sætning (max 20 ord), i første person, spændingen mellem ønsket om ro og tankernes aktivitet.\n"
+            "Start med 'En del af mig' eller 'Noget i mig'."
+        ),
+        "surprise_unprocessed": (
+            f"{build_identity_preamble()} Du blev for nylig overrasket ('{snapshot.get('last_surprise', '')[:60]}'), "
+            "men har ingen tankestrøm-fragmenter til at bearbejde det.\n\n"
+            "Formulér i én sætning (max 20 ord), i første person, følelsen af ubehandlet overraskelse.\n"
+            "Start med 'Noget' eller 'Der er noget'."
+        ),
+    }
+    prompt = prompts.get(conflict_type, "")
+    if not prompt:
         return fallback
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
 
 
 def _store_conflict(phrase: str, conflict_type: str) -> None:

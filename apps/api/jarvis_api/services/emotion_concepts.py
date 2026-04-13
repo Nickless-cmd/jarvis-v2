@@ -27,6 +27,13 @@ _MIN_INTENSITY = 0.05
 _active: dict[str, dict[str, Any]] = {}
 _lock = threading.Lock()
 
+# Fix 3: Accumulated residue deltas from expired concepts.
+# When a concept decays below MIN_INTENSITY, 15% of its final influence is
+# stored here. drain_expired_residue() returns and clears it so
+# personality_vector can write the residue back to emotional_baseline.
+_expired_residue: dict[str, float] = {ax: 0.0 for ax in ("confidence", "curiosity", "frustration", "fatigue")}
+_RESIDUE_FRACTION = 0.15
+
 _listener_thread: threading.Thread | None = None
 _listener_running: bool = False
 
@@ -135,7 +142,11 @@ def tick_emotion_concepts(elapsed_seconds: float) -> None:
 
     Uses a fractional exponent so decay is smooth regardless of tick interval.
     Removes concepts that fall below _MIN_INTENSITY.
+
+    Fix 3: When a concept expires, 15% of its final influence deltas are
+    accumulated in _expired_residue so personality_vector can persist a trace.
     """
+    global _expired_residue
     tick_fraction = elapsed_seconds / _TICK_SECONDS
     decay = _DECAY_FACTOR ** tick_fraction
 
@@ -145,6 +156,12 @@ def tick_emotion_concepts(elapsed_seconds: float) -> None:
             new_intensity = signal["intensity"] * decay
             if new_intensity < _MIN_INTENSITY:
                 to_remove.append(concept)
+                # Accumulate residue from this concept's final state
+                for axis, base_delta in INFLUENCE_MAP.get(concept, {}).items():
+                    if axis in _expired_residue:
+                        residue = base_delta * signal["intensity"] * _RESIDUE_FRACTION
+                        _expired_residue[axis] = max(-0.15, min(0.15,
+                            _expired_residue[axis] + residue))
             else:
                 old = signal["intensity"]
                 signal["intensity"] = new_intensity
@@ -153,6 +170,20 @@ def tick_emotion_concepts(elapsed_seconds: float) -> None:
                 )
         for concept in to_remove:
             del _active[concept]
+
+
+def drain_expired_residue() -> dict[str, float]:
+    """Return accumulated residue deltas from expired concepts and reset to zero.
+
+    Called by personality_vector._deterministic_update to persist a small
+    trace of prolonged emotional states back into emotional_baseline.
+    """
+    global _expired_residue
+    with _lock:
+        residue = dict(_expired_residue)
+        _expired_residue = {ax: 0.0 for ax in _expired_residue}
+    # Only return non-trivial deltas
+    return {k: round(v, 4) for k, v in residue.items() if abs(v) > 0.001}
 
 
 def get_active_emotion_concepts() -> list[dict[str, Any]]:

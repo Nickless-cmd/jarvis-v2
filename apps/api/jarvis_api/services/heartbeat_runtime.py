@@ -5997,6 +5997,26 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "consent-error",
             }
 
+    if action_type == "cleanup_web_cache":
+        try:
+            from core.runtime.db import connect, web_cache_cleanup
+
+            with connect() as cache_conn:
+                deleted = web_cache_cleanup(conn=cache_conn)
+            return {
+                "status": "executed",
+                "summary": f"Web cache cleanup: {deleted} expired entries removed.",
+                "artifact": json.dumps({"deleted_count": deleted}),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {
+                "status": "blocked",
+                "summary": f"Web cache cleanup failed: {exc!s}"[:200],
+                "artifact": "",
+                "blocked_reason": "web-cache-cleanup-error",
+            }
+
     return {
         "status": "blocked",
         "summary": f"Heartbeat execute action {action_type or 'unknown'} is not supported.",

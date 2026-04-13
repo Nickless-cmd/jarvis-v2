@@ -373,3 +373,22 @@ class TestExecWebSearchIntegration:
         result = simple_tools._exec_web_search({"query": "test"})
         assert result["source"] == "cache"
         assert result["cache_key"] == "abc"
+
+
+class TestHeartbeatCleanupAction:
+    def test_cleanup_action_returns_executed(self):
+        import json
+        from pathlib import Path
+
+        from apps.api.jarvis_api.services.heartbeat_runtime import (
+            _execute_heartbeat_internal_action,
+        )
+
+        result = _execute_heartbeat_internal_action(
+            action_type="cleanup_web_cache",
+            tick_id="test-tick-001",
+            workspace_dir=Path("/tmp"),
+        )
+        assert result["status"] == "executed"
+        data = json.loads(result["artifact"])
+        assert "deleted_count" in data

@@ -60,7 +60,16 @@ def build_identity_preamble() -> str:
     """Return signal-driven identity string: '{name}. {bearing}. {energy}.'
 
     Falls back gracefully if signals are unavailable — always returns at least '{name}.'.
+    Uses tick_cache when active to avoid rebuilding 12+ times per heartbeat tick.
     """
+    try:
+        from apps.api.jarvis_api.services import tick_cache
+        cached = tick_cache.get("identity_preamble")
+        if cached is not None:
+            return cached
+    except Exception:
+        pass
+
     name = get_entity_name()
     parts = [name]
     bearing = _read_bearing()
@@ -69,4 +78,12 @@ def build_identity_preamble() -> str:
     energy = _read_energy()
     if energy:
         parts.append(f"Energi: {energy}")
-    return ". ".join(parts) + "."
+    result = ". ".join(parts) + "."
+
+    try:
+        from apps.api.jarvis_api.services import tick_cache
+        tick_cache.set("identity_preamble", result)
+    except Exception:
+        pass
+
+    return result

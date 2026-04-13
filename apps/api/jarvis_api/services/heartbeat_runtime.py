@@ -1743,6 +1743,13 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # --- Layer B: activate tick-scoped cache for daemon reads ---
+    try:
+        from apps.api.jarvis_api.services import tick_cache
+        tick_cache.start_tick()
+    except Exception:
+        pass
+
     # Somatic phrase
     if _dm.is_enabled("somatic"):
         try:
@@ -2121,6 +2128,13 @@ def _build_influence_trace(
             _dm.record_daemon_tick("council_memory", _cm_result or {})
         except Exception:
             pass
+
+    # --- Layer B: deactivate tick-scoped cache ---
+    try:
+        from apps.api.jarvis_api.services import tick_cache
+        tick_cache.end_tick()
+    except Exception:
+        pass
 
     planner_mode = str(adaptive_planner.get("planner_mode") or "incremental")
     plan_horizon = str(adaptive_planner.get("plan_horizon") or "near")

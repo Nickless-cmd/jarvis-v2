@@ -342,3 +342,34 @@ class TestCachedWebSearch:
 
         result = cached_web_search(query="vejr i dag", max_results=5, fetch_fn=fake_fetch, conn=mem_conn)
         assert result["ttl_policy"] == "short"
+
+
+# ── Integration tests ───────────────────────────────────────────
+
+
+class TestExecWebSearchIntegration:
+    """Verify _exec_web_search uses cached_web_search."""
+
+    def test_exec_web_search_returns_source_field(self, monkeypatch):
+        from core.tools import simple_tools
+
+        def fake_cached_web_search(*, query, max_results, fetch_fn):
+            return {
+                "text": "cached result",
+                "source": "cache",
+                "cache_key": "abc",
+                "hit_count": 2,
+                "ttl_policy": "medium",
+                "status": "ok",
+                "result_count": 1,
+                "query": query,
+            }
+
+        monkeypatch.setattr(
+            "core.tools.simple_tools._cached_web_search_fn",
+            fake_cached_web_search,
+        )
+
+        result = simple_tools._exec_web_search({"query": "test"})
+        assert result["source"] == "cache"
+        assert result["cache_key"] == "abc"

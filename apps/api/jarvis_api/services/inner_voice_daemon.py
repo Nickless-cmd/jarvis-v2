@@ -63,6 +63,12 @@ _INNER_VOICE_META_PATTERNS = (
     r"\bi want to\b",
     r"\bi'll try\b",
     r"\bmaybe i should\b",
+    r"\bthis captures\b",
+    r"\bposition:\s",
+    r"\bdirection:\s",
+    r"- position:",
+    r"- direction:",
+    r"- mood:",
 )
 _INNER_VOICE_META_LINE_PREFIXES = (
     "attempt ",
@@ -500,6 +506,7 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
             "- If there is no real next-step pull, set initiative to null.",
             "- Optional mode field may be one of: searching, circling, carrying, pulled, witness-steady, work-steady.",
             "- Do not include revision notes, self-critique, style commentary, markdown emphasis, or labels like 'Attempt 2' inside the thought.",
+        "- Do not explain your output. No 'This captures:', no 'Position:', no 'Direction:', no 'Mood:' annotations. Just the raw thought.",
         ]
     )
 
@@ -931,7 +938,13 @@ def _sanitize_inner_voice_text(text: object, *, max_len: int = 400) -> str:
     if not value:
         return ""
     value = value.replace("\r", "\n")
+    # Strip everything after "This captures:" or similar LLM meta-commentary
+    value = re.split(r"\bThis captures\b|\bHere's what|\bThis conveys\b", value, flags=re.IGNORECASE)[0]
+    # Strip leading/trailing quotes that LLMs sometimes wrap output in
+    value = value.strip().strip('"').strip("'").strip()
     value = re.sub(r"[*_`#]+", "", value)
+    # Strip bullet-point meta lines: "- Position: ...", "- Direction: ...", "- Mood: ..."
+    value = re.sub(r"-\s*(?:Position|Direction|Mood|Tone|Style)\s*:.*", "", value, flags=re.IGNORECASE)
     value = re.sub(r"\s+", " ", value).strip()
     if not value:
         return ""

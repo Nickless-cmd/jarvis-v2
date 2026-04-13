@@ -137,3 +137,72 @@ def test_cognitive_assembly_ab_toggle_enabled() -> None:
         # Should not raise; may return None or a string depending on DB state
         result = csa.build_cognitive_state_for_prompt()
     assert result is None or isinstance(result, str)
+
+
+def test_cognitive_experiment_state_line_reflects_carry_but_keeps_blink_observational() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+
+    importlib.reload(csa)
+
+    surface = {
+        "systems": {
+            "global_workspace": {"label": "Global workspace"},
+            "hot_meta_cognition": {"label": "HOT meta-cognition"},
+            "surprise_afterimage": {"label": "Surprise persistence / afterimage"},
+            "recurrence": {"label": "Recurrence loop"},
+            "attention_blink": {"label": "Attention blink"},
+        },
+        "active_systems": [
+            "global_workspace",
+            "hot_meta_cognition",
+            "surprise_afterimage",
+            "recurrence",
+            "attention_blink",
+        ],
+        "observational_systems": ["attention_blink"],
+        "strongest_carry_system": "global_workspace",
+        "summary": "4/5 carry-capable active; blink=observational",
+    }
+    carry = {
+        "salience_pressure": "high",
+        "reflective_weight": "elevated",
+        "affective_pressure": "strong",
+        "recurrence_pressure": "medium",
+    }
+
+    csa._safe_cognitive_core_experiments_surface = lambda: surface
+    csa._safe_cognitive_experiment_carry_frame = lambda: carry
+
+    line = csa._build_cognitive_core_experiment_state_line(compact=False)
+
+    assert line is not None
+    assert "spotlight=high(workspace)" in line
+    assert "reflection=elevated(hot)" in line
+    assert "affect=strong(afterimage)" in line
+    assert "reentry=medium(recurrence)" in line
+    assert "assay=blink-observational" in line
+    assert "strongest=Attention blink" not in line
+
+
+def test_cognitive_state_assembly_injects_experiment_state_as_bounded_source() -> None:
+    import importlib
+    import unittest.mock as mock
+    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+    from core.runtime.settings import RuntimeSettings
+
+    importlib.reload(csa)
+
+    enabled_settings = RuntimeSettings(cognitive_state_assembly_enabled=True)
+
+    with mock.patch("core.runtime.settings.load_settings", return_value=enabled_settings):
+        csa._build_cognitive_core_experiment_state_line = (
+            lambda *, compact: "experiments: spotlight=high(workspace) | assay=blink-observational"
+        )
+        result = csa.build_cognitive_state_for_prompt(compact=True)
+
+    assert result is not None
+    assert "experiments: spotlight=high(workspace) | assay=blink-observational" in result
+
+    surface = csa.build_cognitive_state_injection_surface()
+    assert "cognitive_core_experiments" in (surface["last_injection"] or {}).get("sources", [])

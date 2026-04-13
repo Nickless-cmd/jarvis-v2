@@ -640,7 +640,7 @@ def run_private_brain_continuity(
         record_id=f"pb-{mode_label[:8]}-{uuid4().hex[:12]}",
         record_type=f"continuity-{mode_label}",
         layer="private_brain",
-        session_id="",  # continuity motor runs between sessions
+        session_id="heartbeat",  # continuity motor runs between sessions
         run_id="",
         focus=consolidated_focus[:200],
         summary=consolidated_summary[:400],

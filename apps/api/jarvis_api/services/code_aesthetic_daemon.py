@@ -138,7 +138,7 @@ def _store_reflection(reflection: str, now: datetime) -> None:
             record_id=f"pb-aesthetic-{uuid4().hex[:12]}",
             record_type="code-aesthetic-reflection",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"code-aesthetic-daemon-{uuid4().hex[:12]}",
             focus="kode-æstetik",
             summary=reflection,

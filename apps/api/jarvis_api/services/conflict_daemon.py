@@ -124,7 +124,7 @@ def _store_conflict(phrase: str, conflict_type: str) -> None:
             record_id=f"pb-conflict-{uuid4().hex[:12]}",
             record_type="inner-conflict",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"conflict-daemon-{uuid4().hex[:12]}",
             focus="indre-konflikt",
             summary=phrase,

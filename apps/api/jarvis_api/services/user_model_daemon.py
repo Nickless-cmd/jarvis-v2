@@ -177,7 +177,7 @@ def _store_model(summary: str, now: datetime) -> None:
             record_id=f"pb-usermodel-{uuid4().hex[:12]}",
             record_type="user-model-signal",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"user-model-daemon-{uuid4().hex[:12]}",
             focus="bruger-model",
             summary=summary,

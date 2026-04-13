@@ -169,6 +169,18 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         bearing = str(pv.get("current_bearing") or "").strip()
         version = pv.get("version", 0)
 
+        # Freshness check — suppress stale emotional_baseline from prompt if > 24h old
+        _pv_updated_at = str(pv.get("updated_at") or "")
+        _pv_stale = False
+        try:
+            from datetime import UTC, datetime as _dt
+            _pv_age = (_dt.now(UTC) - _dt.fromisoformat(_pv_updated_at.replace("Z", "+00:00"))).total_seconds()
+            if _pv_age > 86400:  # 24 hours
+                _pv_stale = True
+                emotional_baseline = {}  # don't inject 24h-old emotional state
+        except Exception:
+            pass
+
         if confidence_by_domain:
             top_domains = sorted(
                 confidence_by_domain.items(),

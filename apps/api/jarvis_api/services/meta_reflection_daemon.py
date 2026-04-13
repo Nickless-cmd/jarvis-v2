@@ -106,7 +106,7 @@ def _store_meta_insight(insight: str) -> None:
             record_id=f"pb-meta-{uuid4().hex[:12]}",
             record_type="meta-reflection",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"meta-reflection-daemon-{uuid4().hex[:12]}",
             focus="meta-mønster",
             summary=insight,

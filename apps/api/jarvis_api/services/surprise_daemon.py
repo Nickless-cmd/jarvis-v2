@@ -139,7 +139,7 @@ def _store_surprise(phrase: str, divergence: list[str]) -> None:
             record_id=f"pb-surprise-{uuid4().hex[:12]}",
             record_type="self-surprise",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"surprise-daemon-{uuid4().hex[:12]}",
             focus="reaktionsafvigelse",
             summary=phrase,

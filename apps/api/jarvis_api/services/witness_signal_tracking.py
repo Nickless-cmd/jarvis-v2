@@ -942,7 +942,7 @@ def run_witness_daemon(
     # Persist witness signals with synthetic IDs
     persisted = _persist_witness_signals(
         signals=candidates,
-        session_id="",
+        session_id="heartbeat",
         run_id=synthetic_run_id,
     )
 

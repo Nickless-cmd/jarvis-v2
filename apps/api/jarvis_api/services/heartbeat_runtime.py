@@ -5003,7 +5003,7 @@ def _execute_heartbeat_internal_action(
                     record_id=f"pb-initiative-{_uuid4().hex[:12]}",
                     record_type="initiative-acted",
                     layer="private_brain",
-                    session_id="",
+                    session_id="heartbeat",
                     run_id=tick_id,
                     focus=focus,
                     summary=f"Acted on initiative from {initiative.get('source', 'unknown')}: {focus}",

@@ -119,7 +119,7 @@ def _store_absence(label: str, duration_hours: float, now: datetime) -> None:
             record_id=f"pb-absence-{uuid4().hex[:12]}",
             record_type="absence-signal",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"absence-daemon-{uuid4().hex[:12]}",
             focus="fravær",
             summary=label,

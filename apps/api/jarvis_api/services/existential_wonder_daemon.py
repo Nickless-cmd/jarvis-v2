@@ -142,7 +142,7 @@ def _store_wonder(wonder: str, now: datetime) -> None:
             record_id=f"pb-wonder-{uuid4().hex[:12]}",
             record_type="existential-wonder",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"existential-wonder-daemon-{uuid4().hex[:12]}",
             focus="eksistentiel-undren",
             summary=wonder,

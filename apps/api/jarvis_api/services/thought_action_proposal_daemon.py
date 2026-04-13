@@ -49,7 +49,7 @@ def tick_thought_action_proposal_daemon(fragment: str) -> dict[str, object]:
             record_id=f"pb-tap-{uuid4().hex[:12]}",
             record_type="thought-action-proposal",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"tap-daemon-{uuid4().hex[:12]}",
             focus="handlingsimpuls",
             summary=classification["action_description"],

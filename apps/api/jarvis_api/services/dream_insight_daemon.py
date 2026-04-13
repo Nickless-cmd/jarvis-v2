@@ -60,7 +60,7 @@ def tick_dream_insight_daemon(*, signal_id: str, signal_summary: str) -> dict:
             record_id=f"pb-dream-insight-{uuid4().hex[:12]}",
             record_type="dream-insight",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"dream-insight-daemon-{uuid4().hex[:12]}",
             focus="drøm-indsigt",
             summary=signal_summary[:300],

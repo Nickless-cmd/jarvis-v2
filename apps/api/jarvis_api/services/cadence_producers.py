@@ -649,7 +649,7 @@ def sync_personality_to_self_model() -> dict[str, int]:
                     support_count=int(pv.get("version", 1)),
                     session_count=1,
                     run_id="",
-                    session_id="",
+                    session_id="heartbeat",
                     created_at=_now(),
                     updated_at=_now(),
                 )
@@ -675,7 +675,7 @@ def sync_personality_to_self_model() -> dict[str, int]:
                     support_count=int(pv.get("version", 1)),
                     session_count=1,
                     run_id="",
-                    session_id="",
+                    session_id="heartbeat",
                     created_at=_now(),
                     updated_at=_now(),
                 )

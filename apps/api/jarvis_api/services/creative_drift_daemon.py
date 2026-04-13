@@ -131,7 +131,7 @@ def _store_drift(idea: str, now: datetime) -> None:
             record_id=f"pb-drift-{uuid4().hex[:12]}",
             record_type="creative-drift-signal",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"creative-drift-daemon-{uuid4().hex[:12]}",
             focus="kreativ-drift",
             summary=idea,

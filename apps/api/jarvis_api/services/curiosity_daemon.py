@@ -98,7 +98,7 @@ def _store_curiosity(signal: str) -> None:
             record_id=f"pb-curiosity-{uuid4().hex[:12]}",
             record_type="curiosity-signal",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"curiosity-daemon-{uuid4().hex[:12]}",
             focus="nysgerrighed",
             summary=signal,

@@ -82,7 +82,7 @@ def refresh_runtime_awareness_signal_statuses() -> dict[str, int]:
 def build_runtime_awareness_signal_surface(*, limit: int = 8) -> dict[str, object]:
     # Passivt refresh: opdater signaler baseret på aktuel runtime-tilstand
     candidates = _extract_runtime_awareness_candidates()
-    _persist_runtime_awareness_signals(signals=candidates, session_id="", run_id="")
+    _persist_runtime_awareness_signals(signals=candidates, session_id="heartbeat", run_id="")
     refresh_runtime_awareness_signal_statuses()
     items = list_runtime_awareness_signals(limit=max(limit, 1))
     active = [item for item in items if str(item.get("status") or "") == "active"]

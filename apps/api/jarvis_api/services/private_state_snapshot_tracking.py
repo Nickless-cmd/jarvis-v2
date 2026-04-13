@@ -14,7 +14,7 @@ from core.runtime.db import (
     upsert_runtime_private_state_snapshot,
 )
 
-_STALE_AFTER_DAYS = 7
+_STALE_AFTER_DAYS = 2
 
 
 def track_runtime_private_state_snapshots_for_visible_turn(

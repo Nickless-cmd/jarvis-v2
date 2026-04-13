@@ -210,6 +210,19 @@ def _deterministic_update(
         baseline["confidence"] = max(0.0, float(baseline.get("confidence", 0.5)) - 0.05)
         baseline["frustration"] = min(1.0, float(baseline.get("frustration", 0.0)) + 0.03)
 
+    # Fix 3: Apply residue from recently expired emotion concepts (15% of their
+    # peak influence), so prolonged states leave a small trace in the baseline.
+    try:
+        from apps.api.jarvis_api.services.emotion_concepts import drain_expired_residue
+        residue = drain_expired_residue()
+        for axis, delta in residue.items():
+            current_val = float(baseline.get(axis, 0.5 if axis == "confidence" else 0.0))
+            baseline[axis] = max(0.0, min(1.0, current_val + delta))
+        if residue:
+            logger.debug("personality_vector: applied residue deltas %s", residue)
+    except Exception:
+        pass
+
     # Fix 5: Skip upsert if baseline is effectively unchanged
     if not _baseline_changed(current, baseline):
         logger.debug("personality_vector: deterministic update skipped — no effective change")

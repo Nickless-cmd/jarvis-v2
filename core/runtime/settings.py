@@ -23,6 +23,15 @@ class RuntimeSettings:
     heartbeat_auth_profile: str = ""
     heartbeat_local_only: bool = False
     relevance_model_name: str = "llama3.1:8b"
+    # Associative recall thresholds
+    recall_strong_threshold: float = 0.7
+    recall_weak_threshold: float = 0.3
+    recall_max_active: int = 5
+    recall_repetition_multiplier: float = 1.5
+    # Cognitive state assembly toggle
+    cognitive_state_assembly_enabled: bool = True
+    # Emotion decay
+    emotion_decay_factor: float = 0.97
 
     def to_dict(self) -> dict[str, str | int | bool]:
         return {
@@ -41,6 +50,12 @@ class RuntimeSettings:
             "heartbeat_auth_profile": self.heartbeat_auth_profile,
             "heartbeat_local_only": self.heartbeat_local_only,
             "relevance_model_name": self.relevance_model_name,
+            "recall_strong_threshold": self.recall_strong_threshold,
+            "recall_weak_threshold": self.recall_weak_threshold,
+            "recall_max_active": self.recall_max_active,
+            "recall_repetition_multiplier": self.recall_repetition_multiplier,
+            "cognitive_state_assembly_enabled": self.cognitive_state_assembly_enabled,
+            "emotion_decay_factor": self.emotion_decay_factor,
         }
 
 
@@ -84,6 +99,12 @@ def load_settings() -> RuntimeSettings:
         relevance_model_name=str(
             data.get("relevance_model_name", defaults.relevance_model_name)
         ),
+        recall_strong_threshold=float(data.get("recall_strong_threshold", defaults.recall_strong_threshold)),
+        recall_weak_threshold=float(data.get("recall_weak_threshold", defaults.recall_weak_threshold)),
+        recall_max_active=int(data.get("recall_max_active", defaults.recall_max_active)),
+        recall_repetition_multiplier=float(data.get("recall_repetition_multiplier", defaults.recall_repetition_multiplier)),
+        cognitive_state_assembly_enabled=bool(data.get("cognitive_state_assembly_enabled", defaults.cognitive_state_assembly_enabled)),
+        emotion_decay_factor=float(data.get("emotion_decay_factor", defaults.emotion_decay_factor)),
     )
 
 

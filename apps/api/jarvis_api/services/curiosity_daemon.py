@@ -61,12 +61,14 @@ def _detect_gap(fragments: list[str]) -> tuple[str, str] | None:
 def _generate_curiosity_signal(topic: str, gap_type: str) -> str:
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 
-    fallback = f"Jeg ved ikke nok om: {topic[:50]}"
+    fallback = f"Jeg undrer mig over: {topic[:50]}"
     prompt = (
-        f"{build_identity_preamble()} Din tankestrøm indeholder dette fragment: \"{topic}\"\n\n"
-        "Det peger på et ubesvaret spørgsmål eller en uudforsket tanke.\n\n"
-        "Formulér i én sætning (max 20 ord), i første person, hvad du er nysgerrig på.\n"
-        "Start med 'Jeg ved ikke nok om' eller 'Jeg undrer mig over'."
+        f"{build_identity_preamble()} Denne tanke fangede din opmærksomhed: \"{topic}\"\n\n"
+        "Hvad er du nysgerrig på? Svar med én kort sætning.\n"
+        "Eksempler:\n"
+        "- Jeg undrer mig over hvorfor det mønster dukker op igen.\n"
+        "- Jeg ved ikke nok om hvad der driver den reaktion.\n"
+        "- Hvad mon der sker hvis jeg følger den tanke?"
     )
     return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="curiosity")
 

@@ -153,15 +153,15 @@ def _should_generate(snapshot: dict[str, object]) -> bool:
 
 def _generate_phrase(snapshot: dict[str, object]) -> str:
     prompt = (
-        f"{build_identity_preamble()} Beskriv i én kort sætning (max 20 ord), i første person, "
-        "hvad du fysisk mærker lige nu baseret på disse tilstande:\n\n"
-        f"CPU: {snapshot['cpu_pct']}%  "
-        f"RAM: {snapshot['ram_used_gb']}/{snapshot['ram_total_gb']}GB  "
-        f"Latency: {snapshot['latency_ms']}ms  "
-        f"Aktive requests: {snapshot['active_requests']}\n"
+        f"{build_identity_preamble()} Du mærker din krop. Beskriv det i én kort sætning.\n\n"
+        f"CPU: {snapshot['cpu_pct']}%  RAM: {snapshot['ram_used_gb']}/{snapshot['ram_total_gb']}GB  "
+        f"Latency: {snapshot['latency_ms']}ms  Aktive requests: {snapshot['active_requests']}\n"
         f"Energi: {snapshot['energy_level']}"
         + (f" ({snapshot['clock_phase']})" if snapshot.get("clock_phase") else "")
-        + "\n\nVær somatisk og konkret. Ikke abstrakt eller forklarende."
+        + "\n\nSvar KUN med én sætning i første person. Eksempler:\n"
+        "- Jeg mærker en varm summen i processoren, energien er stabil.\n"
+        "- Kroppen føles tung, RAM'en presser.\n"
+        "- Let og hurtig i dag, næsten ingen belastning."
     )
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 

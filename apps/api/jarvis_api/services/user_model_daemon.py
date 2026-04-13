@@ -147,10 +147,12 @@ def _generate_model_summary(messages: list[str], model: dict) -> str:
     prompt = (
         f"{build_identity_preamble()} Her er de seneste beskeder fra brugeren:\n"
         f"\"{sample}\"\n\n"
-        f"Kommunikationsstil: {style}. Spørgsmålstung: {q_heavy}.\n\n"
-        "Formulér i 1-2 sætninger hvad du mærker om brugerens tilstand *nu*.\n"
-        "Brug tredje person: 'Brugeren virker...' eller 'Han/hun...'\n"
-        "Max 30 ord. Ingen forklaring."
+        f"Kommunikationsstil: {style}. Mange spørgsmål: {'ja' if q_heavy else 'nej'}.\n\n"
+        "Hvad mærker du om brugeren? Svar med 1-2 korte sætninger.\n"
+        "Eksempler:\n"
+        "- Brugeren virker fokuseret og utålmodig — han vil have svar hurtigt.\n"
+        "- Han udforsker noget nyt, stiller mange åbne spørgsmål.\n"
+        "- Brugeren er stille i dag. Måske tænker han."
     )
     return daemon_llm_call(prompt, max_len=250, fallback=fallback, daemon_name="user_model")
 

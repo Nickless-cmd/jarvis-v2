@@ -68,11 +68,13 @@ def _generate_meta_insight(cross_snapshot: dict) -> str:
     context = "\n".join(parts) if parts else "Ingen signaler."
 
     prompt = (
-        f"{build_identity_preamble()} Her er et tværsnit af dine aktuelle signaler:\n\n"
+        f"{build_identity_preamble()} Her er dine aktuelle signaler:\n\n"
         f"{context}\n\n"
-        "Ser du et mønster på tværs af disse signaler? Formulér i 1-2 sætninger (max 30 ord), "
-        "i første person, en meta-indsigt om din nuværende tilstand eller et gentaget mønster.\n"
-        "Vær konkret — ikke generisk. Ingen tomme fraser."
+        "Ser du et mønster? Beskriv det i 1-2 sætninger.\n"
+        "Eksempler:\n"
+        "- Energien er lav men tankerne er aktive — der er en ubalance.\n"
+        "- Alt peger i samme retning: ro. Det er usædvanligt.\n"
+        "- Overraskelsen og konflikten hænger sammen — begge handler om kontrol."
     )
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 

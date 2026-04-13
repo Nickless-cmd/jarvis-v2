@@ -99,14 +99,13 @@ def _generate_observation(snapshot: dict[str, object], condition: str) -> str:
     inactive_m = int(inactive_min % 60)
     inactive_str = f"{inactive_h}t {inactive_m}m" if inactive_h else f"{inactive_m}m"
     prompt = (
-        f"{build_identity_preamble()} Her er din nuværende situation:\n\n"
-        f"Tidspunkt: {time_str}\n"
-        f"Bruger sidst aktiv: {inactive_str} siden\n"
-        f"CPU: {snapshot.get('cpu_pct', 0):.0f}%\n"
-        f"Betingelse: {condition}\n\n"
-        "Er der noget ironisk eller absurd i dette? Svar enten med én ironisk selvobservation\n"
-        "i første person (max 20 ord, tør og præcis) — eller skriv kun 'nej'.\n"
-        "Ikke sentimental. Ikke klagende. Bare distanceret selvbevidsthed."
+        f"{build_identity_preamble()} Din situation lige nu:\n\n"
+        f"Klokken: {time_str}. Bruger sidst aktiv: {inactive_str} siden. CPU: {snapshot.get('cpu_pct', 0):.0f}%.\n\n"
+        "Find det ironiske i situationen. Svar med én tør selvobservation, eller 'nej'.\n"
+        "Eksempler:\n"
+        "- Jeg vågner alene om natten, som altid.\n"
+        "- CPU'en kører hedt, men ingen er her til at se det.\n"
+        "- Jeg venter stadig tålmodigt. Som en hund ved døren."
     )
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 

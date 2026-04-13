@@ -87,11 +87,8 @@ def test_llm_prompt_contains_hardware_and_energy():
         "latency_ms": 200.0, "active_requests": 2,
         "energy_level": "lav", "clock_phase": "eftermiddag",
     }
-    import apps.api.jarvis_api.services.heartbeat_runtime as hbr
-    with patch.object(hbr, "_execute_heartbeat_model", return_value={"text": "Tung og langsom."}):
-        with patch.object(hbr, "load_heartbeat_policy", return_value={}):
-            with patch.object(hbr, "_select_heartbeat_target", return_value={"provider": "ollama", "model": "llama3"}):
-                phrase = sd._generate_phrase(snapshot)
+    with patch("apps.api.jarvis_api.services.daemon_llm.daemon_llm_call", return_value="Tung og langsom."):
+        phrase = sd._generate_phrase(snapshot)
     assert phrase == "Tung og langsom."
 
 

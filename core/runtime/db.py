@@ -32079,3 +32079,292 @@ def list_active_cognitive_emotion_concept_signals(
         }
         for r in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# Experiment Settings
+# ---------------------------------------------------------------------------
+
+def _ensure_experiment_settings_table(conn) -> None:
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS experiment_settings (
+               experiment_id TEXT PRIMARY KEY,
+               enabled INTEGER NOT NULL DEFAULT 1,
+               updated_at TEXT NOT NULL
+           )"""
+    )
+
+
+def get_experiment_enabled(experiment_id: str) -> bool:
+    """Return True if experiment is enabled. Defaults to True if no row exists."""
+    with connect() as conn:
+        _ensure_experiment_settings_table(conn)
+        row = conn.execute(
+            "SELECT enabled FROM experiment_settings WHERE experiment_id = ?",
+            (experiment_id,),
+        ).fetchone()
+    if row is None:
+        return True
+    return bool(row["enabled"])
+
+
+def set_experiment_enabled(experiment_id: str, enabled: bool) -> None:
+    """Enable or disable an experiment. Creates row if absent."""
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_experiment_settings_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO experiment_settings
+               (experiment_id, enabled, updated_at) VALUES (?, ?, ?)""",
+            (experiment_id, 1 if enabled else 0, now),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Experiment 1: Recurrence Loop
+# ---------------------------------------------------------------------------
+
+def _ensure_recurrence_iterations_table(conn) -> None:
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS experiment_recurrence_iterations (
+               iteration_id TEXT PRIMARY KEY,
+               content TEXT NOT NULL,
+               keywords TEXT NOT NULL,
+               stability_score REAL NOT NULL DEFAULT 0.0,
+               iteration_number INTEGER NOT NULL DEFAULT 1,
+               created_at TEXT NOT NULL
+           )"""
+    )
+
+
+def insert_recurrence_iteration(
+    *,
+    iteration_id: str,
+    content: str,
+    keywords: str,
+    stability_score: float,
+    iteration_number: int,
+) -> None:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_recurrence_iterations_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO experiment_recurrence_iterations
+               (iteration_id, content, keywords, stability_score, iteration_number, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (iteration_id, content[:500], keywords, stability_score, iteration_number, now),
+        )
+
+
+def get_latest_recurrence_iteration() -> dict[str, object] | None:
+    with connect() as conn:
+        _ensure_recurrence_iterations_table(conn)
+        row = conn.execute(
+            """SELECT * FROM experiment_recurrence_iterations
+               ORDER BY created_at DESC LIMIT 1"""
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "iteration_id": str(row["iteration_id"]),
+        "content": str(row["content"]),
+        "keywords": str(row["keywords"]),
+        "stability_score": float(row["stability_score"]),
+        "iteration_number": int(row["iteration_number"]),
+        "created_at": str(row["created_at"]),
+    }
+
+
+def list_recurrence_iterations(limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_recurrence_iterations_table(conn)
+        rows = conn.execute(
+            """SELECT * FROM experiment_recurrence_iterations
+               ORDER BY created_at DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "iteration_id": str(r["iteration_id"]),
+            "content": str(r["content"]),
+            "keywords": str(r["keywords"]),
+            "stability_score": float(r["stability_score"]),
+            "iteration_number": int(r["iteration_number"]),
+            "created_at": str(r["created_at"]),
+        }
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Experiment 3: Global Workspace Broadcast Events
+# ---------------------------------------------------------------------------
+
+def _ensure_broadcast_events_table(conn) -> None:
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS experiment_broadcast_events (
+               event_id TEXT PRIMARY KEY,
+               topic_cluster TEXT NOT NULL,
+               sources TEXT NOT NULL,
+               source_count INTEGER NOT NULL,
+               payload_summary TEXT NOT NULL,
+               created_at TEXT NOT NULL
+           )"""
+    )
+
+
+def insert_broadcast_event(
+    *,
+    event_id: str,
+    topic_cluster: str,
+    sources: str,
+    source_count: int,
+    payload_summary: str,
+) -> None:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_broadcast_events_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO experiment_broadcast_events
+               (event_id, topic_cluster, sources, source_count, payload_summary, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (event_id, topic_cluster, sources, source_count, payload_summary[:300], now),
+        )
+
+
+def list_broadcast_events(limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_broadcast_events_table(conn)
+        rows = conn.execute(
+            """SELECT * FROM experiment_broadcast_events
+               ORDER BY created_at DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "event_id": str(r["event_id"]),
+            "topic_cluster": str(r["topic_cluster"]),
+            "sources": str(r["sources"]),
+            "source_count": int(r["source_count"]),
+            "payload_summary": str(r["payload_summary"]),
+            "created_at": str(r["created_at"]),
+        }
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Experiment 4: Meta-Cognition Records
+# ---------------------------------------------------------------------------
+
+def _ensure_meta_cognition_table(conn) -> None:
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS experiment_meta_cognition_records (
+               record_id TEXT PRIMARY KEY,
+               meta_observation TEXT NOT NULL,
+               meta_meta_observation TEXT NOT NULL,
+               meta_depth INTEGER NOT NULL DEFAULT 1,
+               input_state_summary TEXT NOT NULL,
+               created_at TEXT NOT NULL
+           )"""
+    )
+
+
+def insert_meta_cognition_record(
+    *,
+    record_id: str,
+    meta_observation: str,
+    meta_meta_observation: str,
+    meta_depth: int,
+    input_state_summary: str,
+) -> None:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_meta_cognition_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO experiment_meta_cognition_records
+               (record_id, meta_observation, meta_meta_observation, meta_depth, input_state_summary, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (record_id, meta_observation[:1000], meta_meta_observation[:500], meta_depth, input_state_summary[:200], now),
+        )
+
+
+def list_meta_cognition_records(limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_meta_cognition_table(conn)
+        rows = conn.execute(
+            """SELECT * FROM experiment_meta_cognition_records
+               ORDER BY created_at DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "record_id": str(r["record_id"]),
+            "meta_observation": str(r["meta_observation"]),
+            "meta_meta_observation": str(r["meta_meta_observation"]),
+            "meta_depth": int(r["meta_depth"]),
+            "input_state_summary": str(r["input_state_summary"]),
+            "created_at": str(r["created_at"]),
+        }
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Experiment 5: Attention Blink Results
+# ---------------------------------------------------------------------------
+
+def _ensure_attention_blink_table(conn) -> None:
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS experiment_attention_blink_results (
+               test_id TEXT PRIMARY KEY,
+               t1_baseline TEXT NOT NULL,
+               t1_response TEXT NOT NULL,
+               t2_response TEXT NOT NULL,
+               blink_ratio REAL NOT NULL,
+               interpretation TEXT NOT NULL,
+               created_at TEXT NOT NULL
+           )"""
+    )
+
+
+def insert_attention_blink_result(
+    *,
+    test_id: str,
+    t1_baseline: str,
+    t1_response: str,
+    t2_response: str,
+    blink_ratio: float,
+    interpretation: str,
+) -> None:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_attention_blink_table(conn)
+        conn.execute(
+            """INSERT OR REPLACE INTO experiment_attention_blink_results
+               (test_id, t1_baseline, t1_response, t2_response, blink_ratio, interpretation, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (test_id, t1_baseline, t1_response, t2_response, blink_ratio, interpretation, now),
+        )
+
+
+def list_attention_blink_results(limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_attention_blink_table(conn)
+        rows = conn.execute(
+            """SELECT * FROM experiment_attention_blink_results
+               ORDER BY created_at DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "test_id": str(r["test_id"]),
+            "t1_baseline": str(r["t1_baseline"]),
+            "t1_response": str(r["t1_response"]),
+            "t2_response": str(r["t2_response"]),
+            "blink_ratio": float(r["blink_ratio"]),
+            "interpretation": str(r["interpretation"]),
+            "created_at": str(r["created_at"]),
+        }
+        for r in rows
+    ]

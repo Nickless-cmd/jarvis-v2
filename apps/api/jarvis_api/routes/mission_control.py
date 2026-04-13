@@ -3632,3 +3632,63 @@ def mc_idle_thinking() -> dict:
     from apps.api.jarvis_api.services.idle_thinking import build_idle_thinking_surface
 
     return build_idle_thinking_surface()
+
+
+# ---------------------------------------------------------------------------
+# Consciousness Experiments
+# ---------------------------------------------------------------------------
+
+_KNOWN_EXPERIMENTS = [
+    "recurrence_loop",
+    "surprise_persistence",
+    "global_workspace",
+    "meta_cognition",
+    "attention_blink",
+]
+
+
+@router.get("/experiments")
+def mc_experiments() -> dict:
+    """List all consciousness experiments with their enabled status."""
+    from core.runtime.db import get_experiment_enabled
+    return {
+        "experiments": {
+            eid: get_experiment_enabled(eid) for eid in _KNOWN_EXPERIMENTS
+        }
+    }
+
+
+@router.post("/experiments/{experiment_id}/toggle")
+def mc_experiment_toggle(experiment_id: str) -> dict:
+    """Toggle a consciousness experiment on or off."""
+    from fastapi import HTTPException
+    from core.runtime.db import get_experiment_enabled, set_experiment_enabled
+    if experiment_id not in _KNOWN_EXPERIMENTS:
+        raise HTTPException(status_code=404, detail=f"Unknown experiment: {experiment_id}")
+    current = get_experiment_enabled(experiment_id)
+    set_experiment_enabled(experiment_id, not current)
+    return {"experiment_id": experiment_id, "enabled": not current}
+
+
+@router.get("/recurrence-state")
+def mc_recurrence_state() -> dict:
+    from apps.api.jarvis_api.services.recurrence_loop_daemon import build_recurrence_surface
+    return build_recurrence_surface()
+
+
+@router.get("/global-workspace")
+def mc_global_workspace() -> dict:
+    from apps.api.jarvis_api.services.broadcast_daemon import build_workspace_surface
+    return build_workspace_surface()
+
+
+@router.get("/meta-cognition")
+def mc_meta_cognition() -> dict:
+    from apps.api.jarvis_api.services.meta_cognition_daemon import build_meta_cognition_surface
+    return build_meta_cognition_surface()
+
+
+@router.get("/attention-profile")
+def mc_attention_profile() -> dict:
+    from apps.api.jarvis_api.services.attention_blink_test import build_attention_profile_surface
+    return build_attention_profile_surface()

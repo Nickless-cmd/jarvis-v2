@@ -91,6 +91,7 @@ def trigger_emotion_concept(
     intensity: float,
     trigger: str = "",
     source: str = "",
+    lifetime_hours: float = 2.0,
 ) -> dict[str, Any] | None:
     """Create or strengthen an active emotion concept instance.
 
@@ -104,7 +105,7 @@ def trigger_emotion_concept(
 
     intensity = max(0.0, min(1.0, float(intensity)))
     now = datetime.now(UTC)
-    expires_at = (now + timedelta(hours=2)).isoformat()
+    expires_at = (now + timedelta(hours=max(0.1, float(lifetime_hours)))).isoformat()
 
     with _lock:
         existing = _active.get(concept)

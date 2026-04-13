@@ -1596,13 +1596,8 @@ def _read_api_key(key: str) -> str:
         return ""
 
 
-def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
-    """Web search via Tavily API."""
-    query = str(args.get("query") or "").strip()
-    if not query:
-        return {"error": "query is required", "status": "error"}
-    max_results = min(int(args.get("max_results") or 5), 10)
-
+def _fetch_tavily(query: str, max_results: int) -> dict[str, Any]:
+    """Raw Tavily API call — no caching."""
     api_key = _read_api_key("tavily_api_key")
     if not api_key:
         return {"error": "tavily_api_key not configured in runtime.json", "status": "error"}
@@ -1634,6 +1629,23 @@ def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
         lines.append(f"{i}. **{title}**\n   {content}\n   {url}")
     text = "\n\n".join(lines) if lines else "[no results]"
     return {"text": text, "result_count": len(data.get("results", [])), "query": query, "status": "ok"}
+
+
+def _cached_web_search_fn(*, query: str, max_results: int, fetch_fn: Any) -> dict[str, Any]:
+    """Wrapper so tests can monkeypatch the cache layer."""
+    from core.tools.web_cache import cached_web_search
+
+    return cached_web_search(query=query, max_results=max_results, fetch_fn=fetch_fn)
+
+
+def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
+    """Web search via Tavily API with result caching."""
+    query = str(args.get("query") or "").strip()
+    if not query:
+        return {"error": "query is required", "status": "error"}
+    max_results = min(int(args.get("max_results") or 5), 10)
+
+    return _cached_web_search_fn(query=query, max_results=max_results, fetch_fn=_fetch_tavily)
 
 
 def _read_user_location() -> str:

@@ -23,6 +23,31 @@ from core.runtime.provider_router import resolve_provider_router_target
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Fix 1: Decay debounce — natural decay runs at most once per 30 minutes
+# ---------------------------------------------------------------------------
+_DECAY_DEBOUNCE_SECONDS = 1800  # 30 minutes
+_last_decay_ts: float | None = None
+_decay_lock = threading.Lock()
+
+
+def _should_apply_decay() -> bool:
+    """Return True if enough time has passed since the last decay application."""
+    import time
+    with _decay_lock:
+        if _last_decay_ts is None:
+            return True
+        return (time.monotonic() - _last_decay_ts) >= _DECAY_DEBOUNCE_SECONDS
+
+
+def _record_decay_timestamp() -> None:
+    """Record that decay was just applied."""
+    import time
+    global _last_decay_ts
+    with _decay_lock:
+        _last_decay_ts = time.monotonic()
+
+
 def _build_update_prompt() -> str:
     from apps.api.jarvis_api.services.identity_composer import get_entity_name
     name = get_entity_name()
@@ -159,12 +184,24 @@ def _deterministic_update(
     outcome_status: str,
     current: dict[str, object] | None,
 ) -> dict[str, object] | None:
-    """Fallback: small deterministic adjustments without LLM."""
-    baseline = json.loads(str(current.get("emotional_baseline") or "{}")) if current else {}
+    """Fallback: small deterministic adjustments without LLM.
 
-    # Natural decay — fatigue and frustration drift toward 0 over time
-    baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) * 0.95)
-    baseline["frustration"] = max(0.0, float(baseline.get("frustration", 0.0)) * 0.95)
+    Fix 1: Natural decay (×0.95) is debounced — applied at most once per 30
+    minutes to prevent repeated calls within the same session from erasing
+    justified emotional state.
+
+    Fix 5: If the computed baseline is identical to what's already stored
+    (within 0.001 tolerance), we skip the DB write entirely to avoid
+    inflating the version history with no-op entries.
+    """
+    baseline = json.loads(str(current.get("emotional_baseline") or "{}")) if current else {}
+    original_baseline = dict(baseline)
+
+    # Fix 1: Debounced natural decay — at most once per 30 minutes
+    if _should_apply_decay():
+        baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) * 0.95)
+        baseline["frustration"] = max(0.0, float(baseline.get("frustration", 0.0)) * 0.95)
+        _record_decay_timestamp()
 
     if outcome_status in ("completed", "success"):
         baseline["confidence"] = min(1.0, float(baseline.get("confidence", 0.5)) + 0.02)
@@ -172,6 +209,11 @@ def _deterministic_update(
     elif outcome_status in ("failed", "error"):
         baseline["confidence"] = max(0.0, float(baseline.get("confidence", 0.5)) - 0.05)
         baseline["frustration"] = min(1.0, float(baseline.get("frustration", 0.0)) + 0.03)
+
+    # Fix 5: Skip upsert if baseline is effectively unchanged
+    if not _baseline_changed(current, baseline):
+        logger.debug("personality_vector: deterministic update skipped — no effective change")
+        return current
 
     confidence_by_domain = json.loads(
         str(current.get("confidence_by_domain") or "{}") if current else "{}"
@@ -188,6 +230,9 @@ def _deterministic_update(
     )
 
 
+_EMOTIONAL_AXES = ("confidence", "curiosity", "fatigue", "frustration")
+
+
 def _merge_vector(current: dict, updates: dict) -> dict:
     """Deep merge updates into current vector."""
     result = {}
@@ -197,7 +242,15 @@ def _merge_vector(current: dict, updates: dict) -> dict:
         current_val = _safe_json_field(current.get(key), {})
         update_val = updates.get(key)
         if isinstance(update_val, dict):
-            result[key] = {**current_val, **update_val}
+            merged = {**current_val, **update_val}
+            # Fix 4: clamp emotional_baseline axes to [0.0, 1.0] so invalid LLM
+            # output (negatives, values > 1) cannot corrupt the baseline.
+            if key == "emotional_baseline":
+                merged = {
+                    k: max(0.0, min(1.0, float(v))) if k in _EMOTIONAL_AXES and v is not None else v
+                    for k, v in merged.items()
+                }
+            result[key] = merged
         else:
             result[key] = current_val
 
@@ -221,6 +274,20 @@ def _merge_vector(current: dict, updates: dict) -> dict:
     )
 
     return result
+
+
+def _baseline_changed(old: dict[str, object] | None, new_baseline: dict) -> bool:
+    """Fix 5 helper: return True if emotional_baseline values differ by > 0.001."""
+    if old is None:
+        return True
+    old_baseline = _safe_json_field(old.get("emotional_baseline"), {})
+    all_keys = set(old_baseline) | set(new_baseline)
+    for k in all_keys:
+        old_v = float(old_baseline.get(k) or 0.0)
+        new_v = float(new_baseline.get(k) or 0.0)
+        if abs(old_v - new_v) > 0.001:
+            return True
+    return False
 
 
 def _safe_json_field(value, default):

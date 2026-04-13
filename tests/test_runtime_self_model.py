@@ -2040,6 +2040,83 @@ def test_heartbeat_self_knowledge_backgrounds_dream_identity_carry_when_primary_
     assert "Dream carry identity shaping (bounded runtime truth, internal-only):" not in section
 
 
+def test_cognitive_core_experiment_awareness_prompt_section_reports_carry_and_observation(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "_cognitive_core_experiments_surface",
+        lambda: {
+            "systems": {
+                "global_workspace": {},
+                "hot_meta_cognition": {},
+                "surprise_afterimage": {},
+                "recurrence": {},
+                "attention_blink": {},
+            },
+            "active_systems": [
+                "global_workspace",
+                "hot_meta_cognition",
+                "surprise_afterimage",
+                "recurrence",
+                "attention_blink",
+            ],
+            "observational_systems": ["attention_blink"],
+        },
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "_cognitive_core_experiment_carry_snapshot",
+        lambda: {
+            "salience_pressure": "high",
+            "reflective_weight": "elevated",
+            "affective_pressure": "strong",
+            "recurrence_pressure": "medium",
+            "summary": "workspace spotlight elevated; meta-observation weight elevated; blink observational only",
+        },
+    )
+
+    section = runtime_self_model.build_cognitive_core_experiment_awareness_prompt_section()
+
+    assert section is not None
+    assert "active=global_workspace, hot_meta_cognition, surprise_afterimage, recurrence, attention_blink" in section
+    assert "carrying=global_workspace:spotlight, hot_meta_cognition:self-observation, surprise_afterimage:affective-carry, recurrence:re-entry" in section
+    assert "observational=attention_blink" in section
+
+
+def test_heartbeat_self_knowledge_backgrounds_cognitive_core_experiment_state(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    prompt_contract = isolated_runtime.prompt_contract
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_cognitive_core_experiment_awareness_prompt_section",
+        lambda: (
+            "Cognitive core experiments (derived runtime truth, internal-only):\n"
+            "- active=global_workspace, hot_meta_cognition, surprise_afterimage, recurrence, attention_blink"
+            " | carrying=global_workspace:spotlight, hot_meta_cognition:self-observation"
+            " | observational=attention_blink\n"
+            "- experiment_carry=workspace spotlight elevated; blink observational only"
+        ),
+    )
+
+    section = prompt_contract._heartbeat_self_knowledge_section()
+
+    assert section is not None
+    assert "Background runtime truths:" in section
+    assert (
+        "- Cognitive core experiments: active=global_workspace, hot_meta_cognition, surprise_afterimage, recurrence, attention_blink"
+        in section
+    )
+    assert "Cognitive core experiments (derived runtime truth, internal-only):" not in section
+
+
 # ---------------------------------------------------------------------------
 # Self-insight awareness (bounded narrative identity carry-forward)
 # ---------------------------------------------------------------------------

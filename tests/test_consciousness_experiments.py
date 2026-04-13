@@ -211,6 +211,57 @@ def test_tick_meta_cognition_disabled(isolated_runtime) -> None:
     assert result["reason"] == "disabled"
 
 
+# ---------------------------------------------------------------------------
+# Experiment 5: Attention Blink
+# ---------------------------------------------------------------------------
+
+def test_attention_blink_db_insert_and_list(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    db.insert_attention_blink_result(
+        test_id="blink-test-001",
+        t1_baseline='{"confidence": 0.5, "frustration": 0.2}',
+        t1_response='{"confidence": 0.4, "frustration": 0.5}',
+        t2_response='{"confidence": 0.45, "frustration": 0.35}',
+        blink_ratio=0.65,
+        interpretation="serial/blink-prone",
+    )
+    results = db.list_attention_blink_results(limit=5)
+    assert len(results) == 1
+    assert abs(results[0]["blink_ratio"] - 0.65) < 0.001
+    assert results[0]["interpretation"] == "serial/blink-prone"
+
+
+def test_blink_ratio_computation() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.attention_blink_test as abt
+    importlib.reload(abt)
+    t1 = {"confidence": 0.6, "frustration": 0.4, "fatigue": 0.2, "curiosity": 0.3}
+    t2 = {"confidence": 0.5, "frustration": 0.25, "fatigue": 0.15, "curiosity": 0.2}
+    ratio = abt._compute_blink_ratio(t1, t2)
+    # t1 total = 1.5, t2 total = 1.1, ratio = 1.1/1.5 ≈ 0.733
+    assert 0.7 < ratio < 0.8
+
+
+def test_blink_interpretation() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.attention_blink_test as abt
+    importlib.reload(abt)
+    assert abt._interpret_blink_ratio(0.5) == "serial/blink-prone"
+    assert abt._interpret_blink_ratio(0.69) == "serial/blink-prone"
+    assert abt._interpret_blink_ratio(0.7) == "parallel/blink-resistant"
+    assert abt._interpret_blink_ratio(1.0) == "parallel/blink-resistant"
+
+
+def test_run_attention_blink_skips_when_disabled(isolated_runtime) -> None:
+    isolated_runtime.db.set_experiment_enabled("attention_blink", False)
+    import importlib
+    import apps.api.jarvis_api.services.attention_blink_test as abt
+    importlib.reload(abt)
+    result = abt.run_attention_blink_test_if_due()
+    assert result["generated"] is False
+    assert result["reason"] == "disabled"
+
+
 def test_trigger_emotion_concept_custom_lifetime() -> None:
     import importlib
     import apps.api.jarvis_api.services.emotion_concepts as ec

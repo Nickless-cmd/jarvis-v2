@@ -1750,6 +1750,8 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # ── Group 1: Hardware/energy + thought foundation (Ollama KV-cache friendly) ──
+
     # Somatic phrase
     if _dm.is_enabled("somatic"):
         try:
@@ -1788,52 +1790,6 @@ def _build_influence_trace(
             _surprise = get_latest_surprise()
             if _surprise:
                 inputs_present.append(f"overraskelse: {_surprise}")
-        except Exception:
-            pass
-
-    # Aesthetic taste
-    if _dm.is_enabled("aesthetic_taste"):
-        try:
-            from apps.api.jarvis_api.services.aesthetic_taste_daemon import (
-                record_choice,
-                tick_taste_daemon,
-                get_latest_taste_insight,
-            )
-            from apps.api.jarvis_api.services.inner_voice_daemon import (
-                get_inner_voice_daemon_state,
-            )
-            from core.runtime.db import recent_visible_runs
-            _iv_state_t = get_inner_voice_daemon_state()
-            _iv_mode_t = str((_iv_state_t.get("last_result") or {}).get("mode") or "")
-            _style_signals: list[str] = []
-            _last_runs = recent_visible_runs(limit=1)
-            if _last_runs:
-                _preview = str(_last_runs[0].get("text_preview") or "")
-                _style_signals.append("short" if len(_preview.split()) < 100 else "long")
-                _style_signals.append("code_heavy" if "```" in _preview else "prose_heavy")
-                _dk = sum(1 for w in ["jeg", "er", "og", "det", "at", "en"] if w in _preview.lower())
-                _style_signals.append("danish" if _dk >= 2 else "english")
-            record_choice(mode=_iv_mode_t, style_signals=_style_signals)
-            _taste_result = tick_taste_daemon()
-            _dm.record_daemon_tick("aesthetic_taste", _taste_result or {})
-            _taste = get_latest_taste_insight()
-            if _taste:
-                inputs_present.append(f"smagstendens: {_taste}")
-        except Exception:
-            pass
-
-    # Irony
-    if _dm.is_enabled("irony"):
-        try:
-            from apps.api.jarvis_api.services.irony_daemon import (
-                tick_irony_daemon,
-                get_latest_irony_observation,
-            )
-            _irony_result = tick_irony_daemon()
-            _dm.record_daemon_tick("irony", _irony_result or {})
-            _irony = get_latest_irony_observation()
-            if _irony:
-                inputs_present.append(f"ironisk note: {_irony}")
         except Exception:
             pass
 
@@ -1909,6 +1865,8 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # ── Group 2: Reflection + curiosity ──
+
     # Reflection cycle
     if _dm.is_enabled("reflection_cycle"):
         try:
@@ -1968,6 +1926,102 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # User model daemon — theory of mind
+    if _dm.is_enabled("user_model"):
+        try:
+            from apps.api.jarvis_api.services.user_model_daemon import tick_user_model_daemon
+            _um_result = tick_user_model_daemon([])  # reads recent_visible_runs internally
+            _dm.record_daemon_tick("user_model", _um_result or {})
+        except Exception:
+            pass
+
+    # ── Group 3: Rare cadence (30min+/daily/weekly LLM daemons) ──
+
+    # Aesthetic taste
+    if _dm.is_enabled("aesthetic_taste"):
+        try:
+            from apps.api.jarvis_api.services.aesthetic_taste_daemon import (
+                record_choice,
+                tick_taste_daemon,
+                get_latest_taste_insight,
+            )
+            from apps.api.jarvis_api.services.inner_voice_daemon import (
+                get_inner_voice_daemon_state,
+            )
+            from core.runtime.db import recent_visible_runs
+            _iv_state_t = get_inner_voice_daemon_state()
+            _iv_mode_t = str((_iv_state_t.get("last_result") or {}).get("mode") or "")
+            _style_signals: list[str] = []
+            _last_runs = recent_visible_runs(limit=1)
+            if _last_runs:
+                _preview = str(_last_runs[0].get("text_preview") or "")
+                _style_signals.append("short" if len(_preview.split()) < 100 else "long")
+                _style_signals.append("code_heavy" if "```" in _preview else "prose_heavy")
+                _dk = sum(1 for w in ["jeg", "er", "og", "det", "at", "en"] if w in _preview.lower())
+                _style_signals.append("danish" if _dk >= 2 else "english")
+            record_choice(mode=_iv_mode_t, style_signals=_style_signals)
+            _taste_result = tick_taste_daemon()
+            _dm.record_daemon_tick("aesthetic_taste", _taste_result or {})
+            _taste = get_latest_taste_insight()
+            if _taste:
+                inputs_present.append(f"smagstendens: {_taste}")
+        except Exception:
+            pass
+
+    # Irony
+    if _dm.is_enabled("irony"):
+        try:
+            from apps.api.jarvis_api.services.irony_daemon import (
+                tick_irony_daemon,
+                get_latest_irony_observation,
+            )
+            _irony_result = tick_irony_daemon()
+            _dm.record_daemon_tick("irony", _irony_result or {})
+            _irony = get_latest_irony_observation()
+            if _irony:
+                inputs_present.append(f"ironisk note: {_irony}")
+        except Exception:
+            pass
+
+    # Development narrative daemon
+    if _dm.is_enabled("development_narrative"):
+        try:
+            from apps.api.jarvis_api.services.development_narrative_daemon import tick_development_narrative_daemon, get_latest_development_narrative
+            _dev_result = tick_development_narrative_daemon()
+            _dm.record_daemon_tick("development_narrative", _dev_result or {})
+            _dev_narr = get_latest_development_narrative()
+            if _dev_narr:
+                inputs_present.append(f"selvudvikling: {_dev_narr[:60]}")
+        except Exception:
+            pass
+
+    # Existential wonder daemon — open unanswered questions from self-observation
+    if _dm.is_enabled("existential_wonder"):
+        try:
+            from apps.api.jarvis_api.services.existential_wonder_daemon import tick_existential_wonder_daemon
+            from apps.api.jarvis_api.services.absence_daemon import build_absence_surface as _abs_surface
+            _abs = _abs_surface()
+            _wonder_absence_hours = float(_abs.get("absence_duration_hours") or 0)
+            _wonder_frag_count = int((_tss.get("fragment_count") or 0) if "_tss" in dir() else 0)
+            _wonder_result = tick_existential_wonder_daemon(
+                absence_hours=_wonder_absence_hours,
+                fragment_count=_wonder_frag_count,
+            )
+            _dm.record_daemon_tick("existential_wonder", _wonder_result or {})
+        except Exception:
+            pass
+
+    # Code aesthetic daemon — weekly codebase aesthetic reflection
+    if _dm.is_enabled("code_aesthetic"):
+        try:
+            from apps.api.jarvis_api.services.code_aesthetic_daemon import tick_code_aesthetic_daemon
+            _ca_result = tick_code_aesthetic_daemon()
+            _dm.record_daemon_tick("code_aesthetic", _ca_result or {})
+        except Exception:
+            pass
+
+    # ── Group 4: Non-LLM / independent daemons ──
+
     # Experienced time daemon
     if _dm.is_enabled("experienced_time"):
         try:
@@ -1981,18 +2035,6 @@ def _build_influence_trace(
             _felt_label = _et_result.get("felt_label", "")
             if _felt_label and _felt_label not in ("meget kort", ""):
                 inputs_present.append(f"oplevet tid: {_felt_label}")
-        except Exception:
-            pass
-
-    # Development narrative daemon
-    if _dm.is_enabled("development_narrative"):
-        try:
-            from apps.api.jarvis_api.services.development_narrative_daemon import tick_development_narrative_daemon, get_latest_development_narrative
-            _dev_result = tick_development_narrative_daemon()
-            _dm.record_daemon_tick("development_narrative", _dev_result or {})
-            _dev_narr = get_latest_development_narrative()
-            if _dev_narr:
-                inputs_present.append(f"selvudvikling: {_dev_narr[:60]}")
         except Exception:
             pass
 
@@ -2022,22 +2064,6 @@ def _build_influence_trace(
         except Exception:
             pass
 
-    # Existential wonder daemon — open unanswered questions from self-observation
-    if _dm.is_enabled("existential_wonder"):
-        try:
-            from apps.api.jarvis_api.services.existential_wonder_daemon import tick_existential_wonder_daemon
-            from apps.api.jarvis_api.services.absence_daemon import build_absence_surface as _abs_surface
-            _abs = _abs_surface()
-            _wonder_absence_hours = float(_abs.get("absence_duration_hours") or 0)
-            _wonder_frag_count = int((_tss.get("fragment_count") or 0) if "_tss" in dir() else 0)
-            _wonder_result = tick_existential_wonder_daemon(
-                absence_hours=_wonder_absence_hours,
-                fragment_count=_wonder_frag_count,
-            )
-            _dm.record_daemon_tick("existential_wonder", _wonder_result or {})
-        except Exception:
-            pass
-
     # Dream insight daemon — persist dream articulation output as private brain records
     if _dm.is_enabled("dream_insight"):
         try:
@@ -2055,15 +2081,6 @@ def _build_influence_trace(
             if _da_signal_id and _da_summary:
                 _di_result = tick_dream_insight_daemon(signal_id=_da_signal_id, signal_summary=_da_summary)
                 _dm.record_daemon_tick("dream_insight", _di_result or {})
-        except Exception:
-            pass
-
-    # Code aesthetic daemon — weekly codebase aesthetic reflection
-    if _dm.is_enabled("code_aesthetic"):
-        try:
-            from apps.api.jarvis_api.services.code_aesthetic_daemon import tick_code_aesthetic_daemon
-            _ca_result = tick_code_aesthetic_daemon()
-            _dm.record_daemon_tick("code_aesthetic", _ca_result or {})
         except Exception:
             pass
 
@@ -2086,15 +2103,6 @@ def _build_influence_trace(
             from apps.api.jarvis_api.services.signal_decay_daemon import tick_signal_decay_daemon
             _sd_result = tick_signal_decay_daemon()
             _dm.record_daemon_tick("signal_decay", _sd_result or {})
-        except Exception:
-            pass
-
-    # User model daemon — theory of mind
-    if _dm.is_enabled("user_model"):
-        try:
-            from apps.api.jarvis_api.services.user_model_daemon import tick_user_model_daemon
-            _um_result = tick_user_model_daemon([])  # reads recent_visible_runs internally
-            _dm.record_daemon_tick("user_model", _um_result or {})
         except Exception:
             pass
 

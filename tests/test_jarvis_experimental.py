@@ -42,3 +42,32 @@ def test_recall_logs_observability() -> None:
     importlib.reload(ar)
     result = ar.recall_for_message("hej verden test tekst", {})
     assert isinstance(result, list)
+
+
+def test_cognitive_assembly_ab_toggle_disabled() -> None:
+    """build_cognitive_state_for_prompt returns None when toggle is off."""
+    import importlib
+    import unittest.mock as mock
+    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+    importlib.reload(csa)
+    from core.runtime.settings import RuntimeSettings
+
+    disabled_settings = RuntimeSettings(cognitive_state_assembly_enabled=False)
+    with mock.patch("core.runtime.settings.load_settings", return_value=disabled_settings):
+        result = csa.build_cognitive_state_for_prompt()
+    assert result is None
+
+
+def test_cognitive_assembly_ab_toggle_enabled() -> None:
+    """build_cognitive_state_for_prompt proceeds when toggle is on (may return None if no data)."""
+    import importlib
+    import unittest.mock as mock
+    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+    importlib.reload(csa)
+    from core.runtime.settings import RuntimeSettings
+
+    enabled_settings = RuntimeSettings(cognitive_state_assembly_enabled=True)
+    with mock.patch("core.runtime.settings.load_settings", return_value=enabled_settings):
+        # Should not raise; may return None or a string depending on DB state
+        result = csa.build_cognitive_state_for_prompt()
+    assert result is None or isinstance(result, str)

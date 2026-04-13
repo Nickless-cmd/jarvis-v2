@@ -1261,6 +1261,11 @@ def _run_heartbeat_tick_locked(
         run_attention_blink_test_if_due()
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.dream_hypothesis_forced import maybe_force_dream_hypothesis
+        maybe_force_dream_hypothesis()
+    except Exception:
+        pass
 
     return HeartbeatExecutionResult(
         state=heartbeat_runtime_surface(name=name)["state"],

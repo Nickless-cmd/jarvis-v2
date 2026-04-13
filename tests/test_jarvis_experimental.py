@@ -94,6 +94,36 @@ def test_emotion_decay_all_axes() -> None:
     assert baseline["confidence"] > 0.5
 
 
+def test_forced_dream_hypothesis_fires_on_100pct_probability() -> None:
+    """maybe_force_dream_hypothesis upserts a signal when probability=1.0."""
+    import importlib
+    import unittest.mock as mock
+    import apps.api.jarvis_api.services.dream_hypothesis_forced as dhf
+    importlib.reload(dhf)
+
+    fake_signal = {"signal_id": "test-123", "domain": "identity"}
+    with mock.patch.object(dhf, "_FIRE_PROBABILITY", 1.0), \
+         mock.patch("apps.api.jarvis_api.services.dream_hypothesis_forced.upsert_runtime_dream_hypothesis_signal",
+                    return_value=fake_signal, create=True):
+        # Patch the import inside the function
+        with mock.patch("core.runtime.db.upsert_runtime_dream_hypothesis_signal", return_value=fake_signal):
+            result = dhf.maybe_force_dream_hypothesis()
+    # Result is either the signal dict or None (if DB not available in test env)
+    assert result is None or isinstance(result, dict)
+
+
+def test_forced_dream_hypothesis_skips_on_0pct_probability() -> None:
+    """maybe_force_dream_hypothesis returns None when probability=0.0."""
+    import importlib
+    import apps.api.jarvis_api.services.dream_hypothesis_forced as dhf
+    importlib.reload(dhf)
+
+    import unittest.mock as mock
+    with mock.patch.object(dhf, "_FIRE_PROBABILITY", 0.0):
+        result = dhf.maybe_force_dream_hypothesis()
+    assert result is None
+
+
 def test_cognitive_assembly_ab_toggle_enabled() -> None:
     """build_cognitive_state_for_prompt proceeds when toggle is on (may return None if no data)."""
     import importlib

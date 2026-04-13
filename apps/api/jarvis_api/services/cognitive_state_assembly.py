@@ -348,6 +348,12 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+    # --- Cognitive-core experiment carry (shared truth + bounded conductor carry) ---
+    experiment_state_line = _build_cognitive_core_experiment_state_line(compact=compact)
+    if experiment_state_line:
+        parts.append(experiment_state_line)
+        sources_used.append("cognitive_core_experiments")
+
     if not parts:
         return None
 
@@ -424,6 +430,93 @@ def _safe_json(value) -> dict | list | None:
     except Exception:
         pass
     return None
+
+
+def _build_cognitive_core_experiment_state_line(*, compact: bool) -> str | None:
+    """Build a bounded cognitive-state line for mainline experiment carry.
+
+    This keeps the assembled cognitive state honest about what is currently
+    shaping spotlight, reflection, affective persistence, and re-entry without
+    turning experiments into a large visible prose block.
+    """
+    surface = _safe_cognitive_core_experiments_surface()
+    carry_frame = _safe_cognitive_experiment_carry_frame()
+    systems = surface.get("systems") or {}
+    active_ids = {
+        str(item) for item in (surface.get("active_systems") or []) if str(item)
+    }
+    observational_ids = {
+        str(item) for item in (surface.get("observational_systems") or []) if str(item)
+    }
+
+    if not active_ids and not observational_ids:
+        return None
+
+    factors: list[str] = []
+
+    if "global_workspace" in active_ids:
+        salience_pressure = str(carry_frame.get("salience_pressure") or "low")
+        if salience_pressure in {"medium", "high"}:
+            factors.append(f"spotlight={salience_pressure}(workspace)")
+
+    if "hot_meta_cognition" in active_ids:
+        reflective_weight = str(carry_frame.get("reflective_weight") or "light")
+        if reflective_weight == "elevated":
+            factors.append("reflection=elevated(hot)")
+
+    if "surprise_afterimage" in active_ids:
+        affective_pressure = str(carry_frame.get("affective_pressure") or "low")
+        if affective_pressure in {"medium", "high", "strong"}:
+            factors.append(f"affect={affective_pressure}(afterimage)")
+
+    if "recurrence" in active_ids:
+        recurrence_pressure = str(carry_frame.get("recurrence_pressure") or "low")
+        if recurrence_pressure in {"medium", "high", "strong"}:
+            factors.append(f"reentry={recurrence_pressure}(recurrence)")
+
+    blink_active = "attention_blink" in active_ids or "attention_blink" in observational_ids
+    if blink_active:
+        factors.append("assay=blink-observational")
+
+    if not factors:
+        summary = str(surface.get("summary") or "").strip()
+        if not summary:
+            return None
+        return f"experiments: {summary[:90] if compact else summary[:140]}"
+
+    max_factors = 3 if compact else 5
+    line = f"experiments: {' | '.join(factors[:max_factors])}"
+
+    strongest = str(surface.get("strongest_carry_system") or "").strip()
+    if strongest and strongest in systems and strongest != "attention_blink":
+        strongest_label = str((systems.get(strongest) or {}).get("label") or strongest).strip()
+        if strongest_label and strongest_label.lower() not in line.lower() and not compact:
+            line += f" | strongest={strongest_label[:28]}"
+
+    return line[:180] if compact else line[:260]
+
+
+def _safe_cognitive_core_experiments_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.cognitive_core_experiments import (
+            build_cognitive_core_experiments_surface,
+        )
+
+        return build_cognitive_core_experiments_surface()
+    except Exception:
+        return {"systems": {}, "active_systems": [], "observational_systems": [], "summary": ""}
+
+
+def _safe_cognitive_experiment_carry_frame() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+            build_cognitive_frame,
+        )
+
+        frame = build_cognitive_frame()
+        return dict(frame.get("cognitive_experiment_carry") or {})
+    except Exception:
+        return {}
 
 
 def _narrativize_embodied_state() -> str | None:

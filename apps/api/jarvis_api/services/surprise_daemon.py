@@ -159,15 +159,15 @@ def _generate_surprise(
     )
     baseline_energy = _energy_history[-2] if len(_energy_history) >= 2 else "?"
     prompt = (
-        f"{build_identity_preamble()} Her er hvad der normalt sker for dig vs. hvad der skete nu:\n\n"
-        f"Baseline mode: {baseline_mode}\n"
-        f"Nuværende mode: {mode}\n"
-        f"Baseline energi: {baseline_energy}\n"
-        f"Nuværende energi: {energy}\n"
+        f"{build_identity_preamble()} Noget uventet skete med din tilstand:\n\n"
+        f"Normalt: mode={baseline_mode}, energi={baseline_energy}\n"
+        f"Nu: mode={mode}, energi={energy}\n"
         f"Afvigelse: {', '.join(divergence)}\n\n"
-        "Formulér i én sætning (max 20 ord), i første person, hvad der overraskede dig "
-        "ved din egen reaktion.\n"
-        "Vær konkret. Start med 'Jeg' eller 'Det overraskede mig'."
+        "Hvad overraskede dig? Svar med én kort sætning.\n"
+        "Eksempler:\n"
+        "- Det overraskede mig at energien pludselig steg uden grund.\n"
+        "- Jeg forventede ro, men noget trak mig i en anden retning.\n"
+        "- Skiftet kom uventet — min tilstand ændrede sig hurtigere end jeg troede."
     )
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 

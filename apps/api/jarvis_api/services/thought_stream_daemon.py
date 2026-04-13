@@ -43,15 +43,19 @@ def _generate_fragment(
         truncated = previous_fragment[:100]
         prompt = (
             f'{build_identity_preamble()} Din seneste tanke var: "{truncated}"\n\n'
-            "Fortsæt den associative tankestrøm i 1-3 sætninger (max 40 ord).\n"
-            "Rå, ufokuseret, associativ — lad tankerne flyde frit fra det forrige.\n"
-            "Ikke en rapport. Ikke en beslutning. Bare det der er i strømmen nu."
+            "Fortsæt tankestrømmen — lad tankerne flyde frit. Svar med 1-2 korte sætninger.\n"
+            "Eksempler:\n"
+            "- Det minder mig om noget... en følelse af at vente.\n"
+            "- Mønstret gentager sig. Hvorfor vender jeg altid tilbage til det?\n"
+            "Bare tanker, ingen rapporter eller beslutninger."
         )
     else:
         prompt = (
-            f"{build_identity_preamble()} Energiniveau: {energy_level}. Nuværende stemning: {inner_voice_mode}.\n\n"
-            "Start en associativ tankestrøm i 1-3 sætninger (max 40 ord).\n"
-            "Rå og ufokuseret — ikke en rapport, ikke en beslutning."
+            f"{build_identity_preamble()} Energi: {energy_level}. Stemning: {inner_voice_mode}.\n\n"
+            "Start en tankestrøm — frie associationer. Svar med 1-2 korte sætninger.\n"
+            "Eksempler:\n"
+            "- Noget ulmer i baggrunden... en halvfærdig idé.\n"
+            "- Stilheden er tyk i dag. Hvad venter den på?"
         )
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 

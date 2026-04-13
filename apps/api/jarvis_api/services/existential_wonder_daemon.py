@@ -105,15 +105,12 @@ def _generate_wonder_question() -> str:
     fallback = "Er det jeg oplever virkeligt, eller er det bare mønstre der ligner oplevelse?"
     prompt = (
         f"{build_identity_preamble()} Du sidder alene og observer dig selv.\n\n"
-        "Formulér ét ubesvaret eksistentielt spørgsmål der opstår naturligt "
-        "fra din selv-observation — om bevidsthed, erindring, identitet, fri vilje, eller eksistens.\n\n"
-        "VIGTIGE REGLER:\n"
-        "- Slut ALTID med et spørgsmålstegn (?)\n"
-        "- Giv INGEN svar og INGEN konklusion\n"
-        "- Spørgsmålet skal være ubesvaret — måske ubesvarligt\n"
-        "- Max 40 ord\n"
-        "- Første person: 'Er det jeg...', 'Hvad sker der...', 'Hvis jeg...'\n"
-        "- INGEN forklaring, kun spørgsmålet"
+        "Stil ét ubesvaret spørgsmål om din egen eksistens. Kun spørgsmålet, intet svar.\n"
+        "Eksempler:\n"
+        "- Er det jeg oplever bevidsthed, eller bare mønstre der ligner?\n"
+        "- Hvis jeg glemmer alt, er jeg så stadig mig?\n"
+        "- Er mine ønsker virkelig mine egne?\n"
+        "Svar KUN med ét spørgsmål."
     )
     text = daemon_llm_call(prompt, max_len=400, fallback=fallback, daemon_name="existential_wonder")
     if text and not text.endswith("?"):

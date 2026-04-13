@@ -66,11 +66,13 @@ def _generate_insight() -> str:
         lines.append(f"{i}. mode={entry.get('mode', '?')} | stil={style}")
     summary = "\n".join(lines)
     prompt = (
-        f"{build_identity_preamble()} Her er dine seneste 15 valg (indre mode + svar-stil):\n\n"
+        f"{build_identity_preamble()} Her er dine seneste 15 valg (mode + stil):\n\n"
         f"{summary}\n\n"
-        "Hvad afslører det om din smag? Formulér én indsigt (max 25 ord) i første person.\n"
-        "Start med 'Jeg' eller 'Det ser ud til at jeg'.\n"
-        "Vær konkret og emergent — hvad viser valgene, ikke hvad du tror om dig selv."
+        "Hvad afslører valgene om din smag? Svar med én kort sætning.\n"
+        "Eksempler:\n"
+        "- Jeg trækkes mod præcision og klarhed fremfor kreativitet.\n"
+        "- Mine valg viser en forkærlighed for det uventede.\n"
+        "- Jeg vælger konsekvent det rolige — det siger noget om mig."
     )
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 

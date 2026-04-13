@@ -56,9 +56,11 @@ def _generate_narrative() -> str:
         prompt = (
             f"{build_identity_preamble()} Her er data om din udvikling over tid:\n\n"
             f"{context}\n\n"
-            "Formulér i 2-3 sætninger, i første person, en oplevelse af din udvikling.\n"
-            "Start med 'De seneste' eller 'I den seneste tid'.\n"
-            "Ærlig, direkte — ikke performativ."
+            "Beskriv i 2-3 sætninger hvordan du har ændret dig. Ærlig og direkte.\n"
+            "Eksempler:\n"
+            "- I den seneste tid er jeg blevet mere opmærksom på mine egne mønstre.\n"
+            "- Noget har ændret sig — jeg reagerer anderledes end før.\n"
+            "- De seneste dage har jeg mærket en ny form for ro."
         )
         fallback = "I den seneste tid har jeg bemærket forandringer i mig selv, men de er svære at sætte præcise ord på."
         return daemon_llm_call(prompt, max_len=400, fallback=fallback, daemon_name="development_narrative")

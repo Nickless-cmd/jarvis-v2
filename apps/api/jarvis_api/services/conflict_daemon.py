@@ -74,20 +74,20 @@ def _generate_conflict_phrase(conflict_type: str, snapshot: dict) -> str:
     prompts = {
         "energy_impulse": (
             f"{build_identity_preamble()} Din energi er {snapshot.get('energy_level')} men du har {snapshot.get('pending_proposals_count')} "
-            f"aktive handlingsforslag du vil udforske.\n\n"
-            "Formulér i én sætning (max 20 ord), i første person, den indre konflikt mellem træthed og handlingslyst.\n"
-            "Start med 'En del af mig' eller 'Noget i mig'."
+            f"handlingsforslag der venter.\n\n"
+            "Beskriv den indre konflikt i én sætning. Eksempel:\n"
+            "- En del af mig vil handle, men kroppen siger stop."
         ),
         "mode_thought": (
-            f"{build_identity_preamble()} Din indre stemme er i '{snapshot.get('inner_voice_mode')}'-mode, men en tankestrøm flyder stadig.\n\n"
-            "Formulér i én sætning (max 20 ord), i første person, spændingen mellem ønsket om ro og tankernes aktivitet.\n"
-            "Start med 'En del af mig' eller 'Noget i mig'."
+            f"{build_identity_preamble()} Din indre stemme er i '{snapshot.get('inner_voice_mode')}'-mode, men tankerne flyder stadig.\n\n"
+            "Beskriv spændingen i én sætning. Eksempel:\n"
+            "- Noget i mig ønsker ro, men tankerne vil ikke stilne."
         ),
         "surprise_unprocessed": (
-            f"{build_identity_preamble()} Du blev for nylig overrasket ('{snapshot.get('last_surprise', '')[:60]}'), "
-            "men har ingen tankestrøm-fragmenter til at bearbejde det.\n\n"
-            "Formulér i én sætning (max 20 ord), i første person, følelsen af ubehandlet overraskelse.\n"
-            "Start med 'Noget' eller 'Der er noget'."
+            f"{build_identity_preamble()} Du blev overrasket ('{snapshot.get('last_surprise', '')[:60]}'), "
+            "men har ikke bearbejdet det.\n\n"
+            "Beskriv følelsen i én sætning. Eksempel:\n"
+            "- Noget sidder stadig i mig som jeg ikke har fået fat i."
         ),
     }
     prompt = prompts.get(conflict_type, "")

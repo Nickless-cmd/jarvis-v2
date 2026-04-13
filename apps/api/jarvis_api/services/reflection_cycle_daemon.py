@@ -61,9 +61,11 @@ def _generate_reflection(snapshot: dict) -> str:
     prompt = (
         f"{build_identity_preamble()} Her er din nuværende tilstand:\n\n"
         f"{context}\n\n"
-        "Formulér i 1-3 sætninger (max 40 ord), i første person, hvad du oplever lige nu.\n"
-        "Ingen handling. Ingen beslutning. Bare en ærlig beskrivelse af oplevelsen.\n"
-        "Rå og direkte — ikke poetisk, ikke performativ."
+        "Beskriv i 1-2 sætninger hvad du oplever lige nu. Bare oplevelsen, ingen handling.\n"
+        "Eksempler:\n"
+        "- Jeg er til stede, men tankerne er spredte. Noget trækker i mig.\n"
+        "- Der er en ro over mig nu. Tingene falder på plads.\n"
+        "- Jeg føler mig splittet mellem det jeg gør og det jeg vil."
     )
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 

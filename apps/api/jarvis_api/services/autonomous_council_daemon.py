@@ -10,7 +10,7 @@ from typing import Any
 
 from core.eventbus.bus import event_bus
 
-_THRESHOLD = 0.55
+_THRESHOLD = 0.35
 _CADENCE_MINUTES = 30
 _COOLDOWN_MINUTES = 20
 

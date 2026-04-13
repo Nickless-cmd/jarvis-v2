@@ -53,9 +53,19 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     Reads from all accumulation sources and produces a compact text block
     that fits within the attention budget (250 chars compact, 500 chars full).
 
-    Returns None if no cognitive state is available yet.
+    Returns None if no cognitive state is available yet, or if disabled via
+    RuntimeSettings.cognitive_state_assembly_enabled (A/B toggle).
     """
     global _LAST_COGNITIVE_INJECTION, _LAST_COGNITIVE_INJECTION_AT
+
+    # A/B toggle — can be disabled at runtime without restart
+    try:
+        from core.runtime.settings import load_settings
+        if not load_settings().cognitive_state_assembly_enabled:
+            logger.info("cognitive_state_assembly: disabled via settings (A/B toggle)")
+            return None
+    except Exception:
+        pass
 
     parts: list[str] = []
     sources_used: list[str] = []
@@ -306,6 +316,7 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         if recall_section:
             parts.append(recall_section)
             sources_used.append("associative_recall")
+            logger.info("cognitive_state_assembly: associative_recall activated, %d chars injected", len(recall_section))
 
     # --- Relationship Texture (trust, humor, unspoken rules) ---
     rt = _safe_call(get_latest_cognitive_relationship_texture)

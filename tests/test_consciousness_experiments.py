@@ -28,6 +28,71 @@ def test_experiment_toggle_independent(isolated_runtime) -> None:
     assert db.get_experiment_enabled("meta_cognition") is False
 
 
+# ---------------------------------------------------------------------------
+# Experiment 1: Recurrence Loop
+# ---------------------------------------------------------------------------
+
+def test_recurrence_db_insert_and_fetch(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    db.insert_recurrence_iteration(
+        iteration_id="rec-test-001",
+        content="Jeg tænker på kompleksitet og usikkerhed",
+        keywords='["kompleksitet", "usikkerhed", "tænker"]',
+        stability_score=0.72,
+        iteration_number=3,
+    )
+    result = db.get_latest_recurrence_iteration()
+    assert result is not None
+    assert result["iteration_id"] == "rec-test-001"
+    assert abs(result["stability_score"] - 0.72) < 0.001
+    assert result["iteration_number"] == 3
+
+
+def test_jaccard_similarity_identical() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    importlib.reload(rld)
+    score = rld._jaccard_similarity({"a", "b", "c"}, {"a", "b", "c"})
+    assert abs(score - 1.0) < 0.001
+
+
+def test_jaccard_similarity_disjoint() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    importlib.reload(rld)
+    score = rld._jaccard_similarity({"a", "b"}, {"c", "d"})
+    assert abs(score - 0.0) < 0.001
+
+
+def test_jaccard_similarity_partial() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    importlib.reload(rld)
+    score = rld._jaccard_similarity({"a", "b", "c"}, {"b", "c", "d"})
+    # intersection=2, union=4 → 0.5
+    assert abs(score - 0.5) < 0.001
+
+
+def test_extract_keywords_filters_short() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    importlib.reload(rld)
+    kws = rld._extract_keywords("jeg er glad men også bekymret")
+    assert "er" not in kws
+    assert "jeg" not in kws
+    assert "bekymret" in kws or "glad" in kws
+
+
+def test_tick_recurrence_skips_when_disabled(isolated_runtime) -> None:
+    isolated_runtime.db.set_experiment_enabled("recurrence_loop", False)
+    import importlib
+    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    importlib.reload(rld)
+    result = rld.tick_recurrence_loop_daemon()
+    assert result["generated"] is False
+    assert result["reason"] == "disabled"
+
+
 def test_trigger_emotion_concept_custom_lifetime() -> None:
     import importlib
     import apps.api.jarvis_api.services.emotion_concepts as ec

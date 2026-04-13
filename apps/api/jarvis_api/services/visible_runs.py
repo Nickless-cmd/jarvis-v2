@@ -1447,6 +1447,21 @@ def _run_memory_postprocess(run: VisibleRun, assistant_text: str) -> None:
             },
         )
 
+    # Generate session summary for cross-session continuity
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            generate_session_summary,
+        )
+
+        generate_session_summary(
+            session_id=run.session_id,
+            run_id=run.run_id,
+            user_message=run.user_message,
+            assistant_response=assistant_text,
+        )
+    except Exception as exc:
+        errors.append(f"session_summary:{type(exc).__name__}:{exc}")
+
     event_bus.publish(
         "memory.visible_run_postprocess_completed",
         {

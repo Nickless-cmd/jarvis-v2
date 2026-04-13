@@ -32482,6 +32482,106 @@ def web_cache_cleanup(*, conn: sqlite3.Connection) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Session summaries — LLM-generated conversation summaries for continuity
+# ---------------------------------------------------------------------------
+
+
+def _ensure_session_summaries_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS session_summaries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            run_id TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL,
+            key_topics TEXT NOT NULL DEFAULT '',
+            decisions_made TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_session_summaries_session ON session_summaries(session_id, created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_session_summaries_created ON session_summaries(created_at DESC)"
+    )
+
+
+def session_summary_insert(
+    *,
+    session_id: str,
+    run_id: str = "",
+    summary: str,
+    key_topics: str = "",
+    decisions_made: str = "",
+) -> None:
+    with connect() as conn:
+        _ensure_session_summaries_table(conn)
+        conn.execute(
+            """
+            INSERT INTO session_summaries (session_id, run_id, summary, key_topics, decisions_made, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (session_id, run_id, summary[:2000], key_topics[:500], decisions_made[:500], datetime.now(UTC).isoformat()),
+        )
+        conn.commit()
+
+
+def session_summary_recent(limit: int = 3) -> list[dict[str, object]]:
+    """Return the most recent session summaries (across all sessions)."""
+    with connect() as conn:
+        _ensure_session_summaries_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM session_summaries ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "id": r["id"],
+            "session_id": r["session_id"],
+            "run_id": r["run_id"],
+            "summary": r["summary"],
+            "key_topics": r["key_topics"],
+            "decisions_made": r["decisions_made"],
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+
+
+def session_summary_for_session(session_id: str) -> dict[str, object] | None:
+    """Return the latest summary for a specific session."""
+    with connect() as conn:
+        _ensure_session_summaries_table(conn)
+        row = conn.execute(
+            "SELECT * FROM session_summaries WHERE session_id = ? ORDER BY created_at DESC LIMIT 1",
+            (session_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return {
+        "id": row["id"],
+        "session_id": row["session_id"],
+        "run_id": row["run_id"],
+        "summary": row["summary"],
+        "key_topics": row["key_topics"],
+        "decisions_made": row["decisions_made"],
+        "created_at": row["created_at"],
+    }
+
+
+def session_summary_cleanup(max_age_days: int = 90) -> int:
+    """Delete session summaries older than max_age_days."""
+    with connect() as conn:
+        _ensure_session_summaries_table(conn)
+        cutoff = (datetime.now(UTC) - timedelta(days=max_age_days)).isoformat()
+        cursor = conn.execute("DELETE FROM session_summaries WHERE created_at < ?", (cutoff,))
+        conn.commit()
+        return cursor.rowcount
+
+
+# ---------------------------------------------------------------------------
 # Signal archive — stores signals before decay-deletion for debugging
 # ---------------------------------------------------------------------------
 

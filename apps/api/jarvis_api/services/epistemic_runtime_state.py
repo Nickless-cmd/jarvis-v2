@@ -254,7 +254,10 @@ def _derive_regret_signal(
     deception_guard: dict[str, object],
     conflict_trace: dict[str, object],
 ) -> str:
-    if wrongness_state == "strained" or deception_guard.get("has_blocks"):
+    # Note: deception_guard.has_blocks is essentially always true at baseline
+    # (preventive rules fire on default no-evidence state). Treat blocks as
+    # regret only when they coincide with actual wrongness strain.
+    if wrongness_state == "strained":
         return "active"
     if counterfactual_mode != "none" or str(conflict_trace.get("outcome") or "none") in {"defer", "quiet_hold"}:
         return "slight"
@@ -268,7 +271,9 @@ def _derive_counterfactual_mode(
     quiet_initiative: dict[str, object],
     loop_summary: dict[str, object],
 ) -> str:
-    if deception_guard.get("has_blocks") or str(conflict_trace.get("blocked_by") or ""):
+    # Note: deception_guard.has_blocks is permanent — only use conflict
+    # blocked_by as a real blocked-path signal.
+    if str(conflict_trace.get("blocked_by") or ""):
         return "blocked-path"
     if quiet_initiative.get("active") or str(conflict_trace.get("outcome") or "none") == "quiet_hold":
         return "missed-timing"

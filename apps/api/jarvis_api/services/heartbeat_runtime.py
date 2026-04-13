@@ -5654,7 +5654,39 @@ def _execute_heartbeat_internal_action(
         try:
             from apps.api.jarvis_api.services.boredom_engine import update_boredom_state
 
-            result = update_boredom_state()
+            # Gather runtime signals for boredom calculation
+            _idle_hours = 0.0
+            _tick_monotony = 0
+            _novelty_score = 0.5
+            _open_loop_count = 0
+            try:
+                from core.runtime.db import recent_chat_session_messages
+                from apps.api.jarvis_api.services.chat_session_manager import list_chat_sessions
+                sessions = list_chat_sessions(limit=1)
+                if sessions:
+                    last_msg = sessions[0].get("updated_at") or sessions[0].get("created_at") or ""
+                    if last_msg:
+                        from datetime import datetime, UTC
+                        try:
+                            last_dt = datetime.fromisoformat(last_msg.replace("Z", "+00:00"))
+                            _idle_hours = (datetime.now(UTC) - last_dt).total_seconds() / 3600.0
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+            try:
+                from apps.api.jarvis_api.services.compass_engine import get_compass_state
+                compass = get_compass_state()
+                _open_loop_count = int(compass.get("open_loop_count") or 0) if compass else 0
+            except Exception:
+                pass
+
+            result = update_boredom_state(
+                idle_hours=_idle_hours,
+                tick_monotony=_tick_monotony,
+                novelty_score=_novelty_score,
+                open_loop_count=_open_loop_count,
+            )
             return {
                 "status": "executed",
                 "summary": f"Boredom: {result.get('level', 'none')} ({result.get('restlessness', 0):.0%})",

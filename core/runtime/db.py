@@ -32368,3 +32368,111 @@ def list_attention_blink_results(limit: int = 20) -> list[dict[str, object]]:
         }
         for r in rows
     ]
+
+
+# ── Web cache ───────────────────────────────────────────────────
+
+
+def _ensure_web_cache_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS web_cache (
+            cache_key TEXT PRIMARY KEY,
+            query_raw TEXT NOT NULL,
+            query_normalized TEXT NOT NULL,
+            source_url TEXT,
+            title TEXT,
+            body TEXT NOT NULL,
+            fetched_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            ttl_policy TEXT NOT NULL DEFAULT 'medium',
+            hit_count INTEGER DEFAULT 0
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_web_cache_expires ON web_cache(expires_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_web_cache_normalized ON web_cache(query_normalized)"
+    )
+
+
+def web_cache_store(
+    *,
+    conn: sqlite3.Connection,
+    cache_key: str,
+    query_raw: str,
+    query_normalized: str,
+    source_url: str,
+    title: str,
+    body: str,
+    ttl_policy: str,
+    expires_at: str,
+) -> None:
+    _ensure_web_cache_table(conn)
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO web_cache
+            (cache_key, query_raw, query_normalized, source_url, title, body,
+             fetched_at, expires_at, ttl_policy, hit_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        """,
+        (
+            cache_key,
+            query_raw,
+            query_normalized,
+            source_url or "",
+            title or "",
+            body,
+            datetime.now(UTC).isoformat(),
+            expires_at,
+            ttl_policy,
+        ),
+    )
+    conn.commit()
+
+
+def web_cache_lookup(*, conn: sqlite3.Connection, cache_key: str) -> dict[str, object] | None:
+    _ensure_web_cache_table(conn)
+    now = datetime.now(UTC).isoformat()
+    row = conn.execute(
+        """
+        SELECT cache_key, query_raw, query_normalized, source_url, title, body,
+               fetched_at, expires_at, ttl_policy, hit_count
+        FROM web_cache
+        WHERE cache_key = ? AND expires_at > ?
+        LIMIT 1
+        """,
+        (cache_key, now),
+    ).fetchone()
+    if row is None:
+        return None
+    new_count = int(row["hit_count"] or 0) + 1
+    conn.execute(
+        "UPDATE web_cache SET hit_count = ? WHERE cache_key = ?",
+        (new_count, cache_key),
+    )
+    conn.commit()
+    return {
+        "cache_key": row["cache_key"],
+        "query_raw": row["query_raw"],
+        "query_normalized": row["query_normalized"],
+        "source_url": row["source_url"],
+        "title": row["title"],
+        "body": row["body"],
+        "fetched_at": row["fetched_at"],
+        "expires_at": row["expires_at"],
+        "ttl_policy": row["ttl_policy"],
+        "hit_count": new_count,
+    }
+
+
+def web_cache_cleanup(*, conn: sqlite3.Connection) -> int:
+    _ensure_web_cache_table(conn)
+    now = datetime.now(UTC).isoformat()
+    cursor = conn.execute(
+        "DELETE FROM web_cache WHERE expires_at < ?", (now,)
+    )
+    conn.commit()
+    return cursor.rowcount

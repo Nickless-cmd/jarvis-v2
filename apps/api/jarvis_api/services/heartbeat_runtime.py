@@ -2037,8 +2037,14 @@ def _build_influence_trace(
             from apps.api.jarvis_api.services.dream_insight_daemon import tick_dream_insight_daemon
             from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_surface
             _da_surface = build_dream_articulation_surface()
-            _da_signal_id = str(_da_surface.get("signal_id") or "")
-            _da_summary = str(_da_surface.get("signal_summary") or "")
+            _da_summary_section = _da_surface.get("summary") or {}
+            _da_signal_id = str(_da_summary_section.get("latest_signal_id") or "")
+            _da_summary = str(_da_summary_section.get("latest_summary") or "")
+            # Also check latest_artifact as fallback
+            if not _da_signal_id:
+                _da_artifact = _da_surface.get("latest_artifact") or {}
+                _da_signal_id = str(_da_artifact.get("signal_id") or "")
+                _da_summary = str(_da_artifact.get("summary") or _da_summary)
             if _da_signal_id and _da_summary:
                 _di_result = tick_dream_insight_daemon(signal_id=_da_signal_id, signal_summary=_da_summary)
                 _dm.record_daemon_tick("dream_insight", _di_result or {})

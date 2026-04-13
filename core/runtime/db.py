@@ -31952,3 +31952,96 @@ def _council_member_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         "confidence": str(row["confidence"]),
         "created_at": str(row["created_at"]),
     }
+
+
+# ---------------------------------------------------------------------------
+# cognitive_emotion_concept_signals
+# ---------------------------------------------------------------------------
+
+def _ensure_cognitive_emotion_concept_signal_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cognitive_emotion_concept_signals (
+            signal_id   TEXT NOT NULL,
+            concept     TEXT NOT NULL,
+            intensity   REAL NOT NULL DEFAULT 0.0,
+            direction   TEXT NOT NULL DEFAULT 'steady',
+            trigger     TEXT NOT NULL DEFAULT '',
+            source      TEXT NOT NULL DEFAULT '',
+            influences  TEXT NOT NULL DEFAULT '[]',
+            expires_at  TEXT NOT NULL,
+            created_at  TEXT NOT NULL,
+            updated_at  TEXT NOT NULL,
+            PRIMARY KEY (signal_id)
+        )
+        """
+    )
+
+
+def upsert_cognitive_emotion_concept_signal(
+    *,
+    signal_id: str,
+    concept: str,
+    intensity: float,
+    direction: str = "steady",
+    trigger: str = "",
+    source: str = "",
+    influences: str = "[]",
+    expires_at: str,
+) -> None:
+    now = _now_iso()
+    with connect() as conn:
+        _ensure_cognitive_emotion_concept_signal_table(conn)
+        existing = conn.execute(
+            "SELECT signal_id FROM cognitive_emotion_concept_signals WHERE signal_id = ?",
+            (signal_id,),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                """UPDATE cognitive_emotion_concept_signals
+                   SET intensity=?, direction=?, trigger=?, source=?, influences=?,
+                       expires_at=?, updated_at=?
+                   WHERE signal_id=?""",
+                (intensity, direction, trigger, source, influences, expires_at, now, signal_id),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO cognitive_emotion_concept_signals
+                   (signal_id, concept, intensity, direction, trigger, source,
+                    influences, expires_at, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (signal_id, concept, intensity, direction, trigger, source,
+                 influences, expires_at, now, now),
+            )
+
+
+def list_active_cognitive_emotion_concept_signals(
+    *,
+    now_iso: str,
+    min_intensity: float = 0.05,
+    limit: int = 10,
+) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_cognitive_emotion_concept_signal_table(conn)
+        rows = conn.execute(
+            """SELECT * FROM cognitive_emotion_concept_signals
+               WHERE expires_at >= ? AND intensity >= ?
+               ORDER BY intensity DESC
+               LIMIT ?""",
+            (now_iso, min_intensity, limit),
+        ).fetchall()
+    return [
+        {
+            "signal_id": str(r["signal_id"]),
+            "concept": str(r["concept"]),
+            "intensity": float(r["intensity"]),
+            "direction": str(r["direction"]),
+            "trigger": str(r["trigger"]),
+            "source": str(r["source"]),
+            "influences": str(r["influences"]),
+            "expires_at": str(r["expires_at"]),
+            "created_at": str(r["created_at"]),
+            "updated_at": str(r["updated_at"]),
+        }
+        for r in rows
+    ]

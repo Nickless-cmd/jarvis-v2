@@ -51,6 +51,8 @@ from core.runtime.db import (
 )
 
 _STALE_AFTER_DAYS = 7
+_STALE_AFTER_CREATION_DAYS = 14  # Hard cap: stale if created > 14 days ago
+_MAX_MERGES_BEFORE_STALE = 30    # Zombie detection: >30 merges = keepalive artifact
 _CONFIDENCE_RANKS = {"low": 0, "medium": 1, "high": 2}
 _WEIGHT_RANKS = {"low": 0, "medium": 1, "high": 2}
 
@@ -79,19 +81,48 @@ def track_runtime_autonomy_pressure_signals_for_visible_turn(
 
 
 def refresh_runtime_autonomy_pressure_signal_statuses() -> dict[str, int]:
+    """Mark signals as stale based on multiple criteria.
+
+    A signal goes stale if ANY of these are true:
+    1. updated_at > 7 days old (original check — but defeated by merge keepalive)
+    2. created_at > 14 days old (hard cap — merges can't keep a signal alive forever)
+    3. merge_count > 30 (zombie detection — real signals don't need 30+ merges)
+    """
     now = datetime.now(UTC)
     refreshed = 0
     for item in list_runtime_autonomy_pressure_signals(limit=40):
         if str(item.get("status") or "") not in {"active", "softening"}:
             continue
+
         updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
+        created_at = _parse_dt(str(item.get("created_at") or ""))
+        merge_count = int(item.get("merge_count") or 0)
+
+        # Check all three stale conditions
+        stale_reason = None
+        if updated_at is not None and updated_at <= now - timedelta(days=_STALE_AFTER_DAYS):
+            stale_reason = "Marked stale after bounded autonomy-pressure inactivity window."
+        elif created_at is not None and created_at <= now - timedelta(days=_STALE_AFTER_CREATION_DAYS):
+            stale_reason = (
+                f"Marked stale: signal created {_STALE_AFTER_CREATION_DAYS}+ days ago "
+                f"(created_at={item.get('created_at')}). "
+                "Merge keepalive cannot prevent natural retirement."
+            )
+        elif merge_count > _MAX_MERGES_BEFORE_STALE:
+            stale_reason = (
+                f"Marked stale: merge_count={merge_count} exceeds threshold "
+                f"({_MAX_MERGES_BEFORE_STALE}). Signal is being kept alive "
+                "by automatic merges, not genuine new observations."
+            )
+
+        if not stale_reason:
             continue
+
         refreshed_item = update_runtime_autonomy_pressure_signal_status(
             str(item.get("signal_id") or ""),
             status="stale",
             updated_at=now.isoformat(),
-            status_reason="Marked stale after bounded autonomy-pressure inactivity window.",
+            status_reason=stale_reason,
         )
         if refreshed_item is None:
             continue
@@ -107,6 +138,33 @@ def refresh_runtime_autonomy_pressure_signal_statuses() -> dict[str, int]:
             },
         )
     return {"stale_marked": refreshed}
+
+
+def retire_autonomy_pressure_signal(signal_id: str, *, reason: str = "") -> dict[str, object] | None:
+    """Explicitly retire/close an autonomy pressure signal.
+
+    Use when the underlying loop or pressure has been resolved.
+    This bridges the gap between MEMORY.md (where loops are marked closed)
+    and the signal database (where they otherwise live forever).
+    """
+    now = datetime.now(UTC).isoformat()
+    status_reason = reason or "Explicitly retired — underlying pressure resolved."
+    result = update_runtime_autonomy_pressure_signal_status(
+        signal_id,
+        status="stale",
+        updated_at=now,
+        status_reason=status_reason,
+    )
+    if result:
+        event_bus.publish(
+            "autonomy_pressure_signal.retired",
+            {
+                "signal_id": signal_id,
+                "status": "stale",
+                "status_reason": status_reason,
+            },
+        )
+    return result
 
 
 def build_runtime_autonomy_pressure_signal_surface(*, limit: int = 8) -> dict[str, object]:

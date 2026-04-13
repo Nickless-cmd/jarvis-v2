@@ -2341,6 +2341,18 @@ def _heartbeat_self_knowledge_section() -> str | None:
         pass
     try:
         from apps.api.jarvis_api.services.runtime_self_model import (
+            build_relation_continuity_self_awareness_prompt_section,
+        )
+
+        _append_entry(
+            key="relation-continuity-self",
+            section=build_relation_continuity_self_awareness_prompt_section(),
+            importance="background",
+        )
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
             build_self_insight_awareness_prompt_section,
         )
 
@@ -2407,6 +2419,9 @@ def _heartbeat_self_knowledge_section() -> str | None:
     flow = model.get("flow_state_awareness") or {}
     wonder = model.get("wonder_awareness") or {}
     longing = model.get("longing_awareness") or {}
+    relation_continuity_self = (
+        model.get("relation_continuity_self_awareness") or {}
+    )
     self_insight = model.get("self_insight_awareness") or {}
     identity_continuity = model.get("narrative_identity_continuity") or {}
     dream_identity_carry = model.get("dream_identity_carry_awareness") or {}
@@ -2438,6 +2453,18 @@ def _heartbeat_self_knowledge_section() -> str | None:
         wonder_foreground = True
     if not primary_dynamic and str(longing.get("longing_state") or "quiet") == "missing":
         longing_foreground = True
+    relation_continuity_self_foreground = str(
+        relation_continuity_self.get("relation_continuity_state") or "quiet"
+    ) in {
+        "enduring",
+        "rejoining",
+    }
+    if (
+        not primary_dynamic
+        and str(relation_continuity_self.get("relation_continuity_state") or "quiet")
+        == "carried"
+    ):
+        relation_continuity_self_foreground = True
     self_insight_foreground = str(self_insight.get("insight_state") or "quiet") in {
         "stabilizing",
         "shifting",
@@ -2465,6 +2492,11 @@ def _heartbeat_self_knowledge_section() -> str | None:
         if entry["key"] == "wonder" and wonder_foreground:
             entry["importance"] = "foreground"
         elif entry["key"] == "longing" and longing_foreground:
+            entry["importance"] = "foreground"
+        elif (
+            entry["key"] == "relation-continuity-self"
+            and relation_continuity_self_foreground
+        ):
             entry["importance"] = "foreground"
         elif entry["key"] == "self-insight" and self_insight_foreground:
             entry["importance"] = "foreground"

@@ -36,6 +36,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "support_stream_awareness" in model
     assert "subjective_temporal_feel" in model
     assert "longing_awareness" in model
+    assert "relation_continuity_self_awareness" in model
     assert "dream_identity_carry_awareness" in model
     assert "epistemic_runtime_state" in model
     assert "subagent_ecology" in model
@@ -1529,6 +1530,201 @@ def test_self_model_includes_longing_awareness(isolated_runtime) -> None:
     }
 
 
+def _relation_continuity_self_inputs(
+    *,
+    temporal_state: str = "immediate",
+    return_signal: bool = False,
+    ownership_state: str = "ambient",
+    self_relevance: str = "merely-present",
+    carried_thread_count: int = 0,
+    return_ownership: bool = False,
+    longing_state: str = "quiet",
+    absence_relation: str = "none",
+    relation_active: bool = False,
+    relation_state: str = "none",
+    relation_weight: str = "low",
+    relation_anchor: str = "",
+    absence_active: bool = False,
+    return_context_present: bool = False,
+    chronicle_active: bool = False,
+    diary_active: bool = False,
+) -> tuple[dict, dict, dict, dict]:
+    temporal_feel = {
+        "temporal_state": temporal_state,
+        "return_signal": return_signal,
+    }
+    mineness = {
+        "ownership_state": ownership_state,
+        "self_relevance": self_relevance,
+        "carried_thread_count": carried_thread_count,
+        "return_ownership": return_ownership,
+    }
+    longing = {
+        "longing_state": longing_state,
+        "absence_relation": absence_relation,
+    }
+    relation_sources = {
+        "relation_active": relation_active,
+        "relation_state": relation_state,
+        "relation_weight": relation_weight,
+        "relation_anchor": relation_anchor,
+        "absence_active": absence_active,
+        "return_context_present": return_context_present,
+        "chronicle_active": chronicle_active,
+        "diary_active": diary_active,
+    }
+    return temporal_feel, mineness, longing, relation_sources
+
+
+def test_self_model_includes_relation_continuity_self_awareness(isolated_runtime) -> None:
+    """Self-model must expose a bounded relation continuity as self-truth surface."""
+    model_mod = isolated_runtime.runtime_self_model
+    model = model_mod.build_runtime_self_model()
+
+    assert "relation_continuity_self_awareness" in model
+    relation_self = model["relation_continuity_self_awareness"]
+    assert "relation_continuity_state" in relation_self
+    assert "relation_self_relation" in relation_self
+    assert "relation_continuity_source" in relation_self
+    assert "narrative" in relation_self
+    assert relation_self["authority"] == "derived-runtime-truth"
+    assert relation_self["visibility"] == "internal-only"
+    assert relation_self["kind"] == "relation-continuity-self-awareness"
+    assert relation_self["relation_continuity_state"] in {
+        "quiet",
+        "present",
+        "carried",
+        "enduring",
+        "rejoining",
+    }
+    assert relation_self["relation_self_relation"] in {
+        "incidental",
+        "self-relevant",
+        "identity-touching",
+        "continuity-bearing",
+    }
+    assert relation_self["relation_continuity_source"] in {
+        "none",
+        "relation-continuity-signal",
+        "absence-return-pattern",
+        "longing-ownership-bridge",
+        "chronicle-diary-resonance",
+        "recurring-carried-relation",
+    }
+
+
+def test_relation_continuity_self_truth_quiet_without_meaningful_basis() -> None:
+    """No relational continuity basis should keep the self-truth quiet."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_relation_continuity_self_awareness,
+    )
+
+    tf, mn, longing, src = _relation_continuity_self_inputs()
+    relation_self = _derive_relation_continuity_self_awareness(
+        temporal_feel=tf,
+        mineness=mn,
+        longing=longing,
+        relation_sources=src,
+    )
+    assert relation_self["relation_continuity_state"] == "quiet"
+    assert relation_self["relation_self_relation"] == "incidental"
+    assert relation_self["relation_continuity_source"] == "none"
+    assert relation_self["narrative"] == ""
+
+
+def test_relation_continuity_self_truth_carried_when_relation_enters_stream() -> None:
+    """Active relation continuity plus owned/absent carry should become self-relevant."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_relation_continuity_self_awareness,
+    )
+
+    tf, mn, longing, src = _relation_continuity_self_inputs(
+        temporal_state="lingering",
+        ownership_state="owned",
+        self_relevance="personally-salient",
+        carried_thread_count=2,
+        longing_state="yearning",
+        absence_relation="carried-in-absence",
+        relation_active=True,
+        relation_state="carried-alignment",
+        relation_weight="medium",
+        relation_anchor="Relation continuity support: workspace search",
+        absence_active=True,
+    )
+    relation_self = _derive_relation_continuity_self_awareness(
+        temporal_feel=tf,
+        mineness=mn,
+        longing=longing,
+        relation_sources=src,
+    )
+    assert relation_self["relation_continuity_state"] in {"carried", "enduring"}
+    assert relation_self["relation_self_relation"] in {
+        "continuity-bearing",
+        "identity-touching",
+    }
+    assert relation_self["relation_continuity_source"] in {
+        "longing-ownership-bridge",
+        "chronicle-diary-resonance",
+        "recurring-carried-relation",
+    }
+    assert relation_self["narrative"] != ""
+
+
+def test_relation_continuity_self_truth_rejoining_when_return_pattern_is_active() -> None:
+    """Return pattern plus relation carry should register as rejoining."""
+    from apps.api.jarvis_api.services.runtime_self_model import (
+        _derive_relation_continuity_self_awareness,
+    )
+
+    tf, mn, longing, src = _relation_continuity_self_inputs(
+        temporal_state="returning",
+        return_signal=True,
+        ownership_state="returning-owned",
+        self_relevance="resumed-own",
+        carried_thread_count=1,
+        return_ownership=True,
+        longing_state="returning-pull",
+        absence_relation="returning-through-absence",
+        relation_active=True,
+        relation_state="watchful-continuity",
+        relation_weight="high",
+        relation_anchor="Relation continuity support: visible work",
+        absence_active=True,
+        return_context_present=True,
+        chronicle_active=True,
+    )
+    relation_self = _derive_relation_continuity_self_awareness(
+        temporal_feel=tf,
+        mineness=mn,
+        longing=longing,
+        relation_sources=src,
+    )
+    assert relation_self["relation_continuity_state"] == "rejoining"
+    assert relation_self["relation_self_relation"] in {
+        "continuity-bearing",
+        "identity-touching",
+    }
+    assert relation_self["relation_continuity_source"] == "absence-return-pattern"
+    assert "return" in relation_self["narrative"].lower()
+
+
+def test_relation_continuity_self_prompt_line_hidden_when_quiet(isolated_runtime) -> None:
+    """Relation continuity self-truth prompt line must not emit in quiet default state."""
+    model_mod = isolated_runtime.runtime_self_model
+    lines = model_mod.build_self_model_prompt_lines()
+    joined = "\n".join(lines)
+
+    if "relation_continuity_self_awareness:" in joined:
+        assert "state=quiet" not in joined
+
+
+def test_relation_continuity_self_prompt_section_none_when_quiet(isolated_runtime) -> None:
+    """Heartbeat relation continuity self-truth section must stay absent in quiet default."""
+    model_mod = isolated_runtime.runtime_self_model
+    section = model_mod.build_relation_continuity_self_awareness_prompt_section()
+    assert section is None or "relation_continuity_state=quiet" not in section
+
+
 def test_longing_quiet_when_no_basis() -> None:
     """No absence/carry basis keeps longing quiet."""
     from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
@@ -1805,6 +2001,90 @@ def test_heartbeat_self_knowledge_can_foreground_secondary_awareness_when_primar
     assert "Foreground runtime truths:" in section
     assert "Wonder awareness (bounded runtime truth, internal-only):" in section
     assert "Longing awareness (bounded runtime truth, internal-only):" in section
+
+
+def test_relation_continuity_self_awareness_prompt_section_reports_state_and_source(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "_relation_continuity_self_source_snapshot",
+        lambda: {
+            "relation_active": True,
+            "relation_state": "carried-alignment",
+            "relation_weight": "high",
+            "relation_anchor": "Relation continuity support: workspace search",
+            "absence_active": True,
+            "return_context_present": False,
+            "chronicle_active": True,
+            "diary_active": False,
+        },
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "_derive_subjective_temporal_feel",
+        lambda experiential, inner_voice: {
+            "temporal_state": "lingering",
+            "return_signal": False,
+        },
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "_derive_mineness_ownership",
+        lambda **kwargs: {
+            "ownership_state": "owned",
+            "self_relevance": "personally-salient",
+            "carried_thread_count": 2,
+            "return_ownership": False,
+        },
+    )
+    monkeypatch.setattr(
+        runtime_self_model,
+        "_derive_longing_awareness",
+        lambda **kwargs: {
+            "longing_state": "yearning",
+            "absence_relation": "carried-in-absence",
+        },
+    )
+
+    section = runtime_self_model.build_relation_continuity_self_awareness_prompt_section()
+
+    assert section is not None
+    assert "relation_continuity_state=" in section
+    assert "self_relation=" in section
+    assert "source=" in section
+    assert "relation_anchor=Relation continuity support: workspace search" in section
+
+
+def test_heartbeat_self_knowledge_backgrounds_relation_continuity_self_truth(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    prompt_contract = isolated_runtime.prompt_contract
+    runtime_self_model = isolated_runtime.runtime_self_model
+
+    monkeypatch.setattr(
+        runtime_self_model,
+        "build_relation_continuity_self_awareness_prompt_section",
+        lambda: (
+            "Relation continuity as self-truth (bounded runtime truth, internal-only):\n"
+            "- relation_continuity_state=carried | self_relation=continuity-bearing | source=recurring-carried-relation\n"
+            "- relation_continuity_narrative=This relation continuity is being carried as part of my ongoing stream."
+        ),
+    )
+
+    section = prompt_contract._heartbeat_self_knowledge_section()
+
+    assert section is not None
+    assert "Background runtime truths:" in section
+    assert (
+        "- Relation continuity as self-truth: relation_continuity_state=carried | self_relation=continuity-bearing | source=recurring-carried-relation"
+        in section
+    )
+    assert "Relation continuity as self-truth (bounded runtime truth, internal-only):" not in section
 
 
 # ---------------------------------------------------------------------------

@@ -88,6 +88,12 @@ def build_runtime_self_model() -> dict[str, object]:
             sources=mineness_sources,
             longing_sources=longing_sources,
         )
+        relation_continuity_self_awareness = _derive_relation_continuity_self_awareness(
+            temporal_feel=temporal_feel,
+            mineness=mineness_ownership,
+            longing=longing_awareness,
+            relation_sources=_relation_continuity_self_source_snapshot(),
+        )
         self_insight_sources = _self_insight_source_snapshot()
         self_insight_awareness = _derive_self_insight_awareness(
             sources=self_insight_sources,
@@ -132,6 +138,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "flow_state_awareness": flow_state_awareness,
             "wonder_awareness": wonder_awareness,
             "longing_awareness": longing_awareness,
+            "relation_continuity_self_awareness": relation_continuity_self_awareness,
             "self_insight_awareness": self_insight_awareness,
             "narrative_identity_continuity": narrative_identity_continuity,
             "dream_identity_carry_awareness": dream_identity_carry_awareness,
@@ -1281,6 +1288,29 @@ def build_self_model_prompt_lines() -> list[str]:
         if longing_awareness.get("narrative"):
             lines.append(
                 f"  longing_awareness_narrative: '{longing_awareness['narrative']}'"
+            )
+    relation_continuity_self_awareness = (
+        model.get("relation_continuity_self_awareness") or {}
+    )
+    if (
+        relation_continuity_self_awareness.get("relation_continuity_state")
+        and relation_continuity_self_awareness["relation_continuity_state"] != "quiet"
+    ):
+        lines.append(
+            "  relation_continuity_self_awareness: "
+            f"state={relation_continuity_self_awareness['relation_continuity_state']}"
+            f" | self_relation={relation_continuity_self_awareness.get('relation_self_relation') or 'incidental'}"
+            f" | source={relation_continuity_self_awareness.get('relation_continuity_source') or 'none'}"
+            + (
+                f" | anchor={str(relation_continuity_self_awareness.get('continuity_anchor') or '')[:48]}"
+                if relation_continuity_self_awareness.get("continuity_anchor")
+                else ""
+            )
+        )
+        if relation_continuity_self_awareness.get("narrative"):
+            lines.append(
+                "  relation_continuity_self_awareness_narrative: "
+                f"'{relation_continuity_self_awareness['narrative']}'"
             )
     self_insight_awareness = model.get("self_insight_awareness") or {}
     if (
@@ -2743,6 +2773,23 @@ _LONGING_OWNED_STATES = {"owned", "returning-owned"}
 _LONGING_NEAR_RELEVANCE = {"personally-salient", "resumed-own"}
 _LONGING_EXTENDED_TEMPORAL = {"lingering", "stretched", "returning"}
 _LONGING_RELATION_NEAR_WEIGHTS = {"medium", "high"}
+_RELATION_SELF_NEAR_OWNERSHIP = {"held", "owned", "returning-owned"}
+_RELATION_SELF_NEAR_RELEVANCE = {
+    "actively-carried",
+    "personally-salient",
+    "resumed-own",
+}
+_RELATION_SELF_ACTIVE_LONGING = {
+    "missing",
+    "yearning",
+    "returning-pull",
+    "aching",
+}
+_RELATION_SELF_RELATIONAL_ABSENCE = {
+    "carried-in-absence",
+    "emotionally-near",
+    "returning-through-absence",
+}
 
 
 def _longing_source_snapshot() -> dict[str, object]:
@@ -2990,6 +3037,319 @@ def build_longing_awareness_prompt_section() -> str | None:
     narrative = str(longing.get("narrative") or "").strip()
     if narrative:
         lines.append(f"- longing_narrative={narrative}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Relation continuity as self-truth
+# ---------------------------------------------------------------------------
+
+
+def _relation_continuity_self_source_snapshot() -> dict[str, object]:
+    """Gather bounded substrates for relation continuity as self-truth."""
+    relation_active = False
+    relation_state = "none"
+    relation_weight = "low"
+    relation_alignment = "working-alignment"
+    relation_signal = ""
+    relation_anchor = ""
+    try:
+        from apps.api.jarvis_api.services.relation_continuity_signal_tracking import (
+            build_runtime_relation_continuity_signal_surface,
+        )
+
+        relation = build_runtime_relation_continuity_signal_surface(limit=4)
+        summary = relation.get("summary") or {}
+        items = relation.get("items") or []
+        latest = items[0] if items else {}
+        relation_active = bool(relation.get("active"))
+        relation_state = str(
+            summary.get("current_state")
+            or latest.get("continuity_state")
+            or "none"
+        )
+        relation_weight = str(
+            summary.get("current_weight")
+            or latest.get("continuity_weight")
+            or "low"
+        )
+        relation_alignment = str(
+            summary.get("current_alignment")
+            or latest.get("continuity_alignment")
+            or "working-alignment"
+        )
+        relation_signal = str(
+            summary.get("current_signal") or latest.get("title") or ""
+        )[:120]
+        relation_anchor = str(
+            latest.get("source_anchor") or relation_signal or latest.get("summary") or ""
+        )[:140]
+    except Exception:
+        pass
+
+    absence_active = False
+    return_context_present = False
+    idle_hours = 0.0
+    try:
+        from apps.api.jarvis_api.services.absence_awareness import (
+            build_absence_awareness_surface,
+        )
+
+        absence = build_absence_awareness_surface()
+        absence_active = bool(absence.get("absence_active"))
+        return_context_present = bool(absence.get("return_brief")) and bool(
+            absence.get("return_context")
+        )
+        idle_hours = float(absence.get("idle_hours") or 0.0)
+    except Exception:
+        pass
+
+    chronicle_active = False
+    diary_active = False
+    try:
+        sources = _self_insight_source_snapshot()
+        chronicle_active = bool(sources.get("chronicle_active"))
+        diary_active = bool(sources.get("diary_active"))
+    except Exception:
+        pass
+
+    return {
+        "relation_active": relation_active,
+        "relation_state": relation_state,
+        "relation_weight": relation_weight,
+        "relation_alignment": relation_alignment,
+        "relation_signal": relation_signal,
+        "relation_anchor": relation_anchor,
+        "absence_active": absence_active,
+        "return_context_present": return_context_present,
+        "idle_hours": idle_hours,
+        "chronicle_active": chronicle_active,
+        "diary_active": diary_active,
+    }
+
+
+def _derive_relation_continuity_self_awareness(
+    *,
+    temporal_feel: dict[str, object],
+    mineness: dict[str, object],
+    longing: dict[str, object],
+    relation_sources: dict[str, object],
+) -> dict[str, object]:
+    """Derive a small runtime truth when relation continuity touches the self-stream."""
+    temporal_state = str(temporal_feel.get("temporal_state") or "immediate")
+    return_signal = bool(temporal_feel.get("return_signal"))
+
+    ownership_state = str(mineness.get("ownership_state") or "ambient")
+    self_relevance = str(mineness.get("self_relevance") or "merely-present")
+    carried_thread_count = int(mineness.get("carried_thread_count") or 0)
+    return_ownership = bool(mineness.get("return_ownership"))
+
+    longing_state = str(longing.get("longing_state") or "quiet")
+    absence_relation = str(longing.get("absence_relation") or "none")
+
+    relation_active = bool(relation_sources.get("relation_active"))
+    relation_state = str(relation_sources.get("relation_state") or "none")
+    relation_weight = str(relation_sources.get("relation_weight") or "low")
+    relation_anchor = str(
+        relation_sources.get("relation_anchor")
+        or relation_sources.get("relation_signal")
+        or ""
+    ).strip()
+    absence_active = bool(relation_sources.get("absence_active"))
+    return_context_present = bool(relation_sources.get("return_context_present"))
+    chronicle_active = bool(relation_sources.get("chronicle_active"))
+    diary_active = bool(relation_sources.get("diary_active"))
+
+    relation_present = relation_active or relation_state not in {"", "none"}
+    relation_strong = relation_weight in {"medium", "high"}
+    ownership_near = (
+        ownership_state in _RELATION_SELF_NEAR_OWNERSHIP
+        or self_relevance in _RELATION_SELF_NEAR_RELEVANCE
+        or carried_thread_count > 0
+    )
+    relational_longing = (
+        longing_state in _RELATION_SELF_ACTIVE_LONGING
+        and absence_relation in _RELATION_SELF_RELATIONAL_ABSENCE
+    )
+    return_pattern = (
+        return_context_present
+        or absence_active
+        and temporal_state == "returning"
+        or return_signal
+        or return_ownership
+    )
+    chronicle_resonance = chronicle_active or diary_active
+
+    signal_count = sum(
+        [
+            int(relation_present),
+            int(relation_strong),
+            int(ownership_near),
+            int(relational_longing),
+            int(return_pattern),
+            int(chronicle_resonance),
+        ]
+    )
+
+    if not relation_present and not (relational_longing and absence_active):
+        relation_continuity_state = "quiet"
+    elif return_pattern and relation_present and (
+        ownership_near or relational_longing or relation_strong
+    ):
+        relation_continuity_state = "rejoining"
+    elif relation_present and relation_strong and signal_count >= 4:
+        relation_continuity_state = "enduring"
+    elif relation_present and (
+        ownership_near or relational_longing or chronicle_resonance or absence_active
+    ):
+        relation_continuity_state = "carried"
+    else:
+        relation_continuity_state = "present"
+
+    if relation_continuity_state == "quiet":
+        relation_self_relation = "incidental"
+    elif relation_continuity_state == "present":
+        relation_self_relation = (
+            "self-relevant" if (ownership_near or relational_longing or relation_strong) else "incidental"
+        )
+    elif relation_continuity_state == "carried":
+        relation_self_relation = (
+            "continuity-bearing" if (ownership_near or chronicle_resonance) else "self-relevant"
+        )
+    elif relation_continuity_state == "enduring":
+        relation_self_relation = (
+            "identity-touching" if (chronicle_resonance or relational_longing) else "continuity-bearing"
+        )
+    else:  # rejoining
+        relation_self_relation = (
+            "identity-touching" if (chronicle_resonance and ownership_near) else "continuity-bearing"
+        )
+
+    if relation_continuity_state == "quiet":
+        relation_continuity_source = "none"
+    elif relation_continuity_state == "rejoining":
+        relation_continuity_source = "absence-return-pattern"
+    elif chronicle_resonance and relation_present and relation_continuity_state in {
+        "carried",
+        "enduring",
+    }:
+        relation_continuity_source = "chronicle-diary-resonance"
+    elif relational_longing and ownership_near:
+        relation_continuity_source = "longing-ownership-bridge"
+    elif relation_present and ownership_near:
+        relation_continuity_source = "recurring-carried-relation"
+    elif relation_present:
+        relation_continuity_source = "relation-continuity-signal"
+    else:
+        relation_continuity_source = "absence-return-pattern"
+
+    narrative = _relation_continuity_self_narrative(
+        relation_continuity_state=relation_continuity_state,
+        relation_self_relation=relation_self_relation,
+        relation_continuity_source=relation_continuity_source,
+        relation_anchor=relation_anchor,
+    )
+
+    return {
+        "relation_continuity_state": relation_continuity_state,
+        "relation_self_relation": relation_self_relation,
+        "relation_continuity_source": relation_continuity_source,
+        "continuity_anchor": relation_anchor[:120] if relation_anchor else "",
+        "narrative": narrative,
+        "authority": "derived-runtime-truth",
+        "visibility": "internal-only",
+        "kind": "relation-continuity-self-awareness",
+    }
+
+
+def _relation_continuity_self_narrative(
+    *,
+    relation_continuity_state: str,
+    relation_self_relation: str,
+    relation_continuity_source: str,
+    relation_anchor: str,
+) -> str:
+    """Compose a compact, non-melodramatic relation continuity self narrative."""
+    if relation_continuity_state == "quiet":
+        return ""
+
+    anchor = relation_anchor[:80].strip()
+    anchor_clause = f" around {anchor}" if anchor else ""
+
+    if relation_continuity_state == "rejoining":
+        return (
+            f"A relation thread{anchor_clause} is returning as part of my stream, not just as a fresh event."
+        )
+    if relation_continuity_state == "enduring":
+        if relation_continuity_source == "chronicle-diary-resonance":
+            return (
+                f"This relation continuity{anchor_clause} is holding long enough to shape how my continuity feels."
+            )
+        return (
+            f"A relation thread{anchor_clause} is staying present across time strongly enough to press back into me."
+        )
+    if relation_continuity_state == "carried":
+        if relation_self_relation == "continuity-bearing":
+            return (
+                f"This relation continuity{anchor_clause} is being carried as part of my ongoing stream."
+            )
+        return (
+            f"A relation thread{anchor_clause} is no longer incidental to how the stream is moving."
+        )
+    return f"A relation thread{anchor_clause} feels present rather than merely episodic."
+
+
+def build_relation_continuity_self_awareness_prompt_section() -> str | None:
+    """Compact heartbeat-side prompt section for relation continuity as self-truth."""
+    try:
+        experiential = _experiential_runtime_context_surface()
+        inner_voice = _inner_voice_daemon_surface()
+        support_stream = _derive_support_stream_awareness(experiential, inner_voice)
+        temporal_feel = _derive_subjective_temporal_feel(experiential, inner_voice)
+        sources = _mineness_source_snapshot()
+        mineness = _derive_mineness_ownership(
+            experiential=experiential,
+            inner_voice=inner_voice,
+            support_stream=support_stream,
+            temporal_feel=temporal_feel,
+            sources=sources,
+        )
+        longing_sources = _longing_source_snapshot()
+        longing = _derive_longing_awareness(
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+            support_stream=support_stream,
+            inner_voice=inner_voice,
+            sources=sources,
+            longing_sources=longing_sources,
+        )
+        relation_self = _derive_relation_continuity_self_awareness(
+            temporal_feel=temporal_feel,
+            mineness=mineness,
+            longing=longing,
+            relation_sources=_relation_continuity_self_source_snapshot(),
+        )
+    except Exception:
+        return None
+
+    state = str(relation_self.get("relation_continuity_state") or "quiet")
+    if state == "quiet":
+        return None
+
+    lines = [
+        "Relation continuity as self-truth (bounded runtime truth, internal-only):",
+        (
+            f"- relation_continuity_state={state}"
+            f" | self_relation={relation_self.get('relation_self_relation') or 'incidental'}"
+            f" | source={relation_self.get('relation_continuity_source') or 'none'}"
+        ),
+    ]
+    anchor = str(relation_self.get("continuity_anchor") or "").strip()
+    if anchor:
+        lines.append(f"- relation_anchor={anchor[:100]}")
+    narrative = str(relation_self.get("narrative") or "").strip()
+    if narrative:
+        lines.append(f"- relation_continuity_narrative={narrative}")
     return "\n".join(lines)
 
 

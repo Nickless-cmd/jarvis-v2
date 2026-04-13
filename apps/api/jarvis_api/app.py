@@ -31,6 +31,10 @@ from apps.api.jarvis_api.services.emotion_concepts import (
     register_event_listeners as start_emotion_concept_listener,
     stop_event_listeners as stop_emotion_concept_listener,
 )
+from apps.api.jarvis_api.services.global_workspace import (
+    register_event_listeners as start_global_workspace_listener,
+    stop_event_listeners as stop_global_workspace_listener,
+)
 from apps.api.jarvis_api.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
@@ -72,6 +76,7 @@ def create_app() -> FastAPI:
         start_scheduled_tasks_service()
         start_mood_listener()
         start_emotion_concept_listener()
+        start_global_workspace_listener()
         start_discord_gateway()
         start_voice_daemon()
         try:
@@ -91,6 +96,7 @@ def create_app() -> FastAPI:
         stop_scheduled_tasks_service()
         stop_discord_gateway()
         stop_voice_daemon()
+        stop_global_workspace_listener()
         stop_emotion_concept_listener()
         stop_mood_listener()
         stop_runtime_hook_runtime()

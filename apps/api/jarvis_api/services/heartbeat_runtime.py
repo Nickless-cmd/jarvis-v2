@@ -1237,6 +1237,31 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass  # cadence layer failure must not block heartbeat
 
+    # --- Consciousness Experiments ---
+    try:
+        if _HEARTBEAT_TICK_COUNTER % 5 == 0:
+            from apps.api.jarvis_api.services.recurrence_loop_daemon import tick_recurrence_loop_daemon
+            tick_recurrence_loop_daemon()
+    except Exception:
+        pass
+    try:
+        if _HEARTBEAT_TICK_COUNTER % 2 == 0:
+            from apps.api.jarvis_api.services.broadcast_daemon import tick_broadcast_daemon
+            tick_broadcast_daemon()
+    except Exception:
+        pass
+    try:
+        if _HEARTBEAT_TICK_COUNTER % 10 == 0:
+            from apps.api.jarvis_api.services.meta_cognition_daemon import tick_meta_cognition_daemon
+            tick_meta_cognition_daemon()
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.attention_blink_test import run_attention_blink_test_if_due
+        run_attention_blink_test_if_due()
+    except Exception:
+        pass
+
     return HeartbeatExecutionResult(
         state=heartbeat_runtime_surface(name=name)["state"],
         tick=tick,

@@ -74,24 +74,10 @@ def _generate_meta_insight(cross_snapshot: dict) -> str:
         "i første person, en meta-indsigt om din nuværende tilstand eller et gentaget mønster.\n"
         "Vær konkret — ikke generisk. Ingen tomme fraser."
     )
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        text = str(result.get("text") or "").strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        return text[:300] if text else ""
-    except Exception:
-        return ""
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    fallback = "Jeg ser et mønster, men det er endnu ikke tydeligt nok til at sætte ord på."
+    return daemon_llm_call(prompt, max_len=300, fallback=fallback)
 
 
 def _store_meta_insight(insight: str) -> None:

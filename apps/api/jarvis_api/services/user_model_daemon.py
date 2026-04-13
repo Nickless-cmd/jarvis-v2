@@ -141,33 +141,18 @@ def _generate_model_summary(messages: list[str], model: dict) -> str:
         fallback_parts.append("Han stiller mange spørgsmål.")
     fallback = " ".join(fallback_parts) or "Ingen tydelig brugerprofil endnu."
 
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        sample = "; ".join(messages[:5])
-        prompt = (
-            f"{build_identity_preamble()} Her er de seneste beskeder fra brugeren:\n"
-            f"\"{sample}\"\n\n"
-            f"Kommunikationsstil: {style}. Spørgsmålstung: {q_heavy}.\n\n"
-            "Formulér i 1-2 sætninger hvad du mærker om brugerens tilstand *nu*.\n"
-            "Brug tredje person: 'Brugeren virker...' eller 'Han/hun...'\n"
-            "Max 30 ord. Ingen forklaring."
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        text = str(result.get("text") or "").strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        return text[:250] if text else fallback
-    except Exception:
-        return fallback
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    sample = "; ".join(messages[:5])
+    prompt = (
+        f"{build_identity_preamble()} Her er de seneste beskeder fra brugeren:\n"
+        f"\"{sample}\"\n\n"
+        f"Kommunikationsstil: {style}. Spørgsmålstung: {q_heavy}.\n\n"
+        "Formulér i 1-2 sætninger hvad du mærker om brugerens tilstand *nu*.\n"
+        "Brug tredje person: 'Brugeren virker...' eller 'Han/hun...'\n"
+        "Max 30 ord. Ingen forklaring."
+    )
+    return daemon_llm_call(prompt, max_len=250, fallback=fallback)
 
 
 def _store_model(summary: str, now: datetime) -> None:

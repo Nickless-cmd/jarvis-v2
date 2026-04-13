@@ -169,24 +169,10 @@ def _generate_surprise(
         "ved din egen reaktion.\n"
         "Vær konkret. Start med 'Jeg' eller 'Det overraskede mig'."
     )
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        phrase = str(result.get("text") or "").strip()
-        if phrase.startswith('"') and phrase.endswith('"'):
-            phrase = phrase[1:-1].strip()
-        return phrase[:200]
-    except Exception:
-        return ""
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    fallback = f"Det overraskede mig at min tilstand skiftede: {', '.join(divergence[:2])}"
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
 
 
 def _store_surprise(phrase: str, divergence: list[str]) -> None:

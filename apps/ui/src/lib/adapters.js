@@ -4380,7 +4380,7 @@ export const backend = {
       procedures, temporalContext, negotiations, forgettingCurve,
       conversationRhythm, selfExperiments, anticipatoryContext,
       contractEvolution, dreamCarryOver, apopheniaGuard,
-      cognitiveStateInjection, userModelPayload,
+      cognitiveStateInjection, userModelPayload, cognitiveCoreExperiments,
     ] = await Promise.all([
       requestJson('/mc/personality-vector').catch(() => ({})),
       requestJson('/mc/taste-profile').catch(() => ({})),
@@ -4410,6 +4410,7 @@ export const backend = {
       requestJson('/mc/apophenia-guard').catch(() => ({})),
       requestJson('/mc/cognitive-state-injection').catch(() => ({})),
       requestJson('/mc/user-model').catch(() => null),
+      requestJson('/mc/cognitive-core-experiments').catch(() => ({})),
     ])
     return {
       fetchedAt: new Date().toISOString(),
@@ -4421,6 +4422,7 @@ export const backend = {
       contractEvolution, dreamCarryOver, apopheniaGuard,
       cognitiveStateInjection,
       userModel: normalizeUserModel(userModelPayload ?? null),
+      cognitiveCoreExperiments,
     }
   },
 

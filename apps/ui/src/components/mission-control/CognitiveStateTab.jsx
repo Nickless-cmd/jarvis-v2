@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Compass, Waves, Scale, Palette, VolumeX, Languages, Brain, Sparkles, Eye, Fingerprint } from 'lucide-react'
+import { Compass, Waves, Scale, Palette, VolumeX, Languages, Brain, Sparkles, Eye, Fingerprint, FlaskConical } from 'lucide-react'
 import { s, T, mono } from '../../shared/theme/tokens'
 import { backend } from '../../lib/adapters'
 
@@ -63,6 +63,7 @@ export function CognitiveStateTab() {
   const compass = data.compass?.current
   const rhythm = data.rhythm?.current
   const injection = data.cognitiveStateInjection
+  const experiments = data.cognitiveCoreExperiments
 
   return (
     <div style={s({ padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 10 })}>
@@ -172,6 +173,59 @@ export function CognitiveStateTab() {
       {/* Anticipatory Context */}
       <Section icon={Sparkles} title="Anticipatory Context">
         <span style={s({ ...mono, fontSize: 10, color: T.text2 })}>{data.anticipatoryContext?.summary || 'Forudsiger...'}</span>
+      </Section>
+
+      {/* Cognitive Core Experiments */}
+      <Section icon={FlaskConical} title="Cognitive Core Experiments">
+        {experiments?.ordered_systems ? (
+          <>
+            <div style={s({ display: 'flex', gap: 10, marginBottom: 8, flexWrap: 'wrap' })}>
+              <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>
+                Aktivitet: <span style={{ color: experiments.activity_state === 'active' ? T.accentText : T.text2 }}>{experiments.activity_state}</span>
+              </span>
+              <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>
+                Carry: <span style={{ color: experiments.carry_state === 'present' ? T.accentText : T.text2 }}>{experiments.carry_state}</span>
+              </span>
+              {experiments.strongest_carry_system !== 'none' && (
+                <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>
+                  Stærkest: <span style={{ color: T.accentText }}>{experiments.strongest_carry_system}</span>
+                </span>
+              )}
+            </div>
+            {experiments.ordered_systems.map((sys) => (
+              <div key={sys.id} style={s({
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '4px 0', borderBottom: `1px solid ${T.border0}`,
+              })}>
+                <div style={s({ display: 'flex', alignItems: 'center', gap: 6 })}>
+                  <span style={s({
+                    display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                    background: sys.activity_state === 'active' ? '#22c55e' : sys.activity_state === 'idle' ? '#eab308' : T.text3,
+                  })} />
+                  <span style={s({ ...mono, fontSize: 10, color: T.text1 })}>{sys.label}</span>
+                  {sys.observational_only && (
+                    <span style={s({ ...mono, fontSize: 8, color: T.warning || '#eab308', background: T.bgOverlay, padding: '1px 5px', borderRadius: 4 })}>
+                      observational / core-assay
+                    </span>
+                  )}
+                </div>
+                <div style={s({ display: 'flex', alignItems: 'center', gap: 8 })}>
+                  {sys.carry_capable && (
+                    <span style={s({ ...mono, fontSize: 8, color: T.text3, background: T.bgOverlay, padding: '1px 5px', borderRadius: 4 })}>
+                      carry: {sys.carry_strength}
+                    </span>
+                  )}
+                  <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>{sys.activity_state}</span>
+                </div>
+              </div>
+            ))}
+            <div style={s({ marginTop: 6 })}>
+              <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>{experiments.summary}</span>
+            </div>
+          </>
+        ) : (
+          <span style={s({ ...mono, fontSize: 10, color: T.text3 })}>Ingen eksperiment-data</span>
+        )}
       </Section>
     </div>
   )

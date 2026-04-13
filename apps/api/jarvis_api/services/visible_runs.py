@@ -881,7 +881,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 else:
                     followup_text = "".join(_all_followup_parts).strip()
                 if not followup_text:
-                    followup_text = "Done."
+                    # Build a meaningful summary instead of bare "Done."
+                    # so transcript history shows what actually happened.
+                    _all_tool_names = []
+                    for _sr in simple_results:
+                        _all_tool_names.append(str(_sr.get("tool_name") or "tool"))
+                    if _all_tool_names:
+                        _tool_summary = ", ".join(dict.fromkeys(_all_tool_names))  # dedupe, preserve order
+                        followup_text = f"[Completed: {_tool_summary}]"
+                    else:
+                        followup_text = "[Completed]"
                     yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": followup_text})
 
                 total_input_tokens = result.input_tokens * 2

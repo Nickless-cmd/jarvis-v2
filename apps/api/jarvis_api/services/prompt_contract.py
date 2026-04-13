@@ -209,6 +209,10 @@ class PromptAssembly:
     derived_inputs: list[str]
     excluded_files: list[str]
     attention_trace: dict[str, object] | None = None
+    # Structured transcript messages (user/assistant turns) for multi-turn injection.
+    # When populated, these should be inserted as separate chat messages between
+    # the system prompt and the current user message — NOT as flat text in system.
+    transcript_messages: list[dict[str, str]] | None = None
 
 
 @dataclass(slots=True)
@@ -432,11 +436,18 @@ def build_visible_chat_prompt_assembly(
     else:
         frame_content = _cognitive_frame_section()
 
-    transcript_content = _recent_transcript_section(
+    # Build structured transcript messages for multi-turn injection
+    structured_transcript = _build_structured_transcript_messages(
         session_id,
-        limit=20 if compact else 30,
+        limit=50 if compact else 60,
         include=relevance.include_transcript,
     )
+    # Legacy flat-text fallback (kept for system prompt when structured not available)
+    transcript_content = _recent_transcript_section(
+        session_id,
+        limit=50 if compact else 60,
+        include=relevance.include_transcript,
+    ) if not structured_transcript else None
 
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
     try:
@@ -496,10 +507,12 @@ def build_visible_chat_prompt_assembly(
             label = _section_labels.get(sec_name, sec_name)
             derived_inputs.append(label)
 
-    # Transcript is always outside budget (it's user conversation, not runtime)
-    if transcript_content:
+    # Transcript: prefer structured messages; fall back to flat text in system prompt
+    if structured_transcript:
+        derived_inputs.append(f"structured transcript ({len(structured_transcript)} messages)")
+    elif transcript_content:
         parts.append(transcript_content)
-        derived_inputs.append("recent transcript slice")
+        derived_inputs.append("recent transcript slice (flat text fallback)")
 
     return PromptAssembly(
         mode="visible_chat",
@@ -509,6 +522,7 @@ def build_visible_chat_prompt_assembly(
         derived_inputs=derived_inputs,
         excluded_files=excluded_files,
         attention_trace=attention_trace_obj.summary(),
+        transcript_messages=structured_transcript or None,
     )
 
 
@@ -2567,6 +2581,21 @@ def _visible_session_continuity_instruction() -> str | None:
         "Visible session continuity:",
         "- " + " | ".join(parts),
     ]
+
+    # Add conversation-level topic summary from recent messages
+    # so Jarvis knows WHAT was discussed, not just that something happened.
+    try:
+        from apps.api.jarvis_api.services.chat_sessions import (
+            list_chat_sessions,
+        )
+        _sessions = list_chat_sessions(limit=1)
+        if _sessions:
+            _latest_title = str(_sessions[0].get("title") or "").strip()
+            if _latest_title and _latest_title != "New chat":
+                lines.append(f"Last conversation topic: {_latest_title[:120]}")
+    except Exception:
+        pass
+
     recent_runs = list(continuity.get("recent_run_summaries") or [])[:3]
     if recent_runs:
         lines.append("Recent visible carry-over (newest first):")
@@ -2593,6 +2622,7 @@ def _recent_transcript_section(
     limit: int,
     include: bool,
 ) -> str | None:
+    """Legacy flat-text fallback — used only when structured messages are not viable."""
     if not session_id or not include:
         return None
     history = recent_chat_session_messages(session_id, limit=max(limit + 1, 1))
@@ -2616,6 +2646,79 @@ def _recent_transcript_section(
             content = content[:799].rstrip() + "…"
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
+
+
+def _build_structured_transcript_messages(
+    session_id: str | None,
+    *,
+    limit: int,
+    include: bool,
+) -> list[dict[str, str]]:
+    """Build structured chat messages from recent transcript.
+
+    Returns list of {"role": "user"|"assistant", "content": "..."} dicts.
+    Tool messages are compressed into the preceding assistant message as
+    a short summary line, so they don't consume separate message slots.
+    """
+    if not session_id or not include:
+        return []
+    history = recent_chat_session_messages(session_id, limit=max(limit + 1, 1))
+    if not history:
+        return []
+
+    # Phase 1: Merge consecutive tool messages into the preceding assistant turn.
+    # Tool results become a short "[tool_name: status/summary]" annotation.
+    merged: list[dict[str, str]] = []
+    for item in history[-limit:]:
+        raw_role = str(item.get("role") or "")
+        content = " ".join(str(item.get("content") or "").split())
+        if not content:
+            continue
+
+        if raw_role == "tool":
+            # Compress tool result into a short annotation
+            # Tool content format is typically "[tool_name]: result_text..."
+            tool_summary = content[:200]  # short summary only
+            if merged and merged[-1]["role"] == "assistant":
+                # Append as annotation to previous assistant message
+                merged[-1]["content"] += f"\n({tool_summary})"
+            else:
+                # No preceding assistant message — attach to a synthetic one
+                merged.append({"role": "assistant", "content": f"({tool_summary})"})
+            continue
+
+        if raw_role == "user":
+            # Truncate user messages
+            if len(content) > 1600:
+                content = content[:1597].rstrip() + "…"
+            merged.append({"role": "user", "content": content})
+        else:
+            # assistant — use higher truncation limit
+            if len(content) > 1600:
+                content = content[:1597].rstrip() + "…"
+            merged.append({"role": "assistant", "content": content})
+
+    # Phase 2: Ensure alternating user/assistant turns (required by some models).
+    # Drop messages that break alternation rather than fabricating filler.
+    result: list[dict[str, str]] = []
+    expected_role = None  # None means either is fine
+    for msg in merged:
+        role = msg["role"]
+        if expected_role is None:
+            result.append(msg)
+            expected_role = "assistant" if role == "user" else "user"
+        elif role == expected_role:
+            result.append(msg)
+            expected_role = "assistant" if role == "user" else "user"
+        else:
+            # Same role twice — merge with previous if possible
+            if result and result[-1]["role"] == role:
+                result[-1]["content"] += "\n" + msg["content"]
+            else:
+                result.append(msg)
+                expected_role = "assistant" if role == "user" else "user"
+
+    return result
 
 
 def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[str]:

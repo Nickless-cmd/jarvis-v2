@@ -198,9 +198,25 @@ def _deterministic_update(
     original_baseline = dict(baseline)
 
     # Fix 1: Debounced natural decay — at most once per 30 minutes
+    # Extended to all 4 axes; factor is configurable via RuntimeSettings.emotion_decay_factor
     if _should_apply_decay():
-        baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) * 0.95)
-        baseline["frustration"] = max(0.0, float(baseline.get("frustration", 0.0)) * 0.95)
+        try:
+            from core.runtime.settings import load_settings
+            decay_factor = float(load_settings().emotion_decay_factor)
+        except Exception:
+            decay_factor = 0.97
+        before = {k: float(baseline.get(k, 0.0)) for k in ("confidence", "curiosity", "fatigue", "frustration")}
+        baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) * decay_factor)
+        baseline["frustration"] = max(0.0, float(baseline.get("frustration", 0.0)) * decay_factor)
+        baseline["curiosity"] = max(0.0, float(baseline.get("curiosity", 0.0)) * decay_factor)
+        # confidence decays toward 0.5 (neutral) rather than toward 0
+        conf = float(baseline.get("confidence", 0.5))
+        baseline["confidence"] = conf + (0.5 - conf) * (1.0 - decay_factor)
+        after = {k: float(baseline.get(k, 0.0)) for k in ("confidence", "curiosity", "fatigue", "frustration")}
+        logger.info(
+            "personality_vector: decay applied (factor=%.3f) before=%s after=%s",
+            decay_factor, before, after,
+        )
         _record_decay_timestamp()
 
     if outcome_status in ("completed", "success"):

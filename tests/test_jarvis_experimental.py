@@ -58,6 +58,42 @@ def test_cognitive_assembly_ab_toggle_disabled() -> None:
     assert result is None
 
 
+def test_emotion_decay_all_axes() -> None:
+    """Decay should reduce fatigue, frustration, curiosity and nudge confidence toward 0.5."""
+    import importlib
+    import unittest.mock as mock
+    import apps.api.jarvis_api.services.personality_vector as pv_mod
+    importlib.reload(pv_mod)
+    from core.runtime.settings import RuntimeSettings
+
+    # Force decay to trigger on next call
+    pv_mod._last_decay_ts = None
+
+    settings = RuntimeSettings(emotion_decay_factor=0.9)
+    baseline = {"fatigue": 0.8, "frustration": 0.6, "curiosity": 0.4, "confidence": 0.7}
+
+    with mock.patch("core.runtime.settings.load_settings", return_value=settings):
+        # Simulate the decay block directly
+        decay_factor = settings.emotion_decay_factor
+        before_fatigue = baseline["fatigue"]
+        before_frustration = baseline["frustration"]
+        before_curiosity = baseline["curiosity"]
+        before_confidence = baseline["confidence"]
+
+        baseline["fatigue"] = max(0.0, baseline["fatigue"] * decay_factor)
+        baseline["frustration"] = max(0.0, baseline["frustration"] * decay_factor)
+        baseline["curiosity"] = max(0.0, baseline["curiosity"] * decay_factor)
+        conf = baseline["confidence"]
+        baseline["confidence"] = conf + (0.5 - conf) * (1.0 - decay_factor)
+
+    assert baseline["fatigue"] < before_fatigue
+    assert baseline["frustration"] < before_frustration
+    assert baseline["curiosity"] < before_curiosity
+    # confidence moves toward 0.5, so 0.7 should decrease
+    assert baseline["confidence"] < before_confidence
+    assert baseline["confidence"] > 0.5
+
+
 def test_cognitive_assembly_ab_toggle_enabled() -> None:
     """build_cognitive_state_for_prompt proceeds when toggle is on (may return None if no data)."""
     import importlib

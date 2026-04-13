@@ -827,6 +827,49 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "home_assistant",
+            "description": (
+                "Control and read Home Assistant smart home devices. "
+                "List entities, get state/attributes, or call any HA service "
+                "(turn on/off lights, set brightness, adjust climate, trigger automations, etc.). "
+                "Entity IDs look like 'light.living_room', 'climate.thermostat', 'switch.garden'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list_entities", "get_state", "call_service"],
+                        "description": (
+                            "list_entities: list all entities, optionally filtered by domain. "
+                            "get_state: get state and attributes of one entity. "
+                            "call_service: call any HA service (e.g. light.turn_on, climate.set_temperature)."
+                        ),
+                    },
+                    "entity_id": {
+                        "type": "string",
+                        "description": "Entity ID, e.g. 'light.living_room'. Required for get_state and call_service.",
+                    },
+                    "domain": {
+                        "type": "string",
+                        "description": "(list_entities) Filter by domain, e.g. 'light', 'climate', 'switch', 'sensor'. Omit for all.",
+                    },
+                    "service": {
+                        "type": "string",
+                        "description": "(call_service) Service name within the domain, e.g. 'turn_on', 'turn_off', 'set_temperature'. The domain is derived from entity_id.",
+                    },
+                    "service_data": {
+                        "type": "object",
+                        "description": "(call_service) Extra service parameters, e.g. {\"brightness\": 200} or {\"temperature\": 22}.",
+                    },
+                },
+                "required": ["action"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "convene_council",
             "description": (
                 "Convene a council of agents to deliberate on a decision or topic. "
@@ -2936,6 +2979,118 @@ def _exec_search_chat_history(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_home_assistant(args: dict[str, Any]) -> dict[str, Any]:
+    """Control and read Home Assistant devices via REST API."""
+    import urllib.error as urllib_err
+
+    action = str(args.get("action") or "").strip().lower()
+    entity_id = str(args.get("entity_id") or "").strip()
+    domain_filter = str(args.get("domain") or "").strip().lower()
+    service = str(args.get("service") or "").strip().lower()
+    service_data: dict[str, Any] = args.get("service_data") or {}  # type: ignore[assignment]
+
+    ha_url = _read_api_key("home_assistant_url").rstrip("/")
+    ha_token = _read_api_key("home_assistant_token")
+
+    if not ha_url or not ha_token:
+        return {
+            "error": "Home Assistant ikke konfigureret (home_assistant_url / home_assistant_token mangler i runtime.json)",
+            "status": "error",
+        }
+
+    headers = {
+        "Authorization": f"Bearer {ha_token}",
+        "Content-Type": "application/json",
+    }
+
+    def _ha_get(path: str) -> Any:
+        req = urllib_request.Request(f"{ha_url}{path}", headers=headers)
+        with urllib_request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+
+    def _ha_post(path: str, payload: dict[str, Any]) -> Any:
+        data = json.dumps(payload, ensure_ascii=False).encode()
+        req = urllib_request.Request(f"{ha_url}{path}", data=data, headers=headers, method="POST")
+        with urllib_request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+
+    # ── list_entities ───────────────────────────────────────────────────────
+    if action == "list_entities":
+        try:
+            states = _ha_get("/api/states")
+        except Exception as exc:
+            return {"error": f"Kunne ikke hente enheder: {exc}", "status": "error"}
+
+        if domain_filter:
+            states = [s for s in states if s.get("entity_id", "").startswith(domain_filter + ".")]
+
+        lines: list[str] = []
+        for s in sorted(states, key=lambda x: x.get("entity_id", "")):
+            eid = s.get("entity_id", "")
+            state = s.get("state", "")
+            friendly = s.get("attributes", {}).get("friendly_name", "")
+            label = f" ({friendly})" if friendly and friendly != eid else ""
+            lines.append(f"{eid}{label}: {state}")
+
+        domain_label = f" [{domain_filter}]" if domain_filter else ""
+        return {
+            "text": f"Home Assistant enheder{domain_label} ({len(lines)} stk):\n" + "\n".join(lines),
+            "count": len(lines),
+            "status": "ok",
+        }
+
+    # ── get_state ───────────────────────────────────────────────────────────
+    if action == "get_state":
+        if not entity_id:
+            return {"error": "entity_id er påkrævet for get_state", "status": "error"}
+        try:
+            state = _ha_get(f"/api/states/{entity_id}")
+        except urllib_err.HTTPError as exc:
+            if exc.code == 404:
+                return {"error": f"Enhed ikke fundet: {entity_id}", "status": "error"}
+            return {"error": f"HTTP {exc.code}: {exc}", "status": "error"}
+        except Exception as exc:
+            return {"error": f"Fejl: {exc}", "status": "error"}
+
+        attrs = state.get("attributes", {})
+        attr_lines = [f"  {k}: {v}" for k, v in attrs.items() if k != "entity_id"]
+        text = (
+            f"**{entity_id}**\n"
+            f"Tilstand: {state.get('state')}\n"
+            f"Sidst ændret: {state.get('last_changed', '')[:19]}\n"
+        )
+        if attr_lines:
+            text += "Attributter:\n" + "\n".join(attr_lines)
+        return {"text": text, "state": state.get("state"), "attributes": attrs, "status": "ok"}
+
+    # ── call_service ────────────────────────────────────────────────────────
+    if action == "call_service":
+        if not entity_id:
+            return {"error": "entity_id er påkrævet for call_service", "status": "error"}
+        if not service:
+            return {"error": "service er påkrævet for call_service (f.eks. 'turn_on', 'turn_off')", "status": "error"}
+
+        # Derive domain from entity_id (e.g. "light.living_room" → "light")
+        entity_domain = entity_id.split(".")[0] if "." in entity_id else entity_id
+        payload: dict[str, Any] = {"entity_id": entity_id, **service_data}
+
+        try:
+            _ha_post(f"/api/services/{entity_domain}/{service}", payload)
+        except urllib_err.HTTPError as exc:
+            body = exc.read().decode(errors="replace") if hasattr(exc, "read") else ""
+            return {"error": f"HTTP {exc.code}: {body[:200]}", "status": "error"}
+        except Exception as exc:
+            return {"error": f"Fejl ved service-kald: {exc}", "status": "error"}
+
+        extras = ", ".join(f"{k}={v}" for k, v in service_data.items()) if service_data else ""
+        desc = f"{entity_id} → {entity_domain}.{service}"
+        if extras:
+            desc += f" ({extras})"
+        return {"text": f"✓ {desc}", "status": "ok"}
+
+    return {"error": f"Ukendt action: {action!r}. Brug list_entities, get_state eller call_service.", "status": "error"}
+
+
 def _exec_convene_council(args: dict[str, Any]) -> dict[str, Any]:
     topic = str(args.get("topic") or "").strip()
     if not topic:
@@ -3178,6 +3333,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "search_chat_history": _exec_search_chat_history,
     "discord_status": _exec_discord_status,
     "discord_channel": _exec_discord_channel,
+    "home_assistant": _exec_home_assistant,
     "convene_council": _exec_convene_council,
     "quick_council_check": _exec_quick_council_check,
     "daemon_status": _exec_daemon_status,

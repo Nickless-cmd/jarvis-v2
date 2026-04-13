@@ -1,6 +1,7 @@
 """Surprise daemon — first-person surprise when Jarvis's reactions diverge from baseline."""
 from __future__ import annotations
 
+import time
 from collections import Counter
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -20,6 +21,47 @@ _cached_surprise: str = ""
 _cached_surprise_at: datetime | None = None
 _heartbeats_since_surprise: int = 0
 
+# Experiment 2: Surprise persistence state
+_pending_afterimages: list[dict] = []  # [{concept, trigger_at, surprise_type}]
+_persistence_start_ts: float | None = None  # monotonic timestamp of last surprise
+_persistence_concept: str = ""  # which concept was triggered for persistence tracking
+
+
+def _surprise_type_to_concept(surprise_type: str) -> str:
+    """Map surprise classification to primary emotion concept."""
+    return {
+        "positiv": "anticipation",
+        "negativ": "tension",
+    }.get(surprise_type, "vigilance")
+
+
+def _afterimage_concept(surprise_type: str) -> str:
+    """Map surprise classification to afterimage emotion concept."""
+    return "caution" if surprise_type == "negativ" else "curiosity_narrow"
+
+
+def _process_pending_afterimages() -> None:
+    """Trigger afterimage emotion concepts whose delay has elapsed."""
+    global _pending_afterimages
+    now = time.monotonic()
+    remaining = []
+    for item in _pending_afterimages:
+        if now >= item["trigger_at"]:
+            try:
+                from apps.api.jarvis_api.services.emotion_concepts import trigger_emotion_concept
+                trigger_emotion_concept(
+                    item["concept"],
+                    0.3,
+                    trigger="surprise_afterimage",
+                    source="surprise_daemon",
+                    lifetime_hours=2.0,
+                )
+            except Exception:
+                pass
+        else:
+            remaining.append(item)
+    _pending_afterimages = remaining
+
 
 def tick_surprise_daemon(
     inner_voice_mode: str = "",
@@ -27,6 +69,8 @@ def tick_surprise_daemon(
 ) -> dict[str, object]:
     global _heartbeats_since_surprise
     _heartbeats_since_surprise += 1
+    # Experiment 2: Process pending afterimages
+    _process_pending_afterimages()
     _record_snapshot(inner_voice_mode, somatic_energy)
     if len(_mode_history) < 3:
         return {"generated": False, "surprise": _cached_surprise}
@@ -47,11 +91,27 @@ def get_latest_surprise() -> str:
 
 
 def build_surprise_surface() -> dict[str, object]:
+    afterimage_active = bool(_pending_afterimages)
+    afterimage_concept = _pending_afterimages[0]["concept"] if _pending_afterimages else ""
+
+    persistence_seconds = 0.0
+    if _persistence_start_ts is not None:
+        try:
+            from apps.api.jarvis_api.services.emotion_concepts import get_active_emotion_concepts
+            active = {c["concept"]: c["intensity"] for c in get_active_emotion_concepts()}
+            if _persistence_concept and active.get(_persistence_concept, 0) < 0.1:
+                persistence_seconds = time.monotonic() - _persistence_start_ts
+        except Exception:
+            pass
+
     return {
         "last_surprise": _cached_surprise,
         "generated_at": _cached_surprise_at.isoformat() if _cached_surprise_at else "",
         "surprise_type": _classify_surprise(_cached_surprise),
         "history_size": len(_mode_history),
+        "affective_persistence_seconds": round(persistence_seconds),
+        "current_afterimage_active": afterimage_active,
+        "afterimage_concept": afterimage_concept,
     }
 
 
@@ -131,6 +191,7 @@ def _generate_surprise(
 
 def _store_surprise(phrase: str, divergence: list[str]) -> None:
     global _cached_surprise, _cached_surprise_at, _heartbeats_since_surprise
+    global _pending_afterimages, _persistence_start_ts, _persistence_concept
     _cached_surprise = phrase
     _cached_surprise_at = datetime.now(UTC)
     _heartbeats_since_surprise = 0
@@ -155,6 +216,30 @@ def _store_surprise(phrase: str, divergence: list[str]) -> None:
             "cognitive_surprise.noted",
             {"phrase": phrase, "divergence": divergence},
         )
+    except Exception:
+        pass
+
+    # Experiment 2: Surprise persistence
+    try:
+        from core.runtime.db import get_experiment_enabled
+        if get_experiment_enabled("surprise_persistence"):
+            surprise_type = _classify_surprise(phrase)
+            primary_concept = _surprise_type_to_concept(surprise_type)
+            from apps.api.jarvis_api.services.emotion_concepts import trigger_emotion_concept
+            trigger_emotion_concept(
+                primary_concept,
+                min(1.0, float(len(divergence)) * 0.4 + 0.4),
+                trigger="surprise_persistence",
+                source="surprise_daemon",
+                lifetime_hours=4.0,
+            )
+            _pending_afterimages.append({
+                "concept": _afterimage_concept(surprise_type),
+                "trigger_at": time.monotonic() + 300,  # 5 minutes
+                "surprise_type": surprise_type,
+            })
+            _persistence_start_ts = time.monotonic()
+            _persistence_concept = primary_concept
     except Exception:
         pass
 

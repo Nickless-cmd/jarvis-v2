@@ -17,12 +17,40 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_MAX_ACTIVE = 5
-_STRONG_THRESHOLD = 0.7
-_WEAK_THRESHOLD = 0.3
-_REPETITION_THRESHOLD = 3
-_REPETITION_MULTIPLIER = 1.5
-_TOPIC_WINDOW = 10
+_REPETITION_THRESHOLD = 3   # kept hardcoded — not in spec
+_TOPIC_WINDOW = 10           # kept hardcoded — not in spec
+
+
+def _get_strong_threshold() -> float:
+    try:
+        from core.runtime.settings import load_settings
+        return float(load_settings().recall_strong_threshold)
+    except Exception:
+        return 0.7
+
+
+def _get_weak_threshold() -> float:
+    try:
+        from core.runtime.settings import load_settings
+        return float(load_settings().recall_weak_threshold)
+    except Exception:
+        return 0.3
+
+
+def _get_max_active() -> int:
+    try:
+        from core.runtime.settings import load_settings
+        return int(load_settings().recall_max_active)
+    except Exception:
+        return 5
+
+
+def _get_repetition_multiplier() -> float:
+    try:
+        from core.runtime.settings import load_settings
+        return float(load_settings().recall_repetition_multiplier)
+    except Exception:
+        return 1.5
 
 # In-memory state
 _active_memories: dict[str, dict[str, Any]] = {}
@@ -65,16 +93,21 @@ def recall_for_session(session_context: dict[str, Any]) -> list[dict[str, Any]]:
         candidate = next((c for c in candidates if c["memory_id"] == memory_id), None)
         if not candidate:
             continue
-        if score >= _STRONG_THRESHOLD and len(_active_memories) < 3:
+        if score >= _get_strong_threshold() and len(_active_memories) < 3:
             _add_to_active({**candidate, "score": score})
             activated.append({**candidate, "score": score})
-        elif score >= _WEAK_THRESHOLD:
+        elif score >= _get_weak_threshold():
             weak.append({**candidate, "score": score})
 
     if weak:
         apply_weak_recall_to_emotions(weak)
 
     logger.debug("associative_recall: session init — %d active, %d weak", len(activated), len(weak))
+    logger.info(
+        "associative_recall session_init: activated=%d weak=%d total_candidates=%d strong_threshold=%.2f weak_threshold=%.2f",
+        len(activated), len(weak), len(candidates),
+        _get_strong_threshold(), _get_weak_threshold(),
+    )
     return activated
 
 
@@ -136,16 +169,20 @@ def recall_for_message(
         candidate = next((c for c in candidates if c["memory_id"] == memory_id), None)
         if not candidate:
             continue
-        if score >= _STRONG_THRESHOLD and added_count < 2:
+        if score >= _get_strong_threshold() and added_count < 2:
             _add_to_active({**candidate, "score": score})
             activated.append({**candidate, "score": score})
             added_count += 1
-        elif score >= _WEAK_THRESHOLD:
+        elif score >= _get_weak_threshold():
             weak.append({**candidate, "score": score})
 
     if weak:
         apply_weak_recall_to_emotions(weak)
 
+    logger.info(
+        "associative_recall message: activated=%d weak=%d candidates_evaluated=%d topic_hint=%r",
+        len(activated), len(weak), len(candidates), topic_hint,
+    )
     return activated
 
 
@@ -213,7 +250,7 @@ def clear_session_recall() -> None:
 def _add_to_active(memory: dict[str, Any]) -> None:
     """Add memory to active set. Evicts weakest if at cap."""
     memory_id = str(memory["memory_id"])
-    if len(_active_memories) >= _MAX_ACTIVE and memory_id not in _active_memories:
+    if len(_active_memories) >= _get_max_active() and memory_id not in _active_memories:
         weakest_id = min(
             _active_memories.keys(),
             key=lambda k: float(_active_memories[k].get("score") or 0),
@@ -233,7 +270,7 @@ def _get_topic_multiplier(topic: str) -> float:
         return 1.0
     topic_lower = topic.lower()
     count = sum(1 for t in _topic_history if topic_lower in t or t in topic_lower)
-    return _REPETITION_MULTIPLIER if count >= _REPETITION_THRESHOLD else 1.0
+    return _get_repetition_multiplier() if count >= _REPETITION_THRESHOLD else 1.0
 
 
 def _extract_topic_hint(text: str) -> str:

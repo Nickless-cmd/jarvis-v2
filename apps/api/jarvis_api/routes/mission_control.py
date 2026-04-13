@@ -1574,6 +1574,16 @@ def mc_affective_meta_state() -> dict:
     return build_affective_meta_state_surface()
 
 
+@router.get("/emotion-concepts")
+def mc_emotion_concepts() -> dict:
+    """Return active Lag-2 emotion concept signals and their Lag-1 influence deltas."""
+    try:
+        from apps.api.jarvis_api.services.emotion_concepts import build_emotion_concept_surface
+        return build_emotion_concept_surface()
+    except Exception as exc:
+        return {"active": False, "active_count": 0, "concepts": [], "error": str(exc)}
+
+
 @router.get("/experiential-runtime-context")
 def mc_experiential_runtime_context() -> dict:
     """Return the current bounded experiential runtime context (body/tone/intermittence/pressure)."""

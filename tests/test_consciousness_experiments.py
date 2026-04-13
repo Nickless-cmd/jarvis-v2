@@ -123,6 +123,55 @@ def test_surprise_afterimage_concept_mapping() -> None:
     assert sd._afterimage_concept("neutral") == "curiosity_narrow"
 
 
+# ---------------------------------------------------------------------------
+# Experiment 3: Global Workspace
+# ---------------------------------------------------------------------------
+
+def test_broadcast_db_insert_and_list(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    db.insert_broadcast_event(
+        event_id="bc-test-001",
+        topic_cluster="deployment frustration",
+        sources='["surprise_daemon", "inner_voice_daemon", "emotion_concepts"]',
+        source_count=3,
+        payload_summary="Multiple daemons converging on deployment stress theme",
+    )
+    results = db.list_broadcast_events(limit=10)
+    assert len(results) == 1
+    assert results[0]["source_count"] == 3
+    assert results[0]["topic_cluster"] == "deployment frustration"
+
+
+def test_workspace_topic_extraction() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.global_workspace as gw
+    importlib.reload(gw)
+    topic = gw._extract_topic("cognitive_surprise.noted", {"phrase": "Jeg var overrasket over min reaktion på fejlen"})
+    assert isinstance(topic, str)
+    assert len(topic) > 0
+
+
+def test_workspace_jaccard_topic_match() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.global_workspace as gw
+    importlib.reload(gw)
+    score = gw._topic_jaccard("deployment stress", "deployment error")
+    assert score > 0.0
+    score2 = gw._topic_jaccard("music creativity", "deployment error")
+    assert score2 < 0.4
+
+
+def test_workspace_publish_and_snapshot() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.global_workspace as gw
+    importlib.reload(gw)
+    gw.publish_to_workspace("surprise_daemon", "frustration error", "cognitive_surprise.noted", "Overrasket over fejl")
+    gw.publish_to_workspace("inner_voice_daemon", "error frustration", "inner_voice.noted", "Tænkte over fejlen")
+    snapshot = gw.get_workspace_snapshot()
+    assert len(snapshot) == 2
+    assert any(e["source"] == "surprise_daemon" for e in snapshot)
+
+
 def test_trigger_emotion_concept_custom_lifetime() -> None:
     import importlib
     import apps.api.jarvis_api.services.emotion_concepts as ec

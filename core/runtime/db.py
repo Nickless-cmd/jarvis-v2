@@ -30244,6 +30244,40 @@ def list_cognitive_experiential_memories(*, limit: int = 20) -> list[dict[str, o
     ]
 
 
+def get_experiential_memory_candidates(
+    *, limit: int = 20
+) -> list[dict[str, object]]:
+    """Return candidate memories for LLM-based associative scoring.
+
+    Ordered by importance DESC so the most significant memories surface first.
+    Returns raw candidates without keyword scoring — the LLM does the scoring.
+    """
+    with connect() as conn:
+        _ensure_cognitive_experiential_memories_table(conn)
+        rows = conn.execute(
+            """SELECT memory_id, narrative, topic, emotion_arc, key_lesson,
+                      importance, decay_score, reinforcement_count
+               FROM cognitive_experiential_memories
+               WHERE decay_score < 0.95
+               ORDER BY importance DESC, reinforcement_count DESC
+               LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "memory_id": r["memory_id"],
+            "narrative": str(r["narrative"] or ""),
+            "topic": str(r["topic"] or ""),
+            "emotion_arc": str(r["emotion_arc"] or ""),
+            "key_lesson": str(r["key_lesson"] or ""),
+            "importance": float(r["importance"]),
+            "decay_score": float(r["decay_score"]),
+            "reinforcement_count": int(r["reinforcement_count"]),
+        }
+        for r in rows
+    ]
+
+
 # --- Self-Surprises ---
 
 def _ensure_cognitive_self_surprises_table(conn: sqlite3.Connection) -> None:

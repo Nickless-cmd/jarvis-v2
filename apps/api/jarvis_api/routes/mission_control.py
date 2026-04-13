@@ -3692,3 +3692,12 @@ def mc_meta_cognition() -> dict:
 def mc_attention_profile() -> dict:
     from apps.api.jarvis_api.services.attention_blink_test import build_attention_profile_surface
     return build_attention_profile_surface()
+
+
+@router.get("/cognitive-core-experiments")
+def mc_cognitive_core_experiments() -> dict:
+    """Unified cognitive-core experiment surface for Mission Control."""
+    from apps.api.jarvis_api.services.cognitive_core_experiments import (
+        build_cognitive_core_experiments_surface,
+    )
+    return build_cognitive_core_experiments_surface()

@@ -115,7 +115,26 @@ def build_recurrence_surface() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 
 def _call_recurrence_llm(content: str) -> str:
-    """Call local/cheap LLM to generate next recurrence iteration. Timeout 15s."""
+    """Call cheap lane (Groq/etc.) first, Ollama fallback. Timeout 15s."""
+    prompt = (
+        f"Indre stemme: {content[:400]}\n\n"
+        f"Hvad er essensen af denne tanke, og hvad leder den naturligt til? "
+        f"Svar i 2-3 sætninger."
+    )
+
+    # ── Cheap lane (Groq etc.) — preferred, returns actual content ──
+    try:
+        from apps.api.jarvis_api.services.non_visible_lane_execution import (
+            execute_cheap_lane,
+        )
+        result = execute_cheap_lane(message=prompt)
+        text = str(result.get("text") or result.get("content") or "").strip()
+        if text:
+            return text
+    except Exception as exc:
+        logger.debug("recurrence: cheap lane failed: %s", exc)
+
+    # ── Ollama fallback with higher num_predict for thinking models ──
     try:
         from core.runtime.provider_router import resolve_provider_router_target
     except Exception:
@@ -129,16 +148,11 @@ def _call_recurrence_llm(content: str) -> str:
                 continue
             base_url = str(target.get("base_url") or "http://127.0.0.1:11434")
             model = str(target.get("model") or "")
-            prompt = (
-                f"Indre stemme: {content[:400]}\n\n"
-                f"Hvad er essensen af denne tanke, og hvad leder den naturligt til? "
-                f"Svar i 2-3 sætninger."
-            )
             payload = json.dumps({
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "options": {"num_predict": 150},
+                "options": {"num_predict": 512},
             }).encode()
             req = urllib_request.Request(
                 f"{base_url}/api/chat",
@@ -146,8 +160,10 @@ def _call_recurrence_llm(content: str) -> str:
                 headers={"Content-Type": "application/json"},
             )
             with urllib_request.urlopen(req, timeout=15) as resp:
-                result = json.loads(resp.read())
-            return str(result.get("message", {}).get("content", "")).strip()
+                data = json.loads(resp.read())
+            text = str(data.get("message", {}).get("content", "")).strip()
+            if text:
+                return text
         except Exception:
             continue
     return ""

@@ -86,7 +86,7 @@ def _store_narrative(narrative: str) -> None:
             record_id=f"pb-devnarr-{uuid4().hex[:12]}",
             record_type="development-narrative",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"development-narrative-daemon-{uuid4().hex[:12]}",
             focus="udvikling",
             summary=narrative,

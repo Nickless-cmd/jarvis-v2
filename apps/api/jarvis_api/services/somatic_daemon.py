@@ -200,7 +200,7 @@ def _store_phrase(phrase: str, snapshot: dict[str, object]) -> None:
             record_id=f"pb-somatic-{uuid4().hex[:12]}",
             record_type="somatic-phrase",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"somatic-daemon-{uuid4().hex[:12]}",
             focus="somatisk tilstand",
             summary=phrase,

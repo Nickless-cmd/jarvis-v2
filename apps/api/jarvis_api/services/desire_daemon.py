@@ -142,7 +142,7 @@ def _spawn_appetite(label: str, appetite_type: str, now: datetime) -> None:
             record_id=f"pb-desire-{aid}",
             record_type="desire-signal",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"desire-daemon-{aid}",
             focus="appetit",
             summary=label,

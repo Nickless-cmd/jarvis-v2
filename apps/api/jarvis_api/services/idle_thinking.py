@@ -57,7 +57,7 @@ def run_idle_thought() -> dict[str, object] | None:
             from apps.api.jarvis_api.services.experiential_memory import create_experiential_memory_from_run
             create_experiential_memory_from_run(
                 run_id=f"idle-{uuid4().hex[:8]}",
-                session_id="",
+                session_id="heartbeat",
                 user_message="[idle thought]",
                 assistant_response=thought,
                 outcome_status="completed",

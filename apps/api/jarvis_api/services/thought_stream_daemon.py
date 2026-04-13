@@ -86,7 +86,7 @@ def _store_fragment(fragment: str) -> None:
             record_id=f"pb-thought-{uuid4().hex[:12]}",
             record_type="thought-stream-fragment",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"thought-stream-daemon-{uuid4().hex[:12]}",
             focus="tankestrøm",
             summary=fragment,

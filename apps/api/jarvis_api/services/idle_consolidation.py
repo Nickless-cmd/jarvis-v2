@@ -139,7 +139,7 @@ def run_idle_consolidation(
         record_id=f"pb-sleep-{uuid4().hex[:12]}",
         record_type="sleep-consolidation",
         layer="private_brain",
-        session_id="",
+        session_id="heartbeat",
         run_id="",
         focus=str(artifact.get("focus") or "")[:200],
         summary=str(artifact.get("summary") or "")[:400],

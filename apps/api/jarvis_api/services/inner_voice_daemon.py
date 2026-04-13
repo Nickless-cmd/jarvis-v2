@@ -185,7 +185,7 @@ def run_inner_voice_daemon(
         record_id=f"pb-voice-{uuid4().hex[:12]}",
         record_type="inner-voice",
         layer="private_brain",
-        session_id="",
+        session_id="heartbeat",
         run_id=f"voice-daemon-{uuid4().hex[:12]}",
         focus=note["focus"][:200],
         summary=note["summary"][:400],

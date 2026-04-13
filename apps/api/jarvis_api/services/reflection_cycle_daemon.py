@@ -97,7 +97,7 @@ def _store_reflection(reflection: str) -> None:
             record_id=f"pb-reflect-{uuid4().hex[:12]}",
             record_type="reflection-cycle",
             layer="private_brain",
-            session_id="",
+            session_id="heartbeat",
             run_id=f"reflection-daemon-{uuid4().hex[:12]}",
             focus="oplevelse",
             summary=reflection,

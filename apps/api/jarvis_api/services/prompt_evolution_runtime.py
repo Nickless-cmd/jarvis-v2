@@ -132,7 +132,7 @@ def run_prompt_evolution_runtime(
         updated_at=now_iso,
         status_reason=str(artifact.get("status_reason") or ""),
         run_id="",
-        session_id="",
+        session_id="heartbeat",
     )
 
     result = {

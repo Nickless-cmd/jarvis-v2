@@ -93,6 +93,36 @@ def test_tick_recurrence_skips_when_disabled(isolated_runtime) -> None:
     assert result["reason"] == "disabled"
 
 
+# ---------------------------------------------------------------------------
+# Experiment 2: Surprise Persistence
+# ---------------------------------------------------------------------------
+
+def test_surprise_classifies_positive() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.surprise_daemon as sd
+    importlib.reload(sd)
+    assert sd._classify_surprise("Det var positivt overraskende") == "positiv"
+
+
+def test_surprise_persistence_concept_mapping() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.surprise_daemon as sd
+    importlib.reload(sd)
+    assert sd._surprise_type_to_concept("positiv") == "anticipation"
+    assert sd._surprise_type_to_concept("negativ") == "tension"
+    assert sd._surprise_type_to_concept("neutral") == "vigilance"
+    assert sd._surprise_type_to_concept("ingen") == "vigilance"
+
+
+def test_surprise_afterimage_concept_mapping() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.surprise_daemon as sd
+    importlib.reload(sd)
+    assert sd._afterimage_concept("positiv") == "curiosity_narrow"
+    assert sd._afterimage_concept("negativ") == "caution"
+    assert sd._afterimage_concept("neutral") == "curiosity_narrow"
+
+
 def test_trigger_emotion_concept_custom_lifetime() -> None:
     import importlib
     import apps.api.jarvis_api.services.emotion_concepts as ec

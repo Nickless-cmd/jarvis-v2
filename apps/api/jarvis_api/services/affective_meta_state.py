@@ -202,6 +202,28 @@ def _build_live_emotional_state(
     fatigue = _clamp_unit(baseline.get("fatigue"))
     trust = _clamp_unit(trust_trajectory[-1]) if trust_trajectory else None
 
+    # Apply Lag-2 emotion concept influence deltas
+    emotion_concepts_list: list[object] = []
+    try:
+        from apps.api.jarvis_api.services.emotion_concepts import (
+            get_active_emotion_concepts,
+            get_lag1_influence_deltas,
+        )
+        deltas = get_lag1_influence_deltas()
+        emotion_concepts_list = get_active_emotion_concepts()[:5]  # type: ignore[assignment]
+
+        def _apply_delta(base: float | None, delta: float) -> float | None:
+            if base is None and delta == 0.0:
+                return None
+            return _clamp_unit((base or 0.0) + delta)
+
+        confidence = _apply_delta(confidence, deltas.get("confidence", 0.0))
+        curiosity = _apply_delta(curiosity, deltas.get("curiosity", 0.0))
+        frustration = _apply_delta(frustration, deltas.get("frustration", 0.0))
+        fatigue = _apply_delta(fatigue, deltas.get("fatigue", 0.0))
+    except Exception:
+        pass
+
     return {
         "mood": str(personality_vector.get("current_bearing") or "").strip(),
         "confidence": confidence,
@@ -212,6 +234,7 @@ def _build_live_emotional_state(
         "rhythm_phase": str(rhythm_state.get("phase") or "").strip(),
         "rhythm_energy": str(rhythm_state.get("energy") or "").strip(),
         "rhythm_social": str(rhythm_state.get("social") or "").strip(),
+        "emotion_concepts": emotion_concepts_list,
         "available": any(
             value not in (None, "")
             for value in (
@@ -287,20 +310,34 @@ def build_affective_meta_prompt_section(surface: dict[str, object] | None = None
         if item.get("source") and item.get("signal")
     ) or "none"
     freshness = state.get("freshness") or {}
-    return "\n".join(
-        [
-            "Affective/meta state (derived runtime truth, internal-only):",
-            (
-                f"- state={state.get('state') or 'unknown'}"
-                f" | bearing={state.get('bearing') or 'unknown'}"
-                f" | monitoring={state.get('monitoring_mode') or 'unknown'}"
-                f" | reflective_load={state.get('reflective_load') or 'low'}"
-                f" | freshness={freshness.get('state') or 'unknown'}"
-            ),
-            f"- contributors={contributor_text}",
-            f"- guidance={guidance}",
-        ]
-    )
+
+    lines = [
+        "Affective/meta state (derived runtime truth, internal-only):",
+        (
+            f"- state={state.get('state') or 'unknown'}"
+            f" | bearing={state.get('bearing') or 'unknown'}"
+            f" | monitoring={state.get('monitoring_mode') or 'unknown'}"
+            f" | reflective_load={state.get('reflective_load') or 'low'}"
+            f" | freshness={freshness.get('state') or 'unknown'}"
+        ),
+        f"- contributors={contributor_text}",
+        f"- guidance={guidance}",
+    ]
+
+    # Lag-2 concepts line — only appended when concepts are active
+    try:
+        from apps.api.jarvis_api.services.emotion_concepts import get_active_emotion_concepts
+        active = get_active_emotion_concepts()[:5]
+        if active:
+            concepts_str = ", ".join(
+                f"{s['concept']}:{s['intensity']:.1f}/{s['direction']}"
+                for s in active
+            )
+            lines.append(f"- concepts={concepts_str}")
+    except Exception:
+        pass
+
+    return "\n".join(lines)
 
 
 _DECAY_WINDOW_SECONDS = 60

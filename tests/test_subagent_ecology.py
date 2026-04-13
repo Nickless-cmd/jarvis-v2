@@ -108,8 +108,11 @@ def test_heartbeat_self_knowledge_section_includes_subagent_ecology(isolated_run
     section = prompt_contract._heartbeat_self_knowledge_section()
 
     assert section is not None
-    assert "Subagent ecology light (derived runtime truth, internal-only):" in section
-    assert "active_roles=critic=active(epistemic-off)" in section
+    assert (
+        "- Subagent ecology light: roles=3 | active=1 | cooling=1 | blocked=0 | freshness=fresh"
+        in section
+    )
+    assert "Subagent ecology light (derived runtime truth, internal-only):" not in section
 
 
 def test_mission_control_runtime_and_endpoint_expose_subagent_ecology(isolated_runtime, monkeypatch) -> None:

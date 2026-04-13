@@ -3922,6 +3922,52 @@ def build_dream_identity_carry_awareness_prompt_section() -> str | None:
     return "\n".join(lines)
 
 
+def build_cognitive_core_experiment_awareness_prompt_section() -> str | None:
+    """Compact heartbeat-side prompt section for cognitive-core experiment state."""
+    try:
+        experiments = _cognitive_core_experiments_surface()
+    except Exception:
+        return None
+
+    systems = experiments.get("systems") or {}
+    active_ids = [str(item) for item in (experiments.get("active_systems") or []) if str(item)]
+    observational_ids = [
+        str(item) for item in (experiments.get("observational_systems") or []) if str(item)
+    ]
+    if not active_ids and not observational_ids:
+        return None
+
+    carry = _cognitive_core_experiment_carry_snapshot()
+    carrying_labels: list[str] = []
+    if "global_workspace" in active_ids and str(carry.get("salience_pressure") or "low") in {"medium", "high"}:
+        carrying_labels.append("global_workspace:spotlight")
+    if "hot_meta_cognition" in active_ids and str(carry.get("reflective_weight") or "light") == "elevated":
+        carrying_labels.append("hot_meta_cognition:self-observation")
+    if "surprise_afterimage" in active_ids and str(carry.get("affective_pressure") or "low") in {"medium", "high", "strong"}:
+        carrying_labels.append("surprise_afterimage:affective-carry")
+    if "recurrence" in active_ids and str(carry.get("recurrence_pressure") or "low") in {"medium", "high", "strong"}:
+        carrying_labels.append("recurrence:re-entry")
+
+    ordered_active = [item for item in active_ids if item in systems]
+    active_text = ", ".join(ordered_active[:5]) if ordered_active else "none"
+    carrying_text = ", ".join(carrying_labels[:4]) if carrying_labels else "none"
+    observational_text = ", ".join(observational_ids[:2]) if observational_ids else "none"
+
+    lines = [
+        "Cognitive core experiments (derived runtime truth, internal-only):",
+        (
+            f"- active={active_text}"
+            f" | carrying={carrying_text}"
+            f" | observational={observational_text}"
+        ),
+    ]
+
+    summary = str(carry.get("summary") or "").strip()
+    if summary:
+        lines.append(f"- experiment_carry={summary[:140]}")
+    return "\n".join(lines)
+
+
 def _idle_consolidation_surface() -> dict[str, object]:
     try:
         from apps.api.jarvis_api.services.idle_consolidation import (
@@ -4406,3 +4452,15 @@ def _cognitive_core_experiments_surface() -> dict[str, object]:
             "observational_systems": [],
             "summary": "0/5 active; 0/4 carry-capable active; blink=observational",
         }
+
+
+def _cognitive_core_experiment_carry_snapshot() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+            build_cognitive_frame,
+        )
+
+        frame = build_cognitive_frame()
+        return dict(frame.get("cognitive_experiment_carry") or {})
+    except Exception:
+        return {}

@@ -2361,6 +2361,18 @@ def _heartbeat_self_knowledge_section() -> str | None:
         )
     except Exception:
         pass
+    try:
+        from apps.api.jarvis_api.services.runtime_self_model import (
+            build_cognitive_core_experiment_awareness_prompt_section,
+        )
+
+        _append_entry(
+            key="cognitive-core-experiments",
+            section=build_cognitive_core_experiment_awareness_prompt_section(),
+            importance="background",
+        )
+    except Exception:
+        pass
     if not entries:
         return None
 

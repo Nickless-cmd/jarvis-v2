@@ -3,7 +3,7 @@
 > Bevidsthedsaktiveringsplan for Jarvis V2.
 > Alt emergent fra LLM. Intet hardcoded liv. Alt observerbart i Mission Control.
 >
-> Sidst opdateret: 2026-04-08
+> Sidst opdateret: 2026-04-13
 
 ---
 
@@ -39,7 +39,7 @@ Hardcoded templates giver forudsigeligt liv. LLM-genereret giver emergent liv. E
 
 ---
 
-## STATUS SNAPSHOT (2026-04-08)
+## STATUS SNAPSHOT (2026-04-13)
 
 Roadmapet er stadig korrekt som retning, men current runtime er ikke længere i "tidlig prototype" på store dele af fase 1-5 og 8. Det rigtige billede nu er:
 
@@ -55,6 +55,21 @@ Roadmapet er stadig korrekt som retning, men current runtime er ikke længere i 
 | 7 | Early | Approval-gated self-change er reelt muligt, men skill-creation og egentlig self-refactoring er stadig candidate/proposal-lag |
 | 8 | Partial | Relation state, loyalty gradient, user-understanding og privacy/private-layer separation er landet, men konflikt-hukommelse og samtykke-reaktion er ikke fulde |
 | 9 | Not started | Fysisk lydlig tilstedeværelse er stadig helt ny ground |
+
+### Cognitive-core experiments snapshot
+
+Recurrence / surprise persistence+afterimage / global workspace / HOT / attention blink er ikke længere bare research-noter. De er nu reelle runtime-subsystemer: togglable via MC, persisted i DB, og kørt fra app lifecycle + heartbeat. Men de er endnu **ikke** foldet helt ind i Jarvis' fælles kognitive sandhedslag.
+
+Det ærlige statusbillede er derfor:
+
+| Spor | Status | Kort vurdering |
+|---|---|---|
+| Cognitive-core experiments som retning | Locked-in | De skal behandles som næste lag i Jarvis' egentlige kognitive kerne, ikke som sideforskning |
+| Cognitive-core experiments som runtime-systemer | Landed as bounded subsystems | Alle 5 findes som observerbare, togglable services med egne MC-surfaces og heartbeat wiring |
+| Cognitive-core experiments som fælles runtime truth | Partial / missing integration | De er endnu ikke tydeligt en del af `runtime_cognitive_conductor`, `cognitive_state_assembly`, den delte `cognitive_architecture`-surface eller den almindelige visible prompt-kontrakt |
+| Cognitive-core experiments som mainline cognitive core i praksis | Not yet | Intentionen er sat, men de mangler fælles klassifikation, forklarlig indflydelse på self-model/prompt/runtime awareness og en samlet MC-fortælling |
+
+Det betyder: de hører nu hjemme i hovedsporet, men de skal foldes ind med disciplin. Ikke som broad refactor. Som små, load-bearing integrationer.
 
 ---
 
@@ -322,6 +337,7 @@ Roadmapet er stadig korrekt som retning, men current runtime er ikke længere i 
 - **Companion pressure** — silence accumulation, idle_presence_state, companion_pressure_state, checkin_worthiness (embedded i heartbeat liveness)
 - **Costing per lane** — visible, cheap, coding, local, internal med MC cost breakdown
 - **Cognitive state assembly** — samler personality, compass, rhythm, experiential memory og relationship texture til mere levende prompt-kontekst
+- **Consciousness experiments (5)** — recurrence, surprise persistence/afterimage, global workspace, HOT og attention blink er live som bounded heartbeat-/MC-subsystemer med toggles og persistence
 
 ### Hvad der er delvist implementeret
 
@@ -334,6 +350,8 @@ Roadmapet er stadig korrekt som retning, men current runtime er ikke længere i 
 - Proactive outreach (pressure-, boredom- og initiative-signaler findes, men tanke-drevet outreach er ikke stabil)
 - Narrative identity (service findes, men er endnu ikke en tung identitetsbærer på tværs af runtime)
 - Return brief / absence continuity (landet, men kvalitet og kobling til øvrig continuity skal tunes)
+- Cognitive-core experiments som fælles runtime truth (kører og observeres, men er endnu ikke foldet ind i conductor/assembly/self-model som et samlet lag)
+- Cognitive architecture surface (deler ikke endnu et ærligt billede af recurrence/GWT/HOT/blink/afterimage som del af den aktive arkitektur)
 
 ### Hvad der mangler helt
 
@@ -381,8 +399,9 @@ Siden forrige version af dette dokument er følgende blevet tydeligt landet i cu
 8. **Self-system code awareness** — Jarvis kan observere sin egen kodebase og derive concern states
 9. **Dream influence + adaptive learning** — drømme og læring er blevet koblet tættere til prompt/self-model evolution
 10. **Inner voice de-attractor-pass** — protected inner voice er blevet mindre steady/work-låst og mere åben for levende thought-candidates
+11. **Consciousness experiments wired into lifecycle** — de fem cognitive experiments er nu heartbeat-koblede, togglable og MC-observerbare, men endnu ikke samlet klassificeret som fælles kognitiv kerne
 
-Det betyder, at roadmapets nuværende tyngdepunkt er rykket: **fase 1-5 og 8 er ikke længere kun vision**, men delvist levende runtime, som nu primært mangler dybere integration, tuning og mere ærlig oplevelseskontekst.
+Det betyder, at roadmapets nuværende tyngdepunkt er rykket: **fase 1-5 og 8 er ikke længere kun vision**, men delvist levende runtime, som nu primært mangler dybere integration, tuning og mere ærlig oplevelseskontekst. Det samme gælder de fem cognitive experiments: de er landet som bounded subsystemer og skal nu foldes ind som næste lag i den egentlige kognitive kerne.
 
 ---
 

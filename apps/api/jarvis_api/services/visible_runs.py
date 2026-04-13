@@ -577,7 +577,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
         # ── Native tool_calls: execute directly via simple_tools ──
         if _collected_native_tool_calls:
-            simple_results = _execute_simple_tool_calls(_collected_native_tool_calls)
+            simple_results = _execute_simple_tool_calls(
+                _collected_native_tool_calls, force=run.autonomous,
+            )
 
             if simple_results:
                 _update_visible_execution_trace(
@@ -780,7 +782,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         break
 
                     # ── Execute tools for this agentic round ───────────────────────
-                    _a_results = _execute_simple_tool_calls(_a_tool_calls)
+                    _a_results = _execute_simple_tool_calls(
+                        _a_tool_calls, force=run.autonomous,
+                    )
                     _a_resolved: dict[int, str] = {}
 
                     for _a_idx, _a_sr in enumerate(_a_results):
@@ -1958,9 +1962,17 @@ def _native_tool_calls_to_capabilities(tool_calls: list[dict]) -> list[dict]:
 
 def _execute_simple_tool_calls(
     tool_calls: list[dict],
+    *,
+    force: bool = False,
 ) -> list[dict[str, object]]:
-    """Execute native tool_calls directly via simple_tools. Returns results."""
-    from core.tools.simple_tools import execute_tool, format_tool_result_for_model
+    """Execute native tool_calls directly via simple_tools. Returns results.
+
+    When *force* is True (autonomous runs), use ``execute_tool_force`` which
+    bypasses the approval gate (blocked commands are still blocked).
+    """
+    from core.tools.simple_tools import execute_tool, execute_tool_force, format_tool_result_for_model
+
+    _exec = execute_tool_force if force else execute_tool
 
     results: list[dict[str, object]] = []
     for tc in tool_calls[:_MAX_CAPABILITIES_PER_TURN]:
@@ -1969,7 +1981,7 @@ def _execute_simple_tool_calls(
         arguments = fn.get("arguments") or {}
         if not name:
             continue
-        result = execute_tool(name, arguments)
+        result = _exec(name, arguments)
         result_text = format_tool_result_for_model(name, result)
         results.append({
             "tool_name": name,

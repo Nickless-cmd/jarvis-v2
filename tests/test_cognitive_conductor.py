@@ -23,6 +23,7 @@ def test_cognitive_frame_has_required_keys() -> None:
     assert "private_signal_pressure" in frame
     assert "private_signal_items" in frame
     assert "continuity_mode" in frame
+    assert "cognitive_experiment_carry" in frame
     assert "active_constraints" in frame
     assert "experiential_support" in frame
     assert "counts" in frame
@@ -258,6 +259,7 @@ def test_counts_are_populated() -> None:
     assert "gated_affordances" in counts
     assert "inner_forces" in counts
     assert "private_signals" in counts
+    assert "cognitive_experiment_salience" in counts
     assert all(isinstance(v, int) for v in counts.values())
 
 
@@ -276,6 +278,142 @@ def test_experiential_support_in_frame() -> None:
         assert support["support_posture"] in ("steadying", "grounding", "narrowing", "carrying", "reopening")
         assert support.get("support_bias") in ("protect_focus", "stabilize_thread", "reopen_context", "reduce_spread", "none")
         assert support.get("support_mode") in ("steady", "guarded", "weighted", "opening")
+
+
+def test_mode_selection_reflects_cognitive_experiment_carry() -> None:
+    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _select_mode
+
+    result = _select_mode(
+        visible_active=False,
+        question_gate_active=False,
+        approval_pending=False,
+        brain_count=0,
+        open_loop_count=0,
+        liveness_state="quiet",
+        contradiction_active=False,
+        experiment_carry={
+            "salience_pressure": "high",
+            "reflective_weight": "elevated",
+        },
+    )
+    assert result["mode"] == "reflect"
+
+
+def test_experiment_carry_derivation_keeps_blink_observational() -> None:
+    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+        _derive_cognitive_experiment_carry,
+    )
+
+    carry = _derive_cognitive_experiment_carry(
+        {
+            "activity_state": "active",
+            "carry_state": "present",
+            "systems": {
+                "global_workspace": {"active": True, "summary": "workspace active"},
+                "hot_meta_cognition": {"active": True, "summary": "hot active"},
+                "surprise_afterimage": {"active": True, "carry_strength": "strong", "summary": "afterimage active"},
+                "recurrence": {"active": True, "carry_strength": "medium", "summary": "recurrence active"},
+                "attention_blink": {"active": True, "summary": "blink active"},
+            },
+        }
+    )
+
+    assert carry["salience_pressure"] == "high"
+    assert carry["reflective_weight"] == "elevated"
+    assert carry["affective_pressure"] == "strong"
+    assert carry["recurrence_pressure"] == "medium"
+    assert "blink observational only" in carry["summary"]
+    assert "capacity assay" in carry["diagnostic_constraint"]
+
+
+def test_build_cognitive_frame_includes_experiment_carry(monkeypatch) -> None:
+    from apps.api.jarvis_api.services import runtime_cognitive_conductor as conductor
+
+    monkeypatch.setattr(conductor, "_safe_brain_context", lambda: {"record_count": 0, "excerpts": [], "by_type": {}})
+    monkeypatch.setattr(
+        conductor,
+        "_safe_self_knowledge",
+        lambda heartbeat_state=None: {
+            "active_capabilities": {"items": []},
+            "approval_gated": {"items": []},
+            "passive_inner_forces": {"items": []},
+            "structural_constraints": {"items": []},
+        },
+    )
+    monkeypatch.setattr(conductor, "_safe_open_loops", lambda: {"summary": {"open_count": 0}, "items": []})
+    monkeypatch.setattr(conductor, "_safe_question_gates", lambda: {"active": False, "items": []})
+    monkeypatch.setattr(conductor, "_safe_initiative_tension", lambda: {"active": False, "items": [], "summary": {}})
+    monkeypatch.setattr(conductor, "_safe_private_state", lambda: {"items": [], "summary": {}})
+    monkeypatch.setattr(conductor, "_safe_visible_status", lambda: {"provider_status": "idle"})
+    monkeypatch.setattr(conductor, "_safe_liveness_snapshot", lambda heartbeat_state=None: {"liveness_state": "quiet", "liveness_score": 0})
+    monkeypatch.setattr(conductor, "_safe_experiential_support", lambda: {})
+    monkeypatch.setattr(conductor, "_safe_relation_state", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_relation_continuity", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_self_narrative_continuity", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_world_model", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_remembered_facts", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_user_understanding", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_executive_contradiction", lambda: {"active": False, "items": []})
+    monkeypatch.setattr(conductor, "_safe_meaning_significance", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_metabolism", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_release_markers", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_attachment_topology", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_loyalty_gradient", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_diary_synthesis", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_chronicle_consolidation", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_self_review", lambda: {"items": []})
+    monkeypatch.setattr(conductor, "_safe_dream_family", lambda: {"items": []})
+    monkeypatch.setattr(
+        conductor,
+        "_safe_cognitive_core_experiments",
+        lambda: {
+            "activity_state": "active",
+            "carry_state": "present",
+            "systems": {
+                "global_workspace": {"active": True, "summary": "workspace active"},
+                "hot_meta_cognition": {"active": True, "summary": "hot active"},
+                "surprise_afterimage": {"active": True, "carry_strength": "strong", "summary": "afterimage active"},
+                "recurrence": {"active": True, "carry_strength": "medium", "summary": "recurrence active"},
+                "attention_blink": {"active": True, "summary": "blink active"},
+            },
+        },
+    )
+
+    frame = conductor.build_cognitive_frame()
+
+    assert frame["mode"]["mode"] == "reflect"
+    assert frame["continuity_pressure"] == "high"
+    assert frame["private_signal_pressure"] == "high"
+    assert frame["cognitive_experiment_carry"]["salience_pressure"] == "high"
+    assert any(item["source"] == "global-workspace" for item in frame["salient_items"])
+    assert any("capacity assay" in item for item in frame["active_constraints"])
+
+
+def test_prompt_section_exposes_cognitive_experiment_carry(monkeypatch) -> None:
+    from apps.api.jarvis_api.services import runtime_cognitive_conductor as conductor
+
+    monkeypatch.setattr(
+        conductor,
+        "build_cognitive_frame",
+        lambda: {
+            "mode": {"mode": "reflect", "reason": "experiment carry active"},
+            "salient_items": [{"source": "global-workspace", "summary": "workspace active", "temporal": "current-session"}],
+            "affordances": {"available_now": [], "appropriate_now": [], "gated_now": [], "not_recommended": []},
+            "temporal": {"horizon": "slow-burn", "reason": "carry"},
+            "continuity_pressure": "medium",
+            "private_signal_pressure": "medium",
+            "private_signal_items": [],
+            "continuity_mode": "carry",
+            "cognitive_experiment_carry": {"summary": "workspace spotlight elevated; blink observational only"},
+            "experiential_support": {},
+            "active_constraints": [],
+            "counts": {"brain_records": 0, "open_loops": 0, "salient_items": 1, "available_affordances": 0, "gated_affordances": 0, "inner_forces": 0, "private_signals": 0, "cognitive_experiment_salience": 1, "integrated_signal_inputs": 1},
+            "summary": "summary",
+        },
+    )
+
+    section = conductor.build_cognitive_frame_prompt_section()
+    assert "Cognitive experiment carry:" in section
 
 
 def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:

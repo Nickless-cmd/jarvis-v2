@@ -6018,6 +6018,25 @@ def _execute_heartbeat_internal_action(
                 "blocked_reason": "web-cache-cleanup-error",
             }
 
+    if action_type == "cleanup_daemon_output_log":
+        try:
+            from core.runtime.db import daemon_output_log_cleanup
+
+            deleted = daemon_output_log_cleanup(max_age_days=7)
+            return {
+                "status": "executed",
+                "summary": f"Daemon output log cleanup: {deleted} old entries removed.",
+                "artifact": json.dumps({"deleted_count": deleted}),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {
+                "status": "blocked",
+                "summary": f"Daemon log cleanup failed: {exc!s}"[:200],
+                "artifact": "",
+                "blocked_reason": "daemon-log-cleanup-error",
+            }
+
     return {
         "status": "blocked",
         "summary": f"Heartbeat execute action {action_type or 'unknown'} is not supported.",

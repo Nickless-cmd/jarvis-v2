@@ -152,7 +152,7 @@ def _generate_model_summary(messages: list[str], model: dict) -> str:
         "Brug tredje person: 'Brugeren virker...' eller 'Han/hun...'\n"
         "Max 30 ord. Ingen forklaring."
     )
-    return daemon_llm_call(prompt, max_len=250, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=250, fallback=fallback, daemon_name="user_model")
 
 
 def _store_model(summary: str, now: datetime) -> None:

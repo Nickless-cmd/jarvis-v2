@@ -172,7 +172,7 @@ def _generate_surprise(
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 
     fallback = f"Det overraskede mig at min tilstand skiftede: {', '.join(divergence[:2])}"
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="surprise")
 
 
 def _store_surprise(phrase: str, divergence: list[str]) -> None:

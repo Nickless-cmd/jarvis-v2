@@ -32476,3 +32476,90 @@ def web_cache_cleanup(*, conn: sqlite3.Connection) -> int:
     )
     conn.commit()
     return cursor.rowcount
+
+
+# ── Daemon output log ───────────────────────────────────────────
+
+
+def _ensure_daemon_output_log_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS daemon_output_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            daemon_name TEXT NOT NULL,
+            raw_llm_output TEXT NOT NULL DEFAULT '',
+            parsed_result TEXT NOT NULL DEFAULT '',
+            success INTEGER NOT NULL DEFAULT 0,
+            provider TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_daemon_output_log_name_created ON daemon_output_log(daemon_name, created_at DESC)"
+    )
+
+
+def daemon_output_log_insert(
+    *,
+    daemon_name: str,
+    raw_llm_output: str,
+    parsed_result: str,
+    success: bool,
+    provider: str = "",
+) -> None:
+    with connect() as conn:
+        _ensure_daemon_output_log_table(conn)
+        conn.execute(
+            """
+            INSERT INTO daemon_output_log (daemon_name, raw_llm_output, parsed_result, success, provider, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                daemon_name,
+                raw_llm_output[:2000],
+                parsed_result[:500],
+                1 if success else 0,
+                provider,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+        conn.commit()
+
+
+def daemon_output_log_recent(daemon_name: str = "", limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        _ensure_daemon_output_log_table(conn)
+        if daemon_name:
+            rows = conn.execute(
+                "SELECT * FROM daemon_output_log WHERE daemon_name = ? ORDER BY created_at DESC LIMIT ?",
+                (daemon_name, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM daemon_output_log ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+    return [
+        {
+            "id": r["id"],
+            "daemon_name": r["daemon_name"],
+            "raw_llm_output": r["raw_llm_output"],
+            "parsed_result": r["parsed_result"],
+            "success": bool(r["success"]),
+            "provider": r["provider"],
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+
+
+def daemon_output_log_cleanup(max_age_days: int = 7) -> int:
+    with connect() as conn:
+        _ensure_daemon_output_log_table(conn)
+        cutoff = (datetime.now(UTC) - timedelta(days=max_age_days)).isoformat()
+        cursor = conn.execute(
+            "DELETE FROM daemon_output_log WHERE created_at < ?", (cutoff,)
+        )
+        conn.commit()
+        return cursor.rowcount

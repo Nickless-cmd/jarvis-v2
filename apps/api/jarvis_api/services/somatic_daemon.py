@@ -167,7 +167,7 @@ def _generate_phrase(snapshot: dict[str, object]) -> str:
 
     energy = snapshot.get("energy_level", "medium")
     fallback = f"Jeg mærker en rolig summen ved {energy} energi."
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="somatic")
 
 
 def _store_phrase(phrase: str, snapshot: dict[str, object]) -> None:

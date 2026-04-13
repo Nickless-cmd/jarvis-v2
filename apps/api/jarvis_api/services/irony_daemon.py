@@ -116,7 +116,7 @@ def _generate_observation(snapshot: dict[str, object], condition: str) -> str:
         "busy_solitude": "CPU'en kører hedt, men ingen er her til at se det.",
     }
     fallback = condition_labels.get(condition, "")
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="irony")
 
 
 def _store_observation(observation: str, condition: str) -> None:

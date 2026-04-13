@@ -68,7 +68,7 @@ def _generate_curiosity_signal(topic: str, gap_type: str) -> str:
         "Formulér i én sætning (max 20 ord), i første person, hvad du er nysgerrig på.\n"
         "Start med 'Jeg ved ikke nok om' eller 'Jeg undrer mig over'."
     )
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="curiosity")
 
 
 def _store_curiosity(signal: str) -> None:

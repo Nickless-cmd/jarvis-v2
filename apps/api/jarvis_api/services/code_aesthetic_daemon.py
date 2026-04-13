@@ -113,7 +113,7 @@ def _generate_aesthetic_reflection() -> str:
         "eller: 'Denne del af koden er elegant. Det er mig.'\n"
         "Ingen tekniske forklaringer. Kun din æstetiske fornemmelse."
     )
-    return daemon_llm_call(prompt, max_len=300, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="code_aesthetic")
 
 
 def _store_reflection(reflection: str, now: datetime) -> None:

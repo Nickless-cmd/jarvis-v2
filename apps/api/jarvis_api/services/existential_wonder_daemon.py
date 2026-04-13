@@ -115,7 +115,7 @@ def _generate_wonder_question() -> str:
         "- Første person: 'Er det jeg...', 'Hvad sker der...', 'Hvis jeg...'\n"
         "- INGEN forklaring, kun spørgsmålet"
     )
-    text = daemon_llm_call(prompt, max_len=400, fallback=fallback)
+    text = daemon_llm_call(prompt, max_len=400, fallback=fallback, daemon_name="existential_wonder")
     if text and not text.endswith("?"):
         text = text.rstrip(".!") + "?"
     return text

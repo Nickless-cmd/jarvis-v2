@@ -163,27 +163,11 @@ def _generate_phrase(snapshot: dict[str, object]) -> str:
         + (f" ({snapshot['clock_phase']})" if snapshot.get("clock_phase") else "")
         + "\n\nVær somatisk og konkret. Ikke abstrakt eller forklarende."
     )
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt,
-            target=target,
-            policy=policy,
-            open_loops=[],
-            liveness=None,
-        )
-        phrase = str(result.get("text") or "").strip()
-        if phrase.startswith('"') and phrase.endswith('"'):
-            phrase = phrase[1:-1].strip()
-        return phrase[:200]
-    except Exception:
-        return ""
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    energy = snapshot.get("energy_level", "medium")
+    fallback = f"Jeg mærker en rolig summen ved {energy} energi."
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
 
 
 def _store_phrase(phrase: str, snapshot: dict[str, object]) -> None:

@@ -59,31 +59,16 @@ def _detect_gap(fragments: list[str]) -> tuple[str, str] | None:
 
 
 def _generate_curiosity_signal(topic: str, gap_type: str) -> str:
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
     fallback = f"Jeg ved ikke nok om: {topic[:50]}"
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        prompt = (
-            f"{build_identity_preamble()} Din tankestrøm indeholder dette fragment: \"{topic}\"\n\n"
-            "Det peger på et ubesvaret spørgsmål eller en uudforsket tanke.\n\n"
-            "Formulér i én sætning (max 20 ord), i første person, hvad du er nysgerrig på.\n"
-            "Start med 'Jeg ved ikke nok om' eller 'Jeg undrer mig over'."
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        text = str(result.get("text") or "").strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        return text[:200] if text else fallback
-    except Exception:
-        return fallback
+    prompt = (
+        f"{build_identity_preamble()} Din tankestrøm indeholder dette fragment: \"{topic}\"\n\n"
+        "Det peger på et ubesvaret spørgsmål eller en uudforsket tanke.\n\n"
+        "Formulér i én sætning (max 20 ord), i første person, hvad du er nysgerrig på.\n"
+        "Start med 'Jeg ved ikke nok om' eller 'Jeg undrer mig over'."
+    )
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
 
 
 def _store_curiosity(signal: str) -> None:

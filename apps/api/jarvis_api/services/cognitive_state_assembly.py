@@ -25,6 +25,10 @@ from apps.api.jarvis_api.services.cognitive_state_narrativizer import (
     narrativize_line,
 )
 from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
+from apps.api.jarvis_api.services.associative_recall import (
+    build_recall_prompt_section,
+    recall_for_message,
+)
 from core.runtime.db import (
     get_latest_cognitive_personality_vector,
     get_latest_cognitive_taste_profile,
@@ -33,7 +37,6 @@ from core.runtime.db import (
     get_latest_cognitive_compass_state,
     get_latest_cognitive_rhythm_state,
     get_latest_cognitive_user_emotional_state,
-    get_relevant_experiential_memories,
     list_cognitive_seeds,
 )
 
@@ -173,8 +176,7 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         _pv_updated_at = str(pv.get("updated_at") or "")
         _pv_stale = False
         try:
-            from datetime import UTC, datetime as _dt
-            _pv_age = (_dt.now(UTC) - _dt.fromisoformat(_pv_updated_at.replace("Z", "+00:00"))).total_seconds()
+            _pv_age = (datetime.now(UTC) - datetime.fromisoformat(_pv_updated_at.replace("Z", "+00:00"))).total_seconds()
             if _pv_age > 86400:  # 24 hours
                 _pv_stale = True
                 emotional_baseline = {}  # don't inject 24h-old emotional state
@@ -266,9 +268,8 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
                 last_at = str(recent[0].get("finished_at") or "")
                 if last_at:
                     try:
-                        from datetime import UTC, datetime as dt_cls
-                        last_dt = dt_cls.fromisoformat(last_at.replace("Z", "+00:00"))
-                        idle_h = (dt_cls.now(UTC) - last_dt).total_seconds() / 3600
+                        last_dt = datetime.fromisoformat(last_at.replace("Z", "+00:00"))
+                        idle_h = (datetime.now(UTC) - last_dt).total_seconds() / 3600
                     except Exception:
                         pass
             brief = build_return_brief(idle_hours=idle_h)
@@ -286,19 +287,25 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
             parts.append(f"reminder: {'; '.join(titles)}")
             sources_used.append("seeds")
 
-    # --- Relevant Experiential Memory ---
-    if not compact and user_mood:
-        memories = _safe_call(
-            lambda: get_relevant_experiential_memories(
-                context=str(user_mood.get("user_message_preview") or ""),
-                limit=1,
-            )
-        )
-        if memories:
-            lesson = str(memories[0].get("key_lesson") or "")[:80]
-            if lesson:
-                parts.append(f"experience: {lesson}")
-                sources_used.append("experiential")
+    # --- Associative Memory Recall ---
+    if not compact:
+        if user_mood:
+            message_text = str(user_mood.get("user_message_preview") or "")
+            emotional_state: dict[str, object] = {}
+            try:
+                from apps.api.jarvis_api.services.affective_meta_state import build_affective_meta_state
+                aff = build_affective_meta_state()
+                baseline = aff.get("emotional_baseline") or {}
+                if isinstance(baseline, dict):
+                    emotional_state = {k: float(v) for k, v in baseline.items() if isinstance(v, (int, float))}
+            except Exception:
+                pass
+            _safe_call(lambda: recall_for_message(message_text, emotional_state))
+
+        recall_section = _safe_call(build_recall_prompt_section)
+        if recall_section:
+            parts.append(recall_section)
+            sources_used.append("associative_recall")
 
     # --- Relationship Texture (trust, humor, unspoken rules) ---
     rt = _safe_call(get_latest_cognitive_relationship_texture)

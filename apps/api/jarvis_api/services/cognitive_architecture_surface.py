@@ -4,8 +4,13 @@ from __future__ import annotations
 def build_cognitive_architecture_surface() -> dict[str, object]:
     """Build a shared cognitive architecture surface for MC and self-model."""
     from apps.api.jarvis_api.services.heartbeat_runtime import _build_cognitive_surfaces
+    from apps.api.jarvis_api.services.cognitive_core_experiments import (
+        build_cognitive_core_experiments_surface,
+    )
 
     surfaces = _build_cognitive_surfaces()
+    cognitive_core_experiments = build_cognitive_core_experiments_surface()
+    surfaces["cognitive_core_experiments"] = cognitive_core_experiments
     systems: list[dict[str, object]] = []
 
     for name, result in surfaces.items():
@@ -25,6 +30,7 @@ def build_cognitive_architecture_surface() -> dict[str, object]:
     return {
         "systems": systems,
         "surfaces": surfaces,
+        "cognitive_core_experiments": cognitive_core_experiments,
         "active_count": active_count,
         "total_count": len(systems),
         "summary": f"{active_count}/{len(systems)} cognitive systems active",

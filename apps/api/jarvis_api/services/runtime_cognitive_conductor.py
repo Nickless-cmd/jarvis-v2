@@ -75,8 +75,13 @@ def _select_mode(
     open_loop_count: int,
     liveness_state: str,
     contradiction_active: bool,
+    experiment_carry: dict[str, object] | None = None,
 ) -> dict[str, str]:
     """Select the bounded mental mode from runtime state."""
+    carry = experiment_carry or {}
+    salience_pressure = str(carry.get("salience_pressure") or "low")
+    reflective_weight = str(carry.get("reflective_weight") or "light")
+
     if visible_active:
         return {"mode": "respond", "reason": "Visible chat is currently active"}
 
@@ -85,6 +90,12 @@ def _select_mode(
 
     if contradiction_active:
         return {"mode": "clarify", "reason": "Executive contradiction is active — pause and re-check before carrying forward"}
+
+    if reflective_weight == "elevated" and salience_pressure in {"medium", "high"}:
+        return {
+            "mode": "reflect",
+            "reason": "Cognitive core experiment carry is increasing reflective and spotlight pressure",
+        }
 
     if brain_count > 6 and open_loop_count <= 1:
         return {"mode": "consolidate", "reason": "Heavy brain carry with low loop pressure — time to settle"}
@@ -123,6 +134,7 @@ def _select_salient_items(
     release_items: list[dict[str, object]],
     self_review_items: list[dict[str, object]],
     dream_items: list[dict[str, object]],
+    experiment_carry: dict[str, object] | None = None,
 ) -> list[dict[str, str]]:
     """Select the most salient items across all sources.
 
@@ -130,6 +142,7 @@ def _select_salient_items(
     Returns at most _MAX_SALIENT_ITEMS items.
     """
     items: list[dict[str, str]] = []
+    carry = experiment_carry or {}
 
     # Gates first — they represent bounded action readiness
     for gate in gate_items[:1]:
@@ -147,6 +160,13 @@ def _select_salient_items(
         )[:_MAX_SLICE_CHARS]
         if summary:
             items.append({"source": "executive-contradiction", "summary": summary, "temporal": "immediate"})
+
+    for carry_item in (carry.get("salient_items") or [])[:2]:
+        source = str(carry_item.get("source") or "").strip()
+        summary = str(carry_item.get("summary") or "").strip()[:_MAX_SLICE_CHARS]
+        temporal = str(carry_item.get("temporal") or "slow-burn").strip() or "slow-burn"
+        if source and summary:
+            items.append({"source": source, "summary": summary, "temporal": temporal})
 
     for world in world_model_items[:1]:
         summary = str(world.get("summary") or world.get("title") or "")[:_MAX_SLICE_CHARS]
@@ -386,6 +406,7 @@ def build_cognitive_frame(
         chronicle = _safe_chronicle_consolidation()
         review = _safe_self_review()
         dream = _safe_dream_family()
+        cognitive_core_experiments = _safe_cognitive_core_experiments()
 
         # --- Extract summaries ---
         brain_excerpts = brain_context.get("excerpts") or []
@@ -419,6 +440,9 @@ def build_cognitive_frame(
         release_items = release.get("items") or []
         self_review_items = review.get("items") or []
         dream_items = dream.get("items") or []
+        experiment_carry = _derive_cognitive_experiment_carry(
+            cognitive_core_experiments
+        )
 
         tension_active = bool(tension_surface.get("active"))
         tension_intensity = str((tension_surface.get("summary") or {}).get("current_intensity") or "low")
@@ -463,6 +487,7 @@ def build_cognitive_frame(
         open_loop_count=open_loop_count,
         liveness_state=liveness_state,
         contradiction_active=contradiction_active,
+        experiment_carry=experiment_carry,
     )
 
     salient = _select_salient_items(
@@ -481,6 +506,7 @@ def build_cognitive_frame(
         release_items=release_items,
         self_review_items=self_review_items,
         dream_items=dream_items,
+        experiment_carry=experiment_carry,
     )
 
     affordances = _select_affordances(
@@ -502,12 +528,27 @@ def build_cognitive_frame(
         continuity_pressure = "high"
     elif brain_count >= 2 or open_loop_count >= 1:
         continuity_pressure = "medium"
+    if continuity_pressure != "high":
+        recurrence_pressure = str(experiment_carry.get("recurrence_pressure") or "low")
+        affective_pressure = str(experiment_carry.get("affective_pressure") or "low")
+        if recurrence_pressure in {"high", "strong"} or affective_pressure in {"high", "strong"}:
+            continuity_pressure = "high"
+        elif continuity_pressure == "low" and (
+            recurrence_pressure == "medium" or affective_pressure == "medium"
+        ):
+            continuity_pressure = "medium"
 
     private_signal_pressure = "low"
     if tension_intensity == "medium" or private_pressure == "high":
         private_signal_pressure = "high"
     elif tension_active or private_pressure == "medium" or private_signal_items:
         private_signal_pressure = "medium"
+    if private_signal_pressure != "high":
+        affective_pressure = str(experiment_carry.get("affective_pressure") or "low")
+        if affective_pressure in {"high", "strong"}:
+            private_signal_pressure = "high"
+        elif private_signal_pressure == "low" and affective_pressure == "medium":
+            private_signal_pressure = "medium"
 
     # Active constraints (compact)
     constraints_summary = [str(c.get("label") or "")[:60] for c in constraint_items[:4]]
@@ -517,6 +558,11 @@ def build_cognitive_frame(
                 str(item.get("title") or item.get("summary") or "Executive contradiction active")[:60]
                 for item in contradiction_items[:1]
             ],
+            *constraints_summary,
+        ][:5]
+    if str(experiment_carry.get("diagnostic_constraint") or ""):
+        constraints_summary = [
+            str(experiment_carry.get("diagnostic_constraint") or "")[:60],
             *constraints_summary,
         ][:5]
 
@@ -529,6 +575,7 @@ def build_cognitive_frame(
         "private_signal_pressure": private_signal_pressure,
         "private_signal_items": private_signal_items[:2],
         "continuity_mode": continuity_mode,
+        "cognitive_experiment_carry": experiment_carry,
         "experiential_support": experiential_support if experiential_support.get("support_posture") else {},
         "active_constraints": constraints_summary,
         "counts": {
@@ -539,6 +586,7 @@ def build_cognitive_frame(
             "gated_affordances": len(affordances["gated_now"]),
             "inner_forces": len(inner_forces),
             "private_signals": len(private_signal_items),
+            "cognitive_experiment_salience": len(experiment_carry.get("salient_items") or []),
             "integrated_signal_inputs": (
                 len(relation_items)
                 + len(world_items)
@@ -550,6 +598,7 @@ def build_cognitive_frame(
                 + len(release_items)
                 + len(self_review_items)
                 + len(dream_items)
+                + len(experiment_carry.get("salient_items") or [])
             ),
         },
         "summary": _build_frame_summary(
@@ -560,6 +609,7 @@ def build_cognitive_frame(
             private_signal_pressure=private_signal_pressure,
             brain_count=brain_count,
             open_loop_count=open_loop_count,
+            experiment_carry=experiment_carry,
         ),
     }
 
@@ -573,16 +623,20 @@ def _build_frame_summary(
     private_signal_pressure: str,
     brain_count: int,
     open_loop_count: int,
+    experiment_carry: dict[str, object] | None = None,
 ) -> str:
     """Build a compact one-line summary of the cognitive frame."""
     salient_labels = [item["summary"][:40] for item in salient[:3]]
     salient_str = "; ".join(salient_labels) if salient_labels else "nothing salient"
+    carry = experiment_carry or {}
+    experiment_summary = str(carry.get("summary") or "").strip()
     return (
         f"[{mode['mode']}] {mode['reason']}. "
         f"Temporal: {temporal['horizon']}. "
         f"Carry: {continuity_pressure} ({brain_count} brain, {open_loop_count} loops). "
         f"Private: {private_signal_pressure}. "
         f"Salient: {salient_str}"
+        + (f" Experiments: {experiment_summary}" if experiment_summary else "")
     )
 
 
@@ -604,6 +658,7 @@ def build_cognitive_frame_prompt_section() -> str | None:
     continuity_pressure = frame["continuity_pressure"]
     private_signal_pressure = str(frame.get("private_signal_pressure") or "low")
     affordances = frame["affordances"]
+    experiment_carry = frame.get("cognitive_experiment_carry") or {}
 
     experiential_support = frame.get("experiential_support") or {}
 
@@ -619,6 +674,9 @@ def build_cognitive_frame_prompt_section() -> str | None:
             f" | bias={experiential_support.get('support_bias') or 'none'}"
             f" | mode={experiential_support.get('support_mode') or 'steady'}"
         )
+
+    if experiment_carry.get("summary"):
+        lines.append(f"- Cognitive experiment carry: {experiment_carry['summary'][:100]}")
 
     if salient:
         for item in salient[:3]:
@@ -753,6 +811,120 @@ def _safe_liveness_snapshot(
     except Exception:
         pass
     return {"liveness_state": "quiet", "liveness_score": 0}
+
+
+def _safe_cognitive_core_experiments() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.cognitive_core_experiments import (
+            build_cognitive_core_experiments_surface,
+        )
+        return build_cognitive_core_experiments_surface()
+    except Exception:
+        return {
+            "systems": {},
+            "activity_state": "disabled",
+            "carry_state": "quiet",
+            "summary": "",
+        }
+
+
+def _derive_cognitive_experiment_carry(
+    surface: dict[str, object] | None,
+) -> dict[str, object]:
+    state = surface or {}
+    systems = state.get("systems") or {}
+    workspace = systems.get("global_workspace") or {}
+    hot = systems.get("hot_meta_cognition") or {}
+    afterimage = systems.get("surprise_afterimage") or {}
+    recurrence = systems.get("recurrence") or {}
+    blink = systems.get("attention_blink") or {}
+
+    salience_pressure = "high" if bool(workspace.get("active")) else "low"
+    reflective_weight = "elevated" if bool(hot.get("active")) else "light"
+    affective_pressure = (
+        str(afterimage.get("carry_strength") or "none")
+        if bool(afterimage.get("active"))
+        else "low"
+    )
+    if affective_pressure == "none":
+        affective_pressure = "low"
+    recurrence_pressure = (
+        str(recurrence.get("carry_strength") or "none")
+        if bool(recurrence.get("active"))
+        else "low"
+    )
+    if recurrence_pressure == "none":
+        recurrence_pressure = "low"
+
+    salient_items: list[dict[str, str]] = []
+    if bool(workspace.get("active")):
+        salient_items.append(
+            {
+                "source": "global-workspace",
+                "summary": str(workspace.get("summary") or "Global workspace coherence is shaping spotlight pressure."),
+                "temporal": "current-session",
+            }
+        )
+    if bool(hot.get("active")):
+        salient_items.append(
+            {
+                "source": "hot-meta-cognition",
+                "summary": str(hot.get("summary") or "HOT meta-cognition is increasing self-observation weight."),
+                "temporal": "slow-burn",
+            }
+        )
+    elif bool(afterimage.get("active")):
+        salient_items.append(
+            {
+                "source": "surprise-afterimage",
+                "summary": str(afterimage.get("summary") or "Surprise afterimage is still carrying affective persistence."),
+                "temporal": "slow-burn",
+            }
+        )
+    elif bool(recurrence.get("active")):
+        salient_items.append(
+            {
+                "source": "recurrence",
+                "summary": str(recurrence.get("summary") or "Recurrence is keeping a thought-loop quietly in play."),
+                "temporal": "slow-burn",
+            }
+        )
+
+    diagnostic_constraint = ""
+    if bool(blink.get("active")):
+        diagnostic_constraint = "Attention blink is a capacity assay only, not carry authority."
+
+    summary_parts: list[str] = []
+    if bool(workspace.get("active")):
+        summary_parts.append("workspace spotlight elevated")
+    if bool(hot.get("active")):
+        summary_parts.append("meta-observation weight elevated")
+    if bool(afterimage.get("active")):
+        summary_parts.append("afterimage affective carry present")
+    if bool(recurrence.get("active")):
+        summary_parts.append("recurrence re-entry present")
+    if bool(blink.get("active")):
+        summary_parts.append("blink observational only")
+
+    summary = "; ".join(summary_parts[:4])
+    if bool(blink.get("active")) and "blink observational only" not in summary:
+        summary = (
+            f"{summary}; blink observational only"
+            if summary
+            else "blink observational only"
+        )
+
+    return {
+        "activity_state": str(state.get("activity_state") or "disabled"),
+        "carry_state": str(state.get("carry_state") or "quiet"),
+        "salience_pressure": salience_pressure,
+        "reflective_weight": reflective_weight,
+        "affective_pressure": affective_pressure,
+        "recurrence_pressure": recurrence_pressure,
+        "salient_items": salient_items[:2],
+        "diagnostic_constraint": diagnostic_constraint,
+        "summary": summary,
+    }
 
 
 def _safe_relation_state() -> dict[str, object]:

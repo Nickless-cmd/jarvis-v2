@@ -7,8 +7,10 @@ Relevant memories are surfaced in future prompts.
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
+from urllib import request as urllib_request
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
@@ -220,6 +222,139 @@ def _calculate_importance(user_mood: str, outcome_status: str) -> float:
     if outcome_status in ("completed", "success"):
         base += 0.05
     return min(1.0, base)
+
+
+def score_memories_by_relevance(
+    *,
+    candidates: list[dict[str, object]],
+    context_text: str,
+    emotional_state: dict[str, object],
+) -> dict[str, float]:
+    """Score candidate memories for relevance using local LLM.
+
+    Returns {memory_id: score} dict with scores 0.0–1.0.
+    Returns empty dict if no candidates, LLM unavailable, or LLM call fails.
+    """
+    if not candidates:
+        return {}
+    target = _resolve_scoring_llm_target()
+    if not target:
+        return {}
+    prompt = _build_scoring_prompt(candidates, context_text, emotional_state)
+    try:
+        response = _call_scoring_llm(target, prompt)
+        return _parse_scoring_response(response, candidates)
+    except Exception:
+        logger.debug("experiential_memory: LLM scoring failed", exc_info=True)
+        return {}
+
+
+def _resolve_scoring_llm_target() -> dict[str, object] | None:
+    """Resolve local/cheap LLM lane for scoring."""
+    try:
+        from core.runtime.provider_router import resolve_provider_router_target
+        for lane in ("local", "cheap"):
+            try:
+                target = resolve_provider_router_target(lane=lane)
+                if bool(target.get("active")):
+                    return target
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return None
+
+
+def _build_scoring_prompt(
+    candidates: list[dict[str, object]],
+    context_text: str,
+    emotional_state: dict[str, object],
+) -> str:
+    """Build LLM prompt for memory relevance scoring."""
+    emotion_parts = [
+        f"{k}={v:.2f}" for k, v in emotional_state.items()
+        if isinstance(v, (int, float)) and float(v) > 0.1
+    ]
+    emotion_str = ", ".join(emotion_parts) if emotion_parts else "neutral"
+
+    candidate_lines = []
+    for c in candidates:
+        narrative = str(c.get("narrative") or "")[:80]
+        topic = str(c.get("topic") or "")
+        emotion_arc = str(c.get("emotion_arc") or "")
+        candidate_lines.append(
+            f'  "{c["memory_id"]}": topic={topic!r}, narrative={narrative!r}, arc={emotion_arc!r}'
+        )
+    candidates_str = "\n".join(candidate_lines)
+
+    return (
+        f"Current context: {context_text[:200]}\n"
+        f"Emotional state: {emotion_str}\n\n"
+        f"Score each memory for relevance to the current context (0.0 = irrelevant, 1.0 = highly relevant).\n"
+        f"Consider: semantic similarity, emotional resonance, topic overlap.\n\n"
+        f"Memories:\n{candidates_str}\n\n"
+        f"Return ONLY a JSON object: {{\"memory_id\": score, ...}}\n"
+        f"Example: {{\"exp-abc123\": 0.82, \"exp-def456\": 0.15}}"
+    )
+
+
+def _call_scoring_llm(target: dict[str, object], prompt: str) -> str:
+    """Call local LLM with scoring prompt. Timeout 15s."""
+    provider = str(target.get("provider") or "")
+    model = str(target.get("model") or "")
+    base_url = str(target.get("base_url") or "")
+
+    if provider == "ollama":
+        url = f"{base_url or 'http://127.0.0.1:11434'}/api/chat"
+        payload = json.dumps({
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"num_predict": 300},
+        }).encode()
+        req = urllib_request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}
+        )
+        with urllib_request.urlopen(req, timeout=15) as resp:
+            result = json.loads(resp.read())
+        return str(result.get("message", {}).get("content", ""))
+    return ""
+
+
+def _parse_scoring_response(
+    text: str,
+    candidates: list[dict[str, object]],
+) -> dict[str, float]:
+    """Parse LLM JSON scoring response. Validates memory_ids against candidates."""
+    valid_ids = {str(c["memory_id"]) for c in candidates}
+    text = text.strip()
+    if text.startswith("```"):
+        lines = [line for line in text.split("\n") if not line.startswith("```")]
+        text = "\n".join(lines).strip()
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return {
+                k: max(0.0, min(1.0, float(v)))
+                for k, v in parsed.items()
+                if k in valid_ids and isinstance(v, (int, float))
+            }
+    except Exception:
+        pass
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            parsed = json.loads(text[start:end + 1])
+            if isinstance(parsed, dict):
+                return {
+                    k: max(0.0, min(1.0, float(v)))
+                    for k, v in parsed.items()
+                    if k in valid_ids and isinstance(v, (int, float))
+                }
+        except Exception:
+            pass
+    return {}
 
 
 def _safe(fn, **kwargs):

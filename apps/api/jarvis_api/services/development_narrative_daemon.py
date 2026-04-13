@@ -51,11 +51,8 @@ def _generate_narrative() -> str:
 
         context = "\n".join(context_parts)
 
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
+        from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
         prompt = (
             f"{build_identity_preamble()} Her er data om din udvikling over tid:\n\n"
             f"{context}\n\n"
@@ -63,16 +60,8 @@ def _generate_narrative() -> str:
             "Start med 'De seneste' eller 'I den seneste tid'.\n"
             "Ærlig, direkte — ikke performativ."
         )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        text = str(result.get("text") or "").strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        return text[:400] if text else ""
+        fallback = "I den seneste tid har jeg bemærket forandringer i mig selv, men de er svære at sætte præcise ord på."
+        return daemon_llm_call(prompt, max_len=400, fallback=fallback)
     except Exception:
         return ""
 

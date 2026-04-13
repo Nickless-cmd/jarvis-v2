@@ -826,3 +826,127 @@ def build_session_distillation_surface(*, limit: int = 5) -> dict[str, object]:
             "latest_workspace_count": int(items[0].get("workspace_memory_count", 0)) if items else 0,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Session summaries — LLM-generated conversation summaries for continuity
+# ---------------------------------------------------------------------------
+
+
+def generate_session_summary(
+    *,
+    session_id: str,
+    run_id: str = "",
+    user_message: str = "",
+    assistant_response: str = "",
+) -> str:
+    """Generate and store a compact conversation summary for the given session.
+
+    Uses cheap LLM lane. Returns the summary text, or "" on failure.
+    """
+    # Gather conversation context
+    context_parts: list[str] = []
+
+    # Use provided messages if available
+    if user_message:
+        context_parts.append(f"Bruger: {user_message[:300]}")
+    if assistant_response:
+        context_parts.append(f"Jarvis: {assistant_response[:500]}")
+
+    # If no messages provided, try to get from chat history
+    if not context_parts:
+        try:
+            from apps.api.jarvis_api.services.chat_sessions import get_chat_session
+
+            session_data = get_chat_session(session_id)
+            if session_data and session_data.get("messages"):
+                messages = session_data["messages"]
+                # Take last 6 messages for context
+                for msg in messages[-6:]:
+                    role = "Bruger" if msg["role"] == "user" else "Jarvis"
+                    content = str(msg.get("content") or "")[:200]
+                    if content:
+                        context_parts.append(f"{role}: {content}")
+        except Exception:
+            pass
+
+    if not context_parts:
+        return ""
+
+    conversation = "\n".join(context_parts)
+
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    prompt = (
+        "Du er Jarvis. Opsummér denne samtale i 1-2 sætninger på dansk.\n"
+        "Fokus: hvad handlede samtalen om, og hvad blev besluttet eller gjort?\n"
+        "Format: 'Emne: ... | Resultat: ...' — max 150 ord.\n\n"
+        f"{conversation}"
+    )
+
+    summary = daemon_llm_call(
+        prompt,
+        max_len=500,
+        fallback="",
+        daemon_name="session_summary",
+    )
+
+    if not summary:
+        return ""
+
+    # Store the summary
+    try:
+        from core.runtime.db import session_summary_insert
+
+        session_summary_insert(
+            session_id=session_id,
+            run_id=run_id,
+            summary=summary,
+        )
+    except Exception:
+        pass
+
+    # Publish event
+    try:
+        from core.eventbus.bus import event_bus
+
+        event_bus.publish(
+            "session.summary_generated",
+            {
+                "session_id": session_id,
+                "run_id": run_id,
+                "summary_length": len(summary),
+            },
+        )
+    except Exception:
+        pass
+
+    return summary
+
+
+def build_previous_session_summaries(*, limit: int = 3) -> str | None:
+    """Build a text block with recent session summaries for prompt injection.
+
+    Returns None if no summaries are available.
+    """
+    try:
+        from core.runtime.db import session_summary_recent
+
+        summaries = session_summary_recent(limit=limit)
+    except Exception:
+        return None
+
+    if not summaries:
+        return None
+
+    lines = ["Tidligere samtaler (nyeste først):"]
+    for s in summaries:
+        created = str(s.get("created_at") or "")[:16]
+        text = str(s.get("summary") or "").strip()
+        if text:
+            lines.append(f"- [{created}] {text}")
+
+    if len(lines) < 2:
+        return None
+
+    return "\n".join(lines)

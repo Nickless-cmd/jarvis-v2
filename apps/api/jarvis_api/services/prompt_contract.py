@@ -2628,6 +2628,18 @@ def _visible_session_continuity_instruction() -> str | None:
     except Exception:
         pass
 
+    # Inject LLM-generated session summaries for genuine cross-session memory
+    try:
+        from apps.api.jarvis_api.services.session_distillation import (
+            build_previous_session_summaries,
+        )
+
+        prev_summaries = build_previous_session_summaries(limit=3)
+        if prev_summaries:
+            lines.append(prev_summaries)
+    except Exception:
+        pass
+
     recent_runs = list(continuity.get("recent_run_summaries") or [])[:3]
     if recent_runs:
         lines.append("Recent visible carry-over (newest first):")

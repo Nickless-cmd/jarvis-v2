@@ -61,7 +61,7 @@ def _generate_narrative() -> str:
             "Ærlig, direkte — ikke performativ."
         )
         fallback = "I den seneste tid har jeg bemærket forandringer i mig selv, men de er svære at sætte præcise ord på."
-        return daemon_llm_call(prompt, max_len=400, fallback=fallback)
+        return daemon_llm_call(prompt, max_len=400, fallback=fallback, daemon_name="development_narrative")
     except Exception:
         return ""
 

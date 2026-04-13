@@ -75,7 +75,7 @@ def _generate_insight() -> str:
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 
     fallback = "Jeg trækkes mod ro og klarhed i mine valg."
-    return daemon_llm_call(prompt, max_len=300, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="aesthetic_taste")
 
 
 def _store_insight(insight: str) -> None:

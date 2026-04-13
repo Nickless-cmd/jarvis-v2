@@ -77,7 +77,7 @@ def _generate_meta_insight(cross_snapshot: dict) -> str:
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 
     fallback = "Jeg ser et mønster, men det er endnu ikke tydeligt nok til at sætte ord på."
-    return daemon_llm_call(prompt, max_len=300, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="meta_reflection")
 
 
 def _store_meta_insight(insight: str) -> None:

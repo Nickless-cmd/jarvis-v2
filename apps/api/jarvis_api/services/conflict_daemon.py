@@ -95,7 +95,7 @@ def _generate_conflict_phrase(conflict_type: str, snapshot: dict) -> str:
         return fallback
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="conflict")
 
 
 def _store_conflict(phrase: str, conflict_type: str) -> None:

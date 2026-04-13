@@ -68,7 +68,7 @@ def _generate_reflection(snapshot: dict) -> str:
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 
     fallback = "Jeg er til stede, men uden klar retning lige nu."
-    return daemon_llm_call(prompt, max_len=300, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="reflection_cycle")
 
 
 def _store_reflection(reflection: str) -> None:

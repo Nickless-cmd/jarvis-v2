@@ -56,7 +56,7 @@ def _generate_fragment(
     from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
 
     fallback = "Noget bevæger sig i baggrunden... en ufærdig tanke."
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="thought_stream")
 
 
 def _store_fragment(fragment: str) -> None:

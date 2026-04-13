@@ -436,6 +436,21 @@ def _derive_bearing(
         return "held"
     if affective_state == "attentive":
         return "forward"
+    # Emotion concept bearing push — only applies when no stronger signal wins
+    try:
+        from apps.api.jarvis_api.services.emotion_concepts import (
+            get_active_emotion_concepts,
+            get_bearing_push,
+            BEARING_PUSH_MAP,
+        )
+        push = get_bearing_push()
+        if push:
+            # Only override "even" if the concept driving the push has intensity >= 0.4
+            for signal in get_active_emotion_concepts():
+                if BEARING_PUSH_MAP.get(signal["concept"]) == push and signal["intensity"] >= 0.4:
+                    return push
+    except Exception:
+        pass
     return "even"
 
 

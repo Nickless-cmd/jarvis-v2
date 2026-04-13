@@ -198,6 +198,72 @@ def test_live_emotional_state_applies_influence_deltas() -> None:
     assert live["frustration"] < 0.5
 
 
+def test_bearing_push_overrides_even_when_intensity_above_threshold() -> None:
+    ec = _fresh_ec()
+    # trust_deep → bearing "open", intensity 0.6 (above 0.4 threshold)
+    ec.trigger_emotion_concept("trust_deep", 0.6, trigger="test", source="test")
+
+    import apps.api.jarvis_api.services.affective_meta_state as ams
+    surface = ams.build_affective_meta_state_from_sources(
+        embodied_state=None,
+        loop_runtime=None,
+        regulation_homeostasis=None,
+        metabolism_state=None,
+        quiet_initiative=None,
+        idle_consolidation=None,
+        dream_articulation=None,
+        inner_voice_state=None,
+        personality_vector={"current_bearing": "steady", "emotional_baseline": "{}"},
+        relationship_texture={},
+        rhythm_state={},
+    )
+    assert surface["bearing"] == "open"
+
+
+def test_bearing_push_ignored_below_threshold() -> None:
+    ec = _fresh_ec()
+    # trust_deep at 0.3 — below 0.4 threshold, bearing stays "even"
+    ec.trigger_emotion_concept("trust_deep", 0.3, trigger="test", source="test")
+
+    import apps.api.jarvis_api.services.affective_meta_state as ams
+    surface = ams.build_affective_meta_state_from_sources(
+        embodied_state=None,
+        loop_runtime=None,
+        regulation_homeostasis=None,
+        metabolism_state=None,
+        quiet_initiative=None,
+        idle_consolidation=None,
+        dream_articulation=None,
+        inner_voice_state=None,
+        personality_vector={"current_bearing": "steady", "emotional_baseline": "{}"},
+        relationship_texture={},
+        rhythm_state={},
+    )
+    assert surface["bearing"] == "even"
+
+
+def test_bearing_push_does_not_override_stronger_affective_signal() -> None:
+    ec = _fresh_ec()
+    # Even with strong trust_deep, "burdened" state must win → "compressed"
+    ec.trigger_emotion_concept("trust_deep", 1.0, trigger="test", source="test")
+
+    import apps.api.jarvis_api.services.affective_meta_state as ams
+    surface = ams.build_affective_meta_state_from_sources(
+        embodied_state={"state": "strained", "strain_level": "high"},
+        loop_runtime=None,
+        regulation_homeostasis=None,
+        metabolism_state=None,
+        quiet_initiative=None,
+        idle_consolidation=None,
+        dream_articulation=None,
+        inner_voice_state=None,
+        personality_vector={"current_bearing": "steady", "emotional_baseline": "{}"},
+        relationship_texture={},
+        rhythm_state={},
+    )
+    assert surface["bearing"] == "compressed"
+
+
 def test_affective_prompt_section_includes_concepts_line() -> None:
     ec = _fresh_ec()
     ec.trigger_emotion_concept("relief", 0.8, trigger="test", source="test")

@@ -1255,12 +1255,13 @@ def _build_visible_input(
         target = resolve_provider_router_target(lane="visible")
         actual_provider = actual_provider or str(target.get("provider", ""))
         actual_model = actual_model or str(target.get("model", ""))
-    instruction = _visible_system_instruction_for_provider(
+    assembly = _build_visible_prompt_assembly(
         provider=actual_provider,
         model=actual_model,
         user_message=message,
         session_id=session_id,
     )
+    instruction = assembly.text
     if not instruction:
         return [
             {
@@ -1268,35 +1269,60 @@ def _build_visible_input(
                 "content": [{"type": "input_text", "text": message}],
             }
         ]
-    return [
+
+    items: list[dict] = [
         {
             "role": "system",
             "content": [{"type": "input_text", "text": instruction}],
         },
-        {
-            "role": "user",
-            "content": [{"type": "input_text", "text": message}],
-        },
     ]
+
+    # Inject structured transcript as proper multi-turn messages
+    # so the model sees actual conversation history, not flat text.
+    if assembly.transcript_messages:
+        for tmsg in assembly.transcript_messages:
+            role = tmsg.get("role", "user")
+            content = tmsg.get("content", "")
+            if content:
+                items.append({
+                    "role": role,
+                    "content": [{"type": "input_text", "text": content}],
+                })
+
+    items.append({
+        "role": "user",
+        "content": [{"type": "input_text", "text": message}],
+    })
+
+    return items
 
 
 def _build_visible_chat_messages_for_github(
     message: str, *, session_id: str | None
 ) -> list[dict[str, str]]:
-    instruction = _visible_system_instruction_for_provider(
+    assembly = _build_visible_prompt_assembly(
         provider="github-copilot",
         model="",
         user_message=message,
         session_id=session_id,
     )
+    instruction = assembly.text
     if not instruction:
         return [
             {"role": "user", "content": message},
         ]
-    return [
+    messages: list[dict[str, str]] = [
         {"role": "system", "content": instruction},
-        {"role": "user", "content": message},
     ]
+    # Inject structured transcript as proper multi-turn messages
+    if assembly.transcript_messages:
+        for tmsg in assembly.transcript_messages:
+            role = tmsg.get("role", "user")
+            content = tmsg.get("content", "")
+            if content:
+                messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": message})
+    return messages
 
 
 def _visible_system_instruction_for_provider(
@@ -1312,6 +1338,21 @@ def _visible_system_instruction_for_provider(
         },
     )
     return assembly.text or None
+
+
+def _build_visible_prompt_assembly(
+    *, provider: str, model: str, user_message: str, session_id: str | None
+):
+    """Return the full PromptAssembly (including structured transcript)."""
+    return build_visible_chat_prompt_assembly(
+        provider=provider,
+        model=model,
+        user_message=user_message,
+        session_id=session_id,
+        runtime_self_report_context={
+            "visible_execution_readiness": visible_execution_readiness(),
+        },
+    )
 
 
 def _visible_session_continuity_instruction() -> str | None:

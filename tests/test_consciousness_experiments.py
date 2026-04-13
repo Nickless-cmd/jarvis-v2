@@ -172,6 +172,45 @@ def test_workspace_publish_and_snapshot() -> None:
     assert any(e["source"] == "surprise_daemon" for e in snapshot)
 
 
+# ---------------------------------------------------------------------------
+# Experiment 4: Meta-Cognition
+# ---------------------------------------------------------------------------
+
+def test_meta_cognition_db_insert_and_list(isolated_runtime) -> None:
+    db = isolated_runtime.db
+    db.insert_meta_cognition_record(
+        record_id="mc-test-001",
+        meta_observation="Jeg lægger mærke til at min frustration stiger",
+        meta_meta_observation="Denne observation er præcis men overser konteksten",
+        meta_depth=2,
+        input_state_summary="bearing=forward, frustration=0.6",
+    )
+    records = db.list_meta_cognition_records(limit=5)
+    assert len(records) == 1
+    assert records[0]["meta_depth"] == 2
+
+
+def test_meta_depth_computation() -> None:
+    import importlib
+    import apps.api.jarvis_api.services.meta_cognition_daemon as mcd
+    importlib.reload(mcd)
+    assert mcd._compute_meta_depth("hunden løber hurtigt", "hunden løber hurtigt") == 1
+    assert mcd._compute_meta_depth(
+        "jeg er frustreret over manglende fremgang",
+        "denne observation er blind for systemiske årsager"
+    ) == 2
+
+
+def test_tick_meta_cognition_disabled(isolated_runtime) -> None:
+    isolated_runtime.db.set_experiment_enabled("meta_cognition", False)
+    import importlib
+    import apps.api.jarvis_api.services.meta_cognition_daemon as mcd
+    importlib.reload(mcd)
+    result = mcd.tick_meta_cognition_daemon()
+    assert result["generated"] is False
+    assert result["reason"] == "disabled"
+
+
 def test_trigger_emotion_concept_custom_lifetime() -> None:
     import importlib
     import apps.api.jarvis_api.services.emotion_concepts as ec

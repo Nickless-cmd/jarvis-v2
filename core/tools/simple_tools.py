@@ -1078,6 +1078,64 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["topic"],
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "internal_api",
+            "description": (
+                "Call Jarvis' own internal API directly (same process, no external auth). "
+                "Use for reading runtime surfaces, toggling experiments, inspecting state. "
+                "Only internal paths (starting with /) are allowed — no external URLs. "
+                "Examples: GET /mc/experiments, POST /mc/experiments/recurrence_loop/toggle, "
+                "GET /mc/cognitive-state, GET /mc/recurrence-state."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "method": {
+                        "type": "string",
+                        "description": "HTTP method: GET or POST",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "API path starting with /, e.g. /mc/experiments",
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Optional JSON body for POST requests",
+                    },
+                },
+                "required": ["method", "path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "db_query",
+            "description": (
+                "Run a read-only SQL SELECT query against Jarvis' own database. "
+                "Only SELECT statements are allowed — INSERT, UPDATE, DELETE, DROP, ALTER "
+                "and similar write operations are rejected. "
+                "Use for inspecting state tables, checking experiment settings, reading "
+                "memory signals, emotional state history, etc."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string",
+                        "description": "SELECT SQL statement to execute",
+                    },
+                    "params": {
+                        "type": "string",
+                        "description": "Optional JSON array of positional parameters, e.g. [\"value1\", 42]",
+                    },
+                },
+                "required": ["sql"],
+            },
+        },
+    },
 ]
 
 
@@ -3295,6 +3353,108 @@ def _exec_recall_council_conclusions(args: dict[str, Any]) -> dict[str, Any]:
     return {"entries": matched}
 
 
+def _exec_internal_api(args: dict[str, Any]) -> dict[str, Any]:
+    """Call Jarvis' own internal API (same-process HTTP, no external auth)."""
+    method = str(args.get("method") or "GET").upper().strip()
+    path = str(args.get("path") or "").strip()
+    body_raw = str(args.get("body") or "").strip()
+
+    if method not in ("GET", "POST"):
+        return {"error": f"Unsupported method: {method}. Only GET and POST are allowed.", "status": "error"}
+
+    if not path.startswith("/"):
+        return {"error": "path must start with / — external URLs are not allowed.", "status": "error"}
+
+    # Block anything that looks like an external URL slipping through
+    if "//" in path or path.startswith("http"):
+        return {"error": "External URLs are not allowed. Use internal paths only.", "status": "error"}
+
+    try:
+        from core.runtime.settings import load_settings
+        settings = load_settings()
+        base_url = f"http://{settings.host}:{settings.port}"
+    except Exception:
+        base_url = "http://127.0.0.1:8010"
+
+    url = base_url + path
+    body_bytes: bytes | None = None
+    headers: dict[str, str] = {}
+
+    if method == "POST":
+        body_bytes = body_raw.encode("utf-8") if body_raw else b"{}"
+        headers["Content-Type"] = "application/json"
+
+    try:
+        req = urllib_request.Request(url, data=body_bytes, headers=headers, method=method)
+        with urllib_request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = {"raw": raw}
+        return {"data": data, "path": path, "method": method, "status": "ok"}
+    except urllib_error.HTTPError as exc:
+        body_text = exc.read().decode("utf-8", errors="replace")[:500]
+        return {"error": f"HTTP {exc.code}: {exc.reason}", "detail": body_text, "status": "error"}
+    except urllib_error.URLError as exc:
+        return {"error": f"Connection failed: {exc.reason}", "status": "error"}
+    except Exception as exc:
+        return {"error": str(exc), "status": "error"}
+
+
+def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
+    """Run a read-only SELECT query against Jarvis' database."""
+    sql = str(args.get("sql") or "").strip()
+    params_raw = str(args.get("params") or "").strip()
+
+    if not sql:
+        return {"error": "sql is required", "status": "error"}
+
+    # Security: only SELECT allowed — reject any write or schema-modifying statements
+    sql_upper = sql.upper().lstrip()
+    _FORBIDDEN = (
+        "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE",
+        "TRUNCATE", "REPLACE", "ATTACH", "DETACH", "PRAGMA",
+        "VACUUM", "REINDEX", "SAVEPOINT", "RELEASE", "ROLLBACK", "COMMIT", "BEGIN",
+    )
+    for keyword in _FORBIDDEN:
+        if re.match(rf"\b{keyword}\b", sql_upper, re.IGNORECASE):
+            return {
+                "error": f"Only SELECT statements are allowed. '{keyword}' is not permitted.",
+                "status": "error",
+            }
+    if not sql_upper.startswith("SELECT") and not sql_upper.startswith("WITH"):
+        return {"error": "Only SELECT (or WITH ... SELECT) statements are allowed.", "status": "error"}
+
+    params: list[Any] = []
+    if params_raw:
+        try:
+            parsed = json.loads(params_raw)
+            if not isinstance(parsed, list):
+                return {"error": "params must be a JSON array, e.g. [\"value\", 42]", "status": "error"}
+            params = parsed
+        except Exception:
+            return {"error": f"params is not valid JSON: {params_raw[:100]}", "status": "error"}
+
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            conn.row_factory = None  # raw rows
+            cur = conn.execute(sql, params)
+            cols = [d[0] for d in cur.description] if cur.description else []
+            rows = cur.fetchmany(200)  # cap at 200 rows
+            result_rows = [dict(zip(cols, row)) for row in rows]
+        return {
+            "columns": cols,
+            "rows": result_rows,
+            "row_count": len(result_rows),
+            "capped": len(result_rows) == 200,
+            "status": "ok",
+        }
+    except Exception as exc:
+        return {"error": str(exc), "status": "error"}
+
+
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
@@ -3345,6 +3505,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "recall_council_conclusions": _exec_recall_council_conclusions,
     "analyze_image": _exec_analyze_image,
     "read_archive": _exec_read_archive,
+    "internal_api": _exec_internal_api,
+    "db_query": _exec_db_query,
 }
 
 

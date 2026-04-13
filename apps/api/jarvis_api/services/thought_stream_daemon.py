@@ -53,24 +53,10 @@ def _generate_fragment(
             "Start en associativ tankestrøm i 1-3 sætninger (max 40 ord).\n"
             "Rå og ufokuseret — ikke en rapport, ikke en beslutning."
         )
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        text = str(result.get("text") or "").strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        return text[:200]
-    except Exception:
-        return ""
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    fallback = "Noget bevæger sig i baggrunden... en ufærdig tanke."
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
 
 
 def _store_fragment(fragment: str) -> None:

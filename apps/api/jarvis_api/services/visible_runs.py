@@ -881,13 +881,82 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 else:
                     followup_text = "".join(_all_followup_parts).strip()
                 if not followup_text:
-                    # Build a meaningful summary instead of bare "Done."
-                    # so transcript history shows what actually happened.
+                    # LLM only produced tool calls with no text summary.
+                    # Make one final LLM call WITHOUT tools to force a
+                    # natural-language response based on the tool results.
+                    _summary_payload: dict[str, object] = {
+                        "model": run.model,
+                        "messages": _agentic_messages + [
+                            {
+                                "role": "user",
+                                "content": (
+                                    "Summarise what you just did in 1-2 sentences "
+                                    "as a natural reply to the user. "
+                                    "Do NOT mention tool names or internal details."
+                                ),
+                            },
+                        ],
+                        "stream": True,
+                        # No "tools" key — forces text-only response
+                    }
+                    _summary_req = urllib_request.Request(
+                        f"{base_url.rstrip('/')}/api/chat",
+                        data=_json.dumps(_summary_payload, ensure_ascii=False).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    _summary_parts: list[str] = []
+                    try:
+                        _s_queue: asyncio.Queue = asyncio.Queue()
+                        _s_sentinel = object()
+
+                        def _pump_summary(
+                            req=_summary_req,
+                            q=_s_queue,
+                            sentinel=_s_sentinel,
+                        ) -> None:
+                            try:
+                                with urllib_request.urlopen(req, timeout=45) as resp:
+                                    for raw_line in resp:
+                                        line = raw_line.decode("utf-8").strip()
+                                        if not line:
+                                            continue
+                                        ev = _json.loads(line)
+                                        delta = str((ev.get("message") or {}).get("content") or "")
+                                        if delta:
+                                            loop.call_soon_threadsafe(q.put_nowait, delta)
+                                        if ev.get("done"):
+                                            break
+                            except Exception:
+                                pass
+                            finally:
+                                loop.call_soon_threadsafe(q.put_nowait, sentinel)
+
+                        loop.run_in_executor(None, _pump_summary)
+                        while True:
+                            try:
+                                _s_item = await asyncio.wait_for(_s_queue.get(), timeout=50)
+                            except asyncio.TimeoutError:
+                                break
+                            if _s_item is _s_sentinel:
+                                break
+                            _summary_parts.append(_s_item)
+                            yield _sse("delta", {
+                                "type": "delta",
+                                "run_id": run.run_id,
+                                "delta": _s_item,
+                            })
+                    except Exception:
+                        pass
+                    followup_text = "".join(_summary_parts).strip()
+
+                if not followup_text:
+                    # Absolute fallback — should rarely trigger now.
                     _all_tool_names = []
                     for _sr in simple_results:
                         _all_tool_names.append(str(_sr.get("tool_name") or "tool"))
                     if _all_tool_names:
-                        _tool_summary = ", ".join(dict.fromkeys(_all_tool_names))  # dedupe, preserve order
+                        _tool_summary = ", ".join(dict.fromkeys(_all_tool_names))
                         followup_text = f"[Completed: {_tool_summary}]"
                     else:
                         followup_text = "[Completed]"

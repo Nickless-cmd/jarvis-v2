@@ -52,6 +52,7 @@ def test_self_model_builds_and_has_layers(isolated_runtime) -> None:
     assert "dream_articulation" in model
     assert "prompt_evolution" in model
     assert "truth_boundaries" in model
+    assert "cognitive_core_experiments" in model
     assert "summary" in model
     assert "built_at" in model
     assert len(model["layers"]) > 0
@@ -357,6 +358,60 @@ def test_cognitive_architecture_awareness_uses_shared_runtime_builder(
     )
 
     assert model_mod._cognitive_architecture_awareness() == shared
+
+
+def test_runtime_self_model_surfaces_cognitive_core_experiment_truth(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    model_mod = isolated_runtime.runtime_self_model
+
+    shared = {
+        "kind": "cognitive-core-experiments",
+        "systems": {
+            "recurrence": {
+                "id": "recurrence",
+                "carry_capable": True,
+                "observational_only": False,
+            },
+            "attention_blink": {
+                "id": "attention_blink",
+                "carry_capable": False,
+                "observational_only": True,
+            },
+        },
+        "ordered_systems": [],
+        "enabled_count": 2,
+        "active_count": 1,
+        "carry_candidate_count": 1,
+        "active_carry_candidate_count": 1,
+        "observational_count": 1,
+        "activity_state": "active",
+        "carry_state": "present",
+        "strongest_carry_system": "recurrence",
+        "strongest_carry_summary": "loop active",
+        "active_systems": ["recurrence"],
+        "carry_candidate_systems": ["recurrence"],
+        "observational_systems": ["attention_blink"],
+        "summary": "1/2 active; blink=observational",
+    }
+
+    monkeypatch.setattr(
+        model_mod,
+        "_cognitive_core_experiments_surface",
+        lambda: shared,
+    )
+
+    model = model_mod.build_runtime_self_model()
+
+    assert model["cognitive_core_experiments"] == shared
+    layer = next(
+        item for item in model["layers"] if item["id"] == "cognitive-core-experiments-light"
+    )
+    assert layer["kind"] == "orchestration"
+    assert layer["role"] == "active"
+    assert "strongest=recurrence" in layer["detail"]
+    assert "observational=attention_blink" in layer["detail"]
 
 
 # ---------------------------------------------------------------------------

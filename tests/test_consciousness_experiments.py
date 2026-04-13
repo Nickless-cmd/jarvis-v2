@@ -262,6 +262,114 @@ def test_run_attention_blink_skips_when_disabled(isolated_runtime) -> None:
     assert result["reason"] == "disabled"
 
 
+def test_cognitive_core_experiment_surface_classifies_truth_layers(monkeypatch) -> None:
+    import importlib
+
+    surface_mod = importlib.import_module(
+        "apps.api.jarvis_api.services.cognitive_core_experiments"
+    )
+
+    monkeypatch.setattr(
+        surface_mod,
+        "_build_recurrence_state",
+        lambda: {
+            "id": "recurrence",
+            "enabled": True,
+            "active": True,
+            "activity_state": "active",
+            "core_status": "core-candidate",
+            "carry_capable": True,
+            "carry_domain": "loop-reentry",
+            "carry_strength": "medium",
+            "observational_only": False,
+            "summary": "recurrence active",
+            "source_summary": {},
+        },
+    )
+    monkeypatch.setattr(
+        surface_mod,
+        "_build_global_workspace_state",
+        lambda: {
+            "id": "global_workspace",
+            "enabled": True,
+            "active": True,
+            "activity_state": "active",
+            "core_status": "core-candidate",
+            "carry_capable": True,
+            "carry_domain": "salience-broadcast",
+            "carry_strength": "strong",
+            "observational_only": False,
+            "summary": "workspace active",
+            "source_summary": {},
+        },
+    )
+    monkeypatch.setattr(
+        surface_mod,
+        "_build_hot_meta_cognition_state",
+        lambda: {
+            "id": "hot_meta_cognition",
+            "enabled": True,
+            "active": False,
+            "activity_state": "idle",
+            "core_status": "core-candidate",
+            "carry_capable": True,
+            "carry_domain": "reflective-depth",
+            "carry_strength": "medium",
+            "observational_only": False,
+            "summary": "hot idle",
+            "source_summary": {},
+        },
+    )
+    monkeypatch.setattr(
+        surface_mod,
+        "_build_surprise_afterimage_state",
+        lambda: {
+            "id": "surprise_afterimage",
+            "enabled": True,
+            "active": True,
+            "activity_state": "active",
+            "core_status": "core-candidate",
+            "carry_capable": True,
+            "carry_domain": "affective-carry",
+            "carry_strength": "strong",
+            "observational_only": False,
+            "summary": "afterimage active",
+            "source_summary": {},
+        },
+    )
+    monkeypatch.setattr(
+        surface_mod,
+        "_build_attention_blink_state",
+        lambda: {
+            "id": "attention_blink",
+            "enabled": True,
+            "active": True,
+            "activity_state": "active",
+            "core_status": "observational-core-assay",
+            "carry_capable": False,
+            "carry_domain": "capacity-assay",
+            "carry_strength": "none",
+            "observational_only": True,
+            "summary": "blink active",
+            "source_summary": {},
+        },
+    )
+
+    surface = surface_mod.build_cognitive_core_experiments_surface()
+
+    assert surface["active_count"] == 4
+    assert surface["carry_candidate_count"] == 4
+    assert surface["active_carry_candidate_count"] == 3
+    assert surface["observational_count"] == 1
+    assert surface["carry_state"] == "present"
+    assert surface["strongest_carry_system"] in {
+        "global_workspace",
+        "surprise_afterimage",
+    }
+    assert surface["systems"]["attention_blink"]["observational_only"] is True
+    assert surface["systems"]["attention_blink"]["carry_capable"] is False
+
+
 def test_trigger_emotion_concept_custom_lifetime() -> None:
     import importlib
     import apps.api.jarvis_api.services.emotion_concepts as ec

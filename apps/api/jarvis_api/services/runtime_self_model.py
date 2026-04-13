@@ -111,6 +111,7 @@ def build_runtime_self_model() -> dict[str, object]:
             dream_influence=_dream_influence_surface(),
             dream_articulation=_dream_articulation_surface(),
         )
+        cognitive_core_experiments = _cognitive_core_experiments_surface()
 
         return {
             "layers": layers,
@@ -149,6 +150,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "dream_articulation": _dream_articulation_surface(),
             "prompt_evolution": _prompt_evolution_surface(),
             "truth_boundaries": boundaries,
+            "cognitive_core_experiments": cognitive_core_experiments,
             "cognitive_architecture": _cognitive_architecture_awareness(),
             "summary": summary,
             "built_at": datetime.now(UTC).isoformat(),
@@ -335,6 +337,41 @@ def _collect_layers() -> list[dict[str, str]]:
                 f"target={dream_influence.get('influence_target') or 'none'}; "
                 f"mode={dream_influence.get('influence_mode') or 'stabilize'}; "
                 f"strength={dream_influence.get('influence_strength') or 'none'}."
+            ),
+        }
+    )
+
+    cognitive_core_experiments = _cognitive_core_experiments_surface()
+    carry_ids = [
+        str(item)
+        for item in (cognitive_core_experiments.get("carry_candidate_systems") or [])
+        if str(item)
+    ]
+    observational_ids = [
+        str(item)
+        for item in (cognitive_core_experiments.get("observational_systems") or [])
+        if str(item)
+    ]
+    layers.append(
+        {
+            "id": "cognitive-core-experiments-light",
+            "label": "Cognitive core experiments light",
+            "kind": "orchestration",
+            "role": "active"
+            if str(cognitive_core_experiments.get("activity_state") or "disabled")
+            == "active"
+            else "idle"
+            if str(cognitive_core_experiments.get("activity_state") or "disabled")
+            == "enabled-idle"
+            else "gated",
+            "visibility": "internal-only",
+            "truth": "derived",
+            "detail": (
+                f"activity={cognitive_core_experiments.get('activity_state') or 'disabled'}; "
+                f"carry={cognitive_core_experiments.get('carry_state') or 'quiet'}; "
+                f"strongest={cognitive_core_experiments.get('strongest_carry_system') or 'none'}; "
+                f"carry_candidates={', '.join(carry_ids) or 'none'}; "
+                f"observational={', '.join(observational_ids) or 'none'}."
             ),
         }
     )
@@ -4333,7 +4370,39 @@ def _cognitive_architecture_awareness() -> dict[str, object]:
         return {
             "systems": [],
             "surfaces": {},
+            "cognitive_core_experiments": {},
             "active_count": 0,
             "total_count": 0,
             "summary": "0/0 cognitive systems active",
+        }
+
+
+def _cognitive_core_experiments_surface() -> dict[str, object]:
+    try:
+        from apps.api.jarvis_api.services.cognitive_core_experiments import (
+            build_cognitive_core_experiments_surface,
+        )
+
+        return build_cognitive_core_experiments_surface()
+    except Exception:
+        return {
+            "kind": "cognitive-core-experiments",
+            "authority": "derived-runtime-truth",
+            "visibility": "internal-only",
+            "boundary": "surface-unavailable",
+            "systems": {},
+            "ordered_systems": [],
+            "enabled_count": 0,
+            "active_count": 0,
+            "carry_candidate_count": 0,
+            "active_carry_candidate_count": 0,
+            "observational_count": 0,
+            "activity_state": "disabled",
+            "carry_state": "quiet",
+            "strongest_carry_system": "none",
+            "strongest_carry_summary": "none",
+            "active_systems": [],
+            "carry_candidate_systems": [],
+            "observational_systems": [],
+            "summary": "0/5 active; 0/4 carry-capable active; blink=observational",
         }

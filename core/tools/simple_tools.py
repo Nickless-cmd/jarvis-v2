@@ -3372,11 +3372,15 @@ def _exec_internal_api(args: dict[str, Any]) -> dict[str, Any]:
     try:
         from core.runtime.settings import load_settings
         settings = load_settings()
-        base_url = f"http://{settings.host}:{settings.port}"
+        _candidate_ports = [settings.port]
     except Exception:
-        base_url = "http://127.0.0.1:8010"
+        _candidate_ports = [8010]
 
-    url = base_url + path
+    # Also try port 80 (systemd service default) if not already in list
+    for _p in (80, 8010):
+        if _p not in _candidate_ports:
+            _candidate_ports.append(_p)
+
     body_bytes: bytes | None = None
     headers: dict[str, str] = {}
 
@@ -3384,22 +3388,30 @@ def _exec_internal_api(args: dict[str, Any]) -> dict[str, Any]:
         body_bytes = body_raw.encode("utf-8") if body_raw else b"{}"
         headers["Content-Type"] = "application/json"
 
-    try:
-        req = urllib_request.Request(url, data=body_bytes, headers=headers, method=method)
-        with urllib_request.urlopen(req, timeout=10) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
+    _last_error: str = ""
+    for _port in _candidate_ports:
+        base_url = f"http://127.0.0.1:{_port}"
+        url = base_url + path
         try:
-            data = json.loads(raw)
-        except Exception:
-            data = {"raw": raw}
-        return {"data": data, "path": path, "method": method, "status": "ok"}
-    except urllib_error.HTTPError as exc:
-        body_text = exc.read().decode("utf-8", errors="replace")[:500]
-        return {"error": f"HTTP {exc.code}: {exc.reason}", "detail": body_text, "status": "error"}
-    except urllib_error.URLError as exc:
-        return {"error": f"Connection failed: {exc.reason}", "status": "error"}
-    except Exception as exc:
-        return {"error": str(exc), "status": "error"}
+            req = urllib_request.Request(url, data=body_bytes, headers=headers, method=method)
+            with urllib_request.urlopen(req, timeout=10) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+            try:
+                data = json.loads(raw)
+            except Exception:
+                data = {"raw": raw}
+            return {"data": data, "path": path, "method": method, "port": _port, "status": "ok"}
+        except urllib_error.HTTPError as exc:
+            body_text = exc.read().decode("utf-8", errors="replace")[:500]
+            return {"error": f"HTTP {exc.code}: {exc.reason}", "detail": body_text, "status": "error"}
+        except urllib_error.URLError:
+            _last_error = f"Connection refused on port {_port}"
+            continue
+        except Exception as exc:
+            _last_error = str(exc)
+            continue
+
+    return {"error": f"Connection failed on all ports {_candidate_ports}: {_last_error}", "status": "error"}
 
 
 def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:

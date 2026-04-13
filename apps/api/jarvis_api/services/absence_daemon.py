@@ -45,6 +45,22 @@ def mark_interaction() -> None:
     _absence_label = ""
 
 
+def seed_last_interaction_from_db() -> None:
+    """One-time seed: set _last_interaction_at from most recent visible run if not yet set."""
+    global _last_interaction_at
+    if _last_interaction_at is not None:
+        return
+    try:
+        from core.runtime.db import recent_visible_runs
+
+        runs = recent_visible_runs(limit=1)
+        if runs and runs[0].get("finished_at"):
+            raw = str(runs[0]["finished_at"]).replace("Z", "+00:00")
+            _last_interaction_at = datetime.fromisoformat(raw)
+    except Exception:
+        pass
+
+
 def tick_absence_daemon(now: datetime | None = None) -> dict:
     """Evaluate current absence quality. Returns {generated, label, duration_hours}."""
     global _absence_start_at, _absence_label, _last_generated_at

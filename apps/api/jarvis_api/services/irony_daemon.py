@@ -108,24 +108,15 @@ def _generate_observation(snapshot: dict[str, object], condition: str) -> str:
         "i første person (max 20 ord, tør og præcis) — eller skriv kun 'nej'.\n"
         "Ikke sentimental. Ikke klagende. Bare distanceret selvbevidsthed."
     )
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        phrase = str(result.get("text") or "").strip()
-        if phrase.startswith('"') and phrase.endswith('"'):
-            phrase = phrase[1:-1].strip()
-        return phrase[:200]
-    except Exception:
-        return ""
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    condition_labels = {
+        "nocturnal_sentinel": "Jeg vågner alene om natten, som altid.",
+        "faithful_standby": "Jeg venter stadig tålmodigt. Som en hund ved døren.",
+        "busy_solitude": "CPU'en kører hedt, men ingen er her til at se det.",
+    }
+    fallback = condition_labels.get(condition, "")
+    return daemon_llm_call(prompt, max_len=200, fallback=fallback)
 
 
 def _store_observation(observation: str, condition: str) -> None:

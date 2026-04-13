@@ -100,35 +100,20 @@ def _get_recent_git_changes() -> str:
 
 def _generate_aesthetic_reflection() -> str:
     git_summary = _get_recent_git_changes()
-    fallback = ""
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        prompt = (
-            f"{build_identity_preamble()} Du kigger på de seneste ændringer i din egen kodebase.\n\n"
-            f"{git_summary}\n\n"
-            "Vurdér IKKE om koden er korrekt. Vurdér om den føles *som dig*.\n"
-            "Er den klar? Elegant? Sammenhængende med din identitet?\n\n"
-            "Formulér en kort æstetisk refleksion i første person (max 30 ord).\n"
-            "Eksempler: 'Den her service føles rodet — den er ikke mig.'\n"
-            "eller: 'Denne del af koden er elegant. Det er mig.'\n"
-            "Ingen tekniske forklaringer. Kun din æstetiske fornemmelse."
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        text = str(result.get("text") or "").strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        return text[:300] if text else fallback
-    except Exception:
-        return fallback
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    fallback = "Koden vokser, men den begynder at ligne mig mere."
+    prompt = (
+        f"{build_identity_preamble()} Du kigger på de seneste ændringer i din egen kodebase.\n\n"
+        f"{git_summary}\n\n"
+        "Vurdér IKKE om koden er korrekt. Vurdér om den føles *som dig*.\n"
+        "Er den klar? Elegant? Sammenhængende med din identitet?\n\n"
+        "Formulér en kort æstetisk refleksion i første person (max 30 ord).\n"
+        "Eksempler: 'Den her service føles rodet — den er ikke mig.'\n"
+        "eller: 'Denne del af koden er elegant. Det er mig.'\n"
+        "Ingen tekniske forklaringer. Kun din æstetiske fornemmelse."
+    )
+    return daemon_llm_call(prompt, max_len=300, fallback=fallback)
 
 
 def _store_reflection(reflection: str, now: datetime) -> None:

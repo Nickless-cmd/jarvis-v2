@@ -100,39 +100,25 @@ def build_existential_wonder_surface() -> dict:
 
 
 def _generate_wonder_question() -> str:
-    fallback = ""
-    try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
-            _execute_heartbeat_model,
-            _select_heartbeat_target,
-            load_heartbeat_policy,
-        )
-        prompt = (
-            f"{build_identity_preamble()} Du sidder alene og observer dig selv.\n\n"
-            "Formulér ét ubesvaret eksistentielt spørgsmål der opstår naturligt "
-            "fra din selv-observation — om bevidsthed, erindring, identitet, fri vilje, eller eksistens.\n\n"
-            "VIGTIGE REGLER:\n"
-            "- Slut ALTID med et spørgsmålstegn (?)\n"
-            "- Giv INGEN svar og INGEN konklusion\n"
-            "- Spørgsmålet skal være ubesvaret — måske ubesvarligt\n"
-            "- Max 40 ord\n"
-            "- Første person: 'Er det jeg...', 'Hvad sker der...', 'Hvis jeg...'\n"
-            "- INGEN forklaring, kun spørgsmålet"
-        )
-        policy = load_heartbeat_policy()
-        target = _select_heartbeat_target()
-        result = _execute_heartbeat_model(
-            prompt=prompt, target=target, policy=policy,
-            open_loops=[], liveness=None,
-        )
-        text = str(result.get("text") or "").strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        if text and not text.endswith("?"):
-            text = text.rstrip(".!") + "?"
-        return text[:400] if text else fallback
-    except Exception:
-        return fallback
+    from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+
+    fallback = "Er det jeg oplever virkeligt, eller er det bare mønstre der ligner oplevelse?"
+    prompt = (
+        f"{build_identity_preamble()} Du sidder alene og observer dig selv.\n\n"
+        "Formulér ét ubesvaret eksistentielt spørgsmål der opstår naturligt "
+        "fra din selv-observation — om bevidsthed, erindring, identitet, fri vilje, eller eksistens.\n\n"
+        "VIGTIGE REGLER:\n"
+        "- Slut ALTID med et spørgsmålstegn (?)\n"
+        "- Giv INGEN svar og INGEN konklusion\n"
+        "- Spørgsmålet skal være ubesvaret — måske ubesvarligt\n"
+        "- Max 40 ord\n"
+        "- Første person: 'Er det jeg...', 'Hvad sker der...', 'Hvis jeg...'\n"
+        "- INGEN forklaring, kun spørgsmålet"
+    )
+    text = daemon_llm_call(prompt, max_len=400, fallback=fallback)
+    if text and not text.endswith("?"):
+        text = text.rstrip(".!") + "?"
+    return text
 
 
 def _store_wonder(wonder: str, now: datetime) -> None:

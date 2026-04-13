@@ -1990,7 +1990,8 @@ def _build_influence_trace(
     # Absence daemon — quality of silence
     if _dm.is_enabled("absence"):
         try:
-            from apps.api.jarvis_api.services.absence_daemon import tick_absence_daemon, get_latest_absence
+            from apps.api.jarvis_api.services.absence_daemon import tick_absence_daemon, get_latest_absence, seed_last_interaction_from_db
+            seed_last_interaction_from_db()
             _absence_result = tick_absence_daemon()
             _dm.record_daemon_tick("absence", _absence_result or {})
             _absence_label = get_latest_absence()

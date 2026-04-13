@@ -3,6 +3,31 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 
+def _safe_build(
+    builder: object,
+    system_id: str,
+    label: str,
+) -> dict[str, object]:
+    """Call a builder function, returning a disabled-stub on any error."""
+    try:
+        return builder()  # type: ignore[operator]
+    except Exception:
+        return {
+            "id": system_id,
+            "label": label,
+            "enabled": False,
+            "active": False,
+            "activity_state": "error",
+            "core_status": "unknown",
+            "carry_capable": False,
+            "carry_domain": "unknown",
+            "carry_strength": "none",
+            "observational_only": False,
+            "summary": "error: could not load state",
+            "source_summary": {},
+        }
+
+
 def build_cognitive_core_experiments_surface() -> dict[str, object]:
     """Build shared runtime truth for the bounded cognitive-core experiment state.
 
@@ -10,11 +35,11 @@ def build_cognitive_core_experiments_surface() -> dict[str, object]:
     classifies the existing experiment families consistently for shared runtime
     awareness.
     """
-    recurrence = _build_recurrence_state()
-    global_workspace = _build_global_workspace_state()
-    hot_meta_cognition = _build_hot_meta_cognition_state()
-    surprise_afterimage = _build_surprise_afterimage_state()
-    attention_blink = _build_attention_blink_state()
+    recurrence = _safe_build(_build_recurrence_state, "recurrence", "Recurrence loop")
+    global_workspace = _safe_build(_build_global_workspace_state, "global_workspace", "Global workspace")
+    hot_meta_cognition = _safe_build(_build_hot_meta_cognition_state, "hot_meta_cognition", "HOT meta-cognition")
+    surprise_afterimage = _safe_build(_build_surprise_afterimage_state, "surprise_afterimage", "Surprise persistence / afterimage")
+    attention_blink = _safe_build(_build_attention_blink_state, "attention_blink", "Attention blink")
 
     items = [
         recurrence,

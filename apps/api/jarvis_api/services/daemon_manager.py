@@ -174,6 +174,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 10,
         "description": "Injects relevant past council conclusions into heartbeat context",
     },
+    "signal_decay": {
+        "module": "apps.api.jarvis_api.services.signal_decay_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 60,
+        "description": "Archives and deletes stale signals older than 24h across all signal tables",
+    },
 }
 
 

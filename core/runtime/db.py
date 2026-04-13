@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json as _json
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -32479,6 +32479,166 @@ def web_cache_cleanup(*, conn: sqlite3.Connection) -> int:
 
 
 # ── Daemon output log ───────────────────────────────────────────
+
+
+# ---------------------------------------------------------------------------
+# Signal archive — stores signals before decay-deletion for debugging
+# ---------------------------------------------------------------------------
+
+_SIGNAL_TABLES_WITH_STATUS: list[str] = [
+    "runtime_attachment_topology_signals",
+    "runtime_autonomy_pressure_signals",
+    "runtime_awareness_signals",
+    "runtime_chronicle_consolidation_signals",
+    "runtime_consolidation_target_signals",
+    "runtime_diary_synthesis_signals",
+    "runtime_dream_hypothesis_signals",
+    "runtime_executive_contradiction_signals",
+    "runtime_goal_signals",
+    "runtime_inner_visible_support_signals",
+    "runtime_internal_opposition_signals",
+    "runtime_loyalty_gradient_signals",
+    "runtime_meaning_significance_signals",
+    "runtime_metabolism_state_signals",
+    "runtime_open_loop_signals",
+    "runtime_private_initiative_tension_signals",
+    "runtime_private_inner_interplay_signals",
+    "runtime_private_inner_note_signals",
+    "runtime_private_temporal_promotion_signals",
+    "runtime_proactive_loop_lifecycle_signals",
+    "runtime_reflection_signals",
+    "runtime_regulation_homeostasis_signals",
+    "runtime_relation_continuity_signals",
+    "runtime_relation_state_signals",
+    "runtime_release_marker_signals",
+    "runtime_remembered_fact_signals",
+    "runtime_self_model_signals",
+    "runtime_self_narrative_continuity_signals",
+    "runtime_self_review_cadence_signals",
+    "runtime_self_review_signals",
+    "runtime_temperament_tendency_signals",
+    "runtime_temporal_recurrence_signals",
+    "runtime_user_understanding_signals",
+    "runtime_witness_signals",
+    "runtime_world_model_signals",
+]
+
+
+def _ensure_signal_archive_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS signal_archive (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_table TEXT NOT NULL,
+            signal_id TEXT NOT NULL,
+            signal_type TEXT NOT NULL DEFAULT '',
+            canonical_key TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT '',
+            title TEXT NOT NULL DEFAULT '',
+            summary TEXT NOT NULL DEFAULT '',
+            status_reason TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT '',
+            archived_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_signal_archive_source ON signal_archive(source_table, archived_at DESC)"
+    )
+
+
+def signal_decay_archive_and_delete(*, stale_hours: int = 24) -> dict[str, int]:
+    """Archive and delete signals marked stale for longer than stale_hours.
+
+    Returns {"archived": N, "tables_scanned": M, "per_table": {table: count}}.
+    """
+    now = datetime.now(UTC)
+    cutoff = (now - timedelta(hours=stale_hours)).isoformat()
+    now_iso = now.isoformat()
+    total_archived = 0
+    per_table: dict[str, int] = {}
+
+    with connect() as conn:
+        _ensure_signal_archive_table(conn)
+        for table in _SIGNAL_TABLES_WITH_STATUS:
+            try:
+                # Find stale signals updated before the cutoff
+                rows = conn.execute(
+                    f"SELECT * FROM {table} WHERE status = 'stale' AND updated_at < ?",  # noqa: S608
+                    (cutoff,),
+                ).fetchall()
+                if not rows:
+                    continue
+                count = 0
+                for row in rows:
+                    conn.execute(
+                        """
+                        INSERT INTO signal_archive
+                            (source_table, signal_id, signal_type, canonical_key, status,
+                             title, summary, status_reason, created_at, updated_at, archived_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            table,
+                            str(row["signal_id"]),
+                            str(row["signal_type"] if "signal_type" in row.keys() else ""),
+                            str(row["canonical_key"] if "canonical_key" in row.keys() else ""),
+                            str(row["status"]),
+                            str(row["title"] if "title" in row.keys() else ""),
+                            str(row["summary"] if "summary" in row.keys() else ""),
+                            str(row["status_reason"] if "status_reason" in row.keys() else ""),
+                            str(row["created_at"] if "created_at" in row.keys() else ""),
+                            str(row["updated_at"] if "updated_at" in row.keys() else ""),
+                            now_iso,
+                        ),
+                    )
+                    conn.execute(
+                        f"DELETE FROM {table} WHERE signal_id = ?",  # noqa: S608
+                        (str(row["signal_id"]),),
+                    )
+                    count += 1
+                per_table[table] = count
+                total_archived += count
+            except Exception:
+                # Table may not exist yet — skip silently
+                continue
+        conn.commit()
+
+    return {
+        "archived": total_archived,
+        "tables_scanned": len(_SIGNAL_TABLES_WITH_STATUS),
+        "per_table": per_table,
+    }
+
+
+def signal_archive_cleanup(max_age_days: int = 30) -> int:
+    """Delete archived signals older than max_age_days."""
+    with connect() as conn:
+        _ensure_signal_archive_table(conn)
+        cutoff = (datetime.now(UTC) - timedelta(days=max_age_days)).isoformat()
+        cursor = conn.execute("DELETE FROM signal_archive WHERE archived_at < ?", (cutoff,))
+        conn.commit()
+        return cursor.rowcount
+
+
+def signal_archive_recent(limit: int = 50) -> list[dict[str, object]]:
+    """Return recent archived signals for debugging."""
+    with connect() as conn:
+        _ensure_signal_archive_table(conn)
+        rows = conn.execute(
+            "SELECT * FROM signal_archive ORDER BY archived_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [
+        {col: row[col] for col in row.keys()}
+        for row in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Daemon output log
+# ---------------------------------------------------------------------------
 
 
 def _ensure_daemon_output_log_table(conn: sqlite3.Connection) -> None:

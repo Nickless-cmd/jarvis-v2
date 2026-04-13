@@ -186,6 +186,8 @@ HEARTBEAT_ALLOWED_EXECUTE_ACTIONS = {
     # Hjerteslag — wake up dead MC fields
     "produce_emergent_signals",
     "progress_lifecycles",
+    # Signal hygiejne
+    "cleanup_stale_signals",
 }
 _KEY_LINE_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.+?)\s*$")
 _HEARTBEAT_TICK_LOCK = threading.Lock()
@@ -2062,6 +2064,15 @@ def _build_influence_trace(
             _rediscovered = maybe_rediscover()
             if _rediscovered and _rediscovered.get("summary"):
                 inject_rediscovery_fragment(_rediscovered["summary"])
+        except Exception:
+            pass
+
+    # Signal decay daemon — archive and delete stale signals
+    if _dm.is_enabled("signal_decay"):
+        try:
+            from apps.api.jarvis_api.services.signal_decay_daemon import tick_signal_decay_daemon
+            _sd_result = tick_signal_decay_daemon()
+            _dm.record_daemon_tick("signal_decay", _sd_result or {})
         except Exception:
             pass
 
@@ -6035,6 +6046,27 @@ def _execute_heartbeat_internal_action(
                 "summary": f"Daemon log cleanup failed: {exc!s}"[:200],
                 "artifact": "",
                 "blocked_reason": "daemon-log-cleanup-error",
+            }
+
+    if action_type == "cleanup_stale_signals":
+        try:
+            from core.runtime.db import signal_decay_archive_and_delete, signal_archive_cleanup
+
+            result = signal_decay_archive_and_delete(stale_hours=24)
+            archive_cleaned = signal_archive_cleanup(max_age_days=30)
+            total = result.get("archived", 0)
+            return {
+                "status": "executed",
+                "summary": f"Signal decay: {total} stale signals archived+deleted, {archive_cleaned} old archives purged.",
+                "artifact": json.dumps({**result, "archive_cleaned": archive_cleaned}, default=str),
+                "blocked_reason": "",
+            }
+        except Exception as exc:
+            return {
+                "status": "blocked",
+                "summary": f"Signal decay failed: {exc!s}"[:200],
+                "artifact": "",
+                "blocked_reason": "signal-decay-error",
             }
 
     return {

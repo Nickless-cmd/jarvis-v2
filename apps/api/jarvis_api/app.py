@@ -100,6 +100,11 @@ def create_app() -> FastAPI:
         stop_emotion_concept_listener()
         stop_mood_listener()
         stop_runtime_hook_runtime()
+        try:
+            from core.browser.playwright_session import stop_browser_session
+            stop_browser_session()
+        except Exception:
+            pass
         logger.info("jarvis api shutdown complete")
 
     app = FastAPI(title="Jarvis V2 API", lifespan=lifespan)

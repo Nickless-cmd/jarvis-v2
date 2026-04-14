@@ -379,6 +379,37 @@ def start_autonomous_run(message: str, session_id: str | None = None) -> None:
     threading.Thread(target=_in_thread, name="jarvis-autonomous-run", daemon=True).start()
 
 
+def _compact_llm_for_run(prompt: str) -> str:
+    """Call the compact LLM for run-level summarisation (monkeypatchable)."""
+    from core.context.compact_llm import call_compact_llm
+    return call_compact_llm(prompt, max_tokens=400)
+
+
+def _maybe_compact_agentic_messages(
+    messages: list[dict],
+    *,
+    base_count: int,
+    settings,
+) -> list[dict]:
+    """Compact _agentic_messages if they exceed the run threshold.
+
+    Returns a new (shorter) list, or the original list unchanged if below threshold.
+    """
+    from core.context.token_estimate import estimate_messages_tokens
+    if estimate_messages_tokens(messages) < settings.context_run_compact_threshold_tokens:
+        return messages
+    from core.context.run_compact import compact_run_messages
+    return compact_run_messages(
+        messages,
+        keep_base=base_count,
+        keep_recent_pairs=settings.context_keep_recent_pairs,
+        summarise_fn=lambda msgs: _compact_llm_for_run(
+            "Komprimér disse tool-operationer til max 300 ord. Bevar resultater, fejl og vigtige fund:\n\n"
+            + "\n".join(f"{m.get('role', '')}: {m.get('content', '')[:300]}" for m in msgs)
+        ),
+    )
+
+
 def _handle_compact_command(run: "VisibleRun") -> str:
     """Run session compact and return a message for Jarvis to respond to."""
     try:
@@ -904,6 +935,30 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             ),
                         },
                     ]
+
+                    # ── Run-level auto-compact ─────────────────────────────────────
+                    try:
+                        from core.runtime.settings import load_settings as _lcs
+                        _run_settings = _lcs()
+                        _base_count = len(base_messages) + 1  # base + first tool-results msg
+                        _compacted = _maybe_compact_agentic_messages(
+                            _agentic_messages,
+                            base_count=_base_count,
+                            settings=_run_settings,
+                        )
+                        if _compacted is not _agentic_messages:
+                            _agentic_messages = _compacted
+                            _agentic_messages.append({
+                                "role": "user",
+                                "content": (
+                                    "Note: Dit arbejdende kontekstvindue er netop komprimeret "
+                                    "for at frigøre plads. Nævn kort at du kompakterer "
+                                    "(1 sætning) og fortsæt din opgave."
+                                ),
+                            })
+                    except Exception:
+                        pass  # Never let compact crash the agentic loop
+
                 # ── End agentic loop ───────────────────────────────────────────────
 
                 # Autonomous runs: only use the final round's text so the

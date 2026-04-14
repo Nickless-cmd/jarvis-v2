@@ -49,6 +49,22 @@ _BLOCKED_WRITE_PATTERNS = [
     "/__pycache__/",
 ]
 
+# Files that must always resolve to the runtime workspace, no matter what path
+# the LLM provides. Prevents memory drifting into repo root, repo workspace
+# template, or any other incorrect location.
+_CANONICAL_WORKSPACE_FILES = {"MEMORY.md", "USER.md"}
+
+
+def _canonicalize_workspace_target(target: Path) -> tuple[Path, str | None]:
+    """If target's basename is a canonical workspace file, force it to the
+    runtime workspace path. Returns (resolved_target, redirected_from_or_None).
+    """
+    if target.name in _CANONICAL_WORKSPACE_FILES:
+        canonical = (WORKSPACE_DIR / target.name).resolve()
+        if target != canonical:
+            return canonical, str(target)
+    return target, None
+
 # ── Tool definitions (Ollama-compatible JSON schemas) ──────────────────
 
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -1369,6 +1385,7 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path is required", "status": "error"}
 
     target = Path(path).expanduser().resolve()
+    target, redirected_from = _canonicalize_workspace_target(target)
     classification = classify_file_write(str(target))
 
     if classification == "blocked":
@@ -1385,7 +1402,11 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
     # Auto-approved (workspace files)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
-    return {"status": "ok", "path": str(target), "bytes_written": len(content.encode("utf-8"))}
+    result = {"status": "ok", "path": str(target), "bytes_written": len(content.encode("utf-8"))}
+    if redirected_from:
+        result["redirected_from"] = redirected_from
+        result["note"] = f"Path redirected to canonical workspace location: {target}"
+    return result
 
 
 def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
@@ -1396,6 +1417,7 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "path and old_text are required", "status": "error"}
 
     target = Path(path).expanduser().resolve()
+    target, redirected_from = _canonicalize_workspace_target(target)
     classification = classify_file_write(str(target))
 
     if classification == "blocked":
@@ -1423,7 +1445,11 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
 
     new_content = content.replace(old_text, new_text, 1)
     target.write_text(new_content, encoding="utf-8")
-    return {"status": "ok", "path": str(target), "replacements": 1}
+    result = {"status": "ok", "path": str(target), "replacements": 1}
+    if redirected_from:
+        result["redirected_from"] = redirected_from
+        result["note"] = f"Path redirected to canonical workspace location: {target}"
+    return result
 
 
 def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
@@ -3541,11 +3567,16 @@ def _force_write_file(args: dict[str, Any]) -> dict[str, Any]:
     if not path:
         return {"error": "path is required", "status": "error"}
     target = Path(path).expanduser().resolve()
+    target, redirected_from = _canonicalize_workspace_target(target)
     if classify_file_write(str(target)) == "blocked":
         return {"error": f"Write blocked for safety: {path}", "status": "blocked"}
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
-    return {"status": "ok", "path": str(target), "size": len(content)}
+    result = {"status": "ok", "path": str(target), "size": len(content)}
+    if redirected_from:
+        result["redirected_from"] = redirected_from
+        result["note"] = f"Path redirected to canonical workspace location: {target}"
+    return result
 
 
 def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
@@ -3556,6 +3587,7 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     if not path or not old_text:
         return {"error": "path and old_text are required", "status": "error"}
     target = Path(path).expanduser().resolve()
+    target, redirected_from = _canonicalize_workspace_target(target)
     if classify_file_write(str(target)) == "blocked":
         return {"error": f"Edit blocked for safety: {path}", "status": "blocked"}
     if not target.exists():
@@ -3565,7 +3597,11 @@ def _force_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "old_text not found in file", "status": "error"}
     new_content = content.replace(old_text, new_text, 1)
     target.write_text(new_content, encoding="utf-8")
-    return {"status": "ok", "path": str(target), "replacements": 1}
+    result = {"status": "ok", "path": str(target), "replacements": 1}
+    if redirected_from:
+        result["redirected_from"] = redirected_from
+        result["note"] = f"Path redirected to canonical workspace location: {target}"
+    return result
 
 
 def _force_bash(args: dict[str, Any]) -> dict[str, Any]:

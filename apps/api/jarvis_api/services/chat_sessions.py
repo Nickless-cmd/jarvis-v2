@@ -115,8 +115,8 @@ def append_chat_message(
     if not normalized_session:
         raise ValueError("session_id must not be empty")
     normalized_role = (role or "").strip()
-    if normalized_role not in {"user", "assistant", "tool"}:
-        raise ValueError("role must be user, assistant, or tool")
+    if normalized_role not in {"user", "assistant", "tool", "compact_marker"}:
+        raise ValueError("role must be user, assistant, tool, or compact_marker")
     normalized_content = str(content or "").strip()
     if not normalized_content:
         raise ValueError("content must not be empty")
@@ -170,7 +170,7 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
             """
             SELECT role, content, created_at
             FROM chat_messages
-            WHERE session_id = ?
+            WHERE session_id = ? AND role != 'compact_marker'
             ORDER BY id DESC
             LIMIT ?
             """,
@@ -184,6 +184,45 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
         }
         for row in reversed(rows)
     ]
+
+
+def store_compact_marker(session_id: str, summary_text: str) -> str:
+    """Store a compact marker for the session. Returns the marker message_id."""
+    normalized_session = (session_id or "").strip()
+    if not normalized_session:
+        raise ValueError("session_id must not be empty")
+    normalized_content = str(summary_text or "").strip()
+    if not normalized_content:
+        raise ValueError("summary_text must not be empty")
+    timestamp = datetime.now(UTC).isoformat()
+    marker_id = f"compact-{uuid4().hex}"
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO chat_messages (message_id, session_id, role, content, created_at)
+            VALUES (?, ?, 'compact_marker', ?, ?)
+            """,
+            (marker_id, normalized_session, normalized_content, timestamp),
+        )
+    return marker_id
+
+
+def get_compact_marker(session_id: str) -> str | None:
+    """Return the most recent compact marker summary for the session, or None."""
+    normalized = (session_id or "").strip()
+    if not normalized:
+        return None
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT content FROM chat_messages
+            WHERE session_id = ? AND role = 'compact_marker'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (normalized,),
+        ).fetchone()
+    return str(row["content"]) if row else None
 
 
 def recent_chat_tool_messages(session_id: str, *, limit: int = 6) -> list[dict[str, str]]:

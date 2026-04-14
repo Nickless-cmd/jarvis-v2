@@ -49,6 +49,7 @@ export function useUnifiedShell() {
   const jarvisSurfaceRefreshTimerRef = useRef(null)
   const jarvisSurfaceRefreshInFlightRef = useRef(false)
   const streamApprovalMessagesRef = useRef([])
+  const streamAbortControllerRef = useRef(null)
 
   async function refreshShell() {
     const next = await backend.getShell()
@@ -255,11 +256,15 @@ export function useUnifiedShell() {
       current ? appendMessagesToSession(current, userMessage, pendingAssistantMessage) : current
     )
 
+    const abortController = new AbortController()
+    streamAbortControllerRef.current = abortController
+
     try {
       const assistantMessage = await backend.streamMessage({
         sessionId,
         content,
         attachmentIds,
+        signal: abortController.signal,
         onRun: (payload) => {
           if (payload?.run_id) setActiveRunId(payload.run_id)
         },
@@ -333,7 +338,8 @@ export function useUnifiedShell() {
       // If persisted=false (stream dropped), keep local state so message doesn't disappear
       await refreshShell()
     } catch (err) {
-      const failure = err instanceof Error ? err.message : 'Chat failed'
+      const aborted = err?.name === 'AbortError'
+      const failure = aborted ? 'Chat cancelled' : (err instanceof Error ? err.message : 'Chat failed')
       setActiveSession((current) =>
         current
           ? updateSessionMessage(current, assistantMessageId, () => ({
@@ -343,8 +349,9 @@ export function useUnifiedShell() {
             }))
           : current
       )
-      setError(failure)
+      if (!aborted) setError(failure)
     } finally {
+      streamAbortControllerRef.current = null
       setIsStreaming(false)
       setActiveRunId(null)
       setWorkingSteps([])
@@ -354,11 +361,17 @@ export function useUnifiedShell() {
   }
 
   async function handleCancel() {
-    if (!activeRunId) return
+    if (activeRunId) {
+      try {
+        await backend.cancelRun(activeRunId)
+      } catch {
+        // Best-effort cancel — continue to client-side abort
+      }
+    }
     try {
-      await backend.cancelRun(activeRunId)
+      streamAbortControllerRef.current?.abort()
     } catch {
-      // Best-effort cancel
+      // ignore
     }
   }
 

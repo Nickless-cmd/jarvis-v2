@@ -3005,6 +3005,14 @@ async function readSseStream(response, handlers = {}) {
       if (eventName === 'cancelled') {
         failure = 'Chat cancelled'
         handlers.onFailed?.(failure)
+        try { reader.cancel() } catch (_) { /* ignore */ }
+        return {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: assistantText || failure,
+          ts: nowLabel(),
+          persisted: false,
+        }
       }
       if (eventName === 'done') {
         handlers.onDone?.(payload, assistantText)
@@ -4284,11 +4292,12 @@ export const backend = {
     return data.session
   },
 
-  async streamMessage({ sessionId, content, attachmentIds = [], onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {
+  async streamMessage({ sessionId, content, attachmentIds = [], signal, onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {
     const response = await fetch('/chat/stream', {
       method: 'POST',
       headers: JSON_HEADERS,
       body: JSON.stringify({ message: content, session_id: sessionId, attachment_ids: attachmentIds }),
+      signal,
     })
     if (!response.ok) {
       throw new Error(`/chat/stream: ${response.status} ${response.statusText}`)

@@ -2762,7 +2762,66 @@ def _build_structured_transcript_messages(
                 result.append(msg)
                 expected_role = "assistant" if role == "user" else "user"
 
+    # ── Compact marker injection ───────────────────────────────────────────
+    if session_id:
+        marker_summary = _get_compact_marker_for_transcript(session_id)
+        if marker_summary:
+            result = [
+                {
+                    "role": "user",
+                    "content": f"[Komprimeret historik fra tidligere i samtalen:\n{marker_summary}]",
+                },
+                {"role": "assistant", "content": "Forstået."},
+            ] + result
+
+        # ── Auto-compact check ─────────────────────────────────────────────
+        try:
+            from core.runtime.settings import load_settings as _load_compact_settings
+            _compact_settings = _load_compact_settings()
+            _maybe_auto_compact_session(session_id, result, _compact_settings)
+        except Exception:
+            pass
+
     return result
+
+
+def _get_compact_marker_for_transcript(session_id: str) -> str | None:
+    """Fetch the most recent compact marker for this session (monkeypatchable)."""
+    try:
+        from apps.api.jarvis_api.services.chat_sessions import get_compact_marker
+        return get_compact_marker(session_id)
+    except Exception:
+        return None
+
+
+def _maybe_auto_compact_session(
+    session_id: str,
+    current_messages: list[dict],
+    settings,
+) -> None:
+    """Trigger session compact if transcript tokens exceed threshold."""
+    from core.context.token_estimate import estimate_messages_tokens
+    if estimate_messages_tokens(current_messages) < settings.context_compact_threshold_tokens:
+        return
+    try:
+        from core.context.session_compact import compact_session_history
+        from core.context.compact_llm import call_compact_llm
+        import logging as _log
+        _log.getLogger(__name__).info(
+            "prompt_contract: auto-compact triggered for session %s", session_id
+        )
+        compact_session_history(
+            session_id,
+            keep_recent=settings.context_keep_recent,
+            summarise_fn=lambda msgs: call_compact_llm(
+                "Komprimér denne dialog til max 400 ord. Bevar fakta, beslutninger og kontekst:\n\n"
+                + "\n".join(f"{m['role']}: {m.get('content', '')}" for m in msgs),
+                max_tokens=500,
+            ),
+        )
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning("auto_compact_session failed: %s", exc)
 
 
 def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[str]:

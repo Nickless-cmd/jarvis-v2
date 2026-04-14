@@ -2137,6 +2137,28 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # --- Aesthetic motif accumulation ---
+    try:
+        from apps.api.jarvis_api.services.aesthetic_sense import accumulate_from_daemon
+        _aesthetic_texts = {
+            "somatic": _somatic if "_somatic" in dir() else "",
+            "surprise": _surprise if "_surprise" in dir() else "",
+            "thought_stream": _fragment if "_fragment" in dir() else "",
+            "conflict": _conflict if "_conflict" in dir() else "",
+            "reflection_cycle": _reflection if "_reflection" in dir() else "",
+            "curiosity": _curiosity if "_curiosity" in dir() else "",
+            "meta_reflection": _meta if "_meta" in dir() else "",
+            "development_narrative": _dev_narr if "_dev_narr" in dir() else "",
+            "creative_drift": _drift_idea if "_drift_idea" in dir() else "",
+            "irony": _irony if "_irony" in dir() else "",
+            "code_aesthetic": _ca_result.get("reflection", "") if "_ca_result" in dir() else "",
+        }
+        for _ae_name, _ae_text in _aesthetic_texts.items():
+            if _ae_text:
+                accumulate_from_daemon(_ae_name, _ae_text)
+    except Exception:
+        pass
+
     # --- Layer B: deactivate tick-scoped cache ---
     try:
         from apps.api.jarvis_api.services import tick_cache
@@ -4246,6 +4268,15 @@ def _deliver_heartbeat_ping_directly(
         "skal jeg dykke ned",
         "er der noget specifikt",
         "er der noget bestemt du vil",
+        # Runtime leak patterns — liveness summaries must never reach the user
+        "bounded liveness pressure",
+        "open-loop continuity is still live",
+        "heartbeat appears to have",
+        "liveness pressure because",
+        "open-loop continuity is still",
+        "relation continuity is still",
+        "witness continuity is still",
+        "bounded autonomy pressure",
     )
     lowered_message = message_text.lower()
     if any(pattern in lowered_message for pattern in banned_patterns):

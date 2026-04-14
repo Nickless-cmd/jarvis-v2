@@ -32,6 +32,11 @@ class RuntimeSettings:
     cognitive_state_assembly_enabled: bool = True
     # Emotion decay
     emotion_decay_factor: float = 0.97
+    # Context compact thresholds
+    context_compact_threshold_tokens: int = 40_000
+    context_run_compact_threshold_tokens: int = 60_000
+    context_keep_recent: int = 20
+    context_keep_recent_pairs: int = 4
 
     def to_dict(self) -> dict[str, str | int | bool]:
         return {
@@ -56,6 +61,10 @@ class RuntimeSettings:
             "recall_repetition_multiplier": self.recall_repetition_multiplier,
             "cognitive_state_assembly_enabled": self.cognitive_state_assembly_enabled,
             "emotion_decay_factor": self.emotion_decay_factor,
+            "context_compact_threshold_tokens": self.context_compact_threshold_tokens,
+            "context_run_compact_threshold_tokens": self.context_run_compact_threshold_tokens,
+            "context_keep_recent": self.context_keep_recent,
+            "context_keep_recent_pairs": self.context_keep_recent_pairs,
         }
 
 
@@ -105,6 +114,10 @@ def load_settings() -> RuntimeSettings:
         recall_repetition_multiplier=float(data.get("recall_repetition_multiplier", defaults.recall_repetition_multiplier)),
         cognitive_state_assembly_enabled=bool(data.get("cognitive_state_assembly_enabled", defaults.cognitive_state_assembly_enabled)),
         emotion_decay_factor=float(data.get("emotion_decay_factor", defaults.emotion_decay_factor)),
+        context_compact_threshold_tokens=int(data.get("context_compact_threshold_tokens", defaults.context_compact_threshold_tokens)),
+        context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
+        context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),
+        context_keep_recent_pairs=int(data.get("context_keep_recent_pairs", defaults.context_keep_recent_pairs)),
     )
 
 

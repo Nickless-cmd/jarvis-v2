@@ -44,6 +44,7 @@ from apps.api.jarvis_api.services.voice_daemon import (
     stop_voice_daemon,
 )
 from apps.api.jarvis_api.routes.attachments import router as attachments_router
+from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
 from apps.api.jarvis_api.routes.live import router as live_router
@@ -122,6 +123,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Jarvis V2 API", lifespan=lifespan)
 
     app.include_router(attachments_router)
+    app.include_router(files_router)
     app.include_router(chat_router)
     app.include_router(health_router)
     app.include_router(mc_router)

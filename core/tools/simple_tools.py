@@ -1355,6 +1355,38 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "publish_file",
+            "description": (
+                "Publish a file to Jarvis's shared files folder and return a "
+                "download URL and a ready-to-paste markdown link. Use this when "
+                "you generate or process a file (CSV, image, PDF, JSON, etc.) "
+                "and want to give the user a clickable download link in chat. "
+                "Either copy an existing file via source_path, or write new "
+                "content via content + filename."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filename": {
+                        "type": "string",
+                        "description": "The filename to use (e.g. 'rapport.csv', 'billede.png').",
+                    },
+                    "source_path": {
+                        "type": "string",
+                        "description": "Absolute path to an existing file to copy. Use this OR content.",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Text content to write directly. Use this OR source_path.",
+                    },
+                },
+                "required": ["filename"],
+            },
+        },
+    },
 ]
 
 
@@ -3909,6 +3941,51 @@ def _exec_queue_followup(args: dict[str, Any]) -> dict[str, Any]:
     return {"status": "queued", "reason": reason, "created_at": entry.get("created_at", "")}
 
 
+def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
+    """Copy or create a file in ~/.jarvis-v2/files/ and return a download URL."""
+    import shutil
+    from core.runtime.config import JARVIS_HOME
+
+    source_path = str(args.get("source_path") or "").strip()
+    filename = str(args.get("filename") or "").strip()
+    content = args.get("content")
+
+    if not filename:
+        return {"status": "error", "error": "filename is required"}
+    # Prevent path traversal
+    safe_name = Path(filename).name
+    if not safe_name:
+        return {"status": "error", "error": "invalid filename"}
+
+    files_dir = JARVIS_HOME / "files"
+    files_dir.mkdir(parents=True, exist_ok=True)
+    dest = files_dir / safe_name
+
+    try:
+        if content is not None:
+            # Write inline content (text or bytes)
+            mode = "wb" if isinstance(content, bytes) else "w"
+            dest.open(mode).write(content)
+        elif source_path:
+            src = Path(source_path)
+            if not src.exists():
+                return {"status": "error", "error": f"source_path not found: {source_path}"}
+            shutil.copy2(src, dest)
+        else:
+            return {"status": "error", "error": "provide source_path or content"}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    url = f"http://localhost:80/files/{safe_name}"
+    return {
+        "status": "ok",
+        "filename": safe_name,
+        "url": url,
+        "markdown_link": f"[{safe_name}]({url})",
+        "size_bytes": dest.stat().st_size,
+    }
+
+
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
@@ -3968,6 +4045,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "db_query": _exec_db_query,
     "compact_context": _exec_compact_context,
     "queue_followup": _exec_queue_followup,
+    "publish_file": _exec_publish_file,
     # Browser tools
     "browser_navigate": _exec_browser_navigate,
     "browser_read": _exec_browser_read,

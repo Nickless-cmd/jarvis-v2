@@ -78,3 +78,32 @@ def build_aesthetic_surface() -> dict[str, object]:
         "description": "Aesthetic detection runs on conversation text",
         "summary": f"{len(_MOTIFS)} aesthetic motifs tracked",
     }
+
+
+def accumulate_from_daemon(source: str, text: str) -> list[dict[str, object]]:
+    """Run motif detection on daemon text output, persist to DB, update in-memory set.
+
+    Called once per text-producing daemon per heartbeat tick from heartbeat_runtime.
+    """
+    signals = detect_aesthetic_signals(text=text)
+    if not signals:
+        return []
+    try:
+        from core.runtime.db import aesthetic_motif_log_insert
+
+        for s in signals:
+            aesthetic_motif_log_insert(
+                source=source,
+                motif=s["motif"],
+                confidence=s["confidence"],
+            )
+    except Exception:
+        pass
+    try:
+        from apps.api.jarvis_api.services.aesthetic_taste_daemon import _accumulated_motifs
+
+        for s in signals:
+            _accumulated_motifs.add(s["motif"])
+    except Exception:
+        pass
+    return signals

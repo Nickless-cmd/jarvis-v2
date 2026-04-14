@@ -5,9 +5,11 @@ import json
 import re
 from datetime import UTC, datetime
 from urllib import request as urllib_request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import AsyncIterator
 from uuid import uuid4
+
+from apps.api.jarvis_api.services.orb_phase import set_phase as _set_orb_phase
 
 from apps.api.jarvis_api.services.chat_sessions import (
     append_chat_message,
@@ -200,8 +202,10 @@ from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     connect,
+    get_runtime_state_value,
     recent_visible_work_notes,
     recent_visible_work_units,
+    set_runtime_state_value,
 )
 from core.runtime.settings import load_settings
 from core.tools.workspace_capabilities import (
@@ -228,6 +232,9 @@ VISIBLE_CAPABILITY_ARG_NAMES = {"command_text", "target_path", "write_content"}
 
 # Pending tool approvals — keyed by approval_id
 _PENDING_APPROVALS: dict[str, dict] = {}
+_VISIBLE_RUN_CONTROL_PREFIX = "visible_runs.control."
+_VISIBLE_RUN_ACTIVE_KEY = "visible_runs.active_run"
+_VISIBLE_RUN_APPROVAL_PREFIX = "visible_runs.approval."
 
 
 @dataclass(slots=True)
@@ -252,6 +259,7 @@ class VisibleRunController:
     cancelled: bool = False
     active_stream: object | None = None
     last_capability_id: str | None = None
+    seen_simple_tool_call_signatures: set[str] = field(default_factory=set)
 
     def attach_stream(self, stream: object) -> None:
         self.active_stream = stream
@@ -267,13 +275,91 @@ class VisibleRunController:
             close()
 
     def is_cancelled(self) -> bool:
-        return self.cancelled
+        if self.cancelled:
+            return True
+        return _visible_run_cancelled(self.run_id)
 
 
 _VISIBLE_RUN_CONTROLLERS: dict[str, VisibleRunController] = {}
 _LAST_VISIBLE_RUN_OUTCOME: dict[str, str] | None = None
 _LAST_VISIBLE_CAPABILITY_USE: dict[str, object] | None = None
 _LAST_VISIBLE_EXECUTION_TRACE: dict[str, object] | None = None
+
+
+def _visible_run_control_key(run_id: str) -> str:
+    return f"{_VISIBLE_RUN_CONTROL_PREFIX}{run_id}"
+
+
+def _visible_run_approval_key(approval_id: str) -> str:
+    return f"{_VISIBLE_RUN_APPROVAL_PREFIX}{approval_id}"
+
+
+def _set_visible_run_control(run_id: str, payload: dict[str, object]) -> None:
+    set_runtime_state_value(_visible_run_control_key(run_id), payload)
+
+
+def _get_visible_run_control(run_id: str) -> dict[str, object]:
+    payload = get_runtime_state_value(_visible_run_control_key(run_id), default={})
+    return payload if isinstance(payload, dict) else {}
+
+
+def _set_active_visible_run(payload: dict[str, object] | None) -> None:
+    set_runtime_state_value(_VISIBLE_RUN_ACTIVE_KEY, payload or {})
+
+
+def _get_active_visible_run_state() -> dict[str, object]:
+    payload = get_runtime_state_value(_VISIBLE_RUN_ACTIVE_KEY, default={})
+    return payload if isinstance(payload, dict) else {}
+
+
+def _visible_run_cancelled(run_id: str) -> bool:
+    return bool(_get_visible_run_control(run_id).get("cancelled"))
+
+
+def _mark_visible_run_cancelled(run_id: str, *, cancelled: bool = True) -> None:
+    state = _get_visible_run_control(run_id)
+    if not state:
+        return
+    state["cancelled"] = cancelled
+    state["updated_at"] = datetime.now(UTC).isoformat()
+    _set_visible_run_control(run_id, state)
+
+
+def _set_visible_approval_state(approval_id: str, payload: dict[str, object]) -> None:
+    set_runtime_state_value(_visible_run_approval_key(approval_id), payload)
+
+
+def _get_visible_approval_state(approval_id: str) -> dict[str, object]:
+    payload = get_runtime_state_value(_visible_run_approval_key(approval_id), default={})
+    return payload if isinstance(payload, dict) else {}
+
+
+def _classify_visible_run_interruption(error_message: str) -> dict[str, str]:
+    normalized = str(error_message or "").strip().lower()
+    if not normalized:
+        return {
+            "interruption_reason": "unknown",
+            "interruption_source": "unknown",
+        }
+    if "timed out" in normalized or "timeout" in normalized:
+        return {
+            "interruption_reason": "provider-timeout",
+            "interruption_source": "provider-stream",
+        }
+    if "disconnect" in normalized or "client closed" in normalized:
+        return {
+            "interruption_reason": "client-disconnect",
+            "interruption_source": "client-stream",
+        }
+    if "cancel" in normalized:
+        return {
+            "interruption_reason": "cancelled",
+            "interruption_source": "runtime-control",
+        }
+    return {
+        "interruption_reason": "runtime-error",
+        "interruption_source": "runtime",
+    }
 
 
 def start_visible_run(
@@ -443,6 +529,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
     controller = register_visible_run(run)
     trace = _start_visible_execution_trace(run)
+    _set_orb_phase("think")
     event_bus.publish(
         "runtime.visible_run_started",
         {
@@ -520,6 +607,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 if isinstance(item, VisibleModelDelta):
                     safe_text = markup_buffer.feed(item.delta)
                     if safe_text:
+                        _set_orb_phase("speak")
                         yield _sse(
                             "delta",
                             {
@@ -557,11 +645,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
             await thread_future
         except VisibleModelStreamCancelled:
+            _cancel_reason = (
+                "user-cancelled" if _visible_run_cancelled(run.run_id)
+                else "client-disconnect"
+            )
             _update_visible_execution_trace(
                 run,
                 {
                     "provider_first_pass_status": "cancelled",
-                    "provider_error_summary": "visible-run-cancelled",
+                    "provider_error_summary": _cancel_reason,
                 },
             )
             _persist_session_assistant_message(run, "Generation cancelled.")
@@ -639,7 +731,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         # ── Native tool_calls: execute directly via simple_tools ──
         if _collected_native_tool_calls:
             simple_results = _execute_simple_tool_calls(
-                _collected_native_tool_calls, force=run.autonomous,
+                _collected_native_tool_calls, force=run.autonomous, run_id=run.run_id,
             )
 
             if simple_results:
@@ -679,18 +771,25 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
                             continue
                         approval_id = f"approval-{uuid4().hex[:12]}"
-                        _approval_future: asyncio.Future[str | None] = (
-                            asyncio.get_running_loop().create_future()
-                        )
+                        created_at = datetime.now(UTC).isoformat()
                         _PENDING_APPROVALS[approval_id] = {
                             "tool_name": sr["tool_name"],
                             "arguments": sr["arguments"],
                             "result": sr["result"],
                             "run_id": run.run_id,
                             "session_id": run.session_id,
-                            "created_at": datetime.now(UTC).isoformat(),
-                            "future": _approval_future,
+                            "created_at": created_at,
                         }
+                        _set_visible_approval_state(approval_id, {
+                            "approval_id": approval_id,
+                            "status": "pending",
+                            "tool_name": sr["tool_name"],
+                            "arguments": sr["arguments"],
+                            "result": sr["result"],
+                            "run_id": run.run_id,
+                            "session_id": run.session_id,
+                            "created_at": created_at,
+                        })
                         yield _sse("approval_request", {
                             "type": "approval_request",
                             "approval_id": approval_id,
@@ -702,10 +801,18 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             ),
                         })
                         # Block the generator until user approves or denies (5 min timeout)
-                        try:
-                            _resolved = await asyncio.wait_for(_approval_future, timeout=300.0)
-                        except asyncio.TimeoutError:
-                            _resolved = None
+                        _resolved = None
+                        _deadline = asyncio.get_running_loop().time() + 300.0
+                        while asyncio.get_running_loop().time() < _deadline:
+                            _approval_state = _get_visible_approval_state(approval_id)
+                            _status = str(_approval_state.get("status") or "")
+                            if _status == "approved":
+                                _resolved = str(_approval_state.get("result_text") or "")
+                                break
+                            if _status in {"denied", "expired"}:
+                                _resolved = None
+                                break
+                            await asyncio.sleep(0.25)
                         if _resolved is None:
                             _resolved_result_texts[_idx] = f"[{sr['tool_name']}]: Tool call denied by user."
                             yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
@@ -724,7 +831,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 if run.session_id:
                     for _idx, sr in enumerate(simple_results):
                         result_text = _resolved_result_texts.get(_idx, sr.get("result_text", ""))
-                        if result_text:
+                        if result_text and sr.get("status") != "duplicate_suppressed":
                             append_chat_message(
                                 session_id=run.session_id,
                                 role="tool",
@@ -771,6 +878,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     _a_tool_calls: list[dict] = []
                     _a_queue: asyncio.Queue = asyncio.Queue()
                     _a_sentinel = object()
+                    _a_failure: dict[str, object] = {}
 
                     _a_payload: dict[str, object] = {
                         "model": run.model,
@@ -792,6 +900,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         q=_a_queue,
                         sentinel=_a_sentinel,
                         rnd=_agentic_round,
+                        failure=_a_failure,
                     ) -> None:
                         try:
                             with urllib_request.urlopen(req, timeout=90) as resp:
@@ -812,6 +921,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     if ev.get("done"):
                                         break
                         except Exception as _ae:
+                            _a_summary = f"agentic-round-{rnd + 1}-timeout"
+                            if "timed out" not in str(_ae).lower():
+                                _a_summary = f"agentic-round-{rnd + 1}-provider-error: {str(_ae) or 'unknown'}"
+                            failure.update(
+                                {
+                                    "round": rnd + 1,
+                                    "error": str(_ae) or "unknown",
+                                    "summary": _a_summary,
+                                }
+                            )
                             _alog.getLogger(__name__).error(
                                 "agentic round %d failed: %s", rnd, _ae, exc_info=True
                             )
@@ -824,6 +943,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         try:
                             _a_item = await asyncio.wait_for(_a_queue.get(), timeout=100)
                         except asyncio.TimeoutError:
+                            if not _a_failure:
+                                _a_failure.update(
+                                    {
+                                        "round": _agentic_round + 1,
+                                        "error": "timed out waiting for provider stream item",
+                                        "summary": f"agentic-round-{_agentic_round + 1}-timeout",
+                                    }
+                                )
                             break
                         if _a_item is _a_sentinel:
                             break
@@ -838,13 +965,41 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "delta": _a_item,
                         })
 
+                    if _a_failure:
+                        _failure_summary = str(_a_failure.get("summary") or "agentic-round-provider-error")
+                        _update_visible_execution_trace(
+                            run,
+                            {
+                                "provider_second_pass_status": "failed",
+                                "provider_error_summary": _failure_summary,
+                                "provider_call_count": max(
+                                    int((get_last_visible_execution_trace() or {}).get("provider_call_count") or 1),
+                                    _agentic_round + 2,
+                                ),
+                            },
+                        )
+                        event_bus.publish(
+                            "runtime.visible_run_interrupted",
+                            {
+                                "run_id": run.run_id,
+                                "lane": run.lane,
+                                "provider": run.provider,
+                                "model": run.model,
+                                "phase": "agentic-round",
+                                "round": int(_a_failure.get("round") or (_agentic_round + 1)),
+                                **_classify_visible_run_interruption(str(_a_failure.get("error") or _failure_summary)),
+                                "error": str(_a_failure.get("error") or ""),
+                                "summary": _failure_summary,
+                            },
+                        )
+
                     if not _a_tool_calls:
                         # No more tool calls — this round produced the final response.
                         break
 
                     # ── Execute tools for this agentic round ───────────────────────
                     _a_results = _execute_simple_tool_calls(
-                        _a_tool_calls, force=run.autonomous,
+                        _a_tool_calls, force=run.autonomous, run_id=run.run_id,
                     )
                     _a_resolved: dict[int, str] = {}
 
@@ -859,18 +1014,25 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 })
                                 continue
                             _a_apid = f"approval-{uuid4().hex[:12]}"
-                            _a_fut: asyncio.Future[str | None] = (
-                                asyncio.get_running_loop().create_future()
-                            )
+                            _a_created_at = datetime.now(UTC).isoformat()
                             _PENDING_APPROVALS[_a_apid] = {
                                 "tool_name": _a_sr["tool_name"],
                                 "arguments": _a_sr["arguments"],
                                 "result": _a_sr["result"],
                                 "run_id": run.run_id,
                                 "session_id": run.session_id,
-                                "created_at": datetime.now(UTC).isoformat(),
-                                "future": _a_fut,
+                                "created_at": _a_created_at,
                             }
+                            _set_visible_approval_state(_a_apid, {
+                                "approval_id": _a_apid,
+                                "status": "pending",
+                                "tool_name": _a_sr["tool_name"],
+                                "arguments": _a_sr["arguments"],
+                                "result": _a_sr["result"],
+                                "run_id": run.run_id,
+                                "session_id": run.session_id,
+                                "created_at": _a_created_at,
+                            })
                             yield _sse("approval_request", {
                                 "type": "approval_request",
                                 "approval_id": _a_apid,
@@ -881,10 +1043,18 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     or _a_sr["result"].get("command", "")
                                 ),
                             })
-                            try:
-                                _a_res = await asyncio.wait_for(_a_fut, timeout=300.0)
-                            except asyncio.TimeoutError:
-                                _a_res = None
+                            _a_res = None
+                            _a_deadline = asyncio.get_running_loop().time() + 300.0
+                            while asyncio.get_running_loop().time() < _a_deadline:
+                                _a_state = _get_visible_approval_state(_a_apid)
+                                _a_status = str(_a_state.get("status") or "")
+                                if _a_status == "approved":
+                                    _a_res = str(_a_state.get("result_text") or "")
+                                    break
+                                if _a_status in {"denied", "expired"}:
+                                    _a_res = None
+                                    break
+                                await asyncio.sleep(0.25)
                             if _a_res is None:
                                 _a_resolved[_a_idx] = (
                                     f"[{_a_sr['tool_name']}]: Tool call denied by user."
@@ -911,7 +1081,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     if run.session_id:
                         for _a_idx, _a_sr in enumerate(_a_results):
                             _a_rt = _a_resolved.get(_a_idx, _a_sr.get("result_text", ""))
-                            if _a_rt:
+                            if _a_rt and _a_sr.get("status") != "duplicate_suppressed":
                                 append_chat_message(
                                     session_id=run.session_id,
                                     role="tool",
@@ -1061,6 +1231,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 except Exception:
                     pass
 
+                _set_orb_phase("idle")
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,
@@ -2064,6 +2235,7 @@ def _execute_simple_tool_calls(
     tool_calls: list[dict],
     *,
     force: bool = False,
+    run_id: str | None = None,
 ) -> list[dict[str, object]]:
     """Execute native tool_calls directly via simple_tools. Returns results.
 
@@ -2075,14 +2247,37 @@ def _execute_simple_tool_calls(
     _exec = execute_tool_force if force else execute_tool
 
     results: list[dict[str, object]] = []
+    controller = get_visible_run_controller(run_id) if run_id else None
     for tc in tool_calls[:_MAX_CAPABILITIES_PER_TURN]:
         fn = tc.get("function") or {}
         name = str(fn.get("name") or "")
         arguments = fn.get("arguments") or {}
         if not name:
             continue
+        signature = json.dumps(
+            {
+                "tool_name": name,
+                "arguments": arguments,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        if controller and signature in controller.seen_simple_tool_call_signatures:
+            results.append({
+                "tool_name": name,
+                "arguments": arguments,
+                "result": {
+                    "status": "duplicate_suppressed",
+                    "message": "Skipped duplicate tool call in the same visible run.",
+                },
+                "result_text": "[Duplicate tool call skipped in same visible run]",
+                "status": "duplicate_suppressed",
+            })
+            continue
         result = _exec(name, arguments)
         result_text = format_tool_result_for_model(name, result)
+        if controller and result.get("status") in {"ok", "approval_needed"}:
+            controller.seen_simple_tool_call_signatures.add(signature)
         results.append({
             "tool_name": name,
             "arguments": arguments,
@@ -2096,21 +2291,31 @@ def _execute_simple_tool_calls(
 def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     """Resolve a pending tool approval.
 
-    Resolves the asyncio.Future stored with the pending approval so the blocked
-    streaming generator resumes. If approved, executes the tool and passes the
-    real result_text to the future. If denied, passes None.
+    Resolves a pending approval in shared runtime state so a blocked streaming
+    generator can resume even if the approve/deny request lands on another worker.
     """
     from core.tools.simple_tools import execute_tool_force, format_tool_result_for_model
 
     pending = _PENDING_APPROVALS.pop(approval_id, None)
+    shared_pending = _get_visible_approval_state(approval_id)
+    if not pending and shared_pending:
+        pending = shared_pending
     if not pending:
         return {"error": "Approval not found or expired", "status": "error"}
-
-    future: asyncio.Future | None = pending.get("future")
+    if str(pending.get("status") or "pending") not in {"", "pending"}:
+        return {"error": "Approval already resolved", "status": "error"}
 
     if not approved:
-        if future and not future.done():
-            future.set_result(None)
+        _set_visible_approval_state(
+            approval_id,
+            {
+                **pending,
+                "approval_id": approval_id,
+                "status": "denied",
+                "approved": False,
+                "resolved_at": datetime.now(UTC).isoformat(),
+            },
+        )
         event_bus.publish("tool.approval_resolved", {
             "approval_id": approval_id,
             "tool": pending["tool_name"],
@@ -2122,27 +2327,24 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     result = execute_tool_force(pending["tool_name"], pending["arguments"])
     result_text = format_tool_result_for_model(pending["tool_name"], result)
 
-    # Persist the tool result to the session transcript
-    if pending.get("session_id"):
-        try:
-            append_chat_message(
-                session_id=pending["session_id"],
-                role="tool",
-                content=f"[{pending['tool_name']}]: {result_text[:800]}",
-            )
-        except Exception:
-            pass
-
     event_bus.publish("tool.approval_resolved", {
         "approval_id": approval_id,
         "tool": pending["tool_name"],
         "approved": True,
         "status": result.get("status", "ok"),
     })
-
-    # Wake the blocked generator with the real result
-    if future and not future.done():
-        future.set_result(result_text)
+    _set_visible_approval_state(
+        approval_id,
+        {
+            **pending,
+            "approval_id": approval_id,
+            "status": "approved",
+            "approved": True,
+            "resolved_at": datetime.now(UTC).isoformat(),
+            "tool_status": result.get("status", "ok"),
+            "result_text": result_text,
+        },
+    )
 
     return {
         "status": result.get("status", "ok"),
@@ -3044,6 +3246,12 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
     controller = get_visible_run_controller(run.run_id)
     finished_at = datetime.now(UTC).isoformat()
     bounded_error = _bounded_error(error_message)
+    interruption = _classify_visible_run_interruption(
+        (
+            (get_last_visible_execution_trace() or {}).get("provider_error_summary")
+            or bounded_error
+        )
+    )
     _update_visible_execution_trace(
         run,
         {
@@ -3054,6 +3262,7 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
             or bounded_error,
         },
     )
+    _set_orb_phase("idle")
     yield _sse("trace", _visible_trace_payload(run))
     event_bus.publish(
         "runtime.visible_run_failed",
@@ -3066,6 +3275,7 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
             "started_at": controller.started_at if controller else None,
             "finished_at": finished_at,
             "error": bounded_error,
+            **interruption,
         },
     )
     yield _sse(
@@ -3090,7 +3300,14 @@ def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]
 
 def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     controller = get_visible_run_controller(run.run_id)
+    shared = _get_visible_run_control(run.run_id)
     finished_at = datetime.now(UTC).isoformat()
+    interruption = _classify_visible_run_interruption(
+        str(
+            (get_last_visible_execution_trace() or {}).get("provider_error_summary")
+            or "cancelled"
+        )
+    )
     _update_visible_execution_trace(
         run,
         {
@@ -3101,6 +3318,7 @@ def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             or "cancelled",
         },
     )
+    _set_orb_phase("idle")
     yield _sse("trace", _visible_trace_payload(run))
     event_bus.publish(
         "runtime.visible_run_cancelled",
@@ -3110,8 +3328,9 @@ def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             "provider": run.provider,
             "model": run.model,
             "status": "cancelled",
-            "started_at": controller.started_at if controller else None,
+            "started_at": controller.started_at if controller else shared.get("started_at"),
             "finished_at": finished_at,
+            **interruption,
         },
     )
     yield _sse(
@@ -3133,15 +3352,30 @@ def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
 
 def register_visible_run(run: VisibleRun) -> VisibleRunController:
+    started_at = datetime.now(UTC).isoformat()
     controller = VisibleRunController(
         run_id=run.run_id,
         lane=run.lane,
         provider=run.provider,
         model=run.model,
-        started_at=datetime.now(UTC).isoformat(),
+        started_at=started_at,
         user_message_preview=_preview_text(run.user_message),
     )
     _VISIBLE_RUN_CONTROLLERS[run.run_id] = controller
+    state = {
+        "active": True,
+        "run_id": run.run_id,
+        "lane": run.lane,
+        "provider": run.provider,
+        "model": run.model,
+        "started_at": started_at,
+        "current_user_message_preview": controller.user_message_preview,
+        "capability_id": None,
+        "cancelled": False,
+        "updated_at": started_at,
+    }
+    _set_visible_run_control(run.run_id, state)
+    _set_active_visible_run(state)
     return controller
 
 
@@ -3151,31 +3385,45 @@ def get_visible_run_controller(run_id: str) -> VisibleRunController | None:
 
 def cancel_visible_run(run_id: str) -> bool:
     controller = get_visible_run_controller(run_id)
-    if controller is None:
+    shared = _get_visible_run_control(run_id)
+    if controller is None and not shared:
         return False
-    controller.cancel()
+    _mark_visible_run_cancelled(run_id)
+    if controller is not None:
+        controller.cancel()
     return True
 
 
 def unregister_visible_run(run_id: str) -> None:
-    _VISIBLE_RUN_CONTROLLERS.pop(run_id, None)
+    controller = _VISIBLE_RUN_CONTROLLERS.pop(run_id, None)
+    state = _get_visible_run_control(run_id)
+    if state:
+        state["active"] = False
+        state["updated_at"] = datetime.now(UTC).isoformat()
+        _set_visible_run_control(run_id, state)
+    active = _get_active_visible_run_state()
+    if str(active.get("run_id") or "") == run_id:
+        _set_active_visible_run({})
+    if controller is not None:
+        controller.clear_stream()
 
 
 def get_active_visible_run() -> dict[str, str] | None:
-    if not _VISIBLE_RUN_CONTROLLERS:
+    active = _get_active_visible_run_state()
+    if not active:
         return None
-    run_id = next(reversed(_VISIBLE_RUN_CONTROLLERS))
-    controller = _VISIBLE_RUN_CONTROLLERS[run_id]
+    if not bool(active.get("active", True)):
+        return None
     return {
         "active": True,
-        "run_id": controller.run_id,
-        "lane": controller.lane,
-        "provider": controller.provider,
-        "model": controller.model,
-        "started_at": controller.started_at,
-        "current_user_message_preview": controller.user_message_preview,
-        "capability_id": controller.last_capability_id,
-        "cancelled": controller.is_cancelled(),
+        "run_id": str(active.get("run_id") or ""),
+        "lane": str(active.get("lane") or ""),
+        "provider": str(active.get("provider") or ""),
+        "model": str(active.get("model") or ""),
+        "started_at": str(active.get("started_at") or ""),
+        "current_user_message_preview": str(active.get("current_user_message_preview") or ""),
+        "capability_id": active.get("capability_id"),
+        "cancelled": bool(active.get("cancelled")),
     }
 
 
@@ -3416,6 +3664,14 @@ def set_last_visible_capability_use(
     controller = get_visible_run_controller(run.run_id)
     if controller is not None:
         controller.last_capability_id = capability_id
+    state = _get_visible_run_control(run.run_id)
+    if state:
+        state["capability_id"] = capability_id
+        state["updated_at"] = datetime.now(UTC).isoformat()
+        _set_visible_run_control(run.run_id, state)
+        active = _get_active_visible_run_state()
+        if str(active.get("run_id") or "") == run.run_id:
+            _set_active_visible_run({**active, "capability_id": capability_id, "updated_at": state["updated_at"]})
     capability = invocation.get("capability")
     result = invocation.get("result") or {}
     result_preview = None
@@ -3455,9 +3711,10 @@ def _persist_visible_run_outcome(
     error: str | None = None,
 ) -> None:
     controller = get_visible_run_controller(run.run_id)
-    started_at = controller.started_at if controller else None
-    capability_id = controller.last_capability_id if controller else None
-    user_message_preview = controller.user_message_preview if controller else None
+    shared = _get_visible_run_control(run.run_id)
+    started_at = controller.started_at if controller else shared.get("started_at")
+    capability_id = controller.last_capability_id if controller else shared.get("capability_id")
+    user_message_preview = controller.user_message_preview if controller else shared.get("current_user_message_preview")
     bounded_error = _bounded_error(error) if error else None
     work_preview = text_preview or bounded_error
     work_id = f"visible-work:{run.run_id}"

@@ -1,0 +1,39 @@
+[Unit]
+Description=Jarvis V2 API (HTTP/SSE/WebSocket only)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=bs
+Group=bs
+WorkingDirectory=/media/projects/jarvis-v2
+
+ExecStart=/opt/conda/envs/ai/bin/uvicorn apps.api.jarvis_api.app:app \
+    --host 0.0.0.0 \
+    --port 80 \
+    --workers 4 \
+    --timeout-graceful-shutdown 5
+
+Restart=on-failure
+RestartSec=10s
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+
+Environment=PYTHONPATH=/media/projects/jarvis-v2
+Environment=PYTHONUNBUFFERED=1
+Environment=JARVIS_VOICE_ENABLED=1
+Environment=JARVIS_ENABLE_RUNTIME_SERVICES=0
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis-api
+
+AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_SETUID CAP_SETGID
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_SETUID CAP_SETGID
+
+MemoryMax=16G
+CPUQuota=800%
+
+[Install]
+WantedBy=multi-user.target

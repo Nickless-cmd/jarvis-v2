@@ -2,17 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { backend } from '../lib/adapters'
 
 const TAB_REFRESH_MS = {
-  overview: 60000,
-  operations: 60000,
-  observability: 90000,
-  jarvis: 180000,
+  overview: 120000,
+  operations: 120000,
+  observability: 180000,
+  jarvis: 300000,
 }
 
 const EVENT_REFRESH_MIN_MS = {
-  overview: 10000,
-  operations: 15000,
-  observability: 20000,
-  jarvis: 60000,
+  overview: 30000,
+  operations: 45000,
+  observability: 60000,
+  jarvis: 120000,
 }
 
 const RUN_RELATED_FAMILIES = new Set(['runtime'])
@@ -203,6 +203,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   }, [refreshJarvis, refreshObservability, refreshOperations, refreshOverview])
 
   const scheduleRefresh = useCallback((tabs) => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
     tabs.forEach((tab) => refreshQueue.current.add(tab))
     if (refreshTimer.current) return
     refreshTimer.current = window.setTimeout(async () => {
@@ -230,7 +231,7 @@ export function useMissionControlPhaseA({ active, selection }) {
       } finally {
         setIsRefreshing(false)
       }
-    }, 600)
+    }, 1500)
   }, [refreshJarvis, refreshObservability, refreshOperations, refreshOverview])
 
   useEffect(() => {
@@ -285,6 +286,7 @@ export function useMissionControlPhaseA({ active, selection }) {
     const every = TAB_REFRESH_MS[activeTab]
     if (!every) return
     const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
       refreshTab(activeTab, { background: true })
     }, every)
     return () => window.clearInterval(timer)

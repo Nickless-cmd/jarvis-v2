@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import logging
 import threading
+from datetime import UTC, datetime
 
 from core.eventbus.bus import event_bus
+from core.runtime.db import get_runtime_state_value, set_runtime_state_value
 
 logger = logging.getLogger(__name__)
 
@@ -22,18 +24,29 @@ _last_boredom_notification_level: str = "none"
 
 # The session currently active in the user's browser. When set, proactive
 # notifications are delivered here instead of guessing from list_chat_sessions().
-_pinned_session_id: str = ""
+_PINNED_SESSION_STATE_KEY = "notification_bridge.pinned_session_id"
 
 
 def pin_session(session_id: str) -> None:
     """Record which session the user is currently viewing. Call on every user message."""
-    global _pinned_session_id
-    _pinned_session_id = (session_id or "").strip()
+    normalized = (session_id or "").strip()
+    if not normalized:
+        return
+    set_runtime_state_value(
+        _PINNED_SESSION_STATE_KEY,
+        {
+            "session_id": normalized,
+            "updated_at": datetime.now(UTC).isoformat(),
+        },
+    )
 
 
 def get_pinned_session_id() -> str:
     """Return the currently pinned session ID, or empty string if none."""
-    return _pinned_session_id
+    payload = get_runtime_state_value(_PINNED_SESSION_STATE_KEY, default={})
+    if not isinstance(payload, dict):
+        return ""
+    return str(payload.get("session_id") or "").strip()
 
 
 def send_session_notification(
@@ -58,7 +71,7 @@ def send_session_notification(
     # Use the pinned session if set (e.g. the session currently active in the user's browser),
     # otherwise fall back to the most recently updated session that has user messages
     # (to avoid sending to autonomous-run-only sessions which the user may not be watching).
-    session_id = _pinned_session_id
+    session_id = get_pinned_session_id()
     if not session_id:
         sessions = list_chat_sessions()
         for s in sessions:

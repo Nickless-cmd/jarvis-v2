@@ -357,7 +357,7 @@ def _resolve_relevance_target() -> dict[str, str] | None:
 def _selected_relevance_model() -> str:
     settings = load_settings()
     selected = str(settings.relevance_model_name or "").strip()
-    return selected or "llama3.1:8b"
+    return selected or "glm-5.1:cloud"
 
 
 def _build_relevance_prompt(

@@ -22,7 +22,7 @@ class RuntimeSettings:
     heartbeat_model_name: str = ""
     heartbeat_auth_profile: str = ""
     heartbeat_local_only: bool = False
-    relevance_model_name: str = "llama3.1:8b"
+    relevance_model_name: str = "glm-5.1:cloud"
     # Associative recall thresholds
     recall_strong_threshold: float = 0.7
     recall_weak_threshold: float = 0.3

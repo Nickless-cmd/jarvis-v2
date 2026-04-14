@@ -66,6 +66,42 @@ def _merge_text_fragments(current: str, proposed: str, *, limit: int = 3) -> str
     return " | ".join(parts)
 
 
+def set_runtime_state_value(key: str, value: object, *, updated_at: str = "") -> None:
+    normalized_key = str(key or "").strip()
+    if not normalized_key:
+        raise ValueError("key must not be empty")
+    timestamp = updated_at or datetime.now(UTC).isoformat()
+    payload = _json.dumps(value, ensure_ascii=False)
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO runtime_state_kv (key, value_json, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value_json = excluded.value_json,
+                updated_at = excluded.updated_at
+            """,
+            (normalized_key, payload, timestamp),
+        )
+
+
+def get_runtime_state_value(key: str, default: object = None) -> object:
+    normalized_key = str(key or "").strip()
+    if not normalized_key:
+        return default
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT value_json FROM runtime_state_kv WHERE key = ?",
+            (normalized_key,),
+        ).fetchone()
+    if row is None:
+        return default
+    try:
+        return _json.loads(str(row["value_json"]))
+    except Exception:
+        return default
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute(
@@ -75,6 +111,15 @@ def init_db() -> None:
                 kind TEXT NOT NULL,
                 payload_json TEXT NOT NULL,
                 created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS runtime_state_kv (
+                key TEXT PRIMARY KEY,
+                value_json TEXT NOT NULL DEFAULT '{}',
+                updated_at TEXT NOT NULL
             )
             """
         )

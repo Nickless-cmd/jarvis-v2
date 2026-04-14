@@ -7014,3 +7014,23 @@ def _heartbeat_runtime_bias_from_recent_work(*, kind: str) -> bool:
             )
         )
     return False
+
+
+def call_heartbeat_llm_simple(prompt: str, *, max_tokens: int = 400) -> str:
+    """Call the heartbeat model with a plain prompt. Returns the response text.
+
+    Used by the context compact system for summarisation. Raises RuntimeError
+    if the model call fails (caller handles fallback).
+    """
+    target = _select_heartbeat_target()
+    provider = str(target.get("provider") or "").strip()
+    if provider == "ollama":
+        result = _execute_ollama_prompt(prompt=prompt, target=target)
+    elif provider == "openai":
+        result = _execute_openai_prompt(prompt=prompt, target=target)
+    elif provider == "openrouter":
+        result = _execute_openrouter_prompt(prompt=prompt, target=target)
+    else:
+        raise RuntimeError(f"compact: unsupported heartbeat provider: {provider}")
+    return str(result.get("text") or "").strip()
+

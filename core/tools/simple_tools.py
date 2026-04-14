@@ -953,6 +953,114 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "spawn_agent_task",
+            "description": (
+                "Spawn a sub-agent to handle a focused task independently. "
+                "The agent runs with its own context and returns findings/results back to Jarvis. "
+                "Use for tasks that can run in parallel, require deep focus, or should not pollute the main context. "
+                "Roles: researcher (read-only), planner (no tools), critic (no tools), "
+                "synthesizer (no tools), executor (proposal-only), watcher (persistent monitor)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "role": {
+                        "type": "string",
+                        "enum": ["researcher", "planner", "critic", "synthesizer", "executor", "watcher"],
+                        "description": "The agent role — determines system prompt and tool access.",
+                    },
+                    "goal": {
+                        "type": "string",
+                        "description": "Clear description of what the agent should do and return.",
+                    },
+                    "budget_tokens": {
+                        "type": "integer",
+                        "description": "Max output tokens (default 2000, max 8000).",
+                    },
+                    "persistent": {
+                        "type": "boolean",
+                        "description": "If true, agent is a long-lived watcher. Use with watcher role.",
+                    },
+                    "ttl_seconds": {
+                        "type": "integer",
+                        "description": "If persistent=true, seconds until next wake. Default 600.",
+                    },
+                },
+                "required": ["role", "goal"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_message_to_agent",
+            "description": (
+                "Send a follow-up message to an existing agent and trigger re-execution. "
+                "Use to give the agent additional context, ask a follow-up question, "
+                "or redirect its focus after reviewing its initial response."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "agent_id": {
+                        "type": "string",
+                        "description": "The agent_id returned by spawn_agent_task.",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Message content to send to the agent.",
+                    },
+                },
+                "required": ["agent_id", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_agents",
+            "description": (
+                "List active sub-agents with their status, role, goal, and last result summary. "
+                "Use to check on running agents or find an agent_id for follow-up."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "status_filter": {
+                        "type": "string",
+                        "description": "Filter by status: active, queued, done, failed, cancelled. Omit for all.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_agent",
+            "description": (
+                "Cancel and terminate a sub-agent. Use when an agent is no longer needed, "
+                "has gone off-track, or should be stopped before completing."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "agent_id": {
+                        "type": "string",
+                        "description": "The agent_id to cancel.",
+                    },
+                    "note": {
+                        "type": "string",
+                        "description": "Optional reason for cancellation.",
+                    },
+                },
+                "required": ["agent_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "daemon_status",
             "description": (
                 "List all 20 internal daemons with their current state: enabled/disabled, "
@@ -3320,6 +3428,106 @@ def _exec_quick_council_check(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+# ── Agent tools handlers ───────────────────────────────────────────────
+
+def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
+    role = str(args.get("role") or "researcher").strip()
+    goal = str(args.get("goal") or "").strip()
+    if not goal:
+        return {"status": "error", "error": "goal is required"}
+    budget = min(int(args.get("budget_tokens") or 2000), 8000)
+    persistent = bool(args.get("persistent") or False)
+    ttl_seconds = int(args.get("ttl_seconds") or 600)
+    try:
+        from apps.api.jarvis_api.services.agent_runtime import spawn_agent_task
+        result = spawn_agent_task(
+            role=role,
+            goal=goal,
+            budget_tokens=budget,
+            persistent=persistent,
+            ttl_seconds=ttl_seconds if persistent else 0,
+            auto_execute=True,
+        )
+        messages = result.get("messages") or []
+        last_reply = ""
+        for msg in reversed(messages):
+            if str(msg.get("direction") or "") == "agent->jarvis":
+                last_reply = str(msg.get("content") or "")
+                break
+        return {
+            "status": "ok",
+            "agent_id": str(result.get("agent_id") or ""),
+            "role": role,
+            "agent_status": str(result.get("status") or ""),
+            "reply": last_reply[:1200] if last_reply else None,
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:
+    agent_id = str(args.get("agent_id") or "").strip()
+    content = str(args.get("content") or "").strip()
+    if not agent_id:
+        return {"status": "error", "error": "agent_id is required"}
+    if not content:
+        return {"status": "error", "error": "content is required"}
+    try:
+        from apps.api.jarvis_api.services.agent_runtime import send_message_to_agent
+        result = send_message_to_agent(agent_id=agent_id, content=content, auto_execute=True)
+        messages = result.get("messages") or []
+        last_reply = ""
+        for msg in reversed(messages):
+            if str(msg.get("direction") or "") == "agent->jarvis":
+                last_reply = str(msg.get("content") or "")
+                break
+        return {
+            "status": "ok",
+            "agent_id": agent_id,
+            "agent_status": str(result.get("status") or ""),
+            "reply": last_reply[:1200] if last_reply else None,
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_list_agents(args: dict[str, Any]) -> dict[str, Any]:
+    status_filter = str(args.get("status_filter") or "").strip() or None
+    try:
+        from apps.api.jarvis_api.services.agent_runtime import build_agent_runtime_surface
+        surface = build_agent_runtime_surface(limit=20)
+        agents = surface.get("agents") or []
+        if status_filter:
+            agents = [a for a in agents if str(a.get("status") or "") == status_filter]
+        trimmed = [
+            {
+                "agent_id": a.get("agent_id"),
+                "role": a.get("role"),
+                "status": a.get("status"),
+                "goal": str(a.get("goal") or "")[:120],
+                "last_reply": str(a.get("last_reply") or "")[:200],
+                "created_at": a.get("created_at"),
+            }
+            for a in agents
+        ]
+        return {"status": "ok", "agents": trimmed, "count": len(trimmed)}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _exec_cancel_agent(args: dict[str, Any]) -> dict[str, Any]:
+    agent_id = str(args.get("agent_id") or "").strip()
+    note = str(args.get("note") or "").strip()
+    if not agent_id:
+        return {"status": "error", "error": "agent_id is required"}
+    try:
+        from apps.api.jarvis_api.services.agent_runtime import cancel_agent
+        result = cancel_agent(agent_id, note=note)
+        return {"status": "ok", "agent_id": agent_id, "result": result}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 # ── Self-tools handlers ────────────────────────────────────────────────
 
 def _exec_daemon_status(_args: dict[str, Any]) -> dict[str, Any]:
@@ -3670,6 +3878,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "home_assistant": _exec_home_assistant,
     "convene_council": _exec_convene_council,
     "quick_council_check": _exec_quick_council_check,
+    "spawn_agent_task": _exec_spawn_agent_task,
+    "send_message_to_agent": _exec_send_message_to_agent,
+    "list_agents": _exec_list_agents,
+    "cancel_agent": _exec_cancel_agent,
     "daemon_status": _exec_daemon_status,
     "control_daemon": _exec_control_daemon,
     "list_signal_surfaces": _exec_list_signal_surfaces,

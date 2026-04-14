@@ -173,8 +173,9 @@ export function useUnifiedShell() {
       // updated the UI live and required a manual browser refresh.
       const proactiveSources = new Set([
         'proactive-execution-pilot',
-        'heartbeat-ping-bridge',
-        'heartbeat-propose-bridge',
+        // heartbeat-ping-bridge and heartbeat-propose-bridge removed:
+        // they fired every 15 min all night, pushing notifications to phone.
+        // Heartbeat messages are still persisted to DB and visible in Mission Control.
         'inner-voice-initiative-bridge',
         'jarvis-notify',
         'boredom-bridge',

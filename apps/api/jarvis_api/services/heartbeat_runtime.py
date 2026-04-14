@@ -839,6 +839,14 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass
 
+    # Every 2nd tick: fire due agent schedules (persistent watchers)
+    if tick_count % 2 == 0:
+        try:
+            from apps.api.jarvis_api.services.agent_runtime import run_due_agent_schedules
+            run_due_agent_schedules(limit=5)
+        except Exception:
+            pass
+
     now = datetime.now(UTC)
     workspace_dir = ensure_default_workspace(name=name)
     policy = load_heartbeat_policy(name=name)

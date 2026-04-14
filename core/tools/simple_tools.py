@@ -967,7 +967,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "role": {
                         "type": "string",
                         "enum": ["researcher", "planner", "critic", "synthesizer", "executor", "watcher"],
-                        "description": "The agent role — determines system prompt and tool access.",
+                        "description": "The agent role — determines system prompt and tool access. executor can spawn sub-agents.",
                     },
                     "goal": {
                         "type": "string",
@@ -1031,6 +1031,35 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "description": "Filter by status: active, queued, done, failed, cancelled. Omit for all.",
                     },
                 },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "relay_to_agent",
+            "description": (
+                "Forward a message or result from one agent to another. "
+                "Use when you want to chain agents: pass the output of agent A as input to agent B. "
+                "Both agents must exist. The target agent is re-executed after receiving the message."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "to_agent_id": {
+                        "type": "string",
+                        "description": "agent_id of the receiving agent.",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The message or result to forward.",
+                    },
+                    "from_label": {
+                        "type": "string",
+                        "description": "Optional label for the source, e.g. 'researcher-result' or 'jarvis-followup'.",
+                    },
+                },
+                "required": ["to_agent_id", "content"],
             },
         },
     },
@@ -3515,6 +3544,38 @@ def _exec_list_agents(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_relay_to_agent(args: dict[str, Any]) -> dict[str, Any]:
+    to_agent_id = str(args.get("to_agent_id") or "").strip()
+    content = str(args.get("content") or "").strip()
+    from_label = str(args.get("from_label") or "jarvis-relay").strip()
+    if not to_agent_id:
+        return {"status": "error", "error": "to_agent_id is required"}
+    if not content:
+        return {"status": "error", "error": "content is required"}
+    try:
+        from apps.api.jarvis_api.services.agent_runtime import send_message_to_agent
+        result = send_message_to_agent(
+            agent_id=to_agent_id,
+            content=f"[{from_label}]\n{content}",
+            kind="relay-message",
+            auto_execute=True,
+        )
+        messages = result.get("messages") or []
+        last_reply = ""
+        for msg in reversed(messages):
+            if str(msg.get("direction") or "") == "agent->jarvis":
+                last_reply = str(msg.get("content") or "")
+                break
+        return {
+            "status": "ok",
+            "to_agent_id": to_agent_id,
+            "agent_status": str(result.get("status") or ""),
+            "reply": last_reply[:1200] if last_reply else None,
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 def _exec_cancel_agent(args: dict[str, Any]) -> dict[str, Any]:
     agent_id = str(args.get("agent_id") or "").strip()
     note = str(args.get("note") or "").strip()
@@ -3880,6 +3941,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "quick_council_check": _exec_quick_council_check,
     "spawn_agent_task": _exec_spawn_agent_task,
     "send_message_to_agent": _exec_send_message_to_agent,
+    "relay_to_agent": _exec_relay_to_agent,
     "list_agents": _exec_list_agents,
     "cancel_agent": _exec_cancel_agent,
     "daemon_status": _exec_daemon_status,

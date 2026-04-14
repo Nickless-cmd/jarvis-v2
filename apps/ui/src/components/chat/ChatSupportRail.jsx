@@ -309,7 +309,7 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
     { label: 'FATIGUE', value: emotions.fatigue, color: '#4a80c0', icon: Battery },
   ]
 
-  const browserBody = jarvisSurface?.runtime_work?.browser_body || {}
+  const browserBody = jarvisSurface?.continuity?.runtime_work?.browser_body || {}
 
   const voiceData = jarvisSurface?.protectedVoice?.current || {}
   const innerVoiceText = voiceData.voice_line || voiceData.current_concern || 'ingen tanker endnu...'

@@ -233,6 +233,19 @@ def _persist_self_review_runs(
                     "summary": persisted_item.get("summary"),
                 },
             )
+            if str(persisted_item.get("confidence") or "").lower() == "high":
+                try:
+                    from core.runtime.heartbeat_triggers import (
+                        set_trigger_for_default_workspace,
+                    )
+
+                    set_trigger_for_default_workspace(
+                        reason="self-review-incident",
+                        source="self_review_run_tracking",
+                        text=str(persisted_item.get("summary") or ""),
+                    )
+                except Exception:
+                    pass
         elif persisted_item.get("was_updated"):
             event_bus.publish(
                 "self_review_run.updated",

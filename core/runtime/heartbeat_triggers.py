@@ -78,3 +78,25 @@ def clear_triggers(workspace_dir: Path | str) -> int:
     triggers = _read(workspace_dir)
     _write(workspace_dir, [])
     return len(triggers)
+
+
+def set_trigger_for_default_workspace(
+    *,
+    reason: str,
+    source: str,
+    text: str = "",
+) -> dict | None:
+    """Resolve the default workspace and queue a trigger.
+
+    Returns None if workspace resolution fails (non-fatal for callers).
+    """
+    try:
+        from core.identity.workspace_bootstrap import ensure_default_workspace
+
+        workspace = ensure_default_workspace()
+    except Exception:
+        return None
+    try:
+        return set_trigger(workspace, reason=reason, source=source, text=text)
+    except Exception:
+        return None

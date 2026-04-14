@@ -157,3 +157,13 @@ def _store_insight(insight: str) -> None:
         event_bus.publish("cognitive_taste.insight_noted", {"insight": insight})
     except Exception:
         pass
+    try:
+        from core.runtime.heartbeat_triggers import set_trigger_for_default_workspace
+
+        set_trigger_for_default_workspace(
+            reason="aesthetic-insight",
+            source="aesthetic_taste_daemon",
+            text=insight,
+        )
+    except Exception:
+        pass

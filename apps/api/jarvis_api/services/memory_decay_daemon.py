@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
-    decay_private_brain_records,
+    decay_private_brain_records_by_domain,
     get_salient_private_brain_records,
     list_private_brain_records,
     update_private_brain_record_salience,
@@ -23,10 +23,24 @@ from core.runtime.db import (
 # ---------------------------------------------------------------------------
 
 _CADENCE_HOURS = 24
-_DECAY_RATE = 0.05               # salience lost per daily decay cycle
+_DECAY_RATE = 0.05               # default salience lost per daily decay cycle (fallback)
 _REDISCOVERY_THRESHOLD = 0.12    # records below this may be rediscovered
 _REDISCOVERY_PROBABILITY = 0.25  # chance per tick to surface one near-forgotten record
 _REDISCOVERY_BUFFER_MAX = 5
+
+# Per-domain decay rates (salience lost per 24h cycle).
+# Half-life reference: rate ≈ ln(2) / half_life_days
+#   identity      → 30-day half-life  → 0.023
+#   code_pattern  → 23-day half-life  → 0.030
+#   social        →  7-day half-life  → 0.099
+#   debug_context →  2-day half-life  → 0.347
+#   (empty / unknown → fallback _DECAY_RATE = 0.05, ~14-day half-life)
+DOMAIN_DECAY_RATES: dict[str, float] = {
+    "identity":      0.023,
+    "code_pattern":  0.030,
+    "social":        0.099,
+    "debug_context": 0.347,
+}
 
 # ---------------------------------------------------------------------------
 # Module-level state
@@ -52,11 +66,15 @@ def tick_memory_decay_daemon() -> dict:
         if (now - _last_decay_at) < timedelta(hours=_CADENCE_HOURS):
             return {"decayed": False}
 
-    updated = 0
+    domain_counts: dict[str, int] = {}
     try:
-        updated = decay_private_brain_records(decay_rate=_DECAY_RATE)
+        domain_counts = decay_private_brain_records_by_domain(
+            DOMAIN_DECAY_RATES,
+            default_rate=_DECAY_RATE,
+        )
     except Exception:
         pass
+    updated = sum(domain_counts.values())
 
     _last_decay_at = now
 
@@ -66,7 +84,7 @@ def tick_memory_decay_daemon() -> dict:
     except Exception:
         pass
 
-    return {"decayed": True, "records_updated": updated}
+    return {"decayed": True, "records_updated": updated, "domain_counts": domain_counts}
 
 
 def hold_fast(record_id: str) -> None:

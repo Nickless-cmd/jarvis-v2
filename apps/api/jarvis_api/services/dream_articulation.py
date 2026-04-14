@@ -70,6 +70,9 @@ def run_dream_articulation(
         witness_surface=inputs["witness_surface"],
         loop_runtime=inputs["loop_runtime"],
         embodied_state=inputs["embodied_state"],
+        goal_surface=inputs.get("goal_surface"),
+        relation_surface=inputs.get("relation_surface"),
+        autonomy_surface=inputs.get("autonomy_surface"),
         now=now,
     )
 
@@ -167,6 +170,9 @@ def build_dream_articulation_from_inputs(
     witness_surface: dict[str, object] | None,
     loop_runtime: dict[str, object] | None,
     embodied_state: dict[str, object] | None,
+    goal_surface: dict[str, object] | None = None,
+    relation_surface: dict[str, object] | None = None,
+    autonomy_surface: dict[str, object] | None = None,
     now: datetime | None = None,
 ) -> dict[str, object]:
     built_at = (now or datetime.now(UTC)).isoformat()
@@ -231,6 +237,31 @@ def build_dream_articulation_from_inputs(
                 f" / recovery={body.get('recovery_state') or 'steady'}"
             )[:120],
         })
+
+    # Live signal surfaces: goal, relation, autonomy pressure (primary runtime signals)
+    goals = goal_surface or {}
+    goal_items = goals.get("items") or []
+    if goal_items:
+        top_goal = goal_items[0]
+        goal_signal = str(top_goal.get("summary") or top_goal.get("title") or "")
+        if goal_signal:
+            source_inputs.append({"source": "goal-signal", "signal": goal_signal[:120]})
+
+    relation = relation_surface or {}
+    relation_items = relation.get("items") or []
+    if relation_items:
+        top_rel = relation_items[0]
+        rel_signal = str(top_rel.get("summary") or top_rel.get("title") or "")
+        if rel_signal:
+            source_inputs.append({"source": "relation-state", "signal": rel_signal[:120]})
+
+    autonomy = autonomy_surface or {}
+    autonomy_items = autonomy.get("items") or []
+    if autonomy_items:
+        top_auto = autonomy_items[0]
+        auto_signal = str(top_auto.get("summary") or top_auto.get("title") or "")
+        if auto_signal:
+            source_inputs.append({"source": "autonomy-pressure", "signal": auto_signal[:120]})
 
     if len(source_inputs) < _MIN_SOURCE_INPUTS:
         return {
@@ -331,13 +362,20 @@ def build_dream_articulation_surface() -> dict[str, object]:
 
 
 def _load_runtime_inputs() -> dict[str, object]:
+    from apps.api.jarvis_api.services.autonomy_pressure_signal_tracking import (
+        build_runtime_autonomy_pressure_signal_surface,
+    )
     from apps.api.jarvis_api.services.embodied_state import build_embodied_state_surface
     from apps.api.jarvis_api.services.emergent_signal_tracking import (
         build_runtime_emergent_signal_surface,
     )
+    from apps.api.jarvis_api.services.goal_signal_tracking import build_runtime_goal_signal_surface
     from apps.api.jarvis_api.services.idle_consolidation import build_idle_consolidation_surface
     from apps.api.jarvis_api.services.inner_voice_daemon import get_inner_voice_daemon_state
     from apps.api.jarvis_api.services.loop_runtime import build_loop_runtime_surface
+    from apps.api.jarvis_api.services.relation_state_signal_tracking import (
+        build_runtime_relation_state_signal_surface,
+    )
     from apps.api.jarvis_api.services.witness_signal_tracking import (
         build_runtime_witness_signal_surface,
     )
@@ -349,6 +387,10 @@ def _load_runtime_inputs() -> dict[str, object]:
         "witness_surface": build_runtime_witness_signal_surface(limit=4),
         "loop_runtime": build_loop_runtime_surface(),
         "embodied_state": build_embodied_state_surface(),
+        # Live signal surfaces: goal, relation, autonomy pressure
+        "goal_surface": build_runtime_goal_signal_surface(limit=4),
+        "relation_surface": build_runtime_relation_state_signal_surface(limit=4),
+        "autonomy_surface": build_runtime_autonomy_pressure_signal_surface(limit=4),
     }
 
 

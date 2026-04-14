@@ -107,6 +107,19 @@ def _is_near_duplicate(
     return False
 
 
+def _record_type_to_domain(record_type: str) -> str:
+    """Map a private brain record_type to its decay domain."""
+    rt = record_type.lower()
+    if rt.startswith("self-model") or rt.startswith("continuity"):
+        return "identity"
+    if rt.startswith("diary"):
+        return "social"
+    if rt.startswith("state-snapshot"):
+        return "debug_context"
+    # inner-note-carry and everything else → default (empty = fallback rate)
+    return ""
+
+
 def _try_insert_guarded(
     *,
     record_type: str,
@@ -137,6 +150,7 @@ def _try_insert_guarded(
         source_signals=source_signals,
         confidence=confidence,
         created_at=now,
+        domain=_record_type_to_domain(record_type),
     )
     return record if record else None
 
@@ -648,6 +662,7 @@ def run_private_brain_continuity(
         source_signals=f"continuity-motor:{trigger}",
         confidence="medium",
         created_at=now,
+        domain="identity",
     )
 
     event_bus.publish(

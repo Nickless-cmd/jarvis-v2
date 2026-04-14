@@ -30,13 +30,10 @@ from urllib import request as urllib_request
 
 logger = logging.getLogger(__name__)
 
-# Local-lane model used for narrative generation. Picked specifically
-# for cognitive state narrativizing — must be small enough to run
-# fast and capable enough to actually finish a Danish sentence.
-# We use llama3.1:8b because it is NOT a thinking model — gemma4 and
-# qwen3.5 burn their token budget on chain-of-thought and return
-# meta-text. llama3.1:8b returns natural completions directly.
-_NARRATIVIZER_MODEL = "llama3.1:8b"
+# Local-lane model used for narrative generation. This stays on the
+# Ollama path, but points at the currently selected cloud-backed local
+# target so we do not need a resident local 8B model in VRAM.
+_NARRATIVIZER_MODEL = "glm-5.1:cloud"
 _NARRATIVIZER_BASE_URL = "http://127.0.0.1:11434"
 _NARRATIVIZER_TIMEOUT_SECONDS = 25
 _NARRATIVIZER_MAX_TOKENS = 80

@@ -57,6 +57,28 @@ class EventBus:
             for row in rows
         ]
 
+    def recent_since_id(self, after_id: int, *, limit: int = 100) -> list[dict[str, Any]]:
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, kind, payload_json, created_at
+                FROM events
+                WHERE id > ?
+                ORDER BY id ASC
+                LIMIT ?
+                """,
+                (max(int(after_id), 0), max(int(limit), 1)),
+            ).fetchall()
+        return [
+            self._deserialize_row(
+                event_id=int(row["id"]),
+                kind=row["kind"],
+                payload_json=row["payload_json"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
+
     def subscribe(self) -> queue.Queue[dict[str, Any] | None]:
         subscriber: queue.Queue[dict[str, Any] | None] = queue.Queue()
         with self._lock:

@@ -1,0 +1,39 @@
+[Unit]
+Description=Jarvis V2 runtime owner (heartbeat, schedulers, bridges)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=bs
+Group=bs
+WorkingDirectory=/media/projects/jarvis-v2
+
+ExecStart=/opt/conda/envs/ai/bin/uvicorn apps.api.jarvis_api.app:app \
+    --host 127.0.0.1 \
+    --port 8011 \
+    --workers 1 \
+    --timeout-graceful-shutdown 5
+
+Restart=on-failure
+RestartSec=10s
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+
+Environment=PYTHONPATH=/media/projects/jarvis-v2
+Environment=PYTHONUNBUFFERED=1
+Environment=JARVIS_VOICE_ENABLED=1
+Environment=JARVIS_ENABLE_RUNTIME_SERVICES=1
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis-runtime
+
+AmbientCapabilities=CAP_SETUID CAP_SETGID
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID
+
+MemoryMax=16G
+CPUQuota=800%
+
+[Install]
+WantedBy=multi-user.target

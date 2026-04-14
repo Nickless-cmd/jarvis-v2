@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import queue as _queue
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from core.eventbus.bus import event_bus
@@ -13,6 +12,8 @@ logger = logging.getLogger("uvicorn.error")
 # Ping interval keeps the websocket alive during quiet periods.
 # Many browsers / reverse-proxies drop idle connections after 30-60 s.
 _PING_INTERVAL_S = 25
+_EVENT_POLL_INTERVAL_S = 0.5
+_EVENT_BATCH_SIZE = 100
 
 
 @router.websocket("/ws")
@@ -20,7 +21,6 @@ async def websocket_stream(ws: WebSocket) -> None:
     client = getattr(ws, "client", None)
     client_label = f"{getattr(client, 'host', 'unknown')}:{getattr(client, 'port', 'unknown')}"
     await ws.accept()
-    subscriber = event_bus.subscribe()
     items = sorted(event_bus.recent(limit=20), key=lambda x: x["id"])
     last_seen_id = 0
     logger.info(
@@ -34,26 +34,29 @@ async def websocket_stream(ws: WebSocket) -> None:
         last_seen_id = max(last_seen_id, item["id"])
 
     async def _forward_events() -> None:
-        """Pull events from the subscriber queue and send them to the client."""
+        """Poll persisted events so delivery works across multiple API workers."""
         nonlocal last_seen_id
         while True:
-            try:
-                item = await asyncio.to_thread(subscriber.get, timeout=1.0)
-            except _queue.Empty:
-                continue
-            if item is None:
-                return
-            if item["id"] <= last_seen_id:
-                continue
-            await ws.send_json(item)
-            last_seen_id = item["id"]
-            logger.debug(
-                "mission-control websocket forwarded event client=%s event_id=%s family=%s kind=%s",
-                client_label,
-                item.get("id"),
-                item.get("family"),
-                item.get("kind"),
+            items = await asyncio.to_thread(
+                event_bus.recent_since_id,
+                last_seen_id,
+                limit=_EVENT_BATCH_SIZE,
             )
+            if not items:
+                await asyncio.sleep(_EVENT_POLL_INTERVAL_S)
+                continue
+            for item in items:
+                if item["id"] <= last_seen_id:
+                    continue
+                await ws.send_json(item)
+                last_seen_id = item["id"]
+                logger.debug(
+                    "mission-control websocket forwarded event client=%s event_id=%s family=%s kind=%s",
+                    client_label,
+                    item.get("id"),
+                    item.get("family"),
+                    item.get("kind"),
+                )
 
     async def _keepalive_ping() -> None:
         """Send periodic websocket pings so idle connections are not dropped."""
@@ -85,7 +88,6 @@ async def websocket_stream(ws: WebSocket) -> None:
                     exc,
                 )
     finally:
-        event_bus.unsubscribe(subscriber)
         logger.info(
             "mission-control websocket cleanup client=%s last_seen_id=%s",
             client_label,

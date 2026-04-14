@@ -4,6 +4,8 @@ import { appendMessagesToSession, insertMessageBeforePending, updateSessionMessa
 
 const ACTIVE_SESSION_KEY = 'jarvis-ui-active-session'
 const ACTIVE_VIEW_KEY = 'jarvis-ui-active-view'
+const HEALTH_POLL_MS = 30_000
+const JARVIS_POLL_MS = 60_000
 
 function preferredView() {
   if (typeof window === 'undefined') return 'chat'
@@ -48,6 +50,7 @@ export function useUnifiedShell() {
   const liveSubscriptionStartedAtRef = useRef(Date.now())
   const jarvisSurfaceRefreshTimerRef = useRef(null)
   const jarvisSurfaceRefreshInFlightRef = useRef(false)
+  const isStreamingRef = useRef(false)
   const streamApprovalMessagesRef = useRef([])
   const streamAbortControllerRef = useRef(null)
 
@@ -75,13 +78,14 @@ export function useUnifiedShell() {
       void fetchJarvisSurface()
       return
     }
+    const effectiveDelay = isStreamingRef.current ? Math.max(delay, 1200) : delay
     if (jarvisSurfaceRefreshTimerRef.current) {
       window.clearTimeout(jarvisSurfaceRefreshTimerRef.current)
     }
     jarvisSurfaceRefreshTimerRef.current = window.setTimeout(() => {
       jarvisSurfaceRefreshTimerRef.current = null
       void fetchJarvisSurface()
-    }, delay)
+    }, effectiveDelay)
   }
 
   async function loadSessionList({ preferredId = '' } = {}) {
@@ -136,17 +140,28 @@ export function useUnifiedShell() {
   }
 
   useEffect(() => {
+    isStreamingRef.current = isStreaming
+  }, [isStreaming])
+
+  useEffect(() => {
     initialize()
     async function pollHealth() {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      if (isStreamingRef.current) return
       try {
         const health = await backend.getSystemHealth()
         setSystemHealth(health)
       } catch { /* ignore health poll failures */ }
     }
+    async function pollJarvisSurface() {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      if (isStreamingRef.current) return
+      await fetchJarvisSurface()
+    }
     pollHealth()
-    const healthInterval = setInterval(pollHealth, 10000)
-    void fetchJarvisSurface()
-    const jarvisInterval = setInterval(fetchJarvisSurface, 30000)
+    void pollJarvisSurface()
+    const healthInterval = setInterval(pollHealth, HEALTH_POLL_MS)
+    const jarvisInterval = setInterval(pollJarvisSurface, JARVIS_POLL_MS)
     return () => {
       clearInterval(healthInterval)
       clearInterval(jarvisInterval)

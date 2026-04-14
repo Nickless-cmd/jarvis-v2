@@ -60,6 +60,11 @@ from core.runtime.db import init_db
 logger = logging.getLogger("uvicorn.error")
 
 
+def _runtime_services_enabled() -> bool:
+    raw = str(os.getenv("JARVIS_ENABLE_RUNTIME_SERVICES", "1")).strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
+
 def create_app() -> FastAPI:
     ensure_runtime_dirs()
     init_db()
@@ -69,37 +74,44 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        runtime_services_enabled = _runtime_services_enabled()
         logger.info("jarvis api startup begin")
-        start_runtime_hook_runtime()
-        start_heartbeat_scheduler()
-        start_notification_bridge()
-        start_scheduled_tasks_service()
-        start_mood_listener()
-        start_emotion_concept_listener()
-        start_global_workspace_listener()
-        start_discord_gateway()
-        start_voice_daemon()
-        try:
-            from apps.api.jarvis_api.services.agent_runtime import recover_crashed_agents
-            recovery = recover_crashed_agents()
-            if recovery["recovered"]:
-                logger.info("agent recovery: %s", recovery)
-        except Exception as _exc:
-            logger.warning("agent recovery failed: %s", _exc)
-        event_bus.publish("runtime.started", {"component": "api"})
+        logger.info(
+            "jarvis api startup mode runtime_services_enabled=%s",
+            runtime_services_enabled,
+        )
+        if runtime_services_enabled:
+            start_runtime_hook_runtime()
+            start_heartbeat_scheduler()
+            start_notification_bridge()
+            start_scheduled_tasks_service()
+            start_mood_listener()
+            start_emotion_concept_listener()
+            start_global_workspace_listener()
+            start_discord_gateway()
+            start_voice_daemon()
+            try:
+                from apps.api.jarvis_api.services.agent_runtime import recover_crashed_agents
+                recovery = recover_crashed_agents()
+                if recovery["recovered"]:
+                    logger.info("agent recovery: %s", recovery)
+            except Exception as _exc:
+                logger.warning("agent recovery failed: %s", _exc)
+            event_bus.publish("runtime.started", {"component": "api"})
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):
             yield
         logger.info("jarvis api shutdown begin")
-        stop_heartbeat_scheduler()
-        stop_notification_bridge()
-        stop_scheduled_tasks_service()
-        stop_discord_gateway()
-        stop_voice_daemon()
-        stop_global_workspace_listener()
-        stop_emotion_concept_listener()
-        stop_mood_listener()
-        stop_runtime_hook_runtime()
+        if runtime_services_enabled:
+            stop_heartbeat_scheduler()
+            stop_notification_bridge()
+            stop_scheduled_tasks_service()
+            stop_discord_gateway()
+            stop_voice_daemon()
+            stop_global_workspace_listener()
+            stop_emotion_concept_listener()
+            stop_mood_listener()
+            stop_runtime_hook_runtime()
         try:
             from core.browser.playwright_session import stop_browser_session
             stop_browser_session()

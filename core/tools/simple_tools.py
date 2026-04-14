@@ -1163,6 +1163,20 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    # --- Context compact ---
+    {
+        "type": "function",
+        "function": {
+            "name": "compact_context",
+            "description": (
+                "Compact your working context to free up space. "
+                "Summarises old session history into a compact marker. "
+                "Use proactively before starting very long tasks, or when you notice "
+                "you are approaching context limits. Returns the number of tokens freed."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
     # --- Browser tools (Playwright) ---
     *BROWSER_TOOL_DEFINITIONS,
     {
@@ -3546,6 +3560,54 @@ def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": str(exc), "status": "error"}
 
 
+def _exec_compact_context_session(session_id: str | None) -> Any:
+    """Run session compact for session_id. Returns CompactResult or None (monkeypatchable)."""
+    target_session = session_id
+    if not target_session:
+        # Fall back to most recently updated session
+        try:
+            from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
+            sessions = list_chat_sessions()
+            if sessions:
+                target_session = str(sessions[0].get("session_id") or "")
+        except Exception:
+            return None
+    if not target_session:
+        return None
+    try:
+        from core.context.session_compact import compact_session_history
+        from core.context.compact_llm import call_compact_llm
+        from core.runtime.settings import load_settings as _ls
+        settings = _ls()
+        return compact_session_history(
+            target_session,
+            keep_recent=settings.context_keep_recent,
+            summarise_fn=lambda msgs: call_compact_llm(
+                "Komprimér denne dialog til max 400 ord. Bevar fakta, beslutninger og kontekst:\n\n"
+                + "\n".join(f"{m['role']}: {m.get('content', '')}" for m in msgs),
+                max_tokens=500,
+            ),
+        )
+    except Exception:
+        return None
+
+
+def _exec_compact_context(args: dict[str, Any]) -> dict[str, Any]:
+    cr = _exec_compact_context_session(None)
+    if cr is None:
+        return {
+            "status": "ok",
+            "freed_tokens": 0,
+            "message": "Ingen historik at komprimere — samtalen er stadig kort.",
+        }
+    return {
+        "status": "ok",
+        "freed_tokens": cr.freed_tokens,
+        "summary": cr.summary_text[:200],
+        "message": f"Kontekst komprimeret. {cr.freed_tokens} tokens frigjort.",
+    }
+
+
 def _exec_queue_followup(args: dict[str, Any]) -> dict[str, Any]:
     reason = str(args.get("reason") or "").strip()
     text = str(args.get("text") or "").strip()
@@ -3619,6 +3681,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_archive": _exec_read_archive,
     "internal_api": _exec_internal_api,
     "db_query": _exec_db_query,
+    "compact_context": _exec_compact_context,
     "queue_followup": _exec_queue_followup,
     # Browser tools
     "browser_navigate": _exec_browser_navigate,

@@ -1,5 +1,8 @@
 """Browser control tools for Jarvis — Playwright-backed.
 
+All Playwright operations are dispatched through run_in_playwright() so they
+run in the dedicated worker thread and never block the asyncio event loop.
+
 Tools:
   browser_navigate   — navigate to URL
   browser_read       — read page text (full or selector)
@@ -16,6 +19,8 @@ import base64
 import logging
 from typing import Any
 
+from core.browser.playwright_session import run_in_playwright
+
 logger = logging.getLogger(__name__)
 
 _MAX_READ_CHARS = 24_000
@@ -24,16 +29,6 @@ _MAX_READ_CHARS = 24_000
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-def _get_page():
-    from core.browser.playwright_session import get_page
-    return get_page()
-
-
-def _get_all_pages() -> list:
-    from core.browser.playwright_session import get_all_pages
-    return get_all_pages()
-
 
 def _update_status(status: str, *, url: str = "", title: str = "") -> None:
     try:
@@ -171,13 +166,15 @@ def _exec_browser_navigate(args: dict[str, Any]) -> dict[str, Any]:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
     try:
-        page = _get_page()
         _update_status("navigating", url=url)
-        page.goto(url, timeout=15000, wait_until="domcontentloaded")
-        title = page.title()
-        final_url = page.url
-        _update_status("idle", url=final_url, title=title)
-        return {"status": "ok", "url": final_url, "title": title}
+
+        def _do(ctx):
+            ctx.page.goto(url, timeout=15000, wait_until="domcontentloaded")
+            return {"title": ctx.page.title(), "url": ctx.page.url}
+
+        r = run_in_playwright(_do)
+        _update_status("idle", url=r["url"], title=r["title"])
+        return {"status": "ok", "url": r["url"], "title": r["title"]}
     except Exception as exc:
         _update_status("idle")
         return {"status": "error", "error": str(exc)[:300]}
@@ -186,14 +183,23 @@ def _exec_browser_navigate(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_browser_read(args: dict[str, Any]) -> dict[str, Any]:
     selector = str(args.get("selector") or "").strip()
     try:
-        page = _get_page()
-        _update_status("observing", url=page.url)
-        target = selector if selector else "body"
-        text = page.inner_text(target, timeout=10000)
-        if len(text) > _MAX_READ_CHARS:
-            text = text[:_MAX_READ_CHARS] + "…"
-        _update_status("idle", url=page.url)
-        return {"status": "ok", "text": text, "url": page.url, "chars": len(text), "selector": selector or "body"}
+        def _do(ctx):
+            _update_status("observing", url=ctx.page.url)
+            target = selector if selector else "body"
+            text = ctx.page.inner_text(target, timeout=10000)
+            if len(text) > _MAX_READ_CHARS:
+                text = text[:_MAX_READ_CHARS] + "…"
+            return {"text": text, "url": ctx.page.url}
+
+        r = run_in_playwright(_do)
+        _update_status("idle", url=r["url"])
+        return {
+            "status": "ok",
+            "text": r["text"],
+            "url": r["url"],
+            "chars": len(r["text"]),
+            "selector": selector or "body",
+        }
     except Exception as exc:
         _update_status("idle")
         return {"status": "error", "error": str(exc)[:300]}
@@ -204,11 +210,14 @@ def _exec_browser_click(args: dict[str, Any]) -> dict[str, Any]:
     if not selector:
         return {"status": "error", "error": "selector is required"}
     try:
-        page = _get_page()
-        _update_status("acting", url=page.url)
-        page.locator(selector).click(timeout=10000)
-        _update_status("idle", url=page.url)
-        return {"status": "ok", "url": page.url}
+        def _do(ctx):
+            _update_status("acting", url=ctx.page.url)
+            ctx.page.locator(selector).click(timeout=10000)
+            return ctx.page.url
+
+        url = run_in_playwright(_do)
+        _update_status("idle", url=url)
+        return {"status": "ok", "url": url}
     except Exception as exc:
         _update_status("idle")
         return {"status": "error", "error": str(exc)[:300]}
@@ -220,10 +229,12 @@ def _exec_browser_type(args: dict[str, Any]) -> dict[str, Any]:
     if not selector:
         return {"status": "error", "error": "selector is required"}
     try:
-        page = _get_page()
-        _update_status("acting", url=page.url)
-        page.locator(selector).fill(text, timeout=10000)
-        _update_status("idle", url=page.url)
+        def _do(ctx):
+            _update_status("acting", url=ctx.page.url)
+            ctx.page.locator(selector).fill(text, timeout=10000)
+
+        run_in_playwright(_do)
+        _update_status("idle")
         return {"status": "ok", "selector": selector}
     except Exception as exc:
         _update_status("idle")
@@ -233,15 +244,17 @@ def _exec_browser_type(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_browser_submit(args: dict[str, Any]) -> dict[str, Any]:
     selector = str(args.get("selector") or "").strip()
     try:
-        page = _get_page()
-        _update_status("acting", url=page.url)
-        if selector:
-            page.locator(selector).press("Enter", timeout=10000)
-        else:
-            page.locator("button[type=submit], input[type=submit]").first.click(timeout=10000)
-        final_url = page.url
-        _update_status("idle", url=final_url)
-        return {"status": "ok", "url": final_url}
+        def _do(ctx):
+            _update_status("acting", url=ctx.page.url)
+            if selector:
+                ctx.page.locator(selector).press("Enter", timeout=10000)
+            else:
+                ctx.page.locator("button[type=submit], input[type=submit]").first.click(timeout=10000)
+            return ctx.page.url
+
+        url = run_in_playwright(_do)
+        _update_status("idle", url=url)
+        return {"status": "ok", "url": url}
     except Exception as exc:
         _update_status("idle")
         return {"status": "error", "error": str(exc)[:300]}
@@ -249,12 +262,14 @@ def _exec_browser_submit(args: dict[str, Any]) -> dict[str, Any]:
 
 def _exec_browser_screenshot(args: dict[str, Any]) -> dict[str, Any]:
     try:
-        page = _get_page()
-        _update_status("observing", url=page.url)
-        png_bytes = page.screenshot(type="png", timeout=15000)
-        image_b64 = base64.b64encode(png_bytes).decode("ascii")
-        _update_status("idle", url=page.url)
-        return {"status": "ok", "image_b64": image_b64, "url": page.url, "format": "png"}
+        def _do(ctx):
+            _update_status("observing", url=ctx.page.url)
+            png_bytes = ctx.page.screenshot(type="png", timeout=15000)
+            return {"image_b64": base64.b64encode(png_bytes).decode("ascii"), "url": ctx.page.url}
+
+        r = run_in_playwright(_do)
+        _update_status("idle", url=r["url"])
+        return {"status": "ok", "image_b64": r["image_b64"], "url": r["url"], "format": "png"}
     except Exception as exc:
         _update_status("idle")
         return {"status": "error", "error": str(exc)[:300]}
@@ -262,13 +277,17 @@ def _exec_browser_screenshot(args: dict[str, Any]) -> dict[str, Any]:
 
 def _exec_browser_find_tabs(args: dict[str, Any]) -> dict[str, Any]:
     try:
-        pages = _get_all_pages()
-        tabs = []
-        for i, p in enumerate(pages):
-            try:
-                tabs.append({"tab_index": i, "url": p.url, "title": p.title()})
-            except Exception:
-                tabs.append({"tab_index": i, "url": "", "title": ""})
+        def _do(ctx):
+            pages = ctx.all_pages()
+            tabs = []
+            for i, p in enumerate(pages):
+                try:
+                    tabs.append({"tab_index": i, "url": p.url, "title": p.title()})
+                except Exception:
+                    tabs.append({"tab_index": i, "url": "", "title": ""})
+            return tabs
+
+        tabs = run_in_playwright(_do)
         return {"status": "ok", "tabs": tabs, "count": len(tabs)}
     except Exception as exc:
         return {"status": "error", "error": str(exc)[:300]}
@@ -279,10 +298,19 @@ def _exec_browser_switch_tab(args: dict[str, Any]) -> dict[str, Any]:
     if tab_index is None:
         return {"status": "error", "error": "tab_index is required"}
     try:
-        from core.browser.playwright_session import switch_to_page_by_index
-        page = switch_to_page_by_index(int(tab_index))
-        _update_status("idle", url=page.url, title=page.title())
-        return {"status": "ok", "url": page.url, "title": page.title(), "tab_index": int(tab_index)}
+        def _do(ctx):
+            pages = ctx.all_pages()
+            idx = int(tab_index)
+            if not pages or idx >= len(pages):
+                raise IndexError(f"No page at index {idx} (have {len(pages)} pages)")
+            page = pages[idx]
+            page.bring_to_front()
+            ctx.switch_page(page)
+            return {"url": page.url, "title": page.title()}
+
+        r = run_in_playwright(_do)
+        _update_status("idle", url=r["url"], title=r["title"])
+        return {"status": "ok", "url": r["url"], "title": r["title"], "tab_index": int(tab_index)}
     except IndexError as exc:
         return {"status": "error", "error": str(exc)}
     except Exception as exc:

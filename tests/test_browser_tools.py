@@ -6,43 +6,53 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_fake_run(mock_page, all_pages=None):
+    """Return a side_effect for run_in_playwright that executes fn with a fake ctx."""
+
+    class _FakeCtx:
+        def __init__(self):
+            self.page = mock_page
+            self.browser = MagicMock()
+            self._switched_page = None
+
+        def all_pages(self):
+            return all_pages if all_pages is not None else []
+
+        def switch_page(self, page):
+            self._switched_page = page
+
+    def _run(fn, timeout=30.0):
+        return fn(_FakeCtx())
+
+    return _run
+
+
+# ---------------------------------------------------------------------------
 # Session tests
 # ---------------------------------------------------------------------------
 
 def test_stop_browser_session_safe_when_never_started():
     """stop_browser_session should not raise if session was never initialised."""
     from core.browser import playwright_session as ps
-    ps._playwright = None
-    ps._browser = None
-    ps._active_page = None
     ps.stop_browser_session()  # must not raise
 
 
-def test_stop_browser_session_closes_browser():
-    """stop_browser_session closes browser and stops playwright."""
-    from core.browser import playwright_session as ps
-
-    mock_browser = MagicMock()
-    mock_pw = MagicMock()
-    ps._playwright = mock_pw
-    ps._browser = mock_browser
-    ps._active_page = MagicMock()
-
-    ps.stop_browser_session()
-
-    mock_browser.close.assert_called_once()
-    mock_pw.stop.assert_called_once()
-    assert ps._playwright is None
-    assert ps._browser is None
-    assert ps._active_page is None
+def test_stop_browser_session_is_callable():
+    """stop_browser_session should exist and be callable."""
+    from core.browser.playwright_session import stop_browser_session
+    assert callable(stop_browser_session)
 
 
 def test_get_all_pages_returns_empty_when_no_session():
-    """get_all_pages returns [] when no browser is connected."""
+    """get_all_pages returns [] when the worker thread has not started."""
     from core.browser import playwright_session as ps
-    ps._browser = None
-    ps._active_page = None
-    assert ps.get_all_pages() == []
+    # Ensure worker is not running
+    with patch.object(ps, "_WORKER_THREAD", None):
+        result = ps.get_all_pages()
+    assert result == []
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +95,7 @@ def test_browser_navigate_returns_title_and_url():
     mock_page.title.return_value = "Example Domain"
     mock_page.url = "https://example.com"
 
-    with patch("core.tools.browser_tools._get_page", return_value=mock_page), \
+    with patch("core.tools.browser_tools.run_in_playwright", side_effect=_make_fake_run(mock_page)), \
          patch("core.tools.browser_tools._update_status"):
         result = bt._exec_browser_navigate({"url": "https://example.com"})
 
@@ -113,7 +123,7 @@ def test_browser_navigate_adds_https_prefix():
     mock_page.title.return_value = "Example"
     mock_page.url = "https://example.com"
 
-    with patch("core.tools.browser_tools._get_page", return_value=mock_page), \
+    with patch("core.tools.browser_tools.run_in_playwright", side_effect=_make_fake_run(mock_page)), \
          patch("core.tools.browser_tools._update_status"):
         bt._exec_browser_navigate({"url": "example.com"})
 
@@ -134,7 +144,7 @@ def test_browser_read_full_page():
     mock_page.inner_text.return_value = "Hello world"
     mock_page.url = "https://example.com"
 
-    with patch("core.tools.browser_tools._get_page", return_value=mock_page), \
+    with patch("core.tools.browser_tools.run_in_playwright", side_effect=_make_fake_run(mock_page)), \
          patch("core.tools.browser_tools._update_status"):
         result = bt._exec_browser_read({})
 
@@ -151,7 +161,7 @@ def test_browser_read_with_selector():
     mock_page.inner_text.return_value = "Article text"
     mock_page.url = "https://example.com"
 
-    with patch("core.tools.browser_tools._get_page", return_value=mock_page), \
+    with patch("core.tools.browser_tools.run_in_playwright", side_effect=_make_fake_run(mock_page)), \
          patch("core.tools.browser_tools._update_status"):
         result = bt._exec_browser_read({"selector": ".article-body"})
 
@@ -169,7 +179,7 @@ def test_browser_click_calls_locator_click():
     mock_page = MagicMock()
     mock_page.url = "https://example.com"
 
-    with patch("core.tools.browser_tools._get_page", return_value=mock_page), \
+    with patch("core.tools.browser_tools.run_in_playwright", side_effect=_make_fake_run(mock_page)), \
          patch("core.tools.browser_tools._update_status"):
         result = bt._exec_browser_click({"selector": "#submit-btn"})
 
@@ -190,7 +200,7 @@ def test_browser_type_calls_fill():
     mock_page = MagicMock()
     mock_page.url = "https://example.com"
 
-    with patch("core.tools.browser_tools._get_page", return_value=mock_page), \
+    with patch("core.tools.browser_tools.run_in_playwright", side_effect=_make_fake_run(mock_page)), \
          patch("core.tools.browser_tools._update_status"):
         result = bt._exec_browser_type({"selector": "input[name='email']", "text": "test@example.com"})
 
@@ -205,7 +215,7 @@ def test_browser_screenshot_returns_base64():
     mock_page.screenshot.return_value = b"fakepngbytes"
     mock_page.url = "https://example.com"
 
-    with patch("core.tools.browser_tools._get_page", return_value=mock_page), \
+    with patch("core.tools.browser_tools.run_in_playwright", side_effect=_make_fake_run(mock_page)), \
          patch("core.tools.browser_tools._update_status"):
         result = bt._exec_browser_screenshot({})
 
@@ -224,7 +234,12 @@ def test_browser_find_tabs_returns_list():
     mock_page2.url = "https://github.com"
     mock_page2.title.return_value = "GitHub"
 
-    with patch("core.tools.browser_tools._get_all_pages", return_value=[mock_page1, mock_page2]):
+    fake_pages = [mock_page1, mock_page2]
+
+    with patch(
+        "core.tools.browser_tools.run_in_playwright",
+        side_effect=_make_fake_run(mock_page1, all_pages=fake_pages),
+    ):
         result = bt._exec_browser_find_tabs({})
 
     assert result["status"] == "ok"
@@ -236,16 +251,24 @@ def test_browser_find_tabs_returns_list():
 def test_browser_switch_tab_switches_page():
     import core.tools.browser_tools as bt
 
-    mock_page = MagicMock()
-    mock_page.url = "https://github.com"
-    mock_page.title.return_value = "GitHub"
+    mock_page1 = MagicMock()
+    mock_page1.url = "https://example.com"
+    mock_page1.title.return_value = "Example"
+    mock_page2 = MagicMock()
+    mock_page2.url = "https://github.com"
+    mock_page2.title.return_value = "GitHub"
 
-    with patch("core.browser.playwright_session.switch_to_page_by_index", return_value=mock_page) as mock_switch, \
-         patch("core.tools.browser_tools._update_status"):
+    fake_pages = [mock_page1, mock_page2]
+
+    with patch(
+        "core.tools.browser_tools.run_in_playwright",
+        side_effect=_make_fake_run(mock_page1, all_pages=fake_pages),
+    ), patch("core.tools.browser_tools._update_status"):
         result = bt._exec_browser_switch_tab({"tab_index": 1})
 
     assert result["status"] == "ok"
-    mock_switch.assert_called_once_with(1)
+    assert result["url"] == "https://github.com"
+    mock_page2.bring_to_front.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

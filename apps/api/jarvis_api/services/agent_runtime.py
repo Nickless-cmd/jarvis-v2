@@ -83,7 +83,7 @@ AGENT_ROLE_TEMPLATES = {
     },
     "executor": {
         "title": "Executor",
-        "default_tool_policy": "proposal-only",
+        "default_tool_policy": "can-spawn",
         "system_prompt": (
             "Du er et offspring under Jarvis. Du bryder en opgave ned i konkrete handlinger og rapporterer handlingsklar naeste fase tilbage."
         ),
@@ -306,6 +306,14 @@ def spawn_agent_task(
         kind="system-prompt",
         content=system_prompt,
     )
+    if persistent and ttl_seconds > 0:
+        schedule_agent_task(
+            agent_id=agent_id,
+            schedule_kind="interval-seconds",
+            delay_seconds=ttl_seconds,
+            activate=True,
+        )
+
     if not auto_execute:
         return build_agent_detail_surface(agent_id) or agent
 
@@ -410,6 +418,61 @@ def _format_peer_context(messages: list[dict[str, object]], *, target_agent_id: 
     return _format_messages(relevant, limit=limit)
 
 
+def _handle_agent_spawn_calls(
+    *, text: str, parent_agent_id: str
+) -> tuple[str, str, int]:
+    """Parse spawn_agent JSON blocks from agent response, execute them, return (cleaned_text, note, tokens_used)."""
+    import re as _re
+    pattern = _re.compile(
+        r'\{[^{}]*"spawn_agent"[^{}]*\}',
+        _re.DOTALL,
+    )
+    matches = pattern.findall(text)
+    if not matches:
+        return text, "", 0
+
+    tokens_used = 0
+    notes: list[str] = []
+    for raw in matches[:1]:  # max 1 spawn per execution
+        try:
+            parsed = json.loads(raw)
+            spec = parsed.get("spawn_agent") or {}
+            role = str(spec.get("role") or "researcher").strip()
+            goal = str(spec.get("goal") or "").strip()
+            budget = min(int(spec.get("budget_tokens") or 1500), 4000)
+            if not goal:
+                continue
+            child = spawn_agent_task(
+                role=role,
+                goal=goal,
+                budget_tokens=budget,
+                parent_agent_id=parent_agent_id,
+                auto_execute=True,
+            )
+            child_reply = ""
+            for msg in reversed(child.get("messages") or []):
+                if str(msg.get("direction") or "") == "agent->jarvis":
+                    child_reply = str(msg.get("content") or "")
+                    break
+            tokens_used += int(child.get("tokens_burned") or 0)
+            notes.append(
+                f"\n[sub-agent {role} ({child.get('agent_id', '')})]:\n{child_reply[:600]}"
+            )
+        except Exception as exc:
+            notes.append(f"\n[spawn failed: {exc}]")
+
+    cleaned = pattern.sub("", text).strip()
+    return cleaned + "".join(notes), "spawned", tokens_used
+
+
+_SPAWN_TOOL_INSTRUCTION = """
+If you need to delegate a subtask to another agent, include exactly one JSON block in your response:
+{"spawn_agent": {"role": "<researcher|planner|critic|synthesizer|executor>", "goal": "<specific goal>", "budget_tokens": <500-4000>}}
+
+The spawned agent will run and its result will be returned to Jarvis. Use sparingly — only when the subtask genuinely benefits from isolation.
+""".strip()
+
+
 def _build_agent_prompt(
     *,
     agent: dict[str, object],
@@ -419,13 +482,15 @@ def _build_agent_prompt(
 ) -> str:
     result_contract = _json_loads(str(agent.get("result_contract_json") or "{}"), {})
     context = _json_loads(str(agent.get("context_json") or "{}"), {})
+    tool_policy = str(agent.get("tool_policy") or "")
+    spawn_section = f"\n\n{_SPAWN_TOOL_INSTRUCTION}" if tool_policy == "can-spawn" else ""
     return (
         f"System prompt:\n{agent.get('system_prompt') or ''}\n\n"
         f"Role: {agent.get('role') or 'agent'}\n"
         f"Goal: {agent.get('goal') or ''}\n"
         f"Execution mode: {execution_mode}\n"
         f"Context package: {json.dumps(context, ensure_ascii=True)}\n"
-        f"Expected sections: {_result_contract_text(result_contract)}\n\n"
+        f"Expected sections: {_result_contract_text(result_contract)}{spawn_section}\n\n"
         "Conversation so far:\n"
         f"{_format_messages(messages)}\n\n"
         f"{extra_instruction}".strip()
@@ -461,6 +526,17 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
         update_agent_registry_entry(agent_id, status="active")
         result = execute_cheap_lane(message=prompt)
         text = str(result.get("text") or "").strip()
+        output_tokens = int(result.get("output_tokens") or 0)
+        input_tokens = int(result.get("input_tokens") or 0)
+
+        # Detect and execute spawn_agent requests embedded in response (can-spawn policy)
+        tool_policy = str(agent.get("tool_policy") or "")
+        if tool_policy == "can-spawn":
+            text, spawn_note, spawn_tokens = _handle_agent_spawn_calls(
+                text=text, parent_agent_id=agent_id
+            )
+            output_tokens += spawn_tokens
+
         create_agent_message(
             message_id=f"agent-msg-{uuid4().hex}",
             thread_id=resolved_thread_id,
@@ -471,8 +547,6 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
             kind="result",
             content=text,
         )
-        output_tokens = int(result.get("output_tokens") or 0)
-        input_tokens = int(result.get("input_tokens") or 0)
         update_agent_run(
             run_id,
             status="completed",

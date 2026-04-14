@@ -151,3 +151,17 @@ def _decode_browser_body(body: dict[str, object]) -> dict[str, object]:
     except json.JSONDecodeError:
         decoded["tabs"] = []
     return decoded
+
+
+def set_browser_status(status: str, *, url: str = "", title: str = "") -> None:
+    """Update the default browser body status — called from browser tool handlers."""
+    try:
+        body = ensure_browser_body()
+        update_browser_body(
+            body["body_id"],
+            status=status,
+            last_url=url,
+            last_title=title,
+        )
+    except Exception:
+        pass  # Never let status update crash a tool call

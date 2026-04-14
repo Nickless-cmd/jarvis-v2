@@ -32823,3 +32823,69 @@ def daemon_output_log_cleanup(max_age_days: int = 7) -> int:
         )
         conn.commit()
         return cursor.rowcount
+
+
+# ---------------------------------------------------------------------------
+# aesthetic_motif_log — accumulated aesthetic motifs from daemon text output
+# ---------------------------------------------------------------------------
+
+
+def _ensure_aesthetic_motif_log_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS aesthetic_motif_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            motif TEXT NOT NULL,
+            confidence REAL NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_aesthetic_motif_log_motif ON aesthetic_motif_log(motif)"
+    )
+
+
+def aesthetic_motif_log_insert(
+    *,
+    source: str,
+    motif: str,
+    confidence: float,
+) -> None:
+    with connect() as conn:
+        _ensure_aesthetic_motif_log_table(conn)
+        conn.execute(
+            """
+            INSERT INTO aesthetic_motif_log (source, motif, confidence, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (source, motif, confidence, datetime.now(UTC).isoformat()),
+        )
+        conn.commit()
+
+
+def aesthetic_motif_log_unique_motifs() -> list[str]:
+    with connect() as conn:
+        _ensure_aesthetic_motif_log_table(conn)
+        rows = conn.execute(
+            "SELECT DISTINCT motif FROM aesthetic_motif_log ORDER BY motif"
+        ).fetchall()
+        return [row[0] for row in rows]
+
+
+def aesthetic_motif_log_summary() -> list[dict]:
+    with connect() as conn:
+        _ensure_aesthetic_motif_log_table(conn)
+        rows = conn.execute(
+            """
+            SELECT motif, COUNT(*) as count, AVG(confidence) as avg_confidence
+            FROM aesthetic_motif_log
+            GROUP BY motif
+            ORDER BY count DESC
+            """
+        ).fetchall()
+        return [
+            {"motif": row[0], "count": row[1], "avg_confidence": row[2]}
+            for row in rows
+        ]

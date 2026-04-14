@@ -872,6 +872,39 @@ def mc_reject_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
     return reject_proposal(proposal_id, resolution_note=note)
 
 
+@router.get("/initiatives")
+def mc_initiatives(limit: int = 20) -> dict:
+    """MC surface for the persistent initiative queue — pending, acted, approved, rejected."""
+    from apps.api.jarvis_api.services.initiative_queue import get_initiative_queue_state
+    state = get_initiative_queue_state()
+    # Honour the limit on the full item list
+    all_items = (state.get("pending") or []) + (state.get("recent_acted") or [])
+    return {
+        **state,
+        "items": all_items[: max(int(limit), 1)],
+    }
+
+
+@router.post("/initiatives/{initiative_id}/approve")
+def mc_approve_initiative(initiative_id: str, note: str = "") -> dict:
+    """Approve a pending initiative so the heartbeat may act on it."""
+    from apps.api.jarvis_api.services.initiative_queue import approve_initiative
+    result = approve_initiative(initiative_id, note=note)
+    if result is None:
+        return {"ok": False, "error": f"initiative {initiative_id!r} not found"}
+    return {"ok": True, "initiative": result}
+
+
+@router.post("/initiatives/{initiative_id}/reject")
+def mc_reject_initiative(initiative_id: str, note: str = "") -> dict:
+    """Reject and expire a pending initiative."""
+    from apps.api.jarvis_api.services.initiative_queue import reject_initiative
+    result = reject_initiative(initiative_id, note=note)
+    if result is None:
+        return {"ok": False, "error": f"initiative {initiative_id!r} not found"}
+    return {"ok": True, "initiative": result}
+
+
 @router.get("/operations")
 def mc_operations(limit: int = 20) -> dict:
     cache_key = f"operations:{limit}"

@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime import db as runtime_db
+from core.runtime.db import approve_runtime_initiative, reject_runtime_initiative
 
 _MAX_QUEUE_SIZE = 8
 _EXPIRE_MINUTES = 90
@@ -181,6 +182,38 @@ def mark_attempted(
         return True
 
 
+def approve_initiative(initiative_id: str, *, note: str = "") -> dict[str, object] | None:
+    """Mark an initiative as user-approved. Returns the updated record or None if not found."""
+    now = datetime.now(UTC).isoformat()
+    result = approve_runtime_initiative(initiative_id, outcome_note=note, updated_at=now)
+    if result:
+        event_bus.publish(
+            "heartbeat.initiative_approved",
+            {
+                "initiative_id": initiative_id,
+                "focus": str(result.get("focus") or "")[:100],
+                "note": note[:120],
+            },
+        )
+    return result
+
+
+def reject_initiative(initiative_id: str, *, note: str = "") -> dict[str, object] | None:
+    """Mark an initiative as user-rejected and expire it. Returns updated record or None."""
+    now = datetime.now(UTC).isoformat()
+    result = reject_runtime_initiative(initiative_id, outcome_note=note, updated_at=now)
+    if result:
+        event_bus.publish(
+            "heartbeat.initiative_rejected",
+            {
+                "initiative_id": initiative_id,
+                "focus": str(result.get("focus") or "")[:100],
+                "note": note[:120],
+            },
+        )
+    return result
+
+
 def get_initiative_queue_state() -> dict[str, object]:
     """Return full queue state for MC observability."""
     now = datetime.now(UTC)
@@ -191,13 +224,20 @@ def get_initiative_queue_state() -> dict[str, object]:
         acted = [i for i in all_items if i["status"] == "acted"]
         expired = [i for i in all_items if i["status"] == "expired"]
 
+    approved = [i for i in all_items if str(i.get("outcome") or "") == "approved"]
+    rejected = [i for i in all_items if str(i.get("outcome") or "") == "rejected"]
+
     return {
         "queue_size": len(all_items),
         "pending_count": len(pending),
         "acted_count": len(acted),
         "expired_count": len(expired),
+        "approved_count": len(approved),
+        "rejected_count": len(rejected),
         "pending": pending,
         "recent_acted": acted[:3],
+        "recent_approved": approved[:3],
+        "recent_rejected": rejected[:3],
         "max_queue_size": _MAX_QUEUE_SIZE,
         "expire_minutes": _EXPIRE_MINUTES,
         "retry_delay_minutes": _RETRY_DELAY_MINUTES,

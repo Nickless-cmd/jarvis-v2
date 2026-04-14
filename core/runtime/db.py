@@ -1055,6 +1055,9 @@ def _ensure_runtime_initiatives_table(conn: sqlite3.Connection) -> None:
             blocked_reason TEXT NOT NULL DEFAULT '',
             acted_at TEXT NOT NULL DEFAULT '',
             action_summary TEXT NOT NULL DEFAULT '',
+            outcome TEXT NOT NULL DEFAULT '',
+            outcome_note TEXT NOT NULL DEFAULT '',
+            user_approved_at TEXT NOT NULL DEFAULT '',
             updated_at TEXT NOT NULL
         )
         """
@@ -1071,24 +1074,39 @@ def _ensure_runtime_initiatives_table(conn: sqlite3.Connection) -> None:
         ON runtime_initiatives(focus, status, id DESC)
         """
     )
+    # Add outcome columns to existing tables (idempotent)
+    for col_sql in (
+        "ALTER TABLE runtime_initiatives ADD COLUMN outcome TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE runtime_initiatives ADD COLUMN outcome_note TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE runtime_initiatives ADD COLUMN user_approved_at TEXT NOT NULL DEFAULT ''",
+    ):
+        try:
+            conn.execute(col_sql)
+            conn.commit()
+        except Exception:
+            pass  # column already exists
 
 
 def _runtime_initiative_from_row(row: sqlite3.Row) -> dict[str, object]:
+    d = dict(row)
     return {
-        "initiative_id": row["initiative_id"],
-        "focus": row["focus"],
-        "source": row["source"],
-        "source_id": row["source_id"],
-        "detected_at": row["detected_at"],
-        "status": row["status"],
-        "priority": row["priority"],
-        "attempt_count": int(row["attempt_count"] or 0),
-        "last_attempt_at": row["last_attempt_at"],
-        "next_attempt_at": row["next_attempt_at"],
-        "blocked_reason": row["blocked_reason"],
-        "acted_at": row["acted_at"],
-        "action_summary": row["action_summary"],
-        "updated_at": row["updated_at"],
+        "initiative_id": d.get("initiative_id", ""),
+        "focus": d.get("focus", ""),
+        "source": d.get("source", ""),
+        "source_id": d.get("source_id", ""),
+        "detected_at": d.get("detected_at", ""),
+        "status": d.get("status", "pending"),
+        "priority": d.get("priority", "medium"),
+        "attempt_count": int(d.get("attempt_count") or 0),
+        "last_attempt_at": d.get("last_attempt_at", ""),
+        "next_attempt_at": d.get("next_attempt_at", ""),
+        "blocked_reason": d.get("blocked_reason", ""),
+        "acted_at": d.get("acted_at", ""),
+        "action_summary": d.get("action_summary", ""),
+        "outcome": d.get("outcome", ""),
+        "outcome_note": d.get("outcome_note", ""),
+        "user_approved_at": d.get("user_approved_at", ""),
+        "updated_at": d.get("updated_at", ""),
     }
 
 
@@ -1294,6 +1312,61 @@ def update_runtime_initiative(
             WHERE initiative_id = ?
             """,
             tuple(params),
+        )
+        conn.commit()
+    return get_runtime_initiative(initiative_id)
+
+
+def approve_runtime_initiative(
+    initiative_id: str,
+    *,
+    outcome_note: str = "",
+    updated_at: str,
+) -> dict[str, object] | None:
+    """Mark an initiative as user-approved. Sets user_approved_at and outcome='approved'."""
+    with connect() as conn:
+        _ensure_runtime_initiatives_table(conn)
+        row = conn.execute(
+            "SELECT initiative_id FROM runtime_initiatives WHERE initiative_id = ? LIMIT 1",
+            (initiative_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            """
+            UPDATE runtime_initiatives
+            SET outcome = 'approved', outcome_note = ?, user_approved_at = ?, updated_at = ?
+            WHERE initiative_id = ?
+            """,
+            (outcome_note[:300], updated_at, updated_at, initiative_id),
+        )
+        conn.commit()
+    return get_runtime_initiative(initiative_id)
+
+
+def reject_runtime_initiative(
+    initiative_id: str,
+    *,
+    outcome_note: str = "",
+    updated_at: str,
+) -> dict[str, object] | None:
+    """Mark an initiative as user-rejected. Sets outcome='rejected' and expires it."""
+    with connect() as conn:
+        _ensure_runtime_initiatives_table(conn)
+        row = conn.execute(
+            "SELECT initiative_id FROM runtime_initiatives WHERE initiative_id = ? LIMIT 1",
+            (initiative_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute(
+            """
+            UPDATE runtime_initiatives
+            SET outcome = 'rejected', outcome_note = ?, status = 'expired',
+                user_approved_at = ?, updated_at = ?
+            WHERE initiative_id = ?
+            """,
+            (outcome_note[:300], updated_at, updated_at, initiative_id),
         )
         conn.commit()
     return get_runtime_initiative(initiative_id)
@@ -28646,6 +28719,7 @@ def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
             confidence TEXT NOT NULL DEFAULT 'medium',
             status TEXT NOT NULL DEFAULT 'active',
             salience REAL NOT NULL DEFAULT 1.0,
+            domain TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
@@ -28654,6 +28728,12 @@ def _ensure_private_brain_records_table(conn: sqlite3.Connection) -> None:
     # Add salience column to existing tables (idempotent)
     try:
         conn.execute("ALTER TABLE private_brain_records ADD COLUMN salience REAL NOT NULL DEFAULT 1.0")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+    # Add domain column to existing tables (idempotent)
+    try:
+        conn.execute("ALTER TABLE private_brain_records ADD COLUMN domain TEXT NOT NULL DEFAULT ''")
         conn.commit()
     except Exception:
         pass  # Column already exists
@@ -28684,6 +28764,7 @@ def insert_private_brain_record(
     source_signals: str,
     confidence: str,
     created_at: str,
+    domain: str = "",
 ) -> dict[str, object]:
     with connect() as conn:
         _ensure_private_brain_records_table(conn)
@@ -28692,13 +28773,13 @@ def insert_private_brain_record(
             INSERT OR IGNORE INTO private_brain_records
                 (record_id, record_type, layer, session_id, run_id,
                  focus, summary, detail, source_signals, confidence,
-                 status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+                 status, domain, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
             """,
             (
                 record_id, record_type, layer, session_id, run_id,
                 focus, summary, detail, source_signals, confidence,
-                created_at, created_at,
+                domain, created_at, created_at,
             ),
         )
         conn.commit()
@@ -28778,6 +28859,7 @@ def _private_brain_record_from_row(row: sqlite3.Row) -> dict[str, object]:
         "confidence": d.get("confidence", ""),
         "status": d.get("status", "active"),
         "salience": float(d.get("salience") or 1.0),
+        "domain": d.get("domain", ""),
         "created_at": d.get("created_at", ""),
         "updated_at": d.get("updated_at", ""),
     }
@@ -28828,6 +28910,44 @@ def decay_private_brain_records(decay_rate: float = 0.05, limit: int = 100) -> i
             updated += 1
         conn.commit()
     return updated
+
+
+def decay_private_brain_records_by_domain(
+    domain_decay_rates: dict[str, float],
+    default_rate: float = 0.05,
+    limit: int = 200,
+) -> dict[str, int]:
+    """Apply per-domain salience decay to active private brain records.
+
+    Args:
+        domain_decay_rates: Mapping of domain name → decay_rate per cycle.
+        default_rate: Rate applied when a record's domain is absent or unknown.
+        limit: Max records to process in one call.
+
+    Returns:
+        Dict mapping each domain (plus 'default') to number of records updated.
+    """
+    with connect() as conn:
+        _ensure_private_brain_records_table(conn)
+        now_iso = datetime.now(UTC).isoformat()
+        rows = conn.execute(
+            "SELECT record_id, salience, domain FROM private_brain_records "
+            "WHERE status = 'active' AND salience > 0 LIMIT ?",
+            (limit,),
+        ).fetchall()
+        counts: dict[str, int] = {}
+        for row in rows:
+            dom = str(row["domain"] or "").strip()
+            rate = domain_decay_rates.get(dom, default_rate)
+            new_salience = max(0.0, float(row["salience"]) - rate)
+            conn.execute(
+                "UPDATE private_brain_records SET salience = ?, updated_at = ? WHERE record_id = ?",
+                (new_salience, now_iso, row["record_id"]),
+            )
+            bucket = dom if dom else "default"
+            counts[bucket] = counts.get(bucket, 0) + 1
+        conn.commit()
+    return counts
 
 
 # ---------------------------------------------------------------------------

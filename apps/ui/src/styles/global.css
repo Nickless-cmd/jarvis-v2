@@ -47,6 +47,18 @@ button { cursor: pointer; }
   0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(87,216,142,.7); }
   50% { opacity: 0.6; box-shadow: 0 0 4px rgba(87,216,142,.4); }
 }
+.browser-scan-bar {
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent 0%, #28b1a3 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: browser-scan 1.6s ease-in-out infinite;
+}
+@keyframes browser-scan {
+  0%   { background-position: -100% 0; opacity: 0.4; }
+  50%  { background-position: 50% 0;   opacity: 1; }
+  100% { background-position: 200% 0;  opacity: 0.4; }
+}
 .global-nav { display:flex; flex-direction:column; gap:1px; padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.06); }
 .nav-item {
   display:flex; align-items:center; gap:8px; padding:7px 8px; border:none; border-left:2px solid transparent; border-radius:6px;
@@ -283,6 +295,7 @@ button { cursor: pointer; }
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  will-change: background-position;
   animation: workingShimmer 2s ease-in-out infinite;
 }
 @keyframes workingShimmer {
@@ -290,9 +303,10 @@ button { cursor: pointer; }
   100% { background-position: -100% 0; }
 }
 .streaming-cursor {
-  display: inline-block; width: 2px; height: 14px;
-  background: #5ab8a0; margin-left: 3px; vertical-align: middle;
-  animation: blink 1s step-end infinite;
+  display: inline-block; width: 2px; height: 15px;
+  background: #5ab8a0; margin-left: 4px; vertical-align: text-bottom;
+  border-radius: 1px;
+  animation: blink 0.8s step-end infinite;
 }
 /* Approval cards */
 .approval-card {

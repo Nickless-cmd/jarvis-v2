@@ -1,4 +1,4 @@
-import { Activity, Battery, CheckCircle2, Compass, Eye, FileSearch, FolderOpen, Frown, Gauge, Lightbulb, Loader2, Pencil, ScanSearch, Smile, Terminal } from 'lucide-react'
+import { Activity, Battery, CheckCircle2, Compass, Eye, FileSearch, FolderOpen, Frown, Gauge, Globe, Lightbulb, Loader2, Pencil, ScanSearch, Smile, Terminal } from 'lucide-react'
 import { s, T, mono } from '../../shared/theme/tokens'
 
 function PanelSection({ title, children }) {
@@ -138,6 +138,51 @@ function deriveEmotions(affective, emotionalBaseline = {}) {
   }
 }
 
+function BrowserCard({ browserBody }) {
+  const status = browserBody?.status || ''
+  const url = String(browserBody?.last_url || browserBody?.url || '')
+  const title = String(browserBody?.last_title || browserBody?.title || '')
+
+  if (!status || status === 'idle' || status === 'absent') return null
+
+  const statusLabel = { navigating: 'navigating', observing: 'reading', acting: 'acting' }[status] || status
+  const displayUrl = url.replace(/^https?:\/\//, '').split('?')[0].slice(0, 46) || '…'
+  const isMoving = status === 'navigating' || status === 'acting'
+
+  return (
+    <div style={s({
+      display: 'flex', alignItems: 'flex-start', gap: 8,
+      padding: '8px 10px',
+      background: T.bgRaised,
+      border: `1px solid ${T.border2}`,
+      borderLeft: `2px solid ${T.accent}`,
+      borderRadius: 8,
+      animation: 'slideUp 0.2s ease both',
+    })}>
+      <div
+        className={isMoving ? 'spin' : ''}
+        style={s({ marginTop: 1, flexShrink: 0, color: T.accentText })}
+      >
+        <Globe size={12} />
+      </div>
+      <div style={s({ flex: 1, minWidth: 0 })}>
+        <div style={s({ ...mono, fontSize: 9, color: T.accent, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 })}>
+          {statusLabel}
+        </div>
+        <div style={s({ ...mono, fontSize: 9, color: T.text2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+          {displayUrl}
+        </div>
+        {title && (
+          <div style={s({ fontSize: 9, color: T.text3, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+            {title}
+          </div>
+        )}
+        <div className="browser-scan-bar" style={s({ marginTop: 5 })} />
+      </div>
+    </div>
+  )
+}
+
 function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
   const steps = workingSteps || []
   const doneSteps = steps.filter(s => s.status === 'done').slice(-4)
@@ -147,6 +192,16 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
   const hasActivity = currentStep || doneSteps.length > 0 || activities.length > 0
 
   if (!hasActivity) {
+    if (isStreaming) {
+      return (
+        <div style={s({ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' })}>
+          <div className="spin" style={s({ color: T.accentText, display: 'flex' })}>
+            <Loader2 size={12} />
+          </div>
+          <span style={s({ ...mono, fontSize: 10, color: T.accentText })}>thinking…</span>
+        </div>
+      )
+    }
     return (
       <div style={s({ ...mono, fontSize: 10, color: T.text3, padding: '2px 0' })}>idle</div>
     )
@@ -165,12 +220,10 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
       animation: 'slideUp 0.2s ease both',
     })}>
       {/* Spinner or done-indicator */}
-      <div style={s({
-        marginTop: 1,
-        flexShrink: 0,
-        color: isStreaming ? T.accentText : T.text3,
-        animation: isStreaming ? 'spin 1s linear infinite' : 'none',
-      })}>
+      <div
+        className={isStreaming ? 'spin' : ''}
+        style={s({ marginTop: 1, flexShrink: 0, color: isStreaming ? T.accentText : T.text3 })}
+      >
         <Loader2 size={12} />
       </div>
 
@@ -256,6 +309,8 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
     { label: 'FATIGUE', value: emotions.fatigue, color: '#4a80c0', icon: Battery },
   ]
 
+  const browserBody = jarvisSurface?.runtime_work?.browser_body || {}
+
   const voiceData = jarvisSurface?.protectedVoice?.current || {}
   const innerVoiceText = voiceData.voice_line || voiceData.current_concern || 'ingen tanker endnu...'
   const voiceMood = voiceData.mood_tone || null
@@ -304,6 +359,13 @@ export function ChatSupportRail({ session, selection, isStreaming, jarvisSurface
           </div>
         </div>
       </PanelSection>
+
+      {/* Browser Panel — only visible when Jarvis is using the browser */}
+      {(browserBody?.status && browserBody.status !== 'idle' && browserBody.status !== 'absent') && (
+        <PanelSection title="Browser">
+          <BrowserCard browserBody={browserBody} />
+        </PanelSection>
+      )}
 
       {/* Workspace Scan Panel */}
       <PanelSection title="Workspace Scan">

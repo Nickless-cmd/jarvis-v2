@@ -4157,14 +4157,21 @@ def _deliver_heartbeat_proposal(
         }
 
     ping_channel = str(policy.get("ping_channel") or "none").strip() or "none"
+    trigger_entry: dict | None = None
     if ping_channel != "webchat":
-        return {
-            "status": "recorded",
-            "summary": message_text,
-            "action_type": "",
-            "artifact": "",
-            "blocked_reason": "",
-        }
+        workspace_str = str(policy.get("workspace") or "").strip()
+        if workspace_str:
+            from core.runtime import heartbeat_triggers as _triggers
+
+            trigger_entry = _triggers.consume_trigger(Path(workspace_str))
+        if trigger_entry is None:
+            return {
+                "status": "recorded",
+                "summary": message_text,
+                "action_type": "",
+                "artifact": "",
+                "blocked_reason": "",
+            }
 
     from apps.api.jarvis_api.services.chat_sessions import (
         append_chat_message,
@@ -4329,14 +4336,21 @@ def _deliver_heartbeat_ping_directly(
         }
 
     ping_channel = str(policy.get("ping_channel") or "none").strip() or "none"
+    trigger_entry: dict | None = None
     if ping_channel != "webchat":
-        return {
-            "status": "recorded",
-            "summary": message_text,
-            "action_type": "webchat-heartbeat-ping",
-            "artifact": "",
-            "blocked_reason": "",
-        }
+        workspace_str = str(policy.get("workspace") or "").strip()
+        if workspace_str:
+            from core.runtime import heartbeat_triggers as _triggers
+
+            trigger_entry = _triggers.consume_trigger(Path(workspace_str))
+        if trigger_entry is None:
+            return {
+                "status": "recorded",
+                "summary": message_text,
+                "action_type": "webchat-heartbeat-ping",
+                "artifact": "",
+                "blocked_reason": "",
+            }
 
     from apps.api.jarvis_api.services.chat_sessions import (
         append_chat_message,

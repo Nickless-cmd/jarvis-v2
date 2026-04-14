@@ -5,7 +5,7 @@ Interval Minutes: 15
 Allow Propose: true
 Allow Execute: true
 Allow Ping: true
-Ping Channel: webchat
+Ping Channel: none
 Budget: bounded-internal-only
 Kill Switch: enabled
 

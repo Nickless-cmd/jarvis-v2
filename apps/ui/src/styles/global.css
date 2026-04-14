@@ -59,6 +59,47 @@ button { cursor: pointer; }
   50%  { background-position: 50% 0;   opacity: 1; }
   100% { background-position: 200% 0;  opacity: 0.4; }
 }
+/* ── Browser indicator — floats below transcript during streaming ── */
+.browser-indicator {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 16px 8px;
+  padding: 8px 12px 10px;
+  background: rgba(40,177,163,.06);
+  border: 1px solid rgba(40,177,163,.18);
+  border-left: 2px solid #28b1a3;
+  border-radius: 8px;
+  animation: slideUp 0.2s ease both;
+}
+.browser-indicator-icon {
+  color: #28b1a3;
+  margin-top: 1px;
+  flex-shrink: 0;
+  animation: spin 1.4s linear infinite;
+}
+.browser-indicator-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.browser-indicator-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: #28b1a3;
+  letter-spacing: 0.06em;
+}
+.browser-indicator-url {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #4e5262;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .global-nav { display:flex; flex-direction:column; gap:1px; padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.06); }
 .nav-item {
   display:flex; align-items:center; gap:8px; padding:7px 8px; border:none; border-left:2px solid transparent; border-radius:6px;

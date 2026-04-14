@@ -365,7 +365,7 @@ def test_maybe_compact_agentic_messages_compacts_above_threshold(monkeypatch):
 
 def test_compact_context_tool_is_registered():
     from core.tools.simple_tools import get_tool_definitions
-    tool_names = [t["function"]["name"] for t in get_tool_definitions()]
+    tool_names = [t["function"]["name"] for t in get_tool_definitions() if "function" in t]
     assert "compact_context" in tool_names
 
 

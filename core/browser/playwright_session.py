@@ -11,21 +11,103 @@ run_in_playwright(fn, timeout=30.0)
     _BrowserCtx that exposes .page, .browser, and helpers.
 
 stop_browser_session()
-    Signal the worker to close the browser and exit cleanly.
+    Signal the worker to close the browser and exit cleanly.  Also stops
+    any Chrome subprocess that was auto-started.
 
 get_all_pages() / switch_to_page_by_index(index)
     Convenience wrappers; both use run_in_playwright internally.
+
+Chrome auto-launch
+------------------
+If no CDP endpoint is reachable on port 9222, the worker automatically
+starts a headless Chrome subprocess with the required flags and waits up
+to 8 s for the port to become available.  The subprocess is stopped when
+stop_browser_session() is called.
 """
 from __future__ import annotations
 
 import logging
 import queue
+import socket
+import subprocess
 import threading
+import time
 from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
 _CDP_URL = "http://localhost:9222"
+_CDP_PORT = 9222
+_CHROME_USER_DATA_DIR = "/tmp/chrome-jarvis"
+
+# ---------------------------------------------------------------------------
+# Chrome subprocess management
+# ---------------------------------------------------------------------------
+
+_CHROME_PROC: subprocess.Popen | None = None
+_CHROME_PROC_LOCK = threading.Lock()
+
+
+def _cdp_port_open() -> bool:
+    """Return True if something is already listening on the CDP port."""
+    try:
+        with socket.create_connection(("127.0.0.1", _CDP_PORT), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+
+def _start_headless_chrome() -> bool:
+    """Launch a headless Chrome subprocess if the CDP port is not open.
+
+    Returns True if Chrome is ready (port open), False on failure.
+    """
+    global _CHROME_PROC
+    with _CHROME_PROC_LOCK:
+        if _cdp_port_open():
+            return True
+        if _CHROME_PROC is not None and _CHROME_PROC.poll() is None:
+            # Process still alive but port not open yet — wait a bit
+            pass
+        else:
+            cmd = [
+                "google-chrome",
+                f"--remote-debugging-port={_CDP_PORT}",
+                "--user-data-dir=" + _CHROME_USER_DATA_DIR,
+                "--headless=new",
+                "--no-first-run",
+                "--disable-default-apps",
+            ]
+            logger.info("browser_session: launching headless Chrome: %s", " ".join(cmd))
+            _CHROME_PROC = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+    # Wait up to 8 s for the port to open
+    for _ in range(16):
+        time.sleep(0.5)
+        if _cdp_port_open():
+            logger.info("browser_session: headless Chrome ready on port %d", _CDP_PORT)
+            return True
+    logger.error("browser_session: headless Chrome did not open port %d in time", _CDP_PORT)
+    return False
+
+
+def _stop_headless_chrome() -> None:
+    """Terminate the Chrome subprocess if we started it."""
+    global _CHROME_PROC
+    with _CHROME_PROC_LOCK:
+        proc = _CHROME_PROC
+        _CHROME_PROC = None
+    if proc is not None and proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        logger.info("browser_session: headless Chrome stopped")
 
 # ---------------------------------------------------------------------------
 # Internal state types
@@ -89,7 +171,18 @@ def _playwright_worker(state: _WorkerState, ready: threading.Event) -> None:
     from playwright.sync_api import sync_playwright
 
     def _connect_or_launch():
-        # CDP first (existing Chrome session / cookies)
+        # Ensure CDP port is open — auto-start headless Chrome if needed
+        if not _cdp_port_open():
+            logger.info("browser_session: CDP port not open, auto-starting headless Chrome")
+            if not _start_headless_chrome():
+                logger.warning("browser_session: Chrome auto-start failed, falling back to standalone Chromium")
+                state.browser = state.pw.chromium.launch(headless=True)
+                ctx = state.browser.new_context()
+                page = ctx.new_page()
+                logger.info("browser_session: launched standalone Playwright Chromium (fallback)")
+                return page
+
+        # Connect via CDP
         try:
             state.browser = state.pw.chromium.connect_over_cdp(_CDP_URL)
             contexts = state.browser.contexts
@@ -101,15 +194,8 @@ def _playwright_worker(state: _WorkerState, ready: threading.Event) -> None:
             logger.info("browser_session: connected via CDP to %s", _CDP_URL)
             return page
         except Exception as cdp_exc:
-            logger.info(
-                "browser_session: CDP connect failed (%s) — launching standalone", cdp_exc
-            )
-        # Standalone Chromium
-        state.browser = state.pw.chromium.launch(headless=False)
-        ctx = state.browser.new_context()
-        page = ctx.new_page()
-        logger.info("browser_session: launched standalone Playwright Chromium")
-        return page
+            logger.error("browser_session: CDP connect failed after Chrome start: %s", cdp_exc)
+            raise
 
     def _get_page():
         if state.active_page is not None:
@@ -210,14 +296,17 @@ def run_in_playwright(fn: Callable[[_BrowserCtx], Any], timeout: float = 30.0) -
 
 
 def stop_browser_session() -> None:
-    """Signal the worker to close the browser and stop.  Safe if never started."""
+    """Signal the worker to close the browser and stop.  Also stops any
+    auto-started headless Chrome subprocess.  Safe if never started."""
     global _WORKER_THREAD
     with _THREAD_LOCK:
         if _WORKER_THREAD is None or not _WORKER_THREAD.is_alive():
+            _stop_headless_chrome()
             return
     _CMD_QUEUE.put(_STOP)
     if _WORKER_THREAD is not None:
         _WORKER_THREAD.join(timeout=10.0)
+    _stop_headless_chrome()
     logger.info("browser_session: stopped")
 
 

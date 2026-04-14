@@ -10,6 +10,16 @@ import threading
 import urllib.request
 from pathlib import Path
 
+_PHASE_FILE = Path("/tmp/jarvis-voice-phase.json")
+
+
+def _set_phase(phase: str) -> None:
+    """Write current voice pipeline phase for the desktop orb to read."""
+    try:
+        _PHASE_FILE.write_text(json.dumps({"phase": phase}))
+    except Exception:
+        pass
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from core.skills.voice import wake_word
@@ -60,16 +70,19 @@ def on_wake_word(word: str):
     import re
     say("Ja?", blocking=True)
 
+    _set_phase("user")
     print("[stt] optager...", flush=True)
     text = listen_and_transcribe(duration=5.0, language="da")
     # Filter out pure noise/sound-effect descriptions like "(baggrundsstøj)"
     text_clean = re.sub(r"\([^)]*\)", "", text).strip()
     if not text_clean:
+        _set_phase("idle")
         say("Jeg hørte ikke noget.", blocking=True)
         return
     text = text_clean
 
     print(f"[stt] hørt: {text}", flush=True)
+    _set_phase("think")
     say("Et øjeblik.", blocking=False)
 
     try:
@@ -77,15 +90,19 @@ def on_wake_word(word: str):
         response = ask_jarvis(session_id, text)
     except Exception as e:
         print(f"[api] fejl: {e}", flush=True)
+        _set_phase("idle")
         say("Beklager, jeg kunne ikke nå min hjerne.", blocking=True)
         return
 
     if not response:
+        _set_phase("idle")
         say("Jeg har intet svar.", blocking=True)
         return
 
     print(f"[tts] svarer: {response[:80]}...", flush=True)
+    _set_phase("speak")
     say(response, blocking=True)
+    _set_phase("idle")
 
 
 def main():

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    overflow: hidden;
+    -webkit-app-region: drag;
+  }
+
+  /* ── ORB ── */
+  .orb-scene {
+    position: relative;
+    width: 120px; height: 120px;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-app-region: drag;
+  }
+
+  .ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(40,177,163,.15);
+    animation: ring-idle 4s ease-in-out infinite;
+  }
+  .ring-1 { inset: -10px; animation-delay: 0s; }
+  .ring-2 { inset: -20px; animation-delay: .5s; border-color: rgba(40,177,163,.07); }
+  @keyframes ring-idle {
+    0%,100% { transform: scale(1); opacity: .6; }
+    50% { transform: scale(1.04); opacity: 1; }
+  }
+
+  .orb {
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    position: relative;
+  }
+  .orb-surface {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%,
+      rgba(90,184,160,.92) 0%,
+      rgba(40,177,163,.55) 38%,
+      rgba(14,30,44,1) 100%);
+    box-shadow:
+      0 0 24px rgba(40,177,163,.3),
+      0 0 48px rgba(40,177,163,.12),
+      inset 0 0 18px rgba(0,0,0,.5);
+    transition: background .8s ease, box-shadow .8s ease;
+    animation: orb-idle 4s ease-in-out infinite;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .orb-surface::after {
+    content: '';
+    position: absolute;
+    top: 13%; left: 20%;
+    width: 30%; height: 16%;
+    background: rgba(255,255,255,.2);
+    border-radius: 50%;
+    filter: blur(4px);
+    transform: rotate(-30deg);
+    pointer-events: none;
+  }
+  @keyframes orb-idle {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+  }
+
+  .orb-center {
+    position: relative;
+    z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 30px;
+  }
+
+  /* Idle dot */
+  .idle-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.5);
+    box-shadow: 0 0 8px rgba(255,255,255,.4);
+    animation: idle-pulse 4s ease-in-out infinite;
+  }
+  @keyframes idle-pulse {
+    0%,100% { transform: scale(1); opacity: .5; }
+    50% { transform: scale(1.4); opacity: .9; }
+  }
+
+  /* Mic bars */
+  .mic-bars {
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    height: 26px;
+  }
+  .mic-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,.75);
+    animation: mic-wave 0s ease-in-out infinite alternate;
+    min-height: 3px;
+  }
+  .mic-bar:nth-child(1) { animation-duration: .45s; animation-delay: .0s; }
+  .mic-bar:nth-child(2) { animation-duration: .38s; animation-delay: .07s; }
+  .mic-bar:nth-child(3) { animation-duration: .52s; animation-delay: .14s; }
+  .mic-bar:nth-child(4) { animation-duration: .41s; animation-delay: .05s; }
+  .mic-bar:nth-child(5) { animation-duration: .47s; animation-delay: .11s; }
+  .mic-bar:nth-child(6) { animation-duration: .35s; animation-delay: .09s; }
+  .mic-bar:nth-child(7) { animation-duration: .5s;  animation-delay: .03s; }
+  @keyframes mic-wave {
+    from { height: 3px; opacity: .5; }
+    to   { height: 24px; opacity: .95; }
+  }
+
+  /* Think ring */
+  .think-ring {
+    display: none;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: rgba(255,255,255,.7);
+    border-right-color: rgba(255,255,255,.2);
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Speak bars */
+  .speak-bars {
+    display: none;
+    align-items: center;
+    gap: 2px;
+    height: 26px;
+  }
+  .speak-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,.85);
+    animation: speak-wave 0s ease-in-out infinite alternate;
+    min-height: 3px;
+  }
+  .speak-bar:nth-child(1) { animation-duration: .6s;  animation-delay: .0s; }
+  .speak-bar:nth-child(2) { animation-duration: .42s; animation-delay: .08s; }
+  .speak-bar:nth-child(3) { animation-duration: .55s; animation-delay: .16s; }
+  .speak-bar:nth-child(4) { animation-duration: .38s; animation-delay: .04s; }
+  .speak-bar:nth-child(5) { animation-duration: .65s; animation-delay: .12s; }
+  .speak-bar:nth-child(6) { animation-duration: .44s; animation-delay: .2s; }
+  .speak-bar:nth-child(7) { animation-duration: .5s;  animation-delay: .06s; }
+  @keyframes speak-wave {
+    from { height: 5px; opacity: .5; }
+    to   { height: 22px; opacity: 1; }
+  }
+
+  /* Label */
+  .orb-label { text-align: center; }
+  .orb-name {
+    color: #5ab8a0;
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .orb-status {
+    color: #3a4050;
+    font-size: 9px;
+    letter-spacing: .06em;
+    min-height: 12px;
+    transition: color .4s;
+  }
+</style>
+</head>
+<body>
+
+<div class="orb-scene">
+  <div class="ring ring-1"></div>
+  <div class="ring ring-2"></div>
+  <div class="orb" id="orb">
+    <div class="orb-surface" id="orb-surface">
+      <div class="orb-center">
+        <div class="idle-dot" id="idle-dot"></div>
+        <div class="mic-bars" id="mic-bars">
+          <div class="mic-bar"></div><div class="mic-bar"></div>
+          <div class="mic-bar"></div><div class="mic-bar"></div>
+          <div class="mic-bar"></div><div class="mic-bar"></div>
+          <div class="mic-bar"></div>
+        </div>
+        <div class="think-ring" id="think-ring"></div>
+        <div class="speak-bars" id="speak-bars">
+          <div class="speak-bar"></div><div class="speak-bar"></div>
+          <div class="speak-bar"></div><div class="speak-bar"></div>
+          <div class="speak-bar"></div><div class="speak-bar"></div>
+          <div class="speak-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="orb-label">
+  <div class="orb-name">Jarvis</div>
+  <div class="orb-status" id="status-label">idle</div>
+</div>
+
+<script>
+const MODES = {
+  idle: {
+    label: 'idle',
+    bg: 'radial-gradient(circle at 38% 34%, rgba(90,184,160,.92) 0%, rgba(40,177,163,.55) 38%, rgba(14,30,44,1) 100%)',
+    glow: '0 0 24px rgba(40,177,163,.30), 0 0 48px rgba(40,177,163,.12), inset 0 0 18px rgba(0,0,0,.5)',
+    orbAnim: 'orb-idle 4s ease-in-out infinite',
+    ringAnim: 'ring-idle 4s ease-in-out infinite',
+  },
+  user: {
+    label: 'lytter…',
+    bg: 'radial-gradient(circle at 38% 34%, rgba(120,200,180,.95) 0%, rgba(60,190,160,.6) 38%, rgba(14,30,44,1) 100%)',
+    glow: '0 0 32px rgba(60,190,160,.55), 0 0 64px rgba(40,177,163,.22), inset 0 0 18px rgba(0,0,0,.4)',
+    orbAnim: 'orb-idle 1.8s ease-in-out infinite',
+    ringAnim: 'ring-idle 1.8s ease-in-out infinite',
+  },
+  think: {
+    label: 'tænker…',
+    bg: 'radial-gradient(circle at 38% 34%, rgba(100,140,200,.85) 0%, rgba(70,100,180,.5) 38%, rgba(14,30,44,1) 100%)',
+    glow: '0 0 28px rgba(80,120,200,.4), 0 0 56px rgba(60,100,180,.16), inset 0 0 18px rgba(0,0,0,.5)',
+    orbAnim: 'orb-idle 2.5s ease-in-out infinite',
+    ringAnim: 'ring-idle 2.5s ease-in-out infinite',
+  },
+  speak: {
+    label: 'taler…',
+    bg: 'radial-gradient(circle at 38% 34%, rgba(90,184,160,.98) 0%, rgba(40,177,163,.7) 38%, rgba(14,30,44,1) 100%)',
+    glow: '0 0 36px rgba(40,177,163,.6), 0 0 72px rgba(40,177,163,.25), inset 0 0 18px rgba(0,0,0,.4)',
+    orbAnim: 'orb-idle 1.4s ease-in-out infinite',
+    ringAnim: 'ring-idle 1.2s ease-in-out infinite',
+  },
+};
+
+const ELEMENTS = {
+  idle:  document.getElementById('idle-dot'),
+  user:  document.getElementById('mic-bars'),
+  think: document.getElementById('think-ring'),
+  speak: document.getElementById('speak-bars'),
+};
+
+function set(mode) {
+  const m = MODES[mode];
+  document.getElementById('status-label').textContent = m.label;
+  const surf = document.getElementById('orb-surface');
+  surf.style.background = m.bg;
+  surf.style.boxShadow = m.glow;
+  surf.style.animation = m.orbAnim;
+  document.querySelectorAll('.ring').forEach(r => r.style.animation = m.ringAnim);
+  Object.entries(ELEMENTS).forEach(([k, el]) => {
+    el.style.display = k === mode ? (k === 'idle' ? 'block' : 'flex') : 'none';
+  });
+}
+
+set('idle');
+
+// Demo auto-cycle — stoppes af Qt-launcheren via window._demoCycle
+let _step = 0;
+const _cycle = ['idle','idle','idle','user','think','speak','speak','idle'];
+window._demoCycle = setInterval(() => {
+  _step = (_step + 1) % _cycle.length;
+  set(_cycle[_step]);
+}, 1800);
+</script>
+</body>
+</html>

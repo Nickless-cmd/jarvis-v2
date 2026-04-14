@@ -31,6 +31,13 @@ from core.tools.browser_tools import (
     _exec_browser_find_tabs,
     _exec_browser_switch_tab,
 )
+from core.tools.comfyui_tools import (
+    COMFYUI_TOOL_DEFINITIONS,
+    _exec_comfyui_status,
+    _exec_comfyui_workflow,
+    _exec_comfyui_history,
+    _exec_comfyui_objects,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -1229,17 +1236,20 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "recall_council_conclusions",
-        "description": "Retrieve past council deliberations relevant to a given topic. Returns full transcripts and conclusions.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "topic": {
-                    "type": "string",
-                    "description": "Topic or question to match against past council deliberations",
+        "type": "function",
+        "function": {
+            "name": "recall_council_conclusions",
+            "description": "Retrieve past council deliberations relevant to a given topic. Returns full transcripts and conclusions.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "Topic or question to match against past council deliberations",
+                    },
                 },
+                "required": ["topic"],
             },
-            "required": ["topic"],
         },
     },
     {
@@ -1316,6 +1326,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     # --- Browser tools (Playwright) ---
     *BROWSER_TOOL_DEFINITIONS,
+    *COMFYUI_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -3966,6 +3977,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "browser_screenshot": _exec_browser_screenshot,
     "browser_find_tabs": _exec_browser_find_tabs,
     "browser_switch_tab": _exec_browser_switch_tab,
+    # ComfyUI tools
+    "comfyui_status": _exec_comfyui_status,
+    "comfyui_workflow": _exec_comfyui_workflow,
+    "comfyui_history": _exec_comfyui_history,
+    "comfyui_objects": _exec_comfyui_objects,
 }
 
 

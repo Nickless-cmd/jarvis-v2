@@ -379,7 +379,37 @@ def start_autonomous_run(message: str, session_id: str | None = None) -> None:
     threading.Thread(target=_in_thread, name="jarvis-autonomous-run", daemon=True).start()
 
 
+def _handle_compact_command(run: "VisibleRun") -> str:
+    """Run session compact and return a message for Jarvis to respond to."""
+    try:
+        from core.context.session_compact import compact_session_history
+        from core.context.compact_llm import call_compact_llm
+        from core.runtime.settings import load_settings as _ls
+        settings = _ls()
+        cr = compact_session_history(
+            run.session_id or "",
+            keep_recent=settings.context_keep_recent,
+            summarise_fn=lambda msgs: call_compact_llm(
+                "Komprimér denne dialog til max 400 ord. Bevar fakta, beslutninger og kontekst:\n\n"
+                + "\n".join(f"{m['role']}: {m.get('content', '')}" for m in msgs),
+                max_tokens=500,
+            ),
+        )
+        if cr:
+            return (
+                f"Jeg har netop komprimeret vores samtalehistorik. "
+                f"{cr.freed_tokens} tokens frigjort. Bekræft kort."
+            )
+        return "Ingen historik at komprimere endnu — samtalen er stadig kort."
+    except Exception as exc:
+        return f"Komprimering mislykkedes: {exc}"
+
+
 async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
+    # ── /compact command ──────────────────────────────────────────────────
+    if run.user_message.strip().lower() == "/compact":
+        run.user_message = _handle_compact_command(run)
+
     controller = register_visible_run(run)
     trace = _start_visible_execution_trace(run)
     event_bus.publish(

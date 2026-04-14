@@ -1152,6 +1152,34 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "queue_followup",
+            "description": (
+                "Queue a bounded heartbeat follow-up so Jarvis can come back "
+                "and say something in chat at the next tick. Use ONLY when you "
+                "have a genuine reason to speak later — an unanswered question, "
+                "a promise to revisit, or a project need. Do NOT use as a "
+                "timer-style ping. Calling this queues exactly one delivery; "
+                "queue is FIFO."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "description": "Short label: 'follow-up', 'user-question', 'project-need', etc.",
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "What you want to say when you come back (will be delivered to chat).",
+                    },
+                },
+                "required": ["reason", "text"],
+            },
+        },
+    },
 ]
 
 
@@ -3505,6 +3533,27 @@ def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": str(exc), "status": "error"}
 
 
+def _exec_queue_followup(args: dict[str, Any]) -> dict[str, Any]:
+    reason = str(args.get("reason") or "").strip()
+    text = str(args.get("text") or "").strip()
+    if not reason:
+        return {"status": "error", "error": "reason is required"}
+    if not text:
+        return {"status": "error", "error": "text is required"}
+    if len(text) > 2000:
+        return {"status": "error", "error": "text exceeds 2000 character limit"}
+    try:
+        from core.runtime.heartbeat_triggers import set_trigger_for_default_workspace
+    except Exception as exc:
+        return {"status": "error", "error": f"trigger module unavailable: {exc}"}
+    entry = set_trigger_for_default_workspace(
+        reason=reason, source="jarvis-self-followup", text=text
+    )
+    if entry is None:
+        return {"status": "error", "error": "failed to queue trigger"}
+    return {"status": "queued", "reason": reason, "created_at": entry.get("created_at", "")}
+
+
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
@@ -3557,6 +3606,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_archive": _exec_read_archive,
     "internal_api": _exec_internal_api,
     "db_query": _exec_db_query,
+    "queue_followup": _exec_queue_followup,
 }
 
 

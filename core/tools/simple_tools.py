@@ -20,6 +20,17 @@ from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
+from core.tools.browser_tools import (
+    BROWSER_TOOL_DEFINITIONS,
+    _exec_browser_navigate,
+    _exec_browser_read,
+    _exec_browser_click,
+    _exec_browser_type,
+    _exec_browser_submit,
+    _exec_browser_screenshot,
+    _exec_browser_find_tabs,
+    _exec_browser_switch_tab,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -1152,6 +1163,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    # --- Browser tools (Playwright) ---
+    *BROWSER_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -3607,6 +3620,15 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "internal_api": _exec_internal_api,
     "db_query": _exec_db_query,
     "queue_followup": _exec_queue_followup,
+    # Browser tools
+    "browser_navigate": _exec_browser_navigate,
+    "browser_read": _exec_browser_read,
+    "browser_click": _exec_browser_click,
+    "browser_type": _exec_browser_type,
+    "browser_submit": _exec_browser_submit,
+    "browser_screenshot": _exec_browser_screenshot,
+    "browser_find_tabs": _exec_browser_find_tabs,
+    "browser_switch_tab": _exec_browser_switch_tab,
 }
 
 

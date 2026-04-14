@@ -1,7 +1,28 @@
 import { useState, useEffect, useRef } from 'react'
-import { Copy, Check, ThumbsUp } from 'lucide-react'
+import { Copy, Check, ThumbsUp, Globe } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ApprovalCard } from './ApprovalCard'
+
+function BrowserIndicator({ browserBody }) {
+  const status = browserBody?.status
+  if (!status || status === 'idle' || status === 'absent') return null
+
+  const label = { navigating: 'navigerer…', observing: 'læser side…', acting: 'interagerer…' }[status] || 'browser aktiv…'
+  const url = (browserBody?.last_url || browserBody?.url || '').replace(/^https?:\/\//, '').split('?')[0].slice(0, 52)
+
+  return (
+    <div className="browser-indicator">
+      <div className="browser-indicator-icon">
+        <Globe size={12} />
+      </div>
+      <div className="browser-indicator-body">
+        <span className="browser-indicator-label">{label}</span>
+        {url && <span className="browser-indicator-url">{url}</span>}
+      </div>
+      <div className="browser-scan-bar" />
+    </div>
+  )
+}
 
 /**
  * Renders a single assistant message bubble with a hover toolbar.
@@ -20,15 +41,20 @@ function MessageWithActions({ message, workingSteps }) {
   return (
     <div className="message-group">
       <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
-        {message.pending ? (
-          <span
-            className="working-shimmer"
-            style={{ visibility: workingSteps?.some(s => s.status === 'running') ? 'visible' : 'hidden' }}
-          >
-            {workingSteps?.find((s) => s.status === 'running')?.detail ||
-              workingSteps?.find((s) => s.status === 'running')?.action ||
-              'working…'}
-          </span>
+        {message.pending && !message.content ? (
+          workingSteps?.some(s => s.status === 'running') ? (
+            <span className="working-shimmer">
+              {workingSteps.find(s => s.status === 'running')?.detail ||
+               workingSteps.find(s => s.status === 'running')?.action ||
+               'working…'}
+            </span>
+          ) : (
+            <div className="thinking-indicator">
+              <div className="thinking-dot" />
+              <div className="thinking-dot" />
+              <div className="thinking-dot" />
+            </div>
+          )
         ) : null}
         {message.content ? (
           <div className="message-content">
@@ -99,7 +125,8 @@ function AttachmentStrip({ attachments, sessionId, onOpenLightbox }) {
   )
 }
 
-export function ChatTranscript({ messages, workingSteps, sessionId }) {
+export function ChatTranscript({ messages, workingSteps, sessionId, isStreaming, jarvisSurface }) {
+  const browserBody = jarvisSurface?.continuity?.runtime_work?.browser_body || {}
   const transcriptRef = useRef(null)
   const hasInitialScrolled = useRef(false)
   const prevMessageCount = useRef(0)
@@ -178,6 +205,8 @@ export function ChatTranscript({ messages, workingSteps, sessionId }) {
           )
         )}
       </section>
+
+      {isStreaming && <BrowserIndicator browserBody={browserBody} />}
 
       {lightbox && (
         <div className="attachment-lightbox-overlay" onClick={() => setLightbox(null)}>

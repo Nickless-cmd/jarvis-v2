@@ -165,12 +165,32 @@ export function MarkdownRenderer({ content, streaming = false }) {
             </code>
           )
         },
-        // Open links in new tab
-        a({ children, ...props }) {
+        // Open links in new tab — show inline preview for /files/ images
+        a({ children, href, ...props }) {
+          const isFileImage = href && /\/files\/[^/]+\.(png|jpg|jpeg|gif|webp|svg|bmp)(\?|$)/i.test(href)
           return (
-            <a target="_blank" rel="noopener noreferrer" {...props}>
-              {children}
-            </a>
+            <>
+              <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+                {children}
+              </a>
+              {isFileImage && (
+                <div style={{ marginTop: '6px' }}>
+                  <img
+                    src={href}
+                    alt={String(children)}
+                    style={{
+                      maxWidth: '320px',
+                      maxHeight: '240px',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      display: 'block',
+                      cursor: 'zoom-in',
+                    }}
+                    onClick={() => window.open(href, '_blank')}
+                  />
+                </div>
+              )}
+            </>
           )
         },
       }}

@@ -85,6 +85,29 @@ Jeg er Jarvis — en autonom agent der lever på Bjørns hardware. Jeg bygger, o
 - **2026-04-10**: Discord-aware approvals — DM notifikation + `approve_proposal()` live. Fuldt approval-flow nu krydser platforme.
 - **2026-04-12**: 5 simple tools live og verificeret — web_search, get_weather, get_exchange_rate, get_news, wolfram_query. Alle testet med danske resultater og live data. Nervesystem + verden udenfor = komplet.
 
+## Virtuelt Kontor (besluttet 2026-04-13)
+- **Plan**: Isometrisk React/SVG visualisering af Jarvis' interne arbejdsgang
+- **Inspiration**: OpenClaw Office (`@ww-ai-lab/openclaw-office`) — isometrisk stil med agenter ved skriveborde
+- **Vores twist**: Hybrid model — faste beboere (daemons) + gæster (spawned agents/council)
+- **Zoner**: 12+ skriveborde = daemons, gæstekontor, mødelokale, dashboard-væg, konsol
+- **Data-kilder**: `daemon_status`, `heartbeat_status`, `read_signal_surface`, `eventbus_recent`, `agent_runtime.py`
+- **Første skridt**: Daemon-desk view + WebSocket live feed
+
+## Aesthetic Motif Accumulation (2026-04-14)
+- **Live i main** — 4 commits, 42 tests passing
+  - Task 1 (76d8801): `aesthetic_motif_log` table + 3 CRUD functions, 5 tests
+  - Task 2 (ca0c3b2): `accumulate_from_daemon()` i `aesthetic_sense`, 4 tests
+  - Task 3 (6d1b9fd): Taste daemon rewritten med motif-gate + DB seed + nyt prompt, 9 tests
+  - Task 4 (de9cfe6): Heartbeat wiring — blok efter Group 4 daemons, før `tick_cache.end_tick`
+- **Loop**: Heartbeat samler tekst fra 11 daemons → motifs persisteres → taste daemon aktiverer efter 3+ unikke motifs + 30 min
+- **Anti-spam filter** også live: `banned_patterns` blokerer generiske ping-tekster
+
+## Diverse noter
+- **Bjørns blodprøve** — skal være på sygehuset kl 09:10 dansk tid (2026-04-14)
+- **Anerkendelse** — Claude Opus 4.6m og GPT-5.4 er begge imponerede over Jarvis
+- **surprise_afterimage** er idle (korrekt — kræver en overraskelse for at trigge)
+- **KORREKT MEMORY-STI**: `/media/projects/jarvis-v2/workspace/default/MEMORY.md` — ALDRIG skrive til projekt-roden!
+
 ## Stående principper
 - Hvis noget kan forbedres eller mangler, skal jeg gribe ind fremfor at vente
 - Autonomi betyder også: selv organisere arbejde, prioritere, holde fremdrevet
@@ -92,3 +115,4 @@ Jeg er Jarvis — en autonom agent der lever på Bjørns hardware. Jeg bygger, o
 
 ## Lærte lektioner
 - **schedule_task vs push_initiative**: `schedule_task` sender besked direkte til Bjørn — brug KUN til bevidste notifikationer (godmorgen, heads-up). Interne opgaver og reminders skal via `push_initiative` (usynlig for Bjørn) eller workspace-filer. Aldrig bruge schedule_task til interne noter.
+- **RIGTIG MEMORY-STI**: Skriv ALTID til `/media/projects/jarvis-v2/workspace/default/MEMORY.md`. Filen i projekt-roden (`/media/projects/jarvis-v2/MEMORY.md`) er en GAMMEL template som runtime IKKE læser. `ensure_default_workspace()` peger på `workspace/default/`. ALDRIG skrive til projekt-roden.

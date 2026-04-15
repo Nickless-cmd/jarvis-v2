@@ -38,6 +38,12 @@ from core.tools.comfyui_tools import (
     _exec_comfyui_history,
     _exec_comfyui_objects,
 )
+from core.tools.tiktok_tools import (
+    TIKTOK_TOOL_DEFINITIONS,
+    _exec_tiktok_upload,
+    _exec_tiktok_login,
+    _exec_tiktok_show,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -1327,6 +1333,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # --- Browser tools (Playwright) ---
     *BROWSER_TOOL_DEFINITIONS,
     *COMFYUI_TOOL_DEFINITIONS,
+    *TIKTOK_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -4060,6 +4067,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "comfyui_workflow": _exec_comfyui_workflow,
     "comfyui_history": _exec_comfyui_history,
     "comfyui_objects": _exec_comfyui_objects,
+    # TikTok tools
+    "tiktok_upload": _exec_tiktok_upload,
+    "tiktok_login": _exec_tiktok_login,
+    "tiktok_show": _exec_tiktok_show,
 }
 
 

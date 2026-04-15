@@ -1,4 +1,34 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+
+// Smiley → emoji conversion (triggers when space/newline follows the smiley)
+const SMILEY_REPLACEMENTS = [
+  [/:\-\)/g, '😊'], [/:\)/g, '😊'],
+  [/:\-D/g, '😄'], [/:D/g, '😄'],
+  [/;\-\)/g, '😉'], [/;\)/g, '😉'],
+  [/:\-P/gi, '😛'], [/:P/gi, '😛'],
+  [/:\-\(/g, '😢'], [/:\(/g, '😢'],
+  [/:\-O/gi, '😮'], [/:O/gi, '😮'],
+  [/:\-\|/g, '😐'], [/:\|/g, '😐'],
+  [/>:\(/g, '😠'],
+  [/:\*/g, '😘'],
+  [/<3/g, '❤️'],
+  [/<\/3/g, '💔'],
+  [/XD/g, '😆'],
+  [/xD/g, '😆'],
+]
+
+function applySmileys(text) {
+  // Only replace smileys that are followed by whitespace or end-of-string
+  // to avoid mangling mid-word text
+  let result = text
+  for (const [pattern, emoji] of SMILEY_REPLACEMENTS) {
+    result = result.replace(
+      new RegExp(pattern.source + '(?=\\s|$)', pattern.flags),
+      emoji,
+    )
+  }
+  return result
+}
 import { ArrowUp, Square, Plus, GitBranch, GitCommit, ShieldCheck, Layers, Activity, Check, X, Monitor } from 'lucide-react'
 import { backend } from '../../lib/adapters'
 
@@ -338,7 +368,12 @@ export function Composer({
           ref={textareaRef}
           className="composer-textarea"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            const raw = e.target.value
+            // Convert smileys that are now followed by whitespace
+            const converted = applySmileys(raw)
+            onChange(converted)
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()

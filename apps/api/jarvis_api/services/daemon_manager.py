@@ -197,6 +197,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_enabled": False,
         "description": "Daily content research: generates TikTok concept pool for 3 slot types",
     },
+    "mail_checker": {
+        "module": "apps.api.jarvis_api.services.mail_checker_daemon",
+        "reset_var": "_last_check_at",
+        "reset_value": None,
+        "default_cadence_minutes": 15,
+        "description": "Checks jarvis@srvlab.dk inbox for new emails and notifies via eventbus",
+    },
 }
 
 

@@ -2161,6 +2161,14 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    if _dm.is_enabled("mail_checker"):
+        try:
+            from apps.api.jarvis_api.services.mail_checker_daemon import tick_mail_checker_daemon
+            _mc_result = tick_mail_checker_daemon()
+            _dm.record_daemon_tick("mail_checker", _mc_result or {})
+        except Exception:
+            pass
+
     # --- Aesthetic motif accumulation ---
     try:
         from apps.api.jarvis_api.services.aesthetic_sense import accumulate_from_daemon

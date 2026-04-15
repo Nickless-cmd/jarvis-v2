@@ -181,6 +181,22 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 60,
         "description": "Archives and deletes stale signals older than 24h across all signal tables",
     },
+    "tiktok_content": {
+        "module": "apps.api.jarvis_api.services.tiktok_content_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 480,
+        "default_enabled": False,
+        "description": "Autonomous TikTok content: 3 videos/day (motivation, humor, cosmic)",
+    },
+    "tiktok_research": {
+        "module": "apps.api.jarvis_api.services.tiktok_research_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 1440,
+        "default_enabled": False,
+        "description": "Daily content research: generates TikTok concept pool for 3 slot types",
+    },
 }
 
 
@@ -225,7 +241,8 @@ def is_enabled(name: str) -> bool:
     if name not in _REGISTRY:
         return True
     entry = _get_daemon_state(name)
-    return bool(entry.get("enabled", True))
+    default = _REGISTRY[name].get("default_enabled", True)
+    return bool(entry.get("enabled", default))
 
 
 def set_daemon_enabled(name: str, enabled: bool) -> None:
@@ -271,9 +288,10 @@ def get_all_daemon_states() -> list[dict[str, Any]]:
         entry = file_state.get(name, {})
         override = entry.get("interval_minutes_override")
         last_run = entry.get("last_run_at", "")
+        _default_enabled = reg.get("default_enabled", True)
         result.append({
             "name": name,
-            "enabled": bool(entry.get("enabled", True)),
+            "enabled": bool(entry.get("enabled", _default_enabled)),
             "description": reg["description"],
             "default_cadence_minutes": reg["default_cadence_minutes"],
             "interval_minutes_override": override,

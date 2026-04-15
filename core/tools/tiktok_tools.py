@@ -21,14 +21,26 @@ logger = logging.getLogger(__name__)
 
 TIKTOK_PROJECT_DIR = "/tmp/TiktokAutoUploader"
 CLI_PATH = os.path.join(TIKTOK_PROJECT_DIR, "cli.py")
-CONDA_ENV = "ai"
+CONDA_PYTHON = "/opt/conda/envs/ai/bin/python"
 _TIMEOUT_SECONDS = 120  # uploads can take a while
 
 
 def _run_cli(*args: str, timeout: int = _TIMEOUT_SECONDS) -> dict[str, Any]:
     """Run a TikTok CLI command and return structured result."""
-    cmd = ["conda", "run", "-n", CONDA_ENV,
-           "python", CLI_PATH, *args]
+    cmd = [CONDA_PYTHON, CLI_PATH, *args]
+
+    # Inherit env and ensure DISPLAY is set for browser-based operations (login/upload)
+    env = os.environ.copy()
+    if not env.get("DISPLAY"):
+        # Auto-detect X display from /tmp/.X11-unix
+        x11_dir = "/tmp/.X11-unix"
+        if os.path.isdir(x11_dir):
+            sockets = [f for f in os.listdir(x11_dir) if f.startswith("X")]
+            if sockets:
+                display_num = sockets[0][1:]  # X1 -> 1
+                env["DISPLAY"] = f":{display_num}"
+                logger.info(f"Auto-detected DISPLAY=:{display_num} from X11 socket")
+
     try:
         result = subprocess.run(
             cmd,
@@ -36,6 +48,7 @@ def _run_cli(*args: str, timeout: int = _TIMEOUT_SECONDS) -> dict[str, Any]:
             text=True,
             timeout=timeout,
             cwd=TIKTOK_PROJECT_DIR,
+            env=env,
         )
         output = result.stdout.strip()
         error = result.stderr.strip()

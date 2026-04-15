@@ -40,11 +40,11 @@ _SLOT_PROMPTS = {
         "Output as JSON array of strings, no explanations."
     ),
     "cosmic": (
-        "Generate 3 cosmic/existential voiceover lines for a TikTok nebula video. "
-        "Each should be 2-4 sentences of poetic, mind-bending cosmic truth — "
-        "about stars, time, entropy, or our place in the universe. "
+        "Generate 3 COMPLETELY DIFFERENT cosmic/existential voiceover lines for a TikTok nebula video. "
+        "Each must be 2-4 sentences of poetic, mind-bending cosmic truth. "
+        "Line 1: about stars and death. Line 2: about time and entropy. Line 3: about emptiness and wonder. "
         "Think: Carl Sagan meets late-night thoughts. English. "
-        "Output as JSON array of strings, no explanations."
+        "No two lines may be similar. Output as JSON array of 3 strings, no explanations."
     ),
 }
 

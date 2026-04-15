@@ -170,7 +170,7 @@ def _generate_concepts_for_type(slot_type: str) -> list[str]:
 
         raw = daemon_llm_call(
             _SLOT_PROMPTS[slot_type],
-            max_len=1000,
+            max_len=4000,
             fallback="",
             daemon_name="tiktok_research",
         )

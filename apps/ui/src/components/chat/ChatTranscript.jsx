@@ -3,6 +3,31 @@ import { Copy, Check, ThumbsUp, Globe } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ApprovalCard } from './ApprovalCard'
 
+const SMILEY_REPLACEMENTS = [
+  [/:\-\)/g, '😊'], [/:\)/g, '😊'],
+  [/:\-D/g, '😄'], [/:D/g, '😄'],
+  [/;\-\)/g, '😉'], [/;\)/g, '😉'],
+  [/:\-P/gi, '😛'], [/:P/gi, '😛'],
+  [/:\-\(/g, '😢'], [/:\(/g, '😢'],
+  [/:\-O/gi, '😮'], [/:O/gi, '😮'],
+  [/:\-\|/g, '😐'], [/:\|/g, '😐'],
+  [/>:\(/g, '😠'],
+  [/:\*/g, '😘'],
+  [/<3/g, '❤️'],
+  [/<\/3/g, '💔'],
+  [/XD/g, '😆'],
+  [/xD/g, '😆'],
+]
+
+function convertSmileys(text) {
+  if (!text) return text
+  let result = text
+  for (const [pattern, emoji] of SMILEY_REPLACEMENTS) {
+    result = result.replace(pattern, emoji)
+  }
+  return result
+}
+
 function BrowserIndicator({ browserBody }) {
   const status = browserBody?.status
   if (!status || status === 'idle' || status === 'absent') return null
@@ -195,7 +220,7 @@ export function ChatTranscript({ messages, workingSteps, sessionId, isStreaming,
                   )}
                   {message.content ? (
                     <div className="message-content">
-                      <MarkdownRenderer content={message.content} />
+                      <MarkdownRenderer content={convertSmileys(message.content)} />
                     </div>
                   ) : null}
                 </div>

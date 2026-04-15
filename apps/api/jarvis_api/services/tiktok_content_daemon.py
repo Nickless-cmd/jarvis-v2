@@ -73,9 +73,30 @@ TIKTOK_USER = "rotflmaodilligaf"
 VIDEOS_DIR = "/tmp/TiktokAutoUploader/VideosDirPath/"
 VIDEO_PIPELINE = "/home/bs/ai/jarvis_tiktok_pipeline.py"
 AUDIO_PIPELINE = "/home/bs/ai/jarvis_audio_pipeline.py"
-SVD_PIPELINE = "/home/bs/ai/jarvis_svd_pipeline.py"
+FULL_PIPELINE = "/home/bs/ai/jarvis_full_pipeline.py"
 CONDA_PYTHON = "/opt/conda/envs/ai/bin/python"
 TTS_VOICE = "en-US-GuyNeural"
+
+# SDXL image prompts per slot — fresh unique image every run
+_SLOT_SDXL_PROMPTS = {
+    _SLOT_MORNING: (
+        "dramatic golden sunrise over mountain peaks, rays of light, cinematic, "
+        "epic, 8k, photorealistic, high contrast, powerful, uplifting"
+    ),
+    _SLOT_MIDDAY: (
+        "dark surrealist landscape, twilight, eerie fog, gothic mood, "
+        "cinematic, 8k, moody, desaturated, unsettling beauty"
+    ),
+    _SLOT_EVENING: (
+        "deep space nebula, cosmic gas clouds, stars being born and dying, "
+        "ethereal, iridescent, photorealistic, 8k, awe-inspiring, Hubble-style"
+    ),
+}
+
+_SLOT_SDXL_NEGATIVE = (
+    "blurry, low quality, watermark, text, ugly, deformed, "
+    "cartoon, anime, painting, drawing, oversaturated"
+)
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -128,38 +149,31 @@ def tick_tiktok_content_daemon() -> dict:
         if image_path is None:
             return {"skipped": True, "reason": "no_image", "slot": slot}
 
-        # 5. Run video pipeline
+        # 5. Run full pipeline: SDXL image → SVD animation → text overlay
         with tempfile.TemporaryDirectory(prefix="jarvis_tiktok_") as tmpdir:
             raw_video = os.path.join(tmpdir, f"raw_{slot}.mp4")
 
-            # Evening slot: try SVD animated video first, fall back to static zoom
-            if slot == _SLOT_EVENING:
-                svd_cmd = [
-                    CONDA_PYTHON, SVD_PIPELINE,
-                    "--image", image_path,
-                    "--output", raw_video,
-                    "--width", "576",
-                    "--height", "1024",
-                    "--frames", "25",
-                    "--fps", "6",
-                    "--motion", "100",
-                    "--steps", "20",
-                ]
-                svd_result = subprocess.run(
-                    svd_cmd,
-                    capture_output=True, text=True, timeout=300,
-                )
-                if svd_result.returncode != 0 or not os.path.exists(raw_video):
-                    # SVD failed — fall back to static zoom pipeline
-                    video_cmd = [
-                        CONDA_PYTHON, VIDEO_PIPELINE,
-                        "--image", image_path,
-                        "--no-text",
-                        "--duration", "15",
-                        "--output", raw_video,
-                    ]
-                    subprocess.run(video_cmd, capture_output=True, text=True, timeout=120)
-            else:
+            sdxl_prompt = _SLOT_SDXL_PROMPTS[slot]
+            full_cmd = [
+                CONDA_PYTHON, FULL_PIPELINE,
+                "--prompt", sdxl_prompt,
+                "--text", quote,
+                "--output", raw_video,
+                "--width", "576",
+                "--height", "1024",
+                "--sdxl-steps", "25",
+                "--svd-frames", "25",
+                "--svd-fps", "6",
+                "--svd-motion", "100",
+                "--svd-steps", "20",
+            ]
+            full_result = subprocess.run(
+                full_cmd,
+                capture_output=True, text=True, timeout=600,
+            )
+
+            if full_result.returncode != 0 or not os.path.exists(raw_video):
+                # Full pipeline failed — fall back to static zoom
                 video_cmd = [
                     CONDA_PYTHON, VIDEO_PIPELINE,
                     "--image", image_path,

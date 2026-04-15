@@ -30,6 +30,22 @@ logger = logging.getLogger("uvicorn.error")
 router = APIRouter()
 
 
+@router.get("/v1/models")
+async def list_models() -> JSONResponse:
+    """OpenAI-compatible model list — exposes Jarvis as a single model."""
+    return JSONResponse(content={
+        "object": "list",
+        "data": [
+            {
+                "id": "jarvis",
+                "object": "model",
+                "created": 1700000000,
+                "owned_by": "jarvis",
+            }
+        ],
+    })
+
+
 @router.post("/v1/chat/completions", response_model=None)
 async def chat_completions(request: Request) -> JSONResponse | StreamingResponse:
     """OpenAI-compatible chat completion endpoint wrapping Jarvis' visible lane."""

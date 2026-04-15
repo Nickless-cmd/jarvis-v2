@@ -71,14 +71,14 @@ _SLOT_BG_COLORS = {
 
 TIKTOK_USER = "rotflmaodilligaf"
 VIDEOS_DIR = "/tmp/TiktokAutoUploader/VideosDirPath/"
-VIDEO_PIPELINE = "/home/bs/ai/jarvis_tiktok_pipeline.py"
-AUDIO_PIPELINE = "/home/bs/ai/jarvis_audio_pipeline.py"
-FULL_PIPELINE = "/home/bs/ai/jarvis_full_pipeline.py"
+VIDEO_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_tiktok_pipeline.py"
+AUDIO_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_audio_pipeline.py"
+FULL_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_full_pipeline.py"
 CONDA_PYTHON = "/opt/conda/envs/ai/bin/python"
 TTS_VOICE = "en-US-GuyNeural"
-PIAPI_PIPELINE = "/home/bs/ai/jarvis_piapi_pipeline.py"
-KLING_PIPELINE = "/home/bs/ai/jarvis_kling_pipeline.py"
-JSON2VIDEO_PIPELINE = "/home/bs/ai/jarvis_json2video_pipeline.py"
+PIAPI_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_piapi_pipeline.py"
+KLING_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_kling_pipeline.py"
+JSON2VIDEO_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_json2video_pipeline.py"
 
 # SDXL image prompts per slot — fresh unique image every run
 _SLOT_SDXL_PROMPTS = {

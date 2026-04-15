@@ -48,6 +48,11 @@ from core.tools.tiktok_analytics_tools import (
     TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     _exec_tiktok_analytics,
 )
+from core.tools.mail_tools import (
+    MAIL_TOOL_DEFINITIONS,
+    _exec_send_mail,
+    _exec_read_mail,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -1339,6 +1344,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *COMFYUI_TOOL_DEFINITIONS,
     *TIKTOK_TOOL_DEFINITIONS,
     *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
+    *MAIL_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -4077,6 +4083,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "tiktok_login": _exec_tiktok_login,
     "tiktok_show": _exec_tiktok_show,
     "tiktok_analytics": _exec_tiktok_analytics,
+    # Mail tools
+    "send_mail": _exec_send_mail,
+    "read_mail": _exec_read_mail,
 }
 
 

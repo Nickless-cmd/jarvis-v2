@@ -166,6 +166,9 @@ def tick_tiktok_content_daemon() -> dict:
                 "--svd-fps", "6",
                 "--svd-motion", "100",
                 "--svd-steps", "20",
+                "--loop", "3",
+                "--add-voice",
+                "--voice", TTS_VOICE,
             ]
             full_result = subprocess.run(
                 full_cmd,
@@ -186,30 +189,11 @@ def tick_tiktok_content_daemon() -> dict:
             if not os.path.exists(raw_video):
                 return {"skipped": True, "reason": "video_pipeline_failed", "slot": slot}
 
-            # 6. Evening slot: run audio pipeline (add voiceover)
-            final_video = raw_video
-            if slot == _SLOT_EVENING:
-                audio_video = os.path.join(tmpdir, f"audio_{slot}.mp4")
-                audio_cmd = [
-                    CONDA_PYTHON, AUDIO_PIPELINE,
-                    "--video", raw_video,
-                    "--text", quote,
-                    "--voice", TTS_VOICE,
-                    "--output", audio_video,
-                ]
-                ap_result = subprocess.run(
-                    audio_cmd,
-                    capture_output=True, text=True, timeout=120,
-                )
-                if ap_result.returncode == 0 and os.path.exists(audio_video):
-                    final_video = audio_video
-                # Non-fatal: proceed with raw video if audio pipeline fails
-
-            # 7. Copy to VideosDirPath
+            # 6. Copy to VideosDirPath (audio + loop already handled by full_pipeline)
             Path(VIDEOS_DIR).mkdir(parents=True, exist_ok=True)
             dest_filename = f"jarvis_{slot}_{date_str.replace('-', '')}.mp4"
             dest_path = os.path.join(VIDEOS_DIR, dest_filename)
-            shutil.copy2(final_video, dest_path)
+            shutil.copy2(raw_video, dest_path)
 
         # 8. Mark slot as fired before upload so a mid-upload kill won't retry
         if date_str not in _slots_fired_today:

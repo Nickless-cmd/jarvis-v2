@@ -40,11 +40,10 @@ _SLOT_PROMPTS = {
         "Output as JSON array of strings, no explanations."
     ),
     "cosmic": (
-        "Generate 3 COMPLETELY DIFFERENT cosmic/existential voiceover lines for a TikTok nebula video. "
-        "Each must be 2-4 sentences of poetic, mind-bending cosmic truth. "
-        "Line 1: about stars and death. Line 2: about time and entropy. Line 3: about emptiness and wonder. "
-        "Think: Carl Sagan meets late-night thoughts. English. "
-        "No two lines may be similar. Output as JSON array of 3 strings, no explanations."
+        "Generate 3 different cosmic voiceover lines for TikTok. "
+        "Each line is ONE sentence only — poetic, mind-bending. Max 20 words each. English. "
+        "Line 1: about stars dying. Line 2: about time and scale. Line 3: about emptiness. "
+        "Output ONLY a JSON array of exactly 3 strings. No explanations, no markdown, no extra text."
     ),
 }
 
@@ -191,9 +190,17 @@ def _generate_concepts_for_type(slot_type: str) -> list[str]:
 
 def _parse_json_array(text: str) -> list | None:
     """Try to parse a JSON array from LLM output. Returns None on failure."""
+    # Strip markdown code fences if present
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        cleaned = "\n".join(
+            l for l in lines if not l.strip().startswith("```")
+        ).strip()
+
+    # Try direct parse first
     try:
-        # Try direct parse first
-        result = json.loads(text)
+        result = json.loads(cleaned)
         if isinstance(result, list):
             return result
     except Exception:
@@ -201,12 +208,21 @@ def _parse_json_array(text: str) -> list | None:
 
     # Try to extract JSON array from surrounding text
     try:
-        start = text.find("[")
-        end = text.rfind("]")
+        start = cleaned.find("[")
+        end = cleaned.rfind("]")
         if start != -1 and end != -1 and end > start:
-            result = json.loads(text[start : end + 1])
+            result = json.loads(cleaned[start : end + 1])
             if isinstance(result, list):
                 return result
+    except Exception:
+        pass
+
+    # Last resort: extract quoted strings manually
+    try:
+        import re
+        strings = re.findall(r'"((?:[^"\\]|\\.)*)"', cleaned)
+        if len(strings) >= 3:
+            return strings[:3]
     except Exception:
         pass
 

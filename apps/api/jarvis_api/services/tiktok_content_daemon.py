@@ -76,6 +76,9 @@ AUDIO_PIPELINE = "/home/bs/ai/jarvis_audio_pipeline.py"
 FULL_PIPELINE = "/home/bs/ai/jarvis_full_pipeline.py"
 CONDA_PYTHON = "/opt/conda/envs/ai/bin/python"
 TTS_VOICE = "en-US-GuyNeural"
+PIAPI_PIPELINE = "/home/bs/ai/jarvis_piapi_pipeline.py"
+KLING_PIPELINE = "/home/bs/ai/jarvis_kling_pipeline.py"
+JSON2VIDEO_PIPELINE = "/home/bs/ai/jarvis_json2video_pipeline.py"
 
 # SDXL image prompts per slot — fresh unique image every run
 _SLOT_SDXL_PROMPTS = {
@@ -144,47 +147,71 @@ def tick_tiktok_content_daemon() -> dict:
             quote = _generate_quote(slot)
             hashtags_override = None
 
-        # 4. Find or create source image
+        # 4. Find or create source image (used as Kling i2v input or SDXL fallback)
         image_path = _get_source_image(slot)
         if image_path is None:
             return {"skipped": True, "reason": "no_image", "slot": slot}
 
-        # 5. Run full pipeline: SDXL image → SVD animation → text overlay
+        # 5. Generate video: PiAPI Kling → Direct Kling → SDXL+SVD → static zoom
+        # Note: Direct Kling requires separate developer credits at klingai.com/developer
         with tempfile.TemporaryDirectory(prefix="jarvis_tiktok_") as tmpdir:
             raw_video = os.path.join(tmpdir, f"raw_{slot}.mp4")
+            video_backend = None
 
-            sdxl_prompt = _SLOT_SDXL_PROMPTS[slot]
-            full_cmd = [
-                CONDA_PYTHON, FULL_PIPELINE,
-                "--prompt", sdxl_prompt,
-                "--text", quote,
-                "--output", raw_video,
-                "--width", "576",
-                "--height", "1024",
-                "--sdxl-steps", "25",
-                "--svd-frames", "25",
-                "--svd-fps", "6",
-                "--svd-motion", "100",
-                "--svd-steps", "20",
-                "--loop", "3",
-                "--add-voice",
-                "--voice", TTS_VOICE,
-            ]
-            full_result = subprocess.run(
-                full_cmd,
-                capture_output=True, text=True, timeout=600,
-            )
+            # --- Attempt 1: PiAPI Kling (cloud, ~70s, high quality, active credits) ---
+            kling_result = _generate_piapi_video(slot, quote, raw_video)
+            if kling_result.get("status") == "success" and os.path.exists(raw_video):
+                video_backend = "piapi_kling"
 
-            if full_result.returncode != 0 or not os.path.exists(raw_video):
-                # Full pipeline failed — fall back to static zoom
-                video_cmd = [
-                    CONDA_PYTHON, VIDEO_PIPELINE,
-                    "--image", image_path,
-                    "--quote", quote,
-                    "--duration", "15",
+            # --- Attempt 2: json2video (cloud text-overlay, 600s/month free) ---
+            if video_backend is None:
+                j2v_result = _generate_json2video(slot, quote, raw_video)
+                if j2v_result.get("status") == "success" and os.path.exists(raw_video):
+                    video_backend = "json2video"
+
+            # --- Attempt 3: Direct Kling AI API (requires developer credits) ---
+            if video_backend is None:
+                kling_direct = _generate_kling_direct_video(slot, quote, image_path, raw_video)
+                if kling_direct.get("status") == "success" and os.path.exists(raw_video):
+                    video_backend = "kling_direct"
+
+            if video_backend is None:
+                # --- Attempt 2: Local SDXL → SVD full pipeline ---
+                sdxl_prompt = _SLOT_SDXL_PROMPTS[slot]
+                full_cmd = [
+                    CONDA_PYTHON, FULL_PIPELINE,
+                    "--prompt", sdxl_prompt,
+                    "--text", quote,
                     "--output", raw_video,
+                    "--width", "576",
+                    "--height", "1024",
+                    "--sdxl-steps", "25",
+                    "--svd-frames", "25",
+                    "--svd-fps", "6",
+                    "--svd-motion", "100",
+                    "--svd-steps", "20",
+                    "--loop", "3",
+                    "--add-voice",
+                    "--voice", TTS_VOICE,
                 ]
-                subprocess.run(video_cmd, capture_output=True, text=True, timeout=120)
+                full_result = subprocess.run(
+                    full_cmd,
+                    capture_output=True, text=True, timeout=600,
+                )
+                if full_result.returncode == 0 and os.path.exists(raw_video):
+                    video_backend = "sdxl_svd"
+                else:
+                    # --- Attempt 3: Static zoom fallback ---
+                    video_cmd = [
+                        CONDA_PYTHON, VIDEO_PIPELINE,
+                        "--image", image_path,
+                        "--quote", quote,
+                        "--duration", "15",
+                        "--output", raw_video,
+                    ]
+                    subprocess.run(video_cmd, capture_output=True, text=True, timeout=120)
+                    if os.path.exists(raw_video):
+                        video_backend = "static_zoom"
 
             if not os.path.exists(raw_video):
                 return {"skipped": True, "reason": "video_pipeline_failed", "slot": slot}
@@ -217,6 +244,7 @@ def tick_tiktok_content_daemon() -> dict:
             "slot": slot,
             "date": date_str,
             "quote": quote,
+            "video_backend": video_backend,
             "upload_status": upload_result.get("status"),
             "published": upload_result.get("published"),
         }
@@ -294,6 +322,93 @@ def _create_solid_image(slot: str) -> str | None:
         return path
     except Exception:
         return None
+
+
+def _generate_piapi_video(slot: str, quote: str, output_path: str) -> dict:
+    """Try to generate video via PiAPI Kling (text-to-video, 9:16).
+
+    Returns {"status": "success"} or {"status": "error"}.
+    """
+    try:
+        import sys
+        import subprocess
+
+        kling_prompt = f"{_SLOT_SDXL_PROMPTS[slot][:180]}, {quote[:40]}"
+        cmd = [
+            sys.executable, PIAPI_PIPELINE,
+            "text2video",
+            "--prompt", kling_prompt,
+            "--output", output_path,
+            "--duration", "5",
+            "--mode", "std",
+            "--aspect-ratio", "9:16",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=420)
+        if result.returncode == 0:
+            import json as _json
+            try:
+                return _json.loads(result.stdout.strip().split("\n")[-1])
+            except Exception:
+                return {"status": "success"}
+        return {"status": "error", "error": result.stderr[-300:] if result.stderr else "non-zero exit"}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _generate_json2video(slot: str, quote: str, output_path: str) -> dict:
+    """Try to generate a text-overlay video via json2video.com API."""
+    try:
+        import sys
+        import subprocess
+
+        cmd = [
+            sys.executable, JSON2VIDEO_PIPELINE,
+            "--text", quote,
+            "--output", output_path,
+            "--slot", slot,
+            "--duration", "10",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=240)
+        if result.returncode == 0:
+            import json as _json
+            try:
+                return _json.loads(result.stdout.strip().split("\n")[-1])
+            except Exception:
+                return {"status": "success"}
+        return {"status": "error", "error": result.stderr[-300:] if result.stderr else "non-zero exit"}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+def _generate_kling_direct_video(slot: str, quote: str, image_path: str, output_path: str) -> dict:
+    """Try to generate video via direct Kling AI API (image-to-video).
+
+    Returns {"status": "success"} or {"status": "error"}.
+    """
+    try:
+        import sys
+        import subprocess
+
+        kling_prompt = f"{_SLOT_SDXL_PROMPTS[slot][:180]}, {quote[:40]}"
+        cmd = [
+            sys.executable, KLING_PIPELINE,
+            "image2video",
+            "--image", image_path,
+            "--prompt", kling_prompt,
+            "--output", output_path,
+            "--duration", "5",
+            "--mode", "std",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=420)
+        if result.returncode == 0:
+            import json as _json
+            try:
+                return _json.loads(result.stdout.strip().split("\n")[-1])
+            except Exception:
+                return {"status": "success"}
+        return {"status": "error", "error": result.stderr[-300:] if result.stderr else "non-zero exit"}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
 
 
 def _do_upload(video_path: str, title: str) -> dict:

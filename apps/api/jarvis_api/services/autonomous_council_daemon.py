@@ -13,9 +13,12 @@ from core.eventbus.bus import event_bus
 _THRESHOLD = 0.35
 _CADENCE_MINUTES = 30
 _COOLDOWN_MINUTES = 20
+_MAX_LARGE_COUNCILS_PER_DAY = 3
 
 _last_council_at: datetime | None = None
 _last_concluded_at: datetime | None = None
+_daily_council_date: str = ""   # YYYY-MM-DD of current count window
+_daily_council_count: int = 0   # how many large councils today
 
 _SIGNAL_WEIGHTS: dict[str, float] = {
     "autonomy_pressure": 0.20,
@@ -28,7 +31,7 @@ _SIGNAL_WEIGHTS: dict[str, float] = {
     "time_since_last_council": 0.10,
 }
 
-_ALL_COUNCIL_ROLES = ["planner", "critic", "researcher", "synthesizer", "filosof", "etiker"]
+_ALL_COUNCIL_ROLES = ["planner", "critic", "researcher", "synthesizer", "filosof", "etiker", "devils_advocate"]
 
 _SIGNAL_TO_ROLES: dict[str, list[str]] = {
     "autonomy_pressure": ["planner", "critic"],
@@ -96,6 +99,21 @@ def _cooldown_gate_ok() -> bool:
     return (datetime.now(UTC) - _last_concluded_at) >= timedelta(minutes=_COOLDOWN_MINUTES)
 
 
+def _daily_limit_ok() -> bool:
+    """True if the large council daily cap has not been reached."""
+    global _daily_council_date, _daily_council_count
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    if _daily_council_date != today:
+        _daily_council_date = today
+        _daily_council_count = 0
+    return _daily_council_count < _MAX_LARGE_COUNCILS_PER_DAY
+
+
+def _increment_daily_count() -> None:
+    global _daily_council_count
+    _daily_council_count += 1
+
+
 def _call_llm(prompt: str) -> str:
     from apps.api.jarvis_api.services.non_visible_lane_execution import execute_cheap_lane
     result = execute_cheap_lane(message=prompt)
@@ -152,6 +170,8 @@ def tick_autonomous_council_daemon(
         return {"triggered": False, "reason": "cadence_gate"}
     if not _cooldown_gate_ok():
         return {"triggered": False, "reason": "cooldown_gate"}
+    if not _daily_limit_ok():
+        return {"triggered": False, "reason": "daily_limit", "limit": _MAX_LARGE_COUNCILS_PER_DAY}
 
     if score_override is not None:
         score = score_override
@@ -164,6 +184,7 @@ def tick_autonomous_council_daemon(
         return {"triggered": False, "reason": "score_below_threshold", "score": score}
 
     _last_council_at = datetime.now(UTC)
+    _increment_daily_count()
     topic = derive_topic(top_signals)
     members = compose_members(score, top_signals)
 
@@ -269,4 +290,7 @@ def build_autonomous_council_surface() -> dict[str, Any]:
         "threshold": _THRESHOLD,
         "cadence_minutes": _CADENCE_MINUTES,
         "cooldown_minutes": _COOLDOWN_MINUTES,
+        "daily_count": _daily_council_count,
+        "daily_limit": _MAX_LARGE_COUNCILS_PER_DAY,
+        "daily_remaining": max(0, _MAX_LARGE_COUNCILS_PER_DAY - _daily_council_count),
     }

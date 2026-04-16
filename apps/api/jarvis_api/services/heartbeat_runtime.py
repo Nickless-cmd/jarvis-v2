@@ -3235,7 +3235,7 @@ def _build_heartbeat_liveness_signal(
     return signal
 
 
-def _select_heartbeat_target() -> dict[str, str | bool]:
+def _select_heartbeat_target(policy: dict | None = None) -> dict[str, str | bool]:  # noqa: ARG001
     supported_providers = {"phase1-runtime", "openai", "openrouter", "ollama"}
     settings = load_settings()
     heartbeat_provider = str(

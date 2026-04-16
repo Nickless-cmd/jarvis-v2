@@ -361,6 +361,11 @@ def _eventbus_subscriber_loop() -> None:
                 channel_id = _discord_sessions.get(session_id)
             if channel_id is None:
                 continue
+            # Only forward actual chat responses — skip heartbeat pings/proposes,
+            # boredom notifications, and other background system messages.
+            source = str(payload.get("source") or "")
+            if source and source != "visible-run":
+                continue
             msg = payload.get("message") or {}
             role = str(msg.get("role") or "")
             if role != "assistant":

@@ -15,7 +15,7 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 # ── State ──────────────────────────────────────────────────────────────
 
@@ -383,7 +383,7 @@ def start_discord_gateway() -> None:
         logger.info("discord_gateway: not configured, skipping")
         return
 
-    if _thread and _thread.is_alive():
+    if (_thread and _thread.is_alive()) or (_sub_thread and _sub_thread.is_alive()):
         logger.info("discord_gateway: already running")
         return
 

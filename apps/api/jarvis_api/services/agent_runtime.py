@@ -1151,12 +1151,39 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
     return build_council_detail_surface(council_id) or {}
 
 
+def _close_council_agents(council_id: str) -> None:
+    """Mark all council member agents as completed to release spawn slots.
+
+    Council agents are left in 'waiting' status after _run_collective_round.
+    Without this cleanup they count toward MAX_CONCURRENT_AGENTS and block
+    future councils from spawning.
+    """
+    try:
+        members = list_council_members(council_id=council_id)
+        for member in members:
+            agent_id = str(member.get("agent_id") or "")
+            if not agent_id:
+                continue
+            agent = get_agent_registry_entry(agent_id)
+            if agent is None:
+                continue
+            if str(agent.get("status") or "") in _ACTIVE_STATUSES:
+                update_agent_registry_entry(agent_id, status="completed", completed_at=_now_iso())
+        update_council_session(council_id, status="closed", finished_at=_now_iso())
+    except Exception as exc:
+        logger.warning("_close_council_agents: cleanup failed for %s: %s", council_id, exc)
+
+
 def run_council_round(council_id: str) -> dict[str, object]:
-    return _run_collective_round(council_id, mode="council")
+    result = _run_collective_round(council_id, mode="council")
+    _close_council_agents(council_id)
+    return result
 
 
 def run_swarm_round(council_id: str) -> dict[str, object]:
-    return _run_collective_round(council_id, mode="swarm")
+    result = _run_collective_round(council_id, mode="swarm")
+    _close_council_agents(council_id)
+    return result
 
 
 def _progress_label(*, agent: dict[str, object], latest_run: dict[str, object] | None) -> str:

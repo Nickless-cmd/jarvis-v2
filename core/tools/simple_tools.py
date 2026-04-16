@@ -3440,11 +3440,33 @@ def _exec_home_assistant(args: dict[str, Any]) -> dict[str, Any]:
     return {"error": f"Ukendt action: {action!r}. Brug list_entities, get_state eller call_service.", "status": "error"}
 
 
+_convene_council_daily_date: str = ""
+_convene_council_daily_count: int = 0
+_CONVENE_COUNCIL_DAILY_MAX = 5
+
+
 def _exec_convene_council(args: dict[str, Any]) -> dict[str, Any]:
+    global _convene_council_daily_date, _convene_council_daily_count
     topic = str(args.get("topic") or "").strip()
     if not topic:
         return {"status": "error", "error": "topic is required"}
     urgency = str(args.get("urgency") or "medium")
+
+    # Daily rate limit (does not apply to urgency=high — crisis bypass)
+    if urgency != "high":
+        from datetime import UTC, datetime as _dt
+        today = _dt.now(UTC).strftime("%Y-%m-%d")
+        if _convene_council_daily_date != today:
+            _convene_council_daily_date = today
+            _convene_council_daily_count = 0
+        if _convene_council_daily_count >= _CONVENE_COUNCIL_DAILY_MAX:
+            return {
+                "status": "rate_limited",
+                "error": f"Det lille råd er kaldt {_convene_council_daily_count} gange i dag (max {_CONVENE_COUNCIL_DAILY_MAX}). Brug urgency='high' i en ægte krise.",
+                "daily_count": _convene_council_daily_count,
+                "daily_max": _CONVENE_COUNCIL_DAILY_MAX,
+            }
+        _convene_council_daily_count += 1
     explicit_roles: list[str] = list(args.get("roles") or [])
 
     if explicit_roles:

@@ -7070,3 +7070,7 @@ def call_heartbeat_llm_simple(prompt: str, *, max_tokens: int = 400) -> str:
         raise RuntimeError(f"compact: unsupported heartbeat provider: {provider}")
     return str(result.get("text") or "").strip()
 
+
+# Backwards-compat alias (previously private name)
+_resolve_heartbeat_target = _select_heartbeat_target
+

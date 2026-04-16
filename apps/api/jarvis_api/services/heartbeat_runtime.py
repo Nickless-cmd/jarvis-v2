@@ -4209,14 +4209,50 @@ def _deliver_heartbeat_proposal(
                 "blocked_reason": "",
             }
 
+    # Same banned-patterns as _deliver_heartbeat_ping_directly —
+    # internal system summaries must never reach the user as webchat messages.
+    _proposal_banned_patterns = (
+        "bounded liveness pressure",
+        "open-loop continuity is still live",
+        "heartbeat appears to have",
+        "liveness pressure because",
+        "open-loop continuity is still",
+        "relation continuity is still",
+        "witness continuity is still",
+        "bounded autonomy pressure",
+        "should i review",
+        "should i look at",
+        "is there anything specific you would like",
+        "vil du have jeg dykker ned",
+        "vil du have jeg kigger",
+        "skal jeg kigge",
+        "skal jeg dykke ned",
+        "er der noget specifikt",
+        "er der noget bestemt du vil",
+    )
+    lowered_proposal = message_text.lower()
+    if any(p in lowered_proposal for p in _proposal_banned_patterns):
+        return {
+            "status": "blocked",
+            "summary": message_text,
+            "action_type": "webchat-heartbeat-proposal",
+            "artifact": "",
+            "blocked_reason": "system-internal-text-rejected",
+        }
+
     from apps.api.jarvis_api.services.chat_sessions import (
         append_chat_message,
         get_chat_session,
         list_chat_sessions,
     )
+    from apps.api.jarvis_api.services.notification_bridge import get_pinned_session_id
 
-    sessions = list_chat_sessions()
-    session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
+    # Prefer the pinned session (the one the user is actively viewing),
+    # fall back to most recent session.
+    session_id = get_pinned_session_id()
+    if not session_id or get_chat_session(session_id) is None:
+        sessions = list_chat_sessions()
+        session_id = str((sessions[0] or {}).get("id") or "").strip() if sessions else ""
     if not session_id or get_chat_session(session_id) is None:
         event_bus.publish(
             "heartbeat.propose_blocked",
@@ -4232,6 +4268,30 @@ def _deliver_heartbeat_proposal(
             "artifact": "",
             "blocked_reason": "missing-webchat-session",
         }
+
+    # Recent-user-activity guard: don't deliver if the user wrote something
+    # in the last 5 minutes — prevents heartbeat messages appearing as
+    # "double responses" right after the user's turn.
+    try:
+        session_data = get_chat_session(session_id)
+        messages = (session_data or {}).get("messages") or []
+        user_msgs = [m for m in messages if m.get("role") == "user"]
+        if user_msgs:
+            last_user_ts = str(user_msgs[-1].get("created_at") or "")
+            if last_user_ts:
+                from datetime import UTC, datetime
+                last_dt = datetime.fromisoformat(last_user_ts.replace("Z", "+00:00"))
+                age_minutes = (datetime.now(UTC) - last_dt).total_seconds() / 60
+                if age_minutes < 5:
+                    return {
+                        "status": "blocked",
+                        "summary": message_text,
+                        "action_type": "webchat-heartbeat-proposal",
+                        "artifact": "",
+                        "blocked_reason": "recent-user-activity",
+                    }
+    except Exception:
+        pass
 
     message = append_chat_message(
         session_id=session_id,

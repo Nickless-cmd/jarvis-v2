@@ -51,6 +51,12 @@ _status: dict[str, Any] = {
 _sub_thread: threading.Thread | None = None
 _sub_running: bool = False
 
+# Deduplication: track recently-processed Discord message IDs.
+# Prevents double-processing from reconnect re-delivery or Intents.all() quirks.
+_seen_message_ids: set[str] = set()
+_seen_message_ids_lock = threading.Lock()
+_SEEN_MESSAGE_IDS_MAX = 200
+
 
 def get_discord_status() -> dict[str, Any]:
     """Return current gateway status."""
@@ -209,6 +215,17 @@ async def _run_client(config: dict) -> None:
             # Ignore our own messages
             if message.author == _client.user:
                 return
+            # Deduplicate by Discord message ID (guards against reconnect re-delivery)
+            msg_id = str(getattr(message, "id", "") or "")
+            if msg_id:
+                with _seen_message_ids_lock:
+                    if msg_id in _seen_message_ids:
+                        logger.info("discord on_message: skipping duplicate message_id=%s", msg_id)
+                        return
+                    _seen_message_ids.add(msg_id)
+                    # Trim set to avoid unbounded growth
+                    if len(_seen_message_ids) > _SEEN_MESSAGE_IDS_MAX:
+                        _seen_message_ids.discard(next(iter(_seen_message_ids)))
             # Determine channel type
             is_dm = isinstance(message.channel, _discord.DMChannel)
             ch_id = getattr(message.channel, "id", "?")

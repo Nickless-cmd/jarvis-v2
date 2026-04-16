@@ -79,17 +79,13 @@ def _get_or_create_discord_session(channel_id: int, is_dm: bool, owner_discord_i
     """Return session_id for this Discord channel. Creates session if needed."""
     from apps.api.jarvis_api.services.chat_sessions import (
         create_chat_session,
-        get_chat_session,
         list_chat_sessions,
     )
-    from apps.api.jarvis_api.services.notification_bridge import get_pinned_session_id
 
     if is_dm:
-        # DM: use the currently pinned webchat session, or fall back to discord-owner
-        pinned = get_pinned_session_id()
-        if pinned and get_chat_session(pinned):
-            return pinned
-        # Look for existing Discord DM session
+        # DM: always use a dedicated Discord DM session.
+        # Do NOT use the pinned webchat session — that would cause all webchat
+        # responses to be forwarded to Discord via the eventbus subscriber.
         for s in list_chat_sessions():
             if s.get("title") == "Discord DM":
                 return str(s["id"])

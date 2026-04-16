@@ -1289,10 +1289,15 @@ def _build_visible_input(
                     "content": [{"type": "input_text", "text": content}],
                 })
 
-    items.append({
-        "role": "user",
-        "content": [{"type": "input_text", "text": message}],
-    })
+    # The user message is persisted to DB before the run starts, so it is
+    # already the last entry in transcript_messages. Only append explicitly
+    # when the transcript is empty or ends with an assistant turn.
+    _last_tm = assembly.transcript_messages[-1] if assembly.transcript_messages else None
+    if not (_last_tm and _last_tm.get("role") == "user"):
+        items.append({
+            "role": "user",
+            "content": [{"type": "input_text", "text": message}],
+        })
 
     return items
 

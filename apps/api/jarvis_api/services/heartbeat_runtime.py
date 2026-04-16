@@ -1326,6 +1326,10 @@ def load_heartbeat_policy(name: str = "default") -> dict[str, object]:
     }
 
 
+# Backwards-compat alias (previously private name)
+_load_heartbeat_policy = load_heartbeat_policy
+
+
 def _build_heartbeat_context(
     *,
     policy: dict[str, object],

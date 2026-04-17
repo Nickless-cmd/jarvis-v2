@@ -3678,6 +3678,7 @@ def _execute_groq_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, ob
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
         method="POST",
     )

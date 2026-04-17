@@ -2118,6 +2118,18 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Task worker — consume queued runtime_tasks (initiative/heartbeat/open-loop followups)
+    if _dm.is_enabled("task_worker"):
+        try:
+            from apps.api.jarvis_api.services.task_worker import tick_task_worker
+            _tw_result = tick_task_worker(budget=3)
+            _dm.record_daemon_tick("task_worker", _tw_result or {})
+        except Exception as _tw_exc:  # noqa: BLE001
+            _dm.record_daemon_tick(
+                "task_worker",
+                {"error": f"{type(_tw_exc).__name__}: {_tw_exc}"},
+            )
+
     # Desire daemon — emergent appetites
     if _dm.is_enabled("desire"):
         try:

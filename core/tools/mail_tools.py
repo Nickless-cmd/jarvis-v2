@@ -8,23 +8,21 @@ from __future__ import annotations
 
 import email as email_lib
 import imaplib
-import json
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any
 
-SMTP_HOST = "mail.srvlab.dk"
-SMTP_PORT = 587
-IMAP_HOST = "mail.srvlab.dk"
-IMAP_PORT = 993
-MAIL_USER = "jarvis@srvlab.dk"
-MAIL_PASS = "jar10vis"
+from core.runtime.secrets import MailConfig, mail_config
 
 
 # ---------------------------------------------------------------------------
 # Executor functions
 # ---------------------------------------------------------------------------
+
+
+def _mail_config() -> MailConfig:
+    return mail_config()
 
 def _exec_send_mail(args: dict[str, Any]) -> dict[str, Any]:
     """Send an email from jarvis@srvlab.dk.
@@ -48,19 +46,20 @@ def _exec_send_mail(args: dict[str, Any]) -> dict[str, Any]:
         return {"success": False, "error": "'body' is required"}
 
     try:
+        config = _mail_config()
         if html:
             msg = MIMEMultipart("alternative")
             msg.attach(MIMEText(body, "html"))
         else:
             msg = MIMEText(body)
 
-        msg["From"] = MAIL_USER
+        msg["From"] = config.user
         msg["To"] = to
         msg["Subject"] = subject
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+        with smtplib.SMTP(config.smtp_host, config.smtp_port) as s:
             s.starttls()
-            s.login(MAIL_USER, MAIL_PASS)
+            s.login(config.user, config.password)
             s.send_message(msg)
 
         return {"success": True, "message": f"Mail sent to {to}"}
@@ -79,8 +78,9 @@ def _exec_read_mail(args: dict[str, Any]) -> dict[str, Any]:
     folder = args.get("folder", "INBOX")
 
     try:
-        with imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT) as m:
-            m.login(MAIL_USER, MAIL_PASS)
+        config = _mail_config()
+        with imaplib.IMAP4_SSL(config.imap_host, config.imap_port) as m:
+            m.login(config.user, config.password)
             m.select(folder)
             _, ids = m.search(None, "ALL")
 

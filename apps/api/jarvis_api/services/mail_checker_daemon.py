@@ -12,12 +12,8 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
+from core.runtime.secrets import mail_config
 from apps.api.jarvis_api.services.identity_composer import build_identity_preamble
-
-IMAP_HOST = "mail.srvlab.dk"
-IMAP_PORT = 993
-MAIL_USER = "jarvis@srvlab.dk"
-MAIL_PASS = "jar10vis"
 
 _seen_ids: set[str] = set()
 _last_check_at: datetime | None = None
@@ -29,8 +25,9 @@ _MAX_SEEN_IDS = 500
 
 def _imap_connect():
     """Return an open IMAP connection."""
-    conn = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
-    conn.login(MAIL_USER, MAIL_PASS)
+    config = mail_config()
+    conn = imaplib.IMAP4_SSL(config.imap_host, config.imap_port)
+    conn.login(config.user, config.password)
     conn.select("INBOX")
     return conn
 

@@ -16,12 +16,7 @@ import time
 import base64
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# Credentials — read from env or hardcoded fallback
-# ---------------------------------------------------------------------------
-
-KLING_ACCESS_KEY = os.environ.get("KLING_ACCESS_KEY", "AYym9fFKrQ48nJrTa8krhNLbJAhfNE8M")
-KLING_SECRET_KEY = os.environ.get("KLING_SECRET_KEY", "MP89dQnaELerFTnfRgPLbhYYRPEDr3Fg")
+from _config import read_runtime_key
 
 KLING_API_BASE = "https://api.klingai.com"
 
@@ -58,7 +53,9 @@ def _build_jwt(access_key: str, secret_key: str, exp_seconds: int = 1800) -> str
 
 
 def _auth_headers() -> dict:
-    token = _build_jwt(KLING_ACCESS_KEY, KLING_SECRET_KEY)
+    access_key = read_runtime_key("kling_access_key", env_override="KLING_ACCESS_KEY")
+    secret_key = read_runtime_key("kling_secret_key", env_override="KLING_SECRET_KEY")
+    token = _build_jwt(access_key, secret_key)
     return {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",

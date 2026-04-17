@@ -58,6 +58,35 @@ Python 3.11+ required.
 - No dual truth between config and DB
 - All risky actions require explicit policy/approval path
 
+## Boy Scout Rule
+
+Store filer er teknisk gæld. Men at splitte dem som en dedikeret refactor er farligt 
+og bliver aldrig gjort. I stedet gælder denne regel:
+
+**Når du rører en fil der er over 2000 linjer, skal du først udskille den nærmeste 
+naturlige sammenhængende enhed til en ny fil, før du laver din egentlige ændring.**
+
+- "Naturlig enhed" = en klasse, en funktionsgruppe, en daemon, en tilstandsmaskine — 
+  noget der hører sammen og har et meningsfuldt navn
+- "Rører" = tilføjer >20 linjer, eller ændrer logik (ikke bare rettelse af typo)
+- Ingen undtagelser — heller ikke "jeg har travlt lige nu"
+- Bevar fuld bagudkompatibilitet: re-eksportér symboler fra den nye fil, så imports 
+  ikke brækker. Ryd dem op senere når alle call-sites er opdateret naturligt.
+
+Over tid falder filstørrelser uden dedikeret refaktor-arbejde. Nye ændringer bliver 
+lettere at læse og teste, fordi ansvar er klart adskilt.
+
+Gælder særligt disse filer (pr. 2026-04-17):
+- `core/runtime/db.py` (33.056 linjer)
+- `core/services/heartbeat_runtime.py` (7.221)
+- `core/services/runtime_self_model.py` (4.826)
+- `core/tools/simple_tools.py` (4.225)
+- `core/services/visible_runs.py` (4.131)
+- `core/tools/workspace_capabilities.py` (4.004)
+- `core/services/prompt_contract.py` (3.776)
+- `apps/api/jarvis_api/routes/mission_control.py` (3.736)
+- `core/services/visible_model.py` (1.832)
+
 ## Model Philosophy
 - Paid/stable model for visible Jarvis
 - Free/cheap models for internal small jobs

@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
+from core.services.signal_noise_guard import is_noisy_signal_text
 from core.runtime.db import (
     list_runtime_development_focuses,
     list_runtime_goal_signals,
@@ -14,7 +15,9 @@ from core.runtime.db import (
 )
 
 _STALE_AFTER_DAYS = 10
+_EARLY_RETIRE_DAYS = 2
 _CONFIDENCE_RANKS = {"low": 1, "medium": 2, "high": 3}
+_REFRESH_SCAN_LIMIT = 2000
 
 
 def track_runtime_goal_signals_for_visible_turn(
@@ -61,11 +64,19 @@ def track_runtime_goal_signals_for_visible_turn(
 def refresh_runtime_goal_signal_statuses() -> dict[str, int]:
     now = datetime.now(UTC)
     refreshed = 0
-    for item in list_runtime_goal_signals(limit=40):
+    for item in list_runtime_goal_signals(limit=_REFRESH_SCAN_LIMIT):
         if str(item.get("status") or "") not in {"active", "blocked"}:
             continue
         updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
+        if updated_at is None:
+            continue
+        retire_early = (
+            str(item.get("confidence") or "") == "low"
+            or int(item.get("support_count") or 0) <= 1
+            or is_noisy_signal_text(str(item.get("title") or "") + " " + str(item.get("summary") or ""))
+        )
+        stale_after = _EARLY_RETIRE_DAYS if retire_early else _STALE_AFTER_DAYS
+        if updated_at > now - timedelta(days=stale_after):
             continue
         refreshed_item = update_runtime_goal_signal_status(
             str(item.get("goal_id") or ""),
@@ -147,6 +158,18 @@ def _goal_from_active_focus(
     canonical_key = str(focus.get("canonical_key") or "")
     domain_key = _domain_key_from_focus(canonical_key)
     if not domain_key:
+        return None
+    if is_noisy_signal_text(
+        " ".join(
+            part
+            for part in (
+                str(focus.get("title") or ""),
+                str(focus.get("summary") or ""),
+                domain_key,
+            )
+            if part
+        )
+    ):
         return None
     if domain_key in completed_domains:
         return None

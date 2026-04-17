@@ -16,6 +16,12 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
+from core.services.signal_noise_guard import (
+    build_bounded_hypothesis_text,
+    is_noisy_signal_text,
+    stable_signal_slug,
+    strip_signal_wrappers,
+)
 from core.runtime.db import (
     upsert_runtime_self_model_signal,
     upsert_runtime_reflective_critic,
@@ -49,6 +55,11 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _meaningful_run_topic(user_message: str) -> str:
+    topic = strip_signal_wrappers(user_message)
+    return "" if is_noisy_signal_text(topic) else topic
+
+
 def produce_signals_from_run(
     *,
     run_id: str,
@@ -67,34 +78,37 @@ def produce_signals_from_run(
     }
 
     msg_lower = user_message.lower()
+    meaningful_topic = _meaningful_run_topic(user_message)
+    topic_slug = stable_signal_slug(meaningful_topic, fallback="")
     was_corrected = any(m in msg_lower for m in (
         "nej", "forkert", "ikke det", "stadig samme", "prøv igen", "hold nu"
     ))
 
-    # 1. Witness signal — always fire after visible run
-    try:
-        upsert_runtime_witness_signal(
-            signal_id=f"wit-{uuid4().hex[:10]}",
-            signal_type="visible_run_observed",
-            canonical_key=f"witness:run:{run_id}",
-            status="fresh",
-            title=f"Visible run observed ({outcome_status})",
-            summary=f"Observed: {user_message[:60]} → {outcome_status}",
-            rationale="Observation of completed visible run for witness lifecycle",
-            source_kind="visible_run",
-            confidence="medium",
-            evidence_summary=user_message[:200],
-            support_summary=f"outcome={outcome_status}",
-            support_count=1,
-            session_count=1,
-            run_id=run_id,
-            session_id=str(session_id or ""),
-            created_at=_now(),
-            updated_at=_now(),
-        )
-        counts["witness"] += 1
-    except Exception as exc:
-        logger.debug("witness signal failed: %s", exc)
+    # 1. Witness signal — only for substantive run topics
+    if topic_slug:
+        try:
+            upsert_runtime_witness_signal(
+                signal_id=f"wit-{uuid4().hex[:10]}",
+                signal_type="visible_run_observed",
+                canonical_key=f"witness:run-topic:{topic_slug}",
+                status="fresh",
+                title=f"Visible run observed: {meaningful_topic[:60]}",
+                summary=f"Observed bounded runtime topic: {meaningful_topic[:80]}",
+                rationale="Observation of a substantive visible run topic for witness lifecycle",
+                source_kind="visible_run",
+                confidence="medium",
+                evidence_summary=meaningful_topic[:200],
+                support_summary=f"outcome={outcome_status}",
+                support_count=1,
+                session_count=1,
+                run_id=run_id,
+                session_id=str(session_id or ""),
+                created_at=_now(),
+                updated_at=_now(),
+            )
+            counts["witness"] += 1
+        except Exception as exc:
+            logger.debug("witness signal failed: %s", exc)
 
     # 2. Self-review record — always fire after run
     try:
@@ -201,20 +215,20 @@ def produce_signals_from_run(
             logger.debug("reflective critic failed: %s", exc)
 
     # 6. Reflection signal — meaningful runs
-    if len(user_message) > 30:
+    if topic_slug and len(meaningful_topic) > 20:
         try:
             upsert_runtime_reflection_signal(
                 signal_id=f"refl-{uuid4().hex[:10]}",
                 signal_type="post_run_reflection",
-                canonical_key=f"reflection:{run_id}",
+                canonical_key=f"reflection:topic:{topic_slug}",
                 status="active",
-                title=f"Reflected on: {user_message[:50]}",
-                summary=f"Outcome={outcome_status}, mood={user_mood}",
-                rationale="Meta-cognitive reflection after visible run",
+                title=f"Reflected on: {meaningful_topic[:50]}",
+                summary=f"Reflection thread around {meaningful_topic[:80]}",
+                rationale="Meta-cognitive reflection after a substantive visible run topic",
                 source_kind="cadence_producer",
                 confidence="medium",
-                evidence_summary=user_message[:200],
-                support_summary=f"length={len(user_message)}",
+                evidence_summary=meaningful_topic[:200],
+                support_summary=f"outcome={outcome_status} | mood={user_mood}",
                 support_count=1,
                 session_count=1,
                 run_id=run_id,
@@ -470,18 +484,21 @@ def produce_signals_from_run(
     try:
         from core.services.living_heartbeat_cycle import determine_life_phase
         phase = determine_life_phase()
-        if phase.get("phase") in ("dreaming", "reflection") or (run_id.endswith("0") or run_id.endswith("5")):
+        if topic_slug and (
+            phase.get("phase") in ("dreaming", "reflection")
+            or (run_id.endswith("0") or run_id.endswith("5"))
+        ):
             upsert_runtime_dream_hypothesis_signal(
                 signal_id=f"dh-{uuid4().hex[:10]}",
                 signal_type="post_run_hypothesis",
-                canonical_key=f"dream:{run_id}",
+                canonical_key=f"dream:topic:{topic_slug}",
                 status="active",
-                title=f"Hypothesis from {user_message[:40]}",
-                summary=f"What if {user_message[:80]} could be approached differently?",
-                rationale="Bounded dream hypothesis from runtime support",
+                title=f"Dream hypothesis: {meaningful_topic[:40]}",
+                summary=build_bounded_hypothesis_text(meaningful_topic[:80]),
+                rationale="Bounded dream hypothesis from a substantive runtime topic",
                 source_kind="visible_run",
-                confidence="low",
-                evidence_summary=user_message[:200],
+                confidence="medium",
+                evidence_summary=meaningful_topic[:200],
                 support_summary=f"phase={phase.get('phase', '?')}",
                 support_count=1,
                 session_count=1,

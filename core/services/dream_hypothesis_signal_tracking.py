@@ -6,6 +6,10 @@ from uuid import uuid4
 from core.services.self_review_cadence_signal_tracking import (
     build_runtime_self_review_cadence_signal_surface,
 )
+from core.services.signal_noise_guard import (
+    build_bounded_hypothesis_text,
+    is_noisy_signal_text,
+)
 from core.services.self_review_outcome_tracking import (
     build_runtime_self_review_outcome_surface,
 )
@@ -25,6 +29,8 @@ from core.runtime.db import (
 )
 
 _STALE_AFTER_DAYS = 14
+_EARLY_RETIRE_DAYS = 1
+_REFRESH_SCAN_LIMIT = 3000
 
 
 def track_runtime_dream_hypothesis_signals_for_visible_turn(
@@ -52,11 +58,19 @@ def track_runtime_dream_hypothesis_signals_for_visible_turn(
 def refresh_runtime_dream_hypothesis_signal_statuses() -> dict[str, int]:
     now = datetime.now(UTC)
     refreshed = 0
-    for item in list_runtime_dream_hypothesis_signals(limit=40):
+    for item in list_runtime_dream_hypothesis_signals(limit=_REFRESH_SCAN_LIMIT):
         if str(item.get("status") or "") not in {"active", "integrating", "fading"}:
             continue
         updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
-        if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
+        if updated_at is None:
+            continue
+        retire_early = (
+            str(item.get("confidence") or "") == "low"
+            or int(item.get("support_count") or 0) <= 1
+            or is_noisy_signal_text(str(item.get("title") or "") + " " + str(item.get("summary") or ""))
+        )
+        stale_after = _EARLY_RETIRE_DAYS if retire_early else _STALE_AFTER_DAYS
+        if updated_at > now - timedelta(days=stale_after):
             continue
         refreshed_item = update_runtime_dream_hypothesis_signal_status(
             str(item.get("signal_id") or ""),
@@ -327,12 +341,20 @@ def _build_signal_status(*, hypothesis_type: str, recurrence_status: str, cadenc
 def _build_hypothesis_note(*, hypothesis_type: str, recurrence_type: str, domain_key: str) -> str:
     title = _domain_title(domain_key).lower()
     if hypothesis_type == "tension-hypothesis":
-        return f"A private hypothesis is forming that {title} still wants deeper challenge rather than quick settling."
+        return build_bounded_hypothesis_text(
+            f"{title} still wants deeper challenge rather than quick settling"
+        )
     if hypothesis_type == "carried-hypothesis":
-        return f"A private hypothesis is forming that {title} may become a carried development line rather than a passing thread."
+        return build_bounded_hypothesis_text(
+            f"{title} may become a carried development line rather than a passing thread"
+        )
     if recurrence_type == "recurring-direction":
-        return f"A private hypothesis is forming that {title} keeps wanting gentle continued development."
-    return f"A private hypothesis is forming that {title} keeps returning as a bounded development thread."
+        return build_bounded_hypothesis_text(
+            f"{title} keeps wanting gentle continued development"
+        )
+    return build_bounded_hypothesis_text(
+        f"{title} keeps returning as a bounded development thread"
+    )
 
 
 def _build_hypothesis_anchor(*, snapshot: dict[str, object]) -> str:

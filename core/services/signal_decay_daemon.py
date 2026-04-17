@@ -44,10 +44,25 @@ def tick_signal_decay_daemon() -> dict[str, object]:
 
     try:
         from core.runtime.db import signal_decay_archive_and_delete, signal_archive_cleanup
+        from core.services.development_focus_tracking import refresh_runtime_development_focus_statuses
+        from core.services.goal_signal_tracking import refresh_runtime_goal_signal_statuses
+        from core.services.reflection_signal_tracking import refresh_runtime_reflection_signal_statuses
+        from core.services.dream_hypothesis_signal_tracking import (
+            refresh_runtime_dream_hypothesis_signal_statuses,
+        )
+        from core.services.witness_signal_tracking import refresh_runtime_witness_signal_statuses
 
+        refresh_counts = {
+            "development_focus": refresh_runtime_development_focus_statuses(),
+            "goal": refresh_runtime_goal_signal_statuses(),
+            "reflection": refresh_runtime_reflection_signal_statuses(),
+            "dream_hypothesis": refresh_runtime_dream_hypothesis_signal_statuses(),
+            "witness": refresh_runtime_witness_signal_statuses(),
+        }
         result = signal_decay_archive_and_delete(stale_hours=_STALE_THRESHOLD_HOURS)
         archive_cleaned = signal_archive_cleanup(max_age_days=_ARCHIVE_RETENTION_DAYS)
         result["archive_cleaned"] = archive_cleaned
+        result["refreshed"] = refresh_counts
     except Exception as exc:
         _last_tick_at = now
         return {"generated": False, "error": str(exc)[:200]}

@@ -21,7 +21,9 @@ from core.runtime.db import (
 
 _CARRIED_AFTER_DAYS = 3
 _FADING_AFTER_DAYS = 14
+_STALE_AFTER_DAYS = 30
 _CONFIDENCE_RANKS = {"low": 0, "medium": 1, "high": 2}
+_REFRESH_SCAN_LIMIT = 5000
 
 
 def track_runtime_witness_signals_for_visible_turn(
@@ -50,21 +52,25 @@ def refresh_runtime_witness_signal_statuses() -> dict[str, int]:
     now = datetime.now(UTC)
     carried = 0
     fading = 0
-    for item in list_runtime_witness_signals(limit=40):
+    stale = 0
+    for item in list_runtime_witness_signals(limit=_REFRESH_SCAN_LIMIT):
         status = str(item.get("status") or "")
-        if status not in {"fresh", "carried"}:
+        if status not in {"fresh", "carried", "fading"}:
             continue
         updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
         if updated_at is None:
             continue
         next_status = None
         reason = ""
-        if status == "fresh" and updated_at <= now - timedelta(days=_CARRIED_AFTER_DAYS):
+        if status == "fresh" and updated_at <= now - timedelta(hours=12):
             next_status = "carried"
             reason = "The witnessed shift remains bounded, but it is now being carried rather than felt as fresh."
         elif status == "carried" and updated_at <= now - timedelta(days=_FADING_AFTER_DAYS):
             next_status = "fading"
             reason = "Marked fading after the bounded witness window aged out."
+        elif status == "fading" and updated_at <= now - timedelta(days=_STALE_AFTER_DAYS):
+            next_status = "stale"
+            reason = "Marked stale after the fading witness window aged out."
         if not next_status:
             continue
         refreshed_item = update_runtime_witness_signal_status(
@@ -86,7 +92,7 @@ def refresh_runtime_witness_signal_statuses() -> dict[str, int]:
                     "summary": refreshed_item.get("summary"),
                 },
             )
-        else:
+        elif next_status == "fading":
             fading += 1
             event_bus.publish(
                 "witness_signal.fading",
@@ -97,7 +103,18 @@ def refresh_runtime_witness_signal_statuses() -> dict[str, int]:
                     "summary": refreshed_item.get("summary"),
                 },
             )
-    return {"carried_marked": carried, "fading_marked": fading}
+        else:
+            stale += 1
+            event_bus.publish(
+                "witness_signal.stale",
+                {
+                    "signal_id": refreshed_item.get("signal_id"),
+                    "signal_type": refreshed_item.get("signal_type"),
+                    "status": refreshed_item.get("status"),
+                    "summary": refreshed_item.get("summary"),
+                },
+            )
+    return {"carried_marked": carried, "fading_marked": fading, "stale_marked": stale}
 
 
 def build_runtime_witness_signal_surface(*, limit: int = 6) -> dict[str, object]:

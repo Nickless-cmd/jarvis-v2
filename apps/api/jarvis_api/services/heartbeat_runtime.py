@@ -2092,9 +2092,25 @@ def _build_influence_trace(
                 _da_summary = str(_da_artifact.get("summary") or _da_summary)
             if _da_signal_id and _da_summary:
                 _di_result = tick_dream_insight_daemon(signal_id=_da_signal_id, signal_summary=_da_summary)
-                _dm.record_daemon_tick("dream_insight", _di_result or {})
-        except Exception:
-            pass
+                _dm.record_daemon_tick("dream_insight", _di_result or {"ok": True})
+            else:
+                # No articulation candidate available — upstream dream_articulation
+                # has not produced output yet. Record the skip so last_run_at
+                # reflects that the daemon is evaluated each tick.
+                _dm.record_daemon_tick(
+                    "dream_insight",
+                    {
+                        "skipped": True,
+                        "reason": "no-articulation-candidate",
+                        "signal_present": bool(_da_signal_id),
+                        "summary_present": bool(_da_summary),
+                    },
+                )
+        except Exception as _di_exc:  # noqa: BLE001
+            _dm.record_daemon_tick(
+                "dream_insight",
+                {"error": f"{type(_di_exc).__name__}: {_di_exc}"},
+            )
 
     # Memory decay daemon — selective forgetting + re-discovery
     if _dm.is_enabled("memory_decay"):

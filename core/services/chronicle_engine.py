@@ -130,6 +130,43 @@ def build_chronicle_surface() -> dict[str, object]:
     }
 
 
+def get_chronicle_context_for_prompt(n: int = 3, max_chars: int = 1500) -> str:
+    """Return recent chronicle entries formatted for prompt injection."""
+    entries = list_cognitive_chronicle_entries(limit=max(n, 1))
+    if not entries:
+        return ""
+
+    header = "## Mine seneste chronicle-entries (kort hukommelse)"
+    sections: list[str] = []
+    for entry in entries[: max(n, 1)]:
+        period = str(entry.get("period") or "ukendt periode")
+        created_at = _parse_iso(entry.get("created_at"))
+        age_days = (
+            max((datetime.now(UTC) - created_at).days, 0)
+            if created_at is not None
+            else None
+        )
+        age_label = (
+            f"{age_days} dage siden" if age_days is not None else "ukendt alder"
+        )
+        narrative = str(entry.get("narrative") or "").strip()
+        if not narrative:
+            continue
+        sections.append(f"### {period} ({age_label})\n{narrative}")
+
+    if not sections:
+        return ""
+
+    kept = list(sections)
+    text = "\n\n".join([header, *kept]).strip()
+    while len(kept) > 1 and len(text) > max_chars:
+        kept.pop()
+        text = "\n\n".join([header, *kept]).strip()
+    if len(text) > max_chars:
+        text = text[: max_chars - 1].rstrip() + "…"
+    return text
+
+
 def _build_narrative(
     recent_runs: list,
     period: str,

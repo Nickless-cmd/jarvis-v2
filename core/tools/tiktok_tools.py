@@ -1,7 +1,8 @@
 """TikTok auto-uploader integration tools for Jarvis.
 
-Wraps the TiktokAutoUploader CLI at /tmp/TiktokAutoUploader for native
-tool access. Supports login, upload, and listing users/videos.
+Uses the tiktokautouploader pip package (installed in conda 'ai' env).
+Cookies are stored permanently at TIKTOK_DIR/TK_cookies_{accountname}.json.
+Upload runs in a subprocess so cwd changes are isolated.
 
 Tools:
   tiktok_upload — upload a video to TikTok
@@ -15,57 +16,19 @@ import json
 import logging
 import os
 import subprocess
+import textwrap
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-TIKTOK_PROJECT_DIR = "/tmp/TiktokAutoUploader"
-CLI_PATH = os.path.join(TIKTOK_PROJECT_DIR, "cli.py")
+# Permanent home for cookies and videos — survives reboots
+TIKTOK_DIR = Path("/home/bs/.jarvis-v2/tiktok")
+TIKTOK_DIR.mkdir(parents=True, exist_ok=True)
+
 CONDA_PYTHON = "/opt/conda/envs/ai/bin/python"
-_TIMEOUT_SECONDS = 120  # uploads can take a while
-
-
-def _run_cli(*args: str, timeout: int = _TIMEOUT_SECONDS) -> dict[str, Any]:
-    """Run a TikTok CLI command and return structured result."""
-    cmd = [CONDA_PYTHON, CLI_PATH, *args]
-
-    # Inherit env and ensure DISPLAY is set for browser-based operations (login/upload)
-    env = os.environ.copy()
-    if not env.get("DISPLAY"):
-        # Auto-detect X display from /tmp/.X11-unix
-        x11_dir = "/tmp/.X11-unix"
-        if os.path.isdir(x11_dir):
-            sockets = [f for f in os.listdir(x11_dir) if f.startswith("X")]
-            if sockets:
-                display_num = sockets[0][1:]  # X1 -> 1
-                env["DISPLAY"] = f":{display_num}"
-                logger.info(f"Auto-detected DISPLAY=:{display_num} from X11 socket")
-
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=TIKTOK_PROJECT_DIR,
-            env=env,
-        )
-        output = result.stdout.strip()
-        error = result.stderr.strip()
-        if result.returncode != 0:
-            combined = (output + "\n" + error).strip() if output else error
-            return {"status": "error", "error": combined or f"Exit code {result.returncode}"}
-        return {
-            "status": "ok",
-            "output": output or "[no output]",
-            "exit_code": result.returncode,
-        }
-    except subprocess.TimeoutExpired:
-        return {"status": "error", "error": f"Command timed out after {timeout}s"}
-    except FileNotFoundError as exc:
-        return {"status": "error", "error": f"CLI not found: {exc}"}
-    except Exception as exc:
-        return {"status": "error", "error": str(exc)}
+_UPLOAD_TIMEOUT = 180
+_LOGIN_TIMEOUT = 300
 
 
 # ---------------------------------------------------------------------------
@@ -73,111 +36,199 @@ def _run_cli(*args: str, timeout: int = _TIMEOUT_SECONDS) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _exec_tiktok_upload(args: dict[str, Any]) -> dict[str, Any]:
-    """Upload a video to TikTok.
+    """Upload a video to TikTok using tiktokautouploader.
 
     Args:
-        user: Cookie profile name (from tiktok_login).
-        video: Video filename (relative to VideosDirPath) or absolute path.
-        title: Video title/caption (max 2200 chars, supports #hashtags and @mentions).
-        schedule: Schedule time in seconds from now (0 = immediate, 900–864000).
-        allow_comment: 1 = allow comments (default), 0 = disable.
-        allow_duet: 1 = allow duets (default 0), 0 = disable.
-        allow_stitch: 1 = allow stitch (default 0), 0 = disable.
-        visibility: 0 = public (default), 1 = private.
-        proxy: Optional proxy URL.
+        user: Account name (must have TK_cookies_{user}.json in TIKTOK_DIR).
+        video: Absolute path to the video file.
+        title: Caption / description (supports #hashtags).
+        schedule: Optional "HH:MM" string for scheduling.
+        headless: bool, default True.
     """
-    user = args.get("user", "")
-    video = args.get("video", "")
-    title = args.get("title", "")
-    schedule = args.get("schedule", 0)
-    allow_comment = args.get("allow_comment", 1)
-    allow_duet = args.get("allow_duet", 0)
-    allow_stitch = args.get("allow_stitch", 0)
-    visibility = args.get("visibility", 0)
-    proxy = args.get("proxy", "")
+    user = str(args.get("user") or "").strip()
+    video = str(args.get("video") or "").strip()
+    title = str(args.get("title") or "").strip()
+    schedule = args.get("schedule") or None
+    headless = bool(args.get("headless", True))
 
     if not user:
-        return {"status": "error", "error": "user (cookie profile name) is required"}
+        return {"status": "error", "error": "user (account name) is required"}
     if not video:
         return {"status": "error", "error": "video path is required"}
     if not title:
         return {"status": "error", "error": "title is required"}
+    if not os.path.isfile(video):
+        return {"status": "error", "error": f"video file not found: {video}"}
 
-    cli_args = [
-        "upload",
-        "-u", str(user),
-        "-v", str(video),
-        "-t", str(title),
-        "-ct", str(allow_comment),
-        "-d", str(allow_duet),
-        "-st", str(allow_stitch),
-        "-vi", str(visibility),
-    ]
+    cookie_file = TIKTOK_DIR / f"TK_cookies_{user}.json"
+    if not cookie_file.exists():
+        return {
+            "status": "error",
+            "error": (
+                f"No cookie file found for account '{user}'. "
+                f"Run tiktok_login first or place TK_cookies_{user}.json in {TIKTOK_DIR}"
+            ),
+        }
 
-    if schedule and int(schedule) > 0:
-        cli_args.extend(["-sc", str(schedule)])
-    if proxy:
-        cli_args.extend(["-p", str(proxy)])
+    # Build inline Python to run upload_tiktok() with TIKTOK_DIR as cwd
+    schedule_arg = f'"{schedule}"' if schedule else "None"
+    script = textwrap.dedent(f"""
+        import os, sys
+        os.chdir({str(TIKTOK_DIR)!r})
+        from tiktokautouploader import upload_tiktok
+        result = upload_tiktok(
+            video={video!r},
+            description={title!r},
+            accountname={user!r},
+            schedule={schedule_arg},
+            headless={headless!r},
+            suppressprint=False,
+        )
+        print("UPLOAD_RESULT:", result)
+    """)
 
-    result = _run_cli(*cli_args, timeout=_TIMEOUT_SECONDS)
-
-    # Parse output for success/failure indicators
-    if result["status"] == "ok":
-        output = result.get("output", "")
-        if "Published successfully" in output:
-            result["published"] = True
-        elif "Could not upload" in output or "failed" in output.lower():
-            result["published"] = False
-        else:
-            result["published"] = None  # unclear
-
-    return result
+    try:
+        proc = subprocess.run(
+            [CONDA_PYTHON, "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=_UPLOAD_TIMEOUT,
+            env={**os.environ, "DISPLAY": _get_display()},
+        )
+        output = (proc.stdout + proc.stderr).strip()
+        if proc.returncode != 0:
+            return {"status": "error", "error": output or f"Exit {proc.returncode}"}
+        published = "Published successfully" in output or "UPLOAD_RESULT: True" in output
+        failed = "Could not upload" in output or "ERROR" in output.upper()
+        return {
+            "status": "ok",
+            "output": output,
+            "published": True if published else (False if failed else None),
+        }
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "error": f"Upload timed out after {_UPLOAD_TIMEOUT}s"}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
 
 
 def _exec_tiktok_login(args: dict[str, Any]) -> dict[str, Any]:
-    """Open a browser to log into TikTok and save session cookies.
+    """Log into TikTok via headless browser using username + password.
 
-    This opens an interactive Chrome browser window — the user must
-    manually log in. Once logged in, the session cookies are saved
-    under the given profile name for future uploads.
+    Uses 'tiktok-auth' (from tiktok_uploader package) to capture session
+    cookies and converts them to the TK_cookies_{name}.json format that
+    tiktokautouploader expects.
 
     Args:
-        name: Profile name to save cookies under (required).
+        name: Profile name / account name to save under.
+        username: TikTok email or username.
+        password: TikTok password.
     """
-    name = args.get("name", "")
-    if not name:
-        return {"status": "error", "error": "name (profile name) is required"}
+    name = str(args.get("name") or "").strip()
+    username = str(args.get("username") or "").strip()
+    password = str(args.get("password") or "").strip()
 
-    return _run_cli("login", "-n", str(name), timeout=180)
+    if not name:
+        return {"status": "error", "error": "name (account name) is required"}
+    if not username or not password:
+        return {
+            "status": "error",
+            "error": "username and password are required for headless login",
+        }
+
+    # tiktok-auth saves cookies in playwright format to --output dir.
+    # We then convert to TK_cookies_{name}.json format.
+    auth_out = TIKTOK_DIR / "auth_tmp"
+    auth_out.mkdir(exist_ok=True)
+
+    tiktok_auth_bin = "/opt/conda/envs/ai/bin/tiktok-auth"
+    try:
+        proc = subprocess.run(
+            [
+                tiktok_auth_bin,
+                "-u", username,
+                "-p", password,
+                "-o", str(auth_out),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=_LOGIN_TIMEOUT,
+            env={**os.environ, "DISPLAY": _get_display()},
+        )
+        output = (proc.stdout + proc.stderr).strip()
+        if proc.returncode != 0:
+            return {"status": "error", "error": output or f"Exit {proc.returncode}"}
+
+        # Look for any .json cookie file saved by tiktok-auth
+        cookie_files = list(auth_out.glob("*.json"))
+        if not cookie_files:
+            return {"status": "error", "error": f"Login ran but no cookie file found.\n{output}"}
+
+        # Convert playwright cookies → TK_cookies format (same structure, just rename/move)
+        dest = TIKTOK_DIR / f"TK_cookies_{name}.json"
+        cookie_data = json.loads(cookie_files[0].read_text())
+        dest.write_text(json.dumps(cookie_data, indent=2))
+        # Clean up tmp
+        for f in cookie_files:
+            f.unlink(missing_ok=True)
+
+        return {
+            "status": "ok",
+            "output": f"Cookies saved as TK_cookies_{name}.json\n{output}",
+            "cookie_file": str(dest),
+        }
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "error": f"Login timed out after {_LOGIN_TIMEOUT}s"}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
 
 
 def _exec_tiktok_show(args: dict[str, Any]) -> dict[str, Any]:
-    """List available TikTok cookie profiles or video files.
+    """List saved TikTok cookie profiles and available videos."""
+    show_users = args.get("show_users", True)
+    show_videos = args.get("show_videos", True)
 
-    Args:
-        show_users: If true, list saved cookie profiles.
-        show_videos: If true, list available video files.
-    """
-    show_users = args.get("show_users", False)
-    show_videos = args.get("show_videos", False)
+    lines: list[str] = []
 
-    if not show_users and not show_videos:
-        # Default: show both
-        show_users = True
-        show_videos = True
-
-    cli_args = ["show"]
     if show_users:
-        cli_args.append("-u")
-    if show_videos:
-        cli_args.append("-v")
+        cookies = sorted(TIKTOK_DIR.glob("TK_cookies_*.json"))
+        if cookies:
+            lines.append("Cookie profiles:")
+            for c in cookies:
+                account = c.stem.replace("TK_cookies_", "")
+                lines.append(f"  {account} → {c}")
+        else:
+            lines.append(f"No cookie profiles found in {TIKTOK_DIR}")
 
-    result = _run_cli(*cli_args, timeout=15)
-    return result
+    if show_videos:
+        videos = sorted(
+            f for f in TIKTOK_DIR.rglob("*.mp4")
+        )
+        if videos:
+            lines.append(f"\nVideos in {TIKTOK_DIR}:")
+            for v in videos[:20]:
+                size_mb = v.stat().st_size / 1_048_576
+                lines.append(f"  {v.name} ({size_mb:.1f}MB) → {v}")
+        else:
+            lines.append(f"\nNo .mp4 files found in {TIKTOK_DIR}")
+
+    return {"status": "ok", "output": "\n".join(lines)}
+
+
+def _get_display() -> str:
+    """Return a DISPLAY value for browser operations."""
+    display = os.environ.get("DISPLAY", "")
+    if display:
+        return display
+    x11_dir = "/tmp/.X11-unix"
+    if os.path.isdir(x11_dir):
+        sockets = [f for f in os.listdir(x11_dir) if f.startswith("X")]
+        if sockets:
+            return f":{sockets[0][1:]}"
+    return ":0"
 
 
 # ---------------------------------------------------------------------------
-# Tool definitions (Ollama-compatible JSON schemas)
+# Tool definitions
 # ---------------------------------------------------------------------------
 
 TIKTOK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -187,47 +238,31 @@ TIKTOK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "tiktok_upload",
             "description": (
                 "Upload a video to TikTok using saved session cookies. "
-                "The video must be in the TikTok uploader's VideosDirPath or an absolute path. "
-                "Supports scheduling, privacy settings, hashtags, and @mentions in the title."
+                f"Cookies must exist at {TIKTOK_DIR}/TK_cookies_{{user}}.json. "
+                "Run tiktok_login first if not logged in."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "user": {
                         "type": "string",
-                        "description": "Cookie profile name (from tiktok_login).",
+                        "description": "Account name (matches saved cookie profile).",
                     },
                     "video": {
                         "type": "string",
-                        "description": "Video filename (relative to VideosDirPath) or absolute path.",
+                        "description": "Absolute path to the .mp4 video file.",
                     },
                     "title": {
                         "type": "string",
-                        "description": "Video title/caption. Supports #hashtags and @mentions. Max 2200 chars.",
+                        "description": "Caption/description. Supports #hashtags. Max 2200 chars.",
                     },
                     "schedule": {
-                        "type": "integer",
-                        "description": "Schedule time in seconds from now. 0 = immediate. Range: 900-864000 if set.",
-                    },
-                    "allow_comment": {
-                        "type": "integer",
-                        "description": "1 = allow comments (default), 0 = disable.",
-                    },
-                    "allow_duet": {
-                        "type": "integer",
-                        "description": "1 = allow duets, 0 = disable (default).",
-                    },
-                    "allow_stitch": {
-                        "type": "integer",
-                        "description": "1 = allow stitch, 0 = disable (default).",
-                    },
-                    "visibility": {
-                        "type": "integer",
-                        "description": "0 = public (default), 1 = private.",
-                    },
-                    "proxy": {
                         "type": "string",
-                        "description": "Optional proxy URL (e.g. 'http://proxy:8080').",
+                        "description": "Optional schedule time as HH:MM (local time). Omit for immediate upload.",
+                    },
+                    "headless": {
+                        "type": "boolean",
+                        "description": "Run browser headlessly (default true).",
                     },
                 },
                 "required": ["user", "video", "title"],
@@ -239,9 +274,8 @@ TIKTOK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "tiktok_login",
             "description": (
-                "Open a Chrome browser to log into TikTok and save session cookies. "
-                "The user must manually complete login in the browser window. "
-                "Cookies are saved under the given profile name for future uploads."
+                "Log into TikTok with username and password to save session cookies. "
+                "Only needs to be done once per account; cookies are stored permanently."
             ),
             "parameters": {
                 "type": "object",
@@ -250,8 +284,16 @@ TIKTOK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "type": "string",
                         "description": "Profile name to save cookies under (e.g. 'myaccount').",
                     },
+                    "username": {
+                        "type": "string",
+                        "description": "TikTok email or username.",
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "TikTok password.",
+                    },
                 },
-                "required": ["name"],
+                "required": ["name", "username", "password"],
             },
         },
     },
@@ -260,19 +302,18 @@ TIKTOK_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "tiktok_show",
             "description": (
-                "List available TikTok cookie profiles or video files ready for upload. "
-                "Call without arguments to see both users and videos."
+                f"List saved TikTok cookie profiles and .mp4 videos in {TIKTOK_DIR}."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "show_users": {
                         "type": "boolean",
-                        "description": "List saved cookie profiles (default true if nothing specified).",
+                        "description": "List saved cookie profiles (default true).",
                     },
                     "show_videos": {
                         "type": "boolean",
-                        "description": "List available video files (default true if nothing specified).",
+                        "description": "List available video files (default true).",
                     },
                 },
             },

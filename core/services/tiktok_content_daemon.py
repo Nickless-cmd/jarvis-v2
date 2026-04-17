@@ -69,8 +69,17 @@ _SLOT_BG_COLORS = {
     _SLOT_EVENING: (10, 5, 30),       # deep space near-black
 }
 
-TIKTOK_USER = "rotflmaodilligaf"
-VIDEOS_DIR = "/tmp/TiktokAutoUploader/VideosDirPath/"
+def _tiktok_setting(key: str, fallback: str = "") -> str:
+    """Load a TikTok setting from runtime config."""
+    try:
+        import json as _json
+        _cfg = _json.loads(Path("/home/bs/.jarvis-v2/config/runtime.json").read_text())
+        return str(_cfg.get(key) or fallback)
+    except Exception:
+        return fallback
+
+TIKTOK_USER = _tiktok_setting("tiktok_account_name", "rotflmaodilligaf")
+VIDEOS_DIR = "/home/bs/.jarvis-v2/workspaces/tiktok_videos/"
 VIDEO_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_tiktok_pipeline.py"
 AUDIO_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_audio_pipeline.py"
 FULL_PIPELINE = "/media/projects/jarvis-v2/scripts/pipelines/jarvis_full_pipeline.py"
@@ -463,11 +472,6 @@ def _do_upload(video_path: str, title: str) -> dict:
             "user": TIKTOK_USER,
             "video": video_path,
             "title": title,
-            "schedule": 0,
-            "allow_comment": 1,
-            "allow_duet": 0,
-            "allow_stitch": 0,
-            "visibility": 0,
         })
     except Exception as exc:
         return {"status": "error", "error": str(exc)}

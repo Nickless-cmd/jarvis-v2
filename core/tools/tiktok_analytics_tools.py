@@ -25,7 +25,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-COOKIE_DIR = "/tmp/TiktokAutoUploader/CookiesDir"
+COOKIE_DIR = "/home/bs/.jarvis-v2/tiktok"
 CONDA_PYTHON = "/opt/conda/envs/ai/bin/python"
 
 _BASE_HEADERS = {
@@ -45,7 +45,16 @@ _BASE_HEADERS = {
 
 
 def _load_saved_cookies(username: str) -> dict[str, str]:
-    """Load session cookies from TikTok uploader pickle file."""
+    """Load session cookies from TK_cookies_{username}.json (tiktokautouploader format)."""
+    # Try new JSON format first (tiktokautouploader)
+    json_file = os.path.join(COOKIE_DIR, f"TK_cookies_{username}.json")
+    try:
+        with open(json_file) as f:
+            raw = json.load(f)
+        return {str(c["name"]): str(c["value"]) for c in raw if "name" in c and "value" in c}
+    except Exception:
+        pass
+    # Fallback: old pickle format
     cookie_file = os.path.join(COOKIE_DIR, f"tiktok_session-{username}.cookie")
     try:
         with open(cookie_file, "rb") as f:

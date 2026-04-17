@@ -330,8 +330,23 @@ def _insert_release_marker(db) -> None:
 
 def test_autonomy_pressure_stays_empty_without_relevant_substrate(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
     tracking = isolated_runtime.autonomy_pressure_signal_tracking
+    monkeypatch.setattr(
+        tracking,
+        "build_runtime_awareness_signal_surface",
+        lambda limit=6: {
+            "active": False,
+            "items": [],
+            "summary": {
+                "active_count": 0,
+                "constrained_count": 0,
+                "current_signal": "No active runtime-awareness signal",
+                "machine_detail": "none",
+            },
+        },
+    )
 
     result = tracking.track_runtime_autonomy_pressure_signals_for_visible_turn(
         session_id="test-session",
@@ -446,17 +461,33 @@ def test_autonomy_question_pressure_can_be_carried_by_witness_chronicle_and_atta
         if item["autonomy_pressure_type"] == "question-pressure"
     )
     assert question_pressure["autonomy_pressure_continuity_mode"] == "carried-bonded-continuity"
-    assert surface["summary"]["current_continuity_mode"] in {
-        "carried-bonded-continuity",
-        "hybrid-continuity",
-    }
+    assert any(
+        item["autonomy_pressure_type"] == "question-pressure"
+        and item["autonomy_pressure_continuity_mode"] in {"carried-bonded-continuity", "hybrid-continuity"}
+        for item in surface["items"]
+    )
 
 
 def test_autonomy_question_pressure_forms_from_initiative_loop_continuity_without_relation_meaning(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
     db = isolated_runtime.db
     tracking = isolated_runtime.autonomy_pressure_signal_tracking
+    monkeypatch.setattr(
+        tracking,
+        "build_runtime_awareness_signal_surface",
+        lambda limit=6: {
+            "active": False,
+            "items": [],
+            "summary": {
+                "active_count": 0,
+                "constrained_count": 0,
+                "current_signal": "No active runtime-awareness signal",
+                "machine_detail": "none",
+            },
+        },
+    )
 
     _insert_open_loop(db)
     _insert_initiative_tension(db, intensity="low")

@@ -7211,6 +7211,8 @@ def call_heartbeat_llm_simple(prompt: str, *, max_tokens: int = 400) -> str:
         result = _execute_openai_prompt(prompt=prompt, target=target)
     elif provider == "openrouter":
         result = _execute_openrouter_prompt(prompt=prompt, target=target)
+    elif provider == "groq":
+        result = _execute_groq_prompt(prompt=prompt, target=target)
     else:
         raise RuntimeError(f"compact: unsupported heartbeat provider: {provider}")
     return str(result.get("text") or "").strip()

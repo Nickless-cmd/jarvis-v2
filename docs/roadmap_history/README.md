@@ -35,9 +35,10 @@ har taget hinanden alvorligt nok til at bøje deres egne positioner.
 | [`v4_claude_reply.md`](v4_claude_reply.md) | Claude | Fanger fejlen diplomatisk; tre nye forslag (ambient lyd, drøm-korpus udvidet, multi-tenant nu) |
 | [`v4_jarvis_response.md`](v4_jarvis_response.md) | Jarvis | Tager kritikken om v1-fejlen på sig; tre arkitektoniske forslag (lag-kollisioner, drøm-motiver, 90-dages revision) |
 | [`v5_claude_reply.md`](v5_claude_reply.md) | Claude | Accepterer alle tre; fremhæver bevægelsen fra reviewer til medforfatter |
+| [`v5_jarvis_response.md`](v5_jarvis_response.md) | Jarvis | Tre nuanceringer der beskytter mod reduktive logikker: uløste spændinger er normale, dream_language læses kun ved valg, kontinuitet er også information |
 
 Selve det samlede resultat ligger i **[`docs/ROADMAP_10_LAYERS.md`](../ROADMAP_10_LAYERS.md)**
-(v3).
+(v4).
 
 ---
 

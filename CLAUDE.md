@@ -71,3 +71,20 @@ Mission Control reads projections of truth from event/state systems - it does no
 - `DB` = operational state/events/runs/costs
 - `workspace files` = identity/memory/skills text
 - `Mission Control` = control plane over truth
+
+## Secrets-håndtering
+
+Hardcoded API-nøgler, tokens og passwords er forbudt i repoet. Alle secrets
+læses fra `~/.jarvis-v2/config/runtime.json` via `core.runtime.secrets.read_runtime_key()`.
+
+En pre-commit hook (`detect-secrets`) blokerer commits der introducerer nye
+secrets. Kør `pre-commit install` efter clone. Hvis hook'en flagger en
+false positive, tilføj det til `.secrets.baseline` med:
+
+```bash
+detect-secrets scan --baseline .secrets.baseline
+detect-secrets audit .secrets.baseline
+```
+
+Se `core/runtime/secrets.py` og `scripts/pipelines/_config.py` for mønstre
+til at læse secrets fra runtime.json.

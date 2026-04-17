@@ -1043,6 +1043,27 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS approval_feedback_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recorded_at TEXT NOT NULL,
+                intent_key TEXT NOT NULL,
+                approval_state TEXT NOT NULL,
+                approval_source TEXT NOT NULL,
+                tool_name TEXT,
+                resolution_reason TEXT,
+                resolution_message TEXT,
+                session_id TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_approval_feedback_recorded_at
+            ON approval_feedback_log(recorded_at DESC)
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS bounded_action_continuity_state (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 continuity_id TEXT NOT NULL,
@@ -4398,6 +4419,151 @@ def _tool_intent_approval_request_from_row(
         "resolution_message": str(row["resolution_message"] or ""),
         "session_id": str(row["session_id"] or ""),
         "execution_state": str(row["execution_state"] or "not-executed"),
+    }
+
+
+def insert_approval_feedback(
+    *,
+    recorded_at: str,
+    intent_key: str,
+    approval_state: str,
+    approval_source: str,
+    tool_name: str = "",
+    resolution_reason: str = "",
+    resolution_message: str = "",
+    session_id: str = "",
+) -> dict[str, object]:
+    with connect() as conn:
+        existing = conn.execute(
+            """
+            SELECT id, recorded_at, intent_key, approval_state, approval_source,
+                   tool_name, resolution_reason, resolution_message, session_id
+            FROM approval_feedback_log
+            WHERE recorded_at = ?
+              AND intent_key = ?
+              AND approval_state = ?
+              AND approval_source = ?
+              AND resolution_reason = ?
+              AND resolution_message = ?
+              AND session_id = ?
+            LIMIT 1
+            """,
+            (
+                recorded_at,
+                intent_key,
+                approval_state,
+                approval_source,
+                resolution_reason,
+                resolution_message,
+                session_id,
+            ),
+        ).fetchone()
+        if existing is not None:
+            return _approval_feedback_from_row(existing)
+        cursor = conn.execute(
+            """
+            INSERT INTO approval_feedback_log (
+                recorded_at,
+                intent_key,
+                approval_state,
+                approval_source,
+                tool_name,
+                resolution_reason,
+                resolution_message,
+                session_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                recorded_at,
+                intent_key,
+                approval_state,
+                approval_source,
+                tool_name,
+                resolution_reason,
+                resolution_message,
+                session_id,
+            ),
+        )
+        conn.commit()
+        row = conn.execute(
+            """
+            SELECT id, recorded_at, intent_key, approval_state, approval_source,
+                   tool_name, resolution_reason, resolution_message, session_id
+            FROM approval_feedback_log
+            WHERE id = ?
+            """,
+            (int(cursor.lastrowid),),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("approval feedback was not persisted")
+    return _approval_feedback_from_row(row)
+
+
+def list_approval_feedback(limit: int = 20) -> list[dict[str, object]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, recorded_at, intent_key, approval_state, approval_source,
+                   tool_name, resolution_reason, resolution_message, session_id
+            FROM approval_feedback_log
+            ORDER BY recorded_at DESC, id DESC
+            LIMIT ?
+            """,
+            (max(int(limit), 1),),
+        ).fetchall()
+    return [_approval_feedback_from_row(row) for row in rows]
+
+
+def approval_feedback_stats_by_tool(days: int = 7) -> list[dict[str, object]]:
+    cutoff = (datetime.now(UTC) - timedelta(days=max(int(days), 1))).isoformat()
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                tool_name,
+                SUM(CASE WHEN approval_state = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+                SUM(CASE WHEN approval_state = 'denied' THEN 1 ELSE 0 END) AS denied_count,
+                SUM(CASE WHEN approval_state = 'expired' THEN 1 ELSE 0 END) AS expired_count,
+                COUNT(*) AS total_count
+            FROM approval_feedback_log
+            WHERE recorded_at >= ?
+            GROUP BY tool_name
+            ORDER BY total_count DESC, tool_name ASC
+            """,
+            (cutoff,),
+        ).fetchall()
+    return [
+        {
+            "tool_name": str(row["tool_name"] or ""),
+            "approved_count": int(row["approved_count"] or 0),
+            "denied_count": int(row["denied_count"] or 0),
+            "expired_count": int(row["expired_count"] or 0),
+            "total_count": int(row["total_count"] or 0),
+        }
+        for row in rows
+    ]
+
+
+def count_approval_feedback() -> int:
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS count FROM approval_feedback_log"
+        ).fetchone()
+    return int((row or {})["count"] or 0)
+
+
+def _approval_feedback_from_row(row: sqlite3.Row) -> dict[str, object]:
+    return {
+        "id": int(row["id"]),
+        "recorded_at": str(row["recorded_at"] or ""),
+        "intent_key": str(row["intent_key"] or ""),
+        "approval_state": str(row["approval_state"] or ""),
+        "approval_source": str(row["approval_source"] or ""),
+        "tool_name": str(row["tool_name"] or ""),
+        "resolution_reason": str(row["resolution_reason"] or ""),
+        "resolution_message": str(row["resolution_message"] or ""),
+        "session_id": str(row["session_id"] or ""),
     }
 
 

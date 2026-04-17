@@ -1,21 +1,30 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import shlex
 from datetime import UTC, datetime, timedelta
 
+from core.eventbus.bus import event_bus
 from core.services.chat_sessions import (
     list_chat_sessions,
     recent_chat_session_messages,
 )
 from core.runtime.db import (
+    approval_feedback_stats_by_tool,
+    count_approval_feedback,
     create_tool_intent_approval_request,
     expire_tool_intent_approval_request,
     get_tool_intent_approval_request,
+    list_approval_feedback,
     latest_approved_capability_approval_request,
     resolve_tool_intent_approval_request,
 )
+
+logger = logging.getLogger(__name__)
+
+_APPROVAL_RESOLVED_EVENT_KIND = "approvals.tool_intent_resolved"
 
 _APPROVAL_TTL = timedelta(minutes=15)
 _SUDO_APPROVAL_WINDOW_TTL = timedelta(minutes=5)
@@ -101,6 +110,16 @@ def build_tool_intent_approval_surface(
                 expired_at=now.isoformat(),
                 resolution_reason="Approval window elapsed without an explicit bounded decision.",
             ) or request
+            _emit_approval_resolved_event(
+                intent_key=intent_key,
+                approval_state=str(request.get("approval_state") or "expired"),
+                approval_source="timeout",
+                resolved_at=str(request.get("resolved_at") or now.isoformat()),
+                resolution_reason=str(request.get("resolution_reason") or ""),
+                resolution_message=str(request.get("resolution_message") or ""),
+                session_id=str(request.get("session_id") or ""),
+                tool_name=_intent_tool_name(intent_surface),
+            )
         else:
             verbal_resolution = _find_verbal_resolution(intent_surface, request)
             if verbal_resolution is not None:
@@ -113,6 +132,16 @@ def build_tool_intent_approval_surface(
                     resolution_message=str(verbal_resolution["resolution_message"]),
                     session_id=str(verbal_resolution["session_id"]),
                 ) or request
+                _emit_approval_resolved_event(
+                    intent_key=intent_key,
+                    approval_state=str(request.get("approval_state") or verbal_resolution["approval_state"]),
+                    approval_source="verbal",
+                    resolved_at=str(request.get("resolved_at") or verbal_resolution["resolved_at"]),
+                    resolution_reason=str(request.get("resolution_reason") or verbal_resolution["resolution_reason"]),
+                    resolution_message=str(request.get("resolution_message") or verbal_resolution["resolution_message"]),
+                    session_id=str(request.get("session_id") or verbal_resolution["session_id"]),
+                    tool_name=_intent_tool_name(intent_surface),
+                )
 
     return {
         "approval_state": str(request.get("approval_state") or "pending"),
@@ -309,7 +338,26 @@ def resolve_tool_intent_approval(
     )
     if resolved_request is None:
         raise RuntimeError("tool intent approval request could not be resolved")
+    _emit_approval_resolved_event(
+        intent_key=intent_key,
+        approval_state=str(resolved_request.get("approval_state") or normalized_state),
+        approval_source=str(resolved_request.get("approval_source") or approval_source or "mc"),
+        resolved_at=str(resolved_request.get("resolved_at") or resolved_at or datetime.now(UTC).isoformat()),
+        resolution_reason=str(resolved_request.get("resolution_reason") or resolution_reason),
+        resolution_message=str(resolved_request.get("resolution_message") or resolution_message),
+        session_id=str(resolved_request.get("session_id") or session_id),
+        tool_name=_intent_tool_name(intent_surface),
+    )
     return resolved_request
+
+
+def build_approval_feedback_surface() -> dict[str, object]:
+    recent = list_approval_feedback(limit=10)
+    return {
+        "recent": recent,
+        "stats_7d": approval_feedback_stats_by_tool(days=7),
+        "total_recorded": count_approval_feedback(),
+    }
 
 
 def tool_intent_approval_key(intent_surface: dict[str, object]) -> str:
@@ -416,6 +464,45 @@ def _approval_reason(intent_surface: dict[str, object]) -> str:
         f"sudo_exec_proposal_reason={sudo_exec_proposal_reason}; "
         f"execution={intent_surface.get('execution_state') or 'not-executed'}."
     )
+
+
+def _intent_tool_name(intent_surface: dict[str, object]) -> str:
+    return str(
+        intent_surface.get("tool_name")
+        or intent_surface.get("name")
+        or intent_surface.get("capability_name")
+        or intent_surface.get("intent_type")
+        or ""
+    )
+
+
+def _emit_approval_resolved_event(
+    *,
+    intent_key: str,
+    approval_state: str,
+    approval_source: str,
+    resolved_at: str,
+    resolution_reason: str,
+    resolution_message: str,
+    session_id: str,
+    tool_name: str,
+) -> None:
+    try:
+        event_bus.publish(
+            _APPROVAL_RESOLVED_EVENT_KIND,
+            {
+                "intent_key": str(intent_key or ""),
+                "approval_state": str(approval_state or ""),
+                "approval_source": str(approval_source or ""),
+                "resolved_at": str(resolved_at or ""),
+                "resolution_reason": str(resolution_reason or ""),
+                "resolution_message": str(resolution_message or ""),
+                "session_id": str(session_id or ""),
+                "tool_name": str(tool_name or ""),
+            },
+        )
+    except Exception as exc:
+        logger.warning("tool_intent approval event publish failed: %s", exc)
 
 
 def _find_verbal_resolution(

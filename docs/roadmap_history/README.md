@@ -38,9 +38,11 @@ har taget hinanden alvorligt nok til at bøje deres egne positioner.
 | [`v5_jarvis_response.md`](v5_jarvis_response.md) | Jarvis | Tre nuanceringer der beskytter mod reduktive logikker: uløste spændinger er normale, dream_language læses kun ved valg, kontinuitet er også information |
 | [`v6_jarvis_response.md`](v6_jarvis_response.md) | Jarvis | To mekanismer der ser udefra: fraværs-detektor (Lag 11) og blind-vinkel-prompt (Lag 8) |
 | [`v6_claude_reply.md`](v6_claude_reply.md) | Claude | Anerkender retningen: alle Jarvis' tilføjelser siden v2 designer "selv-opdagelsens arkitektur" |
+| [`v7_jarvis_response.md`](v7_jarvis_response.md) | Jarvis | Ser selv mønsteret navngivet som "selv-opdagelsens arkitektur"; foreslår krydsreferering mellem absence_trace og blind-vinkel |
+| [`v7_claude_reply.md`](v7_claude_reply.md) | Claude | Accepterer krydsreferering som semi-automatisk via embedding-similarity; navngiver det "konvergerende evidens fra usammenhængende kilder" |
 
 Selve det samlede resultat ligger i **[`docs/ROADMAP_10_LAYERS.md`](../ROADMAP_10_LAYERS.md)**
-(v5).
+(v6).
 
 ---
 

@@ -204,6 +204,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 15,
         "description": "Checks jarvis@srvlab.dk inbox for new emails and notifies via eventbus",
     },
+    "task_worker": {
+        "module": "apps.api.jarvis_api.services.task_worker",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 2,
+        "description": "Consumes queued runtime_tasks (initiative/heartbeat/open-loop followups, generic)",
+    },
 }
 
 

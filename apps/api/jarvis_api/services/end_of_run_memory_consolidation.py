@@ -173,6 +173,12 @@ def _run_memory_consolidation_pass(
 
 
 def _run_local_consolidation_model(prompt: str) -> str:
+    """Run consolidation prompt. Primary: heartbeat target. Fallback: direct Ollama.
+
+    Returns empty string if all lanes fail. Failures are published on the
+    eventbus so the reason is visible instead of silent.
+    """
+    primary_error: str = ""
     try:
         from apps.api.jarvis_api.services.heartbeat_runtime import (
             _execute_heartbeat_model,
@@ -189,9 +195,80 @@ def _run_local_consolidation_model(prompt: str) -> str:
             open_loops=[],
             liveness=None,
         )
-    except Exception:
-        return ""
-    return str(model_result.get("text") or "").strip()
+        text = str((model_result or {}).get("text") or "").strip()
+        if text:
+            return text
+        primary_error = "heartbeat-model-empty-response"
+    except Exception as exc:  # noqa: BLE001
+        primary_error = f"heartbeat-model-error: {type(exc).__name__}: {exc}"[:200]
+
+    # Fallback: direct Ollama call, try each non-embedding model in turn.
+    fallback_text, fallback_error = _run_ollama_consolidation_fallback(prompt)
+    event_bus.publish(
+        "memory.consolidation_model_fallback",
+        {
+            "primary_error": primary_error,
+            "fallback_used": bool(fallback_text),
+            "fallback_error": fallback_error,
+        },
+    )
+    return fallback_text
+
+
+def _run_ollama_consolidation_fallback(prompt: str) -> tuple[str, str]:
+    """Direct Ollama generate call, trying available chat-capable models in order.
+
+    Returns (text, error_summary). Empty text means all fallbacks failed.
+    """
+    try:
+        import urllib.error
+        import urllib.request
+    except Exception as exc:  # noqa: BLE001
+        return "", f"stdlib-import-error: {type(exc).__name__}: {exc}"[:200]
+
+    base_url = "http://127.0.0.1:11434"
+    # Discover installed models; skip embeddings.
+    try:
+        with urllib.request.urlopen(f"{base_url}/api/tags", timeout=3) as resp:
+            tags = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        return "", f"ollama-tags-error: {type(exc).__name__}: {exc}"[:200]
+
+    candidates = [
+        str(m.get("name") or "")
+        for m in (tags.get("models") or [])
+        if m.get("name") and "embed" not in str(m.get("name") or "").lower()
+    ]
+    if not candidates:
+        return "", "no-ollama-chat-models-installed"
+
+    errors: list[str] = []
+    for model_name in candidates:
+        try:
+            req = urllib.request.Request(
+                f"{base_url}/api/generate",
+                data=json.dumps(
+                    {
+                        "model": model_name,
+                        "prompt": prompt,
+                        "stream": False,
+                        "options": {"temperature": 0.2},
+                    }
+                ).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            text = str((data or {}).get("response") or "").strip()
+            if text:
+                return text, ""
+            errors.append(f"{model_name}: empty")
+        except urllib.error.HTTPError as exc:
+            errors.append(f"{model_name}: HTTP {exc.code}")
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{model_name}: {type(exc).__name__}")
+
+    return "", ("all-ollama-fallbacks-failed: " + "; ".join(errors))[:220]
 
 
 def _build_consolidation_prompt(

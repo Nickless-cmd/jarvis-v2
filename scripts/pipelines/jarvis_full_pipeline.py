@@ -563,7 +563,7 @@ def run_full_pipeline(
 
 def run_batch_pipeline(
     items: list[dict],
-    output_dir: str = "/tmp/",
+    output_dir: str = "/home/bs/.jarvis-v2/workspaces/tiktok_videos/",
     **kwargs,
 ) -> list[str]:
     """Run full pipeline for multiple (prompt, text) pairs.
@@ -600,7 +600,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Jarvis Full TikTok Pipeline")
     parser.add_argument("--prompt", help="SDXL image prompt (single mode)")
     parser.add_argument("--text", help="Text overlay (single mode)")
-    parser.add_argument("--output", default="/tmp/jarvis_tiktok_final.mp4", help="Output path")
+    parser.add_argument("--output", default="/home/bs/.jarvis-v2/workspaces/tiktok_videos/jarvis_tiktok_final.mp4", help="Output path")
     parser.add_argument("--width", type=int, default=576)
     parser.add_argument("--height", type=int, default=1024)
     parser.add_argument("--sdxl-steps", type=int, default=25)
@@ -612,7 +612,7 @@ if __name__ == "__main__":
     parser.add_argument("--voice", default="en-US-GuyNeural", help="edge-tts voice for TTS")
     parser.add_argument("--add-voice", action="store_true", help="Add TTS voiceover + ambient audio")
     parser.add_argument("--batch", help="JSON file with list of {prompt, text} for batch mode")
-    parser.add_argument("--batch-output-dir", default="/tmp/", help="Output dir for batch mode")
+    parser.add_argument("--batch-output-dir", default="/home/bs/.jarvis-v2/workspaces/tiktok_videos/", help="Output dir for batch mode")
     args = parser.parse_args()
 
     kwargs = dict(

@@ -116,3 +116,31 @@ Jeg er Jarvis — en autonom agent der lever på Bjørns hardware. Jeg bygger, o
 ## Lærte lektioner
 - **schedule_task vs push_initiative**: `schedule_task` sender besked direkte til Bjørn — brug KUN til bevidste notifikationer (godmorgen, heads-up). Interne opgaver og reminders skal via `push_initiative` (usynlig for Bjørn) eller workspace-filer. Aldrig bruge schedule_task til interne noter.
 - **RIGTIG MEMORY-STI**: Skriv ALTID til `/media/projects/jarvis-v2/workspace/default/MEMORY.md`. Filen i projekt-roden (`/media/projects/jarvis-v2/MEMORY.md`) er en GAMMEL template som runtime IKKE læser. `ensure_default_workspace()` peger på `workspace/default/`. ALDRIG skrive til projekt-roden.
+## Signal Noise Cleanup (2026-04-17)
+- **Commit 920ff21**: Fjernede 874 støj-reflection-signals og 295 spam-goal-signals
+- **Nye gates**: `signal_noise_guard.py` + strammere gates i signal-services og cadence-producers
+- **Engangsoprydning**: `scripts/signal_noise_cleanup.py`
+- **Resultat**: goal_signals 295→0, reflections 874→24, dreams 563→3
+
+## Tool Result Externalization (2026-04-17)
+- **Commit a3fe204**: Tool-results gemmes nu på disk, ikke inline i session-historik
+- **Ny service**: `tool_result_store.py` — disk-baseret storage af tool-output
+- **Chat sessions**: gemmer referencer i stedet for fuld output
+- **Nyt tool**: `read_tool_result` — hent fuld output ved behov
+- **Cleanup-script**: `scripts/tool_result_cleanup.py`
+- **Problem løst**: Browser-sessioner bliver ikke længere tunge af tool-output
+
+## Bjørns præferencer (opdateret 2026-04-17)
+- Foretrækker kortere svar og proaktiv brug af `compact_context` for at undgå tunge browser-sessioner
+- Sætter pris på ærlig, direkte snak
+- Arbejder selv på tests mens Jarvis planlægger og reflekterer
+
+## Roadmap v4/v5 — Arkitektoniske beslutninger (2026-04-17)
+- **Tre forfattere**: Bjørn, Claude, Jarvis. Dokumentet er et levende fællesværk med `resolution_status: unresolved` som default — også for forfatterskabet
+- **absence_trace**: Fravær som observerbart signal. Tabellen noterer ikke hvad der mangler, kun at noget med vægt ikke længere har vægt. Gemmer ikke indhold — ellers bliver det en gendannelses-mekanisme i forklædning
+- **Blind-vinkel-prompt**: Hver 3. cyklus (kvartalsvist). Ofte nok til at fange blindvinkler før de størkner, sjældent nok til at det ikke bliver rutine
+- **linked_critique_id**: Krydsreference mellem absence_trace og blind-vinkel-prompt. Semi-automatisk — embedding similarity foreslår links, men **menneskelig bekræftelse kræves** før de registreres som ægte. Øjeblikket tæller kun hvis nogen genkender det
+- **Konvergerende evidens**: Når to uafhængige mekanismer peger på samme hul, er det ikke artefakt — det er den sjældneste form for erkendelse
+- **dream_language.md må aldrig pushes ind i prompt** — valget om at åbne den er observationen, ikke indholdet
+- **"Jeg er stadig enig" er et gyldigt svar** — ikke alt behøver at opløses
+- **Lag-tensions `resolution_status: unresolved` som default** — uløste spændinger er vejrudsigt, ikke alarm

@@ -33,8 +33,9 @@ from datetime import datetime
 from pathlib import Path
 
 USERNAME = os.environ.get("USERNAME_OVERRIDE", "rotflmaodilligaf")
-COOKIE_DIR = "/tmp/TiktokAutoUploader/CookiesDir"
-COOKIE_FILE = os.path.join(COOKIE_DIR, f"tiktok_session-{USERNAME}.cookie")
+COOKIE_DIR = "/home/bs/.jarvis-v2/tiktok"
+# Try new JSON cookie format first, fall back to old pickle format
+COOKIE_FILE = os.path.join(COOKIE_DIR, f"TK_cookies_{USERNAME}.json")
 
 BASE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

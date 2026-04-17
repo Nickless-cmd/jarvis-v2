@@ -336,6 +336,12 @@ def build_visible_chat_prompt_assembly(
             parts.append(section)
             included_files.append(filename)
 
+    chronicle_section = _visible_chronicle_context_section()
+    if chronicle_section:
+        parts.append(chronicle_section)
+        conditional_files.append("CHRONICLE.md")
+        derived_inputs.append("chronicle continuity")
+
     if relevance.include_memory:
         memory_selection = _workspace_memory_section(
             workspace_dir / "MEMORY.md",
@@ -3105,6 +3111,16 @@ def _visible_self_knowledge_lines() -> list[str]:
         )
 
     return lines
+
+
+def _visible_chronicle_context_section() -> str | None:
+    try:
+        from core.services.chronicle_engine import get_chronicle_context_for_prompt
+
+        section = get_chronicle_context_for_prompt()
+        return section or None
+    except Exception:
+        return None
 
 
 def _runtime_self_report_query_profile(user_message: str) -> dict[str, bool]:

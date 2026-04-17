@@ -352,9 +352,17 @@ def _discord_thread_func(config: dict) -> None:
 
 
 def _eventbus_subscriber_loop() -> None:
-    """Background thread: watch eventbus for assistant responses in Discord sessions."""
+    """Background thread: watch eventbus for assistant responses in Discord sessions.
+
+    Buffers the latest assistant message per session and only delivers it when
+    the run is fully complete (memory.visible_run_postprocess_completed). This
+    prevents intermediate agentic-loop messages (between tool calls) from being
+    sent as separate Discord messages.
+    """
     from core.eventbus.bus import event_bus
     sub = event_bus.subscribe()
+    # session_id → (channel_id, content) — latest buffered assistant message
+    _pending: dict[str, tuple[int, str]] = {}
     try:
         while _sub_running:
             try:
@@ -366,27 +374,33 @@ def _eventbus_subscriber_loop() -> None:
             if not isinstance(item, dict):
                 continue
             kind = item.get("kind", "")
-            if kind != "channel.chat_message_appended":
-                continue
             payload = item.get("payload") or {}
-            session_id = str(payload.get("session_id") or "")
-            with _discord_sessions_lock:
-                channel_id = _discord_sessions.get(session_id)
-            if channel_id is None:
-                continue
-            # Only forward actual chat responses — skip heartbeat pings/proposes,
-            # boredom notifications, and other background system messages.
-            source = str(payload.get("source") or "")
-            if source and source != "visible-run":
-                continue
-            msg = payload.get("message") or {}
-            role = str(msg.get("role") or "")
-            if role != "assistant":
-                continue
-            content = str(msg.get("content") or "").strip()
-            if not content:
-                continue
-            send_discord_message(channel_id, content)
+
+            # Buffer latest assistant message from visible runs
+            if kind == "channel.chat_message_appended":
+                session_id = str(payload.get("session_id") or "")
+                with _discord_sessions_lock:
+                    channel_id = _discord_sessions.get(session_id)
+                if channel_id is None:
+                    continue
+                source = str(payload.get("source") or "")
+                if source and source != "visible-run":
+                    continue
+                msg = payload.get("message") or {}
+                if str(msg.get("role") or "") != "assistant":
+                    continue
+                content = str(msg.get("content") or "").strip()
+                if content:
+                    _pending[session_id] = (channel_id, content)
+
+            # Flush buffer when run is fully complete
+            elif kind == "memory.visible_run_postprocess_completed":
+                session_id = str(payload.get("session_id") or "")
+                pending = _pending.pop(session_id, None)
+                if pending:
+                    channel_id, content = pending
+                    send_discord_message(channel_id, content)
+
     finally:
         event_bus.unsubscribe(sub)
 

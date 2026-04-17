@@ -1015,13 +1015,48 @@ def _run_heartbeat_tick_locked(
         execution_status = str(result.get("execution_status") or "success")
     except Exception as exc:
         execution_status = _classify_heartbeat_execution_exception(exc)
-        decision = _bounded_heartbeat_failure_decision(
-            failure_kind="runtime",
-            detail=str(exc),
-            target=target,
-        )
+        # On LLM failure, use rule-based phase1 logic so pending initiatives
+        # are still honoured rather than silently falling to noop → propose → blocked.
+        try:
+            phase1_result = _phase1_rule_based_decision(
+                policy=policy,
+                open_loops=context["open_loops"],
+                liveness=context.get("liveness"),
+                prompt=prompt,
+            )
+            raw_response = str(phase1_result.get("text") or "")
+            decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
+            logger.info(
+                "heartbeat: LLM failed (%s), fell back to phase1 rule-based decision: %s",
+                exc,
+                decision.get("decision_type"),
+            )
+        except Exception:
+            decision = _bounded_heartbeat_failure_decision(
+                failure_kind="runtime",
+                detail=str(exc),
+                target=target,
+            )
     else:
         decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
+        # On parse failure (e.g. truncated JSON), fall back to phase1 rule-based
+        # logic so pending initiatives are still honoured.
+        if parse_status == "parse-failed":
+            try:
+                phase1_result = _phase1_rule_based_decision(
+                    policy=policy,
+                    open_loops=context["open_loops"],
+                    liveness=context.get("liveness"),
+                    prompt=prompt,
+                )
+                raw_response = str(phase1_result.get("text") or "")
+                decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
+                logger.info(
+                    "heartbeat: LLM parse failed, fell back to phase1 rule-based decision: %s",
+                    decision.get("decision_type"),
+                )
+            except Exception:
+                pass
 
     decision = _recover_bounded_heartbeat_liveness_decision(
         decision=decision,
@@ -3236,7 +3271,7 @@ def _build_heartbeat_liveness_signal(
 
 
 def _select_heartbeat_target(policy: dict | None = None) -> dict[str, str | bool]:  # noqa: ARG001
-    supported_providers = {"phase1-runtime", "openai", "openrouter", "ollama"}
+    supported_providers = {"phase1-runtime", "openai", "openrouter", "ollama", "groq"}
     settings = load_settings()
     heartbeat_provider = str(
         getattr(settings, "heartbeat_model_provider", "") or ""
@@ -3356,6 +3391,115 @@ def _runtime_selected_local_target(*, settings) -> dict[str, str | bool] | None:
     }
 
 
+def _phase1_rule_based_decision(
+    *,
+    policy: dict[str, object],
+    open_loops: list[str],
+    liveness: dict[str, object] | None = None,
+    prompt: str = "",
+) -> dict[str, object]:
+    """Rule-based heartbeat decision for phase1-runtime or LLM-failure fallback.
+
+    Returns a result dict compatible with _execute_heartbeat_model output.
+    Always honours pending initiatives when allow_execute is true.
+    """
+    liveness_summary = str((liveness or {}).get("liveness_summary") or "").strip()
+    liveness_pressure = str((liveness or {}).get("liveness_pressure") or "low")
+    liveness_threshold_state = str(
+        (liveness or {}).get("liveness_threshold_state") or "quiet-threshold"
+    )
+    summary = (
+        open_loops[0]
+        if open_loops
+        else (liveness_summary or "No current due work was detected.")
+    )
+    try:
+        from apps.api.jarvis_api.services.initiative_queue import (
+            get_pending_initiatives,
+        )
+
+        pending_initiatives = get_pending_initiatives()
+    except Exception:
+        pending_initiatives = []
+    has_pending_initiative = bool(pending_initiatives) or any(
+        loop.startswith("initiative pending:") for loop in open_loops
+    )
+    decision_type = (
+        "initiative"
+        if bool(policy.get("allow_execute")) and has_pending_initiative
+        else (
+            "execute"
+            if bool(policy.get("allow_execute"))
+            else (
+                "propose"
+                if (
+                    open_loops
+                    or liveness_threshold_state == "propose-worthy-threshold"
+                    or (
+                        liveness_pressure == "high"
+                        and liveness_threshold_state == "alive-threshold"
+                    )
+                )
+                else "noop"
+            )
+        )
+    )
+    contract_candidate_counts = runtime_contract_candidate_counts()
+    has_contract_write_work = any(
+        int(contract_candidate_counts.get(key) or 0) > 0
+        for key in (
+            "preference_update:proposed",
+            "preference_update:approved",
+            "memory_promotion:proposed",
+            "memory_promotion:approved",
+            "soul_update:approved",
+            "identity_update:approved",
+        )
+    )
+    execute_action = (
+        "act_on_initiative"
+        if decision_type == "initiative"
+        else (
+            "process_contract_writes"
+            if decision_type == "execute" and has_contract_write_work
+            else ("manage_runtime_work" if decision_type == "execute" else "")
+        )
+    )
+    if decision_type == "initiative" and pending_initiatives:
+        summary = str(
+            (pending_initiatives[0] or {}).get("focus")
+            or "Act on pending initiative"
+        )
+    elif decision_type == "execute" and execute_action == "process_contract_writes":
+        summary = "Process ready contract writes for governed workspace files."
+    reason = (
+        "Phase1 fallback heartbeat used pending initiatives as bounded internal work."
+        if decision_type == "initiative"
+        else (
+            "Phase1 fallback heartbeat used ready contract write work as bounded internal action."
+            if execute_action == "process_contract_writes"
+            else "Phase1 fallback heartbeat used bounded runtime context without provider-backed execution."
+        )
+    )
+    text = json.dumps(
+        {
+            "decision_type": decision_type,
+            "summary": summary,
+            "reason": reason,
+            "proposed_action": summary if decision_type == "propose" else "",
+            "ping_text": "",
+            "execute_action": execute_action,
+        },
+        ensure_ascii=False,
+    )
+    return {
+        "text": text,
+        "input_tokens": _estimate_tokens(prompt),
+        "output_tokens": _estimate_tokens(text),
+        "cost_usd": 0.0,
+    }
+
+
 def _execute_heartbeat_model(
     *,
     prompt: str,
@@ -3367,145 +3511,20 @@ def _execute_heartbeat_model(
     provider = target["provider"]
     model = target["model"]
     if provider == "phase1-runtime":
-        liveness_summary = str((liveness or {}).get("liveness_summary") or "").strip()
-        liveness_pressure = str((liveness or {}).get("liveness_pressure") or "low")
-        liveness_threshold_state = str(
-            (liveness or {}).get("liveness_threshold_state") or "quiet-threshold"
+        return _phase1_rule_based_decision(
+            policy=policy,
+            open_loops=open_loops,
+            liveness=liveness,
+            prompt=prompt,
         )
-        summary = (
-            open_loops[0]
-            if open_loops
-            else (liveness_summary or "No current due work was detected.")
-        )
-        try:
-            from apps.api.jarvis_api.services.initiative_queue import (
-                get_pending_initiatives,
-            )
-
-            pending_initiatives = get_pending_initiatives()
-        except Exception:
-            pending_initiatives = []
-        has_pending_initiative = bool(pending_initiatives) or any(
-            loop.startswith("initiative pending:") for loop in open_loops
-        )
-        repo_pressure = any(
-            any(
-                token in loop.lower()
-                for token in (
-                    "repo",
-                    "backend",
-                    "project",
-                    "workspace",
-                    "tool",
-                    "capability",
-                    "commit",
-                    "path",
-                    "memory.md",
-                    "user.md",
-                    "readme",
-                    "code",
-                )
-            )
-            for loop in open_loops
-        )
-        system_pressure = any(
-            any(
-                token in loop.lower()
-                for token in (
-                    "system",
-                    "ubuntu",
-                    "linux",
-                    "kernel",
-                    "cpu",
-                    "gpu",
-                    "ram",
-                    "disk",
-                    "distro",
-                    "machine",
-                )
-            )
-            for loop in open_loops
-        )
-        decision_type = (
-            "initiative"
-            if bool(policy.get("allow_execute")) and has_pending_initiative
-            else (
-                "execute"
-                if bool(policy.get("allow_execute"))
-                else (
-                    "propose"
-                    if (
-                        open_loops
-                        or liveness_threshold_state == "propose-worthy-threshold"
-                        or (
-                            liveness_pressure == "high"
-                            and liveness_threshold_state == "alive-threshold"
-                        )
-                    )
-                    else "noop"
-                )
-            )
-        )
-        contract_candidate_counts = runtime_contract_candidate_counts()
-        has_contract_write_work = any(
-            int(contract_candidate_counts.get(key) or 0) > 0
-            for key in (
-                "preference_update:proposed",
-                "preference_update:approved",
-                "memory_promotion:proposed",
-                "memory_promotion:approved",
-                "soul_update:approved",
-                "identity_update:approved",
-            )
-        )
-        execute_action = (
-            "act_on_initiative"
-            if decision_type == "initiative"
-            else (
-                "process_contract_writes"
-                if decision_type == "execute" and has_contract_write_work
-                else ("manage_runtime_work" if decision_type == "execute" else "")
-            )
-        )
-        if decision_type == "initiative" and pending_initiatives:
-            summary = str(
-                (pending_initiatives[0] or {}).get("focus")
-                or "Act on pending initiative"
-            )
-        elif decision_type == "execute" and execute_action == "process_contract_writes":
-            summary = "Process ready contract writes for governed workspace files."
-        reason = (
-            "Phase1 fallback heartbeat used pending initiatives as bounded internal work."
-            if decision_type == "initiative"
-            else (
-                "Phase1 fallback heartbeat used ready contract write work as bounded internal action."
-                if execute_action == "process_contract_writes"
-                else "Phase1 fallback heartbeat used bounded runtime context without provider-backed execution."
-            )
-        )
-        text = json.dumps(
-            {
-                "decision_type": decision_type,
-                "summary": summary,
-                "reason": reason,
-                "proposed_action": summary if decision_type == "propose" else "",
-                "ping_text": "",
-                "execute_action": execute_action,
-            },
-            ensure_ascii=False,
-        )
-        return {
-            "text": text,
-            "input_tokens": _estimate_tokens(prompt),
-            "output_tokens": _estimate_tokens(text),
-            "cost_usd": 0.0,
-        }
     if provider == "ollama":
         return _execute_ollama_prompt(prompt=prompt, target=target)
     if provider == "openai":
         return _execute_openai_prompt(prompt=prompt, target=target)
     if provider == "openrouter":
         return _execute_openrouter_prompt(prompt=prompt, target=target)
+    if provider == "groq":
+        return _execute_groq_prompt(prompt=prompt, target=target)
     raise RuntimeError(f"Heartbeat provider not supported: {provider}")
 
 
@@ -3518,7 +3537,7 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
         "format": "json",
         "options": {
             "temperature": 0.7,
-            "num_predict": 320,
+            "num_predict": 512,
         },
     }
     req = urllib_request.Request(
@@ -3528,7 +3547,7 @@ def _execute_ollama_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, 
         method="POST",
     )
     try:
-        with urllib_request.urlopen(req, timeout=120) as response:
+        with urllib_request.urlopen(req, timeout=45) as response:
             data = json.loads(response.read().decode("utf-8"))
     except urllib_error.HTTPError as exc:
         detail = _http_error_detail(exc)
@@ -3610,6 +3629,44 @@ def _execute_openrouter_prompt(
             or _estimate_tokens(text)
         ),
         "cost_usd": 0.0,
+    }
+
+
+def _execute_groq_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, object]:
+    api_key = _load_provider_api_key(provider="groq", profile=target["auth_profile"])
+    base_url = target["base_url"] or "https://api.groq.com/openai/v1"
+    req = urllib_request.Request(
+        f"{base_url.rstrip('/')}/chat/completions",
+        data=json.dumps(
+            {
+                "model": target["model"],
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "temperature": 0.7,
+                "max_tokens": 512,
+                "response_format": {"type": "json_object"},
+            }
+        ).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+    with urllib_request.urlopen(req, timeout=30) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    text = str(
+        (((data.get("choices") or [{}])[0]).get("message") or {}).get("content") or ""
+    ).strip()
+    if not text:
+        raise RuntimeError("Heartbeat groq execution returned no response")
+    usage = data.get("usage", {})
+    return {
+        "text": text,
+        "input_tokens": int(usage.get("prompt_tokens") or _estimate_tokens(prompt)),
+        "output_tokens": int(usage.get("completion_tokens") or _estimate_tokens(text)),
+        "cost_usd": 0.0,
+        "execution_status": "success",
     }
 
 

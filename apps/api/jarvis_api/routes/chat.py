@@ -25,6 +25,7 @@ class ChatStreamRequest(BaseModel):
     message: str = ""
     session_id: str = ""
     attachment_ids: list[str] = []
+    approval_mode: str = "ask"  # "ask" | "trust"
 
 
 class ChatSessionCreateRequest(BaseModel):
@@ -93,7 +94,7 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
     from apps.api.jarvis_api.services.notification_bridge import pin_session
     pin_session(session_id)
     return StreamingResponse(
-        start_visible_run(message=effective_message, session_id=session_id),
+        start_visible_run(message=effective_message, session_id=session_id, approval_mode=request.approval_mode),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

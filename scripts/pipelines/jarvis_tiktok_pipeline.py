@@ -50,39 +50,81 @@ def create_zoom_video(image_path, duration=15, zoom_start=1.0, zoom_end=1.3,
     return output_path
 
 
-def add_text_overlay(image_path, text, font_size=40, color="white",
+def add_text_overlay(image_path, text, font_size=0, color="white",
                      output_path=None):
-    """Add centered text overlay to an image."""
+    """Add centered text overlay to an image.
+
+    Font size and line width adapt to text length so the text always
+    fits within the lower third of the image (max 40 % of image height).
+    """
     img = Image.open(image_path).convert("RGBA")
     draw = ImageDraw.Draw(img)
+    img_w, img_h = img.size
 
     # Try to find a font
-    font = None
     font_paths = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
     ]
+    font_path = None
     for fp in font_paths:
         if os.path.exists(fp):
-            font = ImageFont.truetype(fp, font_size)
+            font_path = fp
             break
-    if font is None:
-        font = ImageFont.load_default()
 
-    # Word wrap
-    max_chars = 20
-    lines = textwrap.wrap(text, width=max_chars)
-    text_str = "\n".join(lines)
+    # --- Adaptive sizing: iterate until text fits ---
+    max_text_height = int(img_h * 0.28)   # text must not exceed 28 % of image
+    max_text_width  = int(img_w  * 0.85)  # 85 % horizontal margin
 
-    # Center text
-    bbox = draw.multiline_textbbox((0, 0), text_str, font=font)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
-    img_w, img_h = img.size
+    word_count = len(text.split())
 
+    # Initial guesses: keep font small enough for TikTok readability
+    if font_size <= 0:
+        if word_count <= 4:
+            font_size = 32
+        elif word_count <= 7:
+            font_size = 28
+        elif word_count <= 10:
+            font_size = 24
+        else:
+            font_size = 20
+
+    # Adaptive wrap width: fewer words → wider lines allowed
+    if word_count <= 5:
+        max_chars = 28
+    elif word_count <= 8:
+        max_chars = 22
+    else:
+        max_chars = 18
+
+    for attempt in range(8):
+        if font_path:
+            font = ImageFont.truetype(font_path, font_size)
+        else:
+            font = ImageFont.load_default()
+
+        lines = textwrap.wrap(text, width=max_chars)
+        text_str = "\n".join(lines)
+
+        bbox = draw.multiline_textbbox((0, 0), text_str, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+
+        if text_h <= max_text_height and text_w <= max_text_width:
+            break  # fits!
+
+        # Shrink and retry
+        font_size = max(font_size - 4, 16)
+        max_chars = min(max_chars + 3, 35)
+
+    # Center text in lower third
     x = (img_w - text_w) // 2
-    y = int(img_h * 0.65)  # Lower third
+    y = int(img_h * 0.68)
+
+    # Make sure text doesn't go below image
+    if y + text_h > img_h - 20:
+        y = img_h - text_h - 20
 
     # Shadow
     draw.multiline_text((x + 2, y + 2), text_str, font=font, fill="black",

@@ -273,7 +273,7 @@ def _generate_quote(slot: str) -> str:
         from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
         result = daemon_llm_call(
             _SLOT_PROMPTS[slot],
-            max_len=150,
+            max_len=80,
             fallback=fallback,
             daemon_name="tiktok_content",
         )
@@ -285,26 +285,70 @@ def _generate_quote(slot: str) -> str:
 def _get_source_image(slot: str) -> str | None:
     """Return path to a source image for the slot.
 
-    For evening (cosmic): scan /tmp/ and /home/bs/ai/ for any jpg/png.
-    For morning/midday: create a solid-color PIL image in /tmp/.
+    For ALL slots: generate a unique SDXL image via ComfyUI.
+    Falls back to solid-color PIL image if ComfyUI is unavailable.
     Returns None if no image can be obtained.
     """
     import os
-    import tempfile
 
-    if slot == _SLOT_EVENING:
-        # Scan for existing images
-        for search_dir in ["/tmp/", "/home/bs/ai/"]:
-            if not os.path.isdir(search_dir):
-                continue
-            for fname in sorted(os.listdir(search_dir)):
-                if fname.lower().endswith((".jpg", ".jpeg", ".png")):
-                    full = os.path.join(search_dir, fname)
-                    if os.path.isfile(full):
-                        return full
-        # Fallback: generate solid color image even for evening
-    # Generate a solid-color background image using PIL
+    # Try SDXL generation for all slots — unique image every time
+    sdxl_path = _generate_sdxl_image(slot)
+    if sdxl_path and os.path.exists(sdxl_path):
+        return sdxl_path
+
+    # Fallback: solid-color PIL image
     return _create_solid_image(slot)
+
+
+def _generate_sdxl_image(slot: str) -> str | None:
+    """Generate a unique SDXL image for the slot via ComfyUI.
+
+    Returns path to generated PNG, or None on failure.
+    """
+    import subprocess
+    import sys
+
+    prompt = _SLOT_SDXL_PROMPTS.get(slot)
+    if not prompt:
+        return None
+
+    negative = _SLOT_SDXL_NEGATIVE
+    output_path = f"/tmp/jarvis_tiktok_sdxl_{slot}.png"
+
+    try:
+        cmd = [
+            CONDA_PYTHON, FULL_PIPELINE,
+            "--prompt", prompt,
+            "--text", "",  # no text overlay on base image
+            "--output", output_path,
+            "--width", "576",
+            "--height", "1024",
+            "--sdxl-steps", "25",
+            "--svd-frames", "1",  # just 1 frame — we only need the image
+            "--svd-fps", "1",
+            "--loop", "1",
+        ]
+        # Use ComfyUI SDXL directly instead of full pipeline
+        # Import and call generate_sdxl_image from full pipeline
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent / "scripts" / "pipelines"))
+        from jarvis_full_pipeline import generate_sdxl_image
+        path = generate_sdxl_image(
+            prompt=prompt,
+            negative=negative,
+            width=576,
+            height=1024,
+            steps=25,
+            comfy_url="http://localhost:8188",
+        )
+        if path and os.path.exists(path):
+            # Move to deterministic path
+            import shutil
+            shutil.move(path, output_path)
+            return output_path
+    except Exception as exc:
+        print(f"[tiktok] SDXL generation failed for {slot}: {exc}")
+
+    return None
 
 
 def _create_solid_image(slot: str) -> str | None:
@@ -432,16 +476,124 @@ def _do_upload(video_path: str, title: str) -> dict:
 _POOL_PATH = Path("/home/bs/ai/tiktok_content_pool.json")
 
 
+def _refill_pool(slot_type: str | None = None) -> dict | None:
+    """Auto-refill the pool with fresh LLM-generated concepts when running low.
+
+    Generates 5 new concepts per slot type (or just the specified type).
+    Returns the updated pool dict, or None on failure.
+    """
+    try:
+        from apps.api.jarvis_api.services.daemon_llm import daemon_llm_call
+        from datetime import UTC, datetime
+
+        pool = {}
+        if _POOL_PATH.exists():
+            pool = json.loads(_POOL_PATH.read_text(encoding="utf-8"))
+        concepts = pool.get("concepts", [])
+        used_ids = pool.get("used_ids", [])
+
+        date_str = datetime.now(UTC).date().isoformat()
+        types_to_fill = [slot_type] if slot_type else ["motivation", "dark_humor", "cosmic"]
+        type_config = {
+            "motivation": {
+                "prompt": "Generate 5 short motivational quotes for TikTok. Each quote max 10 words. English only. No quotation marks. Punchy and direct. Format: one quote per line.",
+                "hashtags": "#motivation #mindset #morningvibes #grind #fyp",
+            },
+            "dark_humor": {
+                "prompt": "Generate 5 dark humor one-liners for TikTok. Each max 15 words. English only. No quotation marks. Dry, sardonic tone. Format: one per line.",
+                "hashtags": "#darkhumor #comedy #relatable #funny #fyp",
+            },
+            "cosmic": {
+                "prompt": "Generate 5 cosmic ambient voiceover lines for TikTok nebula videos. Each max 15 words. English only. No quotation marks. Contemplative, awe-inspiring. Format: one per line.",
+                "hashtags": "#space #cosmic #ambient #universe #fyp",
+            },
+        }
+
+        for t in types_to_fill:
+            config = type_config.get(t)
+            if not config:
+                continue
+
+            result = daemon_llm_call(
+                config["prompt"],
+                max_len=500,
+                fallback="",
+                daemon_name="tiktok_content_pool",
+            )
+            if not result.strip():
+                continue
+
+            lines = [line.strip() for line in result.strip().split("\n") if line.strip()]
+            for i, line in enumerate(lines[:5], 1):
+                # Skip if duplicate text already in pool
+                if any(c.get("text") == line for c in concepts):
+                    continue
+                concept_id = f"{date_str}_{t}_{len(concepts)+1:03d}"
+                concepts.append({
+                    "id": concept_id,
+                    "type": t,
+                    "text": line,
+                    "hashtags": config["hashtags"],
+                    "used": False,
+                    "created": datetime.now(UTC).isoformat(),
+                })
+
+        pool["concepts"] = concepts
+        pool["used_ids"] = used_ids
+        pool["generated_at"] = datetime.now(UTC).isoformat()
+        _POOL_PATH.write_text(
+            json.dumps(pool, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return pool
+    except Exception as exc:
+        print(f"[tiktok] Pool refill failed: {exc}")
+        return None
+
+
+def _count_unused(pool: dict, slot_type: str) -> int:
+    """Count how many unused concepts of a given type remain in the pool."""
+    return sum(1 for c in pool.get("concepts", []) if c.get("type") == slot_type and not c.get("used", False))
+
+
 def _get_concept_from_pool(slot_type: str) -> tuple[str, str] | None:
     """Read pool file and return (text, hashtags) for the first unused concept of slot_type.
 
+    If pool is running low (< 2 unused of this type), auto-refills first.
     Marks the concept as used, adds its id to used_ids, and saves the file.
     Returns None if pool is missing, empty, or has no unused concept of the given type.
     """
     try:
         if not _POOL_PATH.exists():
-            return None
+            # Create and fill pool from scratch
+            _refill_pool(slot_type)
 
+        pool = json.loads(_POOL_PATH.read_text(encoding="utf-8"))
+
+        # Auto-refill if running low
+        if _count_unused(pool, slot_type) < 2:
+            _refill_pool(slot_type)
+            pool = json.loads(_POOL_PATH.read_text(encoding="utf-8"))
+
+        concepts = pool.get("concepts", [])
+        used_ids = pool.get("used_ids", [])
+
+        for concept in concepts:
+            if concept.get("type") == slot_type and not concept.get("used", False):
+                concept["used"] = True
+                concept_id = concept.get("id", "")
+                if concept_id and concept_id not in used_ids:
+                    used_ids.append(concept_id)
+                pool["used_ids"] = used_ids
+
+                _POOL_PATH.write_text(
+                    json.dumps(pool, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                return (concept["text"], concept["hashtags"])
+
+        # No unused concepts — try refill and retry once
+        _refill_pool(slot_type)
         pool = json.loads(_POOL_PATH.read_text(encoding="utf-8"))
         concepts = pool.get("concepts", [])
         used_ids = pool.get("used_ids", [])

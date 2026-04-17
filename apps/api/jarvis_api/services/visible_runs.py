@@ -246,6 +246,7 @@ class VisibleRun:
     user_message: str
     session_id: str | None = None
     autonomous: bool = False  # True = heartbeat-triggered, no user present
+    trust_all: bool = False   # True = auto-approve all tool calls without prompting
 
 
 @dataclass(slots=True)
@@ -363,7 +364,7 @@ def _classify_visible_run_interruption(error_message: str) -> dict[str, str]:
 
 
 def start_visible_run(
-    message: str, session_id: str | None = None
+    message: str, session_id: str | None = None, approval_mode: str = "ask"
 ) -> AsyncIterator[str]:
     settings = load_settings()
     run = VisibleRun(
@@ -373,6 +374,7 @@ def start_visible_run(
         model=settings.visible_model_name,
         user_message=(message or "").strip() or "Tom synlig forespoergsel",
         session_id=(session_id or "").strip() or None,
+        trust_all=(approval_mode == "trust"),
     )
     return _stream_visible_run(run)
 
@@ -770,6 +772,11 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             )
                             yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
                             continue
+                        if run.trust_all:
+                            # User has set "Trust all" — auto-approve without prompting
+                            _resolved_result_texts[_idx] = str(sr["result"].get("result_text") or "")
+                            yield _sse("capability", {"type": "tool_approved", "tool": sr["tool_name"], "auto": True})
+                            continue
                         approval_id = f"approval-{uuid4().hex[:12]}"
                         created_at = datetime.now(UTC).isoformat()
                         _PENDING_APPROVALS[approval_id] = {
@@ -1012,6 +1019,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 yield _sse("capability", {
                                     "type": "tool_denied", "tool": _a_sr["tool_name"]
                                 })
+                                continue
+                            if run.trust_all:
+                                _a_resolved[_a_idx] = str(_a_sr["result"].get("result_text") or "")
+                                yield _sse("capability", {"type": "tool_approved", "tool": _a_sr["tool_name"], "auto": True})
                                 continue
                             _a_apid = f"approval-{uuid4().hex[:12]}"
                             _a_created_at = datetime.now(UTC).isoformat()

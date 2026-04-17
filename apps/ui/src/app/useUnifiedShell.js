@@ -240,8 +240,9 @@ export function useUnifiedShell() {
     }
   }
 
-  async function handleSend(content, { attachmentIds = [], attachmentMeta = [] } = {}) {
-    if (!activeSession || isStreaming) return
+  async function handleSend(content, { attachmentIds = [], attachmentMeta = [], approvalMode = 'ask' } = {}) {
+    if (!activeSession || isStreamingRef.current) return
+    isStreamingRef.current = true
 
     const sessionId = activeSession.id
     const userMessage = {
@@ -279,6 +280,7 @@ export function useUnifiedShell() {
         sessionId,
         content,
         attachmentIds,
+        approvalMode,
         signal: abortController.signal,
         onRun: (payload) => {
           if (payload?.run_id) setActiveRunId(payload.run_id)

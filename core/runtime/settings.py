@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field, fields
+from typing import Any
 
 from core.runtime.config import CONFIG_DIR, SETTINGS_FILE
 
@@ -37,9 +38,10 @@ class RuntimeSettings:
     context_run_compact_threshold_tokens: int = 60_000
     context_keep_recent: int = 20
     context_keep_recent_pairs: int = 4
+    extra: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> dict[str, str | int | bool]:
-        return {
+    def to_dict(self) -> dict[str, Any]:
+        typed = {
             "app_name": self.app_name,
             "environment": self.environment,
             "host": self.host,
@@ -66,6 +68,10 @@ class RuntimeSettings:
             "context_keep_recent": self.context_keep_recent,
             "context_keep_recent_pairs": self.context_keep_recent_pairs,
         }
+        return {**self.extra, **typed}
+
+
+KNOWN_FIELDS = {runtime_field.name for runtime_field in fields(RuntimeSettings) if runtime_field.name != "extra"}
 
 
 def load_settings() -> RuntimeSettings:
@@ -118,6 +124,7 @@ def load_settings() -> RuntimeSettings:
         context_run_compact_threshold_tokens=int(data.get("context_run_compact_threshold_tokens", defaults.context_run_compact_threshold_tokens)),
         context_keep_recent=int(data.get("context_keep_recent", defaults.context_keep_recent)),
         context_keep_recent_pairs=int(data.get("context_keep_recent_pairs", defaults.context_keep_recent_pairs)),
+        extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 
 

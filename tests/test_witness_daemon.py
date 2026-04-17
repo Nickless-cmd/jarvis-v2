@@ -5,8 +5,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-import apps.api.jarvis_api.services.witness_signal_tracking as ws_module
-from apps.api.jarvis_api.services.witness_signal_tracking import (
+import core.services.witness_signal_tracking as ws_module
+from core.services.witness_signal_tracking import (
     run_witness_daemon,
     get_witness_daemon_state,
     _DAEMON_COOLDOWN_MINUTES,
@@ -176,7 +176,7 @@ def test_daemon_produces_signals_with_grounded_material(isolated_runtime) -> Non
 
 def test_visible_turn_witness_tracking_still_works(isolated_runtime) -> None:
     """The existing visible-turn witness tracking must still work independently."""
-    from apps.api.jarvis_api.services.witness_signal_tracking import (
+    from core.services.witness_signal_tracking import (
         track_runtime_witness_signals_for_visible_turn,
     )
 

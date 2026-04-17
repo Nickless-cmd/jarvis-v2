@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
-import apps.api.jarvis_api.services.surprise_daemon as sd
+import core.services.surprise_daemon as sd
 
 
 def _reset():
@@ -70,7 +70,7 @@ def test_compute_divergence_detects_energy_jump():
 
 def test_private_brain_record_written_on_store():
     _reset()
-    with patch("apps.api.jarvis_api.services.surprise_daemon.insert_private_brain_record") as mock_insert:
+    with patch("core.services.surprise_daemon.insert_private_brain_record") as mock_insert:
         sd._store_surprise("Jeg blev overrasket.", ["mode:work-steady→searching"])
     mock_insert.assert_called_once()
     kwargs = mock_insert.call_args[1]

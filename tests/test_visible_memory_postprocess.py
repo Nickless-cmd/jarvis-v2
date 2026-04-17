@@ -9,13 +9,13 @@ def test_visible_memory_postprocess_consolidates_even_when_distillation_fails(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
     session_distillation = importlib.import_module(
-        "apps.api.jarvis_api.services.session_distillation"
+        "core.services.session_distillation"
     )
     end_consolidation = importlib.import_module(
-        "apps.api.jarvis_api.services.end_of_run_memory_consolidation"
+        "core.services.end_of_run_memory_consolidation"
     )
 
     calls: list[dict[str, object]] = []

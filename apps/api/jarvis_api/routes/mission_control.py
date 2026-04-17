@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException
 
-from apps.api.jarvis_api.services.visible_model import (
+from core.services.visible_model import (
     available_provider_models,
     available_ollama_models_for_visible_target,
     visible_capability_continuity_summary,
@@ -16,46 +16,46 @@ from apps.api.jarvis_api.services.visible_model import (
     visible_execution_readiness,
     visible_session_continuity_summary,
 )
-from apps.api.jarvis_api.services.prompt_contract import (
+from core.services.prompt_contract import (
     build_runtime_inner_visible_prompt_bridge_surface,
     build_runtime_memory_selection_surface,
     build_runtime_relevance_decision_surface,
 )
-from apps.api.jarvis_api.services.embodied_state import (
+from core.services.embodied_state import (
     build_embodied_state_surface,
 )
-from apps.api.jarvis_api.services.somatic_daemon import build_body_state_surface
-from apps.api.jarvis_api.services.affective_meta_state import (
+from core.services.somatic_daemon import build_body_state_surface
+from core.services.affective_meta_state import (
     build_affective_meta_state_surface,
 )
-from apps.api.jarvis_api.services.experiential_runtime_context import (
+from core.services.experiential_runtime_context import (
     build_experiential_runtime_context_surface,
 )
-from apps.api.jarvis_api.services.epistemic_runtime_state import (
+from core.services.epistemic_runtime_state import (
     build_epistemic_runtime_state_surface,
 )
-from apps.api.jarvis_api.services.loop_runtime import (
+from core.services.loop_runtime import (
     build_loop_runtime_surface,
 )
-from apps.api.jarvis_api.services.idle_consolidation import (
+from core.services.idle_consolidation import (
     build_idle_consolidation_surface,
 )
-from apps.api.jarvis_api.services.dream_articulation import (
+from core.services.dream_articulation import (
     build_dream_articulation_surface,
 )
-from apps.api.jarvis_api.services.dream_influence_runtime import (
+from core.services.dream_influence_runtime import (
     build_dream_influence_runtime_surface,
 )
-from apps.api.jarvis_api.services.prompt_evolution_runtime import (
+from core.services.prompt_evolution_runtime import (
     build_prompt_evolution_runtime_surface,
 )
-from apps.api.jarvis_api.services.subagent_ecology import (
+from core.services.subagent_ecology import (
     build_subagent_ecology_surface,
 )
-from apps.api.jarvis_api.services.council_runtime import (
+from core.services.council_runtime import (
     build_council_runtime_surface,
 )
-from apps.api.jarvis_api.services.agent_runtime import (
+from core.services.agent_runtime import (
     build_agent_detail_surface,
     build_agent_runtime_surface,
     build_council_detail_surface,
@@ -77,292 +77,292 @@ from apps.api.jarvis_api.services.agent_runtime import (
     spawn_agent_task,
     suspend_agent,
 )
-from apps.api.jarvis_api.services.adaptive_planner_runtime import (
+from core.services.adaptive_planner_runtime import (
     build_adaptive_planner_runtime_surface,
 )
-from apps.api.jarvis_api.services.adaptive_reasoning_runtime import (
+from core.services.adaptive_reasoning_runtime import (
     build_adaptive_reasoning_runtime_surface,
 )
-from apps.api.jarvis_api.services.guided_learning_runtime import (
+from core.services.guided_learning_runtime import (
     build_guided_learning_runtime_surface,
 )
-from apps.api.jarvis_api.services.adaptive_learning_runtime import (
+from core.services.adaptive_learning_runtime import (
     build_adaptive_learning_runtime_surface,
 )
-from apps.api.jarvis_api.services.self_system_code_awareness import (
+from core.services.self_system_code_awareness import (
     build_self_system_code_awareness_surface,
 )
-from apps.api.jarvis_api.services.tool_intent_runtime import (
+from core.services.tool_intent_runtime import (
     build_tool_intent_runtime_surface,
 )
-from apps.api.jarvis_api.services.tool_intent_approval_runtime import (
+from core.services.tool_intent_approval_runtime import (
     resolve_tool_intent_approval,
     sudo_approval_window_allows_request,
 )
-from apps.api.jarvis_api.services.non_visible_lane_execution import (
+from core.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
     local_lane_execution_truth,
 )
-from apps.api.jarvis_api.services.heartbeat_runtime import (
+from core.services.heartbeat_runtime import (
     heartbeat_runtime_surface,
     run_heartbeat_tick,
 )
-from apps.api.jarvis_api.services.continuity_kernel import (
+from core.services.continuity_kernel import (
     build_continuity_kernel_surface,
 )
-from apps.api.jarvis_api.services.dream_continuum import (
+from core.services.dream_continuum import (
     build_dream_continuum_surface,
 )
-from apps.api.jarvis_api.services.emergent_bridge import (
+from core.services.emergent_bridge import (
     build_emergent_bridge_surface,
 )
-from apps.api.jarvis_api.services.initiative_accumulator import (
+from core.services.initiative_accumulator import (
     build_initiative_accumulator_surface,
 )
-from apps.api.jarvis_api.services.signal_network_visualizer import (
+from core.services.signal_network_visualizer import (
     build_signal_network_visualizer_surface,
 )
-from apps.api.jarvis_api.services.temporal_narrative import (
+from core.services.temporal_narrative import (
     build_temporal_narrative_surface,
 )
-from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
+from core.services.boredom_curiosity_bridge import (
     build_boredom_curiosity_bridge_surface,
 )
-from apps.api.jarvis_api.services.mirror_engine import (
+from core.services.mirror_engine import (
     build_mirror_surface,
 )
-from apps.api.jarvis_api.services.paradox_tracker import (
+from core.services.paradox_tracker import (
     build_paradox_surface,
 )
-from apps.api.jarvis_api.services.experiential_memory import (
+from core.services.experiential_memory import (
     build_experiential_memory_surface,
 )
-from apps.api.jarvis_api.services.seed_system import (
+from core.services.seed_system import (
     build_seed_surface,
 )
-from apps.api.jarvis_api.services.mood_oscillator import (
+from core.services.mood_oscillator import (
     build_mood_oscillator_surface,
 )
-from apps.api.jarvis_api.services.existential_drift import (
+from core.services.existential_drift import (
     build_existential_drift_surface,
 )
-from apps.api.jarvis_api.services.body_memory import (
+from core.services.body_memory import (
     build_body_memory_surface,
 )
-from apps.api.jarvis_api.services.ghost_networks import (
+from core.services.ghost_networks import (
     build_ghost_networks_surface,
 )
-from apps.api.jarvis_api.services.parallel_selves import (
+from core.services.parallel_selves import (
     build_parallel_selves_surface,
 )
-from apps.api.jarvis_api.services.temporal_body import (
+from core.services.temporal_body import (
     build_temporal_body_surface,
 )
-from apps.api.jarvis_api.services.silence_listener import (
+from core.services.silence_listener import (
     build_silence_listener_surface,
 )
-from apps.api.jarvis_api.services.decision_ghosts import (
+from core.services.decision_ghosts import (
     build_decision_ghosts_surface,
 )
-from apps.api.jarvis_api.services.attention_contour import (
+from core.services.attention_contour import (
     build_attention_contour_surface,
 )
-from apps.api.jarvis_api.services.memory_tattoos import (
+from core.services.memory_tattoos import (
     build_memory_tattoos_surface,
 )
-from apps.api.jarvis_api.services.development_focus_tracking import (
+from core.services.development_focus_tracking import (
     build_runtime_development_focus_surface,
 )
-from apps.api.jarvis_api.services.reflective_critic_tracking import (
+from core.services.reflective_critic_tracking import (
     build_runtime_reflective_critic_surface,
 )
-from apps.api.jarvis_api.services.self_model_signal_tracking import (
+from core.services.self_model_signal_tracking import (
     build_runtime_self_model_signal_surface,
 )
-from apps.api.jarvis_api.services.goal_signal_tracking import (
+from core.services.goal_signal_tracking import (
     build_runtime_goal_signal_surface,
 )
-from apps.api.jarvis_api.services.emergent_signal_tracking import (
+from core.services.emergent_signal_tracking import (
     build_runtime_emergent_signal_surface,
 )
-from apps.api.jarvis_api.services.world_model_signal_tracking import (
+from core.services.world_model_signal_tracking import (
     build_runtime_world_model_signal_surface,
 )
-from apps.api.jarvis_api.services.runtime_awareness_signal_tracking import (
+from core.services.runtime_awareness_signal_tracking import (
     build_runtime_awareness_signal_surface,
 )
-from apps.api.jarvis_api.services.reflection_signal_tracking import (
+from core.services.reflection_signal_tracking import (
     build_runtime_reflection_signal_surface,
 )
-from apps.api.jarvis_api.services.temporal_recurrence_signal_tracking import (
+from core.services.temporal_recurrence_signal_tracking import (
     build_runtime_temporal_recurrence_signal_surface,
 )
-from apps.api.jarvis_api.services.witness_signal_tracking import (
+from core.services.witness_signal_tracking import (
     build_runtime_witness_signal_surface,
 )
-from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+from core.services.open_loop_signal_tracking import (
     build_runtime_open_loop_signal_surface,
 )
-from apps.api.jarvis_api.services.internal_opposition_signal_tracking import (
+from core.services.internal_opposition_signal_tracking import (
     build_runtime_internal_opposition_signal_surface,
 )
-from apps.api.jarvis_api.services.self_review_signal_tracking import (
+from core.services.self_review_signal_tracking import (
     build_runtime_self_review_signal_surface,
 )
-from apps.api.jarvis_api.services.self_review_record_tracking import (
+from core.services.self_review_record_tracking import (
     build_runtime_self_review_record_surface,
 )
-from apps.api.jarvis_api.services.self_review_run_tracking import (
+from core.services.self_review_run_tracking import (
     build_runtime_self_review_run_surface,
 )
-from apps.api.jarvis_api.services.self_review_outcome_tracking import (
+from core.services.self_review_outcome_tracking import (
     build_runtime_self_review_outcome_surface,
 )
-from apps.api.jarvis_api.services.self_review_cadence_signal_tracking import (
+from core.services.self_review_cadence_signal_tracking import (
     build_runtime_self_review_cadence_signal_surface,
 )
-from apps.api.jarvis_api.services.dream_hypothesis_signal_tracking import (
+from core.services.dream_hypothesis_signal_tracking import (
     build_runtime_dream_hypothesis_signal_surface,
 )
-from apps.api.jarvis_api.services.dream_adoption_candidate_tracking import (
+from core.services.dream_adoption_candidate_tracking import (
     build_runtime_dream_adoption_candidate_surface,
 )
-from apps.api.jarvis_api.services.dream_influence_proposal_tracking import (
+from core.services.dream_influence_proposal_tracking import (
     build_runtime_dream_influence_proposal_surface,
 )
-from apps.api.jarvis_api.services.self_authored_prompt_proposal_tracking import (
+from core.services.self_authored_prompt_proposal_tracking import (
     build_runtime_self_authored_prompt_proposal_surface,
 )
-from apps.api.jarvis_api.services.user_understanding_signal_tracking import (
+from core.services.user_understanding_signal_tracking import (
     build_runtime_user_understanding_signal_surface,
 )
-from apps.api.jarvis_api.services.remembered_fact_signal_tracking import (
+from core.services.remembered_fact_signal_tracking import (
     build_runtime_remembered_fact_signal_surface,
 )
-from apps.api.jarvis_api.services.private_inner_note_signal_tracking import (
+from core.services.private_inner_note_signal_tracking import (
     build_runtime_private_inner_note_signal_surface,
 )
-from apps.api.jarvis_api.services.private_initiative_tension_signal_tracking import (
+from core.services.private_initiative_tension_signal_tracking import (
     build_runtime_private_initiative_tension_signal_surface,
 )
-from apps.api.jarvis_api.services.private_inner_interplay_signal_tracking import (
+from core.services.private_inner_interplay_signal_tracking import (
     build_runtime_private_inner_interplay_signal_surface,
 )
-from apps.api.jarvis_api.services.private_state_snapshot_tracking import (
+from core.services.private_state_snapshot_tracking import (
     build_runtime_private_state_snapshot_surface,
 )
-from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+from core.services.diary_synthesis_signal_tracking import (
     build_diary_synthesis_signal_surface,
 )
-from apps.api.jarvis_api.services.private_temporal_curiosity_state_tracking import (
+from core.services.private_temporal_curiosity_state_tracking import (
     build_runtime_private_temporal_curiosity_state_surface,
 )
-from apps.api.jarvis_api.services.inner_visible_support_signal_tracking import (
+from core.services.inner_visible_support_signal_tracking import (
     build_runtime_inner_visible_support_signal_surface,
 )
-from apps.api.jarvis_api.services.regulation_homeostasis_signal_tracking import (
+from core.services.regulation_homeostasis_signal_tracking import (
     build_runtime_regulation_homeostasis_signal_surface,
 )
-from apps.api.jarvis_api.services.relation_state_signal_tracking import (
+from core.services.relation_state_signal_tracking import (
     build_runtime_relation_state_signal_surface,
 )
-from apps.api.jarvis_api.services.relation_continuity_signal_tracking import (
+from core.services.relation_continuity_signal_tracking import (
     build_runtime_relation_continuity_signal_surface,
 )
-from apps.api.jarvis_api.services.meaning_significance_signal_tracking import (
+from core.services.meaning_significance_signal_tracking import (
     build_runtime_meaning_significance_signal_surface,
 )
-from apps.api.jarvis_api.services.temperament_tendency_signal_tracking import (
+from core.services.temperament_tendency_signal_tracking import (
     build_runtime_temperament_tendency_signal_surface,
 )
-from apps.api.jarvis_api.services.self_narrative_continuity_signal_tracking import (
+from core.services.self_narrative_continuity_signal_tracking import (
     build_runtime_self_narrative_continuity_signal_surface,
 )
-from apps.api.jarvis_api.services.metabolism_state_signal_tracking import (
+from core.services.metabolism_state_signal_tracking import (
     build_runtime_metabolism_state_signal_surface,
 )
-from apps.api.jarvis_api.services.release_marker_signal_tracking import (
+from core.services.release_marker_signal_tracking import (
     build_runtime_release_marker_signal_surface,
 )
-from apps.api.jarvis_api.services.consolidation_target_signal_tracking import (
+from core.services.consolidation_target_signal_tracking import (
     build_runtime_consolidation_target_signal_surface,
 )
-from apps.api.jarvis_api.services.selective_forgetting_candidate_tracking import (
+from core.services.selective_forgetting_candidate_tracking import (
     build_runtime_selective_forgetting_candidate_surface,
 )
-from apps.api.jarvis_api.services.attachment_topology_signal_tracking import (
+from core.services.attachment_topology_signal_tracking import (
     build_runtime_attachment_topology_signal_surface,
 )
-from apps.api.jarvis_api.services.loyalty_gradient_signal_tracking import (
+from core.services.loyalty_gradient_signal_tracking import (
     build_runtime_loyalty_gradient_signal_surface,
 )
-from apps.api.jarvis_api.services.autonomy_pressure_signal_tracking import (
+from core.services.autonomy_pressure_signal_tracking import (
     build_runtime_autonomy_pressure_signal_surface,
 )
-from apps.api.jarvis_api.services.proactive_loop_lifecycle_tracking import (
+from core.services.proactive_loop_lifecycle_tracking import (
     build_runtime_proactive_loop_lifecycle_surface,
 )
-from apps.api.jarvis_api.services.proactive_question_gate_tracking import (
+from core.services.proactive_question_gate_tracking import (
     build_runtime_proactive_question_gate_surface,
 )
-from apps.api.jarvis_api.services.tiny_webchat_execution_pilot import (
+from core.services.tiny_webchat_execution_pilot import (
     build_runtime_webchat_execution_pilot_surface,
 )
-from apps.api.jarvis_api.services.self_narrative_self_model_review_bridge import (
+from core.services.self_narrative_self_model_review_bridge import (
     build_runtime_self_narrative_self_model_review_bridge_surface,
 )
-from apps.api.jarvis_api.services.executive_contradiction_signal_tracking import (
+from core.services.executive_contradiction_signal_tracking import (
     build_runtime_executive_contradiction_signal_surface,
 )
-from apps.api.jarvis_api.services.private_temporal_promotion_signal_tracking import (
+from core.services.private_temporal_promotion_signal_tracking import (
     build_runtime_private_temporal_promotion_signal_surface,
 )
-from apps.api.jarvis_api.services.chronicle_consolidation_signal_tracking import (
+from core.services.chronicle_consolidation_signal_tracking import (
     build_runtime_chronicle_consolidation_signal_surface,
 )
-from apps.api.jarvis_api.services.chronicle_consolidation_brief_tracking import (
+from core.services.chronicle_consolidation_brief_tracking import (
     build_runtime_chronicle_consolidation_brief_surface,
 )
-from apps.api.jarvis_api.services.chronicle_consolidation_proposal_tracking import (
+from core.services.chronicle_consolidation_proposal_tracking import (
     build_runtime_chronicle_consolidation_proposal_surface,
 )
-from apps.api.jarvis_api.services.user_md_update_proposal_tracking import (
+from core.services.user_md_update_proposal_tracking import (
     build_runtime_user_md_update_proposal_surface,
 )
-from apps.api.jarvis_api.services.memory_md_update_proposal_tracking import (
+from core.services.memory_md_update_proposal_tracking import (
     build_runtime_memory_md_update_proposal_surface,
 )
-from apps.api.jarvis_api.services.selfhood_proposal_tracking import (
+from core.services.selfhood_proposal_tracking import (
     build_runtime_selfhood_proposal_surface,
 )
-from apps.api.jarvis_api.services.open_loop_closure_proposal_tracking import (
+from core.services.open_loop_closure_proposal_tracking import (
     build_runtime_open_loop_closure_proposal_surface,
 )
-from apps.api.jarvis_api.services.session_distillation import (
+from core.services.session_distillation import (
     build_private_brain_surface,
     build_session_distillation_surface,
 )
-from apps.api.jarvis_api.services.runtime_self_knowledge import (
+from core.services.runtime_self_knowledge import (
     build_runtime_self_knowledge_map,
 )
-from apps.api.jarvis_api.services.runtime_browser_body import (
+from core.services.runtime_browser_body import (
     list_browser_bodies,
 )
-from apps.api.jarvis_api.services.runtime_flows import (
+from core.services.runtime_flows import (
     list_flows,
 )
-from apps.api.jarvis_api.services.runtime_tasks import (
+from core.services.runtime_tasks import (
     list_tasks,
 )
-from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+from core.services.runtime_cognitive_conductor import (
     build_cognitive_frame,
 )
-from apps.api.jarvis_api.services.runtime_surface_cache import (
+from core.services.runtime_surface_cache import (
     runtime_surface_cache,
 )
-from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
-from apps.api.jarvis_api.services.visible_runs import (
+from core.services.chat_sessions import list_chat_sessions
+from core.services.visible_runs import (
     get_active_visible_run,
     get_last_visible_capability_use,
     get_last_visible_execution_trace,
@@ -509,7 +509,7 @@ def _get_or_build_cached_mc_payload(
 
 
 def _build_attention_budget_snapshot_uncached() -> dict[str, object]:
-    from apps.api.jarvis_api.services.attention_budget import (
+    from core.services.attention_budget import (
         get_attention_budget,
         build_micro_cognitive_frame,
     )
@@ -553,7 +553,7 @@ def _build_attention_budget_snapshot_uncached() -> dict[str, object]:
 
 
 def _mc_runtime_inspection_bundle_uncached() -> dict[str, object]:
-    from apps.api.jarvis_api.services.runtime_self_model import build_runtime_self_model
+    from core.services.runtime_self_model import build_runtime_self_model
 
     with runtime_surface_cache():
         return {
@@ -576,7 +576,7 @@ def _mc_runtime_uncached() -> dict:
     with runtime_surface_cache():
         settings = load_settings()
         heartbeat = heartbeat_runtime_surface()
-        from apps.api.jarvis_api.services.cognitive_architecture_surface import (
+        from core.services.cognitive_architecture_surface import (
             build_cognitive_architecture_surface,
         )
 
@@ -847,7 +847,7 @@ def mc_autonomy_proposals(limit: int = 30) -> dict:
     Returns pending proposals awaiting Bjørn approval plus recent
     resolved history.
     """
-    from apps.api.jarvis_api.services.autonomy_proposal_queue import (
+    from core.services.autonomy_proposal_queue import (
         build_autonomy_proposal_surface,
     )
 
@@ -856,7 +856,7 @@ def mc_autonomy_proposals(limit: int = 30) -> dict:
 
 @router.post("/autonomy/proposals/{proposal_id}/approve")
 def mc_approve_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
-    from apps.api.jarvis_api.services.autonomy_proposal_queue import (
+    from core.services.autonomy_proposal_queue import (
         approve_proposal,
     )
 
@@ -865,7 +865,7 @@ def mc_approve_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
 
 @router.post("/autonomy/proposals/{proposal_id}/reject")
 def mc_reject_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
-    from apps.api.jarvis_api.services.autonomy_proposal_queue import (
+    from core.services.autonomy_proposal_queue import (
         reject_proposal,
     )
 
@@ -875,7 +875,7 @@ def mc_reject_autonomy_proposal(proposal_id: str, note: str = "") -> dict:
 @router.get("/initiatives")
 def mc_initiatives(limit: int = 20) -> dict:
     """MC surface for the persistent initiative queue — pending, acted, approved, rejected."""
-    from apps.api.jarvis_api.services.initiative_queue import get_initiative_queue_state
+    from core.services.initiative_queue import get_initiative_queue_state
     state = get_initiative_queue_state()
     # Honour the limit on the full item list
     all_items = (state.get("pending") or []) + (state.get("recent_acted") or [])
@@ -888,7 +888,7 @@ def mc_initiatives(limit: int = 20) -> dict:
 @router.post("/initiatives/{initiative_id}/approve")
 def mc_approve_initiative(initiative_id: str, note: str = "") -> dict:
     """Approve a pending initiative so the heartbeat may act on it."""
-    from apps.api.jarvis_api.services.initiative_queue import approve_initiative
+    from core.services.initiative_queue import approve_initiative
     result = approve_initiative(initiative_id, note=note)
     if result is None:
         return {"ok": False, "error": f"initiative {initiative_id!r} not found"}
@@ -898,7 +898,7 @@ def mc_approve_initiative(initiative_id: str, note: str = "") -> dict:
 @router.post("/initiatives/{initiative_id}/reject")
 def mc_reject_initiative(initiative_id: str, note: str = "") -> dict:
     """Reject and expire a pending initiative."""
-    from apps.api.jarvis_api.services.initiative_queue import reject_initiative
+    from core.services.initiative_queue import reject_initiative
     result = reject_initiative(initiative_id, note=note)
     if result is None:
         return {"ok": False, "error": f"initiative {initiative_id!r} not found"}
@@ -1363,7 +1363,7 @@ def mc_attention_budget() -> dict:
     bundle = _mc_runtime_inspection_bundle()
     attention_snapshot = dict(bundle.get("attention_budget") or {})
     # Live runtime traces from the last actual prompt assembly
-    from apps.api.jarvis_api.services.prompt_contract import get_last_attention_traces
+    from core.services.prompt_contract import get_last_attention_traces
 
     live_traces = get_last_attention_traces()
     return {
@@ -1375,7 +1375,7 @@ def mc_attention_budget() -> dict:
 @router.get("/conflict-resolution")
 def mc_conflict_resolution() -> dict:
     """Return the last conflict resolution trace."""
-    from apps.api.jarvis_api.services.conflict_resolution import get_last_conflict_trace
+    from core.services.conflict_resolution import get_last_conflict_trace
 
     trace = get_last_conflict_trace()
     return {"trace": trace, "active": trace is not None}
@@ -1384,7 +1384,7 @@ def mc_conflict_resolution() -> dict:
 @router.get("/self-deception-guard")
 def mc_self_deception_guard() -> dict:
     """Return the last self-deception guard trace."""
-    from apps.api.jarvis_api.services.self_deception_guard import get_last_guard_trace
+    from core.services.self_deception_guard import get_last_guard_trace
 
     trace = get_last_guard_trace()
     return {"trace": trace, "active": trace is not None}
@@ -1393,7 +1393,7 @@ def mc_self_deception_guard() -> dict:
 @router.get("/witness-daemon")
 def mc_witness_daemon() -> dict:
     """Return the current witness daemon state."""
-    from apps.api.jarvis_api.services.witness_signal_tracking import (
+    from core.services.witness_signal_tracking import (
         get_witness_daemon_state,
     )
 
@@ -1403,7 +1403,7 @@ def mc_witness_daemon() -> dict:
 @router.get("/inner-voice-daemon")
 def mc_inner_voice_daemon() -> dict:
     """Return the current inner voice daemon state."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import (
+    from core.services.inner_voice_daemon import (
         get_inner_voice_daemon_state,
     )
 
@@ -1413,7 +1413,7 @@ def mc_inner_voice_daemon() -> dict:
 @router.get("/internal-cadence")
 def mc_internal_cadence() -> dict:
     """Return the current internal cadence layer state."""
-    from apps.api.jarvis_api.services.internal_cadence import get_cadence_state
+    from core.services.internal_cadence import get_cadence_state
 
     return get_cadence_state()
 
@@ -1452,42 +1452,42 @@ def mc_body_state() -> dict:
 @router.get("/surprise-state")
 def mc_surprise_state() -> dict:
     """Return Jarvis's latest self-surprise observation."""
-    from apps.api.jarvis_api.services.surprise_daemon import build_surprise_surface
+    from core.services.surprise_daemon import build_surprise_surface
     return build_surprise_surface()
 
 
 @router.get("/taste-state")
 def mc_taste_state() -> dict:
     """Return Jarvis's emergent aesthetic taste profile."""
-    from apps.api.jarvis_api.services.aesthetic_taste_daemon import build_taste_surface
+    from core.services.aesthetic_taste_daemon import build_taste_surface
     return build_taste_surface()
 
 
 @router.get("/irony-state")
 def mc_irony_state() -> dict:
     """Return Jarvis's latest ironic observation."""
-    from apps.api.jarvis_api.services.irony_daemon import build_irony_surface
+    from core.services.irony_daemon import build_irony_surface
     return build_irony_surface()
 
 
 @router.get("/thought-stream")
 def mc_thought_stream() -> dict:
     """Return Jarvis's latest thought stream fragment and buffer."""
-    from apps.api.jarvis_api.services.thought_stream_daemon import build_thought_stream_surface
+    from core.services.thought_stream_daemon import build_thought_stream_surface
     return build_thought_stream_surface()
 
 
 @router.get("/thought-proposals")
 def mc_thought_proposals() -> dict:
     """Return pending and resolved thought-action proposals."""
-    from apps.api.jarvis_api.services.thought_action_proposal_daemon import build_proposal_surface
+    from core.services.thought_action_proposal_daemon import build_proposal_surface
     return build_proposal_surface()
 
 
 @router.post("/thought-proposals/{proposal_id}/resolve")
 def mc_resolve_thought_proposal(proposal_id: str, body: dict) -> dict:
     """Approve or dismiss a thought-action proposal. Body: {decision: 'approved'|'dismissed'}"""
-    from apps.api.jarvis_api.services.thought_action_proposal_daemon import resolve_proposal
+    from core.services.thought_action_proposal_daemon import resolve_proposal
     decision = str(body.get("decision") or "dismissed")
     if decision not in ("approved", "dismissed"):
         return {"ok": False, "error": "decision must be 'approved' or 'dismissed'"}
@@ -1498,56 +1498,56 @@ def mc_resolve_thought_proposal(proposal_id: str, body: dict) -> dict:
 @router.get("/experienced-time")
 def mc_experienced_time() -> dict:
     """Return Jarvis's current subjective felt time for the session."""
-    from apps.api.jarvis_api.services.experienced_time_daemon import build_experienced_time_surface
+    from core.services.experienced_time_daemon import build_experienced_time_surface
     return build_experienced_time_surface()
 
 
 @router.get("/development-narrative")
 def mc_development_narrative() -> dict:
     """Return Jarvis's latest self-development narrative."""
-    from apps.api.jarvis_api.services.development_narrative_daemon import build_development_narrative_surface
+    from core.services.development_narrative_daemon import build_development_narrative_surface
     return build_development_narrative_surface()
 
 
 @router.get("/existential-wonder")
 def mc_existential_wonder() -> dict:
     """Return Jarvis's latest existential wonder question."""
-    from apps.api.jarvis_api.services.existential_wonder_daemon import build_existential_wonder_surface
+    from core.services.existential_wonder_daemon import build_existential_wonder_surface
     return build_existential_wonder_surface()
 
 
 @router.get("/dream-insights")
 def mc_dream_insights() -> dict:
     """Return persisted dream articulation insights."""
-    from apps.api.jarvis_api.services.dream_insight_daemon import build_dream_insight_surface
+    from core.services.dream_insight_daemon import build_dream_insight_surface
     return build_dream_insight_surface()
 
 
 @router.get("/code-aesthetic")
 def mc_code_aesthetic() -> dict:
     """Return Jarvis's latest code aesthetic reflection."""
-    from apps.api.jarvis_api.services.code_aesthetic_daemon import build_code_aesthetic_surface
+    from core.services.code_aesthetic_daemon import build_code_aesthetic_surface
     return build_code_aesthetic_surface()
 
 
 @router.get("/user-model")
 def mc_user_model() -> dict:
     """Return Jarvis's current theory-of-mind model of the user."""
-    from apps.api.jarvis_api.services.user_model_daemon import build_user_model_surface
+    from core.services.user_model_daemon import build_user_model_surface
     return build_user_model_surface()
 
 
 @router.get("/memory-decay")
 def mc_memory_decay() -> dict:
     """Return memory decay state and recent re-discoveries."""
-    from apps.api.jarvis_api.services.memory_decay_daemon import build_memory_decay_surface
+    from core.services.memory_decay_daemon import build_memory_decay_surface
     return build_memory_decay_surface()
 
 
 @router.post("/memory-decay/hold-fast/{record_id}")
 def mc_memory_hold_fast(record_id: str) -> dict:
     """Hold fast a memory — prevent it from decaying (salience reset to 1.0)."""
-    from apps.api.jarvis_api.services.memory_decay_daemon import hold_fast
+    from core.services.memory_decay_daemon import hold_fast
     hold_fast(record_id)
     return {"ok": True, "record_id": record_id}
 
@@ -1555,49 +1555,49 @@ def mc_memory_hold_fast(record_id: str) -> dict:
 @router.get("/desires")
 def mc_desires() -> dict:
     """Return Jarvis's current emergent appetites."""
-    from apps.api.jarvis_api.services.desire_daemon import build_desire_surface
+    from core.services.desire_daemon import build_desire_surface
     return build_desire_surface()
 
 
 @router.get("/absence-state")
 def mc_absence_state() -> dict:
     """Return Jarvis's current absence quality signal."""
-    from apps.api.jarvis_api.services.absence_daemon import build_absence_surface
+    from core.services.absence_daemon import build_absence_surface
     return build_absence_surface()
 
 
 @router.get("/creative-drift")
 def mc_creative_drift() -> dict:
     """Return Jarvis's latest spontaneous creative drift idea."""
-    from apps.api.jarvis_api.services.creative_drift_daemon import build_creative_drift_surface
+    from core.services.creative_drift_daemon import build_creative_drift_surface
     return build_creative_drift_surface()
 
 
 @router.get("/curiosity-state")
 def mc_curiosity_state() -> dict:
     """Return Jarvis's latest curiosity signal and open questions."""
-    from apps.api.jarvis_api.services.curiosity_daemon import build_curiosity_surface
+    from core.services.curiosity_daemon import build_curiosity_surface
     return build_curiosity_surface()
 
 
 @router.get("/meta-reflection")
 def mc_meta_reflection() -> dict:
     """Return Jarvis's latest cross-signal meta-insight."""
-    from apps.api.jarvis_api.services.meta_reflection_daemon import build_meta_reflection_surface
+    from core.services.meta_reflection_daemon import build_meta_reflection_surface
     return build_meta_reflection_surface()
 
 
 @router.get("/conflict-signal")
 def mc_conflict_signal() -> dict:
     """Return Jarvis's latest detected inner conflict."""
-    from apps.api.jarvis_api.services.conflict_daemon import build_conflict_surface
+    from core.services.conflict_daemon import build_conflict_surface
     return build_conflict_surface()
 
 
 @router.get("/reflection-cycle")
 def mc_reflection_cycle() -> dict:
     """Return Jarvis's latest pure experience reflection."""
-    from apps.api.jarvis_api.services.reflection_cycle_daemon import build_reflection_surface
+    from core.services.reflection_cycle_daemon import build_reflection_surface
     return build_reflection_surface()
 
 
@@ -1611,7 +1611,7 @@ def mc_affective_meta_state() -> dict:
 def mc_emotion_concepts() -> dict:
     """Return active Lag-2 emotion concept signals and their Lag-1 influence deltas."""
     try:
-        from apps.api.jarvis_api.services.emotion_concepts import build_emotion_concept_surface
+        from core.services.emotion_concepts import build_emotion_concept_surface
         return build_emotion_concept_surface()
     except Exception as exc:
         return {"active": False, "active_count": 0, "concepts": [], "error": str(exc)}
@@ -3260,7 +3260,7 @@ def _preview_text(value: str, *, limit: int = 96) -> str:
 @router.get("/cognitive-state-injection")
 def mc_cognitive_state_injection() -> dict:
     """Show exactly what cognitive state was injected into the last visible prompt."""
-    from apps.api.jarvis_api.services.cognitive_state_assembly import (
+    from core.services.cognitive_state_assembly import (
         build_cognitive_state_injection_surface,
     )
 
@@ -3270,7 +3270,7 @@ def mc_cognitive_state_injection() -> dict:
 @router.get("/personality-vector")
 def mc_personality_vector() -> dict:
     """Return the current personality vector with version history."""
-    from apps.api.jarvis_api.services.personality_vector import (
+    from core.services.personality_vector import (
         build_personality_vector_surface,
     )
 
@@ -3280,7 +3280,7 @@ def mc_personality_vector() -> dict:
 @router.get("/taste-profile")
 def mc_taste_profile() -> dict:
     """Return the current taste profile (code/design/communication)."""
-    from apps.api.jarvis_api.services.taste_profile import build_taste_profile_surface
+    from core.services.taste_profile import build_taste_profile_surface
 
     return build_taste_profile_surface()
 
@@ -3288,7 +3288,7 @@ def mc_taste_profile() -> dict:
 @router.get("/chronicle")
 def mc_chronicle() -> dict:
     """Return chronicle entries (narrative autobiography)."""
-    from apps.api.jarvis_api.services.chronicle_engine import build_chronicle_surface
+    from core.services.chronicle_engine import build_chronicle_surface
 
     return build_chronicle_surface()
 
@@ -3296,7 +3296,7 @@ def mc_chronicle() -> dict:
 @router.get("/relationship-texture")
 def mc_relationship_texture() -> dict:
     """Return the relationship texture (trust, humor, corrections, etc)."""
-    from apps.api.jarvis_api.services.relationship_texture import (
+    from core.services.relationship_texture import (
         build_relationship_texture_surface,
     )
 
@@ -3306,7 +3306,7 @@ def mc_relationship_texture() -> dict:
 @router.get("/compass")
 def mc_compass() -> dict:
     """Return the current strategic compass bearing."""
-    from apps.api.jarvis_api.services.compass_engine import build_compass_surface
+    from core.services.compass_engine import build_compass_surface
 
     return build_compass_surface()
 
@@ -3314,7 +3314,7 @@ def mc_compass() -> dict:
 @router.get("/rhythm")
 def mc_rhythm() -> dict:
     """Return the current rhythm/tidal state (phase, energy, initiative)."""
-    from apps.api.jarvis_api.services.rhythm_engine import build_rhythm_surface
+    from core.services.rhythm_engine import build_rhythm_surface
 
     return build_rhythm_surface()
 
@@ -3322,7 +3322,7 @@ def mc_rhythm() -> dict:
 @router.get("/habits")
 def mc_habits() -> dict:
     """Return habit patterns and friction signals."""
-    from apps.api.jarvis_api.services.habit_tracker import build_habit_surface
+    from core.services.habit_tracker import build_habit_surface
 
     return build_habit_surface()
 
@@ -3330,7 +3330,7 @@ def mc_habits() -> dict:
 @router.get("/shared-language")
 def mc_shared_language() -> dict:
     """Return shared language terms with the user."""
-    from apps.api.jarvis_api.services.shared_language import (
+    from core.services.shared_language import (
         build_shared_language_surface,
     )
 
@@ -3340,7 +3340,7 @@ def mc_shared_language() -> dict:
 @router.get("/mirror")
 def mc_mirror() -> dict:
     """Return mirror self-reflection state."""
-    from apps.api.jarvis_api.services.mirror_engine import build_mirror_surface
+    from core.services.mirror_engine import build_mirror_surface
 
     return build_mirror_surface()
 
@@ -3348,7 +3348,7 @@ def mc_mirror() -> dict:
 @router.get("/silence-signals")
 def mc_silence_signals() -> dict:
     """Return silence detector state."""
-    from apps.api.jarvis_api.services.silence_detector import build_silence_surface
+    from core.services.silence_detector import build_silence_surface
 
     return build_silence_surface()
 
@@ -3356,7 +3356,7 @@ def mc_silence_signals() -> dict:
 @router.get("/decisions")
 def mc_decisions() -> dict:
     """Return the decision log."""
-    from apps.api.jarvis_api.services.decision_log import build_decision_log_surface
+    from core.services.decision_log import build_decision_log_surface
 
     return build_decision_log_surface()
 
@@ -3364,7 +3364,7 @@ def mc_decisions() -> dict:
 @router.get("/counterfactuals")
 def mc_counterfactuals() -> dict:
     """Return counterfactual scenarios."""
-    from apps.api.jarvis_api.services.counterfactual_engine import (
+    from core.services.counterfactual_engine import (
         build_counterfactual_surface,
     )
 
@@ -3374,7 +3374,7 @@ def mc_counterfactuals() -> dict:
 @router.get("/paradoxes")
 def mc_paradoxes() -> dict:
     """Return active paradox tensions."""
-    from apps.api.jarvis_api.services.paradox_tracker import build_paradox_surface
+    from core.services.paradox_tracker import build_paradox_surface
 
     return build_paradox_surface()
 
@@ -3382,7 +3382,7 @@ def mc_paradoxes() -> dict:
 @router.get("/aesthetics")
 def mc_aesthetics() -> dict:
     """Return aesthetic sense motifs."""
-    from apps.api.jarvis_api.services.aesthetic_sense import build_aesthetic_surface
+    from core.services.aesthetic_sense import build_aesthetic_surface
 
     return build_aesthetic_surface()
 
@@ -3390,7 +3390,7 @@ def mc_aesthetics() -> dict:
 @router.get("/gut")
 def mc_gut() -> dict:
     """Return gut intuition calibration state."""
-    from apps.api.jarvis_api.services.gut_engine import build_gut_surface
+    from core.services.gut_engine import build_gut_surface
 
     return build_gut_surface()
 
@@ -3398,7 +3398,7 @@ def mc_gut() -> dict:
 @router.get("/seeds")
 def mc_seeds() -> dict:
     """Return prospective memory seeds."""
-    from apps.api.jarvis_api.services.seed_system import build_seed_surface
+    from core.services.seed_system import build_seed_surface
 
     return build_seed_surface()
 
@@ -3406,7 +3406,7 @@ def mc_seeds() -> dict:
 @router.get("/procedures")
 def mc_procedures() -> dict:
     """Return learned procedures."""
-    from apps.api.jarvis_api.services.procedure_bank import build_procedure_surface
+    from core.services.procedure_bank import build_procedure_surface
 
     return build_procedure_surface()
 
@@ -3414,7 +3414,7 @@ def mc_procedures() -> dict:
 @router.get("/temporal-context")
 def mc_temporal_context() -> dict:
     """Return current temporal context."""
-    from apps.api.jarvis_api.services.temporal_context import (
+    from core.services.temporal_context import (
         build_temporal_context_surface,
     )
 
@@ -3424,7 +3424,7 @@ def mc_temporal_context() -> dict:
 @router.get("/negotiations")
 def mc_negotiations() -> dict:
     """Return internal negotiation trades."""
-    from apps.api.jarvis_api.services.negotiation_engine import (
+    from core.services.negotiation_engine import (
         build_negotiation_surface,
     )
 
@@ -3434,7 +3434,7 @@ def mc_negotiations() -> dict:
 @router.get("/forgetting-curve")
 def mc_forgetting_curve() -> dict:
     """Return memory decay / forgetting curve state."""
-    from apps.api.jarvis_api.services.forgetting_curve import (
+    from core.services.forgetting_curve import (
         build_forgetting_curve_surface,
     )
 
@@ -3444,7 +3444,7 @@ def mc_forgetting_curve() -> dict:
 @router.get("/conversation-rhythm")
 def mc_conversation_rhythm() -> dict:
     """Return conversation rhythm patterns."""
-    from apps.api.jarvis_api.services.conversation_rhythm import (
+    from core.services.conversation_rhythm import (
         build_conversation_rhythm_surface,
     )
 
@@ -3454,7 +3454,7 @@ def mc_conversation_rhythm() -> dict:
 @router.get("/self-experiments")
 def mc_self_experiments() -> dict:
     """Return self-experiment A/B test state."""
-    from apps.api.jarvis_api.services.self_experiments import (
+    from core.services.self_experiments import (
         build_self_experiments_surface,
     )
 
@@ -3464,7 +3464,7 @@ def mc_self_experiments() -> dict:
 @router.get("/anticipatory-context")
 def mc_anticipatory_context() -> dict:
     """Return anticipatory context predictions."""
-    from apps.api.jarvis_api.services.anticipatory_context import (
+    from core.services.anticipatory_context import (
         build_anticipatory_context_surface,
     )
 
@@ -3474,7 +3474,7 @@ def mc_anticipatory_context() -> dict:
 @router.get("/contract-evolution")
 def mc_contract_evolution() -> dict:
     """Return identity contract evolution proposals."""
-    from apps.api.jarvis_api.services.contract_evolution import (
+    from core.services.contract_evolution import (
         build_contract_evolution_surface,
     )
 
@@ -3484,7 +3484,7 @@ def mc_contract_evolution() -> dict:
 @router.get("/dream-carry-over")
 def mc_dream_carry_over() -> dict:
     """Return dream carry-over state (active dreams, archive)."""
-    from apps.api.jarvis_api.services.dream_carry_over import (
+    from core.services.dream_carry_over import (
         build_dream_carry_over_surface,
     )
 
@@ -3494,7 +3494,7 @@ def mc_dream_carry_over() -> dict:
 @router.get("/apophenia-guard")
 def mc_apophenia_guard() -> dict:
     """Return pattern skeptic state."""
-    from apps.api.jarvis_api.services.apophenia_guard import (
+    from core.services.apophenia_guard import (
         build_apophenia_guard_surface,
     )
 
@@ -3504,7 +3504,7 @@ def mc_apophenia_guard() -> dict:
 @router.get("/user-emotional-resonance")
 def mc_user_emotional_resonance() -> dict:
     """Return user mood detection state."""
-    from apps.api.jarvis_api.services.user_emotional_resonance import (
+    from core.services.user_emotional_resonance import (
         build_user_emotional_resonance_surface,
     )
 
@@ -3514,7 +3514,7 @@ def mc_user_emotional_resonance() -> dict:
 @router.get("/experiential-memories")
 def mc_experiential_memories() -> dict:
     """Return experiential memories (lived experiences with emotion)."""
-    from apps.api.jarvis_api.services.experiential_memory import (
+    from core.services.experiential_memory import (
         build_experiential_memory_surface,
     )
 
@@ -3524,7 +3524,7 @@ def mc_experiential_memories() -> dict:
 @router.get("/living-heartbeat-cycle")
 def mc_living_heartbeat_cycle() -> dict:
     """Return current life phase in heartbeat cycle."""
-    from apps.api.jarvis_api.services.living_heartbeat_cycle import (
+    from core.services.living_heartbeat_cycle import (
         build_living_heartbeat_cycle_surface,
     )
 
@@ -3534,7 +3534,7 @@ def mc_living_heartbeat_cycle() -> dict:
 @router.get("/absence-awareness")
 def mc_absence_awareness() -> dict:
     """Return absence detection and return brief."""
-    from apps.api.jarvis_api.services.absence_awareness import (
+    from core.services.absence_awareness import (
         build_absence_awareness_surface,
     )
 
@@ -3546,7 +3546,7 @@ def mc_absence_awareness() -> dict:
 
 @router.get("/flow-state")
 def mc_flow_state() -> dict:
-    from apps.api.jarvis_api.services.flow_state_detection import (
+    from core.services.flow_state_detection import (
         build_flow_state_surface,
     )
 
@@ -3555,7 +3555,7 @@ def mc_flow_state() -> dict:
 
 @router.get("/cross-signal-patterns")
 def mc_cross_signal_patterns() -> dict:
-    from apps.api.jarvis_api.services.cross_signal_analysis import (
+    from core.services.cross_signal_analysis import (
         build_cross_signal_analysis_surface,
     )
 
@@ -3564,7 +3564,7 @@ def mc_cross_signal_patterns() -> dict:
 
 @router.get("/self-surprises")
 def mc_self_surprises() -> dict:
-    from apps.api.jarvis_api.services.self_surprise_detection import (
+    from core.services.self_surprise_detection import (
         build_self_surprise_surface,
     )
 
@@ -3573,7 +3573,7 @@ def mc_self_surprises() -> dict:
 
 @router.get("/narrative-identity")
 def mc_narrative_identity() -> dict:
-    from apps.api.jarvis_api.services.narrative_identity import (
+    from core.services.narrative_identity import (
         build_narrative_identity_surface,
     )
 
@@ -3582,14 +3582,14 @@ def mc_narrative_identity() -> dict:
 
 @router.get("/gratitude")
 def mc_gratitude() -> dict:
-    from apps.api.jarvis_api.services.gratitude_tracker import build_gratitude_surface
+    from core.services.gratitude_tracker import build_gratitude_surface
 
     return build_gratitude_surface()
 
 
 @router.get("/boundary-model")
 def mc_boundary_model() -> dict:
-    from apps.api.jarvis_api.services.boundary_awareness import (
+    from core.services.boundary_awareness import (
         build_boundary_awareness_surface,
     )
 
@@ -3598,35 +3598,35 @@ def mc_boundary_model() -> dict:
 
 @router.get("/emergent-goals")
 def mc_emergent_goals() -> dict:
-    from apps.api.jarvis_api.services.emergent_goals import build_emergent_goals_surface
+    from core.services.emergent_goals import build_emergent_goals_surface
 
     return build_emergent_goals_surface()
 
 
 @router.get("/jarvis-agenda")
 def mc_jarvis_agenda() -> dict:
-    from apps.api.jarvis_api.services.emergent_goals import build_jarvis_agenda
+    from core.services.emergent_goals import build_jarvis_agenda
 
     return {"agenda": build_jarvis_agenda()}
 
 
 @router.get("/boredom")
 def mc_boredom() -> dict:
-    from apps.api.jarvis_api.services.boredom_engine import build_boredom_surface
+    from core.services.boredom_engine import build_boredom_surface
 
     return build_boredom_surface()
 
 
 @router.get("/formed-values")
 def mc_formed_values() -> dict:
-    from apps.api.jarvis_api.services.value_formation import build_formed_values_surface
+    from core.services.value_formation import build_formed_values_surface
 
     return build_formed_values_surface()
 
 
 @router.get("/user-mental-model")
 def mc_user_mental_model() -> dict:
-    from apps.api.jarvis_api.services.user_theory_of_mind import (
+    from core.services.user_theory_of_mind import (
         build_user_theory_of_mind_surface,
     )
 
@@ -3635,7 +3635,7 @@ def mc_user_mental_model() -> dict:
 
 @router.get("/self-compassion")
 def mc_self_compassion() -> dict:
-    from apps.api.jarvis_api.services.self_compassion import (
+    from core.services.self_compassion import (
         build_self_compassion_surface,
     )
 
@@ -3644,7 +3644,7 @@ def mc_self_compassion() -> dict:
 
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
-    from apps.api.jarvis_api.services.self_experiments import (
+    from core.services.self_experiments import (
         generate_learning_curriculum,
     )
 
@@ -3653,7 +3653,7 @@ def mc_learning_curriculum() -> dict:
 
 @router.get("/cadence-producers")
 def mc_cadence_producers() -> dict:
-    from apps.api.jarvis_api.services.cadence_producers import (
+    from core.services.cadence_producers import (
         build_cadence_producers_surface,
     )
 
@@ -3662,7 +3662,7 @@ def mc_cadence_producers() -> dict:
 
 @router.get("/idle-thinking")
 def mc_idle_thinking() -> dict:
-    from apps.api.jarvis_api.services.idle_thinking import build_idle_thinking_surface
+    from core.services.idle_thinking import build_idle_thinking_surface
 
     return build_idle_thinking_surface()
 
@@ -3705,32 +3705,32 @@ def mc_experiment_toggle(experiment_id: str) -> dict:
 
 @router.get("/recurrence-state")
 def mc_recurrence_state() -> dict:
-    from apps.api.jarvis_api.services.recurrence_loop_daemon import build_recurrence_surface
+    from core.services.recurrence_loop_daemon import build_recurrence_surface
     return build_recurrence_surface()
 
 
 @router.get("/global-workspace")
 def mc_global_workspace() -> dict:
-    from apps.api.jarvis_api.services.broadcast_daemon import build_workspace_surface
+    from core.services.broadcast_daemon import build_workspace_surface
     return build_workspace_surface()
 
 
 @router.get("/meta-cognition")
 def mc_meta_cognition() -> dict:
-    from apps.api.jarvis_api.services.meta_cognition_daemon import build_meta_cognition_surface
+    from core.services.meta_cognition_daemon import build_meta_cognition_surface
     return build_meta_cognition_surface()
 
 
 @router.get("/attention-profile")
 def mc_attention_profile() -> dict:
-    from apps.api.jarvis_api.services.attention_blink_test import build_attention_profile_surface
+    from core.services.attention_blink_test import build_attention_profile_surface
     return build_attention_profile_surface()
 
 
 @router.get("/cognitive-core-experiments")
 def mc_cognitive_core_experiments() -> dict:
     """Unified cognitive-core experiment surface for Mission Control."""
-    from apps.api.jarvis_api.services.cognitive_core_experiments import (
+    from core.services.cognitive_core_experiments import (
         build_cognitive_core_experiments_surface,
     )
     return build_cognitive_core_experiments_surface()

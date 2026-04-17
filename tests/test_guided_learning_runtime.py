@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from apps.api.jarvis_api.services.runtime_surface_cache import runtime_surface_cache
+from core.services.runtime_surface_cache import runtime_surface_cache
 
 
 def test_guided_learning_changes_direction_from_runtime_inputs(isolated_runtime) -> None:

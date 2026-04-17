@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from apps.api.jarvis_api.services.chat_sessions import append_chat_message, create_chat_session
+from core.services.chat_sessions import append_chat_message, create_chat_session
 
 
 def test_tool_intent_builds_approval_gated_shape_from_awareness(

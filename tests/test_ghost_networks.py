@@ -1,7 +1,7 @@
 """Tests for ghost_networks.py"""
 
 import pytest
-from apps.api.jarvis_api.services.ghost_networks import (
+from core.services.ghost_networks import (
     archive_dead_nodes,
     describe_ghost_network,
     format_ghost_for_prompt,

@@ -5,7 +5,7 @@ import importlib
 
 
 def _get_capability_truth_instruction(compact: bool = False) -> str:
-    pc = importlib.import_module("apps.api.jarvis_api.services.prompt_contract")
+    pc = importlib.import_module("core.services.prompt_contract")
     pc = importlib.reload(pc)
     return pc._visible_capability_truth_instruction(compact=compact) or ""
 
@@ -41,21 +41,21 @@ def test_heartbeat_living_context_line_includes_experimental_prompt_fragments(
 ) -> None:
     pc = isolated_runtime.prompt_contract
 
-    body_memory = importlib.import_module("apps.api.jarvis_api.services.body_memory")
+    body_memory = importlib.import_module("core.services.body_memory")
     ghost_networks = importlib.import_module(
-        "apps.api.jarvis_api.services.ghost_networks"
+        "core.services.ghost_networks"
     )
     parallel_selves = importlib.import_module(
-        "apps.api.jarvis_api.services.parallel_selves"
+        "core.services.parallel_selves"
     )
     silence_listener = importlib.import_module(
-        "apps.api.jarvis_api.services.silence_listener"
+        "core.services.silence_listener"
     )
     decision_ghosts = importlib.import_module(
-        "apps.api.jarvis_api.services.decision_ghosts"
+        "core.services.decision_ghosts"
     )
     memory_tattoos = importlib.import_module(
-        "apps.api.jarvis_api.services.memory_tattoos"
+        "core.services.memory_tattoos"
     )
 
     monkeypatch.setattr(body_memory, "format_body_for_prompt", lambda: "body=warm")

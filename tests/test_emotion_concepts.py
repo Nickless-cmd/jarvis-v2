@@ -36,7 +36,7 @@ def test_upsert_and_list_emotion_concept_signal(isolated_runtime) -> None:
 
 def _fresh_ec():
     """Return a freshly reloaded emotion_concepts module with empty state."""
-    import apps.api.jarvis_api.services.emotion_concepts as ec
+    import core.services.emotion_concepts as ec
     importlib.reload(ec)
     return ec
 
@@ -150,7 +150,7 @@ def test_get_bearing_push_returns_none_when_no_bearing_concepts() -> None:
 def test_live_emotional_state_includes_emotion_concepts_key() -> None:
     ec = _fresh_ec()
 
-    import apps.api.jarvis_api.services.affective_meta_state as ams
+    import core.services.affective_meta_state as ams
     surface = ams.build_affective_meta_state_from_sources(
         embodied_state=None,
         loop_runtime=None,
@@ -175,7 +175,7 @@ def test_live_emotional_state_applies_influence_deltas() -> None:
     # relief: frustration -0.3 at intensity 1.0
     ec.trigger_emotion_concept("relief", 1.0, trigger="test", source="test")
 
-    import apps.api.jarvis_api.services.affective_meta_state as ams
+    import core.services.affective_meta_state as ams
     surface = ams.build_affective_meta_state_from_sources(
         embodied_state=None,
         loop_runtime=None,
@@ -203,7 +203,7 @@ def test_bearing_push_overrides_even_when_intensity_above_threshold() -> None:
     # trust_deep → bearing "open", intensity 0.6 (above 0.4 threshold)
     ec.trigger_emotion_concept("trust_deep", 0.6, trigger="test", source="test")
 
-    import apps.api.jarvis_api.services.affective_meta_state as ams
+    import core.services.affective_meta_state as ams
     surface = ams.build_affective_meta_state_from_sources(
         embodied_state=None,
         loop_runtime=None,
@@ -225,7 +225,7 @@ def test_bearing_push_ignored_below_threshold() -> None:
     # trust_deep at 0.3 — below 0.4 threshold, bearing stays "even"
     ec.trigger_emotion_concept("trust_deep", 0.3, trigger="test", source="test")
 
-    import apps.api.jarvis_api.services.affective_meta_state as ams
+    import core.services.affective_meta_state as ams
     surface = ams.build_affective_meta_state_from_sources(
         embodied_state=None,
         loop_runtime=None,
@@ -247,7 +247,7 @@ def test_bearing_push_does_not_override_stronger_affective_signal() -> None:
     # Even with strong trust_deep, "burdened" state must win → "compressed"
     ec.trigger_emotion_concept("trust_deep", 1.0, trigger="test", source="test")
 
-    import apps.api.jarvis_api.services.affective_meta_state as ams
+    import core.services.affective_meta_state as ams
     surface = ams.build_affective_meta_state_from_sources(
         embodied_state={"state": "strained", "strain_level": "high"},
         loop_runtime=None,
@@ -268,7 +268,7 @@ def test_affective_prompt_section_includes_concepts_line() -> None:
     ec = _fresh_ec()
     ec.trigger_emotion_concept("relief", 0.8, trigger="test", source="test")
 
-    import apps.api.jarvis_api.services.affective_meta_state as ams
+    import core.services.affective_meta_state as ams
     prompt = ams.build_affective_meta_prompt_section()
     assert "concepts=" in prompt
     assert "relief" in prompt

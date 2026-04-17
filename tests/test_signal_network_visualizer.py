@@ -1,7 +1,7 @@
 """Tests for signal_network_visualizer.py"""
 import pytest
 
-from apps.api.jarvis_api.services.signal_network_visualizer import (
+from core.services.signal_network_visualizer import (
     get_current_network_state,
     describe_inner_network,
     get_signal_strengths,

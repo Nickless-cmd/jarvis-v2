@@ -3,11 +3,11 @@ from __future__ import annotations
 
 def _import_modules():
     runtime_tasks = __import__(
-        "apps.api.jarvis_api.services.runtime_tasks",
+        "core.services.runtime_tasks",
         fromlist=["create_task"],
     )
     task_worker = __import__(
-        "apps.api.jarvis_api.services.task_worker",
+        "core.services.task_worker",
         fromlist=["claim_next_task"],
     )
     return runtime_tasks, task_worker

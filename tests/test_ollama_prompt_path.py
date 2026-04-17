@@ -154,7 +154,7 @@ def test_visible_prompt_relevance_interface_keeps_heuristic_fallback_when_nl_is_
     monkeypatch,
 ) -> None:
     backend = __import__(
-        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        "core.services.prompt_relevance_backend",
         fromlist=["BoundedPromptRelevanceAttempt"],
     )
     attempt = backend.BoundedPromptRelevanceAttempt(
@@ -195,7 +195,7 @@ def test_visible_prompt_relevance_interface_can_use_bounded_nl_backend_for_parap
     monkeypatch,
 ) -> None:
     backend = __import__(
-        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        "core.services.prompt_relevance_backend",
         fromlist=["BoundedPromptRelevanceAttempt", "BoundedPromptRelevanceResult"],
     )
     assert (
@@ -251,7 +251,7 @@ def test_bounded_nl_relevance_backend_uses_runtime_selected_model_and_parses_jso
     monkeypatch,
 ) -> None:
     backend = __import__(
-        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        "core.services.prompt_relevance_backend",
         fromlist=["run_bounded_nl_prompt_relevance"],
     )
     workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
@@ -343,7 +343,7 @@ def test_bounded_nl_relevance_smoke_reports_fallback_status_when_backend_is_unav
     monkeypatch,
 ) -> None:
     backend = __import__(
-        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        "core.services.prompt_relevance_backend",
         fromlist=["bounded_nl_prompt_relevance_smoke"],
     )
     workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
@@ -376,7 +376,7 @@ def test_bounded_nl_memory_selector_uses_workspace_prompt_and_parses_indexes(
     monkeypatch,
 ) -> None:
     backend = __import__(
-        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        "core.services.prompt_relevance_backend",
         fromlist=["run_bounded_nl_memory_entry_selection"],
     )
     workspace_dir = isolated_runtime.workspace_bootstrap.ensure_default_workspace()
@@ -525,7 +525,7 @@ def test_ollama_prompt_keeps_local_behavior_rules_but_stays_contract_led(
 def test_ollama_visible_prompt_includes_recent_transcript_slice_for_session_recall(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.chat_sessions import (
+    from core.services.chat_sessions import (
         append_chat_message,
         create_chat_session,
     )
@@ -555,7 +555,7 @@ def test_ollama_visible_prompt_includes_recent_transcript_slice_for_session_reca
 def test_ollama_visible_prompt_marks_tool_results_as_internal_memory_context(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.chat_sessions import (
+    from core.services.chat_sessions import (
         append_chat_message,
         create_chat_session,
     )
@@ -701,7 +701,7 @@ def test_ollama_visible_prompt_can_use_bounded_nl_memory_selector_for_paraphrase
     )
 
     backend = __import__(
-        "apps.api.jarvis_api.services.prompt_relevance_backend",
+        "core.services.prompt_relevance_backend",
         fromlist=["BoundedPromptRelevanceAttempt", "BoundedPromptRelevanceResult", "BoundedMemorySelectionAttempt", "BoundedMemorySelectionResult"],
     )
 

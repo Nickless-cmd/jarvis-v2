@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 def _import():
     return __import__(
-        "apps.api.jarvis_api.services.end_of_run_memory_consolidation",
+        "core.services.end_of_run_memory_consolidation",
         fromlist=["_run_local_consolidation_model"],
     )
 
@@ -15,15 +15,15 @@ def test_primary_heartbeat_target_returns_text_directly(isolated_runtime) -> Non
 
     with patch.object(mc, "event_bus"):  # don't publish anything
         with patch(
-            "apps.api.jarvis_api.services.heartbeat_runtime._execute_heartbeat_model",
+            "core.services.heartbeat_runtime._execute_heartbeat_model",
             return_value={"text": "primary-response"},
         ):
             with patch(
-                "apps.api.jarvis_api.services.heartbeat_runtime._load_heartbeat_policy",
+                "core.services.heartbeat_runtime._load_heartbeat_policy",
                 return_value={},
             ):
                 with patch(
-                    "apps.api.jarvis_api.services.heartbeat_runtime._resolve_heartbeat_target",
+                    "core.services.heartbeat_runtime._resolve_heartbeat_target",
                     return_value={"lane": "local", "provider": "ollama"},
                 ):
                     result = mc._run_local_consolidation_model("prompt")
@@ -36,15 +36,15 @@ def test_falls_back_to_ollama_when_primary_empty(isolated_runtime) -> None:
 
     with patch.object(mc, "event_bus") as bus:
         with patch(
-            "apps.api.jarvis_api.services.heartbeat_runtime._execute_heartbeat_model",
+            "core.services.heartbeat_runtime._execute_heartbeat_model",
             return_value={"text": ""},
         ):
             with patch(
-                "apps.api.jarvis_api.services.heartbeat_runtime._load_heartbeat_policy",
+                "core.services.heartbeat_runtime._load_heartbeat_policy",
                 return_value={},
             ):
                 with patch(
-                    "apps.api.jarvis_api.services.heartbeat_runtime._resolve_heartbeat_target",
+                    "core.services.heartbeat_runtime._resolve_heartbeat_target",
                     return_value={"lane": "local", "provider": "ollama"},
                 ):
                     with patch.object(
@@ -67,15 +67,15 @@ def test_returns_empty_when_both_lanes_fail(isolated_runtime) -> None:
 
     with patch.object(mc, "event_bus") as bus:
         with patch(
-            "apps.api.jarvis_api.services.heartbeat_runtime._execute_heartbeat_model",
+            "core.services.heartbeat_runtime._execute_heartbeat_model",
             side_effect=RuntimeError("primary boom"),
         ):
             with patch(
-                "apps.api.jarvis_api.services.heartbeat_runtime._load_heartbeat_policy",
+                "core.services.heartbeat_runtime._load_heartbeat_policy",
                 return_value={},
             ):
                 with patch(
-                    "apps.api.jarvis_api.services.heartbeat_runtime._resolve_heartbeat_target",
+                    "core.services.heartbeat_runtime._resolve_heartbeat_target",
                     return_value={"lane": "local", "provider": "ollama"},
                 ):
                     with patch.object(

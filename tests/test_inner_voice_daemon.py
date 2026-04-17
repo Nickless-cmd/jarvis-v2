@@ -5,8 +5,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-import apps.api.jarvis_api.services.inner_voice_daemon as iv_module
-from apps.api.jarvis_api.services.inner_voice_daemon import (
+import core.services.inner_voice_daemon as iv_module
+from core.services.inner_voice_daemon import (
     run_inner_voice_daemon,
     get_inner_voice_daemon_state,
     _VOICE_COOLDOWN_MINUTES,
@@ -249,7 +249,7 @@ from core.runtime.db import insert_private_brain_record
 
 def test_deterministic_fallback_produces_valid_note(isolated_runtime) -> None:
     """Deterministic fallback must produce a valid note structure."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+    from core.services.inner_voice_daemon import _deterministic_compose
 
     grounding = {
         "source_count": 2,
@@ -270,7 +270,7 @@ def test_deterministic_fallback_produces_valid_note(isolated_runtime) -> None:
 
 def test_render_falls_back_when_no_workspace_file(isolated_runtime, tmp_path) -> None:
     """When INNER_VOICE.md doesn't exist, render should use deterministic fallback."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _render_inner_voice_note
+    from core.services.inner_voice_daemon import _render_inner_voice_note
 
     grounding = {
         "source_count": 2,
@@ -353,7 +353,7 @@ def test_render_mode_is_observable_in_daemon_result(isolated_runtime) -> None:
 
 def test_sanitize_inner_voice_text_removes_attempt_and_style_meta() -> None:
     """Revision labels and style commentary must not survive into inner voice text."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_inner_voice_text
+    from core.services.inner_voice_daemon import _sanitize_inner_voice_text
 
     cleaned = _sanitize_inner_voice_text(
         "*Attempt 2 (More Mood-driven):* (A bit too technical) Jeg fokuserer intenst på den samme tråd."
@@ -364,7 +364,7 @@ def test_sanitize_inner_voice_text_removes_attempt_and_style_meta() -> None:
 
 def test_sanitize_previous_inner_voice_drops_meta_contaminated_prior_voice() -> None:
     """A contaminated previous thought should not be fed back into the next prompt."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_previous_inner_voice
+    from core.services.inner_voice_daemon import _sanitize_previous_inner_voice
 
     cleaned = _sanitize_previous_inner_voice(
         "Attempt 2 (More Mood-driven): A bit too technical"
@@ -375,7 +375,7 @@ def test_sanitize_previous_inner_voice_drops_meta_contaminated_prior_voice() -> 
 
 def test_sanitize_inner_voice_text_removes_refining_flow_mood_prefix() -> None:
     """Writer-room process prefixes should not survive into inner voice text."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_inner_voice_text
+    from core.services.inner_voice_daemon import _sanitize_inner_voice_text
 
     cleaned = _sanitize_inner_voice_text(
         "*Refining for flow and mood (steady, slightly anxious):* Needs to reflect the balancing act between holding focus and not rushing."
@@ -386,7 +386,7 @@ def test_sanitize_inner_voice_text_removes_refining_flow_mood_prefix() -> None:
 
 def test_sanitize_inner_voice_text_drops_partial_length_analysis_prefix() -> None:
     """Partial editor-note prefixes should also be stripped when output is truncated."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_inner_voice_text
+    from core.services.inner_voice_daemon import _sanitize_inner_voice_text
 
     cleaned = _sanitize_inner_voice_text(
         "(A bit too long/analytical) * *Attempt Needs to stay with the balancing act."
@@ -397,7 +397,7 @@ def test_sanitize_inner_voice_text_drops_partial_length_analysis_prefix() -> Non
 
 def test_sanitize_inner_voice_text_drops_orphaned_punctuation_residue() -> None:
     """Meta-stripped residue like a lone slash should collapse to empty."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_inner_voice_text
+    from core.services.inner_voice_daemon import _sanitize_inner_voice_text
 
     cleaned = _sanitize_inner_voice_text("(A bit too long/")
 
@@ -406,7 +406,7 @@ def test_sanitize_inner_voice_text_drops_orphaned_punctuation_residue() -> None:
 
 def test_llm_render_rejects_meta_only_thought_and_falls_back(isolated_runtime, monkeypatch) -> None:
     """Meta-only model output should be treated as unusable so fallback can take over."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _render_inner_voice_note
+    from core.services.inner_voice_daemon import _render_inner_voice_note
 
     monkeypatch.setattr(
         iv_module,
@@ -457,13 +457,13 @@ def test_llm_render_context_humanizes_grounding_keys_and_skips_contaminated_prev
         captured["prompt"] = kwargs["prompt"]
         return {"text": '{"thought":"Jeg holder stadig fast i den tråd, der ikke er faldet til ro.","initiative":null,"mode":"carrying"}'}
 
-    import apps.api.jarvis_api.services.heartbeat_runtime as heartbeat_runtime
+    import core.services.heartbeat_runtime as heartbeat_runtime
 
     monkeypatch.setattr(heartbeat_runtime, "_load_heartbeat_policy", lambda: {}, raising=False)
     monkeypatch.setattr(heartbeat_runtime, "_resolve_heartbeat_target", lambda policy: "test-target", raising=False)
     monkeypatch.setattr(heartbeat_runtime, "_execute_heartbeat_model", _fake_execute_heartbeat_model, raising=False)
 
-    from apps.api.jarvis_api.services.inner_voice_daemon import _llm_render_inner_voice
+    from core.services.inner_voice_daemon import _llm_render_inner_voice
 
     grounding = {
         "source_count": 2,
@@ -492,7 +492,7 @@ def test_llm_render_context_humanizes_grounding_keys_and_skips_contaminated_prev
 
 def test_support_shading_nudges_witness_steady_to_carrying_for_protect_focus() -> None:
     """protect_focus bias should keep the weak witness mode bounded rather than turning it into work-steady."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+    from core.services.inner_voice_daemon import _apply_support_shading
 
     result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "protect_focus",
@@ -502,7 +502,7 @@ def test_support_shading_nudges_witness_steady_to_carrying_for_protect_focus() -
 
 def test_support_shading_nudges_witness_steady_to_carrying() -> None:
     """stabilize_thread bias should nudge the weak witness mode to carrying."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+    from core.services.inner_voice_daemon import _apply_support_shading
 
     result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "stabilize_thread",
@@ -512,7 +512,7 @@ def test_support_shading_nudges_witness_steady_to_carrying() -> None:
 
 def test_support_shading_nudges_witness_steady_to_circling() -> None:
     """reopen_context bias should nudge the weak witness mode to circling."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+    from core.services.inner_voice_daemon import _apply_support_shading
 
     result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "reopen_context",
@@ -522,7 +522,7 @@ def test_support_shading_nudges_witness_steady_to_circling() -> None:
 
 def test_support_shading_keeps_witness_steady_for_reduce_spread() -> None:
     """reduce_spread should keep the weak witness mode bounded rather than turn it action-like."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+    from core.services.inner_voice_daemon import _apply_support_shading
 
     result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "reduce_spread",
@@ -532,7 +532,7 @@ def test_support_shading_keeps_witness_steady_for_reduce_spread() -> None:
 
 def test_support_shading_does_not_override_strong_mode() -> None:
     """Support shading must not override grounding-based modes."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+    from core.services.inner_voice_daemon import _apply_support_shading
 
     for strong_mode in ("searching", "circling", "carrying", "pulled", "work-steady"):
         result = _apply_support_shading(strong_mode, {
@@ -543,7 +543,7 @@ def test_support_shading_does_not_override_strong_mode() -> None:
 
 def test_support_shading_noop_when_bias_is_none() -> None:
     """No shading when support_bias is 'none'."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+    from core.services.inner_voice_daemon import _apply_support_shading
 
     result = _apply_support_shading("witness-steady", {
         "experiential_support_bias": "none",
@@ -553,7 +553,7 @@ def test_support_shading_noop_when_bias_is_none() -> None:
 
 def test_support_shading_noop_when_no_fragments() -> None:
     """No shading when fragments have no support data."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _apply_support_shading
+    from core.services.inner_voice_daemon import _apply_support_shading
 
     result = _apply_support_shading("witness-steady", {})
     assert result == "witness-steady"
@@ -561,7 +561,7 @@ def test_support_shading_noop_when_no_fragments() -> None:
 
 def test_deterministic_compose_includes_support_narrative() -> None:
     """When experiential support narrative is present, it should appear in compose output."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+    from core.services.inner_voice_daemon import _deterministic_compose
 
     grounding = {
         "source_count": 2,
@@ -583,7 +583,7 @@ def test_deterministic_compose_includes_support_narrative() -> None:
 
 def test_select_mode_prefers_living_carry_over_work_steady_when_candidate_pull_is_live() -> None:
     """Mixed work signals should still allow private carry to win when the stream is hesitant and unresolved."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _select_inner_voice_mode
+    from core.services.inner_voice_daemon import _select_inner_voice_mode
 
     grounding = {
         "source_count": 4,
@@ -611,7 +611,7 @@ def test_select_mode_prefers_living_carry_over_work_steady_when_candidate_pull_i
 
 def test_select_mode_prefers_circling_over_witness_steady_for_mixed_watch_stream() -> None:
     """Witness/watch should not win when mixed experiential and work signals keep the stream live."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _select_inner_voice_mode
+    from core.services.inner_voice_daemon import _select_inner_voice_mode
 
     grounding = {
         "source_count": 4,
@@ -635,7 +635,7 @@ def test_select_mode_prefers_circling_over_witness_steady_for_mixed_watch_stream
 
 def test_select_mode_prefers_living_mode_over_witness_steady_for_lingering_live_uncertainty() -> None:
     """Lingering uncertainty with experiential basis should stay live instead of falling back to watchfulness."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _select_inner_voice_mode
+    from core.services.inner_voice_daemon import _select_inner_voice_mode
 
     grounding = {
         "source_count": 2,
@@ -658,7 +658,7 @@ def test_select_mode_prefers_living_mode_over_witness_steady_for_lingering_live_
 
 def test_select_mode_keeps_work_steady_when_only_visible_work_basis_exists() -> None:
     """Steady fallback should remain when there is no stronger private or experiential basis."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _select_inner_voice_mode
+    from core.services.inner_voice_daemon import _select_inner_voice_mode
 
     grounding = {
         "source_count": 2,
@@ -677,7 +677,7 @@ def test_select_mode_keeps_work_steady_when_only_visible_work_basis_exists() -> 
 
 def test_derive_focus_prefers_private_carry_for_living_modes() -> None:
     """Living modes should anchor on private carry before visible-work salience."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _derive_inner_voice_focus
+    from core.services.inner_voice_daemon import _derive_inner_voice_focus
 
     grounding = {
         "fragments": {
@@ -696,7 +696,7 @@ def test_derive_focus_prefers_private_carry_for_living_modes() -> None:
 
 def test_deterministic_compose_no_support_when_baseline() -> None:
     """No support line when support data is absent."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+    from core.services.inner_voice_daemon import _deterministic_compose
 
     grounding = {
         "source_count": 2,
@@ -713,7 +713,7 @@ def test_deterministic_compose_no_support_when_baseline() -> None:
 
 def test_deterministic_compose_allows_searching_candidate_without_action() -> None:
     """Half-formed experiential pulls should stay as candidate thought instead of collapsing into action."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+    from core.services.inner_voice_daemon import _deterministic_compose
 
     grounding = {
         "source_count": 2,
@@ -736,7 +736,7 @@ def test_deterministic_compose_allows_searching_candidate_without_action() -> No
 
 def test_deterministic_compose_does_not_collapse_mixed_candidate_stream_into_work_steady() -> None:
     """Open loops and dev focus should not dominate when the inner stream is still tentative and private."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+    from core.services.inner_voice_daemon import _deterministic_compose
 
     grounding = {
         "source_count": 4,
@@ -762,7 +762,7 @@ def test_deterministic_compose_does_not_collapse_mixed_candidate_stream_into_wor
 
 def test_deterministic_compose_keeps_open_loop_non_actionable_without_clarify_pressure() -> None:
     """Open loops alone should not auto-create initiative anymore."""
-    from apps.api.jarvis_api.services.inner_voice_daemon import _deterministic_compose
+    from core.services.inner_voice_daemon import _deterministic_compose
 
     grounding = {
         "source_count": 2,

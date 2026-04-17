@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
-import apps.api.jarvis_api.services.thought_action_proposal_daemon as tap
+import core.services.thought_action_proposal_daemon as tap
 
 
 def _reset():
@@ -16,7 +16,7 @@ def _reset():
 def test_no_proposal_for_non_action_fragment():
     """Fragment without action language produces no proposal."""
     _reset()
-    with patch("apps.api.jarvis_api.services.thought_action_proposal_daemon.classify_fragment",
+    with patch("core.services.thought_action_proposal_daemon.classify_fragment",
                return_value={"has_action": False, "action_description": "", "destructive_score": 0.0,
                              "proposal_type": "non_destructive", "destructive_reason": ""}):
         result = tap.tick_thought_action_proposal_daemon("Bare en rolig tanke.")
@@ -27,7 +27,7 @@ def test_no_proposal_for_non_action_fragment():
 def test_proposal_created_for_action_fragment():
     """Fragment with action language creates a pending proposal."""
     _reset()
-    with patch("apps.api.jarvis_api.services.thought_action_proposal_daemon.classify_fragment",
+    with patch("core.services.thought_action_proposal_daemon.classify_fragment",
                return_value={"has_action": True, "action_description": "research",
                              "destructive_score": 0.0, "proposal_type": "non_destructive",
                              "destructive_reason": ""}):
@@ -43,7 +43,7 @@ def test_same_fragment_not_classified_twice():
     _reset()
     fragment = "Vil gerne undersøge det."
     tap._last_classified_fragment = fragment
-    with patch("apps.api.jarvis_api.services.thought_action_proposal_daemon.classify_fragment") as mock_cls:
+    with patch("core.services.thought_action_proposal_daemon.classify_fragment") as mock_cls:
         tap.tick_thought_action_proposal_daemon(fragment)
     mock_cls.assert_not_called()
 
@@ -56,7 +56,7 @@ def test_pending_proposals_capped_at_10():
          "proposal_type": "non_destructive", "status": "pending", "created_at": "2026-01-01T00:00:00"}
         for i in range(10)
     ]
-    with patch("apps.api.jarvis_api.services.thought_action_proposal_daemon.classify_fragment",
+    with patch("core.services.thought_action_proposal_daemon.classify_fragment",
                return_value={"has_action": True, "action_description": "research",
                              "destructive_score": 0.0, "proposal_type": "non_destructive",
                              "destructive_reason": ""}):

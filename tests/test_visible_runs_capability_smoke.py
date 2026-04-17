@@ -99,9 +99,9 @@ def test_visible_run_executes_read_capability_and_surfaces_result(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
         visible_model=visible_model,
@@ -131,9 +131,9 @@ def test_visible_run_surfaces_gated_write_capability_without_execution(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
         visible_model=visible_model,
@@ -167,9 +167,9 @@ def test_visible_run_consumes_prose_plus_capability_without_raw_tag_leakage(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -199,9 +199,9 @@ def test_visible_run_executes_all_known_capabilities_when_multiple_are_emitted(
     monkeypatch,
 ) -> None:
     """All unique known capabilities execute; duplicates are deduped."""
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -233,9 +233,9 @@ def test_visible_run_second_pass_strips_capability_markup_and_does_not_loop(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -268,9 +268,9 @@ def test_visible_run_executes_dynamic_external_read_from_user_message_path(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     external_file = tmp_path / "external-visible-target.txt"
     external_file.write_text("Visible external read text.\n", encoding="utf-8")
@@ -303,9 +303,9 @@ def test_visible_run_binds_external_read_target_from_capability_tag_attributes(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     external_file = tmp_path / "external-visible-attr.txt"
     external_file.write_text("External attr binding text.\n", encoding="utf-8")
@@ -336,9 +336,9 @@ def test_visible_run_executes_non_destructive_command_from_user_message(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -367,9 +367,9 @@ def test_visible_run_binds_exec_command_from_capability_tag_attributes(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -397,9 +397,9 @@ def test_visible_run_surfaces_exec_path_normalization_in_trace(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -428,9 +428,9 @@ def test_visible_run_surfaces_sudo_exec_as_approval_gated_proposal_without_marku
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -458,9 +458,9 @@ def test_visible_run_surfaces_mutating_exec_as_proposal_only(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -488,9 +488,9 @@ def test_visible_run_allows_bounded_git_status_as_non_destructive_exec(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -516,9 +516,9 @@ def test_visible_run_surfaces_provider_first_pass_error_in_trace(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -547,7 +547,7 @@ def test_visible_run_surfaces_provider_first_pass_error_in_trace(
 
 def test_extract_capability_plan_returns_all_known_capabilities() -> None:
     """_extract_capability_plan must return all known capabilities, not just the first."""
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
 
     text = (
@@ -569,7 +569,7 @@ def test_extract_capability_plan_returns_all_known_capabilities() -> None:
 
 def test_extract_capability_plan_caps_at_max_capabilities() -> None:
     """_extract_capability_plan must not return more than _MAX_CAPABILITIES_PER_TURN."""
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
 
     # All tags have same ID so dedup means only 1 entry, but the cap logic is exercised
@@ -582,7 +582,7 @@ def test_extract_capability_plan_caps_at_max_capabilities() -> None:
 
 
 def test_extract_capability_plan_keeps_multiple_block_capabilities_in_order() -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
 
     text = """
@@ -604,7 +604,7 @@ more ignored block content
 
 
 def test_extract_capability_plan_keeps_mixed_block_and_self_closing_calls() -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
 
     text = """
@@ -636,9 +636,9 @@ def test_visible_run_executes_all_capabilities_not_just_first(
     monkeypatch,
 ) -> None:
     """When LLM emits multiple capability tags, ALL known capabilities must execute."""
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     # Use two capabilities that are always present in the isolated workspace
     chunks, last_use = _run_visible_stream(
@@ -674,9 +674,9 @@ def test_visible_run_allows_one_extra_autonomous_read_only_round(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,
@@ -707,9 +707,9 @@ def test_visible_run_second_pass_treats_memory_write_as_normal_success(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
-    visible_model = importlib.import_module("apps.api.jarvis_api.services.visible_model")
+    visible_model = importlib.import_module("core.services.visible_model")
 
     chunks, last_use = _run_visible_stream(
         visible_runs=visible_runs,

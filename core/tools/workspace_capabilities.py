@@ -2124,7 +2124,7 @@ def _invoke_runnable_capability(
             }
         # File the proposal
         try:
-            from apps.api.jarvis_api.services.autonomy_proposal_queue import (
+            from core.services.autonomy_proposal_queue import (
                 file_proposal,
             )
             proposal = file_proposal(

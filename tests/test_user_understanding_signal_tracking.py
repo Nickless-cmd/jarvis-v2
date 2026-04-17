@@ -31,7 +31,7 @@ def _insert_user_understanding_signal(db, *, status: str, signal_type: str, cano
 def test_user_understanding_surface_stays_empty_without_relevant_grounding(isolated_runtime) -> None:
     tracking = isolated_runtime.user_understanding_signal_tracking
     chat_sessions = __import__(
-        "apps.api.jarvis_api.services.chat_sessions",
+        "core.services.chat_sessions",
         fromlist=["create_chat_session", "append_chat_message"],
     )
 
@@ -62,7 +62,7 @@ def test_user_understanding_surface_forms_small_bounded_signals_from_recent_inte
 ) -> None:
     tracking = isolated_runtime.user_understanding_signal_tracking
     chat_sessions = __import__(
-        "apps.api.jarvis_api.services.chat_sessions",
+        "core.services.chat_sessions",
         fromlist=["create_chat_session", "append_chat_message"],
     )
 

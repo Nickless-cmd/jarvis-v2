@@ -4,7 +4,7 @@ import importlib
 
 
 def test_runtime_self_model_surfaces_capability_registry_truth(isolated_runtime) -> None:
-    self_model_mod = importlib.import_module("apps.api.jarvis_api.services.runtime_self_model")
+    self_model_mod = importlib.import_module("core.services.runtime_self_model")
     self_model_mod = importlib.reload(self_model_mod)
 
     model = self_model_mod.build_runtime_self_model()

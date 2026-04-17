@@ -30,7 +30,7 @@ def test_default_workspace_wrapper_resolves_and_sets(fake_workspace: Path) -> No
 
 def test_aesthetic_insight_queues_trigger(fake_workspace: Path, monkeypatch) -> None:
     # Stub the DB write and event bus so _store_insight runs cleanly in isolation
-    import apps.api.jarvis_api.services.aesthetic_taste_daemon as daemon
+    import core.services.aesthetic_taste_daemon as daemon
 
     monkeypatch.setattr(daemon, "insert_private_brain_record", lambda **kw: None)
     monkeypatch.setattr(daemon.event_bus, "publish", lambda *a, **kw: None)
@@ -45,7 +45,7 @@ def test_aesthetic_insight_queues_trigger(fake_workspace: Path, monkeypatch) -> 
 
 
 def test_self_review_high_confidence_queues_trigger(fake_workspace: Path, monkeypatch) -> None:
-    import apps.api.jarvis_api.services.self_review_run_tracking as sr
+    import core.services.self_review_run_tracking as sr
 
     # Simulate was_created + confidence=high without touching the DB
     fake_item = {

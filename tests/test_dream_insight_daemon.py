@@ -4,12 +4,18 @@ from __future__ import annotations
 import sys
 import types
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 
+BUS_MOD = None
+DB_MOD = None
+
+
 def _stub_modules():
+    global BUS_MOD, DB_MOD
     for name in [
         "core", "core.eventbus", "core.eventbus.bus",
         "core.runtime", "core.runtime.db",
@@ -17,23 +23,30 @@ def _stub_modules():
         if name not in sys.modules:
             sys.modules[name] = types.ModuleType(name)
 
-    bus_mod = sys.modules["core.eventbus.bus"]
-    if not hasattr(bus_mod, "event_bus"):
+    repo_root = Path(__file__).resolve().parents[1]
+    sys.modules["core"].__path__ = [str(repo_root / "core")]
+    sys.modules["core.eventbus"].__path__ = [str(repo_root / "core" / "eventbus")]
+    sys.modules["core.runtime"].__path__ = [str(repo_root / "core" / "runtime")]
+
+    BUS_MOD = sys.modules["core.eventbus.bus"]
+    if not hasattr(BUS_MOD, "event_bus"):
         mock_bus = MagicMock()
         mock_bus.publish = MagicMock()
-        bus_mod.event_bus = mock_bus
+        BUS_MOD.event_bus = mock_bus
 
-    db_mod = sys.modules["core.runtime.db"]
-    if not hasattr(db_mod, "insert_private_brain_record"):
-        db_mod.insert_private_brain_record = MagicMock()
+    DB_MOD = sys.modules["core.runtime.db"]
+    if not hasattr(DB_MOD, "insert_private_brain_record"):
+        DB_MOD.insert_private_brain_record = MagicMock()
 
 
 _stub_modules()
 
 import importlib
 dream_insight_daemon = importlib.import_module(
-    "apps.api.jarvis_api.services.dream_insight_daemon"
+    "core.services.dream_insight_daemon"
 )
+for _name in ("core.eventbus.bus", "core.runtime.db", "core.eventbus", "core.runtime"):
+    sys.modules.pop(_name, None)
 
 
 def _reset():
@@ -45,7 +58,7 @@ def _reset():
 def test_persist_new_dream_output_stores_record():
     """When a new signal_id arrives, it should persist a dream-insight."""
     _reset()
-    db_mod = sys.modules["core.runtime.db"]
+    db_mod = DB_MOD
     db_mod.insert_private_brain_record.reset_mock()
 
     result = dream_insight_daemon.tick_dream_insight_daemon(
@@ -60,7 +73,7 @@ def test_same_signal_id_not_persisted_twice():
     """Same signal_id should not be persisted again."""
     _reset()
     dream_insight_daemon._last_persisted_signal_id = "sig-abc-123"
-    db_mod = sys.modules["core.runtime.db"]
+    db_mod = DB_MOD
     db_mod.insert_private_brain_record.reset_mock()
 
     result = dream_insight_daemon.tick_dream_insight_daemon(

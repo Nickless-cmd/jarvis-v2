@@ -1,7 +1,7 @@
 """Tests for emergent_bridge.py"""
 import pytest
 
-from apps.api.jarvis_api.services.emergent_bridge import (
+from core.services.emergent_bridge import (
     should_influence_prompt,
     get_influencing_emergents,
     format_emergent_for_prompt,

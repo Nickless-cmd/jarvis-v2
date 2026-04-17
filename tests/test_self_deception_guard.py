@@ -1,7 +1,7 @@
 """Tests for bounded self-deception guard — deterministic truth-constraint on user-facing stance."""
 from __future__ import annotations
 
-from apps.api.jarvis_api.services.self_deception_guard import (
+from core.services.self_deception_guard import (
     evaluate_self_deception_guard,
     DeceptionGuardTrace,
     GuardConstraint,

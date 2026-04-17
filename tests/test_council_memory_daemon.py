@@ -6,12 +6,12 @@ from unittest.mock import patch
 
 def _tick(entries, llm_response: str):
     """Helper: tick daemon with mocked entries and LLM response."""
-    from apps.api.jarvis_api.services import council_memory_daemon as cmd
+    from core.services import council_memory_daemon as cmd
     cmd._last_llm_call_at = None  # reset cooldown
 
     with (
-        patch("apps.api.jarvis_api.services.council_memory_daemon._load_entries", return_value=entries),
-        patch("apps.api.jarvis_api.services.council_memory_daemon._call_similarity_llm", return_value=llm_response),
+        patch("core.services.council_memory_daemon._load_entries", return_value=entries),
+        patch("core.services.council_memory_daemon._call_similarity_llm", return_value=llm_response),
     ):
         return cmd.tick_council_memory_daemon(recent_context="current conversation context")
 
@@ -53,12 +53,12 @@ def test_tick_skips_when_llm_returns_ingen():
 
 
 def test_tick_cooldown_prevents_rapid_calls():
-    from apps.api.jarvis_api.services import council_memory_daemon as cmd
+    from core.services import council_memory_daemon as cmd
     from datetime import UTC, datetime
     cmd._last_llm_call_at = datetime.now(UTC)  # simulate recent call
 
     entries = [{"topic": "A", "conclusion": "C.", "timestamp": "t", "initiative": None}]
-    with patch("apps.api.jarvis_api.services.council_memory_daemon._load_entries", return_value=entries):
+    with patch("core.services.council_memory_daemon._load_entries", return_value=entries):
         result = cmd.tick_council_memory_daemon(recent_context="ctx")
     assert result["injected"] is False
     assert result["reason"] == "cooldown"

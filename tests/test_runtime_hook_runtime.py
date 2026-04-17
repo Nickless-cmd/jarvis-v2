@@ -6,7 +6,7 @@ import time
 def test_runtime_hook_runtime_dispatches_live_events(isolated_runtime) -> None:
     event_bus = __import__("core.eventbus.bus", fromlist=["event_bus"]).event_bus
     hook_runtime = __import__(
-        "apps.api.jarvis_api.services.runtime_hook_runtime",
+        "core.services.runtime_hook_runtime",
         fromlist=["start_runtime_hook_runtime", "stop_runtime_hook_runtime"],
     )
 

@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 
 def _make_service(tmp_path: Path):
-    import apps.api.jarvis_api.services.council_memory_service as svc
+    import core.services.council_memory_service as svc
     log_file = tmp_path / "COUNCIL_LOG.md"
     return svc, log_file
 

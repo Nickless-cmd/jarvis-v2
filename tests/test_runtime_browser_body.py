@@ -3,7 +3,7 @@ from __future__ import annotations
 
 def test_runtime_browser_body_persists_profile_and_tabs(isolated_runtime) -> None:
     runtime_browser_body = __import__(
-        "apps.api.jarvis_api.services.runtime_browser_body",
+        "core.services.runtime_browser_body",
         fromlist=["ensure_browser_body"],
     )
 

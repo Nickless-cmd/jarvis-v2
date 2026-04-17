@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from apps.api.jarvis_api.services.proposal_classifier import classify_fragment
+from core.services.proposal_classifier import classify_fragment
 
 
 def test_no_action_in_plain_fragment():

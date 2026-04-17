@@ -275,7 +275,7 @@ class TestSignalArchiveRecent:
 
 class TestSignalDecayDaemon:
     def test_tick_respects_cadence(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.signal_decay_daemon as sdd
+        import core.services.signal_decay_daemon as sdd
 
         # Reset module state
         sdd._last_tick_at = datetime.now(UTC)
@@ -285,7 +285,7 @@ class TestSignalDecayDaemon:
         assert result["generated"] is False
 
     def test_tick_runs_on_first_call(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.signal_decay_daemon as sdd
+        import core.services.signal_decay_daemon as sdd
 
         sdd._last_tick_at = None
         sdd._last_result = {}
@@ -305,7 +305,7 @@ class TestSignalDecayDaemon:
         assert result["archive_cleaned"] == 1
 
     def test_tick_handles_errors_gracefully(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.signal_decay_daemon as sdd
+        import core.services.signal_decay_daemon as sdd
 
         sdd._last_tick_at = None
         sdd._last_result = {}
@@ -347,7 +347,7 @@ class TestSignalTablesList:
 
 class TestBuildSignalDecaySurface:
     def test_returns_expected_keys(self) -> None:
-        from apps.api.jarvis_api.services.signal_decay_daemon import build_signal_decay_surface
+        from core.services.signal_decay_daemon import build_signal_decay_surface
 
         surface = build_signal_decay_surface()
         assert "last_archived" in surface

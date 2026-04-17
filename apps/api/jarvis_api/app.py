@@ -7,39 +7,39 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from apps.api.jarvis_api.services.heartbeat_runtime import (
+from core.services.heartbeat_runtime import (
     start_heartbeat_scheduler,
     stop_heartbeat_scheduler,
 )
-from apps.api.jarvis_api.services.notification_bridge import (
+from core.services.notification_bridge import (
     start_notification_bridge,
     stop_notification_bridge,
 )
-from apps.api.jarvis_api.services.scheduled_tasks import (
+from core.services.scheduled_tasks import (
     start_scheduled_tasks_service,
     stop_scheduled_tasks_service,
 )
-from apps.api.jarvis_api.services.runtime_hook_runtime import (
+from core.services.runtime_hook_runtime import (
     start_runtime_hook_runtime,
     stop_runtime_hook_runtime,
 )
-from apps.api.jarvis_api.services.mood_oscillator import (
+from core.services.mood_oscillator import (
     register_event_listeners as start_mood_listener,
     stop_event_listeners as stop_mood_listener,
 )
-from apps.api.jarvis_api.services.emotion_concepts import (
+from core.services.emotion_concepts import (
     register_event_listeners as start_emotion_concept_listener,
     stop_event_listeners as stop_emotion_concept_listener,
 )
-from apps.api.jarvis_api.services.global_workspace import (
+from core.services.global_workspace import (
     register_event_listeners as start_global_workspace_listener,
     stop_event_listeners as stop_global_workspace_listener,
 )
-from apps.api.jarvis_api.services.discord_gateway import (
+from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
 )
-from apps.api.jarvis_api.services.voice_daemon import (
+from core.services.voice_daemon import (
     start_voice_daemon,
     stop_voice_daemon,
 )
@@ -92,7 +92,7 @@ def create_app() -> FastAPI:
             start_discord_gateway()
             start_voice_daemon()
             try:
-                from apps.api.jarvis_api.services.agent_runtime import recover_crashed_agents
+                from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:
                     logger.info("agent recovery: %s", recovery)

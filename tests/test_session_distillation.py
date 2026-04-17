@@ -177,7 +177,7 @@ def test_distill_session_carry_produces_records_from_runtime_evidence() -> None:
     """distill_session_carry should create private brain records from
     active inner notes and other private signals, and produce a
     distillation record."""
-    from apps.api.jarvis_api.services.session_distillation import (
+    from core.services.session_distillation import (
         distill_session_carry,
         build_private_brain_surface,
         build_session_distillation_surface,
@@ -231,7 +231,7 @@ def test_distill_session_carry_produces_records_from_runtime_evidence() -> None:
 def test_distill_session_carry_discards_inactive_signals() -> None:
     """Inactive signals should be classified as discard, not persisted
     to private brain."""
-    from apps.api.jarvis_api.services.session_distillation import (
+    from core.services.session_distillation import (
         distill_session_carry,
     )
     from core.runtime.db import upsert_runtime_private_inner_note_signal
@@ -278,7 +278,7 @@ def test_distill_session_carry_discards_inactive_signals() -> None:
 
 def test_near_duplicate_suppression(_ensure_tables) -> None:
     """Records with very similar summaries should be suppressed."""
-    from apps.api.jarvis_api.services.session_distillation import _is_near_duplicate
+    from core.services.session_distillation import _is_near_duplicate
 
     existing = [
         {
@@ -319,7 +319,7 @@ def test_near_duplicate_suppression(_ensure_tables) -> None:
 def test_distillation_suppresses_near_duplicates() -> None:
     """Running distill_session_carry twice with similar signals should
     suppress the second run's records."""
-    from apps.api.jarvis_api.services.session_distillation import distill_session_carry
+    from core.services.session_distillation import distill_session_carry
     from core.runtime.db import upsert_runtime_private_inner_note_signal
 
     session_id = f"dedup-session-{uuid4().hex[:8]}"
@@ -364,7 +364,7 @@ def test_distillation_suppresses_near_duplicates() -> None:
 
 def test_build_private_brain_context_returns_bounded_excerpts(_ensure_tables) -> None:
     """build_private_brain_context should return bounded excerpts."""
-    from apps.api.jarvis_api.services.session_distillation import build_private_brain_context
+    from core.services.session_distillation import build_private_brain_context
 
     now = datetime.now(UTC).isoformat()
     for i in range(5):
@@ -399,7 +399,7 @@ def test_build_private_brain_context_returns_bounded_excerpts(_ensure_tables) ->
 
 def test_build_private_brain_context_empty_when_no_records() -> None:
     """build_private_brain_context should return inactive state when empty."""
-    from apps.api.jarvis_api.services.session_distillation import build_private_brain_context
+    from core.services.session_distillation import build_private_brain_context
     # Use a fresh limit=0 to simulate no records scenario
     ctx = build_private_brain_context(limit=0)
     # limit=0 → no records
@@ -413,7 +413,7 @@ def test_build_private_brain_context_empty_when_no_records() -> None:
 
 def test_continuity_motor_skips_when_no_brain_records() -> None:
     """run_private_brain_continuity should skip when no records exist."""
-    from apps.api.jarvis_api.services.session_distillation import run_private_brain_continuity
+    from core.services.session_distillation import run_private_brain_continuity
 
     # Clear state by using a fresh scenario — since we can't clear DB,
     # the motor should produce a skipped or consolidated result based on existing state.
@@ -425,7 +425,7 @@ def test_continuity_motor_skips_when_no_brain_records() -> None:
 def test_continuity_motor_consolidates_when_enough_diversity(_ensure_tables) -> None:
     """run_private_brain_continuity should consolidate when there are
     enough diverse brain records."""
-    from apps.api.jarvis_api.services.session_distillation import run_private_brain_continuity
+    from core.services.session_distillation import run_private_brain_continuity
 
     now = datetime.now(UTC).isoformat()
     # Seed diverse records
@@ -464,7 +464,7 @@ def test_continuity_motor_consolidates_when_enough_diversity(_ensure_tables) -> 
 
 def test_classify_continuity_mode_reinforce() -> None:
     """When excerpts share few focuses, mode should be 'reinforce'."""
-    from apps.api.jarvis_api.services.session_distillation import _classify_continuity_mode
+    from core.services.session_distillation import _classify_continuity_mode
 
     excerpts = [
         {"focus": "runtime architecture", "type": "inner-note-carry"},
@@ -479,7 +479,7 @@ def test_classify_continuity_mode_reinforce() -> None:
 
 def test_classify_continuity_mode_carry() -> None:
     """When there are 3+ diverse types, mode should be 'carry'."""
-    from apps.api.jarvis_api.services.session_distillation import _classify_continuity_mode
+    from core.services.session_distillation import _classify_continuity_mode
 
     excerpts = [
         {"focus": "focus A", "type": "inner-note-carry"},
@@ -494,7 +494,7 @@ def test_classify_continuity_mode_carry() -> None:
 
 def test_classify_continuity_mode_release() -> None:
     """When most records are consolidation types, mode should be 'release'."""
-    from apps.api.jarvis_api.services.session_distillation import _classify_continuity_mode
+    from core.services.session_distillation import _classify_continuity_mode
 
     excerpts = [
         {"focus": "settled thread", "type": "continuity-carry"},
@@ -514,7 +514,7 @@ def test_classify_continuity_mode_release() -> None:
 def test_heartbeat_prompt_includes_private_brain_section() -> None:
     """When private brain context is active, the heartbeat prompt assembly
     should include a private brain continuity section."""
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _heartbeat_private_brain_section,
     )
 
@@ -539,7 +539,7 @@ def test_heartbeat_prompt_includes_private_brain_section() -> None:
 
 def test_heartbeat_prompt_skips_brain_when_empty() -> None:
     """When private brain context is inactive, no section should be produced."""
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _heartbeat_private_brain_section,
     )
 
@@ -557,7 +557,7 @@ def test_heartbeat_prompt_skips_brain_when_empty() -> None:
 
 def test_lifecycle_transitions_active_to_settling(_ensure_tables) -> None:
     """When there are many active records, oldest should settle."""
-    from apps.api.jarvis_api.services.session_distillation import run_private_brain_lifecycle
+    from core.services.session_distillation import run_private_brain_lifecycle
 
     now = datetime.now(UTC).isoformat()
     # Create more records than the settle threshold (6)
@@ -586,7 +586,7 @@ def test_lifecycle_transitions_active_to_settling(_ensure_tables) -> None:
 
 def test_lifecycle_does_not_delete_records(_ensure_tables) -> None:
     """Lifecycle transitions should never delete records — only change status."""
-    from apps.api.jarvis_api.services.session_distillation import run_private_brain_lifecycle
+    from core.services.session_distillation import run_private_brain_lifecycle
     from core.runtime.db import get_private_brain_record
 
     now = datetime.now(UTC).isoformat()
@@ -651,7 +651,7 @@ def test_update_private_brain_record_status(_ensure_tables) -> None:
 
 def test_influence_trace_structure() -> None:
     """The influence trace should have the correct structure."""
-    from apps.api.jarvis_api.services.heartbeat_runtime import _build_influence_trace
+    from core.services.heartbeat_runtime import _build_influence_trace
 
     trace = _build_influence_trace(
         private_brain={"active": True, "record_count": 3, "excerpts": []},
@@ -668,7 +668,7 @@ def test_influence_trace_structure() -> None:
 
 def test_influence_trace_absent_when_empty() -> None:
     """When nothing is active, influence trace should show absent inputs."""
-    from apps.api.jarvis_api.services.heartbeat_runtime import _build_influence_trace
+    from core.services.heartbeat_runtime import _build_influence_trace
 
     trace = _build_influence_trace(
         private_brain={"active": False, "record_count": 0},
@@ -688,7 +688,7 @@ def test_influence_trace_absent_when_empty() -> None:
 
 def test_visible_self_knowledge_lines_produce_output() -> None:
     """_visible_self_knowledge_lines should produce lines with runtime facts."""
-    from apps.api.jarvis_api.services.prompt_contract import _visible_self_knowledge_lines
+    from core.services.prompt_contract import _visible_self_knowledge_lines
 
     lines = _visible_self_knowledge_lines()
     # Should always produce at least the header + active capabilities

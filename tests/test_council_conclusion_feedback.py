@@ -4,12 +4,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
-from apps.api.jarvis_api.services.council_runtime import get_latest_council_conclusion
+from core.services.council_runtime import get_latest_council_conclusion
 
 
 def test_get_latest_council_conclusion_returns_none_when_no_closed_sessions():
     with patch(
-        "apps.api.jarvis_api.services.council_runtime.list_council_sessions",
+        "core.services.council_runtime.list_council_sessions",
         return_value=[],
         create=True,
     ):

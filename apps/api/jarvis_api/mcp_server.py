@@ -14,7 +14,7 @@ from core.runtime.db import (
     get_private_retained_memory_record,
     recent_private_retained_memory_records,
 )
-from apps.api.jarvis_api.services.chat_sessions import (
+from core.services.chat_sessions import (
     list_chat_sessions,
     get_chat_session,
     create_chat_session,
@@ -153,7 +153,7 @@ def jarvis_chat(message: str, session_id: str = "") -> str:
     if not session_id:
         session_id = _get_or_create_mcp_session()
 
-    from apps.api.jarvis_api.services.visible_model import execute_visible_model
+    from core.services.visible_model import execute_visible_model
     from core.runtime.provider_router import resolve_provider_router_target
 
     target = resolve_provider_router_target(lane="visible")

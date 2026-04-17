@@ -1,7 +1,7 @@
 """Tests for decision_ghosts.py"""
 
 import pytest
-from apps.api.jarvis_api.services.decision_ghosts import (
+from core.services.decision_ghosts import (
     record_rejected_path,
     describe_ghost_decision,
     format_decision_ghost_for_prompt,

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from apps.api.jarvis_api.services.chat_sessions import (
+from core.services.chat_sessions import (
     append_chat_message,
     create_chat_session,
     delete_chat_session,
@@ -12,7 +12,7 @@ from apps.api.jarvis_api.services.chat_sessions import (
     list_chat_sessions,
     rename_chat_session,
 )
-from apps.api.jarvis_api.services.visible_runs import (
+from core.services.visible_runs import (
     cancel_visible_run,
     resolve_pending_approval,
     start_visible_run,
@@ -91,7 +91,7 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
             effective_message = "[Attached files: " + ", ".join(parts) + "]\n\n" + request.message
 
     append_chat_message(session_id=session_id, role="user", content=effective_message)
-    from apps.api.jarvis_api.services.notification_bridge import pin_session
+    from core.services.notification_bridge import pin_session
     pin_session(session_id)
     return StreamingResponse(
         start_visible_run(message=effective_message, session_id=session_id, approval_mode=request.approval_mode),

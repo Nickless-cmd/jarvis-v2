@@ -11,12 +11,12 @@ from uuid import uuid4
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from apps.api.jarvis_api.services.chat_sessions import (
+from core.services.chat_sessions import (
     create_chat_session,
     get_chat_session,
     append_chat_message,
 )
-from apps.api.jarvis_api.services.visible_model import (
+from core.services.visible_model import (
     stream_visible_model,
     execute_visible_model,
     VisibleModelDelta,

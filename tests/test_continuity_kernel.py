@@ -2,7 +2,7 @@
 import pytest
 from datetime import UTC, datetime, timedelta
 
-from apps.api.jarvis_api.services.continuity_kernel import (
+from core.services.continuity_kernel import (
     record_tick_elapsed,
     get_existence_narrative,
     get_existence_feeling,

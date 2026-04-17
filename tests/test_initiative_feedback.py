@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 # ---------------------------------------------------------------------------
 
 def test_approve_initiative_returns_updated_record():
-    from apps.api.jarvis_api.services import initiative_queue as iq
+    from core.services import initiative_queue as iq
 
     fake_record = {
         "initiative_id": "init-abc123",
@@ -20,9 +20,9 @@ def test_approve_initiative_returns_updated_record():
         "status": "pending",
     }
 
-    with patch("apps.api.jarvis_api.services.initiative_queue.approve_runtime_initiative",
+    with patch("core.services.initiative_queue.approve_runtime_initiative",
                return_value=fake_record) as mock_approve, \
-         patch("apps.api.jarvis_api.services.initiative_queue.event_bus") as mock_bus:
+         patch("core.services.initiative_queue.event_bus") as mock_bus:
         result = iq.approve_initiative("init-abc123", note="looks good")
 
     assert result is not None
@@ -34,11 +34,11 @@ def test_approve_initiative_returns_updated_record():
 
 
 def test_approve_initiative_returns_none_when_not_found():
-    from apps.api.jarvis_api.services import initiative_queue as iq
+    from core.services import initiative_queue as iq
 
-    with patch("apps.api.jarvis_api.services.initiative_queue.approve_runtime_initiative",
+    with patch("core.services.initiative_queue.approve_runtime_initiative",
                return_value=None), \
-         patch("apps.api.jarvis_api.services.initiative_queue.event_bus") as mock_bus:
+         patch("core.services.initiative_queue.event_bus") as mock_bus:
         result = iq.approve_initiative("nonexistent-id")
 
     assert result is None
@@ -46,7 +46,7 @@ def test_approve_initiative_returns_none_when_not_found():
 
 
 def test_reject_initiative_returns_expired_record():
-    from apps.api.jarvis_api.services import initiative_queue as iq
+    from core.services import initiative_queue as iq
 
     fake_record = {
         "initiative_id": "init-xyz",
@@ -56,9 +56,9 @@ def test_reject_initiative_returns_expired_record():
         "status": "expired",
     }
 
-    with patch("apps.api.jarvis_api.services.initiative_queue.reject_runtime_initiative",
+    with patch("core.services.initiative_queue.reject_runtime_initiative",
                return_value=fake_record) as mock_reject, \
-         patch("apps.api.jarvis_api.services.initiative_queue.event_bus") as mock_bus:
+         patch("core.services.initiative_queue.event_bus") as mock_bus:
         result = iq.reject_initiative("init-xyz", note="not appropriate")
 
     assert result is not None
@@ -70,11 +70,11 @@ def test_reject_initiative_returns_expired_record():
 
 
 def test_reject_initiative_returns_none_when_not_found():
-    from apps.api.jarvis_api.services import initiative_queue as iq
+    from core.services import initiative_queue as iq
 
-    with patch("apps.api.jarvis_api.services.initiative_queue.reject_runtime_initiative",
+    with patch("core.services.initiative_queue.reject_runtime_initiative",
                return_value=None), \
-         patch("apps.api.jarvis_api.services.initiative_queue.event_bus") as mock_bus:
+         patch("core.services.initiative_queue.event_bus") as mock_bus:
         result = iq.reject_initiative("does-not-exist")
 
     assert result is None
@@ -86,7 +86,7 @@ def test_reject_initiative_returns_none_when_not_found():
 # ---------------------------------------------------------------------------
 
 def test_get_initiative_queue_state_includes_approved_rejected_counts():
-    from apps.api.jarvis_api.services import initiative_queue as iq
+    from core.services import initiative_queue as iq
 
     fake_items = [
         {"initiative_id": "i1", "status": "pending", "outcome": "", "detected_at": "2026-01-01T00:00:00+00:00",
@@ -97,8 +97,8 @@ def test_get_initiative_queue_state_includes_approved_rejected_counts():
          "next_attempt_at": "", "priority": "low", "attempt_count": 0},
     ]
 
-    with patch("apps.api.jarvis_api.services.initiative_queue.runtime_db") as mock_db, \
-         patch("apps.api.jarvis_api.services.initiative_queue._expire_stale"):
+    with patch("core.services.initiative_queue.runtime_db") as mock_db, \
+         patch("core.services.initiative_queue._expire_stale"):
         mock_db.list_runtime_initiatives.return_value = fake_items
         state = iq.get_initiative_queue_state()
 
@@ -181,7 +181,7 @@ def test_approve_runtime_initiative_returns_none_when_not_found():
 # ---------------------------------------------------------------------------
 
 def test_dream_articulation_includes_goal_signal_in_source_inputs():
-    from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_from_inputs
+    from core.services.dream_articulation import build_dream_articulation_from_inputs
     from datetime import UTC, datetime
 
     goal_surface = {
@@ -206,7 +206,7 @@ def test_dream_articulation_includes_goal_signal_in_source_inputs():
 
 
 def test_dream_articulation_includes_relation_state_in_source_inputs():
-    from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_from_inputs
+    from core.services.dream_articulation import build_dream_articulation_from_inputs
     from datetime import UTC, datetime
 
     relation_surface = {
@@ -231,7 +231,7 @@ def test_dream_articulation_includes_relation_state_in_source_inputs():
 
 
 def test_dream_articulation_includes_autonomy_pressure_in_source_inputs():
-    from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_from_inputs
+    from core.services.dream_articulation import build_dream_articulation_from_inputs
     from datetime import UTC, datetime
 
     autonomy_surface = {
@@ -257,7 +257,7 @@ def test_dream_articulation_includes_autonomy_pressure_in_source_inputs():
 
 def test_dream_articulation_empty_live_signals_do_not_add_sources():
     """Empty/None live surfaces must not add noise to source_inputs."""
-    from apps.api.jarvis_api.services.dream_articulation import build_dream_articulation_from_inputs
+    from core.services.dream_articulation import build_dream_articulation_from_inputs
     from datetime import UTC, datetime
 
     result = build_dream_articulation_from_inputs(

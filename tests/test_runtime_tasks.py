@@ -3,7 +3,7 @@ from __future__ import annotations
 
 def test_runtime_tasks_persist_and_update(isolated_runtime) -> None:
     runtime_tasks = __import__(
-        "apps.api.jarvis_api.services.runtime_tasks",
+        "core.services.runtime_tasks",
         fromlist=["create_task"],
     )
 
@@ -49,7 +49,7 @@ def test_runtime_tasks_persist_and_update(isolated_runtime) -> None:
 
 def test_runtime_tasks_priority_uses_standing_orders_and_daily_memory(isolated_runtime) -> None:
     runtime_tasks = __import__(
-        "apps.api.jarvis_api.services.runtime_tasks",
+        "core.services.runtime_tasks",
         fromlist=["create_task"],
     )
     paths = isolated_runtime.workspace_bootstrap.workspace_memory_paths()

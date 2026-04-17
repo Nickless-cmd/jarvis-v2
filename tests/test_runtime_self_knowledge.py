@@ -4,7 +4,7 @@ from __future__ import annotations
 
 def test_self_knowledge_map_has_all_categories() -> None:
     """The self-knowledge map must have all five categories."""
-    from apps.api.jarvis_api.services.runtime_self_knowledge import (
+    from core.services.runtime_self_knowledge import (
         build_runtime_self_knowledge_map,
     )
 
@@ -28,7 +28,7 @@ def test_self_knowledge_map_has_all_categories() -> None:
 
 def test_structural_constraints_are_always_populated() -> None:
     """Structural constraints should always have items — they are fixed truths."""
-    from apps.api.jarvis_api.services.runtime_self_knowledge import (
+    from core.services.runtime_self_knowledge import (
         build_runtime_self_knowledge_map,
     )
 
@@ -56,7 +56,7 @@ def test_structural_constraints_are_always_populated() -> None:
 
 def test_active_capabilities_always_includes_core() -> None:
     """Active capabilities should always include at least session distillation."""
-    from apps.api.jarvis_api.services.runtime_self_knowledge import (
+    from core.services.runtime_self_knowledge import (
         build_runtime_self_knowledge_map,
     )
 
@@ -73,7 +73,7 @@ def test_active_capabilities_always_includes_core() -> None:
 
 def test_approval_gated_includes_soul_identity() -> None:
     """SOUL.md/IDENTITY.md mutation should always be approval-gated."""
-    from apps.api.jarvis_api.services.runtime_self_knowledge import (
+    from core.services.runtime_self_knowledge import (
         build_runtime_self_knowledge_map,
     )
 
@@ -86,7 +86,7 @@ def test_approval_gated_includes_soul_identity() -> None:
 
 def test_each_item_has_mutability_field() -> None:
     """Every item in every category must have a mutability field."""
-    from apps.api.jarvis_api.services.runtime_self_knowledge import (
+    from core.services.runtime_self_knowledge import (
         build_runtime_self_knowledge_map,
     )
 
@@ -104,7 +104,7 @@ def test_each_item_has_mutability_field() -> None:
 
 def test_prompt_section_is_compact() -> None:
     """The prompt section should be compact and bounded."""
-    from apps.api.jarvis_api.services.runtime_self_knowledge import (
+    from core.services.runtime_self_knowledge import (
         build_self_knowledge_prompt_section,
     )
 
@@ -121,7 +121,7 @@ def test_prompt_section_is_compact() -> None:
 
 def test_summary_overview_is_readable() -> None:
     """The summary overview should be a readable one-liner."""
-    from apps.api.jarvis_api.services.runtime_self_knowledge import (
+    from core.services.runtime_self_knowledge import (
         build_runtime_self_knowledge_map,
     )
 

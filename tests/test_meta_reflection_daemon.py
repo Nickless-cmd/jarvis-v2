@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
 from datetime import UTC, datetime, timedelta
-import apps.api.jarvis_api.services.meta_reflection_daemon as mrd
+import core.services.meta_reflection_daemon as mrd
 
 
 def _reset():
@@ -55,8 +55,8 @@ def test_insight_added_to_buffer():
     """Generated insight is prepended to meta_buffer."""
     _reset()
     with patch.object(mrd, "_generate_meta_insight", return_value="Ny indsigt."):
-        with patch("apps.api.jarvis_api.services.meta_reflection_daemon.insert_private_brain_record"):
-            with patch("apps.api.jarvis_api.services.meta_reflection_daemon.event_bus"):
+        with patch("core.services.meta_reflection_daemon.insert_private_brain_record"):
+            with patch("core.services.meta_reflection_daemon.event_bus"):
                 mrd.tick_meta_reflection_daemon({"last_conflict": "Konflikt."})
     assert len(mrd._meta_buffer) == 1
     assert mrd._meta_buffer[0] == "Ny indsigt."

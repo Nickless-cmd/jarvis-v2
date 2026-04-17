@@ -26,7 +26,7 @@ def test_daemon_status_returns_all_daemons():
 # ── control_daemon ─────────────────────────────────────────────────────
 
 def test_control_daemon_enable():
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "control_daemon") as mock_ctrl:
         mock_ctrl.return_value = {"ok": True, "name": "curiosity", "action": "enable"}
         result = _call_handler("control_daemon", {"name": "curiosity", "action": "enable"})
@@ -41,7 +41,7 @@ def test_control_daemon_unknown_returns_error():
 
 
 def test_control_daemon_set_interval():
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "control_daemon") as mock_ctrl:
         mock_ctrl.return_value = {"ok": True, "name": "curiosity", "action": "set_interval"}
         result = _call_handler("control_daemon", {
@@ -140,8 +140,8 @@ def test_recall_council_conclusions_returns_matches():
          "transcript": "long text", "initiative": None, "score": 0.72, "members": [], "signals": []},
     ]
     with (
-        patch("apps.api.jarvis_api.services.council_memory_service.read_all_entries", return_value=entries),
-        patch("apps.api.jarvis_api.services.council_memory_daemon._call_similarity_llm", return_value="1"),
+        patch("core.services.council_memory_service.read_all_entries", return_value=entries),
+        patch("core.services.council_memory_daemon._call_similarity_llm", return_value="1"),
     ):
         result = _call_handler("recall_council_conclusions", {"topic": "autonomy and limits"})
     assert "entries" in result
@@ -155,8 +155,8 @@ def test_recall_council_conclusions_returns_empty_on_no_match():
          "transcript": "long text", "initiative": None, "score": 0.72, "members": [], "signals": []},
     ]
     with (
-        patch("apps.api.jarvis_api.services.council_memory_service.read_all_entries", return_value=entries),
-        patch("apps.api.jarvis_api.services.council_memory_daemon._call_similarity_llm", return_value="ingen"),
+        patch("core.services.council_memory_service.read_all_entries", return_value=entries),
+        patch("core.services.council_memory_daemon._call_similarity_llm", return_value="ingen"),
     ):
         result = _call_handler("recall_council_conclusions", {"topic": "something unrelated"})
     assert result["entries"] == []

@@ -5,12 +5,12 @@ from unittest.mock import patch
 
 
 def _similarity(a: str, b: str) -> float:
-    from apps.api.jarvis_api.services.council_deliberation_controller import _cosine_similarity
+    from core.services.council_deliberation_controller import _cosine_similarity
     return _cosine_similarity(a, b)
 
 
 def _is_deadlocked(round_outputs: list[list[str]]) -> bool:
-    from apps.api.jarvis_api.services.council_deliberation_controller import _is_deadlocked
+    from core.services.council_deliberation_controller import _is_deadlocked
     return _is_deadlocked(round_outputs)
 
 
@@ -53,30 +53,30 @@ def test_deadlock_not_detected_when_rounds_diverge():
 
 
 def test_witness_escalation_detected():
-    from apps.api.jarvis_api.services.council_deliberation_controller import _check_witness_escalation
+    from core.services.council_deliberation_controller import _check_witness_escalation
     assert _check_witness_escalation("[ESKALERER] Jeg ser noget afgørende der overses.") is True
 
 
 def test_witness_no_escalation_without_marker():
-    from apps.api.jarvis_api.services.council_deliberation_controller import _check_witness_escalation
+    from core.services.council_deliberation_controller import _check_witness_escalation
     assert _check_witness_escalation("This is a normal observation.") is False
 
 
 def test_witness_escalation_case_insensitive():
-    from apps.api.jarvis_api.services.council_deliberation_controller import _check_witness_escalation
+    from core.services.council_deliberation_controller import _check_witness_escalation
     assert _check_witness_escalation("[eskalerer] Something important.") is True
 
 
 def test_witness_prompt_contains_marker_instruction():
-    from apps.api.jarvis_api.services.council_deliberation_controller import build_witness_prompt
+    from core.services.council_deliberation_controller import build_witness_prompt
     prompt = build_witness_prompt(transcript="Filosof: text\nKritiker: text")
     assert "[ESKALERER]" in prompt
 
 
 def test_recruitment_returns_none_when_llm_says_nej():
-    from apps.api.jarvis_api.services.council_deliberation_controller import _analyze_recruitment_need
+    from core.services.council_deliberation_controller import _analyze_recruitment_need
     with patch(
-        "apps.api.jarvis_api.services.council_deliberation_controller._call_recruitment_llm",
+        "core.services.council_deliberation_controller._call_recruitment_llm",
         return_value="nej",
     ):
         role = _analyze_recruitment_need(topic="test", transcript="x", active_members=["filosof"])
@@ -84,9 +84,9 @@ def test_recruitment_returns_none_when_llm_says_nej():
 
 
 def test_recruitment_returns_role_when_llm_suggests_one():
-    from apps.api.jarvis_api.services.council_deliberation_controller import _analyze_recruitment_need
+    from core.services.council_deliberation_controller import _analyze_recruitment_need
     with patch(
-        "apps.api.jarvis_api.services.council_deliberation_controller._call_recruitment_llm",
+        "core.services.council_deliberation_controller._call_recruitment_llm",
         return_value="etiker",
     ):
         role = _analyze_recruitment_need(topic="test", transcript="x", active_members=["filosof"])
@@ -94,9 +94,9 @@ def test_recruitment_returns_role_when_llm_suggests_one():
 
 
 def test_recruitment_skips_already_active_role():
-    from apps.api.jarvis_api.services.council_deliberation_controller import _analyze_recruitment_need
+    from core.services.council_deliberation_controller import _analyze_recruitment_need
     with patch(
-        "apps.api.jarvis_api.services.council_deliberation_controller._call_recruitment_llm",
+        "core.services.council_deliberation_controller._call_recruitment_llm",
         return_value="filosof",
     ):
         role = _analyze_recruitment_need(topic="test", transcript="x", active_members=["filosof"])
@@ -104,9 +104,9 @@ def test_recruitment_skips_already_active_role():
 
 
 def test_recruitment_normalizes_llm_response():
-    from apps.api.jarvis_api.services.council_deliberation_controller import _analyze_recruitment_need
+    from core.services.council_deliberation_controller import _analyze_recruitment_need
     with patch(
-        "apps.api.jarvis_api.services.council_deliberation_controller._call_recruitment_llm",
+        "core.services.council_deliberation_controller._call_recruitment_llm",
         return_value="  Etiker  ",
     ):
         role = _analyze_recruitment_need(topic="test", transcript="x", active_members=["filosof"])
@@ -114,7 +114,7 @@ def test_recruitment_normalizes_llm_response():
 
 
 def _make_controller(topic="Test topic", members=None, max_rounds=8):
-    from apps.api.jarvis_api.services.council_deliberation_controller import DeliberationController
+    from core.services.council_deliberation_controller import DeliberationController
     return DeliberationController(
         topic=topic,
         members=members or ["filosof", "kritiker", "synthesizer"],
@@ -123,7 +123,7 @@ def _make_controller(topic="Test topic", members=None, max_rounds=8):
 
 
 def test_controller_run_returns_deliberation_result():
-    from apps.api.jarvis_api.services.council_deliberation_controller import DeliberationResult
+    from core.services.council_deliberation_controller import DeliberationResult
     ctrl = _make_controller()
     with patch.object(ctrl, "_run_round", return_value=["filosof: interesting.", "kritiker: valid point.", "synthesizer: agreed."]):
         with patch.object(ctrl, "_synthesize", return_value="Council concludes: proceed."):

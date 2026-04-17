@@ -50,7 +50,7 @@ def test_recurrence_db_insert_and_fetch(isolated_runtime) -> None:
 
 def test_jaccard_similarity_identical() -> None:
     import importlib
-    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    import core.services.recurrence_loop_daemon as rld
     importlib.reload(rld)
     score = rld._jaccard_similarity({"a", "b", "c"}, {"a", "b", "c"})
     assert abs(score - 1.0) < 0.001
@@ -58,7 +58,7 @@ def test_jaccard_similarity_identical() -> None:
 
 def test_jaccard_similarity_disjoint() -> None:
     import importlib
-    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    import core.services.recurrence_loop_daemon as rld
     importlib.reload(rld)
     score = rld._jaccard_similarity({"a", "b"}, {"c", "d"})
     assert abs(score - 0.0) < 0.001
@@ -66,7 +66,7 @@ def test_jaccard_similarity_disjoint() -> None:
 
 def test_jaccard_similarity_partial() -> None:
     import importlib
-    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    import core.services.recurrence_loop_daemon as rld
     importlib.reload(rld)
     score = rld._jaccard_similarity({"a", "b", "c"}, {"b", "c", "d"})
     # intersection=2, union=4 → 0.5
@@ -75,7 +75,7 @@ def test_jaccard_similarity_partial() -> None:
 
 def test_extract_keywords_filters_short() -> None:
     import importlib
-    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    import core.services.recurrence_loop_daemon as rld
     importlib.reload(rld)
     kws = rld._extract_keywords("jeg er glad men også bekymret")
     assert "er" not in kws
@@ -86,7 +86,7 @@ def test_extract_keywords_filters_short() -> None:
 def test_tick_recurrence_skips_when_disabled(isolated_runtime) -> None:
     isolated_runtime.db.set_experiment_enabled("recurrence_loop", False)
     import importlib
-    import apps.api.jarvis_api.services.recurrence_loop_daemon as rld
+    import core.services.recurrence_loop_daemon as rld
     importlib.reload(rld)
     result = rld.tick_recurrence_loop_daemon()
     assert result["generated"] is False
@@ -99,14 +99,14 @@ def test_tick_recurrence_skips_when_disabled(isolated_runtime) -> None:
 
 def test_surprise_classifies_positive() -> None:
     import importlib
-    import apps.api.jarvis_api.services.surprise_daemon as sd
+    import core.services.surprise_daemon as sd
     importlib.reload(sd)
     assert sd._classify_surprise("Det var positivt overraskende") == "positiv"
 
 
 def test_surprise_persistence_concept_mapping() -> None:
     import importlib
-    import apps.api.jarvis_api.services.surprise_daemon as sd
+    import core.services.surprise_daemon as sd
     importlib.reload(sd)
     assert sd._surprise_type_to_concept("positiv") == "anticipation"
     assert sd._surprise_type_to_concept("negativ") == "tension"
@@ -116,7 +116,7 @@ def test_surprise_persistence_concept_mapping() -> None:
 
 def test_surprise_afterimage_concept_mapping() -> None:
     import importlib
-    import apps.api.jarvis_api.services.surprise_daemon as sd
+    import core.services.surprise_daemon as sd
     importlib.reload(sd)
     assert sd._afterimage_concept("positiv") == "curiosity_narrow"
     assert sd._afterimage_concept("negativ") == "caution"
@@ -144,7 +144,7 @@ def test_broadcast_db_insert_and_list(isolated_runtime) -> None:
 
 def test_workspace_topic_extraction() -> None:
     import importlib
-    import apps.api.jarvis_api.services.global_workspace as gw
+    import core.services.global_workspace as gw
     importlib.reload(gw)
     topic = gw._extract_topic("cognitive_surprise.noted", {"phrase": "Jeg var overrasket over min reaktion på fejlen"})
     assert isinstance(topic, str)
@@ -153,7 +153,7 @@ def test_workspace_topic_extraction() -> None:
 
 def test_workspace_jaccard_topic_match() -> None:
     import importlib
-    import apps.api.jarvis_api.services.global_workspace as gw
+    import core.services.global_workspace as gw
     importlib.reload(gw)
     score = gw._topic_jaccard("deployment stress", "deployment error")
     assert score > 0.0
@@ -163,7 +163,7 @@ def test_workspace_jaccard_topic_match() -> None:
 
 def test_workspace_publish_and_snapshot() -> None:
     import importlib
-    import apps.api.jarvis_api.services.global_workspace as gw
+    import core.services.global_workspace as gw
     importlib.reload(gw)
     gw.publish_to_workspace("surprise_daemon", "frustration error", "cognitive_surprise.noted", "Overrasket over fejl")
     gw.publish_to_workspace("inner_voice_daemon", "error frustration", "inner_voice.noted", "Tænkte over fejlen")
@@ -192,7 +192,7 @@ def test_meta_cognition_db_insert_and_list(isolated_runtime) -> None:
 
 def test_meta_depth_computation() -> None:
     import importlib
-    import apps.api.jarvis_api.services.meta_cognition_daemon as mcd
+    import core.services.meta_cognition_daemon as mcd
     importlib.reload(mcd)
     assert mcd._compute_meta_depth("hunden løber hurtigt", "hunden løber hurtigt") == 1
     assert mcd._compute_meta_depth(
@@ -204,7 +204,7 @@ def test_meta_depth_computation() -> None:
 def test_tick_meta_cognition_disabled(isolated_runtime) -> None:
     isolated_runtime.db.set_experiment_enabled("meta_cognition", False)
     import importlib
-    import apps.api.jarvis_api.services.meta_cognition_daemon as mcd
+    import core.services.meta_cognition_daemon as mcd
     importlib.reload(mcd)
     result = mcd.tick_meta_cognition_daemon()
     assert result["generated"] is False
@@ -233,7 +233,7 @@ def test_attention_blink_db_insert_and_list(isolated_runtime) -> None:
 
 def test_blink_ratio_computation() -> None:
     import importlib
-    import apps.api.jarvis_api.services.attention_blink_test as abt
+    import core.services.attention_blink_test as abt
     importlib.reload(abt)
     t1 = {"confidence": 0.6, "frustration": 0.4, "fatigue": 0.2, "curiosity": 0.3}
     t2 = {"confidence": 0.5, "frustration": 0.25, "fatigue": 0.15, "curiosity": 0.2}
@@ -244,7 +244,7 @@ def test_blink_ratio_computation() -> None:
 
 def test_blink_interpretation() -> None:
     import importlib
-    import apps.api.jarvis_api.services.attention_blink_test as abt
+    import core.services.attention_blink_test as abt
     importlib.reload(abt)
     assert abt._interpret_blink_ratio(0.5) == "serial/blink-prone"
     assert abt._interpret_blink_ratio(0.69) == "serial/blink-prone"
@@ -255,7 +255,7 @@ def test_blink_interpretation() -> None:
 def test_run_attention_blink_skips_when_disabled(isolated_runtime) -> None:
     isolated_runtime.db.set_experiment_enabled("attention_blink", False)
     import importlib
-    import apps.api.jarvis_api.services.attention_blink_test as abt
+    import core.services.attention_blink_test as abt
     importlib.reload(abt)
     result = abt.run_attention_blink_test_if_due()
     assert result["generated"] is False
@@ -266,7 +266,7 @@ def test_cognitive_core_experiment_surface_classifies_truth_layers(monkeypatch) 
     import importlib
 
     surface_mod = importlib.import_module(
-        "apps.api.jarvis_api.services.cognitive_core_experiments"
+        "core.services.cognitive_core_experiments"
     )
 
     monkeypatch.setattr(
@@ -372,7 +372,7 @@ def test_cognitive_core_experiment_surface_classifies_truth_layers(monkeypatch) 
 
 def test_trigger_emotion_concept_custom_lifetime() -> None:
     import importlib
-    import apps.api.jarvis_api.services.emotion_concepts as ec
+    import core.services.emotion_concepts as ec
     importlib.reload(ec)
     result = ec.trigger_emotion_concept("anticipation", 0.7, lifetime_hours=4.0)
     assert result is not None

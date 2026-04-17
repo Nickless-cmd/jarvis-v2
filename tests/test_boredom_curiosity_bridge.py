@@ -2,7 +2,7 @@
 import pytest
 from datetime import timedelta
 
-from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
+from core.services.boredom_curiosity_bridge import (
     add_boredom,
     should_spawn_curiosity,
     get_curiosity_prompt,

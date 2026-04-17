@@ -126,7 +126,7 @@ def test_current_flow_materializes_open_loop_before_downstream_tracking(
     monkeypatch,
 ) -> None:
     db = isolated_runtime.db
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
 
     monkeypatch.setattr(visible_runs, "track_runtime_contract_candidates_for_visible_turn", _noop)

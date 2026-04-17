@@ -21,10 +21,10 @@ from unittest.mock import MagicMock, patch
 
 def _reload_daemon():
     """Force-reload tiktok_content_daemon so module-level state is reset."""
-    mod_name = "apps.api.jarvis_api.services.tiktok_content_daemon"
+    mod_name = "core.services.tiktok_content_daemon"
     if mod_name in sys.modules:
         del sys.modules[mod_name]
-    import apps.api.jarvis_api.services.tiktok_content_daemon as mod
+    import core.services.tiktok_content_daemon as mod
     return mod
 
 
@@ -58,7 +58,7 @@ class TestBasicContract:
         mod = _reload_daemon()
         # Hour 3 is outside all windows
         fake_now = datetime(2026, 4, 15, 3, 0, 0, tzinfo=UTC)
-        with patch("apps.api.jarvis_api.services.tiktok_content_daemon.datetime") as dt_mock:
+        with patch("core.services.tiktok_content_daemon.datetime") as dt_mock:
             dt_mock.now.return_value = fake_now
             dt_mock.UTC = UTC
             result = mod.tick_tiktok_content_daemon()
@@ -73,10 +73,10 @@ class TestBasicContract:
         fake_run = MagicMock(return_value=MagicMock(returncode=1, stderr="pipeline error", stdout=""))
 
         with (
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon.datetime") as dt_mock,
+            patch("core.services.tiktok_content_daemon.datetime") as dt_mock,
             patch("subprocess.run", fake_run),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._generate_quote", return_value="Test quote"),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._get_source_image", return_value="/tmp/fake.png"),
+            patch("core.services.tiktok_content_daemon._generate_quote", return_value="Test quote"),
+            patch("core.services.tiktok_content_daemon._get_source_image", return_value="/tmp/fake.png"),
         ):
             dt_mock.now.return_value = fake_now
             dt_mock.UTC = UTC
@@ -110,12 +110,12 @@ class TestBasicContract:
         fake_upload = MagicMock(return_value={"status": "ok", "published": True})
 
         with (
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon.datetime") as dt_mock,
+            patch("core.services.tiktok_content_daemon.datetime") as dt_mock,
             patch("subprocess.run", side_effect=fake_run),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._generate_quote", return_value="Rise up"),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._get_source_image", return_value=str(fake_video)),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._do_upload", fake_upload),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon.VIDEOS_DIR", str(tmp_path) + "/"),
+            patch("core.services.tiktok_content_daemon._generate_quote", return_value="Rise up"),
+            patch("core.services.tiktok_content_daemon._get_source_image", return_value=str(fake_video)),
+            patch("core.services.tiktok_content_daemon._do_upload", fake_upload),
+            patch("core.services.tiktok_content_daemon.VIDEOS_DIR", str(tmp_path) + "/"),
         ):
             dt_mock.now.return_value = fake_now
             dt_mock.UTC = UTC
@@ -212,12 +212,12 @@ class TestDailyDeduplication:
         fake_upload = MagicMock(return_value={"status": "ok", "published": True})
 
         with (
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon.datetime") as dt_mock,
+            patch("core.services.tiktok_content_daemon.datetime") as dt_mock,
             patch("subprocess.run", side_effect=fake_run),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._generate_quote", return_value="Rise up"),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._get_source_image", return_value=str(fake_video)),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._do_upload", fake_upload),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon.VIDEOS_DIR", str(tmp_path) + "/"),
+            patch("core.services.tiktok_content_daemon._generate_quote", return_value="Rise up"),
+            patch("core.services.tiktok_content_daemon._get_source_image", return_value=str(fake_video)),
+            patch("core.services.tiktok_content_daemon._do_upload", fake_upload),
+            patch("core.services.tiktok_content_daemon.VIDEOS_DIR", str(tmp_path) + "/"),
         ):
             dt_mock.now.return_value = fake_now
             dt_mock.UTC = UTC
@@ -261,12 +261,12 @@ class TestDailyDeduplication:
         fake_upload = MagicMock(return_value={"status": "ok", "published": True})
 
         with (
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon.datetime") as dt_mock,
+            patch("core.services.tiktok_content_daemon.datetime") as dt_mock,
             patch("subprocess.run", side_effect=fake_run),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._generate_quote", return_value="Rise up"),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._get_source_image", return_value=str(fake_video)),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon._do_upload", fake_upload),
-            patch("apps.api.jarvis_api.services.tiktok_content_daemon.VIDEOS_DIR", str(tmp_path) + "/"),
+            patch("core.services.tiktok_content_daemon._generate_quote", return_value="Rise up"),
+            patch("core.services.tiktok_content_daemon._get_source_image", return_value=str(fake_video)),
+            patch("core.services.tiktok_content_daemon._do_upload", fake_upload),
+            patch("core.services.tiktok_content_daemon.VIDEOS_DIR", str(tmp_path) + "/"),
         ):
             dt_mock.now.return_value = fake_now
             dt_mock.UTC = UTC
@@ -291,7 +291,7 @@ class TestLLMContentGeneration:
 
         # Test by patching inside the function's import path
         with patch.dict("sys.modules", {
-            "apps.api.jarvis_api.services.daemon_llm": MagicMock(
+            "core.services.daemon_llm": MagicMock(
                 daemon_llm_call=MagicMock(return_value=expected)
             )
         }):
@@ -305,7 +305,7 @@ class TestLLMContentGeneration:
         mod = _reload_daemon()
 
         with patch.dict("sys.modules", {
-            "apps.api.jarvis_api.services.daemon_llm": MagicMock(
+            "core.services.daemon_llm": MagicMock(
                 daemon_llm_call=MagicMock(side_effect=RuntimeError("LLM unavailable"))
             )
         }):
@@ -336,7 +336,7 @@ class TestLLMContentGeneration:
 
         for slot in ["morning", "midday", "evening"]:
             with patch.dict("sys.modules", {
-                "apps.api.jarvis_api.services.daemon_llm": MagicMock(
+                "core.services.daemon_llm": MagicMock(
                     daemon_llm_call=MagicMock(return_value=llm_responses[slot])
                 )
             }):
@@ -356,7 +356,7 @@ class TestLLMContentGeneration:
             return "Test quote"
 
         with patch.dict("sys.modules", {
-            "apps.api.jarvis_api.services.daemon_llm": MagicMock(
+            "core.services.daemon_llm": MagicMock(
                 daemon_llm_call=MagicMock(side_effect=capture_llm_call)
             )
         }):

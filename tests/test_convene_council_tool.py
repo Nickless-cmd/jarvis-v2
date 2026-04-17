@@ -39,7 +39,7 @@ def test_convene_council_calls_runtime():
     with patch("core.tools.simple_tools.create_council_session_runtime", return_value=mock_session, create=True), \
          patch("core.tools.simple_tools.run_council_round", return_value=mock_result, create=True):
         # Patch inside the handler's lazy imports
-        import apps.api.jarvis_api.services.agent_runtime as ar
+        import core.services.agent_runtime as ar
         orig_create = ar.create_council_session_runtime
         orig_run = ar.run_council_round
         ar.create_council_session_runtime = lambda **kw: mock_session
@@ -63,7 +63,7 @@ def test_quick_council_check_returns_objection():
             {"direction": "agent->jarvis", "content": "This is risky. PROCEED"},
         ],
     }
-    import apps.api.jarvis_api.services.agent_runtime as ar
+    import core.services.agent_runtime as ar
     orig_spawn = ar.spawn_agent_task
     ar.spawn_agent_task = lambda **kw: mock_agent_result
     try:

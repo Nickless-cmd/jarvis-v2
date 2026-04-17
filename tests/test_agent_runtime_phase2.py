@@ -4,7 +4,7 @@ import importlib
 
 
 def _load_agent_runtime():
-    module = importlib.import_module("apps.api.jarvis_api.services.agent_runtime")
+    module = importlib.import_module("core.services.agent_runtime")
     return importlib.reload(module)
 
 

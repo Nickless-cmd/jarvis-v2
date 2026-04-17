@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
-from apps.api.jarvis_api.services.decision_weight import classify_decision_weight
+from core.services.decision_weight import classify_decision_weight
 
 
 def test_read_operations_are_trivial():

@@ -13,7 +13,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from apps.api.jarvis_api.services.chat_sessions import get_chat_session
+from core.services.chat_sessions import get_chat_session
 
 router = APIRouter(prefix="/attachments", tags=["attachments"])
 

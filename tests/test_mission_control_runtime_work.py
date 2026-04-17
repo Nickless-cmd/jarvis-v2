@@ -3,15 +3,15 @@ from __future__ import annotations
 
 def test_mission_control_exposes_runtime_work(isolated_runtime) -> None:
     runtime_tasks = __import__(
-        "apps.api.jarvis_api.services.runtime_tasks",
+        "core.services.runtime_tasks",
         fromlist=["create_task"],
     )
     runtime_flows = __import__(
-        "apps.api.jarvis_api.services.runtime_flows",
+        "core.services.runtime_flows",
         fromlist=["create_flow"],
     )
     runtime_browser_body = __import__(
-        "apps.api.jarvis_api.services.runtime_browser_body",
+        "core.services.runtime_browser_body",
         fromlist=["ensure_browser_body"],
     )
 

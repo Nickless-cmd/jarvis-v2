@@ -9,7 +9,7 @@ from __future__ import annotations
 
 def test_cognitive_frame_has_required_keys() -> None:
     """The cognitive frame must have all required top-level keys."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -32,7 +32,7 @@ def test_cognitive_frame_has_required_keys() -> None:
 
 def test_mode_is_valid() -> None:
     """The selected mode must be one of the defined modes."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -47,7 +47,7 @@ def test_mode_is_valid() -> None:
 
 def test_temporal_depth_is_valid() -> None:
     """Temporal classification must have valid horizon."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -61,7 +61,7 @@ def test_temporal_depth_is_valid() -> None:
 
 def test_continuity_pressure_is_valid() -> None:
     """Continuity pressure must be low/medium/high."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -71,7 +71,7 @@ def test_continuity_pressure_is_valid() -> None:
 
 def test_affordances_structure() -> None:
     """Affordances must have the four affordance categories."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -88,7 +88,7 @@ def test_affordances_structure() -> None:
 
 def test_salient_items_are_bounded() -> None:
     """Salient items should be bounded to max 5."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -104,7 +104,7 @@ def test_salient_items_are_bounded() -> None:
 
 def test_summary_is_readable() -> None:
     """The frame summary should be a readable one-liner."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -124,7 +124,7 @@ def test_summary_is_readable() -> None:
 
 def test_mode_selection_respond_when_visible_active() -> None:
     """When visible lane is active, mode should be 'respond'."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _select_mode
+    from core.services.runtime_cognitive_conductor import _select_mode
 
     result = _select_mode(
         visible_active=True,
@@ -140,7 +140,7 @@ def test_mode_selection_respond_when_visible_active() -> None:
 
 def test_mode_selection_clarify_when_gate_active() -> None:
     """When question gate is active, mode should be 'clarify'."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _select_mode
+    from core.services.runtime_cognitive_conductor import _select_mode
 
     result = _select_mode(
         visible_active=False,
@@ -156,7 +156,7 @@ def test_mode_selection_clarify_when_gate_active() -> None:
 
 def test_mode_selection_consolidate_when_heavy_brain() -> None:
     """When brain is heavy with low loop pressure, mode should be 'consolidate'."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _select_mode
+    from core.services.runtime_cognitive_conductor import _select_mode
 
     result = _select_mode(
         visible_active=False,
@@ -172,7 +172,7 @@ def test_mode_selection_consolidate_when_heavy_brain() -> None:
 
 def test_mode_selection_watch_default() -> None:
     """Default mode should be 'watch'."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _select_mode
+    from core.services.runtime_cognitive_conductor import _select_mode
 
     result = _select_mode(
         visible_active=False,
@@ -188,7 +188,7 @@ def test_mode_selection_watch_default() -> None:
 
 def test_mode_selection_clarify_when_contradiction_active() -> None:
     """Executive contradiction should force clarify mode."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _select_mode
+    from core.services.runtime_cognitive_conductor import _select_mode
 
     result = _select_mode(
         visible_active=False,
@@ -209,7 +209,7 @@ def test_mode_selection_clarify_when_contradiction_active() -> None:
 
 def test_temporal_immediate_when_no_carry() -> None:
     """When there's no carry, temporal should be 'immediate'."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _classify_temporal_depth
+    from core.services.runtime_cognitive_conductor import _classify_temporal_depth
 
     result = _classify_temporal_depth(brain_count=0, open_loop_count=0, continuity_mode="carry")
     assert result["horizon"] == "immediate"
@@ -217,7 +217,7 @@ def test_temporal_immediate_when_no_carry() -> None:
 
 def test_temporal_carried_across_sessions() -> None:
     """Heavy brain carry should be 'carried-across-sessions'."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _classify_temporal_depth
+    from core.services.runtime_cognitive_conductor import _classify_temporal_depth
 
     result = _classify_temporal_depth(brain_count=4, open_loop_count=1, continuity_mode="carry")
     assert result["horizon"] == "carried-across-sessions"
@@ -230,7 +230,7 @@ def test_temporal_carried_across_sessions() -> None:
 
 def test_prompt_section_is_compact() -> None:
     """The cognitive frame prompt section should be compact."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame_prompt_section,
     )
 
@@ -245,7 +245,7 @@ def test_prompt_section_is_compact() -> None:
 
 def test_counts_are_populated() -> None:
     """The counts dict should have all expected keys."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -265,7 +265,7 @@ def test_counts_are_populated() -> None:
 
 def test_experiential_support_in_frame() -> None:
     """Cognitive frame includes experiential_support key (may be empty dict)."""
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         build_cognitive_frame,
     )
 
@@ -281,7 +281,7 @@ def test_experiential_support_in_frame() -> None:
 
 
 def test_mode_selection_reflects_cognitive_experiment_carry() -> None:
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import _select_mode
+    from core.services.runtime_cognitive_conductor import _select_mode
 
     result = _select_mode(
         visible_active=False,
@@ -300,7 +300,7 @@ def test_mode_selection_reflects_cognitive_experiment_carry() -> None:
 
 
 def test_experiment_carry_derivation_keeps_blink_observational() -> None:
-    from apps.api.jarvis_api.services.runtime_cognitive_conductor import (
+    from core.services.runtime_cognitive_conductor import (
         _derive_cognitive_experiment_carry,
     )
 
@@ -327,7 +327,7 @@ def test_experiment_carry_derivation_keeps_blink_observational() -> None:
 
 
 def test_build_cognitive_frame_includes_experiment_carry(monkeypatch) -> None:
-    from apps.api.jarvis_api.services import runtime_cognitive_conductor as conductor
+    from core.services import runtime_cognitive_conductor as conductor
 
     monkeypatch.setattr(conductor, "_safe_brain_context", lambda: {"record_count": 0, "excerpts": [], "by_type": {}})
     monkeypatch.setattr(
@@ -390,7 +390,7 @@ def test_build_cognitive_frame_includes_experiment_carry(monkeypatch) -> None:
 
 
 def test_prompt_section_exposes_cognitive_experiment_carry(monkeypatch) -> None:
-    from apps.api.jarvis_api.services import runtime_cognitive_conductor as conductor
+    from core.services import runtime_cognitive_conductor as conductor
 
     monkeypatch.setattr(
         conductor,
@@ -418,7 +418,7 @@ def test_prompt_section_exposes_cognitive_experiment_carry(monkeypatch) -> None:
 
 def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:
     """Relation, world, contradiction, and understanding signals should reach the frame."""
-    from apps.api.jarvis_api.services import runtime_cognitive_conductor as conductor
+    from core.services import runtime_cognitive_conductor as conductor
 
     monkeypatch.setattr(conductor, "_safe_brain_context", lambda: {"record_count": 0, "excerpts": [], "by_type": {}})
     monkeypatch.setattr(
@@ -467,7 +467,7 @@ def test_cognitive_frame_integrates_living_signal_inputs(monkeypatch) -> None:
 
 
 def test_cognitive_frame_elevates_private_signal_pressure(monkeypatch) -> None:
-    from apps.api.jarvis_api.services import runtime_cognitive_conductor as conductor
+    from core.services import runtime_cognitive_conductor as conductor
 
     monkeypatch.setattr(conductor, "_safe_brain_context", lambda: {"record_count": 0, "excerpts": [], "by_type": {}})
     monkeypatch.setattr(

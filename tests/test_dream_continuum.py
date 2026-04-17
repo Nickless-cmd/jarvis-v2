@@ -2,7 +2,7 @@
 import pytest
 from datetime import timedelta
 
-from apps.api.jarvis_api.services.dream_continuum import (
+from core.services.dream_continuum import (
     evolve_dreams,
     get_dream_thoughts,
     get_top_dream_thought,
@@ -12,7 +12,7 @@ from apps.api.jarvis_api.services.dream_continuum import (
     build_dream_continuum_surface,
     DreamThought,
 )
-from apps.api.jarvis_api.services.dream_carry_over import (
+from core.services.dream_carry_over import (
     adopt_dream,
     _ACTIVE_DREAMS,
     _DREAM_ARCHIVE,

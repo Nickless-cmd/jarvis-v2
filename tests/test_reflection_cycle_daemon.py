@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
 from datetime import UTC, datetime, timedelta
-import apps.api.jarvis_api.services.reflection_cycle_daemon as rc
+import core.services.reflection_cycle_daemon as rc
 
 
 def _reset():
@@ -36,8 +36,8 @@ def test_reflection_added_to_buffer():
     """New reflection is prepended to buffer."""
     _reset()
     with patch.object(rc, "_generate_reflection", return_value="En rolig efterniddag."):
-        with patch("apps.api.jarvis_api.services.reflection_cycle_daemon.insert_private_brain_record"):
-            with patch("apps.api.jarvis_api.services.reflection_cycle_daemon.event_bus"):
+        with patch("core.services.reflection_cycle_daemon.insert_private_brain_record"):
+            with patch("core.services.reflection_cycle_daemon.event_bus"):
                 rc.tick_reflection_cycle_daemon({"energy_level": "lav"})
     assert len(rc._reflection_buffer) == 1
     assert rc._reflection_buffer[0] == "En rolig efterniddag."
@@ -49,8 +49,8 @@ def test_buffer_capped_at_10():
     rc._reflection_buffer[:] = [f"reflection {i}" for i in range(10)]
     rc._last_reflection_at = datetime.now(UTC) - timedelta(minutes=11)
     with patch.object(rc, "_generate_reflection", return_value="Ny refleksion."):
-        with patch("apps.api.jarvis_api.services.reflection_cycle_daemon.insert_private_brain_record"):
-            with patch("apps.api.jarvis_api.services.reflection_cycle_daemon.event_bus"):
+        with patch("core.services.reflection_cycle_daemon.insert_private_brain_record"):
+            with patch("core.services.reflection_cycle_daemon.event_bus"):
                 rc.tick_reflection_cycle_daemon({})
     assert len(rc._reflection_buffer) == 10
     assert rc._reflection_buffer[0] == "Ny refleksion."

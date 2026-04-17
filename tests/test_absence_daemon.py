@@ -4,6 +4,7 @@ from __future__ import annotations
 import sys
 import types
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,7 +14,12 @@ import pytest
 # Minimal stubs so the module can be imported without real dependencies
 # ---------------------------------------------------------------------------
 
+BUS_MOD = None
+DB_MOD = None
+
+
 def _stub_modules():
+    global BUS_MOD, DB_MOD
     for name in [
         "core",
         "core.eventbus",
@@ -24,15 +30,20 @@ def _stub_modules():
         if name not in sys.modules:
             sys.modules[name] = types.ModuleType(name)
 
-    bus_mod = sys.modules["core.eventbus.bus"]
-    if not hasattr(bus_mod, "event_bus"):
+    repo_root = Path(__file__).resolve().parents[1]
+    sys.modules["core"].__path__ = [str(repo_root / "core")]
+    sys.modules["core.eventbus"].__path__ = [str(repo_root / "core" / "eventbus")]
+    sys.modules["core.runtime"].__path__ = [str(repo_root / "core" / "runtime")]
+
+    BUS_MOD = sys.modules["core.eventbus.bus"]
+    if not hasattr(BUS_MOD, "event_bus"):
         mock_bus = MagicMock()
         mock_bus.publish = MagicMock()
-        bus_mod.event_bus = mock_bus
+        BUS_MOD.event_bus = mock_bus
 
-    db_mod = sys.modules["core.runtime.db"]
-    if not hasattr(db_mod, "insert_private_brain_record"):
-        db_mod.insert_private_brain_record = MagicMock()
+    DB_MOD = sys.modules["core.runtime.db"]
+    if not hasattr(DB_MOD, "insert_private_brain_record"):
+        DB_MOD.insert_private_brain_record = MagicMock()
 
 
 _stub_modules()
@@ -40,8 +51,10 @@ _stub_modules()
 import importlib
 
 absence_daemon = importlib.import_module(
-    "apps.api.jarvis_api.services.absence_daemon"
+    "core.services.absence_daemon"
 )
+for _name in ("core.eventbus.bus", "core.runtime.db", "core.eventbus", "core.runtime"):
+    sys.modules.pop(_name, None)
 
 
 def _reset():

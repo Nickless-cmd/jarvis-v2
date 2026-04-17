@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
 from datetime import UTC, datetime, timedelta
-import apps.api.jarvis_api.services.curiosity_daemon as cd
+import core.services.curiosity_daemon as cd
 
 
 def _reset():
@@ -54,8 +54,8 @@ def test_open_question_added_to_buffer():
     """Generated curiosity signal is prepended to open_questions buffer."""
     _reset()
     with patch.object(cd, "_generate_curiosity_signal", return_value="Jeg ved ikke nok."):
-        with patch("apps.api.jarvis_api.services.curiosity_daemon.insert_private_brain_record"):
-            with patch("apps.api.jarvis_api.services.curiosity_daemon.event_bus"):
+        with patch("core.services.curiosity_daemon.insert_private_brain_record"):
+            with patch("core.services.curiosity_daemon.event_bus"):
                 cd.tick_curiosity_daemon(["Hvad sker der?"])
     assert len(cd._open_questions) == 1
     assert cd._open_questions[0] == "Jeg ved ikke nok."
@@ -67,8 +67,8 @@ def test_open_questions_capped_at_5():
     cd._open_questions[:] = [f"question {i}" for i in range(5)]
     cd._last_tick_at = datetime.now(UTC) - timedelta(minutes=6)
     with patch.object(cd, "_generate_curiosity_signal", return_value="Ny nysgerrighed."):
-        with patch("apps.api.jarvis_api.services.curiosity_daemon.insert_private_brain_record"):
-            with patch("apps.api.jarvis_api.services.curiosity_daemon.event_bus"):
+        with patch("core.services.curiosity_daemon.insert_private_brain_record"):
+            with patch("core.services.curiosity_daemon.event_bus"):
                 cd.tick_curiosity_daemon(["Hvad er dette?"])
     assert len(cd._open_questions) == 5
     assert cd._open_questions[0] == "Ny nysgerrighed."

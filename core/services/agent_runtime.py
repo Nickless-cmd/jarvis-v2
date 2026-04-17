@@ -1110,7 +1110,8 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             max_rounds=8,
         )
         dr: DeliberationResult = ctrl.run()
-        synthesis = dr.conclusion
+        refreshed_members = list_council_members(council_id=council_id)
+        synthesis = _build_council_role_prefixed_summary(refreshed_members)
 
         create_agent_message(
             message_id=f"agent-msg-{uuid4().hex}", thread_id=thread_id,
@@ -1172,6 +1173,17 @@ def _close_council_agents(council_id: str) -> None:
         update_council_session(council_id, status="closed", finished_at=_now_iso())
     except Exception as exc:
         logger.warning("_close_council_agents: cleanup failed for %s: %s", council_id, exc)
+
+
+def _build_council_role_prefixed_summary(members: list[dict[str, object]]) -> str:
+    parts: list[str] = []
+    for member in members:
+        role = str(member.get("role") or "member").strip() or "member"
+        position = str(member.get("position_summary") or "").strip()
+        if not position or position == "awaiting deliberation":
+            continue
+        parts.append(f"{role}: {position}")
+    return "\n".join(parts) if parts else "no council positions recorded"
 
 
 def run_council_round(council_id: str) -> dict[str, object]:

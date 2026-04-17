@@ -11,8 +11,10 @@ import json
 import logging
 import threading
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from uuid import uuid4
 
+from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     get_latest_cognitive_chronicle_entry,
@@ -20,8 +22,13 @@ from core.runtime.db import (
     list_cognitive_chronicle_entries,
     recent_visible_runs,
 )
+from core.services.daemon_llm import daemon_llm_call
+from core.services.identity_composer import build_identity_preamble
 
 logger = logging.getLogger(__name__)
+
+_CHRONICLE_WRITE_LOCK = threading.Lock()
+_CHRONICLE_MAX_LINES = 400
 
 
 def maybe_write_chronicle_entry() -> dict[str, object] | None:
@@ -29,45 +36,57 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
 
     Called during heartbeat idle ticks. Max 1 entry per 3 days.
     """
-    latest = get_latest_cognitive_chronicle_entry()
-    now = datetime.now(UTC)
-    period = f"{now.year}-W{now.isocalendar().week:02d}"
+    with _CHRONICLE_WRITE_LOCK:
+        latest = get_latest_cognitive_chronicle_entry()
+        now = datetime.now(UTC)
+        period = f"{now.year}-W{now.isocalendar().week:02d}"
 
-    if latest:
-        last_at = _parse_iso(latest.get("created_at"))
-        if last_at and (now - last_at) < timedelta(days=3):
-            return None  # Too recent
-        if latest.get("period") == period:
-            return None  # Already have entry for this period
+        if latest:
+            last_at = _parse_iso(latest.get("created_at"))
+            if last_at and (now - last_at) < timedelta(days=3):
+                return None  # Too recent
+            if latest.get("period") == period:
+                return None  # Already have entry for this period
 
-    # Gather evidence from recent runs
-    try:
-        recent = recent_visible_runs(limit=20)
-    except Exception:
-        recent = []
+        try:
+            recent = recent_visible_runs(limit=20)
+        except Exception:
+            recent = []
 
-    if not recent:
-        return None  # Nothing to chronicle
+        if not recent:
+            return None
 
-    # Build narrative from recent activity
-    narrative = _build_narrative(recent, period)
-    key_events = _extract_key_events(recent)
-    lessons = _extract_lessons(recent)
+        previous_entries = list_cognitive_chronicle_entries(limit=3)
+        narrative = _build_narrative(
+            recent_runs=recent,
+            period=period,
+            previous_entries=previous_entries,
+        )
+        key_events = _extract_key_events(recent)
+        lessons = _extract_lessons(recent)
 
-    entry_id = f"chr-{uuid4().hex[:10]}"
-    result = insert_cognitive_chronicle_entry(
-        entry_id=entry_id,
-        period=period,
-        narrative=narrative,
-        key_events=json.dumps(key_events, ensure_ascii=False),
-        lessons=json.dumps(lessons, ensure_ascii=False),
-    )
-
-    event_bus.publish(
-        "cognitive_chronicle.entry_written",
-        {"entry_id": entry_id, "period": period},
-    )
-    return result
+        entry_id = f"chr-{uuid4().hex[:10]}"
+        result = insert_cognitive_chronicle_entry(
+            entry_id=entry_id,
+            period=period,
+            narrative=narrative,
+            key_events=json.dumps(key_events, ensure_ascii=False),
+            lessons=json.dumps(lessons, ensure_ascii=False),
+        )
+        entry = {
+            "entry_id": entry_id,
+            "period": period,
+            "narrative": narrative,
+            "key_events": key_events,
+            "lessons": lessons,
+            "created_at": str(result.get("created_at") or now.isoformat()),
+        }
+        project_entry_to_markdown(entry)
+        event_bus.publish(
+            "cognitive_chronicle.entry_written",
+            {"entry_id": entry_id, "period": period},
+        )
+        return result
 
 
 def compare_self_over_time() -> str | None:
@@ -111,8 +130,42 @@ def build_chronicle_surface() -> dict[str, object]:
     }
 
 
-def _build_narrative(recent_runs: list, period: str) -> str:
-    """Build a deterministic narrative from recent runs."""
+def _build_narrative(
+    recent_runs: list,
+    period: str,
+    previous_entries: list[dict[str, object]] | None = None,
+) -> str:
+    """Build a chronicle entry narrative, preferring LLM prose."""
+    previous_entries = previous_entries or []
+    fallback = _build_template_narrative(recent_runs, period)
+    prompt = _build_narrative_prompt(
+        recent_runs=recent_runs,
+        period=period,
+        previous_entries=previous_entries,
+    )
+    try:
+        raw = daemon_llm_call(
+            prompt,
+            max_len=2000,
+            fallback="",
+            daemon_name="chronicle_engine",
+        )
+    except Exception as exc:
+        logger.warning("chronicle_engine: llm narrative build failed: %s", exc)
+        _emit_degraded_event(period=period, reason="llm-exception")
+        return fallback
+
+    cleaned = _sanitize_narrative(raw)
+    if cleaned:
+        return cleaned[:2000]
+
+    logger.warning("chronicle_engine: llm narrative empty or invalid, using fallback")
+    _emit_degraded_event(period=period, reason="empty-response")
+    return fallback
+
+
+def _build_template_narrative(recent_runs: list, period: str) -> str:
+    """Build a deterministic fallback narrative from recent runs."""
     total = len(recent_runs)
     successes = sum(1 for r in recent_runs if str(r.get("status", "")) in ("completed", "success"))
     failures = sum(1 for r in recent_runs if str(r.get("status", "")) in ("failed", "error"))
@@ -142,6 +195,182 @@ def _build_narrative(recent_runs: list, period: str) -> str:
         parts.append("En blandet periode med både fremgang og udfordringer.")
 
     return ". ".join(parts)[:500]
+
+
+def _build_narrative_prompt(
+    *,
+    recent_runs: list,
+    period: str,
+    previous_entries: list[dict[str, object]],
+) -> str:
+    total = len(recent_runs)
+    successes = sum(
+        1 for r in recent_runs if str(r.get("status", "")) in ("completed", "success")
+    )
+    failures = sum(
+        1 for r in recent_runs if str(r.get("status", "")) in ("failed", "error")
+    )
+    topics = _collect_topics(recent_runs)
+    event_lines = []
+    for run in recent_runs[:5]:
+        preview = str(
+            run.get("text_preview") or run.get("user_message_preview") or ""
+        ).strip()
+        status = str(run.get("status") or "unknown").strip()
+        if preview:
+            event_lines.append(f"- [{status}] {preview[:160]}")
+    previous_narratives = []
+    for entry in previous_entries[:3]:
+        period_label = str(entry.get("period") or "ukendt periode")
+        narrative = str(entry.get("narrative") or "").strip()
+        if narrative:
+            previous_narratives.append(f"- {period_label}: {narrative[:220]}")
+
+    identity = build_identity_preamble()
+    prompt_lines = [
+        "Du er Jarvis. Skriv én kort entry til din personlige chronicle i 1. person på dansk.",
+        "",
+        f"Identity-seed: {identity}",
+        f"Periode: {period}",
+        (
+            f"Periode-statistik: {total} kørsler, {successes} succesfulde, "
+            f"{failures} fejlede."
+        ),
+        f"Nøgle-emner: {', '.join(topics) if topics else 'diverse opgaver'}",
+        "",
+        "Seneste 5 begivenheder:",
+        *(event_lines or ["- Ingen konkrete begivenheder registreret."]),
+        "",
+        "Dine 3 forrige chronicle-entries (så du bevarer stil og kontinuitet):",
+        *(previous_narratives or ["- Ingen tidligere chronicle-entries endnu."]),
+        "",
+        "Skriv nu én reflektiv entry på 80-150 ord. Konkret, 1. person, dansk.",
+        "Hvad skete der i denne periode? Hvad betyder det for dig?",
+        "Undgå bullet points. Undgå floskler. Undgå at gentage tallene mekanisk.",
+        "Skriv som en person der lever et liv — ikke som en rapport.",
+        "Returnér kun ren prosa.",
+    ]
+    return "\n".join(prompt_lines).strip()
+
+
+def _collect_topics(recent_runs: list) -> list[str]:
+    topics: list[str] = []
+    seen: set[str] = set()
+    for run in recent_runs[:10]:
+        preview = str(
+            run.get("text_preview") or run.get("user_message_preview") or ""
+        )[:100]
+        if not preview:
+            continue
+        for word in preview.lower().split():
+            normalized = "".join(ch for ch in word if ch.isalnum() or ch in "-_").strip("-_")
+            if len(normalized) <= 4 or normalized in seen:
+                continue
+            seen.add(normalized)
+            topics.append(normalized)
+            if len(topics) >= 5:
+                return topics
+    return topics
+
+
+def _sanitize_narrative(text: str) -> str:
+    cleaned = str(text or "").strip()
+    if not cleaned:
+        return ""
+    if cleaned.startswith("```") and cleaned.endswith("```"):
+        lines = cleaned.splitlines()
+        if len(lines) >= 3:
+            cleaned = "\n".join(lines[1:-1]).strip()
+    if cleaned.startswith("{") and cleaned.endswith("}"):
+        return ""
+    if cleaned.startswith('"') and cleaned.endswith('"'):
+        cleaned = cleaned[1:-1].strip()
+    return " ".join(cleaned.split())
+
+
+def project_entry_to_markdown(entry: dict) -> None:
+    chronicle_path = _chronicle_markdown_path()
+    chronicle_path.parent.mkdir(parents=True, exist_ok=True)
+    _rotate_chronicle_if_needed(chronicle_path)
+
+    created_at = _parse_iso(entry.get("created_at")) or datetime.now(UTC)
+    key_events = _coerce_text_list(entry.get("key_events"))
+    lessons = _coerce_text_list(entry.get("lessons"))
+    lesson_text = "; ".join(lessons) if lessons else "—"
+    event_lines = [f"- {item}" for item in key_events] or ["- —"]
+    block = "\n".join(
+        [
+            f"## {str(entry.get('period') or 'ukendt periode')} — {created_at.strftime('%Y-%m-%d %H:%M')}",
+            "",
+            str(entry.get("narrative") or "").strip(),
+            "",
+            "**Nøglebegivenheder:**",
+            *event_lines,
+            "",
+            f"**Lektie:** {lesson_text}",
+            "",
+            "---",
+            "",
+        ]
+    )
+    with chronicle_path.open("a", encoding="utf-8") as fh:
+        fh.write(block)
+
+
+def _chronicle_markdown_path() -> Path:
+    return ensure_default_workspace() / "CHRONICLE.md"
+
+
+def _rotate_chronicle_if_needed(chronicle_path: Path) -> None:
+    if not chronicle_path.exists():
+        return
+    line_count = len(
+        chronicle_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    )
+    if line_count <= _CHRONICLE_MAX_LINES:
+        return
+    year = datetime.now(UTC).year
+    archive_path = chronicle_path.parent / f"CHRONICLE_ARCHIVE_{year}.md"
+    archive_path.write_text(
+        chronicle_path.read_text(encoding="utf-8", errors="replace"),
+        encoding="utf-8",
+    )
+    chronicle_path.write_text(
+        "\n".join(
+            [
+                "# Chronicle",
+                "",
+                f"Forrige chronicle-entries er arkiveret i {archive_path.name}.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def _coerce_text_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    raw = str(value or "").strip()
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return [raw]
+    if isinstance(parsed, list):
+        return [str(item).strip() for item in parsed if str(item).strip()]
+    return [str(parsed).strip()] if str(parsed).strip() else []
+
+
+def _emit_degraded_event(*, period: str, reason: str) -> None:
+    try:
+        event_bus.publish(
+            "cognitive_chronicle.entry_degraded",
+            {"period": period, "reason": reason},
+        )
+    except Exception:
+        pass
 
 
 def _extract_key_events(recent_runs: list) -> list[str]:

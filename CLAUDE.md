@@ -117,3 +117,15 @@ detect-secrets audit .secrets.baseline
 
 Se `core/runtime/secrets.py` og `scripts/pipelines/_config.py` for mønstre
 til at læse secrets fra runtime.json.
+
+## Capability Audit
+
+For at se hvilke services i `core/services/` der er live/stale/orphan, kør:
+
+```bash
+conda activate ai
+python scripts/capability_audit.py
+```
+
+Rapport skrives til `docs/capability_matrix.md`. Statisk analyse — kører ikke systemet.
+Re-generér efter refaktorering eller ved behov for konsoliderings-beslutninger.

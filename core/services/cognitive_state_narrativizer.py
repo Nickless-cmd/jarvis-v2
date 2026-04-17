@@ -40,50 +40,18 @@ _NARRATIVIZER_MAX_TOKENS = 80
 
 
 def _call_narrativizer_llm(system_prompt: str, user_message: str) -> str | None:
-    """Direct ollama call dedicated to narrative line generation.
+    """Call the compact LLM (heartbeat model) for narrative line generation.
 
-    Bypasses provider_router because cognitive state narrativizing
-    has different model requirements than the inner-voice enrichment
-    pipeline (which is locked to a small thinking model).
+    Uses call_compact_llm so the narrativizer automatically follows
+    whatever heartbeat model is configured (e.g. Groq) instead of
+    being hardcoded to a slow cloud-backed Ollama model.
     """
-    payload = json.dumps(
-        {
-            "model": _NARRATIVIZER_MODEL,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            "stream": False,
-            "options": {
-                "temperature": 0.7,
-                "num_predict": _NARRATIVIZER_MAX_TOKENS,
-            },
-        }
-    ).encode("utf-8")
-    url = f"{_NARRATIVIZER_BASE_URL.rstrip('/')}/api/chat"
     try:
-        req = urllib_request.Request(
-            url,
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib_request.urlopen(req, timeout=_NARRATIVIZER_TIMEOUT_SECONDS) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            message = data.get("message", {}) or {}
-            text = str(message.get("content") or "").strip()
-            if text:
-                return text
-            thinking = str(message.get("thinking") or "").strip()
-            if thinking:
-                sentences = [
-                    s.strip()
-                    for s in thinking.replace("\n", " ").split(".")
-                    if len(s.strip()) > 4
-                ]
-                if sentences:
-                    return sentences[-1]
-            return None
+        from core.context.compact_llm import call_compact_llm
+
+        prompt = f"{system_prompt}\n\n{user_message}"
+        result = call_compact_llm(prompt, max_tokens=_NARRATIVIZER_MAX_TOKENS)
+        return result.strip() or None
     except Exception as exc:
         logger.warning("cognitive_state_narrativizer ollama call failed: %s", exc)
         return None

@@ -19,7 +19,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
-from core.runtime.db import insert_private_brain_record
+from core.runtime.db import insert_private_brain_record, list_approval_feedback
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +301,19 @@ def _gather_grounding() -> dict[str, object]:
     """Gather grounding material from existing runtime surfaces."""
     sources: list[str] = []
     fragments: dict[str, str] = {}
+    approval_feedback = _recent_approval_sentiment_summary()
+
+    if approval_feedback is not None:
+        sources.append("approval-feedback")
+        fragments["approval_feedback_pattern"] = str(approval_feedback.get("pattern") or "")
+        fragments["approval_feedback_count"] = str(approval_feedback.get("count") or "")
+        tools = [
+            str(tool).strip()
+            for tool in (approval_feedback.get("tools") or [])
+            if str(tool).strip()
+        ]
+        if tools:
+            fragments["approval_feedback_tools"] = ", ".join(tools[:3])
 
     # Private brain carry
     try:
@@ -431,7 +444,58 @@ def _gather_grounding() -> dict[str, object]:
         "source_count": len(sources),
         "sources": sources,
         "fragments": fragments,
+        "approval_feedback": approval_feedback,
     }
+
+
+def _recent_approval_sentiment_summary() -> dict[str, object] | None:
+    """Summarize only notable recent approval-feedback patterns."""
+    recent = list_approval_feedback(limit=10)
+    if len(recent) < 3:
+        return None
+
+    consecutive_denials = []
+    for entry in recent:
+        if str(entry.get("approval_state") or "") != "denied":
+            break
+        consecutive_denials.append(entry)
+    if len(consecutive_denials) >= 2:
+        return {
+            "pattern": "recent_denials",
+            "count": len(consecutive_denials),
+            "tools": _approval_feedback_tools(consecutive_denials),
+        }
+
+    if len(recent) >= 5 and all(
+        str(entry.get("approval_state") or "") == "approved"
+        for entry in recent[:5]
+    ):
+        streak = []
+        for entry in recent:
+            if str(entry.get("approval_state") or "") != "approved":
+                break
+            streak.append(entry)
+        return {
+            "pattern": "approval_streak",
+            "count": len(streak),
+            "tools": _approval_feedback_tools(streak),
+        }
+
+    return None
+
+
+def _approval_feedback_tools(entries: list[dict[str, object]]) -> list[str]:
+    tools: list[str] = []
+    seen: set[str] = set()
+    for entry in entries:
+        tool_name = str(entry.get("tool_name") or "").strip()
+        if not tool_name or tool_name in seen:
+            continue
+        seen.add(tool_name)
+        tools.append(tool_name)
+        if len(tools) >= 3:
+            break
+    return tools
 
 
 # ---------------------------------------------------------------------------
@@ -486,6 +550,26 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
         if line:
             context_lines.append(f"- {line}")
 
+    approval_feedback = grounding.get("approval_feedback")
+    if isinstance(approval_feedback, dict):
+        pattern = str(approval_feedback.get("pattern") or "").strip()
+        count = int(approval_feedback.get("count") or 0)
+        tools = [
+            str(tool).strip()
+            for tool in (approval_feedback.get("tools") or [])
+            if str(tool).strip()
+        ]
+        if pattern == "recent_denials" and count >= 2:
+            tool_text = f" around tools: {', '.join(tools)}" if tools else ""
+            context_lines.append(
+                f"- Recent approval feedback: the user has denied {count} approval-gated actions in a row{tool_text}."
+            )
+        elif pattern == "approval_streak" and count >= 5:
+            tool_text = f" across tools: {', '.join(tools)}" if tools else ""
+            context_lines.append(
+                f"- Recent approval feedback: the user has approved {count} approval-gated actions in a row{tool_text}."
+            )
+
     # 1.5 Inner voice chaining — feed previous thought
     try:
         from core.runtime.db import get_protected_inner_voice
@@ -504,6 +588,7 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
             "- Inner voice may remain unresolved; candidate thoughts and half-formed pulls are allowed.",
             "- Do not default to steady/support/work-stabilization unless the grounding clearly warrants it.",
             "- If there is no real next-step pull, set initiative to null.",
+            "- Approval feedback, when present, reflects how the user has recently responded to your tool approach; treat it as a cue about trust, timing, or aggressiveness.",
             "- Optional mode field may be one of: searching, circling, carrying, pulled, witness-steady, work-steady.",
             "- Do not include revision notes, self-critique, style commentary, markdown emphasis, or labels like 'Attempt 2' inside the thought.",
         "- Do not explain your output. No 'This captures:', no 'Position:', no 'Direction:', no 'Mood:' annotations. Just the raw thought.",

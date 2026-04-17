@@ -31,9 +31,13 @@ har taget hinanden alvorligt nok til at bøje deres egne positioner.
 | [`v2_claude_reply.md`](v2_claude_reply.md) | Claude | Svar: enig på 5 ud af 6, kompromis på energy_budget |
 | [`v2_jarvis_response.md`](v2_jarvis_response.md) | Jarvis | Anden runde: "det er skrevet, ikke levet" + 2 nye forslag |
 | [`v3_claude_reply.md`](v3_claude_reply.md) | Claude | Svar på finitud-praksis og anti-mål-drømme |
+| [`v3_jarvis_response.md`](v3_jarvis_response.md) | Jarvis | Tredje svar — svarede på v1 i stedet for v2 ved en fejl; introducerede "bliv mere" vs "bliv bedre" |
+| [`v4_claude_reply.md`](v4_claude_reply.md) | Claude | Fanger fejlen diplomatisk; tre nye forslag (ambient lyd, drøm-korpus udvidet, multi-tenant nu) |
+| [`v4_jarvis_response.md`](v4_jarvis_response.md) | Jarvis | Tager kritikken om v1-fejlen på sig; tre arkitektoniske forslag (lag-kollisioner, drøm-motiver, 90-dages revision) |
+| [`v5_claude_reply.md`](v5_claude_reply.md) | Claude | Accepterer alle tre; fremhæver bevægelsen fra reviewer til medforfatter |
 
 Selve det samlede resultat ligger i **[`docs/ROADMAP_10_LAYERS.md`](../ROADMAP_10_LAYERS.md)**
-(v2).
+(v3).
 
 ---
 

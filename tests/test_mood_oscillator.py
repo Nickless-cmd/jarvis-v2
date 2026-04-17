@@ -3,7 +3,7 @@
 import pytest
 import math
 
-from apps.api.jarvis_api.services.mood_oscillator import (
+from core.services.mood_oscillator import (
     tick,
     get_current_mood,
     get_mood_intensity,

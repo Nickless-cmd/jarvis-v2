@@ -10,33 +10,33 @@ import pytest
 # ---------------------------------------------------------------------------
 
 def test_self_model_maps_to_identity():
-    from apps.api.jarvis_api.services.session_distillation import _record_type_to_domain
+    from core.services.session_distillation import _record_type_to_domain
     assert _record_type_to_domain("self-model-carry") == "identity"
 
 
 def test_continuity_maps_to_identity():
-    from apps.api.jarvis_api.services.session_distillation import _record_type_to_domain
+    from core.services.session_distillation import _record_type_to_domain
     assert _record_type_to_domain("continuity-reinforce") == "identity"
     assert _record_type_to_domain("continuity-carry") == "identity"
 
 
 def test_diary_maps_to_social():
-    from apps.api.jarvis_api.services.session_distillation import _record_type_to_domain
+    from core.services.session_distillation import _record_type_to_domain
     assert _record_type_to_domain("diary-carry") == "social"
 
 
 def test_state_snapshot_maps_to_debug_context():
-    from apps.api.jarvis_api.services.session_distillation import _record_type_to_domain
+    from core.services.session_distillation import _record_type_to_domain
     assert _record_type_to_domain("state-snapshot-carry") == "debug_context"
 
 
 def test_inner_note_maps_to_empty_default():
-    from apps.api.jarvis_api.services.session_distillation import _record_type_to_domain
+    from core.services.session_distillation import _record_type_to_domain
     assert _record_type_to_domain("inner-note-carry") == ""
 
 
 def test_unknown_type_maps_to_empty_default():
-    from apps.api.jarvis_api.services.session_distillation import _record_type_to_domain
+    from core.services.session_distillation import _record_type_to_domain
     assert _record_type_to_domain("something-unknown") == ""
 
 
@@ -45,23 +45,23 @@ def test_unknown_type_maps_to_empty_default():
 # ---------------------------------------------------------------------------
 
 def test_identity_decay_slower_than_default():
-    from apps.api.jarvis_api.services.memory_decay_daemon import DOMAIN_DECAY_RATES, _DECAY_RATE
+    from core.services.memory_decay_daemon import DOMAIN_DECAY_RATES, _DECAY_RATE
     assert DOMAIN_DECAY_RATES["identity"] < _DECAY_RATE
 
 
 def test_debug_context_decay_faster_than_default():
-    from apps.api.jarvis_api.services.memory_decay_daemon import DOMAIN_DECAY_RATES, _DECAY_RATE
+    from core.services.memory_decay_daemon import DOMAIN_DECAY_RATES, _DECAY_RATE
     assert DOMAIN_DECAY_RATES["debug_context"] > _DECAY_RATE
 
 
 def test_all_required_domains_present():
-    from apps.api.jarvis_api.services.memory_decay_daemon import DOMAIN_DECAY_RATES
+    from core.services.memory_decay_daemon import DOMAIN_DECAY_RATES
     for domain in ("identity", "code_pattern", "social", "debug_context"):
         assert domain in DOMAIN_DECAY_RATES, f"Missing domain: {domain}"
 
 
 def test_decay_rates_are_positive():
-    from apps.api.jarvis_api.services.memory_decay_daemon import DOMAIN_DECAY_RATES
+    from core.services.memory_decay_daemon import DOMAIN_DECAY_RATES
     for domain, rate in DOMAIN_DECAY_RATES.items():
         assert 0 < rate < 1.0, f"Rate {rate} for domain {domain!r} not in (0, 1)"
 
@@ -165,7 +165,7 @@ def test_domain_decay_uses_default_rate_for_unknown_domain():
 
 def test_tick_memory_decay_daemon_uses_domain_decay():
     """tick_memory_decay_daemon should call decay_private_brain_records_by_domain."""
-    from apps.api.jarvis_api.services import memory_decay_daemon as mdd
+    from core.services import memory_decay_daemon as mdd
 
     # Reset cadence gate so tick runs
     mdd._last_decay_at = None

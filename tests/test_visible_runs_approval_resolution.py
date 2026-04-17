@@ -5,7 +5,7 @@ def test_resolve_pending_approval_leaves_transcript_persistence_to_stream(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
     simple_tools = importlib.import_module("core.tools.simple_tools")
 
@@ -57,7 +57,7 @@ def test_execute_simple_tool_calls_suppresses_duplicate_tool_call_within_visible
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
     simple_tools = importlib.import_module("core.tools.simple_tools")
 
@@ -111,7 +111,7 @@ def test_execute_simple_tool_calls_suppresses_duplicate_tool_call_within_visible
 def test_classify_visible_run_interruption_distinguishes_timeout_disconnect_and_cancel(
     isolated_runtime,
 ) -> None:
-    visible_runs = importlib.import_module("apps.api.jarvis_api.services.visible_runs")
+    visible_runs = importlib.import_module("core.services.visible_runs")
     visible_runs = importlib.reload(visible_runs)
 
     assert visible_runs._classify_visible_run_interruption("timed out waiting for provider stream item") == {

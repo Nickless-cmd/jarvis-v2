@@ -5,7 +5,7 @@ from core.eventbus.bus import event_bus
 
 def test_runtime_hooks_dispatch_initiative_events_into_tasks_and_flows(isolated_runtime) -> None:
     runtime_hooks = __import__(
-        "apps.api.jarvis_api.services.runtime_hooks",
+        "core.services.runtime_hooks",
         fromlist=["dispatch_unhandled_hook_events"],
     )
 
@@ -36,7 +36,7 @@ def test_runtime_hooks_dispatch_initiative_events_into_tasks_and_flows(isolated_
 
 def test_runtime_hooks_dispatch_blocked_heartbeat_ticks_into_followup_work(isolated_runtime) -> None:
     runtime_hooks = __import__(
-        "apps.api.jarvis_api.services.runtime_hooks",
+        "core.services.runtime_hooks",
         fromlist=["dispatch_unhandled_hook_events"],
     )
 
@@ -65,7 +65,7 @@ def test_runtime_hooks_dispatch_blocked_heartbeat_ticks_into_followup_work(isola
 
 def test_runtime_hooks_dispatch_tick_blocked_events_into_followup_work(isolated_runtime) -> None:
     runtime_hooks = __import__(
-        "apps.api.jarvis_api.services.runtime_hooks",
+        "core.services.runtime_hooks",
         fromlist=["dispatch_unhandled_hook_events"],
     )
 
@@ -95,7 +95,7 @@ def test_runtime_hooks_dispatch_tick_blocked_events_into_followup_work(isolated_
 
 def test_runtime_hooks_coalesce_duplicate_blocked_heartbeat_work(isolated_runtime) -> None:
     runtime_hooks = __import__(
-        "apps.api.jarvis_api.services.runtime_hooks",
+        "core.services.runtime_hooks",
         fromlist=["dispatch_unhandled_hook_events"],
     )
 

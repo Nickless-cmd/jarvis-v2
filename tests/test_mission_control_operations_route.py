@@ -390,7 +390,7 @@ def test_mc_runtime_exposes_shared_cognitive_architecture(
 ) -> None:
     mission_control = isolated_runtime.mission_control
     cognitive_architecture_surface = importlib.import_module(
-        "apps.api.jarvis_api.services.cognitive_architecture_surface"
+        "core.services.cognitive_architecture_surface"
     )
     shared = {
         "systems": [{"system": "ghost_networks", "active": True, "summary": "haunting"}],

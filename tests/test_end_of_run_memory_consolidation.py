@@ -10,7 +10,7 @@ def test_end_of_run_memory_consolidation_can_auto_apply_explicit_user_preference
     monkeypatch,
 ) -> None:
     module = importlib.import_module(
-        "apps.api.jarvis_api.services.end_of_run_memory_consolidation"
+        "core.services.end_of_run_memory_consolidation"
     )
     module = importlib.reload(module)
 
@@ -60,7 +60,7 @@ def test_end_of_run_memory_consolidation_reruns_with_full_context_when_model_req
     monkeypatch,
 ) -> None:
     module = importlib.import_module(
-        "apps.api.jarvis_api.services.end_of_run_memory_consolidation"
+        "core.services.end_of_run_memory_consolidation"
     )
     module = importlib.reload(module)
 
@@ -120,7 +120,7 @@ def test_end_of_run_memory_consolidation_audits_skipped_runs(
     monkeypatch,
 ) -> None:
     module = importlib.import_module(
-        "apps.api.jarvis_api.services.end_of_run_memory_consolidation"
+        "core.services.end_of_run_memory_consolidation"
     )
     module = importlib.reload(module)
 
@@ -145,7 +145,7 @@ def test_end_of_run_memory_consolidation_prompt_includes_internal_context(
     monkeypatch,
 ) -> None:
     module = importlib.import_module(
-        "apps.api.jarvis_api.services.end_of_run_memory_consolidation"
+        "core.services.end_of_run_memory_consolidation"
     )
     module = importlib.reload(module)
 

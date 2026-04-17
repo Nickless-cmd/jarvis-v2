@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from datetime import UTC, datetime, timedelta
-import apps.api.jarvis_api.services.experienced_time_daemon as etd
+import core.services.experienced_time_daemon as etd
 
 
 def _reset():

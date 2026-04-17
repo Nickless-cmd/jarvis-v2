@@ -301,7 +301,7 @@ def test_diary_synthesis_reflective_release_not_deletion(
 def test_diary_synthesis_uses_actual_signal_content(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+    from core.services.diary_synthesis_signal_tracking import (
         _diary_summary,
         _extract_release_semantics,
     )
@@ -336,7 +336,7 @@ def test_diary_synthesis_uses_actual_signal_content(
 def test_diary_synthesis_release_vs_loosening_semantics(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+    from core.services.diary_synthesis_signal_tracking import (
         _diary_summary,
     )
 
@@ -379,7 +379,7 @@ def test_diary_synthesis_release_vs_loosening_semantics(
 def test_diary_synthesis_no_deletion_claims(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+    from core.services.diary_synthesis_signal_tracking import (
         _diary_summary,
     )
 
@@ -403,7 +403,7 @@ def test_diary_synthesis_no_deletion_claims(
 def test_diary_confidence_boosts_with_release_state(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+    from core.services.diary_synthesis_signal_tracking import (
         _diary_confidence,
     )
 
@@ -429,7 +429,7 @@ def test_diary_confidence_boosts_with_release_state(
 def test_diary_weight_considers_release_strength(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+    from core.services.diary_synthesis_signal_tracking import (
         _diary_weight,
     )
 
@@ -448,7 +448,7 @@ def test_diary_weight_considers_release_strength(
 def test_diary_source_anchor_prioritizes_release(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.diary_synthesis_signal_tracking import (
+    from core.services.diary_synthesis_signal_tracking import (
         _source_anchor_from_signals,
     )
 

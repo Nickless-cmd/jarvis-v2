@@ -12,7 +12,7 @@ _REPO_ROOT = "/media/projects/jarvis-v2"
 
 @router.get("/system/health")
 def system_health() -> dict:
-    from apps.api.jarvis_api.services.hardware_body import get_hardware_state
+    from core.services.hardware_body import get_hardware_state
     hw = get_hardware_state()
     result: dict = {
         "cpu_pct": hw.get("cpu_pct", 0.0),

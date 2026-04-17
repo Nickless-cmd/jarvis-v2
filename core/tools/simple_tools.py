@@ -2216,7 +2216,7 @@ def _exec_wolfram_query(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
     """Return current initiative queue state."""
     try:
-        from apps.api.jarvis_api.services.initiative_queue import get_initiative_queue_state
+        from core.services.initiative_queue import get_initiative_queue_state
         state = get_initiative_queue_state()
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -2264,7 +2264,7 @@ def _exec_push_initiative(args: dict[str, Any]) -> dict[str, Any]:
     if priority not in {"low", "medium", "high"}:
         priority = "medium"
     try:
-        from apps.api.jarvis_api.services.initiative_queue import push_initiative
+        from core.services.initiative_queue import push_initiative
         initiative_id = push_initiative(
             focus=focus,
             source="jarvis-tool",
@@ -2347,7 +2347,7 @@ def _exec_read_mood(_args: dict[str, Any]) -> dict[str, Any]:
 
     # Boredom state
     try:
-        from apps.api.jarvis_api.services.boredom_engine import get_boredom_state
+        from core.services.boredom_engine import get_boredom_state
         boredom = get_boredom_state()
         result["boredom"] = boredom
         lines.append(f"\nBoredom: level={boredom.get('level','?')} restlessness={float(boredom.get('restlessness', 0)):.0%}")
@@ -2358,7 +2358,7 @@ def _exec_read_mood(_args: dict[str, Any]) -> dict[str, Any]:
 
     # Affective meta state
     try:
-        from apps.api.jarvis_api.services.affective_meta_state import build_affective_meta_state_surface
+        from core.services.affective_meta_state import build_affective_meta_state_surface
         meta = build_affective_meta_state_surface()
         result["affective_state"] = meta.get("state")
         result["monitoring_mode"] = meta.get("monitoring_mode")
@@ -2452,7 +2452,7 @@ def _exec_search_memory(args: dict[str, Any]) -> dict[str, Any]:
     except (TypeError, ValueError):
         limit = 5
     try:
-        from apps.api.jarvis_api.services.memory_search import search_memory
+        from core.services.memory_search import search_memory
         results = search_memory(query, limit=limit)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -2524,7 +2524,7 @@ def _exec_propose_source_edit(args: dict[str, Any]) -> dict[str, Any]:
         rel = str(target)
 
     try:
-        from apps.api.jarvis_api.services.autonomy_proposal_queue import file_proposal
+        from core.services.autonomy_proposal_queue import file_proposal
         proposal = file_proposal(
             kind="source-edit",
             title=f"Edit {rel}",
@@ -2578,7 +2578,7 @@ def _exec_propose_git_commit(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "ok", "skipped": True, "reason": "nothing to commit — working tree clean"}
 
     try:
-        from apps.api.jarvis_api.services.autonomy_proposal_queue import file_proposal
+        from core.services.autonomy_proposal_queue import file_proposal
         files_display = ", ".join(str(f) for f in files[:5])
         if len(files) > 5:
             files_display += f" (+{len(files) - 5} more)"
@@ -2615,7 +2615,7 @@ def _exec_approve_proposal(args: dict[str, Any]) -> dict[str, Any]:
     if not proposal_id:
         return {"status": "error", "error": "proposal_id is required"}
     try:
-        from apps.api.jarvis_api.services.autonomy_proposal_queue import approve_proposal
+        from core.services.autonomy_proposal_queue import approve_proposal
         result = approve_proposal(proposal_id, resolution_note=note or "Approved via tool")
         status = result.get("status", "unknown")
         if status == "executed":
@@ -2637,7 +2637,7 @@ def _exec_approve_proposal(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_list_proposals(_args: dict[str, Any]) -> dict[str, Any]:
     """List pending autonomy proposals."""
     try:
-        from apps.api.jarvis_api.services.autonomy_proposal_queue import list_pending_proposals, build_autonomy_proposal_surface
+        from core.services.autonomy_proposal_queue import list_pending_proposals, build_autonomy_proposal_surface
         surface = build_autonomy_proposal_surface(limit=20)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -2675,7 +2675,7 @@ def _exec_schedule_task(args: dict[str, Any]) -> dict[str, Any]:
     if delay_minutes < 1:
         return {"status": "error", "error": "delay_minutes must be at least 1"}
     try:
-        from apps.api.jarvis_api.services.scheduled_tasks import push_scheduled_task
+        from core.services.scheduled_tasks import push_scheduled_task
         task = push_scheduled_task(focus=focus, delay_minutes=delay_minutes)
         run_at = task.get("run_at", "")
         return {
@@ -2693,7 +2693,7 @@ def _exec_schedule_task(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_list_scheduled_tasks(_args: dict[str, Any]) -> dict[str, Any]:
     """List scheduled tasks (pending + recently fired)."""
     try:
-        from apps.api.jarvis_api.services.scheduled_tasks import get_scheduled_tasks_state
+        from core.services.scheduled_tasks import get_scheduled_tasks_state
         state = get_scheduled_tasks_state()
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -2728,7 +2728,7 @@ def _exec_cancel_task(args: dict[str, Any]) -> dict[str, Any]:
     if not task_id:
         return {"status": "error", "error": "task_id is required"}
     try:
-        from apps.api.jarvis_api.services.scheduled_tasks import cancel_scheduled_task
+        from core.services.scheduled_tasks import cancel_scheduled_task
         cancelled = cancel_scheduled_task(task_id)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -2747,7 +2747,7 @@ def _exec_edit_task(args: dict[str, Any]) -> dict[str, Any]:
     if focus is None and delay_minutes is None:
         return {"status": "error", "error": "Provide at least one of: focus, delay_minutes"}
     try:
-        from apps.api.jarvis_api.services.scheduled_tasks import edit_scheduled_task
+        from core.services.scheduled_tasks import edit_scheduled_task
         result = edit_scheduled_task(
             task_id,
             focus=str(focus).strip() if focus is not None else None,
@@ -2763,7 +2763,7 @@ def _exec_read_chronicles(args: dict[str, Any]) -> dict[str, Any]:
     import json as _json
     limit = min(int(args.get("limit") or 5), 20)
     try:
-        from apps.api.jarvis_api.services.chronicle_engine import list_cognitive_chronicle_entries
+        from core.services.chronicle_engine import list_cognitive_chronicle_entries
         entries = list_cognitive_chronicle_entries(limit=limit)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
@@ -2812,7 +2812,7 @@ def _exec_read_dreams(args: dict[str, Any]) -> dict[str, Any]:
     lines = []
 
     try:
-        from apps.api.jarvis_api.services.dream_hypothesis_signal_tracking import (
+        from core.services.dream_hypothesis_signal_tracking import (
             list_runtime_dream_hypothesis_signals,
         )
         hypotheses = list_runtime_dream_hypothesis_signals(status=status_filter, limit=limit)
@@ -2832,7 +2832,7 @@ def _exec_read_dreams(args: dict[str, Any]) -> dict[str, Any]:
         result["hypotheses_error"] = str(exc)
 
     try:
-        from apps.api.jarvis_api.services.dream_adoption_candidate_tracking import (
+        from core.services.dream_adoption_candidate_tracking import (
             list_runtime_dream_adoption_candidates,
         )
         candidates = list_runtime_dream_adoption_candidates(status=status_filter, limit=limit)
@@ -2852,7 +2852,7 @@ def _exec_read_dreams(args: dict[str, Any]) -> dict[str, Any]:
 
     # In-memory active dreams
     try:
-        from apps.api.jarvis_api.services.dream_carry_over import _ACTIVE_DREAMS
+        from core.services.dream_carry_over import _ACTIVE_DREAMS
         if _ACTIVE_DREAMS:
             lines.append(f"### Active In-Memory Dreams ({len(_ACTIVE_DREAMS)})")
             for d in list(_ACTIVE_DREAMS)[:5]:
@@ -2884,7 +2884,7 @@ def _exec_notify_user(args: dict[str, Any]) -> dict[str, Any]:
 
     if channel in ("webchat", "both"):
         try:
-            from apps.api.jarvis_api.services.notification_bridge import send_session_notification
+            from core.services.notification_bridge import send_session_notification
             r = send_session_notification(content, source="jarvis-notify")
             if r.get("status") == "ok":
                 results.append(f"webchat:{r.get('session_id', '')}")
@@ -2895,8 +2895,8 @@ def _exec_notify_user(args: dict[str, Any]) -> dict[str, Any]:
 
     if channel in ("discord", "both"):
         try:
-            from apps.api.jarvis_api.services.discord_config import load_discord_config
-            from apps.api.jarvis_api.services.discord_gateway import (
+            from core.services.discord_config import load_discord_config
+            from core.services.discord_gateway import (
                 _discord_sessions,
                 _discord_sessions_lock,
                 get_discord_status,
@@ -2909,7 +2909,7 @@ def _exec_notify_user(args: dict[str, Any]) -> dict[str, Any]:
             elif not status["connected"]:
                 results.append("discord:not-connected")
             else:
-                from apps.api.jarvis_api.services.chat_sessions import get_chat_session
+                from core.services.chat_sessions import get_chat_session
                 sent = False
                 with _discord_sessions_lock:
                     sessions_snapshot = dict(_discord_sessions)
@@ -2932,11 +2932,11 @@ def _exec_notify_user(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_read_self_state(_args: dict[str, Any]) -> dict[str, Any]:
     """Return Jarvis's current internal cadence/emotional state."""
     import json as _json
-    from apps.api.jarvis_api.services.boredom_engine import get_boredom_state
-    from apps.api.jarvis_api.services.boredom_curiosity_bridge import (
+    from core.services.boredom_engine import get_boredom_state
+    from core.services.boredom_curiosity_bridge import (
         build_boredom_curiosity_bridge_surface,
     )
-    from apps.api.jarvis_api.services.living_heartbeat_cycle import determine_life_phase
+    from core.services.living_heartbeat_cycle import determine_life_phase
 
     result: dict[str, Any] = {"status": "ok"}
 
@@ -3001,9 +3001,9 @@ def _exec_read_self_state(_args: dict[str, Any]) -> dict[str, Any]:
 
     # Discord channel awareness
     try:
-        from apps.api.jarvis_api.services.discord_config import is_discord_configured
+        from core.services.discord_config import is_discord_configured
         if is_discord_configured():
-            from apps.api.jarvis_api.services.discord_gateway import get_discord_status
+            from core.services.discord_gateway import get_discord_status
             ds = get_discord_status()
             conn = "connected" if ds["connected"] else "disconnected"
             last = ds.get("last_message_at") or "never"
@@ -3063,7 +3063,7 @@ def _exec_heartbeat_status(_args: dict[str, Any]) -> dict[str, Any]:
 def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:
     """Trigger an on-demand heartbeat tick."""
     try:
-        from apps.api.jarvis_api.services.heartbeat_runtime import run_heartbeat_tick
+        from core.services.heartbeat_runtime import run_heartbeat_tick
         result = run_heartbeat_tick(name="default", trigger="manual-tool")
         summary = getattr(result, "summary", None) or str(result)
         decision = getattr(result, "decision_type", None) or "unknown"
@@ -3087,14 +3087,14 @@ def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:
 def _exec_discord_status(_args: dict[str, Any]) -> dict[str, Any]:
     """Return Discord gateway connection state and activity summary."""
     try:
-        from apps.api.jarvis_api.services.discord_config import is_discord_configured
+        from core.services.discord_config import is_discord_configured
         if not is_discord_configured():
             return {
                 "status": "ok",
                 "connected": False,
                 "text": "Discord: not configured. Run: python scripts/jarvis.py discord-setup",
             }
-        from apps.api.jarvis_api.services.discord_gateway import get_discord_status
+        from core.services.discord_gateway import get_discord_status
         s = get_discord_status()
         connected = s["connected"]
         lines = [f"Discord: {'connected' if connected else 'disconnected'}"]
@@ -3130,7 +3130,7 @@ def _exec_discord_channel(args: dict[str, Any]) -> dict[str, Any]:
     channel_id = int(channel_id_str)
 
     try:
-        from apps.api.jarvis_api.services.discord_gateway import _client, _loop
+        from core.services.discord_gateway import _client, _loop
     except ImportError as exc:
         return {"status": "error", "error": f"Discord gateway unavailable: {exc}"}
 
@@ -3234,7 +3234,7 @@ def _exec_discord_channel(args: dict[str, Any]) -> dict[str, Any]:
     elif action == "send":
         # Whitelist check
         try:
-            from apps.api.jarvis_api.services.discord_config import load_discord_config
+            from core.services.discord_config import load_discord_config
             config = load_discord_config() or {}
             allowed = {str(c) for c in config.get("allowed_channel_ids", [])}
             if channel_id_str not in allowed:
@@ -3479,7 +3479,7 @@ def _exec_convene_council(args: dict[str, Any]) -> dict[str, Any]:
         roles = ["planner", "critic", "researcher", "synthesizer"]
 
     try:
-        from apps.api.jarvis_api.services.agent_runtime import (
+        from core.services.agent_runtime import (
             create_council_session_runtime,
             run_council_round,
         )
@@ -3511,7 +3511,7 @@ def _exec_quick_council_check(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": "action is required"}
 
     try:
-        from apps.api.jarvis_api.services.agent_runtime import spawn_agent_task
+        from core.services.agent_runtime import spawn_agent_task
         result = spawn_agent_task(
             role="devils_advocate",
             goal=(
@@ -3551,7 +3551,7 @@ def _exec_spawn_agent_task(args: dict[str, Any]) -> dict[str, Any]:
     persistent = bool(args.get("persistent") or False)
     ttl_seconds = int(args.get("ttl_seconds") or 600)
     try:
-        from apps.api.jarvis_api.services.agent_runtime import spawn_agent_task
+        from core.services.agent_runtime import spawn_agent_task
         result = spawn_agent_task(
             role=role,
             goal=goal,
@@ -3585,7 +3585,7 @@ def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:
     if not content:
         return {"status": "error", "error": "content is required"}
     try:
-        from apps.api.jarvis_api.services.agent_runtime import send_message_to_agent
+        from core.services.agent_runtime import send_message_to_agent
         result = send_message_to_agent(agent_id=agent_id, content=content, auto_execute=True)
         messages = result.get("messages") or []
         last_reply = ""
@@ -3606,7 +3606,7 @@ def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_list_agents(args: dict[str, Any]) -> dict[str, Any]:
     status_filter = str(args.get("status_filter") or "").strip() or None
     try:
-        from apps.api.jarvis_api.services.agent_runtime import build_agent_runtime_surface
+        from core.services.agent_runtime import build_agent_runtime_surface
         surface = build_agent_runtime_surface(limit=20)
         agents = surface.get("agents") or []
         if status_filter:
@@ -3636,7 +3636,7 @@ def _exec_relay_to_agent(args: dict[str, Any]) -> dict[str, Any]:
     if not content:
         return {"status": "error", "error": "content is required"}
     try:
-        from apps.api.jarvis_api.services.agent_runtime import send_message_to_agent
+        from core.services.agent_runtime import send_message_to_agent
         result = send_message_to_agent(
             agent_id=to_agent_id,
             content=f"[{from_label}]\n{content}",
@@ -3665,7 +3665,7 @@ def _exec_cancel_agent(args: dict[str, Any]) -> dict[str, Any]:
     if not agent_id:
         return {"status": "error", "error": "agent_id is required"}
     try:
-        from apps.api.jarvis_api.services.agent_runtime import cancel_agent
+        from core.services.agent_runtime import cancel_agent
         result = cancel_agent(agent_id, note=note)
         return {"status": "ok", "agent_id": agent_id, "result": result}
     except Exception as exc:
@@ -3675,12 +3675,12 @@ def _exec_cancel_agent(args: dict[str, Any]) -> dict[str, Any]:
 # ── Self-tools handlers ────────────────────────────────────────────────
 
 def _exec_daemon_status(_args: dict[str, Any]) -> dict[str, Any]:
-    from apps.api.jarvis_api.services.daemon_manager import get_all_daemon_states
+    from core.services.daemon_manager import get_all_daemon_states
     return {"daemons": get_all_daemon_states()}
 
 
 def _exec_control_daemon(args: dict[str, Any]) -> dict[str, Any]:
-    from apps.api.jarvis_api.services.daemon_manager import control_daemon, get_daemon_names
+    from core.services.daemon_manager import control_daemon, get_daemon_names
     name = str(args.get("name", ""))
     action = str(args.get("action", ""))
     interval_minutes = args.get("interval_minutes")
@@ -3694,12 +3694,12 @@ def _exec_control_daemon(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_list_signal_surfaces(_args: dict[str, Any]) -> dict[str, Any]:
-    from apps.api.jarvis_api.services.signal_surface_router import list_all_surfaces
+    from core.services.signal_surface_router import list_all_surfaces
     return {"surfaces": list_all_surfaces()}
 
 
 def _exec_read_signal_surface(args: dict[str, Any]) -> dict[str, Any]:
-    from apps.api.jarvis_api.services.signal_surface_router import read_surface
+    from core.services.signal_surface_router import read_surface
     name = str(args.get("name", ""))
     return read_surface(name)
 
@@ -3773,8 +3773,8 @@ def _exec_recall_council_conclusions(args: dict[str, Any]) -> dict[str, Any]:
     topic = str(args.get("topic") or "").strip()
     if not topic:
         return {"error": "topic is required", "entries": []}
-    from apps.api.jarvis_api.services.council_memory_service import read_all_entries
-    from apps.api.jarvis_api.services.council_memory_daemon import (
+    from core.services.council_memory_service import read_all_entries
+    from core.services.council_memory_daemon import (
         _call_similarity_llm,
         _parse_indices,
     )
@@ -3918,7 +3918,7 @@ def _exec_compact_context_session(session_id: str | None) -> Any:
     if not target_session:
         # Fall back to most recently updated session
         try:
-            from apps.api.jarvis_api.services.chat_sessions import list_chat_sessions
+            from core.services.chat_sessions import list_chat_sessions
             sessions = list_chat_sessions()
             if sessions:
                 target_session = str(sessions[0].get("session_id") or "")

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from core.runtime import heartbeat_triggers
-from apps.api.jarvis_api.services import heartbeat_runtime
+from core.services import heartbeat_runtime
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ def test_propose_posts_when_trigger_present(workspace: Path, monkeypatch) -> Non
     def fake_get(sid):
         return {"id": sid}
 
-    import apps.api.jarvis_api.services.chat_sessions as cs
+    import core.services.chat_sessions as cs
     monkeypatch.setattr(cs, "append_chat_message", fake_append)
     monkeypatch.setattr(cs, "list_chat_sessions", fake_list)
     monkeypatch.setattr(cs, "get_chat_session", fake_get)
@@ -88,7 +88,7 @@ def test_ping_posts_when_trigger_present(workspace: Path, monkeypatch) -> None:
     def fake_append(*, session_id, role, content):
         return {"id": "msg-2"}
 
-    import apps.api.jarvis_api.services.chat_sessions as cs
+    import core.services.chat_sessions as cs
     monkeypatch.setattr(cs, "append_chat_message", fake_append)
     monkeypatch.setattr(cs, "list_chat_sessions", lambda: [{"id": "sess-1"}])
     monkeypatch.setattr(cs, "get_chat_session", lambda sid: {"id": sid})

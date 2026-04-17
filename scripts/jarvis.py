@@ -11,13 +11,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from apps.api.jarvis_api.services.visible_model import visible_execution_readiness
-from apps.api.jarvis_api.services.non_visible_lane_execution import (
+from core.services.visible_model import visible_execution_readiness
+from core.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     coding_lane_execution_truth,
     local_lane_execution_truth,
 )
-from apps.api.jarvis_api.services.visible_runs import (
+from core.services.visible_runs import (
     cancel_visible_run,
     get_active_visible_run,
     get_last_visible_capability_use,
@@ -319,7 +319,7 @@ def cmd_discord_setup(_: argparse.Namespace) -> None:
     ensure_runtime_dirs()
     init_db()
 
-    from apps.api.jarvis_api.services.discord_config import (
+    from core.services.discord_config import (
         load_discord_config,
         save_discord_config,
     )
@@ -398,7 +398,7 @@ def cmd_discord_setup(_: argparse.Namespace) -> None:
 def cmd_discord_status(_: argparse.Namespace) -> None:
     """Show Discord gateway config and connection status."""
     ensure_runtime_dirs()
-    from apps.api.jarvis_api.services.discord_config import is_discord_configured, load_discord_config
+    from core.services.discord_config import is_discord_configured, load_discord_config
 
     if not is_discord_configured():
         print("Discord is not configured. Run: python scripts/jarvis.py discord-setup")

@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def test_decision_engine_prefers_live_open_loop(isolated_runtime) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeDecisionInput,
         decide_next_action,
     )
@@ -39,7 +39,7 @@ def test_decision_engine_prefers_live_open_loop(isolated_runtime) -> None:
 def test_decision_engine_prefers_repo_inspection_for_repo_focused_open_loop(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeDecisionInput,
         decide_next_action,
     )
@@ -74,7 +74,7 @@ def test_decision_engine_prefers_repo_inspection_for_repo_focused_open_loop(
 def test_decision_engine_penalizes_recent_blocked_repo_inspection(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeDecisionInput,
         decide_next_action,
     )
@@ -121,7 +121,7 @@ def test_decision_engine_penalizes_recent_blocked_repo_inspection(
 def test_decision_engine_learns_from_no_change_repo_outcomes(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeDecisionInput,
         decide_next_action,
     )
@@ -176,7 +176,7 @@ def test_decision_engine_learns_from_no_change_repo_outcomes(
 def test_decision_engine_boosts_follow_open_loop_from_note_synergy(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeDecisionInput,
         decide_next_action,
     )
@@ -219,7 +219,7 @@ def test_decision_engine_boosts_follow_open_loop_from_note_synergy(
 def test_decision_engine_uses_repo_change_signal_to_boost_follow_open_loop(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeActionCandidate,
         RuntimeDecisionInput,
         _apply_feedback,
@@ -262,7 +262,7 @@ def test_decision_engine_uses_repo_change_signal_to_boost_follow_open_loop(
 def test_decision_engine_dampens_internal_note_after_task_and_note_feedback(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeActionCandidate,
         RuntimeDecisionInput,
         _apply_feedback,
@@ -303,7 +303,7 @@ def test_decision_engine_dampens_internal_note_after_task_and_note_feedback(
 def test_decision_engine_dampens_similar_actions_from_persistent_family_failures(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeActionCandidate,
         RuntimeDecisionInput,
         _apply_feedback,
@@ -344,7 +344,7 @@ def test_decision_engine_dampens_similar_actions_from_persistent_family_failures
 def test_decision_engine_prefers_domain_specific_learning_over_broad_family_penalty(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_decision_engine import (
+    from core.services.runtime_decision_engine import (
         RuntimeActionCandidate,
         RuntimeDecisionInput,
         _apply_feedback,
@@ -407,10 +407,10 @@ def test_decision_engine_prefers_domain_specific_learning_over_broad_family_pena
 def test_operational_memory_summarizes_recent_executive_feedback(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_action_outcome_tracking import (
+    from core.services.runtime_action_outcome_tracking import (
         record_runtime_action_outcome,
     )
-    from apps.api.jarvis_api.services.runtime_operational_memory import (
+    from core.services.runtime_operational_memory import (
         build_operational_memory_snapshot,
     )
 
@@ -444,7 +444,7 @@ def test_operational_memory_summarizes_recent_executive_feedback(
 def test_operational_memory_applies_time_decay_to_old_feedback(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_operational_memory import (
+    from core.services.runtime_operational_memory import (
         summarize_executive_feedback,
     )
 
@@ -474,7 +474,7 @@ def test_operational_memory_applies_time_decay_to_old_feedback(
 def test_operational_memory_summarizes_semantic_feedback_from_side_effects(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_operational_memory import (
+    from core.services.runtime_operational_memory import (
         summarize_semantic_feedback,
     )
 
@@ -512,10 +512,10 @@ def test_operational_memory_summarizes_semantic_feedback_from_side_effects(
 def test_operational_memory_reads_persisted_runtime_learning_signals(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_action_outcome_tracking import (
+    from core.services.runtime_action_outcome_tracking import (
         record_runtime_action_outcome,
     )
-    from apps.api.jarvis_api.services.runtime_operational_memory import (
+    from core.services.runtime_operational_memory import (
         build_operational_memory_snapshot,
     )
 
@@ -545,10 +545,10 @@ def test_operational_memory_reads_persisted_runtime_learning_signals(
 def test_operational_memory_summarizes_domain_specific_learning_signals(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_action_outcome_tracking import (
+    from core.services.runtime_action_outcome_tracking import (
         record_runtime_action_outcome,
     )
-    from apps.api.jarvis_api.services.runtime_operational_memory import (
+    from core.services.runtime_operational_memory import (
         build_operational_memory_snapshot,
     )
 
@@ -581,7 +581,7 @@ def test_operational_memory_detects_note_loop_synergy(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    import apps.api.jarvis_api.services.runtime_operational_memory as operational_memory
+    import core.services.runtime_operational_memory as operational_memory
 
     monkeypatch.setattr(
         operational_memory,
@@ -662,16 +662,16 @@ def test_executor_and_outcome_tracking_persist_visible_proposal(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_action_executor import (
+    from core.services.runtime_action_executor import (
         execute_runtime_action,
     )
-    from apps.api.jarvis_api.services.runtime_action_outcome_tracking import (
+    from core.services.runtime_action_outcome_tracking import (
         record_runtime_action_outcome,
         recent_runtime_action_outcomes,
     )
 
     monkeypatch.setattr(
-        "apps.api.jarvis_api.services.runtime_action_executor.send_session_notification",
+        "core.services.runtime_action_executor.send_session_notification",
         lambda content, source="runtime-proposal": {
             "status": "ok",
             "session_id": "chat-1",
@@ -707,7 +707,7 @@ def test_executor_and_outcome_tracking_persist_visible_proposal(
 
 
 def test_executor_persists_internal_work_note(isolated_runtime) -> None:
-    from apps.api.jarvis_api.services.runtime_action_executor import (
+    from core.services.runtime_action_executor import (
         execute_runtime_action,
     )
     from core.runtime.db import recent_visible_work_notes
@@ -728,12 +728,12 @@ def test_executor_uses_repo_capability_and_bounded_surface(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    from apps.api.jarvis_api.services.runtime_action_executor import (
+    from core.services.runtime_action_executor import (
         execute_runtime_action,
     )
 
     monkeypatch.setattr(
-        "apps.api.jarvis_api.services.runtime_action_executor.invoke_workspace_capability",
+        "core.services.runtime_action_executor.invoke_workspace_capability",
         lambda capability_id, **kwargs: {
             "status": "executed",
             "detail": "ok",
@@ -741,11 +741,11 @@ def test_executor_uses_repo_capability_and_bounded_surface(
         },
     )
     monkeypatch.setattr(
-        "apps.api.jarvis_api.services.runtime_action_executor.build_self_system_code_awareness_surface",
+        "core.services.runtime_action_executor.build_self_system_code_awareness_surface",
         lambda: {"host_context": {"repo_root": "/media/projects/jarvis-v2", "git_present": True}},
     )
     monkeypatch.setattr(
-        "apps.api.jarvis_api.services.runtime_action_executor.build_bounded_repo_tool_execution_surface",
+        "core.services.runtime_action_executor.build_bounded_repo_tool_execution_surface",
         lambda intent_surface, awareness_surface=None: {
             "execution_summary": "Repo status on main: repo=dirty, changes=modified, upstream=in-sync.",
             "execution_state": "read-only-completed",
@@ -753,7 +753,7 @@ def test_executor_uses_repo_capability_and_bounded_surface(
         },
     )
     monkeypatch.setattr(
-        "apps.api.jarvis_api.services.runtime_action_executor.load_workspace_capabilities",
+        "core.services.runtime_action_executor.load_workspace_capabilities",
         lambda name="default": {"callable_capability_ids": ["tool:run-non-destructive-command"]},
     )
 
@@ -769,12 +769,12 @@ def test_executor_uses_repo_capability_and_bounded_surface(
 
 
 def test_executor_turns_open_loop_into_runtime_task(isolated_runtime, monkeypatch) -> None:
-    from apps.api.jarvis_api.services.runtime_action_executor import (
+    from core.services.runtime_action_executor import (
         execute_runtime_action,
     )
 
     monkeypatch.setattr(
-        "apps.api.jarvis_api.services.runtime_action_executor.build_runtime_open_loop_closure_proposal_surface",
+        "core.services.runtime_action_executor.build_runtime_open_loop_closure_proposal_surface",
         lambda limit=8: {
             "items": [
                 {

@@ -3,11 +3,11 @@ from __future__ import annotations
 import argparse
 import json
 
-from apps.api.jarvis_api.services.non_visible_lane_execution import (
+from core.services.non_visible_lane_execution import (
     cheap_lane_execution_truth,
     local_lane_execution_truth,
 )
-from apps.api.jarvis_api.services.cheap_provider_runtime import (
+from core.services.cheap_provider_runtime import (
     CheapProviderError,
     list_provider_models,
     provider_runtime_defaults,

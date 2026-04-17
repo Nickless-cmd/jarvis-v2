@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import apps.api.jarvis_api.services.internal_cadence as cadence_mod
-from apps.api.jarvis_api.services.internal_cadence import (
+import core.services.internal_cadence as cadence_mod
+from core.services.internal_cadence import (
     ProducerSpec,
     get_cadence_state,
     register_producer,

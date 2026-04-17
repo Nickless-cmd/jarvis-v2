@@ -55,7 +55,7 @@ def test_get_experiential_memory_candidates_ordering(isolated_runtime) -> None:
 
 def test_score_memories_returns_empty_on_no_candidates() -> None:
     import importlib
-    import apps.api.jarvis_api.services.experiential_memory as em
+    import core.services.experiential_memory as em
     importlib.reload(em)
     result = em.score_memories_by_relevance(
         candidates=[],
@@ -67,7 +67,7 @@ def test_score_memories_returns_empty_on_no_candidates() -> None:
 
 def test_score_memories_fallback_on_llm_failure(monkeypatch) -> None:
     import importlib
-    import apps.api.jarvis_api.services.experiential_memory as em
+    import core.services.experiential_memory as em
     importlib.reload(em)
 
     def _raise(*a, **kw):
@@ -89,7 +89,7 @@ def test_score_memories_fallback_on_llm_failure(monkeypatch) -> None:
 
 def test_score_memories_parses_llm_response(monkeypatch) -> None:
     import importlib
-    import apps.api.jarvis_api.services.experiential_memory as em
+    import core.services.experiential_memory as em
     importlib.reload(em)
 
     llm_response = '{"mem-1": 0.85, "mem-2": 0.3}'
@@ -116,7 +116,7 @@ def test_score_memories_parses_llm_response(monkeypatch) -> None:
 def _fresh_ar():
     """Return freshly reloaded associative_recall module with empty state."""
     import importlib
-    import apps.api.jarvis_api.services.associative_recall as ar
+    import core.services.associative_recall as ar
     importlib.reload(ar)
     return ar
 
@@ -156,7 +156,7 @@ def test_build_recall_prompt_section_formats_correctly() -> None:
 
 def test_apply_weak_recall_to_emotions_triggers_concept() -> None:
     import importlib
-    import apps.api.jarvis_api.services.emotion_concepts as ec_mod
+    import core.services.emotion_concepts as ec_mod
     importlib.reload(ec_mod)
     ar = _fresh_ar()
 
@@ -222,7 +222,7 @@ def test_topic_multiplier_resets_after_ten_messages() -> None:
 def test_cognitive_state_includes_recall_section(isolated_runtime) -> None:
     """When active memories exist, cognitive state includes them."""
     import importlib
-    import apps.api.jarvis_api.services.associative_recall as ar_mod
+    import core.services.associative_recall as ar_mod
     importlib.reload(ar_mod)
 
     ar_mod._active_memories["mem-test"] = {
@@ -232,7 +232,7 @@ def test_cognitive_state_includes_recall_section(isolated_runtime) -> None:
         "score": 0.88,
     }
 
-    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+    import core.services.cognitive_state_assembly as csa
     importlib.reload(csa)
 
     result = csa.build_cognitive_state_for_prompt(compact=False)

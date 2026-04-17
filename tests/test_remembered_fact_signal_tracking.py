@@ -31,7 +31,7 @@ def _insert_remembered_fact_signal(db, *, status: str, signal_type: str, canonic
 def test_remembered_fact_surface_stays_empty_without_relevant_grounding(isolated_runtime) -> None:
     tracking = isolated_runtime.remembered_fact_signal_tracking
     chat_sessions = __import__(
-        "apps.api.jarvis_api.services.chat_sessions",
+        "core.services.chat_sessions",
         fromlist=["create_chat_session", "append_chat_message"],
     )
 
@@ -62,7 +62,7 @@ def test_remembered_fact_surface_forms_small_bounded_signals_from_recent_interac
 ) -> None:
     tracking = isolated_runtime.remembered_fact_signal_tracking
     chat_sessions = __import__(
-        "apps.api.jarvis_api.services.chat_sessions",
+        "core.services.chat_sessions",
         fromlist=["create_chat_session", "append_chat_message"],
     )
 
@@ -108,7 +108,7 @@ def test_remembered_fact_surface_recognizes_explicit_repo_path_context(
 ) -> None:
     tracking = isolated_runtime.remembered_fact_signal_tracking
     chat_sessions = __import__(
-        "apps.api.jarvis_api.services.chat_sessions",
+        "core.services.chat_sessions",
         fromlist=["create_chat_session", "append_chat_message"],
     )
 

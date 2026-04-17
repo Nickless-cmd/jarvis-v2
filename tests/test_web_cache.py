@@ -380,7 +380,7 @@ class TestHeartbeatCleanupAction:
         import json
         from pathlib import Path
 
-        from apps.api.jarvis_api.services.heartbeat_runtime import (
+        from core.services.heartbeat_runtime import (
             _execute_heartbeat_internal_action,
         )
 

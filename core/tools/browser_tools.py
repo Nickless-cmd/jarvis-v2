@@ -32,7 +32,7 @@ _MAX_READ_CHARS = 24_000
 
 def _update_status(status: str, *, url: str = "", title: str = "") -> None:
     try:
-        from apps.api.jarvis_api.services.runtime_browser_body import set_browser_status
+        from core.services.runtime_browser_body import set_browser_status
         set_browser_status(status, url=url, title=title)
     except Exception:
         pass

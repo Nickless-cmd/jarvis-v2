@@ -8,7 +8,7 @@ import pytest
 
 class TestResponseCacheHit:
     def test_second_call_returns_cached(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.daemon_llm as mod
+        import core.services.daemon_llm as mod
 
         mod._response_cache.clear()
         call_count = 0
@@ -19,7 +19,7 @@ class TestResponseCacheHit:
             return {"text": "LLM result", "provider": "groq"}
 
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.non_visible_lane_execution.execute_cheap_lane",
+            "core.services.non_visible_lane_execution.execute_cheap_lane",
             fake_cheap_lane,
         )
 
@@ -30,7 +30,7 @@ class TestResponseCacheHit:
         assert call_count == 1  # only one LLM call
 
     def test_different_prompt_is_cache_miss(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.daemon_llm as mod
+        import core.services.daemon_llm as mod
 
         mod._response_cache.clear()
         call_count = 0
@@ -41,7 +41,7 @@ class TestResponseCacheHit:
             return {"text": f"Result {call_count}", "provider": "groq"}
 
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.non_visible_lane_execution.execute_cheap_lane",
+            "core.services.non_visible_lane_execution.execute_cheap_lane",
             fake_cheap_lane,
         )
 
@@ -54,7 +54,7 @@ class TestResponseCacheHit:
 
 class TestResponseCacheTTL:
     def test_expired_entry_is_cache_miss(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.daemon_llm as mod
+        import core.services.daemon_llm as mod
 
         mod._response_cache.clear()
         call_count = 0
@@ -65,7 +65,7 @@ class TestResponseCacheTTL:
             return {"text": f"Result {call_count}", "provider": "groq"}
 
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.non_visible_lane_execution.execute_cheap_lane",
+            "core.services.non_visible_lane_execution.execute_cheap_lane",
             fake_cheap_lane,
         )
 
@@ -82,7 +82,7 @@ class TestResponseCacheTTL:
         assert call_count == 2
 
     def test_ttl_varies_by_daemon_name(self) -> None:
-        from apps.api.jarvis_api.services.daemon_llm import _get_cache_ttl
+        from core.services.daemon_llm import _get_cache_ttl
 
         assert _get_cache_ttl("somatic") == 90
         assert _get_cache_ttl("thought_stream") == 90
@@ -94,7 +94,7 @@ class TestResponseCacheTTL:
 
 class TestResponseCacheRules:
     def test_empty_response_not_cached(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.daemon_llm as mod
+        import core.services.daemon_llm as mod
 
         mod._response_cache.clear()
 
@@ -105,11 +105,11 @@ class TestResponseCacheRules:
             return {"text": ""}
 
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.non_visible_lane_execution.execute_cheap_lane",
+            "core.services.non_visible_lane_execution.execute_cheap_lane",
             fake_cheap_lane,
         )
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.heartbeat_runtime._execute_heartbeat_model",
+            "core.services.heartbeat_runtime._execute_heartbeat_model",
             fake_heartbeat_model,
         )
 
@@ -117,7 +117,7 @@ class TestResponseCacheRules:
         assert len(mod._response_cache) == 0
 
     def test_no_cache_when_daemon_name_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.daemon_llm as mod
+        import core.services.daemon_llm as mod
 
         mod._response_cache.clear()
 
@@ -125,7 +125,7 @@ class TestResponseCacheRules:
             return {"text": "Result", "provider": "groq"}
 
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.non_visible_lane_execution.execute_cheap_lane",
+            "core.services.non_visible_lane_execution.execute_cheap_lane",
             fake_cheap_lane,
         )
 
@@ -133,7 +133,7 @@ class TestResponseCacheRules:
         assert len(mod._response_cache) == 0
 
     def test_no_cache_for_session_summary(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.daemon_llm as mod
+        import core.services.daemon_llm as mod
 
         mod._response_cache.clear()
 
@@ -141,7 +141,7 @@ class TestResponseCacheRules:
             return {"text": "Summary text", "provider": "groq"}
 
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.non_visible_lane_execution.execute_cheap_lane",
+            "core.services.non_visible_lane_execution.execute_cheap_lane",
             fake_cheap_lane,
         )
 
@@ -151,7 +151,7 @@ class TestResponseCacheRules:
 
 class TestCacheHitLogging:
     def test_cache_hit_logs_with_provider_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        import apps.api.jarvis_api.services.daemon_llm as mod
+        import core.services.daemon_llm as mod
 
         mod._response_cache.clear()
         logged: list[dict] = []
@@ -163,7 +163,7 @@ class TestCacheHitLogging:
             logged.append(dict(kwargs))
 
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.non_visible_lane_execution.execute_cheap_lane",
+            "core.services.non_visible_lane_execution.execute_cheap_lane",
             fake_cheap_lane,
         )
         monkeypatch.setattr(

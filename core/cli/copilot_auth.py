@@ -10,7 +10,7 @@ from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 from uuid import uuid4
 
-from apps.api.jarvis_api.services.non_visible_lane_execution import (
+from core.services.non_visible_lane_execution import (
     coding_lane_execution_truth,
 )
 from core.auth.copilot_oauth import get_copilot_oauth_truth

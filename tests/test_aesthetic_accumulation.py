@@ -8,7 +8,7 @@ import pytest
 
 class TestAccumulateFromDaemon:
     def test_detects_and_stores_motifs(self) -> None:
-        from apps.api.jarvis_api.services import aesthetic_sense
+        from core.services import aesthetic_sense
 
         mock_insert = MagicMock()
         with patch("core.runtime.db.aesthetic_motif_log_insert", mock_insert):
@@ -24,8 +24,8 @@ class TestAccumulateFromDaemon:
         assert call_kwargs["source"] == "somatic"
 
     def test_updates_taste_daemon_accumulated_motifs(self) -> None:
-        import apps.api.jarvis_api.services.aesthetic_taste_daemon as atd
-        from apps.api.jarvis_api.services import aesthetic_sense
+        import core.services.aesthetic_taste_daemon as atd
+        from core.services import aesthetic_sense
 
         atd._accumulated_motifs = set()
         mock_insert = MagicMock()
@@ -38,7 +38,7 @@ class TestAccumulateFromDaemon:
         assert "craft" in atd._accumulated_motifs
 
     def test_returns_empty_for_no_motifs(self) -> None:
-        from apps.api.jarvis_api.services import aesthetic_sense
+        from core.services import aesthetic_sense
 
         mock_insert = MagicMock()
         with patch("core.runtime.db.aesthetic_motif_log_insert", mock_insert):
@@ -51,7 +51,7 @@ class TestAccumulateFromDaemon:
         mock_insert.assert_not_called()
 
     def test_no_db_write_on_empty_signals(self) -> None:
-        from apps.api.jarvis_api.services import aesthetic_sense
+        from core.services import aesthetic_sense
 
         mock_insert = MagicMock()
         with patch("core.runtime.db.aesthetic_motif_log_insert", mock_insert):

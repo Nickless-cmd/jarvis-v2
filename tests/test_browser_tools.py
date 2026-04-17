@@ -61,7 +61,7 @@ def test_get_all_pages_returns_empty_when_no_session():
 
 def test_set_browser_status_updates_body():
     """set_browser_status should call ensure + update without raising."""
-    import apps.api.jarvis_api.services.runtime_browser_body as rbb
+    import core.services.runtime_browser_body as rbb
 
     fake_body = {
         "body_id": "test-body-1", "status": "idle", "last_url": "",

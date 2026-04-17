@@ -113,7 +113,7 @@ def test_refresh_memory_context_runs_scan_and_safe_apply(
 
 
 def test_initiative_queue_retries_blocked_attempts(isolated_runtime) -> None:
-    import apps.api.jarvis_api.services.initiative_queue as initiative_queue
+    import core.services.initiative_queue as initiative_queue
 
     initiative_id = initiative_queue.push_initiative(
         focus="Revisit the current repo thread",
@@ -143,7 +143,7 @@ def test_initiative_queue_retries_blocked_attempts(isolated_runtime) -> None:
 
 
 def test_initiative_queue_persists_across_module_reload(isolated_runtime) -> None:
-    import apps.api.jarvis_api.services.initiative_queue as initiative_queue
+    import core.services.initiative_queue as initiative_queue
 
     initiative_id = initiative_queue.push_initiative(
         focus="Persist this initiative across runtime reload",
@@ -163,7 +163,7 @@ def test_initiative_queue_persists_across_module_reload(isolated_runtime) -> Non
 
 def test_act_on_initiative_materializes_runtime_work(isolated_runtime) -> None:
     heartbeat_runtime = isolated_runtime.heartbeat_runtime
-    import apps.api.jarvis_api.services.initiative_queue as initiative_queue
+    import core.services.initiative_queue as initiative_queue
 
     initiative_id = initiative_queue.push_initiative(
         focus="Inspect the current repo thread",
@@ -202,7 +202,7 @@ def test_phase1_heartbeat_prefers_pending_initiative_when_execute_allowed(
 
     monkeypatch.setitem(
         sys.modules,
-        "apps.api.jarvis_api.services.initiative_queue",
+        "core.services.initiative_queue",
         type(
             "InitiativeQueueStub",
             (),
@@ -397,7 +397,7 @@ def test_propose_decision_delivers_message_to_webchat_when_available(
 ) -> None:
     heartbeat_runtime = isolated_runtime.heartbeat_runtime
     chat_sessions = __import__(
-        "apps.api.jarvis_api.services.chat_sessions",
+        "core.services.chat_sessions",
         fromlist=["create_chat_session", "get_chat_session"],
     )
     session = chat_sessions.create_chat_session(title="Heartbeat bridge")
@@ -578,7 +578,7 @@ def test_manage_runtime_work_orchestrates_hooks_tasks_flows_and_browser_body(
 
     monkeypatch.setitem(
         sys.modules,
-        "apps.api.jarvis_api.services.runtime_hooks",
+        "core.services.runtime_hooks",
         type(
             "RuntimeHooksStub",
             (),
@@ -587,7 +587,7 @@ def test_manage_runtime_work_orchestrates_hooks_tasks_flows_and_browser_body(
     )
     monkeypatch.setitem(
         sys.modules,
-        "apps.api.jarvis_api.services.runtime_tasks",
+        "core.services.runtime_tasks",
         type(
             "RuntimeTasksStub",
             (),
@@ -604,7 +604,7 @@ def test_manage_runtime_work_orchestrates_hooks_tasks_flows_and_browser_body(
     )
     monkeypatch.setitem(
         sys.modules,
-        "apps.api.jarvis_api.services.runtime_flows",
+        "core.services.runtime_flows",
         type(
             "RuntimeFlowsStub",
             (),
@@ -625,7 +625,7 @@ def test_manage_runtime_work_orchestrates_hooks_tasks_flows_and_browser_body(
     )
     monkeypatch.setitem(
         sys.modules,
-        "apps.api.jarvis_api.services.runtime_browser_body",
+        "core.services.runtime_browser_body",
         type(
             "RuntimeBrowserBodyStub",
             (),

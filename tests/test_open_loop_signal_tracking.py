@@ -593,7 +593,7 @@ def test_open_loop_surface_and_mc_shapes_remain_bounded(isolated_runtime) -> Non
 def test_open_loop_creation_readiness_none_when_no_signals(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+    from core.services.open_loop_signal_tracking import (
         get_open_loop_creation_readiness,
     )
 
@@ -611,7 +611,7 @@ def test_open_loop_creation_readiness_none_when_no_signals(
 def test_open_loop_creation_readiness_surface_included(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+    from core.services.open_loop_signal_tracking import (
         build_runtime_open_loop_signal_surface,
     )
 
@@ -628,7 +628,7 @@ def test_open_loop_creation_readiness_surface_included(
 def test_open_loop_materialization_only_at_ready_threshold(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+    from core.services.open_loop_signal_tracking import (
         _materialize_from_creation_readiness,
     )
 
@@ -669,7 +669,7 @@ def test_open_loop_materialization_only_at_ready_threshold(
 def test_open_loop_materialization_guards_against_duplicates(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+    from core.services.open_loop_signal_tracking import (
         _materialize_from_creation_readiness,
     )
 
@@ -699,7 +699,7 @@ def test_open_loop_materialization_guards_against_duplicates(
 def test_open_loop_closure_maturation_candidates(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.open_loop_signal_tracking import (
+    from core.services.open_loop_signal_tracking import (
         _extract_closure_maturation_candidates,
     )
 

@@ -342,7 +342,7 @@ def test_cognitive_architecture_awareness_uses_shared_runtime_builder(
 ) -> None:
     model_mod = isolated_runtime.runtime_self_model
     cognitive_architecture_surface = importlib.import_module(
-        "apps.api.jarvis_api.services.cognitive_architecture_surface"
+        "core.services.cognitive_architecture_surface"
     )
     shared = {
         "systems": [{"system": "body_memory", "active": True, "summary": "warm"}],
@@ -479,7 +479,7 @@ def test_self_model_includes_support_stream_awareness(isolated_runtime) -> None:
 
 def test_support_stream_baseline_when_no_support() -> None:
     """Stream state must be 'baseline' when experiential support is steadying."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_support_stream_awareness
+    from core.services.runtime_self_model import _derive_support_stream_awareness
 
     experiential = {
         "experiential_support": {
@@ -500,7 +500,7 @@ def test_support_stream_baseline_when_no_support() -> None:
 
 def test_support_stream_active_but_not_shaped() -> None:
     """Stream active when support is non-default but inner voice not yet produced."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_support_stream_awareness
+    from core.services.runtime_self_model import _derive_support_stream_awareness
 
     experiential = {
         "experiential_support": {
@@ -522,7 +522,7 @@ def test_support_stream_active_but_not_shaped() -> None:
 
 def test_support_stream_shaped_when_voice_produced() -> None:
     """Stream shaped when support is active AND inner voice was produced."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_support_stream_awareness
+    from core.services.runtime_self_model import _derive_support_stream_awareness
 
     experiential = {
         "experiential_support": {
@@ -583,7 +583,7 @@ def test_self_model_includes_subjective_temporal_feel(isolated_runtime) -> None:
 
 def test_temporal_feel_immediate_when_continuous_stable() -> None:
     """Temporal feel is 'immediate' / 'close' when no gap and state stable."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+    from core.services.runtime_self_model import _derive_subjective_temporal_feel
 
     experiential = {
         "intermittence_translation": {"state": "continuous", "gap_minutes": 0},
@@ -602,7 +602,7 @@ def test_temporal_feel_immediate_when_continuous_stable() -> None:
 
 def test_temporal_feel_returning_after_gap() -> None:
     """Temporal feel is 'returning' / 'resumed' when returned-after-gap."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+    from core.services.runtime_self_model import _derive_subjective_temporal_feel
 
     experiential = {
         "intermittence_translation": {"state": "returned-after-gap", "gap_minutes": 35},
@@ -623,7 +623,7 @@ def test_temporal_feel_returning_after_gap() -> None:
 
 def test_temporal_feel_lingering_elevated_state() -> None:
     """Temporal feel is 'lingering' when elevated state persists without shift."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+    from core.services.runtime_self_model import _derive_subjective_temporal_feel
 
     experiential = {
         "intermittence_translation": {"state": "continuous", "gap_minutes": 2},
@@ -641,7 +641,7 @@ def test_temporal_feel_lingering_elevated_state() -> None:
 
 def test_temporal_feel_stretched_when_lingering_with_gap() -> None:
     """Temporal feel is 'stretched' when lingering AND brief gap present."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+    from core.services.runtime_self_model import _derive_subjective_temporal_feel
 
     experiential = {
         "intermittence_translation": {"state": "brief-gap", "gap_minutes": 12},
@@ -658,7 +658,7 @@ def test_temporal_feel_stretched_when_lingering_with_gap() -> None:
 
 def test_temporal_feel_receding_when_easing() -> None:
     """Temporal feel is 'receding' / 'fading' when continuity state is easing."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+    from core.services.runtime_self_model import _derive_subjective_temporal_feel
 
     experiential = {
         "intermittence_translation": {"state": "continuous", "gap_minutes": 3},
@@ -676,7 +676,7 @@ def test_temporal_feel_receding_when_easing() -> None:
 
 def test_temporal_feel_held_when_support_active() -> None:
     """Felt proximity is 'held' when support posture is active."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+    from core.services.runtime_self_model import _derive_subjective_temporal_feel
 
     experiential = {
         "intermittence_translation": {"state": "continuous", "gap_minutes": 0},
@@ -694,7 +694,7 @@ def test_temporal_feel_held_when_support_active() -> None:
 
 def test_temporal_feel_held_when_inner_voice_created() -> None:
     """Felt proximity is 'held' when inner voice was recently created."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_subjective_temporal_feel
+    from core.services.runtime_self_model import _derive_subjective_temporal_feel
 
     experiential = {
         "intermittence_translation": {"state": "continuous", "gap_minutes": 0},
@@ -763,7 +763,7 @@ def test_self_model_includes_mineness_ownership(isolated_runtime) -> None:
 
 def test_mineness_ambient_when_no_basis() -> None:
     """Ownership stays ambient with empty narrative when nothing is carried."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_mineness_ownership,
     )
 
@@ -797,7 +797,7 @@ def test_mineness_ambient_when_no_basis() -> None:
 
 def test_mineness_held_when_support_shaped_voice() -> None:
     """Ownership becomes 'held' when support/voice holds signals without full carry."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_mineness_ownership,
     )
 
@@ -835,7 +835,7 @@ def test_mineness_held_when_support_shaped_voice() -> None:
 
 def test_mineness_owned_when_brain_carry_plus_signal() -> None:
     """Ownership becomes 'owned' when private brain carries threads."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_mineness_ownership,
     )
 
@@ -871,7 +871,7 @@ def test_mineness_owned_when_brain_carry_plus_signal() -> None:
 
 def test_mineness_returning_owned_when_carry_and_return() -> None:
     """Ownership becomes 'returning-owned' when owned thread returns after gap."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_mineness_ownership,
     )
 
@@ -986,7 +986,7 @@ def test_self_model_includes_flow_state_awareness(isolated_runtime) -> None:
 
 def test_flow_state_clear_when_no_basis() -> None:
     """Flow stays clear with empty narrative when nothing is happening."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_flow_state_awareness,
     )
 
@@ -1021,7 +1021,7 @@ def test_flow_state_clear_when_no_basis() -> None:
 
 def test_flow_state_flowing_when_owned_thread_stable() -> None:
     """A single owned thread in a stable stream produces flowing state."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_flow_state_awareness,
     )
 
@@ -1058,7 +1058,7 @@ def test_flow_state_flowing_when_owned_thread_stable() -> None:
 
 def test_flow_state_absorbed_when_multiple_owned_threads() -> None:
     """Multiple owned threads without pressure produce absorbed state."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_flow_state_awareness,
     )
 
@@ -1094,7 +1094,7 @@ def test_flow_state_absorbed_when_multiple_owned_threads() -> None:
 
 def test_flow_state_gathering_when_held_without_carry() -> None:
     """Held signals without full ownership produce gathering state."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_flow_state_awareness,
     )
 
@@ -1130,7 +1130,7 @@ def test_flow_state_gathering_when_held_without_carry() -> None:
 
 def test_flow_state_gathering_when_returning_owned() -> None:
     """Returning-owned ownership regathers into gathering, not flowing."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_flow_state_awareness,
     )
 
@@ -1169,7 +1169,7 @@ def test_flow_state_gathering_when_returning_owned() -> None:
 
 def test_flow_state_fragmented_when_pressure_breaks_carry() -> None:
     """Narrowing pressure fragments even an owned carry."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_flow_state_awareness,
     )
 
@@ -1204,7 +1204,7 @@ def test_flow_state_fragmented_when_pressure_breaks_carry() -> None:
 
 def test_flow_state_blocked_when_pressure_and_no_carry() -> None:
     """Narrowing pressure with nothing carried produces blocked state."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_flow_state_awareness,
     )
 
@@ -1313,7 +1313,7 @@ def test_self_model_includes_wonder_awareness(isolated_runtime) -> None:
 
 def test_wonder_quiet_when_no_basis() -> None:
     """No signals → wonder_state=quiet with empty narrative."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+    from core.services.runtime_self_model import _derive_wonder_awareness
 
     iv, fs, tf, mn, ss, src, ws = _wonder_inputs()
     wonder = _derive_wonder_awareness(
@@ -1328,7 +1328,7 @@ def test_wonder_quiet_when_no_basis() -> None:
 
 def test_wonder_stirred_when_exploring_voice_alone() -> None:
     """Searching voice without other signals → stirred."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+    from core.services.runtime_self_model import _derive_wonder_awareness
 
     iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
         voice_mode="searching", voice_created=True
@@ -1343,7 +1343,7 @@ def test_wonder_stirred_when_exploring_voice_alone() -> None:
 
 def test_wonder_curious_when_exploring_with_temporal_extension() -> None:
     """Searching voice + lingering temporal → curious."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+    from core.services.runtime_self_model import _derive_wonder_awareness
 
     iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
         voice_mode="searching", voice_created=True, temporal_state="lingering"
@@ -1358,7 +1358,7 @@ def test_wonder_curious_when_exploring_with_temporal_extension() -> None:
 
 def test_wonder_drawn_when_pulled_voice() -> None:
     """Pulled voice mode → drawn with drawn orientation."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+    from core.services.runtime_self_model import _derive_wonder_awareness
 
     iv, fs, tf, mn, ss, src, ws = _wonder_inputs(voice_mode="pulled", voice_created=True)
     wonder = _derive_wonder_awareness(
@@ -1372,7 +1372,7 @@ def test_wonder_drawn_when_pulled_voice() -> None:
 
 def test_wonder_drawn_when_absorbed_and_owned() -> None:
     """Absorbed flow + owned thread → drawn with flow-depth source."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+    from core.services.runtime_self_model import _derive_wonder_awareness
 
     iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
         flow="absorbed",
@@ -1389,7 +1389,7 @@ def test_wonder_drawn_when_absorbed_and_owned() -> None:
 
 def test_wonder_struck_on_convergence() -> None:
     """3+ strong signals (absorbed + personally-salient + temporal-stretch) → wonder-struck."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+    from core.services.runtime_self_model import _derive_wonder_awareness
 
     iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
         flow="absorbed",
@@ -1407,7 +1407,7 @@ def test_wonder_struck_on_convergence() -> None:
 
 def test_wonder_orientation_lingering_with_when_temporal_and_owned() -> None:
     """Temporal extension + personally-salient ownership → lingering-with orientation."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_wonder_awareness
+    from core.services.runtime_self_model import _derive_wonder_awareness
 
     iv, fs, tf, mn, ss, src, ws = _wonder_inputs(
         voice_mode="circling",
@@ -1615,7 +1615,7 @@ def test_self_model_includes_relation_continuity_self_awareness(isolated_runtime
 
 def test_relation_continuity_self_truth_quiet_without_meaningful_basis() -> None:
     """No relational continuity basis should keep the self-truth quiet."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_relation_continuity_self_awareness,
     )
 
@@ -1634,7 +1634,7 @@ def test_relation_continuity_self_truth_quiet_without_meaningful_basis() -> None
 
 def test_relation_continuity_self_truth_carried_when_relation_enters_stream() -> None:
     """Active relation continuity plus owned/absent carry should become self-relevant."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_relation_continuity_self_awareness,
     )
 
@@ -1672,7 +1672,7 @@ def test_relation_continuity_self_truth_carried_when_relation_enters_stream() ->
 
 def test_relation_continuity_self_truth_rejoining_when_return_pattern_is_active() -> None:
     """Return pattern plus relation carry should register as rejoining."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_relation_continuity_self_awareness,
     )
 
@@ -1727,7 +1727,7 @@ def test_relation_continuity_self_prompt_section_none_when_quiet(isolated_runtim
 
 def test_longing_quiet_when_no_basis() -> None:
     """No absence/carry basis keeps longing quiet."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+    from core.services.runtime_self_model import _derive_longing_awareness
 
     tf, mn, ss, iv, src, ls = _longing_inputs()
     longing = _derive_longing_awareness(
@@ -1746,7 +1746,7 @@ def test_longing_quiet_when_no_basis() -> None:
 
 def test_longing_missing_when_absence_carries_open_thread() -> None:
     """Absence plus carried thread should register as missing."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+    from core.services.runtime_self_model import _derive_longing_awareness
 
     tf, mn, ss, iv, src, ls = _longing_inputs(
         ownership_state="held",
@@ -1770,7 +1770,7 @@ def test_longing_missing_when_absence_carries_open_thread() -> None:
 
 def test_longing_yearning_when_owned_thread_persists_in_absence() -> None:
     """Owned carried thread under absence should deepen to yearning."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+    from core.services.runtime_self_model import _derive_longing_awareness
 
     tf, mn, ss, iv, src, ls = _longing_inputs(
         temporal_state="lingering",
@@ -1798,7 +1798,7 @@ def test_longing_yearning_when_owned_thread_persists_in_absence() -> None:
 
 def test_longing_returning_pull_when_thread_returns() -> None:
     """Return signal plus carry should register as returning-pull."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+    from core.services.runtime_self_model import _derive_longing_awareness
 
     tf, mn, ss, iv, src, ls = _longing_inputs(
         temporal_state="returning",
@@ -1827,7 +1827,7 @@ def test_longing_returning_pull_when_thread_returns() -> None:
 
 def test_longing_aching_when_relation_stays_near_under_absence() -> None:
     """Relational continuity under distance can deepen into aching."""
-    from apps.api.jarvis_api.services.runtime_self_model import _derive_longing_awareness
+    from core.services.runtime_self_model import _derive_longing_awareness
 
     tf, mn, ss, iv, src, ls = _longing_inputs(
         temporal_state="stretched",
@@ -2159,7 +2159,7 @@ def test_self_model_includes_dream_identity_carry_awareness(isolated_runtime) ->
 
 def test_dream_identity_carry_quiet_when_no_dream_basis() -> None:
     """Without dream presence or influence, the bridge must stay quiet."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_dream_identity_carry_awareness,
     )
 
@@ -2179,7 +2179,7 @@ def test_dream_identity_carry_quiet_when_no_dream_basis() -> None:
 
 def test_dream_identity_carry_links_when_dream_meets_self_insight() -> None:
     """Dream carry should register as linking when it joins an active self-insight line."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_dream_identity_carry_awareness,
     )
 
@@ -2205,7 +2205,7 @@ def test_dream_identity_carry_links_when_dream_meets_self_insight() -> None:
 
 def test_dream_identity_carry_shapes_when_dream_reinforces_identity_continuity() -> None:
     """Strong dream carry should register as shaping when identity continuity already holds."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_dream_identity_carry_awareness,
     )
 
@@ -2487,7 +2487,7 @@ def test_self_model_includes_self_insight_awareness(isolated_runtime) -> None:
 
 def test_self_insight_quiet_when_no_basis() -> None:
     """No insight-bearing seams should keep self-insight quiet."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_self_insight_awareness,
     )
 
@@ -2507,7 +2507,7 @@ def test_self_insight_quiet_when_no_basis() -> None:
 
 def test_self_insight_noticing_pattern_when_carried_across_layers() -> None:
     """A recurring carried pattern across multiple layers should register as noticing-pattern."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_self_insight_awareness,
     )
 
@@ -2531,7 +2531,7 @@ def test_self_insight_noticing_pattern_when_carried_across_layers() -> None:
 
 def test_self_insight_clarifying_when_chronicle_brief_active() -> None:
     """An active chronicle brief should register as clarifying."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_self_insight_awareness,
     )
 
@@ -2554,7 +2554,7 @@ def test_self_insight_clarifying_when_chronicle_brief_active() -> None:
 
 def test_self_insight_stabilizing_when_narrative_holds_strong() -> None:
     """A strong-weight stabilizing narrative line should register as stabilizing."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_self_insight_awareness,
     )
 
@@ -2579,7 +2579,7 @@ def test_self_insight_stabilizing_when_narrative_holds_strong() -> None:
 
 def test_self_insight_shifting_when_narrative_opens() -> None:
     """An opening narrative direction should register as shifting / self-forming."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_self_insight_awareness,
     )
 
@@ -2704,7 +2704,7 @@ def test_self_model_includes_narrative_identity_continuity(isolated_runtime) -> 
 
 def test_identity_continuity_quiet_when_no_basis() -> None:
     """No insight and no carry signals should keep identity continuity quiet."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_narrative_identity_continuity,
     )
 
@@ -2725,7 +2725,7 @@ def test_identity_continuity_quiet_when_no_basis() -> None:
 
 def test_identity_continuity_emerging_when_single_bridge() -> None:
     """A single self-insight noticing-pattern without cross-layer carry should emerge only."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_narrative_identity_continuity,
     )
 
@@ -2747,7 +2747,7 @@ def test_identity_continuity_emerging_when_single_bridge() -> None:
 
 def test_identity_continuity_cohering_when_cross_layer_carry() -> None:
     """Insight clarifying plus cross-layer carry should cohere into converging."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_narrative_identity_continuity,
     )
 
@@ -2773,7 +2773,7 @@ def test_identity_continuity_cohering_when_cross_layer_carry() -> None:
 
 def test_identity_continuity_stabilizing_when_insight_stabilizing_and_narrative() -> None:
     """Insight stabilizing plus active narrative should promote to identity-shaping."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_narrative_identity_continuity,
     )
 
@@ -2797,7 +2797,7 @@ def test_identity_continuity_stabilizing_when_insight_stabilizing_and_narrative(
 
 def test_identity_continuity_re_forming_when_insight_shifts() -> None:
     """Insight shifting should reshape continuity into re-forming."""
-    from apps.api.jarvis_api.services.runtime_self_model import (
+    from core.services.runtime_self_model import (
         _derive_narrative_identity_continuity,
     )
 
@@ -2843,7 +2843,7 @@ def test_identity_continuity_prompt_line_hidden_when_quiet(isolated_runtime) -> 
 
 def test_absence_awareness_is_structural_runtime_context(monkeypatch) -> None:
     """Absence awareness should expose structural return context, not felt absence."""
-    from apps.api.jarvis_api.services import absence_awareness as absence_mod
+    from core.services import absence_awareness as absence_mod
 
     monkeypatch.setattr(
         absence_mod,
@@ -2878,7 +2878,7 @@ def test_absence_awareness_is_structural_runtime_context(monkeypatch) -> None:
 
 def test_return_brief_is_signal_grounded_without_hardcoded_feeling_prose(monkeypatch) -> None:
     """Return brief should stay neutral and source-led."""
-    from apps.api.jarvis_api.services import absence_awareness as absence_mod
+    from core.services import absence_awareness as absence_mod
 
     monkeypatch.setattr(
         absence_mod,

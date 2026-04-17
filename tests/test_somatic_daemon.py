@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import MagicMock, patch
 
-import apps.api.jarvis_api.services.somatic_daemon as sd
+import core.services.somatic_daemon as sd
 
 
 def _reset():
@@ -87,7 +87,7 @@ def test_llm_prompt_contains_hardware_and_energy():
         "latency_ms": 200.0, "active_requests": 2,
         "energy_level": "lav", "clock_phase": "eftermiddag",
     }
-    with patch("apps.api.jarvis_api.services.daemon_llm.daemon_llm_call", return_value="Tung og langsom."):
+    with patch("core.services.daemon_llm.daemon_llm_call", return_value="Tung og langsom."):
         phrase = sd._generate_phrase(snapshot)
     assert phrase == "Tung og langsom."
 
@@ -99,7 +99,7 @@ def test_private_brain_record_written_on_store():
         "latency_ms": 100.0, "active_requests": 0,
         "energy_level": "medium", "clock_phase": "formiddag",
     }
-    with patch("apps.api.jarvis_api.services.somatic_daemon.insert_private_brain_record") as mock_insert:
+    with patch("core.services.somatic_daemon.insert_private_brain_record") as mock_insert:
         sd._store_phrase("Let og klar.", snapshot)
     mock_insert.assert_called_once()
     call_kwargs = mock_insert.call_args[1]

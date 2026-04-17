@@ -74,7 +74,7 @@ def test_settings_serialise_round_trip():
 # ── Task 3: DB compact marker ─────────────────────────────────────────────
 
 def test_get_compact_marker_returns_none_when_absent(monkeypatch):
-    from apps.api.jarvis_api.services import chat_sessions
+    from core.services import chat_sessions
 
     class _FakeCursor:
         def fetchone(self): return None
@@ -91,7 +91,7 @@ def test_get_compact_marker_returns_none_when_absent(monkeypatch):
 
 
 def test_recent_session_messages_excludes_compact_markers(monkeypatch):
-    from apps.api.jarvis_api.services import chat_sessions
+    from core.services import chat_sessions
 
     all_rows = [
         {"role": "user", "content": "hello", "created_at": "2026-01-01"},
@@ -260,7 +260,7 @@ def test_run_compact_always_keeps_base_messages():
 # ── Task 7: session compact wiring ────────────────────────────────────────
 
 def test_build_transcript_prepends_compact_marker_when_present(monkeypatch):
-    from apps.api.jarvis_api.services import prompt_contract
+    from core.services import prompt_contract
 
     monkeypatch.setattr(
         prompt_contract,
@@ -291,7 +291,7 @@ def test_build_transcript_prepends_compact_marker_when_present(monkeypatch):
 
 
 def test_build_transcript_no_marker_no_prepend(monkeypatch):
-    from apps.api.jarvis_api.services import prompt_contract
+    from core.services import prompt_contract
 
     monkeypatch.setattr(
         prompt_contract,
@@ -321,7 +321,7 @@ def test_build_transcript_no_marker_no_prepend(monkeypatch):
 # ── Task 8: run compact wiring ────────────────────────────────────────────
 
 def test_maybe_compact_agentic_messages_no_compact_below_threshold():
-    from apps.api.jarvis_api.services import visible_runs
+    from core.services import visible_runs
     from core.runtime.settings import RuntimeSettings
 
     settings = RuntimeSettings()
@@ -335,7 +335,7 @@ def test_maybe_compact_agentic_messages_no_compact_below_threshold():
 
 
 def test_maybe_compact_agentic_messages_compacts_above_threshold(monkeypatch):
-    from apps.api.jarvis_api.services import visible_runs
+    from core.services import visible_runs
     from core.runtime.settings import RuntimeSettings
 
     settings = RuntimeSettings()

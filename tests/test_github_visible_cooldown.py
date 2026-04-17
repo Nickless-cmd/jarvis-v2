@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, UTC
 
 
 def test_github_model_match_handles_prefixed_and_alias_forms(isolated_runtime) -> None:
-    from apps.api.jarvis_api.services.visible_model import _github_model_matches_requested
+    from core.services.visible_model import _github_model_matches_requested
 
     assert _github_model_matches_requested(
         requested="gpt-5-mini",
@@ -24,7 +24,7 @@ def test_github_visible_readiness_marks_model_not_available(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    from apps.api.jarvis_api.services import visible_model
+    from core.services import visible_model
     from core.runtime.settings import update_visible_execution_settings
 
     update_visible_execution_settings(
@@ -61,7 +61,7 @@ def test_github_visible_execution_fails_early_when_model_not_available(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    from apps.api.jarvis_api.services import visible_model
+    from core.services import visible_model
     from core.runtime.settings import update_visible_execution_settings
 
     update_visible_execution_settings(
@@ -110,7 +110,7 @@ def test_github_streaming_emits_deltas_for_chat_completions_sse(
     isolated_runtime,
     monkeypatch,
 ) -> None:
-    from apps.api.jarvis_api.services import visible_model
+    from core.services import visible_model
     from core.runtime.settings import update_visible_execution_settings
 
     update_visible_execution_settings(
@@ -175,7 +175,7 @@ def test_github_streaming_emits_deltas_for_chat_completions_sse(
 
 
 def test_github_visible_cooldown_sets_on_429(isolated_runtime) -> None:
-    from apps.api.jarvis_api.services.visible_model import (
+    from core.services.visible_model import (
         _set_github_visible_cooldown,
         _is_github_visible_cooled_down,
         _get_github_visible_cooldown_status,
@@ -199,7 +199,7 @@ def test_github_visible_cooldown_sets_on_429(isolated_runtime) -> None:
 
 def test_github_visible_cooldown_respects_ttl(isolated_runtime) -> None:
     from datetime import timedelta
-    from apps.api.jarvis_api.services.visible_model import (
+    from core.services.visible_model import (
         _set_github_visible_cooldown,
         _is_github_visible_cooled_down,
         _GITHUB_VISIBLE_COOLDOWN_UNTIL,
@@ -216,7 +216,7 @@ def test_github_visible_cooldown_respects_ttl(isolated_runtime) -> None:
 def test_github_visible_cooldown_fails_fast_when_cooled_down(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.visible_model import (
+    from core.services.visible_model import (
         _set_github_visible_cooldown,
         _execute_github_copilot_visible_model,
         VisibleModelRateLimited,
@@ -242,7 +242,7 @@ def test_github_visible_cooldown_fails_fast_when_cooled_down(
 def test_github_visible_execution_readiness_shows_cooldown(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.visible_model import (
+    from core.services.visible_model import (
         visible_execution_readiness,
         _set_github_visible_cooldown,
         _GITHUB_VISIBLE_COOLDOWN_UNTIL,
@@ -278,11 +278,11 @@ def test_github_visible_execution_readiness_shows_cooldown(
 def test_github_visible_cooldown_does_not_affect_non_github_paths(
     isolated_runtime,
 ) -> None:
-    from apps.api.jarvis_api.services.visible_model import (
+    from core.services.visible_model import (
         _set_github_visible_cooldown,
         execute_visible_model,
     )
-    from apps.api.jarvis_api.services.visible_model import VisibleModelRateLimited
+    from core.services.visible_model import VisibleModelRateLimited
 
     profile = "default"
     _set_github_visible_cooldown(profile)

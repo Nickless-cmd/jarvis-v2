@@ -1,7 +1,7 @@
 """Tests for temporal_narrative.py"""
 import pytest
 
-from apps.api.jarvis_api.services.temporal_narrative import (
+from core.services.temporal_narrative import (
     add_beat,
     add_beat_from_affective,
     summarize_current_self,

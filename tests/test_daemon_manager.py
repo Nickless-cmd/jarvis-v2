@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 
 def test_registry_contains_all_daemons():
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     names = daemon_manager.get_daemon_names()
     expected = {
         "somatic", "surprise", "aesthetic_taste", "irony", "thought_stream",
@@ -24,7 +24,7 @@ def test_registry_contains_all_daemons():
 
 
 def test_get_all_daemon_states_returns_correct_fields(tmp_path):
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         states = daemon_manager.get_all_daemon_states()
     assert len(states) == 22
@@ -40,7 +40,7 @@ def test_get_all_daemon_states_returns_correct_fields(tmp_path):
 
 
 def test_enable_disable_persists(tmp_path):
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     state_file = tmp_path / "DAEMON_STATE.json"
     with patch.object(daemon_manager, "_STATE_FILE", state_file):
         daemon_manager.set_daemon_enabled("curiosity", False)
@@ -52,7 +52,7 @@ def test_enable_disable_persists(tmp_path):
 
 
 def test_record_daemon_tick_updates_state(tmp_path):
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         daemon_manager.record_daemon_tick("curiosity", {"generated": True, "curiosity": "why?"})
         states = daemon_manager.get_all_daemon_states()
@@ -64,14 +64,14 @@ def test_record_daemon_tick_updates_state(tmp_path):
 
 def test_unknown_daemon_raises(tmp_path):
     import pytest
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         with pytest.raises(ValueError, match="unknown daemon"):
             daemon_manager.set_daemon_enabled("nonexistent", True)
 
 
 def test_set_interval_persists(tmp_path):
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         daemon_manager.control_daemon("curiosity", "set_interval", interval_minutes=15)
         assert daemon_manager.get_effective_cadence("curiosity") == 15
@@ -81,15 +81,15 @@ def test_set_interval_persists(tmp_path):
 
 def test_set_interval_below_one_raises(tmp_path):
     import pytest
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         with pytest.raises(ValueError, match="interval_minutes must be"):
             daemon_manager.control_daemon("curiosity", "set_interval", interval_minutes=0)
 
 
 def test_restart_clears_state_var(tmp_path):
-    from apps.api.jarvis_api.services import daemon_manager
-    from apps.api.jarvis_api.services import curiosity_daemon
+    from core.services import daemon_manager
+    from core.services import curiosity_daemon
     curiosity_daemon._last_tick_at = datetime.now(UTC)
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         daemon_manager.control_daemon("curiosity", "restart")
@@ -98,7 +98,7 @@ def test_restart_clears_state_var(tmp_path):
 
 def test_unknown_daemon_control_raises(tmp_path):
     import pytest
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         with pytest.raises(ValueError, match="unknown daemon"):
             daemon_manager.control_daemon("ghost_daemon", "enable")
@@ -106,7 +106,7 @@ def test_unknown_daemon_control_raises(tmp_path):
 
 def test_set_interval_requires_minutes_param(tmp_path):
     import pytest
-    from apps.api.jarvis_api.services import daemon_manager
+    from core.services import daemon_manager
     with patch.object(daemon_manager, "_STATE_FILE", tmp_path / "DAEMON_STATE.json"):
         with pytest.raises(ValueError, match="interval_minutes required"):
             daemon_manager.control_daemon("curiosity", "set_interval")

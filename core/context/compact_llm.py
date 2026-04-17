@@ -13,7 +13,7 @@ _FALLBACK_SUMMARY = "[Kontekst komprimeret — detaljer ikke tilgængelige]"
 
 
 def _call_heartbeat_llm_simple(prompt: str, max_tokens: int) -> str:
-    from apps.api.jarvis_api.services.heartbeat_runtime import call_heartbeat_llm_simple
+    from core.services.heartbeat_runtime import call_heartbeat_llm_simple
     return call_heartbeat_llm_simple(prompt, max_tokens=max_tokens)
 
 

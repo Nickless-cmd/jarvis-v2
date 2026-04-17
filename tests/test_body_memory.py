@@ -1,7 +1,7 @@
 """Tests for body_memory.py"""
 
 import pytest
-from apps.api.jarvis_api.services.body_memory import (
+from core.services.body_memory import (
     record_body_snapshot,
     describe_body_memory,
     format_body_for_prompt,

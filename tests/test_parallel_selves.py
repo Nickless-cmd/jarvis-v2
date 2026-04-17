@@ -1,7 +1,7 @@
 """Tests for parallel_selves.py"""
 
 import pytest
-from apps.api.jarvis_api.services.parallel_selves import (
+from core.services.parallel_selves import (
     get_active_self,
     set_active_self,
     describe_self_plural,

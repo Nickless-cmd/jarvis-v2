@@ -38,7 +38,7 @@ def _make_pool(slot_type: str = "motivation", used: bool = False) -> dict:
 
 def test_returns_dict(tmp_path):
     """tick returns a dict (mock LLM + file writes)."""
-    import apps.api.jarvis_api.services.tiktok_research_daemon as mod
+    import core.services.tiktok_research_daemon as mod
 
     # Reset module state
     mod._last_tick_at = None
@@ -50,7 +50,7 @@ def test_returns_dict(tmp_path):
     with (
         patch.object(mod, "_POOL_PATH", pool_file),
         patch(
-            "apps.api.jarvis_api.services.tiktok_research_daemon._generate_concepts_for_type",
+            "core.services.tiktok_research_daemon._generate_concepts_for_type",
             return_value=["A", "B", "C"],
         ),
     ):
@@ -66,7 +66,7 @@ def test_returns_dict(tmp_path):
 
 def test_skips_if_generated_today(tmp_path):
     """Second call on the same day returns skipped."""
-    import apps.api.jarvis_api.services.tiktok_research_daemon as mod
+    import core.services.tiktok_research_daemon as mod
 
     mod._last_tick_at = None
 
@@ -97,7 +97,7 @@ def test_skips_if_generated_today(tmp_path):
 
 def test_generates_concepts_for_all_types(tmp_path):
     """After tick, pool has concepts for all 3 slot types."""
-    import apps.api.jarvis_api.services.tiktok_research_daemon as mod
+    import core.services.tiktok_research_daemon as mod
 
     mod._last_tick_at = None
 
@@ -106,7 +106,7 @@ def test_generates_concepts_for_all_types(tmp_path):
     with (
         patch.object(mod, "_POOL_PATH", pool_file),
         patch(
-            "apps.api.jarvis_api.services.tiktok_research_daemon._generate_concepts_for_type",
+            "core.services.tiktok_research_daemon._generate_concepts_for_type",
             return_value=["A", "B", "C"],
         ),
     ):
@@ -128,7 +128,7 @@ def test_generates_concepts_for_all_types(tmp_path):
 
 def test_pool_file_written(tmp_path):
     """Pool file is written after a successful tick."""
-    import apps.api.jarvis_api.services.tiktok_research_daemon as mod
+    import core.services.tiktok_research_daemon as mod
 
     mod._last_tick_at = None
 
@@ -138,7 +138,7 @@ def test_pool_file_written(tmp_path):
     with (
         patch.object(mod, "_POOL_PATH", pool_file),
         patch(
-            "apps.api.jarvis_api.services.tiktok_research_daemon._generate_concepts_for_type",
+            "core.services.tiktok_research_daemon._generate_concepts_for_type",
             return_value=["X", "Y", "Z"],
         ),
     ):
@@ -157,7 +157,7 @@ def test_pool_file_written(tmp_path):
 
 def test_pool_integration_returns_concept_when_available(tmp_path):
     """_get_concept_from_pool returns (text, hashtags) when pool has unused concept."""
-    import apps.api.jarvis_api.services.tiktok_content_daemon as mod
+    import core.services.tiktok_content_daemon as mod
 
     pool_file = tmp_path / "tiktok_content_pool.json"
     pool_data = _make_pool(slot_type="motivation", used=False)
@@ -179,7 +179,7 @@ def test_pool_integration_returns_concept_when_available(tmp_path):
 
 def test_pool_integration_returns_none_when_empty(tmp_path):
     """_get_concept_from_pool returns None when pool has no unused concept."""
-    import apps.api.jarvis_api.services.tiktok_content_daemon as mod
+    import core.services.tiktok_content_daemon as mod
 
     pool_file = tmp_path / "tiktok_content_pool.json"
     pool_data = _make_pool(slot_type="motivation", used=True)
@@ -193,7 +193,7 @@ def test_pool_integration_returns_none_when_empty(tmp_path):
 
 def test_pool_integration_returns_none_when_file_missing(tmp_path):
     """_get_concept_from_pool returns None when pool file does not exist."""
-    import apps.api.jarvis_api.services.tiktok_content_daemon as mod
+    import core.services.tiktok_content_daemon as mod
 
     pool_file = tmp_path / "nonexistent_pool.json"
 

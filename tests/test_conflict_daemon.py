@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
 from datetime import UTC, datetime, timedelta
-import apps.api.jarvis_api.services.conflict_daemon as cd
+import core.services.conflict_daemon as cd
 
 
 def _reset():

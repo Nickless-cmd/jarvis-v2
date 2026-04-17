@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import apps.api.jarvis_api.services.aesthetic_taste_daemon as atd
+import core.services.aesthetic_taste_daemon as atd
 
 
 def _reset():
@@ -97,7 +97,7 @@ class TestPrivateBrainRecord:
     def test_private_brain_record_written_on_store(self) -> None:
         _reset()
         atd._accumulated_motifs = {"clarity", "craft", "calm-focus"}
-        with patch("apps.api.jarvis_api.services.aesthetic_taste_daemon.insert_private_brain_record") as mock_insert:
+        with patch("core.services.aesthetic_taste_daemon.insert_private_brain_record") as mock_insert:
             atd._store_insight("Jeg vælger det kompakte.")
         mock_insert.assert_called_once()
         kwargs = mock_insert.call_args[1]

@@ -62,10 +62,10 @@ def compact_session_history(
 # ── Internal helpers (monkeypatched in tests) ──────────────────────────────
 
 def _get_all_session_messages(session_id: str) -> list[dict]:
-    from apps.api.jarvis_api.services.chat_sessions import recent_chat_session_messages
+    from core.services.chat_sessions import recent_chat_session_messages
     return recent_chat_session_messages(session_id, limit=500)
 
 
 def _store_marker(session_id: str, summary_text: str) -> str:
-    from apps.api.jarvis_api.services.chat_sessions import store_compact_marker
+    from core.services.chat_sessions import store_compact_marker
     return store_compact_marker(session_id, summary_text)

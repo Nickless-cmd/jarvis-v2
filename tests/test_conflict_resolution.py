@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-import apps.api.jarvis_api.services.conflict_resolution as cr_module
-from apps.api.jarvis_api.services.conflict_resolution import (
+import core.services.conflict_resolution as cr_module
+from core.services.conflict_resolution import (
     ConflictTrace,
     QuietInitiative,
     resolve_heartbeat_initiative_conflict,
@@ -389,7 +389,7 @@ def test_apply_defer_downgrades_to_noop() -> None:
 
 def test_execute_continue_internal_calls_brain_continuity(isolated_runtime) -> None:
     """continue_internal must attempt private brain continuity motor."""
-    from apps.api.jarvis_api.services.heartbeat_runtime import (
+    from core.services.heartbeat_runtime import (
         _execute_continue_internal,
     )
 
@@ -416,10 +416,10 @@ def test_execute_continue_internal_calls_brain_continuity(isolated_runtime) -> N
 
 def test_execute_continue_internal_with_brain_records(isolated_runtime) -> None:
     """continue_internal with enough brain records should consolidate."""
-    from apps.api.jarvis_api.services.heartbeat_runtime import (
+    from core.services.heartbeat_runtime import (
         _execute_continue_internal,
     )
-    from apps.api.jarvis_api.services.session_distillation import (
+    from core.services.session_distillation import (
         insert_private_brain_record,
     )
     from datetime import datetime, UTC
@@ -480,7 +480,7 @@ def test_stay_quiet_does_not_trigger_internal_continuation() -> None:
 
 def test_continue_internal_observability_fields() -> None:
     """The internal continuation result must have all required observability fields."""
-    from apps.api.jarvis_api.services.heartbeat_runtime import (
+    from core.services.heartbeat_runtime import (
         _execute_continue_internal,
     )
 

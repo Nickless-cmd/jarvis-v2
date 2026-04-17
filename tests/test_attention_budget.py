@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from apps.api.jarvis_api.services.attention_budget import (
+from core.services.attention_budget import (
     AttentionBudget,
     AttentionTrace,
     SectionBudget,
@@ -230,13 +230,13 @@ def test_micro_cognitive_frame_is_compact() -> None:
 
 def test_micro_cognitive_frame_returns_none_when_conductor_unavailable(monkeypatch) -> None:
     """If conductor fails, micro frame returns None gracefully."""
-    import apps.api.jarvis_api.services.attention_budget as mod
+    import core.services.attention_budget as mod
 
     def _fail():
         raise RuntimeError("conductor unavailable")
 
     monkeypatch.setattr(
-        "apps.api.jarvis_api.services.attention_budget.build_micro_cognitive_frame",
+        "core.services.attention_budget.build_micro_cognitive_frame",
         lambda: None,
     )
     # Direct test: the function should handle exceptions internally
@@ -254,7 +254,7 @@ def test_micro_cognitive_frame_returns_none_when_conductor_unavailable(monkeypat
 
 def test_run_budget_selection_omits_zero_budget_sections() -> None:
     """_run_budget_selection must omit sections with zero budget."""
-    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+    from core.services.prompt_contract import _run_budget_selection
 
     sections = {
         "capability_truth": "Capability truth content",
@@ -286,7 +286,7 @@ def test_run_budget_selection_omits_zero_budget_sections() -> None:
 
 def test_run_budget_selection_heartbeat_includes_brain_and_knowledge() -> None:
     """Heartbeat budget must include private brain and self-knowledge."""
-    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+    from core.services.prompt_contract import _run_budget_selection
 
     sections = {
         "capability_truth": "Cap truth",
@@ -316,7 +316,7 @@ def test_run_budget_selection_heartbeat_includes_brain_and_knowledge() -> None:
 
 def test_run_budget_selection_trims_large_sections() -> None:
     """Sections exceeding their budget must be trimmed."""
-    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+    from core.services.prompt_contract import _run_budget_selection
 
     # Cognitive frame budget for visible_compact is 180 chars
     large_frame = "X" * 300
@@ -343,7 +343,7 @@ def test_run_budget_selection_trims_large_sections() -> None:
 
 def test_attention_trace_from_budget_selection_has_real_char_counts() -> None:
     """The trace from budget selection must have accurate char usage."""
-    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+    from core.services.prompt_contract import _run_budget_selection
 
     sections = {
         "capability_truth": "A" * 50,
@@ -371,7 +371,7 @@ def test_attention_trace_from_budget_selection_has_real_char_counts() -> None:
 
 def test_trace_authority_mode_is_budgeted_on_normal_selection() -> None:
     """Normal budget selection must mark authority_mode as 'budgeted'."""
-    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+    from core.services.prompt_contract import _run_budget_selection
 
     sections = {
         "capability_truth": "Cap truth",
@@ -394,14 +394,14 @@ def test_trace_authority_mode_is_budgeted_on_normal_selection() -> None:
 
 def test_trace_authority_mode_is_fallback_when_budget_fails(monkeypatch) -> None:
     """When budget module fails, trace must show fallback_passthrough."""
-    from apps.api.jarvis_api.services import prompt_contract as pc
+    from core.services import prompt_contract as pc
 
     # Force an import error by temporarily breaking the budget import
     original = pc._run_budget_selection
 
     def _broken_budget(*, profile, sections):
         # Simulate budget module failure by calling the except path
-        from apps.api.jarvis_api.services.attention_budget import (
+        from core.services.attention_budget import (
             AttentionTrace,
             SectionResult,
         )
@@ -474,7 +474,7 @@ def test_trace_budget_overshoot_detected() -> None:
 
 def test_trace_no_overshoot_when_within_budget() -> None:
     """No overshoot flag when within budget."""
-    from apps.api.jarvis_api.services.prompt_contract import _run_budget_selection
+    from core.services.prompt_contract import _run_budget_selection
 
     sections = {
         "capability_truth": "X" * 10,
@@ -497,7 +497,7 @@ def test_trace_no_overshoot_when_within_budget() -> None:
 
 def test_live_attention_traces_populated_after_budget_selection() -> None:
     """After _run_budget_selection, get_last_attention_traces must return traces."""
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _run_budget_selection,
         get_last_attention_traces,
     )

@@ -2,7 +2,7 @@
 import pytest
 from datetime import timedelta
 
-from apps.api.jarvis_api.services.initiative_accumulator import (
+from core.services.initiative_accumulator import (
     accumulate_wants,
     get_top_want,
     get_wants_by_type,

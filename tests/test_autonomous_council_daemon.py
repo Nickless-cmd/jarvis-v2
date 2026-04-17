@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 
 def _score(surfaces: dict) -> float:
-    from apps.api.jarvis_api.services.autonomous_council_daemon import compute_signal_score
+    from core.services.autonomous_council_daemon import compute_signal_score
     return compute_signal_score(surfaces)
 
 
@@ -69,7 +69,7 @@ def test_score_clamped_at_1():
 
 
 def test_cadence_gate_blocks_when_recent():
-    from apps.api.jarvis_api.services import autonomous_council_daemon as acd
+    from core.services import autonomous_council_daemon as acd
     from datetime import UTC, datetime
     acd._last_council_at = datetime.now(UTC)
     assert acd._cadence_gate_ok() is False
@@ -77,13 +77,13 @@ def test_cadence_gate_blocks_when_recent():
 
 
 def test_cadence_gate_passes_when_none():
-    from apps.api.jarvis_api.services import autonomous_council_daemon as acd
+    from core.services import autonomous_council_daemon as acd
     acd._last_council_at = None
     assert acd._cadence_gate_ok() is True
 
 
 def test_cooldown_gate_blocks_when_recent():
-    from apps.api.jarvis_api.services import autonomous_council_daemon as acd
+    from core.services import autonomous_council_daemon as acd
     from datetime import UTC, datetime
     acd._last_concluded_at = datetime.now(UTC)
     assert acd._cooldown_gate_ok() is False
@@ -91,9 +91,9 @@ def test_cooldown_gate_blocks_when_recent():
 
 
 def test_derive_topic_calls_llm():
-    from apps.api.jarvis_api.services.autonomous_council_daemon import derive_topic
+    from core.services.autonomous_council_daemon import derive_topic
     with patch(
-        "apps.api.jarvis_api.services.autonomous_council_daemon._call_llm",
+        "core.services.autonomous_council_daemon._call_llm",
         return_value="What limits my autonomy?",
     ):
         topic = derive_topic(top_signals=["autonomy_pressure", "open_loop"])
@@ -101,19 +101,19 @@ def test_derive_topic_calls_llm():
 
 
 def test_compose_members_full_council_at_high_score():
-    from apps.api.jarvis_api.services.autonomous_council_daemon import compose_members
+    from core.services.autonomous_council_daemon import compose_members
     members = compose_members(score=0.85, top_signals=["autonomy_pressure"])
     assert len(members) >= 4
 
 
 def test_compose_members_partial_at_normal_score():
-    from apps.api.jarvis_api.services.autonomous_council_daemon import compose_members
+    from core.services.autonomous_council_daemon import compose_members
     members = compose_members(score=0.65, top_signals=["existential_wonder"])
     assert 3 <= len(members) <= 4
 
 
 def test_tick_skips_when_score_below_threshold():
-    from apps.api.jarvis_api.services import autonomous_council_daemon as acd
+    from core.services import autonomous_council_daemon as acd
     acd._last_council_at = None
     acd._last_concluded_at = None
     result = acd.tick_autonomous_council_daemon(score_override=0.30)
@@ -122,7 +122,7 @@ def test_tick_skips_when_score_below_threshold():
 
 
 def test_tick_skips_when_cadence_blocked():
-    from apps.api.jarvis_api.services import autonomous_council_daemon as acd
+    from core.services import autonomous_council_daemon as acd
     from datetime import UTC, datetime
     acd._last_council_at = datetime.now(UTC)
     result = acd.tick_autonomous_council_daemon(score_override=0.80)
@@ -132,7 +132,7 @@ def test_tick_skips_when_cadence_blocked():
 
 
 def test_tick_skips_when_cooldown_blocked():
-    from apps.api.jarvis_api.services import autonomous_council_daemon as acd
+    from core.services import autonomous_council_daemon as acd
     from datetime import UTC, datetime
     acd._last_concluded_at = datetime.now(UTC)
     result = acd.tick_autonomous_council_daemon(score_override=0.80)
@@ -142,12 +142,12 @@ def test_tick_skips_when_cooldown_blocked():
 
 
 def test_tick_triggers_council_when_conditions_met():
-    from apps.api.jarvis_api.services import autonomous_council_daemon as acd
+    from core.services import autonomous_council_daemon as acd
     acd._last_council_at = None
     acd._last_concluded_at = None
     with (
-        patch("apps.api.jarvis_api.services.autonomous_council_daemon.derive_topic", return_value="Test topic"),
-        patch("apps.api.jarvis_api.services.autonomous_council_daemon._run_autonomous_council", return_value={"council_id": "c-123", "conclusion": "test"}),
+        patch("core.services.autonomous_council_daemon.derive_topic", return_value="Test topic"),
+        patch("core.services.autonomous_council_daemon._run_autonomous_council", return_value={"council_id": "c-123", "conclusion": "test"}),
     ):
         result = acd.tick_autonomous_council_daemon(score_override=0.75)
     assert result["triggered"] is True
@@ -155,14 +155,14 @@ def test_tick_triggers_council_when_conditions_met():
 
 
 def test_tick_publishes_eventbus_on_trigger():
-    from apps.api.jarvis_api.services import autonomous_council_daemon as acd
+    from core.services import autonomous_council_daemon as acd
     from core.eventbus.bus import event_bus
     acd._last_council_at = None
     acd._last_concluded_at = None
     q = event_bus.subscribe()
     with (
-        patch("apps.api.jarvis_api.services.autonomous_council_daemon.derive_topic", return_value="Test topic"),
-        patch("apps.api.jarvis_api.services.autonomous_council_daemon._run_autonomous_council", return_value={"council_id": "c-xyz", "conclusion": "done"}),
+        patch("core.services.autonomous_council_daemon.derive_topic", return_value="Test topic"),
+        patch("core.services.autonomous_council_daemon._run_autonomous_council", return_value={"council_id": "c-xyz", "conclusion": "done"}),
     ):
         acd.tick_autonomous_council_daemon(score_override=0.75)
     # Drain queue and check for autonomous_triggered event

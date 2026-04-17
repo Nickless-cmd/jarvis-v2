@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
 from datetime import UTC, datetime, timedelta
-import apps.api.jarvis_api.services.development_narrative_daemon as dnd
+import core.services.development_narrative_daemon as dnd
 
 
 def _reset():

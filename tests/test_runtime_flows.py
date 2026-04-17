@@ -3,11 +3,11 @@ from __future__ import annotations
 
 def test_runtime_flows_persist_and_link_to_task(isolated_runtime) -> None:
     runtime_tasks = __import__(
-        "apps.api.jarvis_api.services.runtime_tasks",
+        "core.services.runtime_tasks",
         fromlist=["create_task"],
     )
     runtime_flows = __import__(
-        "apps.api.jarvis_api.services.runtime_flows",
+        "core.services.runtime_flows",
         fromlist=["create_flow"],
     )
 

@@ -51,7 +51,7 @@ def _sanitize_private_growth_note_enrichment(text: str) -> tuple[str, str] | Non
 def _sanitize_inner_voice_enrichment(text: str) -> str:
     """Reuse inner-voice sanitization before writing enriched voice lines."""
     try:
-        from apps.api.jarvis_api.services.inner_voice_daemon import _sanitize_inner_voice_text
+        from core.services.inner_voice_daemon import _sanitize_inner_voice_text
 
         return _sanitize_inner_voice_text(text, max_len=200)
     except Exception:

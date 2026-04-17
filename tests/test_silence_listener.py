@@ -1,7 +1,7 @@
 """Tests for silence_listener.py"""
 
 import pytest
-from apps.api.jarvis_api.services.silence_listener import (
+from core.services.silence_listener import (
     experience_silence,
     describe_silence,
     format_silence_for_prompt,

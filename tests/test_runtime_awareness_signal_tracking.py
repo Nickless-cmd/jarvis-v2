@@ -4,19 +4,19 @@ from __future__ import annotations
 def test_runtime_awareness_tracks_new_runtime_organs(isolated_runtime) -> None:
     event_bus = __import__("core.eventbus.bus", fromlist=["event_bus"]).event_bus
     runtime_tasks = __import__(
-        "apps.api.jarvis_api.services.runtime_tasks",
+        "core.services.runtime_tasks",
         fromlist=["create_task"],
     )
     runtime_flows = __import__(
-        "apps.api.jarvis_api.services.runtime_flows",
+        "core.services.runtime_flows",
         fromlist=["create_flow"],
     )
     runtime_browser_body = __import__(
-        "apps.api.jarvis_api.services.runtime_browser_body",
+        "core.services.runtime_browser_body",
         fromlist=["ensure_browser_body"],
     )
     awareness = __import__(
-        "apps.api.jarvis_api.services.runtime_awareness_signal_tracking",
+        "core.services.runtime_awareness_signal_tracking",
         fromlist=["track_runtime_awareness_signals_for_visible_turn"],
     )
     bootstrap = __import__(
@@ -72,11 +72,11 @@ def test_runtime_awareness_tracks_new_runtime_organs(isolated_runtime) -> None:
 
 def test_runtime_awareness_marks_blocked_runtime_work_constrained(isolated_runtime) -> None:
     runtime_tasks = __import__(
-        "apps.api.jarvis_api.services.runtime_tasks",
+        "core.services.runtime_tasks",
         fromlist=["create_task", "update_task"],
     )
     awareness = __import__(
-        "apps.api.jarvis_api.services.runtime_awareness_signal_tracking",
+        "core.services.runtime_awareness_signal_tracking",
         fromlist=["track_runtime_awareness_signals_for_visible_turn"],
     )
 

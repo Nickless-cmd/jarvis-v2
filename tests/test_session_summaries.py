@@ -227,10 +227,10 @@ class TestSessionSummaryCleanup:
 
 class TestGenerateSessionSummary:
     def test_generates_from_messages(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from apps.api.jarvis_api.services import session_distillation as sd
+        from core.services import session_distillation as sd
 
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.daemon_llm.daemon_llm_call",
+            "core.services.daemon_llm.daemon_llm_call",
             lambda prompt, **kw: "Emne: Test samtale | Resultat: Alt fungerede",
         )
 
@@ -256,7 +256,7 @@ class TestGenerateSessionSummary:
         assert stored[0]["session_id"] == "chat-test"
 
     def test_returns_empty_on_no_context(self) -> None:
-        from apps.api.jarvis_api.services.session_distillation import (
+        from core.services.session_distillation import (
             generate_session_summary,
         )
 
@@ -269,11 +269,11 @@ class TestGenerateSessionSummary:
 
     def test_handles_llm_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
-            "apps.api.jarvis_api.services.daemon_llm.daemon_llm_call",
+            "core.services.daemon_llm.daemon_llm_call",
             lambda prompt, **kw: "",
         )
 
-        from apps.api.jarvis_api.services.session_distillation import (
+        from core.services.session_distillation import (
             generate_session_summary,
         )
 
@@ -300,7 +300,7 @@ class TestBuildPreviousSessionSummaries:
             ],
         )
 
-        from apps.api.jarvis_api.services.session_distillation import (
+        from core.services.session_distillation import (
             build_previous_session_summaries,
         )
 
@@ -316,7 +316,7 @@ class TestBuildPreviousSessionSummaries:
             lambda limit=3: [],
         )
 
-        from apps.api.jarvis_api.services.session_distillation import (
+        from core.services.session_distillation import (
             build_previous_session_summaries,
         )
 

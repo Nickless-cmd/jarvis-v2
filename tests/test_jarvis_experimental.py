@@ -27,7 +27,7 @@ def test_settings_emotion_decay_factor_default() -> None:
 def test_recall_thresholds_read_from_settings() -> None:
     """Thresholds should reflect RuntimeSettings values."""
     import importlib
-    import apps.api.jarvis_api.services.associative_recall as ar
+    import core.services.associative_recall as ar
     importlib.reload(ar)
     assert ar._get_strong_threshold() == 0.7
     assert ar._get_weak_threshold() == 0.3
@@ -38,7 +38,7 @@ def test_recall_thresholds_read_from_settings() -> None:
 def test_recall_logs_observability() -> None:
     """recall_for_message should not crash and returns a list."""
     import importlib
-    import apps.api.jarvis_api.services.associative_recall as ar
+    import core.services.associative_recall as ar
     importlib.reload(ar)
     result = ar.recall_for_message("hej verden test tekst", {})
     assert isinstance(result, list)
@@ -48,7 +48,7 @@ def test_cognitive_assembly_ab_toggle_disabled() -> None:
     """build_cognitive_state_for_prompt returns None when toggle is off."""
     import importlib
     import unittest.mock as mock
-    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+    import core.services.cognitive_state_assembly as csa
     importlib.reload(csa)
     from core.runtime.settings import RuntimeSettings
 
@@ -62,7 +62,7 @@ def test_emotion_decay_all_axes() -> None:
     """Decay should reduce fatigue, frustration, curiosity and nudge confidence toward 0.5."""
     import importlib
     import unittest.mock as mock
-    import apps.api.jarvis_api.services.personality_vector as pv_mod
+    import core.services.personality_vector as pv_mod
     importlib.reload(pv_mod)
     from core.runtime.settings import RuntimeSettings
 
@@ -98,12 +98,12 @@ def test_forced_dream_hypothesis_fires_on_100pct_probability() -> None:
     """maybe_force_dream_hypothesis upserts a signal when probability=1.0."""
     import importlib
     import unittest.mock as mock
-    import apps.api.jarvis_api.services.dream_hypothesis_forced as dhf
+    import core.services.dream_hypothesis_forced as dhf
     importlib.reload(dhf)
 
     fake_signal = {"signal_id": "test-123", "domain": "identity"}
     with mock.patch.object(dhf, "_FIRE_PROBABILITY", 1.0), \
-         mock.patch("apps.api.jarvis_api.services.dream_hypothesis_forced.upsert_runtime_dream_hypothesis_signal",
+         mock.patch("core.services.dream_hypothesis_forced.upsert_runtime_dream_hypothesis_signal",
                     return_value=fake_signal, create=True):
         # Patch the import inside the function
         with mock.patch("core.runtime.db.upsert_runtime_dream_hypothesis_signal", return_value=fake_signal):
@@ -115,7 +115,7 @@ def test_forced_dream_hypothesis_fires_on_100pct_probability() -> None:
 def test_forced_dream_hypothesis_skips_on_0pct_probability() -> None:
     """maybe_force_dream_hypothesis returns None when probability=0.0."""
     import importlib
-    import apps.api.jarvis_api.services.dream_hypothesis_forced as dhf
+    import core.services.dream_hypothesis_forced as dhf
     importlib.reload(dhf)
 
     import unittest.mock as mock
@@ -128,7 +128,7 @@ def test_cognitive_assembly_ab_toggle_enabled() -> None:
     """build_cognitive_state_for_prompt proceeds when toggle is on (may return None if no data)."""
     import importlib
     import unittest.mock as mock
-    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+    import core.services.cognitive_state_assembly as csa
     importlib.reload(csa)
     from core.runtime.settings import RuntimeSettings
 
@@ -141,7 +141,7 @@ def test_cognitive_assembly_ab_toggle_enabled() -> None:
 
 def test_cognitive_experiment_state_line_reflects_carry_but_keeps_blink_observational() -> None:
     import importlib
-    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+    import core.services.cognitive_state_assembly as csa
 
     importlib.reload(csa)
 
@@ -188,7 +188,7 @@ def test_cognitive_experiment_state_line_reflects_carry_but_keeps_blink_observat
 def test_cognitive_state_assembly_injects_experiment_state_as_bounded_source() -> None:
     import importlib
     import unittest.mock as mock
-    import apps.api.jarvis_api.services.cognitive_state_assembly as csa
+    import core.services.cognitive_state_assembly as csa
     from core.runtime.settings import RuntimeSettings
 
     importlib.reload(csa)

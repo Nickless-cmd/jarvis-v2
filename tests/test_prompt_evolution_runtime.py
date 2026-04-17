@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 
 def test_prompt_evolution_builds_bounded_proposal_from_runtime_inputs() -> None:
-    from apps.api.jarvis_api.services import prompt_evolution_runtime as runtime_mod
+    from core.services import prompt_evolution_runtime as runtime_mod
 
     plan = runtime_mod.build_prompt_evolution_from_inputs(
         dream_articulation={
@@ -77,7 +77,7 @@ def test_prompt_evolution_builds_bounded_proposal_from_runtime_inputs() -> None:
 
 
 def test_prompt_evolution_learning_changes_proposal_direction() -> None:
-    from apps.api.jarvis_api.services import prompt_evolution_runtime as runtime_mod
+    from core.services import prompt_evolution_runtime as runtime_mod
 
     base_inputs = {
         "dream_articulation": {

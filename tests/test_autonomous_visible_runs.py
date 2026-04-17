@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import sys
 import time
+from pathlib import Path
 from types import SimpleNamespace
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from core.eventbus.bus import event_bus
 
@@ -11,7 +15,7 @@ def test_start_autonomous_run_publishes_persistent_audit_events(
     monkeypatch,
 ) -> None:
     visible_runs = __import__(
-        "apps.api.jarvis_api.services.visible_runs",
+        "core.services.visible_runs",
         fromlist=["start_autonomous_run"],
     )
 

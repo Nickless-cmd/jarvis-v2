@@ -11,7 +11,7 @@ import pytest
 
 def test_structured_transcript_empty_session() -> None:
     """Returns empty list for missing session."""
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _build_structured_transcript_messages,
     )
     result = _build_structured_transcript_messages(None, limit=20, include=True)
@@ -20,7 +20,7 @@ def test_structured_transcript_empty_session() -> None:
 
 def test_structured_transcript_disabled() -> None:
     """Returns empty list when include=False."""
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _build_structured_transcript_messages,
     )
     result = _build_structured_transcript_messages("some-session", limit=20, include=False)
@@ -30,7 +30,7 @@ def test_structured_transcript_disabled() -> None:
 def test_structured_transcript_user_assistant_roles() -> None:
     """User and assistant messages get correct roles."""
     import unittest.mock as mock
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _build_structured_transcript_messages,
     )
     fake_history = [
@@ -38,7 +38,7 @@ def test_structured_transcript_user_assistant_roles() -> None:
         {"role": "assistant", "content": "Hej! Hvad kan jeg hjælpe med?", "created_at": "2026-01-01T00:00:01"},
     ]
     with mock.patch(
-        "apps.api.jarvis_api.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -52,7 +52,7 @@ def test_structured_transcript_user_assistant_roles() -> None:
 def test_structured_transcript_tool_compressed_into_assistant() -> None:
     """Tool messages are merged into preceding assistant message as annotation."""
     import unittest.mock as mock
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _build_structured_transcript_messages,
     )
     fake_history = [
@@ -62,7 +62,7 @@ def test_structured_transcript_tool_compressed_into_assistant() -> None:
         {"role": "assistant", "content": "Klokken er 14:30.", "created_at": "2026-01-01T00:00:03"},
     ]
     with mock.patch(
-        "apps.api.jarvis_api.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -79,7 +79,7 @@ def test_structured_transcript_tool_compressed_into_assistant() -> None:
 def test_structured_transcript_tool_without_preceding_assistant() -> None:
     """Tool message without preceding assistant creates synthetic annotation."""
     import unittest.mock as mock
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _build_structured_transcript_messages,
     )
     fake_history = [
@@ -87,7 +87,7 @@ def test_structured_transcript_tool_without_preceding_assistant() -> None:
         {"role": "tool", "content": "[bash]: output here", "created_at": "2026-01-01T00:00:01"},
     ]
     with mock.patch(
-        "apps.api.jarvis_api.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -99,7 +99,7 @@ def test_structured_transcript_tool_without_preceding_assistant() -> None:
 def test_structured_transcript_truncation() -> None:
     """Long messages are truncated at 1600 chars."""
     import unittest.mock as mock
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _build_structured_transcript_messages,
     )
     long_content = "x" * 3000
@@ -107,7 +107,7 @@ def test_structured_transcript_truncation() -> None:
         {"role": "user", "content": long_content, "created_at": "2026-01-01T00:00:00"},
     ]
     with mock.patch(
-        "apps.api.jarvis_api.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -119,7 +119,7 @@ def test_structured_transcript_truncation() -> None:
 def test_structured_transcript_no_tool_slot_waste() -> None:
     """3 tool calls + 1 user + 1 assistant should produce 2-3 messages, not 5."""
     import unittest.mock as mock
-    from apps.api.jarvis_api.services.prompt_contract import (
+    from core.services.prompt_contract import (
         _build_structured_transcript_messages,
     )
     fake_history = [
@@ -131,7 +131,7 @@ def test_structured_transcript_no_tool_slot_waste() -> None:
         {"role": "assistant", "content": "All done.", "created_at": "2026-01-01T00:00:05"},
     ]
     with mock.patch(
-        "apps.api.jarvis_api.services.prompt_contract.recent_chat_session_messages",
+        "core.services.prompt_contract.recent_chat_session_messages",
         return_value=fake_history,
     ):
         result = _build_structured_transcript_messages("test-session", limit=20, include=True)
@@ -146,7 +146,7 @@ def test_structured_transcript_no_tool_slot_waste() -> None:
 
 def test_prompt_assembly_has_transcript_messages_field() -> None:
     """PromptAssembly dataclass should have transcript_messages field."""
-    from apps.api.jarvis_api.services.prompt_contract import PromptAssembly
+    from core.services.prompt_contract import PromptAssembly
     assembly = PromptAssembly(
         mode="test",
         text="test",
@@ -162,7 +162,7 @@ def test_prompt_assembly_has_transcript_messages_field() -> None:
 
 def test_prompt_assembly_transcript_messages_default_none() -> None:
     """transcript_messages defaults to None."""
-    from apps.api.jarvis_api.services.prompt_contract import PromptAssembly
+    from core.services.prompt_contract import PromptAssembly
     assembly = PromptAssembly(
         mode="test",
         text="test",

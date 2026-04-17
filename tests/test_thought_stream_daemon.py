@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from unittest.mock import patch
 from datetime import UTC, datetime, timedelta
-import apps.api.jarvis_api.services.thought_stream_daemon as ts
+import core.services.thought_stream_daemon as ts
 
 
 def _reset():
@@ -55,8 +55,8 @@ def test_fragment_appended_to_buffer():
     ts._fragment_buffer[:] = [f"fragment {i}" for i in range(20)]
     ts._last_fragment_at = datetime.now(UTC) - timedelta(minutes=3)
     with patch.object(ts, "_generate_fragment", return_value="Nyt fragment."):
-        with patch("apps.api.jarvis_api.services.thought_stream_daemon.insert_private_brain_record"):
-            with patch("apps.api.jarvis_api.services.thought_stream_daemon.event_bus"):
+        with patch("core.services.thought_stream_daemon.insert_private_brain_record"):
+            with patch("core.services.thought_stream_daemon.event_bus"):
                 ts.tick_thought_stream_daemon()
     assert len(ts._fragment_buffer) == 20
     assert ts._fragment_buffer[0] == "Nyt fragment."

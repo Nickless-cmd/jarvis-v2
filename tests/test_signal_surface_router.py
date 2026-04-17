@@ -3,7 +3,7 @@ from __future__ import annotations
 
 
 def test_all_registered_names_resolve_to_callables():
-    from apps.api.jarvis_api.services.signal_surface_router import (
+    from core.services.signal_surface_router import (
         get_surface_names,
         resolve_surface,
     )
@@ -13,7 +13,7 @@ def test_all_registered_names_resolve_to_callables():
 
 
 def test_unknown_name_returns_error_with_valid_list():
-    from apps.api.jarvis_api.services.signal_surface_router import read_surface
+    from core.services.signal_surface_router import read_surface
     result = read_surface("definitely_not_a_real_surface")
     assert "error" in result
     assert "valid" in result
@@ -22,14 +22,14 @@ def test_unknown_name_returns_error_with_valid_list():
 
 
 def test_known_surface_returns_dict():
-    from apps.api.jarvis_api.services.signal_surface_router import read_surface
+    from core.services.signal_surface_router import read_surface
     result = read_surface("autonomy_pressure")
     assert isinstance(result, dict)
     assert "error" not in result
 
 
 def test_list_all_returns_all_surfaces():
-    from apps.api.jarvis_api.services.signal_surface_router import (
+    from core.services.signal_surface_router import (
         get_surface_names,
         list_all_surfaces,
     )

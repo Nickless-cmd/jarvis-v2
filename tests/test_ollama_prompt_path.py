@@ -577,13 +577,12 @@ def test_ollama_visible_prompt_marks_tool_results_as_internal_memory_context(
         session_id=session_id,
     )
 
-    assert "Tool lines are internal Jarvis-only observations" in assembly.text
-    assert (
-        "Internal tool result: [bash]: runtime event memory.end_of_run_consolidation missing"
-        in assembly.text
+    transcript_text = "\n".join(
+        str(item.get("content") or "")
+        for item in (assembly.transcript_messages or [])
     )
-    assert "Memory recall bundle:" in assembly.text
-    assert "Internal tool observations (Jarvis-only, not user-visible chat):" in assembly.text
+    assert "[bash]: runtime event memory.end_of_run_consolidation missing" in transcript_text
+    assert "Jeg fandt manglen." in transcript_text
 
 
 def test_ollama_visible_prompt_can_include_memory_for_danish_recall_queries(

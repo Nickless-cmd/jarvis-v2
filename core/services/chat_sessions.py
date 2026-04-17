@@ -3,6 +3,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from core.services.tool_result_store import (
+    build_tool_result_reference,
+    parse_tool_result_reference,
+    save_tool_result,
+)
 from core.runtime.db import connect
 
 
@@ -110,6 +115,8 @@ def append_chat_message(
     role: str,
     content: str,
     created_at: str | None = None,
+    tool_name: str | None = None,
+    tool_arguments: dict[str, object] | None = None,
 ) -> dict[str, object]:
     normalized_session = (session_id or "").strip()
     if not normalized_session:
@@ -122,6 +129,19 @@ def append_chat_message(
         raise ValueError("content must not be empty")
 
     timestamp = created_at or datetime.now(UTC).isoformat()
+    if normalized_role == "tool" and not parse_tool_result_reference(normalized_content):
+        normalized_tool_name = (tool_name or _infer_tool_name_from_content(normalized_content) or "tool").strip()
+        result_id = save_tool_result(
+            normalized_tool_name,
+            tool_arguments or {},
+            normalized_content,
+            created_at=timestamp,
+        )
+        normalized_content = build_tool_result_reference(
+            result_id,
+            tool_name=normalized_tool_name,
+            summary=normalized_content,
+        )
     message_id = f"message-{uuid4().hex}"
     with connect() as conn:
         exists = conn.execute(
@@ -159,6 +179,13 @@ def append_chat_message(
         "ts": _time_label(timestamp),
         "created_at": timestamp,
     }
+
+
+def _infer_tool_name_from_content(content: str) -> str:
+    normalized = str(content or "").strip()
+    if normalized.startswith("[") and "]:" in normalized:
+        return normalized[1:].split("]:", 1)[0].strip()
+    return ""
 
 
 def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[dict[str, str]]:

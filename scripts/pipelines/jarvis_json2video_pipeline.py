@@ -16,17 +16,20 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
+from _config import read_runtime_key
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
-J2V_KEY = os.environ.get("JSON2VIDEO_KEY", "dgHRfM8FfPUeF8eAUBehFEVuVGfDw9fbtAD0S8Yb")
 J2V_BASE = "https://api.json2video.com/v2"
 
-_HEADERS = {
-    "x-api-key": J2V_KEY,
-    "Content-Type": "application/json",
-}
+
+def _headers() -> dict[str, str]:
+    return {
+        "x-api-key": read_runtime_key("json2video_key", env_override="JSON2VIDEO_KEY"),
+        "Content-Type": "application/json",
+    }
 
 # Slot background colors (hex)
 _SLOT_BG = {
@@ -52,7 +55,7 @@ def _post(body: dict) -> dict:
     req = urllib.request.Request(
         f"{J2V_BASE}/movies",
         data=json.dumps(body).encode(),
-        headers=_HEADERS,
+        headers=_headers(),
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
@@ -62,7 +65,7 @@ def _post(body: dict) -> dict:
 def _get_status(project_id: str) -> dict:
     req = urllib.request.Request(
         f"{J2V_BASE}/movies?project={project_id}",
-        headers=_HEADERS,
+        headers=_headers(),
         method="GET",
     )
     with urllib.request.urlopen(req, timeout=30) as resp:

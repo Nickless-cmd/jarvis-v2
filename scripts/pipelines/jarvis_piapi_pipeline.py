@@ -15,19 +15,22 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
+from _config import read_runtime_key
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
-PIAPI_KEY = os.environ.get("PIAPI_KEY", "85703ebb2f404ee998befa9a9759b51693ac1c5c6f0c48e67e43d968394eec85")
 PIAPI_BASE = "https://api.piapi.ai"
 
-_HEADERS = {
-    "X-API-Key": PIAPI_KEY,
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-}
+
+def _headers() -> dict[str, str]:
+    return {
+        "X-API-Key": read_runtime_key("piapi_key", env_override="PIAPI_KEY"),
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +42,7 @@ def _post(endpoint: str, body: dict) -> dict:
     req = urllib.request.Request(
         f"{PIAPI_BASE}{endpoint}",
         data=json.dumps(body).encode(),
-        headers=_HEADERS,
+        headers=_headers(),
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
@@ -49,7 +52,7 @@ def _post(endpoint: str, body: dict) -> dict:
 def _get(endpoint: str) -> dict:
     req = urllib.request.Request(
         f"{PIAPI_BASE}{endpoint}",
-        headers=_HEADERS,
+        headers=_headers(),
         method="GET",
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
@@ -58,7 +61,7 @@ def _get(endpoint: str) -> dict:
 
 def _download(url: str, output_path: str) -> None:
     """Download a file from url to output_path."""
-    req = urllib.request.Request(url, headers={"User-Agent": _HEADERS["User-Agent"]})
+    req = urllib.request.Request(url, headers={"User-Agent": _headers()["User-Agent"]})
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(req, timeout=60) as resp:
         with open(output_path, "wb") as f:

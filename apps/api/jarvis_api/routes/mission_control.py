@@ -96,6 +96,7 @@ from core.services.tool_intent_runtime import (
     build_tool_intent_runtime_surface,
 )
 from core.services.tool_intent_approval_runtime import (
+    build_approval_feedback_surface,
     resolve_tool_intent_approval,
     sudo_approval_window_allows_request,
 )
@@ -2005,6 +2006,11 @@ def mc_self_system_code_awareness() -> dict:
 def mc_tool_intent() -> dict:
     """Return the current bounded approval-gated tool intent runtime state."""
     return build_tool_intent_runtime_surface()
+
+
+@router.get("/approval-feedback")
+def mc_approval_feedback() -> dict:
+    return build_approval_feedback_surface()
 
 
 @router.post("/tool-intent/approve")

@@ -392,10 +392,31 @@ def add_audio(
 # Step 3c: Add text overlay (PIL + FFmpeg)
 # ═══════════════════════════════════════════════════════════════
 
-def add_text_to_video(video_path: str, text: str, output_path: str, font_size: int = 48) -> str:
-    """Add centered text overlay to video using FFmpeg drawtext filter."""
-    # Escape special chars for FFmpeg
-    escaped = text.replace("'", "\\'").replace(":", "\\:").replace("%", "%%")
+def add_text_to_video(video_path: str, text: str, output_path: str, font_size: int = 0) -> str:
+    """Add centered text overlay to video using FFmpeg drawtext filter.
+
+    Auto-wraps long text into multiple lines and scales font size to fit
+    within a 9:16 (576x1024) video frame.
+    """
+    # --- word-wrap ---
+    wrapped_lines = textwrap.wrap(text, width=28)
+
+    # --- auto-scale font size based on line count ---
+    num_lines = len(wrapped_lines)
+    if font_size <= 0:
+        if num_lines <= 1:
+            font_size = 28
+        elif num_lines == 2:
+            font_size = 24
+        elif num_lines == 3:
+            font_size = 20
+        else:
+            font_size = 16
+
+    line_height = int(font_size * 1.45)
+    # Start y so the block is centered around h*0.65
+    total_block_h = num_lines * line_height
+    start_y_expr = f"h*0.65 - {total_block_h // 2}"
 
     # Find font
     font_file = None
@@ -413,16 +434,23 @@ def add_text_to_video(video_path: str, text: str, output_path: str, font_size: i
     else:
         font_arg = "font='DejaVu Sans Bold'"
 
-    # Build drawtext filter — text in lower third, white with black shadow
-    filter_complex = (
-        f"drawtext={font_arg}:"
-        f"text='{escaped}':"
-        f"fontsize={font_size}:"
-        f"fontcolor=white:"
-        f"borderw=3:bordercolor=black:"
-        f"x=(w-text_w)/2:"
-        f"y=h*0.65"
-    )
+    # Build one drawtext filter per line, stacked vertically
+    filters = []
+    for i, line in enumerate(wrapped_lines):
+        escaped = line.replace("'", "\\'").replace(":", "\\:").replace("%", "%%")
+        y_offset = start_y_expr + i * line_height if isinstance(start_y_expr, int) else f"({start_y_expr})+{i * line_height}"
+        filt = (
+            f"drawtext={font_arg}:"
+            f"text='{escaped}':"
+            f"fontsize={font_size}:"
+            f"fontcolor=white:"
+            f"borderw=3:bordercolor=black:"
+            f"x=(w-text_w)/2:"
+            f"y={y_offset}"
+        )
+        filters.append(filt)
+
+    filter_complex = ",".join(filters)
 
     cmd = [
         "ffmpeg", "-y",
@@ -435,7 +463,7 @@ def add_text_to_video(video_path: str, text: str, output_path: str, font_size: i
         output_path,
     ]
 
-    print(f"[text] Adding text overlay: '{text}'")
+    print(f"[text] Adding text overlay: '{text}' ({num_lines} lines, font={font_size})")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg error: {result.stderr}")

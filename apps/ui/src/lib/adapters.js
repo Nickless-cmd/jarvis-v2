@@ -4292,11 +4292,11 @@ export const backend = {
     return data.session
   },
 
-  async streamMessage({ sessionId, content, attachmentIds = [], signal, onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {
+  async streamMessage({ sessionId, content, attachmentIds = [], approvalMode = 'ask', signal, onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {
     const response = await fetch('/chat/stream', {
       method: 'POST',
       headers: JSON_HEADERS,
-      body: JSON.stringify({ message: content, session_id: sessionId, attachment_ids: attachmentIds }),
+      body: JSON.stringify({ message: content, session_id: sessionId, attachment_ids: attachmentIds, approval_mode: approvalMode }),
       signal,
     })
     if (!response.ok) {

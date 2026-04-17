@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from core.services.chat_sessions import get_chat_session, list_chat_sessions
+from core.services.signal_noise_guard import is_noisy_signal_text
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
     get_private_development_state,
@@ -25,6 +26,7 @@ _SOURCE_KIND_RANKS = {
     "user-explicit": 4,
 }
 _STALE_AFTER_DAYS = 10
+_REFRESH_SCAN_LIMIT = 2000
 
 
 def track_runtime_development_focuses_for_visible_turn(
@@ -74,7 +76,7 @@ def track_runtime_development_focuses_for_visible_turn(
 def refresh_runtime_development_focus_statuses() -> dict[str, int]:
     now = datetime.now(UTC)
     refreshed = 0
-    for item in list_runtime_development_focuses(limit=40):
+    for item in list_runtime_development_focuses(limit=_REFRESH_SCAN_LIMIT):
         if str(item.get("status") or "") != "active":
             continue
         updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
@@ -271,6 +273,8 @@ def _runtime_development_focus() -> dict[str, object] | None:
     preferred_direction = str(development_state.get("preferred_direction") or "").strip()
     identity_thread = str(development_state.get("identity_thread") or "").strip()
     if not retained_pattern or preferred_direction in {"", "observe"}:
+        return None
+    if is_noisy_signal_text(retained_pattern) or is_noisy_signal_text(identity_thread):
         return None
     confidence = str(development_state.get("confidence") or self_model.get("confidence") or "low")
     if confidence == "low":

@@ -17,6 +17,8 @@ from core.services.notification_bridge import send_session_notification
 from core.services.open_loop_closure_proposal_tracking import (
     build_runtime_open_loop_closure_proposal_surface,
 )
+from core.services.decision_weight import classify_decision_weight
+from core.services.runtime_action_registry import get_runtime_action_spec
 from core.services.runtime_operational_memory import (
     build_operational_memory_snapshot,
 )
@@ -52,6 +54,8 @@ def execute_runtime_action(
     payload: dict[str, Any],
 ) -> RuntimeExecutionResult:
     action = str(action_id or "").strip()
+    action_spec = get_runtime_action_spec(action)
+    weight = classify_decision_weight(action.replace("_", " "))
     if action == "refresh_memory_context":
         result = execute_refresh_memory_context(payload)
     elif action == "follow_open_loop":
@@ -77,6 +81,10 @@ def execute_runtime_action(
             side_effects=[],
             error="unknown-action",
         )
+    action_metadata: dict[str, Any] = {"decision_weight": weight}
+    if action_spec is not None:
+        action_metadata["action_spec"] = asdict(action_spec)
+    result.details = {**action_metadata, **dict(result.details)}
     _publish_action_event(result)
     return result
 

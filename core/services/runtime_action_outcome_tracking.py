@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from core.services.completion_satisfaction import detect_completion_satisfaction
 from core.services.runtime_learning_signals import (
     extract_runtime_learning_signals,
 )
@@ -52,6 +53,13 @@ def record_runtime_action_outcome(
 def build_runtime_action_outcome_surface(*, limit: int = 20) -> dict[str, Any]:
     items = recent_runtime_action_outcomes(limit=limit)
     latest = items[0] if items else {}
+    completion_satisfaction = detect_completion_satisfaction(
+        task_outcomes=[
+            _completion_outcome_label(item.get("result_status"))
+            for item in items[:10]
+        ],
+        repetition_on_same_topic=_consecutive_repetition_count(items),
+    )
     return {
         "active": bool(items),
         "items": items,
@@ -61,6 +69,7 @@ def build_runtime_action_outcome_surface(*, limit: int = 20) -> dict[str, Any]:
             "latest_status": str(latest.get("result_status") or "none"),
             "latest_mode": str(latest.get("decision_mode") or "none"),
             "latest_summary": str(latest.get("result_summary") or "No recorded executive outcomes yet."),
+            "completion_satisfaction": completion_satisfaction,
         },
     }
 
@@ -116,3 +125,28 @@ def _persist_learning_signals(outcome: dict[str, Any]) -> list[dict[str, Any]]:
             )
         )
     return stored
+
+
+def _completion_outcome_label(status: object) -> str:
+    normalized = str(status or "").strip().lower()
+    if normalized in {"executed", "success", "completed"}:
+        return "success"
+    if normalized in {"blocked", "failed"}:
+        return "failed"
+    if normalized in {"proposed", "skipped"}:
+        return "partial"
+    return normalized or "partial"
+
+
+def _consecutive_repetition_count(items: list[dict[str, Any]]) -> int:
+    if not items:
+        return 0
+    latest_action = str(items[0].get("action_id") or "").strip()
+    if not latest_action:
+        return 0
+    count = 0
+    for item in items:
+        if str(item.get("action_id") or "").strip() != latest_action:
+            break
+        count += 1
+    return max(count - 1, 0)

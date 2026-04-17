@@ -7,6 +7,10 @@ from core.services.chat_sessions import (
     recent_chat_session_messages,
     recent_chat_tool_messages,
 )
+from core.services.tool_result_store import (
+    parse_tool_result_reference,
+    render_tool_result_for_prompt,
+)
 from core.services.inner_visible_support_signal_tracking import (
     build_runtime_inner_visible_support_signal_surface,
 )
@@ -1257,7 +1261,11 @@ def _recent_tool_recall_lines(session_id: str | None, *, limit: int) -> list[str
         return []
     result: list[str] = []
     for item in messages[-limit:]:
-        content = " ".join(str(item.get("content") or "").split()).strip()
+        content = render_tool_result_for_prompt(
+            str(item.get("content") or ""),
+            expand=False,
+            max_chars=220,
+        )
         if not content:
             continue
         result.append(_clip_line(content, limit=220))
@@ -2683,7 +2691,9 @@ def _recent_transcript_section(
         "Newest line is last.",
         "Tool lines are internal Jarvis-only observations, not user-visible chat.",
     ]
-    for item in history[-limit:]:
+    window = history[-limit:]
+    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=4)
+    for index, item in enumerate(window):
         raw_role = item["role"]
         if raw_role == "user":
             role = "User"
@@ -2691,9 +2701,11 @@ def _recent_transcript_section(
             role = "Internal tool result"
         else:
             role = "Jarvis"
-        content = " ".join(str(item.get("content") or "").split())
-        if len(content) > 800:
-            content = content[:799].rstrip() + "…"
+        content = render_tool_result_for_prompt(
+            str(item.get("content") or ""),
+            expand=index in expanded_tool_indexes,
+            max_chars=1200 if index in expanded_tool_indexes else 800,
+        )
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
 
@@ -2718,17 +2730,22 @@ def _build_structured_transcript_messages(
 
     # Phase 1: Merge consecutive tool messages into the preceding assistant turn.
     # Tool results become a short "[tool_name: status/summary]" annotation.
+    window = history[-limit:]
+    expanded_tool_indexes = _recent_tool_reference_indexes(window, recent_count=4)
     merged: list[dict[str, str]] = []
-    for item in history[-limit:]:
+    for index, item in enumerate(window):
         raw_role = str(item.get("role") or "")
-        content = " ".join(str(item.get("content") or "").split())
+        content = render_tool_result_for_prompt(
+            str(item.get("content") or ""),
+            expand=index in expanded_tool_indexes,
+            max_chars=1200 if index in expanded_tool_indexes else 240,
+        )
         if not content:
             continue
 
         if raw_role == "tool":
             # Compress tool result into a short annotation
-            # Tool content format is typically "[tool_name]: result_text..."
-            tool_summary = content[:200]  # short summary only
+            tool_summary = content[:1200] if index in expanded_tool_indexes else content[:200]
             if merged and merged[-1]["role"] == "assistant":
                 # Append as annotation to previous assistant message
                 merged[-1]["content"] += f"\n({tool_summary})"
@@ -2789,6 +2806,20 @@ def _build_structured_transcript_messages(
             pass
 
     return result
+
+
+def _recent_tool_reference_indexes(
+    history: list[dict[str, str]],
+    *,
+    recent_count: int,
+) -> set[int]:
+    indexes = [
+        index
+        for index, item in enumerate(history)
+        if str(item.get("role") or "") == "tool"
+        and parse_tool_result_reference(str(item.get("content") or "")) is not None
+    ]
+    return set(indexes[-max(recent_count, 0):])
 
 
 def _get_compact_marker_for_transcript(session_id: str) -> str | None:

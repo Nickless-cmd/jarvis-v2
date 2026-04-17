@@ -11,6 +11,7 @@ from core.runtime.config import (
     SESSIONS_DIR,
     SETTINGS_FILE,
     STATE_DIR,
+    TOOL_RESULTS_DIR,
     WORKSPACES_DIR,
 )
 from core.runtime.settings import RuntimeSettings
@@ -22,6 +23,7 @@ RUNTIME_DIRS = [
     LOG_DIR,
     CACHE_DIR,
     SESSIONS_DIR,
+    TOOL_RESULTS_DIR,
     AUTH_DIR,
     AUTH_PROFILES_DIR,
     WORKSPACES_DIR,

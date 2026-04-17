@@ -19,6 +19,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
+from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
 from core.tools.browser_tools import (
     BROWSER_TOOL_DEFINITIONS,
@@ -101,6 +102,23 @@ def _canonicalize_workspace_target(target: Path) -> tuple[Path, str | None]:
 # ── Tool definitions (Ollama-compatible JSON schemas) ──────────────────
 
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "read_tool_result",
+            "description": "Retrieve the full output of a previous tool call by result_id. Use this when a summarized [tool_result:...] reference is not enough.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "result_id": {
+                        "type": "string",
+                        "description": "The result_id from a [tool_result:...] reference",
+                    },
+                },
+                "required": ["result_id"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
@@ -1629,6 +1647,26 @@ def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
         text = text[:MAX_READ_CHARS - 1] + "…"
 
     return {"text": text, "path": str(target), "size": len(text), "status": "ok"}
+
+
+def _exec_read_tool_result(args: dict[str, Any]) -> dict[str, Any]:
+    result_id = str(args.get("result_id") or "").strip()
+    if not result_id:
+        return {"error": "result_id is required", "status": "error"}
+
+    record = get_tool_result(result_id)
+    if not record:
+        return {"error": f"Tool result not found: {result_id}", "status": "error"}
+
+    return {
+        "status": "ok",
+        "text": str(record.get("result") or "") or "[empty tool result]",
+        "result_id": result_id,
+        "tool_name": str(record.get("tool_name") or ""),
+        "arguments": dict(record.get("arguments") or {}),
+        "summary": str(record.get("summary") or ""),
+        "created_at": str(record.get("created_at") or ""),
+    }
 
 
 def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
@@ -4029,6 +4067,7 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
 # ── Handler registry ───────────────────────────────────────────────────
 
 _TOOL_HANDLERS: dict[str, Any] = {
+    "read_tool_result": _exec_read_tool_result,
     "read_file": _exec_read_file,
     "write_file": _exec_write_file,
     "edit_file": _exec_edit_file,

@@ -842,7 +842,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             append_chat_message(
                                 session_id=run.session_id,
                                 role="tool",
-                                content=f"[{sr['tool_name']}]: {result_text[:800]}",
+                                content=result_text,
+                                tool_name=str(sr.get("tool_name") or ""),
+                                tool_arguments=dict(sr.get("arguments") or {}),
                             )
 
                 # ── Agentic follow-up loop ────────────────────────────────────────────
@@ -1096,7 +1098,9 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 append_chat_message(
                                     session_id=run.session_id,
                                     role="tool",
-                                    content=f"[{_a_sr['tool_name']}]: {_a_rt[:800]}",
+                                    content=_a_rt,
+                                    tool_name=str(_a_sr.get("tool_name") or ""),
+                                    tool_arguments=dict(_a_sr.get("arguments") or {}),
                                 )
 
                     # Append this round's exchange to the conversation for next round

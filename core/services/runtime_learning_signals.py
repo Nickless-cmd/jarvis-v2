@@ -1,3 +1,9 @@
+"""Runtime learning signal extraction and digest generation.
+
+LLM-path (generate_learning_digest): PUBLIC-SAFE — sender kun signal_key
+labels, family-navne og tæller. Ingen brugerdata eller privat kontekst.
+"""
+
 from __future__ import annotations
 
 from typing import Any
@@ -259,3 +265,53 @@ def _coerce_domain_key(value: Any) -> str:
         if len(parts) >= 2:
             return ":".join(parts[-2:])
     return text[:80]
+
+
+def generate_learning_digest(summary: dict[str, Any]) -> str:
+    """Distil accumulated runtime learning signals into one actionable insight.
+
+    Takes the output of summarize_runtime_learning_signals() and produces a
+    single Danish sentence. PUBLIC-SAFE — sends only signal_key labels,
+    family names, and counts.
+
+    Returns empty string if there are not enough signals or LLM fails.
+    """
+    signal_count = int(summary.get("signal_count") or 0)
+    if signal_count < 3:
+        return ""
+
+    signal_stats: dict[str, Any] = summary.get("signal_stats") or {}
+    family_stats: dict[str, Any] = summary.get("family_signal_stats") or {}
+
+    # Build a compact structural summary — labels and counts only
+    top_signals = sorted(
+        signal_stats.items(),
+        key=lambda kv: int((kv[1] or {}).get("total_count") or 0),
+        reverse=True,
+    )[:5]
+    top_families = sorted(
+        family_stats.items(),
+        key=lambda kv: sum(
+            int((v or {}).get("total_count") or 0) for v in (kv[1] or {}).values()
+        ),
+        reverse=True,
+    )[:3]
+
+    signals_str = ", ".join(
+        f"{k}×{(v or {}).get('total_count', 1)}" for k, v in top_signals
+    )
+    families_str = ", ".join(f[0] for f in top_families)
+
+    prompt = (
+        f"Runtime learning signals ({signal_count} total): {signals_str}. "
+        f"Top families: {families_str}. "
+        "Skriv præcis én kort sætning på dansk der beskriver det vigtigste mønster "
+        "eller en konkret justering — max 20 ord. Kun sætningen."
+    )
+    try:
+        from core.services.daemon_llm import daemon_public_safe_llm_call
+        return daemon_public_safe_llm_call(
+            prompt, max_len=150, fallback="", daemon_name="runtime_learning"
+        )
+    except Exception:
+        return ""

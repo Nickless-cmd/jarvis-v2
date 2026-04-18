@@ -6,6 +6,9 @@ the guard checks for:
 - Competing explanations
 - Confounders
 - Base rate validity
+
+LLM-path: PUBLIC-SAFE — sender kun tal og abstraktlabels (counts,
+confidence-scores, status). Ingen brugerdata eller privat kontekst.
 """
 
 from __future__ import annotations
@@ -13,6 +16,33 @@ from __future__ import annotations
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_assessment_rationale(
+    *,
+    status: str,
+    observation_count: int,
+    adjusted_confidence: float,
+    competitor_count: int,
+    confounder_count: int,
+) -> str:
+    """Generate a brief Danish explanation of the assessment. Falls back to empty string."""
+    if status == "rejected" and observation_count < 3:
+        return f"For få observationer ({observation_count}) til at validere mønsteret."
+    verb = {"rejected": "afvist", "candidate": "foreløbig kandidat", "upgraded": "opgraderet"}.get(status, status)
+    prompt = (
+        f"Et mønster er {verb} (konfidens {adjusted_confidence:.2f}, "
+        f"{observation_count} observationer, {competitor_count} konkurrerende forklaringer, "
+        f"{confounder_count} konfoundere). "
+        "Skriv præcis én sætning på dansk der forklarer vurderingen — max 15 ord. Kun sætningen."
+    )
+    try:
+        from core.services.daemon_llm import daemon_public_safe_llm_call
+        return daemon_public_safe_llm_call(
+            prompt, max_len=120, fallback="", daemon_name="apophenia_guard"
+        )
+    except Exception:
+        return ""
 
 
 def assess_pattern(
@@ -57,6 +87,13 @@ def assess_pattern(
     else:
         status = "upgraded"
 
+    rationale = _generate_assessment_rationale(
+        status=status,
+        observation_count=observation_count,
+        adjusted_confidence=adjusted_confidence,
+        competitor_count=len(competitors),
+        confounder_count=len(confounder_list),
+    )
     return {
         "status": status,
         "confidence": round(adjusted_confidence, 3),
@@ -65,6 +102,7 @@ def assess_pattern(
         "confounder_penalty": round(confounder_penalty, 3),
         "observation_boost": round(observation_boost, 3),
         "observation_count": observation_count,
+        "rationale": rationale,
     }
 
 

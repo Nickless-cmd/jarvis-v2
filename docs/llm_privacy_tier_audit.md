@@ -35,6 +35,7 @@ Sidst gennemgået: 2026-04-18
 | `core/services/surprise_daemon.py` | `_generate_surprise` | structured divergence labels only | 🌐 PUBLIC-SAFE | anonymiseret `baseline_mode/current_mode/energy/divergence_labels` |
 | `core/services/conflict_daemon.py` | `_generate_conflict_phrase` | structured conflict labels only | 🌐 PUBLIC-SAFE | anonymiseret `conflict_type` + coarse runtime labels |
 | `core/services/curiosity_daemon.py` | `_generate_curiosity_signal` | abstract gap metadata | 🌐 PUBLIC-SAFE | sender kun `gap_type` + coarse cue, ikke rå fragmenttekst |
+| `core/services/absence_daemon.py` | `_generate_absence_label` | structured silence metadata | 🌐 PUBLIC-SAFE | anonymiseret `absence_band` + `absence_hours` |
 | `core/services/irony_daemon.py` | `_generate_observation` | inactivity + CPU + self-observation | 🔒 LOCAL-REQUIRED | selvobservation med identity-preamble |
 | `core/services/existential_wonder_daemon.py` | `_generate_wonder_question` | absence + thought activity + selfhood | 🔒 LOCAL-REQUIRED | eksistentielt selvspørgsmål |
 | `core/services/development_narrative_daemon.py` | `_generate_narrative` | self-comparison + chronicle | 🔒 LOCAL-REQUIRED | `"Her er data om din udvikling over tid"` |
@@ -52,7 +53,7 @@ Sidst gennemgået: 2026-04-18
 - Totale klassificerede LLM-kald: 28
 - `🔒 LOCAL-REQUIRED`: 18
 - `🟡 CONTROLLED-CLOUD`: 2
-- `🌐 PUBLIC-SAFE`: 6
+- `🌐 PUBLIC-SAFE`: 7
 
 ## Konservative migrationskandidater
 
@@ -64,6 +65,7 @@ Kun disse er nu konservativt godkendt til OllamaFreeAPI:
 4. `surprise_daemon._generate_surprise`
 5. `conflict_daemon._generate_conflict_phrase`
 6. `curiosity_daemon._generate_curiosity_signal`
+7. `absence_daemon._generate_absence_label`
 
 ## Kandidater som ser fristende ud, men ikke er PUBLIC-SAFE
 
@@ -72,7 +74,7 @@ Kun disse er nu konservativt godkendt til OllamaFreeAPI:
 - `aesthetic_taste_daemon` — bygger smag ud fra Jarvis' egne mønstre.
 - `irony_daemon` — første-persons selvobservation.
 - `creative_journal_runtime` — privat journal.
-- `experienced_time` / `absence`-lignende daemons — er enten stadig heuristiske eller bundet til intern runtime-kontekst og er ikke migreret i denne fase.
+- `experienced_time`-lignende daemons — er enten stadig heuristiske eller bundet til intern runtime-kontekst og er ikke migreret i denne fase.
 
 ## Audit note
 

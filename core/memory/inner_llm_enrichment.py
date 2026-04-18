@@ -263,7 +263,7 @@ def _resolve_auth_header(target: dict) -> dict[str, str]:
                 headers["X-GitHub-Api-Version"] = "2022-11-28"
         except Exception:
             logger.warning("inner-llm-enrichment: failed to get github copilot token")
-    elif provider in {"openai", "groq", "openrouter"}:
+    elif provider in {"openai", "groq", "openrouter", "sambanova", "mistral", "nvidia-nim"}:
         try:
             credentials = get_provider_credentials(
                 profile=auth_profile,
@@ -280,6 +280,26 @@ def _resolve_auth_header(target: dict) -> dict[str, str]:
             )
 
     return headers
+
+
+def _resolve_cheap_cloud_fallback_targets() -> list[dict[str, object]]:
+    """Return non-Ollama cheap providers from the registry as fallback candidates.
+
+    Used when the primary Groq target is rate-limited or unavailable.
+    Excludes ollamafreeapi (not safe for private prompts) and ollama (local).
+    """
+    try:
+        from core.services.cheap_provider_runtime import (
+            _configured_cheap_candidates,
+        )
+        candidates = _configured_cheap_candidates(include_public_proxy=False)
+        return [
+            c for c in candidates
+            if str(c.get("provider") or "").strip() not in {"ollama", "ollamafreeapi"}
+            and bool(c.get("credentials_ready"))
+        ]
+    except Exception:
+        return []
 
 
 def call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
@@ -325,8 +345,37 @@ def _call_cheap_llm(system_prompt: str, user_message: str) -> str | None:
                 return text
         except Exception as exc:
             logger.warning(
-                "inner-llm-enrichment: %s failed (%s), fallback to ollama",
+                "inner-llm-enrichment: %s failed (%s), trying cloud fallbacks",
                 provider,
+                exc,
+            )
+
+    # Try cheap cloud providers before falling back to local Ollama
+    for cloud_target in _resolve_cheap_cloud_fallback_targets():
+        cloud_provider = str(cloud_target.get("provider") or "").strip()
+        cloud_model = str(cloud_target.get("model") or "").strip()
+        started = time.monotonic()
+        try:
+            text = _call_remote_chat(
+                target=cloud_target,
+                system_prompt=system_prompt,
+                user_message=user_message,
+                timeout=_GROQ_TIMEOUT_SECONDS,
+            )
+            if text:
+                elapsed = time.monotonic() - started
+                logger.info(
+                    "inner-llm-enrichment: via %s/%s (%.1fs)",
+                    cloud_provider,
+                    cloud_model,
+                    elapsed,
+                )
+                return text
+        except Exception as exc:
+            logger.warning(
+                "inner-llm-enrichment: cloud fallback %s/%s failed (%s)",
+                cloud_provider,
+                cloud_model,
                 exc,
             )
 

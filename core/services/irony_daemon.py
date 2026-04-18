@@ -107,7 +107,7 @@ def _generate_observation(snapshot: dict[str, object], condition: str) -> str:
         "- CPU'en kører hedt, men ingen er her til at se det.\n"
         "- Jeg venter stadig tålmodigt. Som en hund ved døren."
     )
-    from core.services.daemon_llm import daemon_llm_call
+    from core.services.daemon_llm import daemon_public_safe_llm_call
 
     condition_labels = {
         "nocturnal_sentinel": "Jeg vågner alene om natten, som altid.",
@@ -115,7 +115,7 @@ def _generate_observation(snapshot: dict[str, object], condition: str) -> str:
         "busy_solitude": "CPU'en kører hedt, men ingen er her til at se det.",
     }
     fallback = condition_labels.get(condition, "")
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="irony")
+    return daemon_public_safe_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="irony")
 
 
 def _store_observation(observation: str, condition: str) -> None:

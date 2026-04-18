@@ -136,6 +136,19 @@ def _fire_due_tasks() -> None:
                 if result.get("status") == "ok":
                     runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
                     logger.info("scheduled_tasks: fired %s → delivered", task_id)
+
+                    # Also push to initiative queue so Jarvis can act on it autonomously
+                    try:
+                        from core.services.initiative_queue import push_initiative
+                        push_initiative(
+                            focus=focus,
+                            source="scheduled-task",
+                            source_id=task_id,
+                            priority="medium",
+                        )
+                        logger.info("scheduled_tasks: pushed %s to initiative queue", task_id)
+                    except Exception as init_exc:
+                        logger.warning("scheduled_tasks: failed to push %s to initiative queue: %s", task_id, init_exc)
                 else:
                     # Delivery failed (no active session etc.) — leave pending, retry next poll
                     logger.warning(

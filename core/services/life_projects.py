@@ -66,11 +66,17 @@ def tick_life_projects_reassessment(
     """
     from core.runtime.secrets import read_runtime_key
 
-    enabled = read_runtime_key("layer_life_projects_enabled", default=True)
+    try:
+        enabled = read_runtime_key("layer_life_projects_enabled")
+    except Exception:
+        enabled = True
     if not enabled:
         return {"status": "disabled", "reason": "layer_life_projects_enabled=false"}
 
-    decay_days = int(read_runtime_key("layer_life_projects_decay_days", default=14))
+    try:
+        decay_days = int(read_runtime_key("layer_life_projects_decay_days"))
+    except Exception:
+        decay_days = 14
     threshold = timedelta(days=decay_days)
     now = datetime.now(UTC)
 

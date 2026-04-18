@@ -207,11 +207,17 @@ def tick_relation_map_refresh(
     """
     from core.runtime.secrets import read_runtime_key
 
-    enabled = read_runtime_key("layer_relation_map_enabled", default=True)
+    try:
+        enabled = read_runtime_key("layer_relation_map_enabled")
+    except Exception:
+        enabled = True
     if not enabled:
         return {"status": "disabled", "reason": "layer_relation_map_enabled=false"}
 
-    decay_days = int(read_runtime_key("layer_relation_map_decay_days", default=14))
+    try:
+        decay_days = int(read_runtime_key("layer_relation_map_decay_days"))
+    except Exception:
+        decay_days = 14
     threshold = timedelta(hours=12)
     now = datetime.now(UTC)
     now_iso = now.isoformat()

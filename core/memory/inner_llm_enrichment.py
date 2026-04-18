@@ -244,7 +244,13 @@ def _resolve_auth_header(target: dict) -> dict[str, str]:
     """Build auth headers from provider router target."""
     provider = str(target.get("provider") or "")
     auth_profile = str(target.get("auth_profile") or "")
-    headers: dict[str, str] = {"Content-Type": "application/json"}
+    headers: dict[str, str] = {
+        "Content-Type": "application/json",
+        "User-Agent": (
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+    }
 
     if provider == "github-copilot" or auth_profile == "github-copilot":
         try:
@@ -266,6 +272,8 @@ def _resolve_auth_header(target: dict) -> dict[str, str]:
             api_key = str((credentials or {}).get("api_key") or "").strip()
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
+            if provider == "groq":
+                headers["Accept"] = "application/json"
         except Exception:
             logger.warning(
                 "inner-llm-enrichment: failed to get %s api key", provider

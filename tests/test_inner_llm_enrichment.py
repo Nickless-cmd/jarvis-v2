@@ -211,6 +211,21 @@ def test_build_inner_voice_prompt_includes_mood_and_context() -> None:
 # ---------------------------------------------------------------------------
 
 from core.memory.inner_llm_enrichment import _call_cheap_llm
+from core.memory.inner_llm_enrichment import _resolve_auth_header
+
+
+def test_resolve_auth_header_for_groq_includes_browser_user_agent() -> None:
+    with patch(
+        "core.memory.inner_llm_enrichment.get_provider_credentials",
+        return_value={"api_key": "test-key"},  # pragma: allowlist secret
+    ):
+        headers = _resolve_auth_header(
+            {"provider": "groq", "auth_profile": "groq"}
+        )
+
+    assert headers["Authorization"] == "Bearer test-key"
+    assert "Mozilla/5.0" in headers["User-Agent"]
+    assert headers["Accept"] == "application/json"
 
 
 def test_call_cheap_llm_returns_text_on_success() -> None:

@@ -447,6 +447,22 @@ def _ensure_producers_registered() -> None:
         depends_on=["self_critique_runtime"],
     ))
 
+    def _run_creative_journal_runtime(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.creative_journal_runtime import (
+            run_creative_journal_cycle,
+        )
+
+        return run_creative_journal_cycle(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="creative_journal_runtime",
+        cooldown_minutes=10080,
+        visible_grace_minutes=60,
+        run_fn=_run_creative_journal_runtime,
+        priority=24,
+        depends_on=["dream_distillation_daemon"],
+    ))
+
 def run_cadence_tick_with_bootstrap(
     *,
     trigger: str = "heartbeat",

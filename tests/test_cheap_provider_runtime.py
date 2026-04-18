@@ -377,3 +377,85 @@ def test_selector_prefers_better_adaptive_score(isolated_runtime) -> None:
 
     assert target["provider"] == "gemini"
     assert target["effective_priority"] < 30
+
+
+def test_generic_cheap_lane_skips_ollamafreeapi(isolated_runtime) -> None:
+    provider_router = isolated_runtime.provider_router
+    cheap = isolated_runtime.cheap_provider_runtime
+
+    provider_router.configure_provider_router_entry(
+        provider="ollamafreeapi",
+        model="llama3.2:3b",
+        auth_mode="none",
+        auth_profile="",
+        base_url="",
+        api_key="",
+        lane="cheap",
+        set_visible=False,
+    )
+
+    target = cheap.select_cheap_lane_target()
+
+    assert target["active"] is False
+    assert target["status"] == "no-healthy-provider"
+
+
+def test_public_safe_lane_prefers_ollamafreeapi_and_falls_back_local(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    provider_router = isolated_runtime.provider_router
+    cheap = isolated_runtime.cheap_provider_runtime
+
+    provider_router.configure_provider_router_entry(
+        provider="ollamafreeapi",
+        model="llama3.2:3b",
+        auth_mode="none",
+        auth_profile="",
+        base_url="",
+        api_key="",
+        lane="cheap",
+        set_visible=False,
+    )
+    provider_router.configure_provider_router_entry(
+        provider="ollama",
+        model="qwen3.5:9b",
+        auth_mode="none",
+        auth_profile="",
+        base_url="http://127.0.0.1:11434",
+        api_key="",
+        lane="local",
+        set_visible=False,
+    )
+
+    def _execute_provider_chat(*, provider, model, auth_profile, base_url, message):
+        if provider == "ollamafreeapi":
+            raise cheap.CheapProviderError(
+                provider="ollamafreeapi",
+                code="provider-error",
+                message="down",
+            )
+        raise AssertionError(f"unexpected provider {provider}")
+
+    monkeypatch.setattr(cheap, "_execute_provider_chat", _execute_provider_chat)
+    monkeypatch.setattr(
+        cheap,
+        "_execute_public_safe_local_ollama",
+        lambda *, message: {
+            "lane": "local",
+            "provider": "ollama",
+            "model": "qwen3.5:9b",
+            "status": "completed",
+            "execution_mode": "public-safe-local-fallback",
+            "source": "cheap-provider-runtime",
+            "text": "fallback-ok",
+            "input_tokens": 1,
+            "output_tokens": 1,
+            "cost_usd": 0.0,
+        },
+    )
+
+    result = cheap.execute_public_safe_cheap_lane(message="ping")
+
+    assert result["provider"] == "ollama"
+    assert result["text"] == "fallback-ok"

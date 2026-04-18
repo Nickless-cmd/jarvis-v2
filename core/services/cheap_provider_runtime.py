@@ -103,6 +103,16 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "daily_limit": None,
         "daily_neurons": 10000,
     },
+    "ollamafreeapi": {
+        "label": "OllamaFreeAPI",
+        "priority": 95,
+        "base_url": "",
+        "auth_kind": "none",
+        "protocol": "ollamafreeapi",
+        "models_endpoint": "",
+        "rpm_limit": None,
+        "daily_limit": None,
+    },
 }
 
 
@@ -143,6 +153,8 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
     profile = str(auth_profile or "").strip()
     if normalized_provider not in CHEAP_PROVIDER_DEFAULTS:
         return False
+    if normalized_provider == "ollamafreeapi":
+        return True
     if not profile:
         return False
     credentials = get_provider_credentials(profile=profile, provider=normalized_provider)
@@ -198,6 +210,8 @@ def list_provider_models(
                 auth_profile=profile,
                 base_url=root,
             )
+        elif normalized_provider == "ollamafreeapi":
+            models = _list_ollamafreeapi_models()
         elif normalized_provider == "gemini":
             models = _list_gemini_models(auth_profile=profile, base_url=root)
         elif normalized_provider == "cloudflare":
@@ -224,7 +238,7 @@ def list_provider_models(
 
 
 def cheap_lane_status_surface() -> dict[str, object]:
-    candidates = _configured_cheap_candidates()
+    candidates = _configured_cheap_candidates(include_public_proxy=True)
     states = {
         (str(item["provider"]), str(item["model"])): item
         for item in list_cheap_provider_runtime_states(lane="cheap")
@@ -297,7 +311,7 @@ def smoke_cheap_lane(
     *,
     message: str = "Return exactly: cheap-lane-ok",
 ) -> dict[str, object]:
-    candidates = _configured_cheap_candidates()
+    candidates = _configured_cheap_candidates(include_public_proxy=False)
     results: list[dict[str, object]] = []
     success_count = 0
     failure_count = 0
@@ -395,7 +409,7 @@ def smoke_cheap_lane(
 
 
 def select_cheap_lane_target() -> dict[str, object]:
-    candidates = _configured_cheap_candidates()
+    candidates = _configured_cheap_candidates(include_public_proxy=False)
     blocked: list[dict[str, object]] = []
     for candidate in candidates:
         if not bool(candidate.get("credentials_ready")):
@@ -527,7 +541,82 @@ def execute_cheap_lane_via_pool(*, message: str) -> dict[str, object]:
     }
 
 
-def _configured_cheap_candidates() -> list[dict[str, object]]:
+def select_public_safe_cheap_lane_target() -> dict[str, object]:
+    candidates = [
+        item
+        for item in _configured_cheap_candidates(include_public_proxy=True)
+        if str(item.get("provider") or "").strip() == "ollamafreeapi"
+    ]
+    for candidate in candidates:
+        if not bool(candidate.get("credentials_ready")):
+            continue
+        quota = _candidate_quota_snapshot(candidate)
+        if quota["blocked"]:
+            continue
+        adaptive = _candidate_adaptive_snapshot(candidate)
+        return {
+            **candidate,
+            "effective_priority": adaptive["effective_priority"],
+            "adaptive_penalty": adaptive["adaptive_penalty"],
+            "selection_reason": "public-safe-proxy",
+        }
+    return {
+        "active": False,
+        "lane": "cheap",
+        "status": "no-public-safe-provider",
+    }
+
+
+def execute_public_safe_cheap_lane(*, message: str) -> dict[str, object]:
+    target = select_public_safe_cheap_lane_target()
+    provider = str(target.get("provider") or "").strip()
+    model = str(target.get("model") or "").strip()
+    if provider and model:
+        profile = str(target.get("auth_profile") or "").strip()
+        started_at = datetime.now(UTC)
+        try:
+            result = _execute_provider_chat(
+                provider=provider,
+                model=model,
+                auth_profile=profile,
+                base_url=str(target.get("base_url") or "").strip(),
+                message=message,
+            )
+        except CheapProviderError as exc:
+            _register_provider_failure(
+                provider=provider,
+                model=model,
+                auth_profile=profile,
+                error=exc,
+                smoke_test=False,
+            )
+        else:
+            latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+            _record_provider_success(
+                provider=provider,
+                model=model,
+                latency_ms=latency_ms,
+                quality_score=None,
+                smoke_test=False,
+            )
+            return {
+                "lane": "cheap",
+                "provider": provider,
+                "model": model,
+                "status": "completed",
+                "execution_mode": "public-safe-cheap-provider",
+                "source": "cheap-provider-runtime",
+                "text": str(result.get("text") or ""),
+                "input_tokens": _estimate_tokens(message),
+                "output_tokens": int(
+                    result.get("output_tokens") or _estimate_tokens(str(result.get("text") or ""))
+                ),
+                "cost_usd": float(result.get("cost_usd") or 0.0),
+            }
+    return _execute_public_safe_local_ollama(message=message)
+
+
+def _configured_cheap_candidates(*, include_public_proxy: bool) -> list[dict[str, object]]:
     registry = load_provider_router_registry()
     provider_entries = {
         str(item.get("provider") or "").strip(): item
@@ -543,6 +632,8 @@ def _configured_cheap_candidates() -> list[dict[str, object]]:
             continue
         provider = str(item.get("provider") or "").strip()
         model = str(item.get("model") or "").strip()
+        if provider == "ollamafreeapi" and not include_public_proxy:
+            continue
         if not provider or not model:
             continue
         key = (provider, model)
@@ -824,6 +915,11 @@ def _execute_provider_chat(
             base_url=base_url,
             message=message,
         )
+    if provider == "ollamafreeapi":
+        return _execute_ollamafreeapi_chat(
+            model=model,
+            message=message,
+        )
     raise CheapProviderError(
         provider=provider,
         code="unsupported-provider",
@@ -994,6 +1090,66 @@ def _list_cloudflare_models(*, auth_profile: str, base_url: str) -> list[dict[st
         if isinstance(item, dict)
         and str(item.get("id") or item.get("name") or item.get("model") or "").strip()
     ]
+
+
+def _list_ollamafreeapi_models() -> list[dict[str, object]]:
+    from core.runtime.ollamafreeapi_provider import list_ollamafreeapi_models
+
+    return [{"id": model, "label": model} for model in list_ollamafreeapi_models()]
+
+
+def _execute_ollamafreeapi_chat(
+    *,
+    model: str,
+    message: str,
+) -> dict[str, object]:
+    from core.runtime.ollamafreeapi_provider import call_ollamafreeapi
+
+    try:
+        data = call_ollamafreeapi(model=model, prompt=message, timeout=_DEFAULT_TIMEOUT_SECONDS)
+    except Exception as exc:
+        raise CheapProviderError(
+            provider="ollamafreeapi",
+            code="provider-error",
+            message=str(exc),
+        ) from exc
+    text = str((data.get("message") or {}).get("content") or "").strip()
+    return {
+        "text": text,
+        "output_tokens": _estimate_tokens(text),
+        "cost_usd": 0.0,
+    }
+
+
+def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
+    target = resolve_provider_router_target(lane="local")
+    if not bool(target.get("active")) or str(target.get("provider") or "").strip() != "ollama":
+        raise RuntimeError("public-safe local fallback unavailable")
+    base_url = str(target.get("base_url") or "http://127.0.0.1:11434").rstrip("/")
+    payload = {
+        "model": str(target.get("model") or "").strip(),
+        "messages": [{"role": "user", "content": message}],
+        "stream": False,
+    }
+    data, _headers = _http_json(
+        f"{base_url}/api/chat",
+        payload=payload,
+        headers={},
+        provider="ollama",
+    )
+    text = str((data.get("message") or {}).get("content") or "").strip()
+    return {
+        "lane": "local",
+        "provider": "ollama",
+        "model": str(target.get("model") or "").strip(),
+        "status": "completed",
+        "execution_mode": "public-safe-local-fallback",
+        "source": "cheap-provider-runtime",
+        "text": text,
+        "input_tokens": _estimate_tokens(message),
+        "output_tokens": _estimate_tokens(text),
+        "cost_usd": 0.0,
+    }
 
 
 def _require_credentials(*, profile: str, provider: str) -> dict[str, object]:

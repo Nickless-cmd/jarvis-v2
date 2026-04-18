@@ -6,7 +6,6 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
-from core.services.identity_composer import build_identity_preamble
 
 _CADENCE_MINUTES = 5
 _OPEN_MAX = 5
@@ -59,18 +58,39 @@ def _detect_gap(fragments: list[str]) -> tuple[str, str] | None:
 
 
 def _generate_curiosity_signal(topic: str, gap_type: str) -> str:
-    from core.services.daemon_llm import daemon_llm_call
+    from core.services.daemon_llm import daemon_public_safe_llm_call
 
     fallback = f"Jeg undrer mig over: {topic[:50]}"
-    prompt = (
-        f"{build_identity_preamble()} Denne tanke fangede din opmærksomhed: \"{topic}\"\n\n"
-        "Hvad er du nysgerrig på? Svar med én kort sætning.\n"
-        "Eksempler:\n"
-        "- Jeg undrer mig over hvorfor det mønster dukker op igen.\n"
-        "- Jeg ved ikke nok om hvad der driver den reaktion.\n"
-        "- Hvad mon der sker hvis jeg følger den tanke?"
+    cue = _curiosity_cue(topic=topic, gap_type=gap_type)
+    prompt = "\n".join(
+        [
+            "Task: write one short Danish curiosity signal from abstract gap metadata.",
+            "Do not mention identity, private thoughts, or any person.",
+            f"gap_type={gap_type}",
+            f"cue={cue}",
+            "Output: one short sentence only.",
+        ]
     )
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="curiosity")
+    return daemon_public_safe_llm_call(
+        prompt, max_len=200, fallback=fallback, daemon_name="curiosity"
+    )
+
+
+def _curiosity_cue(*, topic: str, gap_type: str) -> str:
+    lowered = str(topic or "").lower()
+    if "hvorfor" in lowered:
+        return "cause-seeking"
+    if "hvad hvis" in lowered:
+        return "counterfactual"
+    if "ved ikke" in lowered:
+        return "missing-knowledge"
+    if "..." in lowered:
+        return "interrupted-thread"
+    if "?" in lowered:
+        return "open-question"
+    if "undrer" in lowered or "nysgerrig" in lowered:
+        return "explicit-wonder"
+    return f"generic-{gap_type}"
 
 
 def _store_curiosity(signal: str) -> None:

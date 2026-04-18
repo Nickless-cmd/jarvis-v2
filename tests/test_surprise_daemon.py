@@ -76,3 +76,17 @@ def test_private_brain_record_written_on_store():
     kwargs = mock_insert.call_args[1]
     assert kwargs["record_type"] == "self-surprise"
     assert kwargs["summary"] == "Jeg blev overrasket."
+
+
+def test_generate_surprise_uses_public_safe_llm_path():
+    _reset()
+    with patch.dict("sys.modules", {
+        "core.services.daemon_llm": type(
+            "_FakeDaemonLLMModule",
+            (),
+            {"daemon_public_safe_llm_call": staticmethod(lambda *args, **kwargs: "Struktureret overraskelse.")}
+        )()
+    }):
+        result = sd._generate_surprise("searching", "medium", ["mode:work-steady→searching"])
+
+    assert result == "Struktureret overraskelse."

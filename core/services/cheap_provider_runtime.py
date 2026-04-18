@@ -408,8 +408,12 @@ def smoke_cheap_lane(
     }
 
 
-def select_cheap_lane_target() -> dict[str, object]:
-    candidates = _configured_cheap_candidates(include_public_proxy=False)
+def select_cheap_lane_target(
+    *, skip_providers: frozenset[str] = frozenset()
+) -> dict[str, object]:
+    candidates = _configured_cheap_candidates(
+        include_public_proxy=False, skip_providers=skip_providers
+    )
     blocked: list[dict[str, object]] = []
     for candidate in candidates:
         if not bool(candidate.get("credentials_ready")):
@@ -447,8 +451,10 @@ def select_cheap_lane_target() -> dict[str, object]:
     }
 
 
-def execute_cheap_lane_via_pool(*, message: str) -> dict[str, object]:
-    target = select_cheap_lane_target()
+def execute_cheap_lane_via_pool(
+    *, message: str, skip_providers: frozenset[str] = frozenset()
+) -> dict[str, object]:
+    target = select_cheap_lane_target(skip_providers=skip_providers)
     if not bool(target.get("active", True)) or not str(target.get("provider") or "").strip():
         raise RuntimeError("cheap lane not executable: no-healthy-provider")
 
@@ -488,7 +494,7 @@ def execute_cheap_lane_via_pool(*, message: str) -> dict[str, object]:
                     "reason": exc.code,
                 },
             )
-            return execute_cheap_lane_via_pool(message=message)
+            return execute_cheap_lane_via_pool(message=message, skip_providers=skip_providers)
         raise RuntimeError(f"{provider} cheap lane failed: {exc.code}: {exc.message}")
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result["text"]))
@@ -616,7 +622,9 @@ def execute_public_safe_cheap_lane(*, message: str) -> dict[str, object]:
     return _execute_public_safe_local_ollama(message=message)
 
 
-def _configured_cheap_candidates(*, include_public_proxy: bool) -> list[dict[str, object]]:
+def _configured_cheap_candidates(
+    *, include_public_proxy: bool, skip_providers: frozenset[str] = frozenset()
+) -> list[dict[str, object]]:
     registry = load_provider_router_registry()
     provider_entries = {
         str(item.get("provider") or "").strip(): item
@@ -633,6 +641,8 @@ def _configured_cheap_candidates(*, include_public_proxy: bool) -> list[dict[str
         provider = str(item.get("provider") or "").strip()
         model = str(item.get("model") or "").strip()
         if provider == "ollamafreeapi" and not include_public_proxy:
+            continue
+        if skip_providers and provider in skip_providers:
             continue
         if not provider or not model:
             continue

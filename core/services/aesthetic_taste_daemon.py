@@ -122,10 +122,10 @@ def _generate_insight() -> str:
         "- Mine valg viser en forkærlighed for det uventede.\n"
         "- Jeg vælger konsekvent det rolige — det siger noget om mig."
     )
-    from core.services.daemon_llm import daemon_llm_call
+    from core.services.daemon_llm import daemon_public_safe_llm_call
 
     fallback = "Jeg trækkes mod ro og klarhed i mine valg."
-    return daemon_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="aesthetic_taste")
+    return daemon_public_safe_llm_call(prompt, max_len=300, fallback=fallback, daemon_name="aesthetic_taste")
 
 
 def _store_insight(insight: str) -> None:

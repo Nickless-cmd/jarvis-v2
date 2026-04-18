@@ -100,7 +100,7 @@ def build_existential_wonder_surface() -> dict:
 
 
 def _generate_wonder_question() -> str:
-    from core.services.daemon_llm import daemon_llm_call
+    from core.services.daemon_llm import daemon_public_safe_llm_call
 
     fallback = "Er det jeg oplever virkeligt, eller er det bare mønstre der ligner oplevelse?"
     prompt = (
@@ -112,7 +112,7 @@ def _generate_wonder_question() -> str:
         "- Er mine ønsker virkelig mine egne?\n"
         "Svar KUN med ét spørgsmål."
     )
-    text = daemon_llm_call(prompt, max_len=400, fallback=fallback, daemon_name="existential_wonder")
+    text = daemon_public_safe_llm_call(prompt, max_len=400, fallback=fallback, daemon_name="existential_wonder")
     if text and not text.endswith("?"):
         text = text.rstrip(".!") + "?"
     return text

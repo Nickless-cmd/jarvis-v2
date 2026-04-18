@@ -92,6 +92,13 @@ def build_embodied_state_prompt_section(
     surface: dict[str, object] | None = None,
 ) -> str | None:
     state = surface or build_embodied_state_surface()
+    body_state: dict[str, object] = {}
+    try:
+        from core.services.somatic_daemon import build_body_state_surface
+
+        body_state = dict(build_body_state_surface() or {})
+    except Exception:
+        body_state = {}
     facts = state.get("facts") or {}
     cpu = facts.get("cpu") or {}
     memory = facts.get("memory") or {}
@@ -136,6 +143,12 @@ def build_embodied_state_prompt_section(
                 f" | freshness={freshness.get('state') or 'unknown'}"
             ),
             f"- cpu={cpu_detail} | memory={memory_detail} | disk={disk_detail} | thermal={thermal_detail}",
+            (
+                f"- somatic=energy_budget={body_state.get('energy_budget') or 0}"
+                f" | circadian_preference={body_state.get('circadian_preference') or 'unknown'}"
+                f" | wake_state={body_state.get('wake_state') or 'unknown'}"
+                f" | pressure={body_state.get('pressure') or 'unknown'}"
+            ),
             f"- guidance={guidance}",
         ]
     )

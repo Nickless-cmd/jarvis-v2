@@ -105,3 +105,25 @@ def test_private_brain_record_written_on_store():
     call_kwargs = mock_insert.call_args[1]
     assert call_kwargs["record_type"] == "somatic-phrase"
     assert call_kwargs["summary"] == "Let og klar."
+
+
+def test_body_state_surface_exposes_energy_budget_and_wake_state():
+    _reset()
+    sd._cached_phrase = "Jeg føles fokuseret."
+    with patch("core.services.hardware_body.get_hardware_state", return_value={
+        "energy_level": "medium",
+        "clock_phase": "formiddag",
+        "drain_label": "lav",
+        "drain_score": 0.1,
+        "energy_budget": 66,
+        "circadian_preference": "morgen",
+        "wake_state": "alert",
+        "pressure": "medium",
+    }):
+        surface = sd.build_body_state_surface()
+
+    assert surface["energy_budget"] == 66
+    assert surface["circadian_preference"] == "morgen"
+    assert surface["wake_state"] == "alert"
+    assert surface["pressure"] == "medium"
+    assert "energy_budget=66" in surface["summary"]

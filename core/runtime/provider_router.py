@@ -491,7 +491,7 @@ def _provider_base_url(*, provider: str, registry: dict[str, object]) -> str | N
 def _credentials_ready(*, provider: str, auth_profile: str) -> bool:
     if not provider:
         return False
-    if provider in {"phase1-runtime", "codex-cli"}:
+    if provider in {"phase1-runtime", "codex-cli", "ollamafreeapi"}:
         return True
     if not auth_profile:
         return False

@@ -61,6 +61,9 @@ from core.services.self_critique_runtime import (
 from core.services.creative_journal_runtime import (
     build_creative_journal_surface,
 )
+from core.services.finitude_runtime import (
+    build_finitude_surface,
+)
 from core.services.subagent_ecology import (
     build_subagent_ecology_surface,
 )
@@ -620,6 +623,7 @@ def _mc_runtime_uncached() -> dict:
             "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
             "runtime_self_critique": build_self_critique_surface(),
             "runtime_creative_journal": build_creative_journal_surface(),
+            "runtime_finitude": build_finitude_surface(),
             "runtime_dream_distillation": build_dream_distillation_surface(),
             "runtime_unconscious_temperature_field": build_unconscious_temperature_field_surface(),
             "visible_execution": visible_execution_readiness(),
@@ -1484,6 +1488,12 @@ def mc_self_critique() -> dict:
 def mc_creative_journal() -> dict:
     """Return the current private creative journal surface."""
     return build_creative_journal_surface()
+
+
+@router.get("/finitude")
+def mc_finitude() -> dict:
+    """Return Jarvis's bounded finitude and transition surface."""
+    return build_finitude_surface()
 
 
 @router.get("/dream-distillation")

@@ -335,10 +335,12 @@ def project_entry_to_markdown(entry: dict) -> None:
     lessons = _coerce_text_list(entry.get("lessons"))
     lesson_text = "; ".join(lessons) if lessons else "—"
     event_lines = [f"- {item}" for item in key_events] or ["- —"]
+    title = str(entry.get("title") or "").strip()
     block = "\n".join(
         [
             f"## {str(entry.get('period') or 'ukendt periode')} — {created_at.strftime('%Y-%m-%d %H:%M')}",
             "",
+            *( [f"### {title}", ""] if title else [] ),
             str(entry.get("narrative") or "").strip(),
             "",
             "**Nøglebegivenheder:**",

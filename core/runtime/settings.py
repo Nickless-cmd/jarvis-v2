@@ -135,6 +135,8 @@ def update_visible_execution_settings(
     visible_auth_profile: str | None = None,
 ) -> RuntimeSettings:
     settings = load_settings()
+    previous_provider = settings.visible_model_provider
+    previous_model = settings.visible_model_name
 
     if visible_model_provider is not None:
         settings.visible_model_provider = visible_model_provider
@@ -147,4 +149,15 @@ def update_visible_execution_settings(
         json.dumps(settings.to_dict(), indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    try:
+        from core.services.finitude_runtime import record_visible_model_transition
+
+        record_visible_model_transition(
+            previous_provider=previous_provider,
+            previous_model=previous_model,
+            new_provider=settings.visible_model_provider,
+            new_model=settings.visible_model_name,
+        )
+    except Exception:
+        pass
     return settings

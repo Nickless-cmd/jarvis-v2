@@ -21,6 +21,8 @@ from core.runtime.db import approve_runtime_initiative, reject_runtime_initiativ
 _MAX_QUEUE_SIZE = 8
 _EXPIRE_MINUTES = 90
 _RETRY_DELAY_MINUTES = 10
+_LONG_TERM_REASSESS_DAYS = 14
+_MAX_ACTIVE_LONG_TERM_INTENTIONS = 3
 _QUEUE_LOCK = threading.Lock()
 
 
@@ -43,7 +45,10 @@ def push_initiative(
 
     with _QUEUE_LOCK:
         _expire_stale(now)
-        existing = runtime_db.find_pending_runtime_initiative_by_focus(normalized_focus)
+        existing = runtime_db.find_pending_runtime_initiative_by_focus(
+            normalized_focus,
+            initiative_type="initiative",
+        )
         if existing:
             existing_id = str(existing.get("initiative_id") or "")
             existing_priority = str(existing.get("priority") or "medium")
@@ -62,12 +67,15 @@ def push_initiative(
             return existing_id
         runtime_db.create_runtime_initiative(
             initiative_id=initiative_id,
+            initiative_type="initiative",
             focus=normalized_focus,
+            why_text="",
             source=source,
             source_id=source_id,
             status="pending",
             priority=normalized_priority,
             detected_at=now.isoformat(),
+            first_seeded_at=now.isoformat(),
             next_attempt_at=now.isoformat(),
             updated_at=now.isoformat(),
         )
@@ -90,6 +98,72 @@ def push_initiative(
         },
     )
 
+    return initiative_id
+
+
+def seed_long_term_intention(
+    *,
+    title: str,
+    why: str,
+    source: str = "life-project",
+    source_id: str = "",
+    priority: str = "medium",
+) -> str:
+    """Create or refresh a long-term intention owned by Jarvis."""
+    now = datetime.now(UTC)
+    normalized_title = str(title or "").strip()[:200]
+    if not normalized_title:
+        raise ValueError("title is required")
+    normalized_why = str(why or "").strip()[:400]
+    if not normalized_why:
+        raise ValueError("why is required")
+    normalized_priority = (
+        priority.strip().lower() if priority.strip().lower() in {"low", "medium", "high"} else "medium"
+    )
+    initiative_id = f"life-{uuid4().hex[:10]}"
+
+    with _QUEUE_LOCK:
+        _expire_stale(now)
+        existing = _find_active_long_term_intention_by_title(normalized_title)
+        if existing:
+            existing_id = str(existing.get("initiative_id") or "")
+            runtime_db.update_runtime_initiative(
+                existing_id,
+                why_text=normalized_why,
+                detected_at=now.isoformat(),
+                next_attempt_at=now.isoformat(),
+                blocked_reason="",
+                updated_at=now.isoformat(),
+            )
+            return existing_id
+        active = list_active_long_term_intentions(limit=_MAX_ACTIVE_LONG_TERM_INTENTIONS + 2)
+        if len(active) >= _MAX_ACTIVE_LONG_TERM_INTENTIONS:
+            raise RuntimeError("max active life projects reached")
+        runtime_db.create_runtime_initiative(
+            initiative_id=initiative_id,
+            initiative_type="long_term_intention",
+            focus=normalized_title,
+            why_text=normalized_why,
+            source=source,
+            source_id=source_id,
+            status="pending",
+            priority=normalized_priority,
+            detected_at=now.isoformat(),
+            first_seeded_at=now.isoformat(),
+            next_attempt_at=now.isoformat(),
+            updated_at=now.isoformat(),
+        )
+
+    event_bus.publish(
+        "heartbeat.initiative_pushed",
+        {
+            "initiative_id": initiative_id,
+            "focus": normalized_title[:100],
+            "source": source,
+            "priority": normalized_priority,
+            "initiative_type": "long_term_intention",
+        },
+    )
     return initiative_id
 
 
@@ -121,6 +195,31 @@ def mark_acted(
         existing = runtime_db.get_runtime_initiative(initiative_id)
         if not existing or str(existing.get("status") or "") != "pending":
             return False
+        if str(existing.get("initiative_type") or "initiative") == "long_term_intention":
+            reassess_at = (
+                datetime.fromisoformat(now) + timedelta(days=_LONG_TERM_REASSESS_DAYS)
+            ).isoformat()
+            runtime_db.update_runtime_initiative(
+                initiative_id,
+                status="pending",
+                last_action_at=now,
+                acted_at=now,
+                next_attempt_at=reassess_at,
+                blocked_reason="",
+                action_summary=action_summary[:200],
+                updated_at=now,
+            )
+            event_bus.publish(
+                "heartbeat.initiative_acted",
+                {
+                    "initiative_id": initiative_id,
+                    "focus": str(existing.get("focus") or "")[:100],
+                    "action_summary": action_summary[:100],
+                    "initiative_type": "long_term_intention",
+                    "reassess_at": reassess_at,
+                },
+            )
+            return True
         runtime_db.update_runtime_initiative(
             initiative_id,
             status="acted",
@@ -155,6 +254,8 @@ def mark_attempted(
         existing = runtime_db.get_runtime_initiative(initiative_id)
         if not existing or str(existing.get("status") or "") != "pending":
             return False
+        if str(existing.get("initiative_type") or "initiative") == "long_term_intention":
+            retry_at = now + timedelta(days=_LONG_TERM_REASSESS_DAYS)
         attempt_count = int(existing.get("attempt_count") or 0) + 1
         runtime_db.update_runtime_initiative(
             initiative_id,
@@ -223,6 +324,11 @@ def get_initiative_queue_state() -> dict[str, object]:
         pending = [i for i in all_items if i["status"] == "pending"]
         acted = [i for i in all_items if i["status"] == "acted"]
         expired = [i for i in all_items if i["status"] == "expired"]
+        long_term = [
+            i for i in all_items
+            if str(i.get("initiative_type") or "") == "long_term_intention"
+            and not str(i.get("abandoned_at") or "").strip()
+        ]
 
     approved = [i for i in all_items if str(i.get("outcome") or "") == "approved"]
     rejected = [i for i in all_items if str(i.get("outcome") or "") == "rejected"]
@@ -238,6 +344,9 @@ def get_initiative_queue_state() -> dict[str, object]:
         "recent_acted": acted[:3],
         "recent_approved": approved[:3],
         "recent_rejected": rejected[:3],
+        "life_projects": long_term[:_MAX_ACTIVE_LONG_TERM_INTENTIONS],
+        "life_project_count": len(long_term),
+        "long_term_reassess_days": _LONG_TERM_REASSESS_DAYS,
         "max_queue_size": _MAX_QUEUE_SIZE,
         "expire_minutes": _EXPIRE_MINUTES,
         "retry_delay_minutes": _RETRY_DELAY_MINUTES,
@@ -251,6 +360,8 @@ def _expire_stale(now: datetime) -> None:
         status="pending",
         limit=_MAX_QUEUE_SIZE + 100,
     ):
+        if str(item.get("initiative_type") or "initiative") == "long_term_intention":
+            continue
         detected = _parse_iso(str(item.get("detected_at") or ""))
         if detected is not None and detected < cutoff:
             runtime_db.update_runtime_initiative(
@@ -265,6 +376,11 @@ def _trim_pending(now: datetime) -> None:
         status="pending",
         limit=_MAX_QUEUE_SIZE + 100,
     )
+    pending = [
+        item
+        for item in pending
+        if str(item.get("initiative_type") or "initiative") != "long_term_intention"
+    ]
     pending.sort(key=_initiative_sort_key)
     for item in pending[_MAX_QUEUE_SIZE:]:
         runtime_db.update_runtime_initiative(
@@ -305,3 +421,61 @@ def _initiative_sort_key(initiative: dict[str, object]) -> tuple[int, int, str]:
         int(initiative.get("attempt_count") or 0),
         str(initiative.get("detected_at") or ""),
     )
+
+
+def list_active_long_term_intentions(*, limit: int = 3) -> list[dict[str, object]]:
+    items = runtime_db.list_runtime_initiatives(
+        initiative_type="long_term_intention",
+        limit=max(limit, 1) + 20,
+    )
+    active = [
+        item
+        for item in items
+        if str(item.get("status") or "") == "pending"
+        and not str(item.get("abandoned_at") or "").strip()
+    ]
+    active.sort(key=lambda item: str(item.get("first_seeded_at") or item.get("detected_at") or ""))
+    return active[: max(limit, 1)]
+
+
+def abandon_long_term_intention(initiative_id: str, *, note: str = "") -> dict[str, object] | None:
+    now = datetime.now(UTC).isoformat()
+    with _QUEUE_LOCK:
+        existing = runtime_db.get_runtime_initiative(initiative_id)
+        if not existing or str(existing.get("initiative_type") or "") != "long_term_intention":
+            return None
+        updated = runtime_db.update_runtime_initiative(
+            initiative_id,
+            status="expired",
+            abandoned_at=now,
+            blocked_reason=note[:120],
+            updated_at=now,
+        )
+    if updated:
+        event_bus.publish(
+            "heartbeat.initiative_rejected",
+            {
+                "initiative_id": initiative_id,
+                "focus": str(updated.get("focus") or "")[:100],
+                "initiative_type": "long_term_intention",
+                "note": note[:120],
+            },
+        )
+    return updated
+
+
+def _find_active_long_term_intention_by_title(title: str) -> dict[str, object] | None:
+    normalized = str(title or "").strip().lower()
+    if not normalized:
+        return None
+    for item in runtime_db.list_runtime_initiatives(
+        initiative_type="long_term_intention",
+        limit=_MAX_ACTIVE_LONG_TERM_INTENTIONS + 20,
+    ):
+        if str(item.get("status") or "") != "pending":
+            continue
+        if str(item.get("abandoned_at") or "").strip():
+            continue
+        if str(item.get("focus") or "").strip().lower() == normalized:
+            return item
+    return None

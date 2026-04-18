@@ -2182,6 +2182,15 @@ def _build_influence_trace(
                 {"error": f"{type(_di_exc).__name__}: {_di_exc}"},
             )
 
+    # Dream motif daemon — weekly clustering of thought fragments → DREAM_LANGUAGE.md
+    if _dm.is_enabled("dream_motif"):
+        try:
+            from core.services.dream_motif_daemon import tick_dream_motif_daemon
+            _motif_result = tick_dream_motif_daemon()
+            _dm.record_daemon_tick("dream_motif", _motif_result or {})
+        except Exception:
+            pass
+
     # Memory decay daemon — selective forgetting + re-discovery
     if _dm.is_enabled("memory_decay"):
         try:

@@ -2,6 +2,10 @@
 
 "Bjørn tænker i systemer. Han bliver utålmodig ved UI-arbejde
 men tålmodig ved arkitektur. Han er mest produktiv 14-17."
+
+Multi-tenant support (Lag 1):
+  build_user_mental_model(user_id=None) — None/default → primary user (Bjørn, DB-backed)
+  For secondary users, ToM is fetched from relation_map snapshot.
 """
 from __future__ import annotations
 import json
@@ -12,9 +16,34 @@ from core.runtime.db import (
     list_cognitive_conversation_signatures,
 )
 
+_PRIMARY_USER_ID = "bjorn"
 
-def build_user_mental_model() -> dict[str, object]:
-    """Build a theory-of-mind model of the user."""
+
+def build_user_mental_model(user_id: str | None = None) -> dict[str, object]:
+    """Build a theory-of-mind model of the user.
+
+    user_id=None or "bjorn" → primary user, DB-backed live model.
+    Other user_id → secondary user, snapshot from relation_map.
+    """
+    if user_id and user_id != _PRIMARY_USER_ID:
+        return _build_secondary_user_model(user_id)
+    return _build_primary_user_model()
+
+
+def _build_secondary_user_model(user_id: str) -> dict[str, object]:
+    """Return stored ToM snapshot for a secondary user."""
+    try:
+        from core.services.relation_map import get_user_theory_of_mind
+        snapshot = get_user_theory_of_mind(user_id)
+        if snapshot:
+            return snapshot
+    except Exception:
+        pass
+    return {"traits": [], "patterns": [], "current_state": {}, "predictions": []}
+
+
+def _build_primary_user_model() -> dict[str, object]:
+    """Build live DB-backed theory-of-mind for the primary user."""
     model = {"traits": [], "patterns": [], "current_state": {}, "predictions": []}
 
     # From relationship texture

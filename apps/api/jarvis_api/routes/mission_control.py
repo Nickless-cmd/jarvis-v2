@@ -49,6 +49,9 @@ from core.services.dream_influence_runtime import (
 from core.services.prompt_evolution_runtime import (
     build_prompt_evolution_runtime_surface,
 )
+from core.services.dream_distillation_daemon import (
+    build_dream_distillation_surface,
+)
 from core.services.self_critique_runtime import (
     build_self_critique_surface,
 )
@@ -606,6 +609,7 @@ def _mc_runtime_uncached() -> dict:
             "runtime_dream_influence": build_dream_influence_runtime_surface(),
             "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
             "runtime_self_critique": build_self_critique_surface(),
+            "runtime_dream_distillation": build_dream_distillation_surface(),
             "visible_execution": visible_execution_readiness(),
             "visible_identity": load_visible_identity_summary(),
             "visible_session_continuity": visible_session_continuity_summary(),
@@ -1446,6 +1450,12 @@ def mc_runtime_self_model() -> dict:
 def mc_self_critique() -> dict:
     """Return the current self-critique runtime surface."""
     return build_self_critique_surface()
+
+
+@router.get("/dream-distillation")
+def mc_dream_distillation() -> dict:
+    """Return the current dream residue distillation surface."""
+    return build_dream_distillation_surface()
 
 
 @router.get("/embodied-state")

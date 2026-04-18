@@ -346,6 +346,11 @@ def build_visible_chat_prompt_assembly(
         conditional_files.append("CHRONICLE.md")
         derived_inputs.append("chronicle continuity")
 
+    dream_residue_section = _visible_dream_residue_section()
+    if dream_residue_section:
+        parts.append(dream_residue_section)
+        derived_inputs.append("dream residue carry-over")
+
     if relevance.include_memory:
         memory_selection = _workspace_memory_section(
             workspace_dir / "MEMORY.md",
@@ -3149,6 +3154,16 @@ def _visible_chronicle_context_section() -> str | None:
         from core.services.chronicle_engine import get_chronicle_context_for_prompt
 
         section = get_chronicle_context_for_prompt()
+        return section or None
+    except Exception:
+        return None
+
+
+def _visible_dream_residue_section() -> str | None:
+    try:
+        from core.services.dream_distillation_daemon import get_dream_residue_for_prompt
+
+        section = get_dream_residue_for_prompt()
         return section or None
     except Exception:
         return None

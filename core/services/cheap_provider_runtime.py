@@ -19,7 +19,7 @@ from core.runtime.db import (
     record_cheap_provider_invocation,
     upsert_cheap_provider_runtime_state,
 )
-from core.runtime.provider_router import load_provider_router_registry
+from core.runtime.provider_router import load_provider_router_registry, resolve_provider_router_target
 
 _DEFAULT_TIMEOUT_SECONDS = 30
 _QUOTA_RESET_HOURS = 24

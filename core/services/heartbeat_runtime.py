@@ -2191,6 +2191,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Ambient sound daemon — Layer 6½: acoustic metadata 4x/day (opt-in experiment)
+    if _dm.is_enabled("ambient_sound"):
+        try:
+            from core.services.ambient_sound_daemon import tick_ambient_sound_daemon
+            _as_result = tick_ambient_sound_daemon()
+            _dm.record_daemon_tick("ambient_sound", _as_result or {})
+        except Exception:
+            pass
+
     # Shutdown window daemon — unannounced finitude pauses (opt-in experiment)
     if _dm.is_enabled("shutdown_window"):
         try:

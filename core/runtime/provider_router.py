@@ -435,7 +435,7 @@ def _configured_main_agent_targets(
         )
 
     targets.sort(key=lambda item: (str(item["provider"]), str(item["model"])))
-    return targets[:12]
+    return targets[:40]
 
 
 def _configured_target_match(

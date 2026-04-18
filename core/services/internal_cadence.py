@@ -431,6 +431,19 @@ def _ensure_producers_registered() -> None:
         depends_on=["prompt_evolution_runtime"],
     ))
 
+    def _run_ontological_revision(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.self_critique_runtime import run_ontological_revision_check
+        return run_ontological_revision_check()
+
+    register_producer(ProducerSpec(
+        name="ontological_revision",
+        cooldown_minutes=1440,  # Check once/day — actual cadence is 90 days
+        visible_grace_minutes=15,
+        run_fn=_run_ontological_revision,
+        priority=21,
+        depends_on=["self_critique_runtime"],
+    ))
+
     def _run_dream_distillation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         from core.services.dream_distillation_daemon import (
             run_dream_distillation_daemon,

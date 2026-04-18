@@ -340,6 +340,11 @@ def build_visible_chat_prompt_assembly(
             parts.append(section)
             included_files.append(filename)
 
+    temperature_hint = _visible_unconscious_temperature_field_section()
+    if temperature_hint:
+        parts.append(temperature_hint)
+        derived_inputs.append("implicit user temperature field")
+
     chronicle_section = _visible_chronicle_context_section()
     if chronicle_section:
         parts.append(chronicle_section)
@@ -3164,6 +3169,18 @@ def _visible_dream_residue_section() -> str | None:
         from core.services.dream_distillation_daemon import get_dream_residue_for_prompt
 
         section = get_dream_residue_for_prompt()
+        return section or None
+    except Exception:
+        return None
+
+
+def _visible_unconscious_temperature_field_section() -> str | None:
+    try:
+        from core.services.unconscious_temperature_field import (
+            build_unconscious_temperature_hint,
+        )
+
+        section = build_unconscious_temperature_hint()
         return section or None
     except Exception:
         return None

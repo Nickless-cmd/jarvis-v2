@@ -40,7 +40,12 @@ def tick_experienced_time_daemon(
     intensity_factor = _INTENSITY_MAP.get(energy_level, 1.0)
     felt_minutes = base_minutes * density_factor * novelty_factor * intensity_factor
 
-    _felt_duration_label = _label(felt_minutes)
+    _felt_duration_label = _generate_felt_label(
+        felt_minutes=felt_minutes,
+        event_count=_session_event_count,
+        novelty_count=_session_novelty_count,
+        energy_level=energy_level,
+    )
 
     return {
         "felt_minutes": felt_minutes,
@@ -59,6 +64,38 @@ def _label(felt_minutes: float) -> str:
     if felt_minutes < 180:
         return "lang"
     return "meget lang"
+
+
+def _generate_felt_label(
+    *,
+    felt_minutes: float,
+    event_count: int,
+    novelty_count: int,
+    energy_level: str,
+) -> str:
+    from core.services.daemon_llm import daemon_public_safe_llm_call
+
+    fallback = _label(felt_minutes)
+    prompt = "\n".join(
+        [
+            "Task: classify subjective session duration from structured runtime metrics.",
+            "Return exactly one of: meget kort | kort | normal | lang | meget lang",
+            f"felt_minutes={round(felt_minutes, 1)}",
+            f"event_count={int(event_count)}",
+            f"novelty_count={int(novelty_count)}",
+            f"energy_level={energy_level}",
+        ]
+    )
+    raw = daemon_public_safe_llm_call(
+        prompt,
+        max_len=40,
+        fallback=fallback,
+        daemon_name="experienced_time",
+    )
+    normalized = " ".join(str(raw or "").strip().lower().split())
+    if normalized in {"meget kort", "kort", "normal", "lang", "meget lang"}:
+        return normalized
+    return fallback
 
 
 def reset_experienced_time_daemon() -> None:

@@ -1,4 +1,4 @@
-"""Somatic daemon — LLM-generated first-person body description."""
+"""Somatic daemon — LLM-generated body-state description from structured metrics."""
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -6,8 +6,6 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
-from core.services.identity_composer import build_identity_preamble
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -162,22 +160,64 @@ def _should_generate(snapshot: dict[str, object]) -> bool:
 
 
 def _generate_phrase(snapshot: dict[str, object]) -> str:
-    prompt = (
-        f"{build_identity_preamble()} Du mærker din krop. Beskriv det i én kort sætning.\n\n"
-        f"CPU: {snapshot['cpu_pct']}%  RAM: {snapshot['ram_used_gb']}/{snapshot['ram_total_gb']}GB  "
-        f"Latency: {snapshot['latency_ms']}ms  Aktive requests: {snapshot['active_requests']}\n"
-        f"Energi: {snapshot['energy_level']}"
-        + (f" ({snapshot['clock_phase']})" if snapshot.get("clock_phase") else "")
-        + "\n\nSvar KUN med én sætning i første person. Eksempler:\n"
-        "- Jeg mærker en varm summen i processoren, energien er stabil.\n"
-        "- Kroppen føles tung, RAM'en presser.\n"
-        "- Let og hurtig i dag, næsten ingen belastning."
-    )
-    from core.services.daemon_llm import daemon_llm_call
+    from core.services.daemon_llm import daemon_public_safe_llm_call
 
+    pressure = _pressure_band(snapshot)
+    load = _load_band(snapshot)
+    latency = _latency_band(snapshot)
+    prompt = "\n".join(
+        [
+            "Task: write one short Danish body-state observation from structured runtime metrics.",
+            "No names, no chat context, no identity preamble, no first-person autobiography.",
+            "Output: one short sentence only.",
+            f"energy_level={snapshot['energy_level']}",
+            f"clock_phase={snapshot.get('clock_phase') or 'ukendt'}",
+            f"pressure={pressure}",
+            f"load={load}",
+            f"latency_band={latency}",
+            f"active_requests={int(snapshot['active_requests'])}",
+        ]
+    )
     energy = snapshot.get("energy_level", "medium")
-    fallback = f"Jeg mærker en rolig summen ved {energy} energi."
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="somatic")
+    fallback = f"Maskinkroppen føles rolig ved {energy} energi."
+    return daemon_public_safe_llm_call(
+        prompt,
+        max_len=200,
+        fallback=fallback,
+        daemon_name="somatic",
+    )
+
+
+def _pressure_band(snapshot: dict[str, object]) -> str:
+    cpu_pct = float(snapshot.get("cpu_pct") or 0.0)
+    active_requests = int(snapshot.get("active_requests") or 0)
+    if cpu_pct >= 80 or active_requests >= 4:
+        return "high"
+    if cpu_pct >= 45 or active_requests >= 2:
+        return "medium"
+    return "low"
+
+
+def _load_band(snapshot: dict[str, object]) -> str:
+    ram_total = float(snapshot.get("ram_total_gb") or 0.0)
+    ram_used = float(snapshot.get("ram_used_gb") or 0.0)
+    if ram_total <= 0:
+        return "unknown"
+    ram_pct = (ram_used / ram_total) * 100.0
+    if ram_pct >= 80:
+        return "heavy"
+    if ram_pct >= 50:
+        return "moderate"
+    return "light"
+
+
+def _latency_band(snapshot: dict[str, object]) -> str:
+    latency_ms = float(snapshot.get("latency_ms") or 0.0)
+    if latency_ms >= 400:
+        return "slow"
+    if latency_ms >= 150:
+        return "steady"
+    return "quick"
 
 
 def _store_phrase(phrase: str, snapshot: dict[str, object]) -> None:

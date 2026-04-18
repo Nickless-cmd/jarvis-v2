@@ -80,16 +80,19 @@ def test_generates_after_10_heartbeats_without_trigger():
     assert result["generated"] is True
 
 
-def test_llm_prompt_contains_hardware_and_energy():
+def test_generate_phrase_uses_public_safe_llm_path():
     _reset()
     snapshot = {
         "cpu_pct": 55.0, "ram_used_gb": 8.0, "ram_total_gb": 16.0,
         "latency_ms": 200.0, "active_requests": 2,
         "energy_level": "lav", "clock_phase": "eftermiddag",
     }
-    with patch("core.services.daemon_llm.daemon_llm_call", return_value="Tung og langsom."):
+    with patch(
+        "core.services.daemon_llm.daemon_public_safe_llm_call",
+        return_value="Kroppen arbejder tungt og sejt.",
+    ):
         phrase = sd._generate_phrase(snapshot)
-    assert phrase == "Tung og langsom."
+    assert phrase == "Kroppen arbejder tungt og sejt."
 
 
 def test_private_brain_record_written_on_store():

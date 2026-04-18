@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-from core.services.chat_sessions import append_chat_message, create_chat_session
-
 
 def test_temperature_field_derives_frustrated_from_recent_user_messages(
     isolated_runtime,
+    monkeypatch,
 ) -> None:
     field = isolated_runtime.unconscious_temperature_field
-    session = create_chat_session(title="Temp field")
-    session_id = str(session["id"])
-    append_chat_message(session_id=session_id, role="user", content="Det virker ikke stadig, du har misforstået det.")
-    append_chat_message(session_id=session_id, role="user", content="Nej, stadig broken. Kom nu.")
+    # Monkeypatch _recent_user_messages direkte på modulet for at undgå
+    # db-isolation-problemet (chat_sessions bruger den globale db, ikke tmp db)
+    monkeypatch.setattr(
+        field,
+        "_recent_user_messages",
+        lambda days, limit: [
+            "Det virker ikke stadig, du har misforstået det.",
+            "Nej, stadig broken. Kom nu.",
+        ],
+    )
 
     surface = field.build_unconscious_temperature_field_surface(force_refresh=True)
     hint = field.build_unconscious_temperature_hint()

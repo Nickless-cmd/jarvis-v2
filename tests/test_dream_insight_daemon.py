@@ -58,30 +58,27 @@ def _reset():
 def test_persist_new_dream_output_stores_record():
     """When a new signal_id arrives, it should persist a dream-insight."""
     _reset()
-    db_mod = DB_MOD
-    db_mod.insert_private_brain_record.reset_mock()
-
-    result = dream_insight_daemon.tick_dream_insight_daemon(
-        signal_id="sig-abc-123",
-        signal_summary="Jarvis drømte om orden i kaos.",
-    )
+    # patch direkte på modulets importerede reference — virker uanset om DB_MOD er stub eller rigtig
+    with patch("core.services.dream_insight_daemon.insert_private_brain_record") as mock_insert:
+        result = dream_insight_daemon.tick_dream_insight_daemon(
+            signal_id="sig-abc-123",
+            signal_summary="Jarvis drømte om orden i kaos.",
+        )
     assert result["persisted"] is True
-    db_mod.insert_private_brain_record.assert_called_once()
+    mock_insert.assert_called_once()
 
 
 def test_same_signal_id_not_persisted_twice():
     """Same signal_id should not be persisted again."""
     _reset()
     dream_insight_daemon._last_persisted_signal_id = "sig-abc-123"
-    db_mod = DB_MOD
-    db_mod.insert_private_brain_record.reset_mock()
-
-    result = dream_insight_daemon.tick_dream_insight_daemon(
-        signal_id="sig-abc-123",
-        signal_summary="Jarvis drømte om orden i kaos.",
-    )
+    with patch("core.services.dream_insight_daemon.insert_private_brain_record") as mock_insert:
+        result = dream_insight_daemon.tick_dream_insight_daemon(
+            signal_id="sig-abc-123",
+            signal_summary="Jarvis drømte om orden i kaos.",
+        )
     assert result["persisted"] is False
-    db_mod.insert_private_brain_record.assert_not_called()
+    mock_insert.assert_not_called()
 
 
 def test_empty_signal_not_persisted():

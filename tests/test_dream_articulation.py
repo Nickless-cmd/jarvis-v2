@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from core.runtime.db import list_runtime_dream_hypothesis_signals
-
 
 def test_dream_articulation_builds_bounded_candidate_from_runtime_inputs(isolated_runtime) -> None:
     articulation = isolated_runtime.dream_articulation
@@ -114,9 +112,10 @@ def test_dream_articulation_persists_candidate_only_internal_signal_and_surface(
     )
 
     result = articulation.run_dream_articulation(trigger="test")
+    # Brug isolated_runtime.db direkte for at ramme den rigtige tmp-db
     items = [
         item
-        for item in list_runtime_dream_hypothesis_signals(limit=10)
+        for item in isolated_runtime.db.list_runtime_dream_hypothesis_signals(limit=10)
         if item["source_kind"] == "internal-dream-articulation"
     ]
     surface = articulation.build_dream_articulation_surface()

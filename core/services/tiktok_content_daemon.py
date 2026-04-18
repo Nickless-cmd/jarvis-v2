@@ -314,6 +314,7 @@ def _generate_sdxl_image(slot: str) -> str | None:
 
     Returns path to generated PNG, or None on failure.
     """
+    import os
     import subprocess
     import sys
 

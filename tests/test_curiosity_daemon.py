@@ -82,3 +82,17 @@ def test_build_surface_structure():
     assert "open_questions" in surface
     assert "curiosity_count" in surface
     assert "last_generated_at" in surface
+
+
+def test_generate_curiosity_signal_uses_public_safe_llm_path():
+    _reset()
+    with patch.dict("sys.modules", {
+        "core.services.daemon_llm": type(
+            "_FakeDaemonLLMModule",
+            (),
+            {"daemon_public_safe_llm_call": staticmethod(lambda *args, **kwargs: "Et åbent spørgsmål står tilbage.")}
+        )()
+    }):
+        result = cd._generate_curiosity_signal("Hvad sker der egentlig?", "question")
+
+    assert result == "Et åbent spørgsmål står tilbage."

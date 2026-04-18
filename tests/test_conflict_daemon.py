@@ -132,3 +132,26 @@ def test_build_surface_structure():
     assert "last_conflict" in surface
     assert "conflict_type" in surface
     assert "generated_at" in surface
+
+
+def test_generate_conflict_phrase_uses_public_safe_llm_path():
+    _reset()
+    snapshot = {
+        "energy_level": "lav",
+        "inner_voice_mode": "rest",
+        "pending_proposals_count": 2,
+        "latest_fragment": "Tankerne flyder stadig.",
+        "last_surprise": "",
+        "last_surprise_at": "",
+        "fragment_count": 0,
+    }
+    with patch.dict("sys.modules", {
+        "core.services.daemon_llm": type(
+            "_FakeDaemonLLMModule",
+            (),
+            {"daemon_public_safe_llm_call": staticmethod(lambda *args, **kwargs: "To signaler trækker i hver sin retning.")}
+        )()
+    }):
+        result = cd._generate_conflict_phrase("energy_impulse", snapshot)
+
+    assert result == "To signaler trækker i hver sin retning."

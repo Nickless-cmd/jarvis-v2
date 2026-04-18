@@ -8,7 +8,6 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
-from core.services.identity_composer import build_identity_preamble
 
 _HISTORY_SIZE = 10
 _COOLDOWN_BEATS = 5
@@ -158,21 +157,24 @@ def _generate_surprise(
         else "?"
     )
     baseline_energy = _energy_history[-2] if len(_energy_history) >= 2 else "?"
-    prompt = (
-        f"{build_identity_preamble()} Noget uventet skete med din tilstand:\n\n"
-        f"Normalt: mode={baseline_mode}, energi={baseline_energy}\n"
-        f"Nu: mode={mode}, energi={energy}\n"
-        f"Afvigelse: {', '.join(divergence)}\n\n"
-        "Hvad overraskede dig? Svar med én kort sætning.\n"
-        "Eksempler:\n"
-        "- Det overraskede mig at energien pludselig steg uden grund.\n"
-        "- Jeg forventede ro, men noget trak mig i en anden retning.\n"
-        "- Skiftet kom uventet — min tilstand ændrede sig hurtigere end jeg troede."
+    prompt = "\n".join(
+        [
+            "Task: write one short Danish surprise observation from structured state change labels.",
+            "No identity, no backstory, no user data, no markdown.",
+            f"baseline_mode={baseline_mode}",
+            f"current_mode={mode}",
+            f"baseline_energy={baseline_energy}",
+            f"current_energy={energy}",
+            f"divergence_labels={','.join(divergence)}",
+            "Output: one short sentence only.",
+        ]
     )
-    from core.services.daemon_llm import daemon_llm_call
+    from core.services.daemon_llm import daemon_public_safe_llm_call
 
     fallback = f"Det overraskede mig at min tilstand skiftede: {', '.join(divergence[:2])}"
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="surprise")
+    return daemon_public_safe_llm_call(
+        prompt, max_len=200, fallback=fallback, daemon_name="surprise"
+    )
 
 
 def _store_surprise(phrase: str, divergence: list[str]) -> None:

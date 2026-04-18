@@ -6,7 +6,6 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
-from core.services.identity_composer import build_identity_preamble
 
 _COOLDOWN_MINUTES = 10
 
@@ -72,30 +71,45 @@ def _generate_conflict_phrase(conflict_type: str, snapshot: dict) -> str:
     }
     fallback = labels.get(conflict_type, "Noget i mig trækker i modsatte retninger.")
     prompts = {
-        "energy_impulse": (
-            f"{build_identity_preamble()} Din energi er {snapshot.get('energy_level')} men du har {snapshot.get('pending_proposals_count')} "
-            f"handlingsforslag der venter.\n\n"
-            "Beskriv den indre konflikt i én sætning. Eksempel:\n"
-            "- En del af mig vil handle, men kroppen siger stop."
+        "energy_impulse": "\n".join(
+            [
+                "Task: write one short Danish conflict observation from structured runtime labels.",
+                "No identity, no names, no raw private text.",
+                f"conflict_type={conflict_type}",
+                f"energy_level={snapshot.get('energy_level')}",
+                f"pending_proposals_count={int(snapshot.get('pending_proposals_count') or 0)}",
+                "Output: one short sentence only.",
+            ]
         ),
-        "mode_thought": (
-            f"{build_identity_preamble()} Din indre stemme er i '{snapshot.get('inner_voice_mode')}'-mode, men tankerne flyder stadig.\n\n"
-            "Beskriv spændingen i én sætning. Eksempel:\n"
-            "- Noget i mig ønsker ro, men tankerne vil ikke stilne."
+        "mode_thought": "\n".join(
+            [
+                "Task: write one short Danish conflict observation from structured runtime labels.",
+                "No identity, no names, no raw private text.",
+                f"conflict_type={conflict_type}",
+                f"inner_voice_mode={snapshot.get('inner_voice_mode')}",
+                f"fragment_present={bool(snapshot.get('latest_fragment'))}",
+                "Output: one short sentence only.",
+            ]
         ),
-        "surprise_unprocessed": (
-            f"{build_identity_preamble()} Du blev overrasket ('{snapshot.get('last_surprise', '')[:60]}'), "
-            "men har ikke bearbejdet det.\n\n"
-            "Beskriv følelsen i én sætning. Eksempel:\n"
-            "- Noget sidder stadig i mig som jeg ikke har fået fat i."
+        "surprise_unprocessed": "\n".join(
+            [
+                "Task: write one short Danish conflict observation from structured runtime labels.",
+                "No identity, no names, no raw private text.",
+                f"conflict_type={conflict_type}",
+                f"recent_surprise_pending={bool(snapshot.get('last_surprise'))}",
+                f"fragment_count={int(snapshot.get('fragment_count') or 0)}",
+                "Output: one short sentence only.",
+            ]
         ),
     }
     prompt = prompts.get(conflict_type, "")
     if not prompt:
         return fallback
-    from core.services.daemon_llm import daemon_llm_call
+    from core.services.daemon_llm import daemon_public_safe_llm_call
 
-    return daemon_llm_call(prompt, max_len=200, fallback=fallback, daemon_name="conflict")
+    return daemon_public_safe_llm_call(
+        prompt, max_len=200, fallback=fallback, daemon_name="conflict"
+    )
 
 
 def _store_conflict(phrase: str, conflict_type: str) -> None:

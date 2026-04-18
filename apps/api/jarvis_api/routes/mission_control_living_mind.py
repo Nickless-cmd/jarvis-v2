@@ -220,3 +220,10 @@ def mc_reflection_cycle() -> dict:
     """Return Jarvis's latest pure experience reflection."""
     from core.services.reflection_cycle_daemon import build_reflection_surface
     return _surface("reflection-cycle", build_reflection_surface)
+
+
+@router.get("/layer-tensions")
+def mc_layer_tensions() -> dict:
+    """Return active inter-layer tensions — signals pulling in opposite directions."""
+    from core.services.layer_tension_daemon import build_layer_tension_surface
+    return _surface("layer-tensions", build_layer_tension_surface)

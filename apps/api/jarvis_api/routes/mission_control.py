@@ -3638,6 +3638,13 @@ def mc_global_workspace() -> dict:
     return build_workspace_surface()
 
 
+@router.get("/layer-tensions")
+def mc_layer_tensions() -> dict:
+    """Return active inter-layer tensions — signals pulling in opposite directions."""
+    from core.services.layer_tension_daemon import build_layer_tension_surface
+    return build_layer_tension_surface()
+
+
 @router.get("/meta-cognition")
 def mc_meta_cognition() -> dict:
     from core.services.meta_cognition_daemon import build_meta_cognition_surface

@@ -30,7 +30,7 @@ Sidst gennemgået: 2026-04-18
 | `core/services/meta_cognition_daemon.py` | `_call_meta_llm` | cognitive + emotional self-state | 🔒 LOCAL-REQUIRED | `"Nuværende tilstand:\n{state_text}"` |
 | `core/services/meta_reflection_daemon.py` | `_generate_meta_insight` | fragment + surprise + conflict + irony | 🔒 LOCAL-REQUIRED | krydser private brain-signaler |
 | `core/services/reflection_cycle_daemon.py` | `_generate_reflection` | inner voice, surprise, conflict, fragment | 🔒 LOCAL-REQUIRED | `"Her er din nuværende tilstand"` |
-| `core/services/somatic_daemon.py` | `_generate_phrase` | identity preamble + hardware/body state | 🔒 LOCAL-REQUIRED | `build_identity_preamble()` + "Du mærker din krop" |
+| `core/services/somatic_daemon.py` | `_generate_phrase` | structured body-state metrics only | 🌐 PUBLIC-SAFE | anonymiseret `energy_level/clock_phase/pressure/load/latency_band/active_requests` |
 | `core/services/thought_stream_daemon.py` | `_generate_fragment` | previous fragment + mood/energy | 🔒 LOCAL-REQUIRED | frie associationer i første person |
 | `core/services/surprise_daemon.py` | `_generate_surprise` | structured divergence labels only | 🌐 PUBLIC-SAFE | anonymiseret `baseline_mode/current_mode/energy/divergence_labels` |
 | `core/services/conflict_daemon.py` | `_generate_conflict_phrase` | structured conflict labels only | 🌐 PUBLIC-SAFE | anonymiseret `conflict_type` + coarse runtime labels |
@@ -54,7 +54,7 @@ Sidst gennemgået: 2026-04-18
 - Totale klassificerede LLM-kald: 28
 - `🔒 LOCAL-REQUIRED`: 18
 - `🟡 CONTROLLED-CLOUD`: 2
-- `🌐 PUBLIC-SAFE`: 8
+- `🌐 PUBLIC-SAFE`: 9
 
 ## Konservative migrationskandidater
 
@@ -68,10 +68,10 @@ Kun disse er nu konservativt godkendt til OllamaFreeAPI:
 6. `curiosity_daemon._generate_curiosity_signal`
 7. `absence_daemon._generate_absence_label`
 8. `experienced_time_daemon._generate_felt_label`
+9. `somatic_daemon._generate_phrase`
 
 ## Kandidater som ser fristende ud, men ikke er PUBLIC-SAFE
 
-- `somatic_daemon` — bruger identity-preamble og beskriver Jarvis' egen kropstilstand.
 - `thought_stream_daemon` — genererer indre associative tanker.
 - `aesthetic_taste_daemon` — bygger smag ud fra Jarvis' egne mønstre.
 - `irony_daemon` — første-persons selvobservation.

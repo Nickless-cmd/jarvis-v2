@@ -201,3 +201,18 @@ def test_pool_integration_returns_none_when_file_missing(tmp_path):
         result = mod._get_concept_from_pool("motivation")
 
     assert result is None
+
+
+def test_generate_concepts_uses_public_safe_llm_path() -> None:
+    import core.services.tiktok_research_daemon as mod
+
+    with patch.dict("sys.modules", {
+        "core.services.daemon_llm": MagicMock(
+            daemon_public_safe_llm_call=MagicMock(
+                return_value='["One", "Two", "Three"]'
+            )
+        )
+    }):
+        result = mod._generate_concepts_for_type("motivation")
+
+    assert result == ["One", "Two", "Three"]

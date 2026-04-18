@@ -165,9 +165,9 @@ def _generate_concepts_for_type(slot_type: str) -> list[str]:
     fallback = [fallback_text, fallback_text, fallback_text]
 
     try:
-        from core.services.daemon_llm import daemon_llm_call
+        from core.services.daemon_llm import daemon_public_safe_llm_call
 
-        raw = daemon_llm_call(
+        raw = daemon_public_safe_llm_call(
             _SLOT_PROMPTS[slot_type],
             max_len=4000,
             fallback="",

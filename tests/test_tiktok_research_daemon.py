@@ -185,7 +185,10 @@ def test_pool_integration_returns_none_when_empty(tmp_path):
     pool_data = _make_pool(slot_type="motivation", used=True)
     pool_file.write_text(json.dumps(pool_data), encoding="utf-8")
 
-    with patch.object(mod, "_POOL_PATH", pool_file):
+    with (
+        patch.object(mod, "_POOL_PATH", pool_file),
+        patch.object(mod, "_refill_pool", return_value=None),
+    ):
         result = mod._get_concept_from_pool("motivation")
 
     assert result is None
@@ -197,7 +200,10 @@ def test_pool_integration_returns_none_when_file_missing(tmp_path):
 
     pool_file = tmp_path / "nonexistent_pool.json"
 
-    with patch.object(mod, "_POOL_PATH", pool_file):
+    with (
+        patch.object(mod, "_POOL_PATH", pool_file),
+        patch.object(mod, "_refill_pool", return_value=None),
+    ):
         result = mod._get_concept_from_pool("motivation")
 
     assert result is None

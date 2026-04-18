@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import core.runtime.ollamafreeapi_provider as provider
+
 from core.runtime.ollamafreeapi_provider import (
     call_ollamafreeapi,
     collapse_messages_to_prompt,
@@ -20,7 +22,8 @@ def test_collapse_messages_to_prompt_preserves_roles() -> None:
 
 def test_call_ollamafreeapi_returns_ollama_compatible_shape(monkeypatch) -> None:
     monkeypatch.setattr(
-        "core.runtime.ollamafreeapi_provider._client",
+        provider,
+        "_client",
         lambda: type(
             "_FakeClient",
             (),

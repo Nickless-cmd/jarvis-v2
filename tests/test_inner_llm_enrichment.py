@@ -216,11 +216,11 @@ from core.memory.inner_llm_enrichment import _call_cheap_llm
 def test_call_cheap_llm_returns_text_on_success() -> None:
     mock_target = {
         "active": True,
-        "provider": "github-copilot",
-        "model": "gpt-4o-mini",
-        "base_url": "https://models.github.ai",
-        "auth_profile": "github-copilot",
-        "auth_mode": "token",
+        "provider": "groq",
+        "model": "llama-3.3-70b-versatile",
+        "base_url": "https://api.groq.com/openai/v1",
+        "auth_profile": "groq",
+        "auth_mode": "api-key",
         "credentials_ready": True,
     }
     fake_response = json.dumps({
@@ -229,20 +229,24 @@ def test_call_cheap_llm_returns_text_on_success() -> None:
     }).encode("utf-8")
 
     with patch(
-        "core.memory.inner_llm_enrichment.resolve_provider_router_target",
+        "core.memory.inner_llm_enrichment._resolve_enrichment_target",
         return_value=mock_target,
     ):
         with patch(
-            "core.memory.inner_llm_enrichment.urllib_request.urlopen"
-        ) as mock_urlopen:
-            mock_resp = MagicMock()
-            mock_resp.read.return_value = fake_response
-            mock_resp.__enter__ = lambda s: s
-            mock_resp.__exit__ = MagicMock(return_value=False)
-            mock_urlopen.return_value = mock_resp
+            "core.memory.inner_llm_enrichment._resolve_auth_header",
+            return_value={"Content-Type": "application/json", "Authorization": "Bearer test"},
+        ):
+            with patch(
+                "core.memory.inner_llm_enrichment.urllib_request.urlopen"
+            ) as mock_urlopen:
+                mock_resp = MagicMock()
+                mock_resp.read.return_value = fake_response
+                mock_resp.__enter__ = lambda s: s
+                mock_resp.__exit__ = MagicMock(return_value=False)
+                mock_urlopen.return_value = mock_resp
 
-            result = _call_cheap_llm("system prompt", "user message")
-            assert result == "LLM generated text"
+                result = _call_cheap_llm("system prompt", "user message")
+                assert result == "LLM generated text"
 
 
 def test_call_cheap_llm_returns_none_when_no_cheap_model() -> None:
@@ -250,6 +254,9 @@ def test_call_cheap_llm_returns_none_when_no_cheap_model() -> None:
     with patch(
         "core.memory.inner_llm_enrichment._resolve_enrichment_target",
         return_value=mock_target,
+    ), patch(
+        "core.memory.inner_llm_enrichment._resolve_ollama_fallback_target",
+        return_value=None,
     ):
         result = _call_cheap_llm("system", "user")
         assert result is None
@@ -258,16 +265,22 @@ def test_call_cheap_llm_returns_none_when_no_cheap_model() -> None:
 def test_call_cheap_llm_returns_none_on_http_error() -> None:
     mock_target = {
         "active": True,
-        "provider": "github-copilot",
-        "model": "gpt-4o-mini",
-        "base_url": "https://models.github.ai",
-        "auth_profile": "github-copilot",
-        "auth_mode": "token",
+        "provider": "groq",
+        "model": "llama-3.3-70b-versatile",
+        "base_url": "https://api.groq.com/openai/v1",
+        "auth_profile": "groq",
+        "auth_mode": "api-key",
         "credentials_ready": True,
     }
     with patch(
         "core.memory.inner_llm_enrichment._resolve_enrichment_target",
         return_value=mock_target,
+    ), patch(
+        "core.memory.inner_llm_enrichment._resolve_ollama_fallback_target",
+        return_value=None,
+    ), patch(
+        "core.memory.inner_llm_enrichment._resolve_auth_header",
+        return_value={"Content-Type": "application/json", "Authorization": "Bearer test"},
     ):
         with patch(
             "core.memory.inner_llm_enrichment.urllib_request.urlopen",
@@ -278,7 +291,16 @@ def test_call_cheap_llm_returns_none_on_http_error() -> None:
 
 
 def test_call_cheap_llm_falls_back_to_local_ollama() -> None:
-    mock_target = {
+    primary_target = {
+        "active": True,
+        "provider": "groq",
+        "model": "llama-3.3-70b-versatile",
+        "base_url": "https://api.groq.com/openai/v1",
+        "auth_profile": "groq",
+        "auth_mode": "api-key",
+        "resolved_lane": "inner_enrichment",
+    }
+    fallback_target = {
         "active": True,
         "provider": "ollama",
         "model": "gemma4:e2b",
@@ -291,7 +313,13 @@ def test_call_cheap_llm_falls_back_to_local_ollama() -> None:
 
     with patch(
         "core.memory.inner_llm_enrichment._resolve_enrichment_target",
-        return_value=mock_target,
+        return_value=primary_target,
+    ), patch(
+        "core.memory.inner_llm_enrichment._resolve_ollama_fallback_target",
+        return_value=fallback_target,
+    ), patch(
+        "core.memory.inner_llm_enrichment._resolve_auth_header",
+        return_value={"Content-Type": "application/json", "Authorization": "Bearer test"},
     ):
         with patch(
             "core.memory.inner_llm_enrichment.urllib_request.urlopen"
@@ -300,7 +328,7 @@ def test_call_cheap_llm_falls_back_to_local_ollama() -> None:
             mock_resp.read.return_value = fake_response
             mock_resp.__enter__ = lambda s: s
             mock_resp.__exit__ = MagicMock(return_value=False)
-            mock_urlopen.return_value = mock_resp
+            mock_urlopen.side_effect = [Exception("groq timeout"), mock_resp]
 
             result = _call_cheap_llm("system prompt", "user message")
             assert result == "Lokal beriget tekst"

@@ -3690,7 +3690,6 @@ def _execute_groq_prompt(*, prompt: str, target: dict[str, str]) -> dict[str, ob
                 "stream": False,
                 "temperature": 0.7,
                 "max_tokens": 512,
-                "response_format": {"type": "json_object"},
             }
         ).encode("utf-8"),
         headers={

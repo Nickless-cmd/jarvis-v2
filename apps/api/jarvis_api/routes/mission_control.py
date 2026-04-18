@@ -52,6 +52,9 @@ from core.services.prompt_evolution_runtime import (
 from core.services.dream_distillation_daemon import (
     build_dream_distillation_surface,
 )
+from core.services.unconscious_temperature_field import (
+    build_unconscious_temperature_field_surface,
+)
 from core.services.self_critique_runtime import (
     build_self_critique_surface,
 )
@@ -610,6 +613,7 @@ def _mc_runtime_uncached() -> dict:
             "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
             "runtime_self_critique": build_self_critique_surface(),
             "runtime_dream_distillation": build_dream_distillation_surface(),
+            "runtime_unconscious_temperature_field": build_unconscious_temperature_field_surface(),
             "visible_execution": visible_execution_readiness(),
             "visible_identity": load_visible_identity_summary(),
             "visible_session_continuity": visible_session_continuity_summary(),
@@ -1456,6 +1460,12 @@ def mc_self_critique() -> dict:
 def mc_dream_distillation() -> dict:
     """Return the current dream residue distillation surface."""
     return build_dream_distillation_surface()
+
+
+@router.get("/unconscious-temperature-field")
+def mc_unconscious_temperature_field() -> dict:
+    """Return the current bounded user temperature field surface."""
+    return build_unconscious_temperature_field_surface()
 
 
 @router.get("/embodied-state")

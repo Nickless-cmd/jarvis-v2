@@ -114,6 +114,7 @@ def isolated_runtime(
         "core.services.prompt_evolution_runtime",
         "core.services.self_critique_runtime",
         "core.services.dream_distillation_daemon",
+        "core.services.unconscious_temperature_field",
         "core.services.runtime_self_model",
         "apps.api.jarvis_api.routes.mission_control",
     ]
@@ -376,6 +377,9 @@ def isolated_runtime(
         ],
         dream_distillation_daemon=modules[
             "core.services.dream_distillation_daemon"
+        ],
+        unconscious_temperature_field=modules[
+            "core.services.unconscious_temperature_field"
         ],
         runtime_self_model=modules[
             "core.services.runtime_self_model"

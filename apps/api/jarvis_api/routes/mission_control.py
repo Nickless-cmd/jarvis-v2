@@ -49,6 +49,9 @@ from core.services.dream_influence_runtime import (
 from core.services.prompt_evolution_runtime import (
     build_prompt_evolution_runtime_surface,
 )
+from core.services.self_critique_runtime import (
+    build_self_critique_surface,
+)
 from core.services.subagent_ecology import (
     build_subagent_ecology_surface,
 )
@@ -602,6 +605,7 @@ def _mc_runtime_uncached() -> dict:
             "runtime_dream_articulation": build_dream_articulation_surface(),
             "runtime_dream_influence": build_dream_influence_runtime_surface(),
             "runtime_prompt_evolution": build_prompt_evolution_runtime_surface(),
+            "runtime_self_critique": build_self_critique_surface(),
             "visible_execution": visible_execution_readiness(),
             "visible_identity": load_visible_identity_summary(),
             "visible_session_continuity": visible_session_continuity_summary(),
@@ -1436,6 +1440,12 @@ def mc_runtime_self_model() -> dict:
     """Return the current runtime self-model snapshot."""
     bundle = _mc_runtime_inspection_bundle()
     return dict(bundle.get("runtime_self_model") or {})
+
+
+@router.get("/self-critique")
+def mc_self_critique() -> dict:
+    """Return the current self-critique runtime surface."""
+    return build_self_critique_surface()
 
 
 @router.get("/embodied-state")

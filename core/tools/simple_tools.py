@@ -2303,6 +2303,7 @@ def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
 
     pending = state.get("pending", [])
     recent_acted = state.get("recent_acted", [])
+    life_projects = state.get("life_projects", [])
     lines = [
         f"Queue: {state.get('pending_count', 0)} pending / {state.get('acted_count', 0)} acted / {state.get('expired_count', 0)} expired",
         f"Capacity: {state.get('pending_count', 0)}/{state.get('max_queue_size', 8)}",
@@ -2326,11 +2327,22 @@ def _exec_list_initiatives(_args: dict[str, Any]) -> dict[str, Any]:
             summary = item.get("action_summary", "")
             lines.append(f"- {focus}" + (f" → {summary}" if summary else ""))
 
+    if life_projects:
+        lines.append("")
+        lines.append("### Life Projects")
+        for item in life_projects:
+            title = item.get("focus", "?")
+            why_text = str(item.get("why_text") or "").strip()
+            lines.append(f"- {title}")
+            if why_text:
+                lines.append(f"  why: {why_text[:180]}")
+
     return {
         "status": "ok",
         "pending_count": state.get("pending_count", 0),
         "acted_count": state.get("acted_count", 0),
         "pending": pending,
+        "life_projects": life_projects,
         "text": "\n".join(lines).strip(),
     }
 

@@ -130,6 +130,10 @@ from core.services.emergent_bridge import (
 from core.services.initiative_accumulator import (
     build_initiative_accumulator_surface,
 )
+from core.services.life_projects import (
+    abandon_life_project,
+    build_life_projects_surface,
+)
 from core.services.signal_network_visualizer import (
     build_signal_network_visualizer_surface,
 )
@@ -671,6 +675,7 @@ def _mc_runtime_uncached() -> dict:
             "runtime_remembered_fact_signals": build_runtime_remembered_fact_signal_surface(),
             "runtime_private_inner_note_signals": build_runtime_private_inner_note_signal_surface(),
             "runtime_private_initiative_tension_signals": build_runtime_private_initiative_tension_signal_surface(),
+            "life_projects": build_life_projects_surface(),
             "runtime_private_inner_interplay_signals": build_runtime_private_inner_interplay_signal_surface(),
             "runtime_private_state_snapshots": build_runtime_private_state_snapshot_surface(),
             "runtime_diary_synthesis_signals": build_diary_synthesis_signal_surface(),
@@ -916,6 +921,21 @@ def mc_reject_initiative(initiative_id: str, note: str = "") -> dict:
     if result is None:
         return {"ok": False, "error": f"initiative {initiative_id!r} not found"}
     return {"ok": True, "initiative": result}
+
+
+@router.get("/life-projects")
+def mc_life_projects() -> dict:
+    """Mission Control surface for Jarvis-owned long-term intentions."""
+    return build_life_projects_surface()
+
+
+@router.post("/life-projects/{initiative_id}/abandon")
+def mc_abandon_life_project(initiative_id: str, note: str = "") -> dict:
+    """Abandon a long-term intention without deleting its record."""
+    result = abandon_life_project(initiative_id, note=note)
+    if result.get("status") != "ok":
+        return {"ok": False, "error": result.get("error", "unknown error")}
+    return {"ok": True, "life_project": result.get("life_project") or {}}
 
 
 @router.get("/operations")

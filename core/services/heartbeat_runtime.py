@@ -2191,6 +2191,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Shutdown window daemon — unannounced finitude pauses (opt-in experiment)
+    if _dm.is_enabled("shutdown_window"):
+        try:
+            from core.services.shutdown_window_daemon import tick_shutdown_window_daemon
+            _sw_result = tick_shutdown_window_daemon()
+            _dm.record_daemon_tick("shutdown_window", _sw_result or {})
+        except Exception:
+            pass
+
     # Memory decay daemon — selective forgetting + re-discovery
     if _dm.is_enabled("memory_decay"):
         try:

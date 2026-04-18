@@ -308,6 +308,12 @@ def build_visible_chat_prompt_assembly(
     )
     derived_inputs.append("model identity awareness")
 
+    # Current pull — Lag 5: highest-priority inner context (private, not announced)
+    current_pull_hint = _visible_current_pull_section()
+    if current_pull_hint:
+        parts.append(current_pull_hint)
+        derived_inputs.append("current pull (inner desire)")
+
     capability_truth = _visible_capability_truth_instruction(compact=compact)
     # capability_truth is added via budget-controlled section below
     capability_ids_line = _visible_capability_id_summary()
@@ -360,6 +366,12 @@ def build_visible_chat_prompt_assembly(
     if dream_residue_section:
         parts.append(dream_residue_section)
         derived_inputs.append("dream residue carry-over")
+
+    # Visual memory — Lag 6: latest room description from webcam (quiet background hint)
+    visual_memory_hint = _visible_visual_memory_section()
+    if visual_memory_hint:
+        parts.append(visual_memory_hint)
+        derived_inputs.append("visual room memory")
 
     if relevance.include_memory:
         memory_selection = _workspace_memory_section(
@@ -3207,6 +3219,28 @@ def _visible_unconscious_temperature_field_section() -> str | None:
         )
 
         section = build_unconscious_temperature_hint()
+        return section or None
+    except Exception:
+        return None
+
+
+def _visible_current_pull_section() -> str | None:
+    """Lag 5: inject current pull as quiet first-priority context."""
+    try:
+        from core.services.current_pull import get_current_pull_for_prompt
+
+        section = get_current_pull_for_prompt()
+        return section or None
+    except Exception:
+        return None
+
+
+def _visible_visual_memory_section() -> str | None:
+    """Lag 6: inject latest visual room memory as quiet background hint."""
+    try:
+        from core.services.visual_memory import get_latest_visual_memory_for_prompt
+
+        section = get_latest_visual_memory_for_prompt()
         return section or None
     except Exception:
         return None

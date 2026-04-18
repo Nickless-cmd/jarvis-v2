@@ -2236,6 +2236,24 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Current pull daemon — Lag 5: weekly self-set desire field
+    if _dm.is_enabled("current_pull"):
+        try:
+            from core.services.current_pull import tick_current_pull_daemon
+            _cp_result = tick_current_pull_daemon()
+            _dm.record_daemon_tick("current_pull", _cp_result or {})
+        except Exception:
+            pass
+
+    # Visual memory daemon — Lag 6: webcam snapshot + vision model (4x/day)
+    if _dm.is_enabled("visual_memory"):
+        try:
+            from core.services.visual_memory import tick_visual_memory_daemon
+            _vm_result = tick_visual_memory_daemon()
+            _dm.record_daemon_tick("visual_memory", _vm_result or {})
+        except Exception:
+            pass
+
     # --- Aesthetic motif accumulation ---
     try:
         from core.services.aesthetic_sense import accumulate_from_daemon

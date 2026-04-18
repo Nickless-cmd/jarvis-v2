@@ -204,6 +204,20 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 15,
         "description": "Checks jarvis@srvlab.dk inbox for new emails and notifies via eventbus",
     },
+    "current_pull": {
+        "module": "core.services.current_pull",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 10080,
+        "description": "Lag 5: weekly self-set desire field — what pulls at Jarvis right now",
+    },
+    "visual_memory": {
+        "module": "core.services.visual_memory",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 360,
+        "description": "Lag 6: webcam snapshot + vision model room description (4x/day)",
+    },
     "task_worker": {
         "module": "core.services.task_worker",
         "reset_var": "_unused_reset_marker",

@@ -55,6 +55,10 @@ from core.tools.mail_tools import (
     _exec_send_mail,
     _exec_read_mail,
 )
+from core.tools.visual_memory_tool import (
+    VISUAL_MEMORY_TOOL_DEFINITIONS,
+    _exec_read_visual_memory,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -1389,6 +1393,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *TIKTOK_TOOL_DEFINITIONS,
     *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
+    *VISUAL_MEMORY_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -4202,6 +4207,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Mail tools
     "send_mail": _exec_send_mail,
     "read_mail": _exec_read_mail,
+    # Visual memory (Lag 6)
+    "read_visual_memory": _exec_read_visual_memory,
 }
 
 

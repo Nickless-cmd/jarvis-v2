@@ -1015,28 +1015,41 @@ def _run_heartbeat_tick_locked(
         execution_status = str(result.get("execution_status") or "success")
     except Exception as exc:
         execution_status = _classify_heartbeat_execution_exception(exc)
+        # Try cheap cloud providers (skip groq + ollamafreeapi) before rule-based
+        _primary_exc = exc
+        try:
+            from core.services.heartbeat_provider_fallback import try_heartbeat_cheap_fallback
+            _fb = try_heartbeat_cheap_fallback(prompt)
+            if _fb and str(_fb.get("text") or "").strip():
+                raw_response = str(_fb["text"])
+                execution_status = "success"
+                logger.info("heartbeat: LLM failed (%s), cheap fallback succeeded", _primary_exc)
+                _primary_exc = None
+        except Exception:
+            pass
         # On LLM failure, use rule-based phase1 logic so pending initiatives
         # are still honoured rather than silently falling to noop → propose → blocked.
-        try:
-            phase1_result = _phase1_rule_based_decision(
-                policy=policy,
-                open_loops=context["open_loops"],
-                liveness=context.get("liveness"),
-                prompt=prompt,
-            )
-            raw_response = str(phase1_result.get("text") or "")
-            decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
-            logger.info(
-                "heartbeat: LLM failed (%s), fell back to phase1 rule-based decision: %s",
-                exc,
-                decision.get("decision_type"),
-            )
-        except Exception:
-            decision = _bounded_heartbeat_failure_decision(
-                failure_kind="runtime",
-                detail=str(exc),
-                target=target,
-            )
+        if _primary_exc is not None:
+            try:
+                phase1_result = _phase1_rule_based_decision(
+                    policy=policy,
+                    open_loops=context["open_loops"],
+                    liveness=context.get("liveness"),
+                    prompt=prompt,
+                )
+                raw_response = str(phase1_result.get("text") or "")
+                decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
+                logger.info(
+                    "heartbeat: LLM failed (%s), fell back to phase1 rule-based decision: %s",
+                    _primary_exc,
+                    decision.get("decision_type"),
+                )
+            except Exception:
+                decision = _bounded_heartbeat_failure_decision(
+                    failure_kind="runtime",
+                    detail=str(_primary_exc),
+                    target=target,
+                )
     else:
         decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
         # On parse failure (e.g. truncated JSON), fall back to phase1 rule-based
@@ -3571,6 +3584,11 @@ def _execute_heartbeat_model(
         return _execute_openrouter_prompt(prompt=prompt, target=target)
     if provider == "groq":
         return _execute_groq_prompt(prompt=prompt, target=target)
+    if provider in {"sambanova", "mistral", "nvidia-nim"}:
+        from core.services.heartbeat_provider_fallback import (
+            execute_openai_compat_heartbeat_prompt,
+        )
+        return execute_openai_compat_heartbeat_prompt(prompt=prompt, target=target)
     raise RuntimeError(f"Heartbeat provider not supported: {provider}")
 
 

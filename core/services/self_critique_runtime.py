@@ -6,7 +6,11 @@ from pathlib import Path
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
 from core.runtime.config import PROJECT_ROOT
-from core.runtime.db import get_runtime_state_value, set_runtime_state_value
+from core.runtime.db import (
+    get_runtime_state_value,
+    insert_private_brain_record,
+    set_runtime_state_value,
+)
 from core.runtime.settings import load_settings
 from core.services.chronicle_engine import list_cognitive_chronicle_entries
 from core.services.daemon_llm import daemon_llm_call
@@ -21,6 +25,7 @@ _BLIND_ANGLE_PROMPT = (
     "Hvilket mønster kører gennem dem som du aldrig har nævnt? "
     "Find det der er der — men som du konsekvent har undgået at navngive."
 )
+_ABSENCE_LINK_STATE_KEY = "absence_trace.links"
 _SELF_CRITIQUE_INTERVAL_DAYS = 30
 _SELF_CRITIQUE_REVIEW_DAYS = 90
 _BLIND_ANGLE_CYCLE_INTERVAL = 3  # Every 3rd cycle uses blind-angle prompt
@@ -188,6 +193,10 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
             "cycle_type": "blind_angle" if is_blind_angle else "standard",
         },
     )
+    # After a blind-angle cycle, check for convergence with recent absence signals
+    if is_blind_angle:
+        _check_absence_links(entry_id=entry_id, critique_text=critique, now=now)
+
     return {"status": "written", **payload}
 
 
@@ -347,3 +356,106 @@ def _parse_iso(value: str) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)
+
+
+# ---------------------------------------------------------------------------
+# Linked evidence — absence × blind-angle convergence
+# ---------------------------------------------------------------------------
+
+_ABSENCE_LINK_STOPWORDS = frozenset({
+    "og", "i", "at", "er", "en", "det", "af", "på", "til", "den", "for", "med",
+    "om", "jeg", "som", "men", "har", "ikke", "han", "hun", "de", "der", "kan",
+    "vil", "var", "når", "hvis", "over", "under", "efter", "hvad", "dette",
+    "denne", "noget", "nogen", "sig", "sin", "mit", "min", "mig", "dig", "du",
+    "vi", "os", "man", "her", "fra", "ret", "bare", "også", "nu", "så", "ja",
+    "nej", "mere", "meget", "lidt", "igen", "stadig", "faktisk", "måske",
+    "altid", "that", "this", "with", "from", "have", "been", "they", "which",
+})
+
+
+def _extract_key_words(text: str) -> frozenset[str]:
+    """Extract meaningful Danish/English words (5+ chars) from text."""
+    import re
+    words = re.findall(r'\b[a-zA-ZæøåÆØÅ]{5,}\b', text.lower())
+    return frozenset(w for w in words if w not in _ABSENCE_LINK_STOPWORDS)
+
+
+def _check_absence_links(*, entry_id: str, critique_text: str, now: datetime) -> None:
+    """After a blind-angle critique, look for convergence with recent absence signals.
+
+    Queries last 30 days of absence records. If any absence label shares key words
+    with the critique, a linked-evidence record is inserted and an event emitted.
+    """
+    try:
+        from uuid import uuid4
+        from core.runtime.db import connect, _ensure_private_brain_records_table
+        critique_words = _extract_key_words(critique_text)
+        if not critique_words:
+            return
+
+        cutoff = (now - timedelta(days=30)).isoformat()
+        with connect() as conn:
+            _ensure_private_brain_records_table(conn)
+            rows = conn.execute(
+                """SELECT record_id, summary FROM private_brain_records
+                   WHERE record_type = 'absence-signal' AND created_at >= ?
+                   ORDER BY created_at DESC LIMIT 20""",
+                (cutoff,),
+            ).fetchall()
+
+        links: list[dict] = []
+        for row in rows:
+            absence_words = _extract_key_words(str(row[1] or ""))
+            matched = sorted(critique_words & absence_words)
+            if matched:
+                links.append({
+                    "absence_record_id": str(row[0]),
+                    "matched_words": matched,
+                    "critique_entry_id": entry_id,
+                    "detected_at": now.isoformat(),
+                    "status": "auto-detected",
+                })
+
+        if not links:
+            return
+
+        now_iso = now.isoformat()
+        matched_summary = ", ".join(links[0]["matched_words"][:5])
+        insert_private_brain_record(
+            record_id=f"pb-linked-{uuid4().hex[:12]}",
+            record_type="linked-evidence",
+            layer="self_discovery",
+            session_id="heartbeat",
+            run_id=f"linked-evidence-{uuid4().hex[:12]}",
+            focus="blind_angle_absence_convergence",
+            summary=f"Blind-angle og fravær konvergerer: {matched_summary}",
+            detail=f"linked_critique_id={entry_id} absence_count={len(links)}",
+            source_signals="self_critique_runtime:blind_angle",
+            confidence="medium",
+            created_at=now_iso,
+        )
+
+        # Persist link list in runtime state
+        existing_links = get_runtime_state_value(_ABSENCE_LINK_STATE_KEY, default=[])
+        if not isinstance(existing_links, list):
+            existing_links = []
+        existing_links = [links[0]] + existing_links  # newest first
+        set_runtime_state_value(_ABSENCE_LINK_STATE_KEY, existing_links[:20])
+
+        event_bus.publish(
+            "absence_trace.linked_evidence",
+            {
+                "critique_entry_id": entry_id,
+                "absence_matches": len(links),
+                "matched_words": links[0]["matched_words"][:5],
+                "detected_at": now_iso,
+            },
+        )
+    except Exception:
+        pass
+
+
+def get_absence_trace_links() -> list[dict]:
+    """Return stored absence × blind-angle convergence records."""
+    val = get_runtime_state_value(_ABSENCE_LINK_STATE_KEY, default=[])
+    return list(val) if isinstance(val, list) else []

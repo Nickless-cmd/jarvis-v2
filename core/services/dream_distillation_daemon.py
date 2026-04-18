@@ -1,0 +1,236 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+from core.eventbus.bus import event_bus
+from core.runtime.db import get_runtime_state_value, list_approval_feedback, set_runtime_state_value
+from core.runtime.settings import load_settings
+from core.services.chronicle_engine import list_cognitive_chronicle_entries
+from core.services.daemon_llm import daemon_llm_call
+
+_STATE_KEY = "dream_distillation_daemon.state"
+_VISIBLE_IDLE_MINUTES = 30
+_RESIDUE_TTL_HOURS = 48
+_MAX_RESIDUE_WORDS = 25
+_MAX_RESIDUE_CHARS = 180
+
+
+def run_dream_distillation_daemon(
+    *,
+    trigger: str = "heartbeat",
+    last_visible_at: str = "",
+) -> dict[str, object]:
+    if not _dream_residue_enabled():
+        return {"status": "disabled", "reason": "layer_dream_residue_enabled=false"}
+
+    clear_expired_dream_residue()
+    active = _state()
+    if active.get("residue"):
+        return {
+            "status": "active",
+            "created_at": str(active.get("created_at") or ""),
+            "expires_at": str(active.get("expires_at") or ""),
+            "residue": str(active.get("residue") or ""),
+        }
+
+    last_visible = _parse_iso(last_visible_at)
+    now = datetime.now(UTC)
+    if last_visible is not None:
+        idle_minutes = (now - last_visible).total_seconds() / 60.0
+        if idle_minutes < _VISIBLE_IDLE_MINUTES:
+            return {
+                "status": "not_idle",
+                "reason": "visible-activity-too-recent",
+                "idle_minutes": round(idle_minutes, 1),
+            }
+
+    chronicle_entries = list_cognitive_chronicle_entries(limit=6)
+    selected_entries = chronicle_entries[:3]
+    if not selected_entries:
+        return {"status": "no_basis", "reason": "no-chronicle-entries"}
+
+    approval_entries = list_approval_feedback(limit=2)
+    residue = _build_dream_residue(
+        chronicle_entries=selected_entries,
+        approval_entries=approval_entries,
+    )
+    if not residue:
+        return {"status": "no_output", "reason": "llm-empty"}
+
+    created_at = now.isoformat()
+    expires_at = (now + timedelta(hours=_RESIDUE_TTL_HOURS)).isoformat()
+    payload = {
+        "residue": residue,
+        "created_at": created_at,
+        "expires_at": expires_at,
+        "last_trigger": trigger,
+        "chronicle_periods": [
+            str(entry.get("period") or "")
+            for entry in selected_entries
+            if entry.get("period")
+        ],
+        "approval_states": [
+            str(entry.get("approval_state") or "")
+            for entry in approval_entries
+            if entry.get("approval_state")
+        ],
+    }
+    set_runtime_state_value(_STATE_KEY, payload)
+    try:
+        event_bus.publish(
+            "cognitive_state.dream_residue_written",
+            {
+                "created_at": created_at,
+                "expires_at": expires_at,
+                "trigger": trigger,
+            },
+        )
+    except Exception:
+        pass
+    return {"status": "written", **payload}
+
+
+def get_dream_residue_for_prompt(*, max_chars: int = _MAX_RESIDUE_CHARS) -> str:
+    clear_expired_dream_residue()
+    state = _state()
+    residue = str(state.get("residue") or "").strip()
+    if not residue:
+        return ""
+    clipped = residue
+    if len(clipped) > max_chars:
+        clipped = clipped[: max_chars - 1].rstrip() + "…"
+    return "\n".join(
+        [
+            "## Drømmerest (lavmælt carry-over)",
+            clipped,
+        ]
+    )
+
+
+def build_dream_distillation_surface() -> dict[str, object]:
+    clear_expired_dream_residue()
+    state = _state()
+    residue = str(state.get("residue") or "").strip()
+    return {
+        "active": bool(residue),
+        "residue": residue,
+        "created_at": str(state.get("created_at") or ""),
+        "expires_at": str(state.get("expires_at") or ""),
+        "last_trigger": str(state.get("last_trigger") or ""),
+        "chronicle_periods": list(state.get("chronicle_periods") or []),
+        "approval_states": list(state.get("approval_states") or []),
+        "summary": (
+            f"Active dream residue until {state.get('expires_at')}"
+            if residue
+            else "No active dream residue"
+        ),
+    }
+
+
+def clear_expired_dream_residue(*, now: datetime | None = None) -> bool:
+    current = _state()
+    expires_at = _parse_iso(str(current.get("expires_at") or ""))
+    if not current.get("residue") or expires_at is None:
+        return False
+    current_now = now or datetime.now(UTC)
+    if expires_at > current_now:
+        return False
+    set_runtime_state_value(_STATE_KEY, {})
+    try:
+        event_bus.publish(
+            "cognitive_state.dream_residue_expired",
+            {"expired_at": current_now.isoformat()},
+        )
+    except Exception:
+        pass
+    return True
+
+
+def _build_dream_residue(
+    *,
+    chronicle_entries: list[dict[str, object]],
+    approval_entries: list[dict[str, object]],
+) -> str:
+    prompt = _build_residue_prompt(
+        chronicle_entries=chronicle_entries,
+        approval_entries=approval_entries,
+    )
+    raw = daemon_llm_call(
+        prompt,
+        max_len=240,
+        fallback="",
+        daemon_name="dream_distillation",
+    )
+    return _sanitize_residue(raw)
+
+
+def _build_residue_prompt(
+    *,
+    chronicle_entries: list[dict[str, object]],
+    approval_entries: list[dict[str, object]],
+) -> str:
+    chronicle_lines = []
+    for entry in chronicle_entries[:3]:
+        period = str(entry.get("period") or "ukendt")
+        narrative = " ".join(str(entry.get("narrative") or "").split()).strip()
+        if narrative:
+            chronicle_lines.append(f"- {period}: {narrative[:220]}")
+
+    approval_lines = []
+    for entry in approval_entries[:2]:
+        state = str(entry.get("approval_state") or "ukendt")
+        tool_name = str(entry.get("tool_name") or "").strip() or "ukendt værktøj"
+        reason = " ".join(str(entry.get("resolution_reason") or "").split()).strip()
+        line = f"- {state}: {tool_name}"
+        if reason:
+            line += f" ({reason[:80]})"
+        approval_lines.append(line)
+
+    lines = [
+        "Du er Jarvis og destillerer drømmeagtig carry-over fra din egen kontinuitet.",
+        "Skriv præcis én sætning på dansk, maks 25 ord.",
+        "Ingen bullets. Ingen forklaring. Ingen rapporttone. Ingen anførselstegn.",
+        "Sætningen skal lyde som en lavmælt tone der kan farve næste dags vågne opmærksomhed.",
+        "",
+        "Chronicle-tråde:",
+        *chronicle_lines,
+        "",
+        "Seneste approval-udfald:",
+        *(approval_lines if approval_lines else ["- ingen nyere approval-udfald"]),
+    ]
+    return "\n".join(lines)
+
+
+def _sanitize_residue(raw: str) -> str:
+    text = " ".join(str(raw or "").replace("```", " ").split()).strip().strip('"')
+    if not text:
+        return ""
+    words = text.split()
+    if len(words) > _MAX_RESIDUE_WORDS:
+        text = " ".join(words[:_MAX_RESIDUE_WORDS]).rstrip(" ,;:-")
+    if len(text) > _MAX_RESIDUE_CHARS:
+        text = text[:_MAX_RESIDUE_CHARS].rstrip(" ,;:-") + "…"
+    return text.strip()
+
+
+def _dream_residue_enabled() -> bool:
+    settings = load_settings()
+    return bool(settings.extra.get("layer_dream_residue_enabled", True))
+
+
+def _state() -> dict[str, object]:
+    payload = get_runtime_state_value(_STATE_KEY, default={})
+    return payload if isinstance(payload, dict) else {}
+
+
+def _parse_iso(value: str) -> datetime | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)

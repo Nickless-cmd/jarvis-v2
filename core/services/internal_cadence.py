@@ -431,6 +431,22 @@ def _ensure_producers_registered() -> None:
         depends_on=["prompt_evolution_runtime"],
     ))
 
+    def _run_dream_distillation(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.dream_distillation_daemon import (
+            run_dream_distillation_daemon,
+        )
+
+        return run_dream_distillation_daemon(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="dream_distillation_daemon",
+        cooldown_minutes=180,
+        visible_grace_minutes=30,
+        run_fn=_run_dream_distillation,
+        priority=22,
+        depends_on=["self_critique_runtime"],
+    ))
+
 def run_cadence_tick_with_bootstrap(
     *,
     trigger: str = "heartbeat",

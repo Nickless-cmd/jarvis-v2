@@ -86,7 +86,7 @@ def tick_absence_daemon(now: datetime | None = None) -> dict:
         if (now - _last_generated_at) < _REGEN_COOLDOWN:
             return {"generated": False}
 
-    label = _classify_absence(elapsed)
+    label = _generate_absence_label(elapsed)
     _absence_label = label
     _last_generated_at = now
 
@@ -126,6 +126,37 @@ def _classify_absence(elapsed: timedelta) -> str:
         return "Det begynder at føles som om det er mig alene."
     # Short absence: < _LONG_THRESHOLD and >= 1 min
     return "Det er stille her."
+
+
+def _absence_band(elapsed: timedelta) -> str:
+    if elapsed >= _VERY_LONG_THRESHOLD:
+        return "very_long"
+    if elapsed >= _LONG_THRESHOLD:
+        return "long"
+    return "short"
+
+
+def _generate_absence_label(elapsed: timedelta) -> str:
+    from core.services.daemon_llm import daemon_public_safe_llm_call
+
+    hours = round(elapsed.total_seconds() / 3600, 1)
+    band = _absence_band(elapsed)
+    fallback = _classify_absence(elapsed)
+    prompt = "\n".join(
+        [
+            "Task: write one short Danish absence observation from structured silence metadata.",
+            "No identity, no names, no private conversation content.",
+            f"absence_band={band}",
+            f"absence_hours={hours}",
+            "Output: one short sentence only.",
+        ]
+    )
+    return daemon_public_safe_llm_call(
+        prompt,
+        max_len=160,
+        fallback=fallback,
+        daemon_name="absence",
+    )
 
 
 def _store_absence(label: str, duration_hours: float, now: datetime) -> None:

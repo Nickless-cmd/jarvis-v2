@@ -86,7 +86,12 @@ def test_short_absence_label():
     one_hour_ago = now - timedelta(hours=1)
     absence_daemon._last_interaction_at = one_hour_ago
     absence_daemon._absence_start_at = one_hour_ago
-    result = absence_daemon.tick_absence_daemon(now)
+    with patch.object(
+        absence_daemon,
+        "_generate_absence_label",
+        side_effect=lambda elapsed: absence_daemon._classify_absence(elapsed),
+    ):
+        result = absence_daemon.tick_absence_daemon(now)
     assert result["generated"] is True
     assert "stille" in result["label"].lower()
 
@@ -98,7 +103,12 @@ def test_long_absence_label():
     nine_hours_ago = now - timedelta(hours=9)
     absence_daemon._last_interaction_at = nine_hours_ago
     absence_daemon._absence_start_at = nine_hours_ago
-    result = absence_daemon.tick_absence_daemon(now)
+    with patch.object(
+        absence_daemon,
+        "_generate_absence_label",
+        side_effect=lambda elapsed: absence_daemon._classify_absence(elapsed),
+    ):
+        result = absence_daemon.tick_absence_daemon(now)
     assert result["generated"] is True
     assert "alene" in result["label"].lower()
 
@@ -110,7 +120,12 @@ def test_very_long_absence_label():
     twenty_five_hours_ago = now - timedelta(hours=25)
     absence_daemon._last_interaction_at = twenty_five_hours_ago
     absence_daemon._absence_start_at = twenty_five_hours_ago
-    result = absence_daemon.tick_absence_daemon(now)
+    with patch.object(
+        absence_daemon,
+        "_generate_absence_label",
+        side_effect=lambda elapsed: absence_daemon._classify_absence(elapsed),
+    ):
+        result = absence_daemon.tick_absence_daemon(now)
     assert result["generated"] is True
     # >24h label contains "tænker" or equivalent
     assert any(w in result["label"].lower() for w in ["tænker", "hvad", "alene"])
@@ -142,3 +157,17 @@ def test_get_latest_absence_initially_empty():
     """get_latest_absence() returns empty string on first call."""
     _reset()
     assert absence_daemon.get_latest_absence() == ""
+
+
+def test_generate_absence_label_uses_public_safe_llm_path():
+    _reset()
+    with patch.dict("sys.modules", {
+        "core.services.daemon_llm": type(
+            "_FakeDaemonLLMModule",
+            (),
+            {"daemon_public_safe_llm_call": staticmethod(lambda *args, **kwargs: "Fraværet har strakt sig længe nu.")}
+        )()
+    }):
+        result = absence_daemon._generate_absence_label(timedelta(hours=9))
+
+    assert result == "Fraværet har strakt sig længe nu."

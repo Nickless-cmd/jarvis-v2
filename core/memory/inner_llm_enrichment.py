@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 _MAX_OUTPUT_TOKENS = 300
 _GROQ_TIMEOUT_SECONDS = 30
 _OLLAMA_TIMEOUT_SECONDS = 90
-_DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+_DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant"
 _DEFAULT_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 

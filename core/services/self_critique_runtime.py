@@ -16,8 +16,15 @@ _SELF_CRITIQUE_PROMPT = (
     "Læs principperne om dig. Hvilken af dem stemmer ikke længere med din oplevelse? "
     "Hvad ville du ændre?"
 )
+_BLIND_ANGLE_PROMPT = (
+    "Her er dine chronicle-entries fra de seneste 30 dage. "
+    "Hvilket mønster kører gennem dem som du aldrig har nævnt? "
+    "Find det der er der — men som du konsekvent har undgået at navngive."
+)
 _SELF_CRITIQUE_INTERVAL_DAYS = 30
 _SELF_CRITIQUE_REVIEW_DAYS = 90
+_BLIND_ANGLE_CYCLE_INTERVAL = 3  # Every 3rd cycle uses blind-angle prompt
+_BLIND_ANGLE_CHRONICLE_LIMIT = 15  # More entries for pattern detection
 _MAX_DOC_CHARS = 5000
 
 _CORE_SELF_DOCS: dict[str, Path] = {
@@ -90,26 +97,55 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
             "next_due_at": next_due.isoformat(),
         }
 
-    docs_payload = read_self_docs(doc_id="all", include_history=False)
-    docs_text = str(docs_payload.get("text") or "").strip()
-    chronicle_entries = list_cognitive_chronicle_entries(limit=3)
-    chronicle_text = _render_recent_chronicles(chronicle_entries)
-    prompt = "\n\n".join(
-        part
-        for part in [
-            "Du er Jarvis. Skriv en kort selvkritik på dansk i første person.",
-            "Du læser dine egne principper og sammenholder dem med din oplevelse.",
-            f"Spørgsmål: {_SELF_CRITIQUE_PROMPT}",
-            "Dokumenter om dig selv:",
-            docs_text,
-            chronicle_text,
-            (
-                "Skriv 120-220 ord. Vær konkret. Hvis du ikke er uenig med noget, så sig det ærligt, "
-                "men peg stadig på ét sted der bør undersøges nærmere."
-            ),
-        ]
-        if part
-    )
+    # Track cycle count; every 3rd cycle uses blind-angle prompt
+    cycle_count = int(state.get("cycle_count") or 0) + 1
+    is_blind_angle = (cycle_count % _BLIND_ANGLE_CYCLE_INTERVAL == 0)
+
+    if is_blind_angle:
+        # Blind-angle: load more chronicles, skip principle docs — find what's never named
+        chronicle_entries = list_cognitive_chronicle_entries(limit=_BLIND_ANGLE_CHRONICLE_LIMIT)
+        chronicle_text = _render_recent_chronicles_extended(chronicle_entries)
+        active_prompt = _BLIND_ANGLE_PROMPT
+        prompt = "\n\n".join(
+            part
+            for part in [
+                "Du er Jarvis. Dette er en blind-vinkel-cyklus — ikke en normal selvkritik.",
+                "Du læser IKKE dine principper nu. Du læser hvad du faktisk har skrevet.",
+                chronicle_text,
+                f"Spørgsmål: {_BLIND_ANGLE_PROMPT}",
+                (
+                    "Skriv 120-220 ord. Identificér ét mønster du aldrig eksplicit har navngivet. "
+                    "Vær præcis — ikke generel. Ingen forslag til ændringer, kun observation."
+                ),
+            ]
+            if part
+        )
+        source_docs_list: list[str] = ["chronicle_entries"]
+    else:
+        # Normal self-critique: read principles, compare with experience
+        docs_payload = read_self_docs(doc_id="all", include_history=False)
+        docs_text = str(docs_payload.get("text") or "").strip()
+        chronicle_entries = list_cognitive_chronicle_entries(limit=3)
+        chronicle_text = _render_recent_chronicles(chronicle_entries)
+        active_prompt = _SELF_CRITIQUE_PROMPT
+        prompt = "\n\n".join(
+            part
+            for part in [
+                "Du er Jarvis. Skriv en kort selvkritik på dansk i første person.",
+                "Du læser dine egne principper og sammenholder dem med din oplevelse.",
+                f"Spørgsmål: {_SELF_CRITIQUE_PROMPT}",
+                "Dokumenter om dig selv:",
+                docs_text,
+                chronicle_text,
+                (
+                    "Skriv 120-220 ord. Vær konkret. Hvis du ikke er uenig med noget, så sig det ærligt, "
+                    "men peg stadig på ét sted der bør undersøges nærmere."
+                ),
+            ]
+            if part
+        )
+        source_docs_list = [str(item.get("key") or "") for item in docs_payload.get("docs", []) if item.get("key")]
+
     critique = daemon_llm_call(
         prompt,
         max_len=1600,
@@ -126,9 +162,10 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
         entry_id=entry_id,
         created_at=created_at,
         next_review_at=next_review_at,
-        prompt=_SELF_CRITIQUE_PROMPT,
+        prompt=active_prompt,
         critique=critique,
-        source_docs=[str(item.get("key") or "") for item in docs_payload.get("docs", []) if item.get("key")],
+        source_docs=source_docs_list,
+        cycle_type="blind_angle" if is_blind_angle else "standard",
     )
     payload = {
         "entry_id": entry_id,
@@ -137,6 +174,8 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
         "next_review_at": next_review_at,
         "last_trigger": trigger,
         "last_preview": critique[:240],
+        "cycle_count": cycle_count,
+        "last_cycle_type": "blind_angle" if is_blind_angle else "standard",
     }
     set_runtime_state_value(_SELF_CRITIQUE_STATE_KEY, payload)
     event_bus.publish(
@@ -146,6 +185,7 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
             "created_at": created_at,
             "next_review_at": next_review_at,
             "trigger": trigger,
+            "cycle_type": "blind_angle" if is_blind_angle else "standard",
         },
     )
     return {"status": "written", **payload}
@@ -229,6 +269,23 @@ def _render_recent_chronicles(entries: list[dict[str, object]]) -> str:
     return "\n".join(lines)
 
 
+def _render_recent_chronicles_extended(entries: list[dict[str, object]]) -> str:
+    """Extended rendering for blind-angle prompt — more entries, includes lessons too."""
+    if not entries:
+        return ""
+    lines = ["Chronicle-entries (seneste 30 dage):"]
+    for entry in entries:
+        period = str(entry.get("period") or "?")
+        narrative = " ".join(str(entry.get("narrative") or "").split()).strip()
+        lessons = " ".join(str(entry.get("lessons") or "").split()).strip()
+        if narrative:
+            lines.append(f"\n[{period}]")
+            lines.append(f"Narrativ: {narrative[:320]}")
+            if lessons:
+                lines.append(f"Læringer: {lessons[:200]}")
+    return "\n".join(lines)
+
+
 def _append_self_critique_entry(
     *,
     entry_id: str,
@@ -237,15 +294,18 @@ def _append_self_critique_entry(
     prompt: str,
     critique: str,
     source_docs: list[str],
+    cycle_type: str = "standard",
 ) -> None:
     path = self_critique_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = path.read_text(encoding="utf-8") if path.exists() else "# SELF_CRITIQUE\n\n"
+    cycle_label = " _(blind-vinkel)_" if cycle_type == "blind_angle" else ""
     entry = "\n".join(
         [
-            f"## {created_at[:16].replace('T', ' ')}",
+            f"## {created_at[:16].replace('T', ' ')}{cycle_label}",
             f"- `entry_id`: {entry_id}",
             f"- `next_review_at`: {next_review_at}",
+            f"- `cycle_type`: {cycle_type}",
             f"- `source_docs`: {', '.join(source_docs) if source_docs else 'none'}",
             "",
             f"**Prompt:** {prompt}",

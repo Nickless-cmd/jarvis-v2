@@ -3,7 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from core.eventbus.bus import event_bus
-from core.runtime.db import get_runtime_state_value, list_approval_feedback, set_runtime_state_value
+from core.runtime.db import (
+    get_runtime_state_value,
+    insert_private_brain_record,
+    list_approval_feedback,
+    set_runtime_state_value,
+)
 from core.runtime.settings import load_settings
 from core.services.chronicle_engine import list_cognitive_chronicle_entries
 from core.services.daemon_llm import daemon_llm_call
@@ -141,6 +146,8 @@ def clear_expired_dream_residue(*, now: datetime | None = None) -> bool:
     current_now = now or datetime.now(UTC)
     if expires_at > current_now:
         return False
+    # Log landing as observation before clearing — anti-goal: observe but do not steer
+    _log_dream_landing(residue=str(current.get("residue") or ""), expired_at=current_now)
     set_runtime_state_value(_STATE_KEY, {})
     try:
         event_bus.publish(
@@ -150,6 +157,33 @@ def clear_expired_dream_residue(*, now: datetime | None = None) -> bool:
     except Exception:
         pass
     return True
+
+
+def _log_dream_landing(*, residue: str, expired_at: datetime) -> None:
+    """Log expired dream residue as observation. Anti-goal: stored for reflection, never fed back.
+
+    The logged record is an observation that this dream 'landed' at this point in time.
+    It does NOT influence the next dream generation cycle.
+    """
+    if not residue:
+        return
+    try:
+        from uuid import uuid4
+        insert_private_brain_record(
+            record_id=f"pb-dream-landing-{uuid4().hex[:12]}",
+            record_type="dream-landing",
+            layer="dream_distillation",
+            session_id="heartbeat",
+            run_id=f"dream-landing-{uuid4().hex[:12]}",
+            focus="drøm-landing",
+            summary=residue[:200],
+            detail="anti_goal=true: observation only, not used to steer next dream",
+            source_signals="dream_distillation_daemon:expiry",
+            confidence="high",
+            created_at=expired_at.isoformat(),
+        )
+    except Exception:
+        pass
 
 
 def _load_dismissed_inner_voice() -> list[str]:

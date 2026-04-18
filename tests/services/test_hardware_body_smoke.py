@@ -20,6 +20,9 @@ def test_get_hardware_state_returns_collected_snapshot(monkeypatch) -> None:
             "cpu_temp_c": 78.0,
             "gpus": [],
             "pressure": "high",
+            "energy_budget": 54,
+            "circadian_preference": "morgen",
+            "wake_state": "alert",
         },
     )
 
@@ -27,3 +30,6 @@ def test_get_hardware_state_returns_collected_snapshot(monkeypatch) -> None:
 
     assert state["cpu_pct"] == 91.0
     assert state["pressure"] == "high"
+    assert state["energy_budget"] == 54
+    assert state["circadian_preference"] == "morgen"
+    assert state["wake_state"] == "alert"

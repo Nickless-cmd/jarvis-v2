@@ -91,7 +91,31 @@ def _collect() -> dict[str, object]:
         pass
 
     result["pressure"] = _compute_pressure(result)
+    result.update(_somatic_overlay(result))
     return result
+
+
+def _somatic_overlay(state: dict[str, object]) -> dict[str, object]:
+    try:
+        from core.runtime.circadian_state import get_circadian_context
+
+        ctx = get_circadian_context()
+    except Exception:
+        ctx = {}
+
+    energy_level = str(ctx.get("energy_level") or "")
+    clock_phase = str(ctx.get("clock_phase") or "")
+    drain_score = float(ctx.get("drain_score") or 0.0)
+    pressure = str(state.get("pressure") or "low")
+    return {
+        "energy_level": energy_level,
+        "clock_phase": clock_phase,
+        "drain_label": str(ctx.get("drain_label") or ""),
+        "drain_score": round(drain_score, 2),
+        "energy_budget": _derive_energy_budget(energy_level, drain_score, pressure),
+        "circadian_preference": _derive_circadian_preference(clock_phase),
+        "wake_state": _derive_wake_state(clock_phase, energy_level),
+    }
 
 
 def _compute_pressure(state: dict[str, object]) -> str:
@@ -143,3 +167,36 @@ def _compute_pressure(state: dict[str, object]) -> str:
     if score >= 1:
         return "medium"
     return "low"
+
+
+def _derive_energy_budget(energy_level: str, drain_score: float, pressure: str) -> int:
+    base = {
+        "høj": 88,
+        "medium": 68,
+        "lav": 42,
+        "udmattet": 18,
+    }.get(energy_level, 55)
+    pressure_penalty = {
+        "low": 0,
+        "medium": 8,
+        "high": 18,
+        "critical": 32,
+    }.get(pressure, 0)
+    budget = int(round(base - (drain_score * 20.0) - pressure_penalty))
+    return max(0, min(100, budget))
+
+
+def _derive_circadian_preference(clock_phase: str) -> str:
+    if clock_phase in {"tidlig morgen", "formiddag", "middag"}:
+        return "morgen"
+    return "aften"
+
+
+def _derive_wake_state(clock_phase: str, energy_level: str) -> str:
+    if clock_phase == "nat" or energy_level == "udmattet":
+        return "compacting"
+    if clock_phase == "tidlig morgen":
+        return "waking up"
+    if clock_phase in {"sen eftermiddag", "aften"} and energy_level in {"lav", "udmattet"}:
+        return "winding down"
+    return "alert"

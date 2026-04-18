@@ -117,6 +117,43 @@ def test_heartbeat_self_knowledge_section_includes_embodied_state_guidance(
     assert "Prefer bounded noop/ping" in section
 
 
+def test_embodied_state_prompt_section_includes_somatic_overlay(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    embodied = isolated_runtime.embodied_state
+    monkeypatch.setattr(
+        "core.services.somatic_daemon.build_body_state_surface",
+        lambda: {
+            "energy_budget": 72,
+            "circadian_preference": "morgen",
+            "wake_state": "alert",
+            "pressure": "low",
+        },
+    )
+
+    section = embodied.build_embodied_state_prompt_section(
+        {
+            "state": "steady",
+            "primary_state": "steady",
+            "strain_level": "low",
+            "recovery_state": "steady",
+            "freshness": {"state": "fresh"},
+            "facts": {
+                "cpu": {"bucket": "steady"},
+                "memory": {"bucket": "steady"},
+                "disk": {"bucket": "steady"},
+                "thermal": {"bucket": "steady"},
+            },
+        }
+    )
+
+    assert section is not None
+    assert "somatic=energy_budget=72" in section
+    assert "circadian_preference=morgen" in section
+    assert "wake_state=alert" in section
+
+
 def test_mission_control_runtime_and_embodied_endpoint_expose_state(
     isolated_runtime,
     monkeypatch,

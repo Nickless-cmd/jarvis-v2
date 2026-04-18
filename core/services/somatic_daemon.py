@@ -59,17 +59,27 @@ def get_latest_somatic_phrase() -> str:
 def build_body_state_surface() -> dict[str, object]:
     """Returns body state for Mission Control surface."""
     try:
-        from core.runtime.circadian_state import get_circadian_context
-        energy_ctx = get_circadian_context()
+        from core.services.hardware_body import get_hardware_state
+
+        hardware_state = get_hardware_state()
     except Exception:
-        energy_ctx = {}
+        hardware_state = {}
     return {
-        "energy_level": str(energy_ctx.get("energy_level") or ""),
-        "clock_phase": str(energy_ctx.get("clock_phase") or ""),
-        "drain_label": str(energy_ctx.get("drain_label") or ""),
-        "drain_score": float(energy_ctx.get("drain_score") or 0.0),
+        "energy_level": str(hardware_state.get("energy_level") or ""),
+        "clock_phase": str(hardware_state.get("clock_phase") or ""),
+        "drain_label": str(hardware_state.get("drain_label") or ""),
+        "drain_score": float(hardware_state.get("drain_score") or 0.0),
+        "energy_budget": int(hardware_state.get("energy_budget") or 0),
+        "circadian_preference": str(hardware_state.get("circadian_preference") or ""),
+        "wake_state": str(hardware_state.get("wake_state") or ""),
+        "pressure": str(hardware_state.get("pressure") or ""),
         "somatic_phrase": _cached_phrase,
         "somatic_updated_at": _cached_phrase_at.isoformat() if _cached_phrase_at else "",
+        "summary": (
+            f"wake_state={hardware_state.get('wake_state') or 'unknown'}"
+            f" | energy_budget={int(hardware_state.get('energy_budget') or 0)}"
+            f" | circadian_preference={hardware_state.get('circadian_preference') or 'unknown'}"
+        ),
     }
 
 

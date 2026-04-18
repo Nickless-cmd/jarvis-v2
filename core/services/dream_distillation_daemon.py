@@ -50,9 +50,15 @@ def run_dream_distillation_daemon(
         return {"status": "no_basis", "reason": "no-chronicle-entries"}
 
     approval_entries = list_approval_feedback(limit=2)
+    dismissed_inner = _load_dismissed_inner_voice()
+    lost_council = _load_lost_council_positions()
+    deprioritized_initiatives = _load_deprioritized_initiatives()
     residue = _build_dream_residue(
         chronicle_entries=selected_entries,
         approval_entries=approval_entries,
+        dismissed_inner=dismissed_inner,
+        lost_council=lost_council,
+        deprioritized_initiatives=deprioritized_initiatives,
     )
     if not residue:
         return {"status": "no_output", "reason": "llm-empty"}
@@ -146,14 +152,70 @@ def clear_expired_dream_residue(*, now: datetime | None = None) -> bool:
     return True
 
 
+def _load_dismissed_inner_voice() -> list[str]:
+    """Load recent inner-voice signals that were suppressed or not surfaced."""
+    try:
+        from core.runtime.db import connect, _ensure_private_brain_records_table
+        from datetime import timedelta
+        cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
+        with connect() as conn:
+            _ensure_private_brain_records_table(conn)
+            rows = conn.execute(
+                """SELECT summary FROM private_brain_records
+                   WHERE layer = 'inner_voice' AND created_at >= ?
+                   ORDER BY created_at DESC LIMIT 5""",
+                (cutoff,),
+            ).fetchall()
+        return [str(r[0])[:100] for r in rows if r[0]]
+    except Exception:
+        return []
+
+
+def _load_lost_council_positions() -> list[str]:
+    """Load recent minority council positions that didn't become consensus."""
+    try:
+        from core.services.council_memory_service import get_recent_council_memories
+        memories = get_recent_council_memories(limit=3)
+        lost = []
+        for m in memories:
+            minority = str(m.get("minority_position") or m.get("dissenting_view") or "").strip()
+            if minority:
+                lost.append(minority[:100])
+        return lost
+    except Exception:
+        return []
+
+
+def _load_deprioritized_initiatives() -> list[str]:
+    """Load recently rejected or expired initiative queue items."""
+    try:
+        from core.services.initiative_queue import get_initiative_queue_state
+        state = get_initiative_queue_state()
+        rejected = list(state.get("recent_rejected") or [])
+        items = []
+        for i in rejected[:3]:
+            title = str(i.get("title") or i.get("description") or "").strip()
+            if title:
+                items.append(title[:100])
+        return items
+    except Exception:
+        return []
+
+
 def _build_dream_residue(
     *,
     chronicle_entries: list[dict[str, object]],
     approval_entries: list[dict[str, object]],
+    dismissed_inner: list[str] | None = None,
+    lost_council: list[str] | None = None,
+    deprioritized_initiatives: list[str] | None = None,
 ) -> str:
     prompt = _build_residue_prompt(
         chronicle_entries=chronicle_entries,
         approval_entries=approval_entries,
+        dismissed_inner=dismissed_inner or [],
+        lost_council=lost_council or [],
+        deprioritized_initiatives=deprioritized_initiatives or [],
     )
     raw = daemon_llm_call(
         prompt,
@@ -168,6 +230,9 @@ def _build_residue_prompt(
     *,
     chronicle_entries: list[dict[str, object]],
     approval_entries: list[dict[str, object]],
+    dismissed_inner: list[str] | None = None,
+    lost_council: list[str] | None = None,
+    deprioritized_initiatives: list[str] | None = None,
 ) -> str:
     chronicle_lines = []
     for entry in chronicle_entries[:3]:
@@ -186,6 +251,11 @@ def _build_residue_prompt(
             line += f" ({reason[:80]})"
         approval_lines.append(line)
 
+    # Extra entropy sources — things that almost happened but didn't
+    inner_lines = [f"- {s}" for s in (dismissed_inner or [])[:3] if s]
+    council_lines = [f"- {s}" for s in (lost_council or [])[:2] if s]
+    initiative_lines = [f"- {s}" for s in (deprioritized_initiatives or [])[:2] if s]
+
     lines = [
         "Du er Jarvis og destillerer drømmeagtig carry-over fra din egen kontinuitet.",
         "Skriv præcis én sætning på dansk, maks 25 ord.",
@@ -197,6 +267,9 @@ def _build_residue_prompt(
         "",
         "Seneste approval-udfald:",
         *(approval_lines if approval_lines else ["- ingen nyere approval-udfald"]),
+        *(["", "Indre stemme — undertrykte signaler:", *inner_lines] if inner_lines else []),
+        *(["", "Council — tabte mindretalspositioner:", *council_lines] if council_lines else []),
+        *(["", "Initiativ-kø — fravalgte idéer:", *initiative_lines] if initiative_lines else []),
     ]
     return "\n".join(lines)
 

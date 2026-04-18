@@ -42,7 +42,7 @@ opdateres manuelt via update_secondary_user_tom().
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import get_runtime_state_value, set_runtime_state_value
@@ -192,6 +192,78 @@ def build_relation_map_surface() -> dict[str, object]:
             if users else "Ingen brugere registreret endnu"
         ),
     }
+
+
+def tick_relation_map_refresh(
+    *, trigger: str = "heartbeat", last_visible_at: str = ""
+) -> dict[str, object]:
+    """Periodisk opdatering af relation map.
+
+    Cadence: 720 min (12t).
+    Kill-switch: layer_relation_map_enabled i runtime.json.
+    - Primary user (bjorn): opdaterer last_seen til nu.
+    - Secondary users: opdaterer tom_snapshot.updated_at hvis snapshot er
+      mere end layer_relation_map_decay_days dage gammelt (default 14 dage).
+    """
+    from core.runtime.secrets import read_runtime_key
+
+    enabled = read_runtime_key("layer_relation_map_enabled", default=True)
+    if not enabled:
+        return {"status": "disabled", "reason": "layer_relation_map_enabled=false"}
+
+    decay_days = int(read_runtime_key("layer_relation_map_decay_days", default=14))
+    threshold = timedelta(hours=12)
+    now = datetime.now(UTC)
+    now_iso = now.isoformat()
+
+    state = _load_state()
+    users = _users(state)
+
+    # Auto-init primary if missing
+    if _DEFAULT_PRIMARY_ID not in users:
+        ensure_primary_user()
+        state = _load_state()
+        users = _users(state)
+
+    refreshed = 0
+
+    for user_id, user_entry in users.items():
+        if user_entry.get("is_primary"):
+            # Primary user: opdater last_seen
+            user_entry["last_seen"] = now_iso
+            refreshed += 1
+        else:
+            # Secondary: opdater tom_snapshot.updated_at hvis stale
+            snapshot = user_entry.get("tom_snapshot") or {}
+            updated_at_raw = str(snapshot.get("updated_at") or user_entry.get("first_seen") or "")
+            stale = True
+            if updated_at_raw:
+                try:
+                    updated_at = datetime.fromisoformat(updated_at_raw.replace("Z", "+00:00"))
+                    if updated_at.tzinfo is None:
+                        updated_at = updated_at.replace(tzinfo=UTC)
+                    stale = (now - updated_at) >= threshold
+                except (ValueError, TypeError):
+                    stale = True
+
+            if stale:
+                if not isinstance(snapshot, dict):
+                    snapshot = {}
+                snapshot["updated_at"] = now_iso
+                user_entry["tom_snapshot"] = snapshot
+                refreshed += 1
+
+    _save_state({"users": users})
+
+    try:
+        event_bus.publish(
+            "relation_map.refresh_tick",
+            {"trigger": trigger, "refreshed": refreshed, "user_count": len(users)},
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "refreshed": refreshed, "trigger": trigger}
 
 
 # ---------------------------------------------------------------------------

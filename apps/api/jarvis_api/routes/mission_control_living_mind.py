@@ -227,3 +227,10 @@ def mc_layer_tensions() -> dict:
     """Return active inter-layer tensions — signals pulling in opposite directions."""
     from core.services.layer_tension_daemon import build_layer_tension_surface
     return _surface("layer-tensions", build_layer_tension_surface)
+
+
+@router.get("/dream-motifs")
+def mc_dream_motifs() -> dict:
+    """Return dream motif clustering state and last run info."""
+    from core.services.dream_motif_daemon import build_dream_motif_surface
+    return _surface("dream-motifs", build_dream_motif_surface)

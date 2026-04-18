@@ -351,6 +351,11 @@ def build_visible_chat_prompt_assembly(
         conditional_files.append("CHRONICLE.md")
         derived_inputs.append("chronicle continuity")
 
+    finitude_section = _visible_finitude_context_section()
+    if finitude_section:
+        parts.append(finitude_section)
+        derived_inputs.append("finitude and transition context")
+
     dream_residue_section = _visible_dream_residue_section()
     if dream_residue_section:
         parts.append(dream_residue_section)
@@ -2857,7 +2862,7 @@ def _maybe_auto_compact_session(
         _log.getLogger(__name__).info(
             "prompt_contract: auto-compact triggered for session %s", session_id
         )
-        compact_session_history(
+        result = compact_session_history(
             session_id,
             keep_recent=settings.context_keep_recent,
             summarise_fn=lambda msgs: call_compact_llm(
@@ -2866,9 +2871,30 @@ def _maybe_auto_compact_session(
                 max_tokens=500,
             ),
         )
+        if result is not None:
+            try:
+                from core.services.finitude_runtime import note_context_compaction
+
+                note_context_compaction(
+                    session_id=session_id,
+                    freed_tokens=int(result.freed_tokens or 0),
+                    summary_text=str(result.summary_text or ""),
+                )
+            except Exception:
+                pass
     except Exception as exc:
         import logging as _log
         _log.getLogger(__name__).warning("auto_compact_session failed: %s", exc)
+
+
+def _visible_finitude_context_section() -> str | None:
+    try:
+        from core.services.finitude_runtime import get_finitude_context_for_prompt
+
+        section = get_finitude_context_for_prompt()
+        return section or None
+    except Exception:
+        return None
 
 
 def _visible_support_signal_sections(*, compact: bool, include: bool) -> list[str]:

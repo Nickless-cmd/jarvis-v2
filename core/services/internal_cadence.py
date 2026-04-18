@@ -463,6 +463,22 @@ def _ensure_producers_registered() -> None:
         depends_on=["dream_distillation_daemon"],
     ))
 
+    def _run_finitude_runtime(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.finitude_runtime import (
+            run_finitude_ritual,
+        )
+
+        return run_finitude_ritual(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="finitude_runtime",
+        cooldown_minutes=1440,
+        visible_grace_minutes=60,
+        run_fn=_run_finitude_runtime,
+        priority=26,
+        depends_on=["creative_journal_runtime"],
+    ))
+
 def run_cadence_tick_with_bootstrap(
     *,
     trigger: str = "heartbeat",

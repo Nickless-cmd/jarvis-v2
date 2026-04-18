@@ -148,6 +148,7 @@ def provider_router_summary() -> dict[str, object]:
             "cheap": list_provider_router_targets(lane="cheap"),
             "local": list_provider_router_targets(lane="local"),
             "coding": list_provider_router_targets(lane="coding"),
+            "inner_enrichment": list_provider_router_targets(lane="inner_enrichment"),
         },
     }
 
@@ -311,7 +312,7 @@ def resolve_provider_router_target(*, lane: str) -> dict[str, object]:
 
 
 def provider_router_lane_targets() -> dict[str, dict[str, object]]:
-    lanes = ["visible", "cheap", "coding", "premium", "local"]
+    lanes = ["visible", "cheap", "coding", "premium", "local", "inner_enrichment"]
     return {lane: resolve_provider_router_target(lane=lane) for lane in lanes}
 
 
@@ -564,7 +565,7 @@ def _normalize_profile(value: str) -> str:
 
 def _normalize_lane(value: str) -> str:
     normalized = (value or "visible").strip().lower()
-    if normalized not in {"visible", "cheap", "coding", "premium", "local"}:
+    if normalized not in {"visible", "cheap", "coding", "premium", "local", "inner_enrichment"}:
         return "visible"
     return normalized
 

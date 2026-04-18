@@ -5933,7 +5933,6 @@ def _execute_heartbeat_internal_action(
                 if sessions:
                     last_msg = sessions[0].get("updated_at") or sessions[0].get("created_at") or ""
                     if last_msg:
-                        from datetime import datetime, UTC
                         try:
                             last_dt = datetime.fromisoformat(last_msg.replace("Z", "+00:00"))
                             _idle_hours = (datetime.now(UTC) - last_dt).total_seconds() / 3600.0
@@ -7221,4 +7220,3 @@ def call_heartbeat_llm_simple(prompt: str, *, max_tokens: int = 400) -> str:
 
 # Backwards-compat alias (previously private name)
 _resolve_heartbeat_target = _select_heartbeat_target
-

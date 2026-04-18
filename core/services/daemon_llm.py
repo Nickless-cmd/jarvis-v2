@@ -78,6 +78,45 @@ def daemon_llm_call(
     then heartbeat model. Returns stripped text or fallback on failure. Never raises.
     Logs raw output to daemon_output_log when daemon_name is provided.
     """
+    return _daemon_llm_call_impl(
+        prompt,
+        max_len=max_len,
+        fallback=fallback,
+        daemon_name=daemon_name,
+        public_safe=False,
+    )
+
+
+def daemon_public_safe_llm_call(
+    prompt: str,
+    *,
+    max_len: int = 200,
+    fallback: str = "",
+    daemon_name: str = "",
+) -> str:
+    """Call path reserved for PUBLIC-SAFE prompts.
+
+    Prefers the OllamaFreeAPI-backed public-safe provider pool and falls back to
+    local Ollama. This must only be used for stateless prompts without private
+    user or self-context.
+    """
+    return _daemon_llm_call_impl(
+        prompt,
+        max_len=max_len,
+        fallback=fallback,
+        daemon_name=daemon_name,
+        public_safe=True,
+    )
+
+
+def _daemon_llm_call_impl(
+    prompt: str,
+    *,
+    max_len: int,
+    fallback: str,
+    daemon_name: str,
+    public_safe: bool,
+) -> str:
     # --- Layer A: check response cache ---
     cache_key = ""
     if daemon_name and _get_cache_ttl(daemon_name) > 0:
@@ -103,15 +142,24 @@ def daemon_llm_call(
     text = ""
     provider = ""
 
-    # 1. Try cheap lane (Groq / fast provider)
+    # 1. Try primary execution path
     try:
-        from core.services.non_visible_lane_execution import (
-            execute_cheap_lane,
-        )
+        if public_safe:
+            from core.services.cheap_provider_runtime import (
+                execute_public_safe_cheap_lane,
+            )
 
-        result = execute_cheap_lane(message=prompt)
+            result = execute_public_safe_cheap_lane(message=prompt)
+        else:
+            from core.services.non_visible_lane_execution import (
+                execute_cheap_lane,
+            )
+
+            result = execute_cheap_lane(message=prompt)
         text = str(result.get("text") or "").strip()
-        provider = str(result.get("provider") or "cheap")
+        provider = str(
+            result.get("provider") or ("public-safe" if public_safe else "cheap")
+        )
     except Exception:
         pass
 

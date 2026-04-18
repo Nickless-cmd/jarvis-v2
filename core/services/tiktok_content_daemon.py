@@ -279,8 +279,8 @@ def _generate_quote(slot: str) -> str:
     """Generate a quote/line for the slot via LLM. Returns fallback on failure."""
     fallback = _SLOT_FALLBACK_QUOTES[slot]
     try:
-        from core.services.daemon_llm import daemon_llm_call
-        result = daemon_llm_call(
+        from core.services.daemon_llm import daemon_public_safe_llm_call
+        result = daemon_public_safe_llm_call(
             _SLOT_PROMPTS[slot],
             max_len=80,
             fallback=fallback,
@@ -487,7 +487,7 @@ def _refill_pool(slot_type: str | None = None) -> dict | None:
     Returns the updated pool dict, or None on failure.
     """
     try:
-        from core.services.daemon_llm import daemon_llm_call
+        from core.services.daemon_llm import daemon_public_safe_llm_call
         from datetime import UTC, datetime
 
         pool = {}
@@ -518,7 +518,7 @@ def _refill_pool(slot_type: str | None = None) -> dict | None:
             if not config:
                 continue
 
-            result = daemon_llm_call(
+            result = daemon_public_safe_llm_call(
                 config["prompt"],
                 max_len=500,
                 fallback="",

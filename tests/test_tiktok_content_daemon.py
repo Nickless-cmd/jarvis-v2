@@ -282,17 +282,17 @@ class TestDailyDeduplication:
 # ---------------------------------------------------------------------------
 
 class TestLLMContentGeneration:
-    """_generate_quote() should use daemon_llm_call and return English text."""
+    """_generate_quote() should use the PUBLIC-SAFE LLM path and return English text."""
 
-    def test_uses_daemon_llm_call(self):
-        """daemon_llm_call is invoked and its result is used as the quote."""
+    def test_uses_public_safe_llm_call(self):
+        """daemon_public_safe_llm_call is invoked and its result is used as the quote."""
         mod = _reload_daemon()
         expected = "The universe is vast and cold."
 
         # Test by patching inside the function's import path
         with patch.dict("sys.modules", {
             "core.services.daemon_llm": MagicMock(
-                daemon_llm_call=MagicMock(return_value=expected)
+                daemon_public_safe_llm_call=MagicMock(return_value=expected)
             )
         }):
             result = mod._generate_quote("evening")
@@ -301,12 +301,12 @@ class TestLLMContentGeneration:
             assert len(result) > 0
 
     def test_fallback_on_llm_failure(self):
-        """When daemon_llm_call raises, fallback text is returned."""
+        """When daemon_public_safe_llm_call raises, fallback text is returned."""
         mod = _reload_daemon()
 
         with patch.dict("sys.modules", {
             "core.services.daemon_llm": MagicMock(
-                daemon_llm_call=MagicMock(side_effect=RuntimeError("LLM unavailable"))
+                daemon_public_safe_llm_call=MagicMock(side_effect=RuntimeError("LLM unavailable"))
             )
         }):
             result = mod._generate_quote("morning")
@@ -337,7 +337,7 @@ class TestLLMContentGeneration:
         for slot in ["morning", "midday", "evening"]:
             with patch.dict("sys.modules", {
                 "core.services.daemon_llm": MagicMock(
-                    daemon_llm_call=MagicMock(return_value=llm_responses[slot])
+                    daemon_public_safe_llm_call=MagicMock(return_value=llm_responses[slot])
                 )
             }):
                 result = mod._generate_quote(slot)
@@ -345,7 +345,7 @@ class TestLLMContentGeneration:
                 assert len(result) > 0
 
     def test_llm_prompt_contains_english_instruction(self):
-        """Verify that the prompt passed to daemon_llm_call contains English language instruction."""
+        """Verify that the prompt passed to daemon_public_safe_llm_call contains English language instruction."""
         mod = _reload_daemon()
 
         captured_prompt = None
@@ -357,12 +357,12 @@ class TestLLMContentGeneration:
 
         with patch.dict("sys.modules", {
             "core.services.daemon_llm": MagicMock(
-                daemon_llm_call=MagicMock(side_effect=capture_llm_call)
+                daemon_public_safe_llm_call=MagicMock(side_effect=capture_llm_call)
             )
         }):
             result = mod._generate_quote("morning")
 
-        assert captured_prompt is not None, "daemon_llm_call was not invoked"
+        assert captured_prompt is not None, "daemon_public_safe_llm_call was not invoked"
         assert isinstance(captured_prompt, str), "prompt must be a string"
         # Check that prompt contains English or english (case-insensitive)
         prompt_lower = captured_prompt.lower()

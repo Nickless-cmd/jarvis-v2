@@ -415,6 +415,22 @@ def _ensure_producers_registered() -> None:
         depends_on=["dream_articulation"],
     ))
 
+    def _run_self_critique_runtime(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.self_critique_runtime import (
+            run_self_critique_cycle,
+        )
+
+        return run_self_critique_cycle(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="self_critique_runtime",
+        cooldown_minutes=1440,
+        visible_grace_minutes=15,
+        run_fn=_run_self_critique_runtime,
+        priority=20,
+        depends_on=["prompt_evolution_runtime"],
+    ))
+
 def run_cadence_tick_with_bootstrap(
     *,
     trigger: str = "heartbeat",

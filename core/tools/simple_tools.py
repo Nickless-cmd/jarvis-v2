@@ -19,6 +19,7 @@ from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from core.eventbus.bus import event_bus
+from core.services.self_critique_runtime import read_self_docs
 from core.services.tool_result_store import get_tool_result
 from core.runtime.config import JARVIS_HOME, PROJECT_ROOT
 from core.tools.browser_tools import (
@@ -116,6 +117,31 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["result_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_self_docs",
+            "description": "Read Jarvis's own design documents and roadmap files, or list which self-documents are available for reflection.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "doc_id": {
+                        "type": "string",
+                        "description": "Specific self document key to read, 'all' for all core docs, or omit for an index.",
+                    },
+                    "include_history": {
+                        "type": "boolean",
+                        "description": "When reading doc_id='all', include docs/roadmap_history/*.md as well.",
+                    },
+                    "max_chars_per_doc": {
+                        "type": "integer",
+                        "description": "Optional per-document truncation limit when returning document text.",
+                    },
+                },
+                "required": [],
             },
         },
     },
@@ -1667,6 +1693,22 @@ def _exec_read_tool_result(args: dict[str, Any]) -> dict[str, Any]:
         "summary": str(record.get("summary") or ""),
         "created_at": str(record.get("created_at") or ""),
     }
+
+
+def _exec_read_self_docs(args: dict[str, Any]) -> dict[str, Any]:
+    doc_id = str(args.get("doc_id") or "").strip()
+    include_history = bool(args.get("include_history") or False)
+    max_chars_per_doc_raw = args.get("max_chars_per_doc")
+    kwargs: dict[str, Any] = {
+        "doc_id": doc_id,
+        "include_history": include_history,
+    }
+    if max_chars_per_doc_raw is not None:
+        kwargs["max_chars_per_doc"] = max(500, int(max_chars_per_doc_raw))
+    try:
+        return read_self_docs(**kwargs)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
 
 
 def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
@@ -4068,6 +4110,7 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
 
 _TOOL_HANDLERS: dict[str, Any] = {
     "read_tool_result": _exec_read_tool_result,
+    "read_self_docs": _exec_read_self_docs,
     "read_file": _exec_read_file,
     "write_file": _exec_write_file,
     "edit_file": _exec_edit_file,

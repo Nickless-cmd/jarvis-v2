@@ -112,6 +112,7 @@ def isolated_runtime(
         "core.services.idle_consolidation",
         "core.services.dream_articulation",
         "core.services.prompt_evolution_runtime",
+        "core.services.self_critique_runtime",
         "core.services.runtime_self_model",
         "apps.api.jarvis_api.routes.mission_control",
     ]
@@ -368,6 +369,9 @@ def isolated_runtime(
         ],
         prompt_evolution_runtime=modules[
             "core.services.prompt_evolution_runtime"
+        ],
+        self_critique_runtime=modules[
+            "core.services.self_critique_runtime"
         ],
         runtime_self_model=modules[
             "core.services.runtime_self_model"

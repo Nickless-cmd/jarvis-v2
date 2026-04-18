@@ -339,7 +339,7 @@ def _generate_sdxl_image(slot: str) -> str | None:
         ]
         # Use ComfyUI SDXL directly instead of full pipeline
         # Import and call generate_sdxl_image from full pipeline
-        sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent / "scripts" / "pipelines"))
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "scripts" / "pipelines"))
         from jarvis_full_pipeline import generate_sdxl_image
         path = generate_sdxl_image(
             prompt=prompt,

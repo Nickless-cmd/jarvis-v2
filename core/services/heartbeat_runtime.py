@@ -1925,6 +1925,28 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Layer tensions
+    if _dm.is_enabled("layer_tension"):
+        try:
+            from core.services.layer_tension_daemon import tick_layer_tension_daemon
+            from core.services.absence_daemon import get_latest_absence as _get_absence_lt
+            _tension_snap = {
+                "energy_level": _energy_ts,
+                "inner_voice_mode": _iv_mode_ts,
+                "latest_fragment": _tss.get("latest_fragment", "") if "_tss" in dir() else "",
+                "curiosity_count": len((_curiosity_state.get("open_questions") or [])) if "_curiosity_state" in dir() else 0,
+                "pending_proposals_count": _tap.get("pending_count", 0) if "_tap" in dir() else 0,
+                "dream_influence_state": "",
+                "absence_label": _get_absence_lt() or "",
+                "longing_state": "",
+                "flow_state": "",
+                "wonder_state": "",
+            }
+            _tension_result = tick_layer_tension_daemon(_tension_snap)
+            _dm.record_daemon_tick("layer_tension", _tension_result or {})
+        except Exception:
+            pass
+
     # ── Group 2: Reflection + curiosity ──
 
     # Reflection cycle

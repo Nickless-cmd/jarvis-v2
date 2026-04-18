@@ -479,6 +479,30 @@ def _ensure_producers_registered() -> None:
         depends_on=["creative_journal_runtime"],
     ))
 
+    def _run_life_projects_reassessment(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.life_projects import tick_life_projects_reassessment
+        return tick_life_projects_reassessment(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="life_projects_reassessment",
+        cooldown_minutes=1440,
+        visible_grace_minutes=30,
+        run_fn=_run_life_projects_reassessment,
+        priority=28,
+    ))
+
+    def _run_relation_map_refresh(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
+        from core.services.relation_map import tick_relation_map_refresh
+        return tick_relation_map_refresh(trigger=trigger, last_visible_at=last_visible_at)
+
+    register_producer(ProducerSpec(
+        name="relation_map_refresh",
+        cooldown_minutes=720,
+        visible_grace_minutes=0,
+        run_fn=_run_relation_map_refresh,
+        priority=30,
+    ))
+
 def run_cadence_tick_with_bootstrap(
     *,
     trigger: str = "heartbeat",

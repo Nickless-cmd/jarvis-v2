@@ -225,6 +225,20 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 2,
         "description": "Consumes queued runtime_tasks (initiative/heartbeat/open-loop followups, generic)",
     },
+    "life_projects_reassessment": {
+        "module": "core.services.life_projects",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 1440,
+        "description": "24t re-vurdering af aktive life projects (long_term_intentions)",
+    },
+    "relation_map_refresh": {
+        "module": "core.services.relation_map",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 720,
+        "description": "12t opdatering af relation map: last_seen for primary, tom stale-check for secondary",
+    },
 }
 
 

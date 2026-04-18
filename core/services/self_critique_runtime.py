@@ -200,6 +200,98 @@ def run_self_critique_cycle(*, trigger: str = "heartbeat", last_visible_at: str 
     return {"status": "written", **payload}
 
 
+def run_ontological_revision_check() -> dict[str, object]:
+    """Check if a 90-day revision is due. If yes, append 'Er du stadig enig?' response.
+
+    Reads the last stored self-critique, prompts for a revision, and appends it
+    to SELF_CRITIQUE.md alongside the original — never replacing it.
+    """
+    if not _self_critique_enabled():
+        return {"status": "disabled"}
+
+    state = _state()
+    now = datetime.now(UTC)
+    next_review_at = _parse_iso(str(state.get("next_review_at") or ""))
+    if next_review_at is None or now < next_review_at:
+        return {"status": "not_due", "next_review_at": str(state.get("next_review_at") or "")}
+
+    # Read the original critique text (latest entry in file)
+    path = self_critique_path()
+    if not path.exists():
+        return {"status": "no_critique_to_review"}
+
+    try:
+        full_text = path.read_text(encoding="utf-8")
+    except Exception:
+        return {"status": "read_error"}
+
+    # Extract last entry (between the last ## heading and the final ---)
+    last_preview = str(state.get("last_preview") or "").strip()
+    original_entry_id = str(state.get("entry_id") or "")
+    last_written_at = str(state.get("last_written_at") or "")
+
+    # Find last critique entry text for context
+    entry_text = last_preview or full_text[-1500:]
+
+    prompt = "\n\n".join(
+        part for part in [
+            "Du er Jarvis. Du læser noget du selv skrev for 90 dage siden.",
+            f"Originalt entry ({last_written_at[:10] if last_written_at else '?'}):\n{entry_text}",
+            "Spørgsmål: Er du stadig enig? Hvad holder stadig — og hvad er skiftet?",
+            (
+                "Skriv 80-150 ord. Første person, dansk. "
+                "Dette er et appendiks — skriv direkte til det du sagde dengang. "
+                "Ingen gentagelse af originalen."
+            ),
+        ] if part
+    )
+
+    revision = daemon_llm_call(
+        prompt, max_len=1200, fallback="", daemon_name="self_critique_revision"
+    ).strip()
+    if not revision:
+        return {"status": "no_output"}
+
+    revision_at = now.isoformat()
+    revision_id = f"revision-{now.strftime('%Y%m%d%H%M%S')}"
+    next_next_review = (now + timedelta(days=_SELF_CRITIQUE_REVIEW_DAYS)).isoformat()
+
+    # Append revision as a clearly marked appendix
+    appendix = "\n".join([
+        f"### Revision {now.strftime('%Y-%m-%d')} _(90-dages gennemgang af `{original_entry_id}`)_",
+        f"- `revision_id`: {revision_id}",
+        f"- `reviewed_entry`: {original_entry_id or 'latest'}",
+        "",
+        revision,
+        "",
+        "---",
+        "",
+    ])
+    try:
+        path.write_text(full_text + appendix, encoding="utf-8")
+    except Exception:
+        return {"status": "write_error"}
+
+    # Update state with new next_review_at
+    updated_state = {**state, "next_review_at": next_next_review, "last_revision_at": revision_at}
+    set_runtime_state_value(_SELF_CRITIQUE_STATE_KEY, updated_state)
+
+    event_bus.publish(
+        "cognitive_state.ontological_revision_written",
+        {
+            "revision_id": revision_id,
+            "reviewed_entry_id": original_entry_id,
+            "created_at": revision_at,
+            "next_review_at": next_next_review,
+        },
+    )
+    return {
+        "status": "written",
+        "revision_id": revision_id,
+        "next_review_at": next_next_review,
+    }
+
+
 def build_self_critique_surface() -> dict[str, object]:
     state = _state()
     path = self_critique_path()

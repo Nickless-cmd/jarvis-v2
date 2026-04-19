@@ -878,6 +878,23 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "send_webchat_message",
+            "description": "Send a message directly into the webchat interface — the browser window Bjørn uses. Use this to push something from Discord into webchat, share a finding, or reach out proactively without waiting for a reply.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "The message to inject into the active webchat session.",
+                    },
+                },
+                "required": ["content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "send_discord_dm",
             "description": "Send a direct message (DM) to Bjørn on Discord. Works even when he hasn't written first — use this for proactive reach-out, alerts, or sharing something interesting. Does not require an active Discord session.",
             "parameters": {
@@ -3198,6 +3215,21 @@ def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc), "text": f"Tick failed: {exc}"}
 
 
+def _exec_send_webchat_message(args: dict[str, Any]) -> dict[str, Any]:
+    """Inject a message into the active webchat session."""
+    content = str(args.get("content") or "").strip()
+    if not content:
+        return {"status": "error", "text": "No content provided."}
+    try:
+        from core.services.notification_bridge import send_session_notification
+        r = send_session_notification(content, source="jarvis-notify")
+        if r.get("status") == "ok":
+            return {"status": "ok", "text": f"Delivered to webchat session {r.get('session_id', '')}"}
+        return {"status": "error", "text": f"Webchat delivery failed: {r.get('error', '')}"}
+    except Exception as exc:
+        return {"status": "error", "text": f"Webchat error: {exc}"}
+
+
 def _exec_send_discord_dm(args: dict[str, Any]) -> dict[str, Any]:
     """Send a DM directly to the owner via Discord, no active session required."""
     content = str(args.get("content") or "").strip()
@@ -4193,6 +4225,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "heartbeat_status": _exec_heartbeat_status,
     "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,
     "search_chat_history": _exec_search_chat_history,
+    "send_webchat_message": _exec_send_webchat_message,
     "send_discord_dm": _exec_send_discord_dm,
     "discord_status": _exec_discord_status,
     "discord_channel": _exec_discord_channel,

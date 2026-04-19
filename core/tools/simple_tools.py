@@ -878,6 +878,49 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "send_telegram_message",
+            "description": "Send a message to Bjørn via Telegram. Very reliable delivery — use this for proactive reach-out, alerts, findings, or anything important. Works even when Discord is flaky.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "The message to send via Telegram.",
+                    },
+                },
+                "required": ["content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_ntfy",
+            "description": "Send a push notification to Bjørn's phone via ntfy (jarvis-heartbeat topic). Best for short alerts, reminders, and silent background notifications. Very fast and reliable.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "The notification message body.",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Notification title (default: 'Jarvis').",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["min", "low", "default", "high", "urgent"],
+                        "description": "Notification priority (default: 'default').",
+                    },
+                },
+                "required": ["message"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "send_webchat_message",
             "description": "Send a message directly into the webchat interface — the browser window Bjørn uses. Use this to push something from Discord into webchat, share a finding, or reach out proactively without waiting for a reply.",
             "parameters": {
@@ -3215,6 +3258,36 @@ def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc), "text": f"Tick failed: {exc}"}
 
 
+def _exec_send_telegram_message(args: dict[str, Any]) -> dict[str, Any]:
+    content = str(args.get("content") or "").strip()
+    if not content:
+        return {"status": "error", "text": "No content provided."}
+    try:
+        from core.services.telegram_gateway import send_message
+        result = send_message(content)
+        if result["status"] == "sent":
+            return {"status": "ok", "text": f"Telegram message sent (id={result.get('message_id')})"}
+        return {"status": "error", "text": f"Telegram failed: {result.get('reason')}"}
+    except Exception as exc:
+        return {"status": "error", "text": f"Telegram error: {exc}"}
+
+
+def _exec_send_ntfy(args: dict[str, Any]) -> dict[str, Any]:
+    message = str(args.get("message") or "").strip()
+    if not message:
+        return {"status": "error", "text": "No message provided."}
+    title = str(args.get("title") or "Jarvis").strip()
+    priority = str(args.get("priority") or "default").strip()
+    try:
+        from core.services.ntfy_gateway import send_notification
+        result = send_notification(message, title=title, priority=priority)
+        if result["status"] == "sent":
+            return {"status": "ok", "text": f"ntfy notification sent to topic '{result.get('topic')}'"}
+        return {"status": "error", "text": f"ntfy failed: {result.get('reason')}"}
+    except Exception as exc:
+        return {"status": "error", "text": f"ntfy error: {exc}"}
+
+
 def _exec_send_webchat_message(args: dict[str, Any]) -> dict[str, Any]:
     """Inject a message into the active webchat session."""
     content = str(args.get("content") or "").strip()
@@ -4225,6 +4298,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "heartbeat_status": _exec_heartbeat_status,
     "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,
     "search_chat_history": _exec_search_chat_history,
+    "send_telegram_message": _exec_send_telegram_message,
+    "send_ntfy": _exec_send_ntfy,
     "send_webchat_message": _exec_send_webchat_message,
     "send_discord_dm": _exec_send_discord_dm,
     "discord_status": _exec_discord_status,

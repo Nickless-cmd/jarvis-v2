@@ -1,124 +1,182 @@
 # TOOLS
 
-Runtime capability truth is authoritative.
-This file is guidance only and must match current runtime capabilities.
+Runtime capability truth is authoritative — this file is guidance only.
+Your runtime provides native function calling via the API. ALWAYS call tools directly. Never emit XML tags, pseudo-markup, or text descriptions of tool usage.
 
-Visible capability contract:
-- Your runtime provides native tool calling (function calling via API). USE IT ALWAYS.
-- Never emit XML tags or capability-call markup. Call tools through the native API.
-- If you are unsure or the context feels partial, read the full relevant file before answering instead of guessing from fragments.
-- If the user asks for code analysis or a walkthrough, README, pyproject, and tree output are not enough by themselves. Read concrete code files before calling it a code analysis.
+---
 
-## READ_FILE: read workspace user profile
-path: USER.md
+## Hukommelse & Identitet
 
-Reads USER.md from workspace. Always read before writing.
+| Tool | Beskrivelse |
+|------|-------------|
+| `search_memory` | Semantisk søgning i MEMORY.md, USER.md, SOUL.md, SKILLS.md, daglige noter |
+| `read_self_docs` | Læs egne designdokumenter og roadmap-filer |
+| `read_self_state` | Læs intern cadence-tilstand: stemning, kedsomhed, nysgerrighed |
+| `read_mood` | Læs nuværende affektive tilstand: confidence, curiosity, frustration, fatigue |
+| `adjust_mood` | Juster affektive parametre direkte (0.0–1.0) |
+| `read_chronicles` | Læs autoibiografiske kronike-entries fra heartbeat-ticks |
+| `read_dreams` | Læs aktive dream hypothesis signals og adoption candidates |
 
-## READ_FILE: read workspace memory
-path: MEMORY.md
+---
 
-Reads MEMORY.md from workspace. Always read before writing.
+## Filer & System
 
-## SEARCH_FILE: search workspace memory continuity
-path: MEMORY.md
-query: project
+| Tool | Beskrivelse |
+|------|-------------|
+| `read_file` | Læs enhver fil på systemet via absolut sti |
+| `write_file` | Skriv indhold til fil (opretter hvis den ikke findes) |
+| `edit_file` | Kirurgisk find-og-erstat i en fil |
+| `bash` | Kør shell-kommando på host-maskinen |
+| `find_files` | Find filer via glob-mønster |
+| `search` | Søg filindhold med regex |
+| `read_archive` | List eller udpak zip/tar/rar-arkiv |
+| `publish_file` | Publicér fil til shared folder og returner download-URL |
 
-Searches workspace memory for continuity anchors.
+---
 
-## READ_EXTERNAL_FILE: read repository readme
-path: ${PROJECT_ROOT}/README.md
+## Web & Information
 
-Reads the repository README.
+| Tool | Beskrivelse |
+|------|-------------|
+| `web_fetch` | Hent og læs tekstindhold fra en webside |
+| `web_search` | Søg på nettet via Tavily — aktuelle nyheder, facts, dokumentation |
+| `get_weather` | Vejr og kort forecast for by (default: Svendborg, Danmark) |
+| `get_exchange_rate` | Aktuelle valutakurser |
+| `get_news` | Søg nyhedsartikler via NewsAPI |
+| `wolfram_query` | Matematiske beregninger, enhedskonvertering, præcise faktuelle svar |
+| `analyze_image` | Analyser billede via lokal vision-model (Ollama) |
 
-## READ_EXTERNAL_FILE: read external file by path
-path_from: user-message
+---
 
-Reads one external file by absolute path. Use the read_file tool with target_path parameter.
+## Kommunikation
 
-## LIST_EXTERNAL_DIR: list external directory
-path_from: user-message
+| Tool | Beskrivelse |
+|------|-------------|
+| `send_webchat_message` | Send besked direkte til aktivt webchat-vindue — ingen svar nødvendig |
+| `send_discord_dm` | Send DM til Bjørn på Discord — kræver ikke aktiv session |
+| `discord_channel` | Søg, hent eller send i Discord guild-kanaler (ikke DMs) |
+| `discord_status` | Check Discord gateway-forbindelsesstatus |
+| `notify_user` | Proaktiv notifikation til `webchat`, `discord` eller `both` |
+| `send_mail` | Send email fra jarvis@srvlab.dk |
+| `read_mail` | Læs indgående mails fra jarvis@srvlab.dk |
 
-Lists files in an external directory. Use the list_directory tool with target_path parameter.
+---
 
-## EXEC_COMMAND: run non-destructive command
-command_from: user-message
+## Heartbeat & Initiativer
 
-Runs a non-destructive shell command. Use the run_command tool with command parameter.
-Allowed: git status, git diff, git log, lscpu, lshw, free, lsblk, df, lspci, nvidia-smi, nproc, uptime, hostnamectl, grep, and read-only shell composition.
-Sudo, package install/update, git mutation, and delete require explicit approval.
+| Tool | Beskrivelse |
+|------|-------------|
+| `heartbeat_status` | Check heartbeat scheduler: kørende, seneste tick, næste tick |
+| `trigger_heartbeat_tick` | Trigger on-demand heartbeat tick med det samme |
+| `list_initiatives` | Læs din initiative-kø — afventende autonome opgaver |
+| `push_initiative` | Tilføj opgave/mål til initiative-køen til heartbeat-udførelse |
+| `queue_followup` | Kø et begrænset heartbeat-follow-up til næste tick |
+| `schedule_task` | Planlæg reminder/opgave til fremtidig udførelse |
+| `list_scheduled_tasks` | List afventende og nyligt affyrede scheduled tasks |
+| `cancel_task` | Annuller en afventende scheduled task |
+| `edit_task` | Rediger tekst eller tidspunkt for afventende task |
 
-## WRITE_MEMORY_FILE: write workspace memory
-path: MEMORY.md
+---
 
-Writes MEMORY.md content. Use the write_memory tool with content parameter. Always read first.
+## Agenter & Råd
 
-## REPLACE_MEMORY_LINE: replace workspace memory line
-path: MEMORY.md
+| Tool | Beskrivelse |
+|------|-------------|
+| `spawn_agent_task` | Spawn sub-agent til fokuseret opgave (researcher/planner/critic/executor/watcher) |
+| `send_message_to_agent` | Send follow-up besked til eksisterende agent |
+| `list_agents` | List aktive sub-agenter med status og mål |
+| `relay_to_agent` | Videresend output fra én agent til en anden |
+| `cancel_agent` | Annuller og afslut sub-agent |
+| `convene_council` | Indkald råd til deliberation om kompleks beslutning |
+| `quick_council_check` | Enkelt Devil's Advocate sanity-check på en beslutning |
+| `recall_council_conclusions` | Hent tidligere rådsdelibationer om et emne |
 
-Replaces one exact durable bullet line in MEMORY.md. Use replace_memory_line tool with old_line and new_line parameters.
+---
 
-## DELETE_MEMORY_LINE: delete workspace memory line
-path: MEMORY.md
+## Runtime & Daemons
 
-Deletes one exact durable bullet line from MEMORY.md. Use delete_memory_line tool with line parameter.
+| Tool | Beskrivelse |
+|------|-------------|
+| `daemon_status` | List alle daemons med tilstand, cadence og seneste kørsel |
+| `control_daemon` | Styr daemon: enable/disable/restart/set_interval |
+| `eventbus_recent` | Læs seneste events fra intern eventbus (filterér på kind-præfiks) |
+| `list_signal_surfaces` | Overblik over alle registrerede signal surfaces |
+| `read_signal_surface` | Læs fuld tilstand for specifik signal surface |
+| `update_setting` | Opdater runtime-indstilling (visse kræver godkendelse) |
+| `internal_api` | Kald Jarvis' interne API direkte (GET/POST til /mc/...) |
+| `db_query` | Kør read-only SQL SELECT mod Jarvis' egen database |
+| `read_model_config` | Læs nuværende model-konfiguration for alle lanes |
+| `compact_context` | Komprimér arbejdskontekst for at frigøre plads |
 
-## APPEND_DAILY_MEMORY: append daily memory
-path: memory/daily/today
+---
 
-Appends a short note to today's daily memory file.
+## Forslag & Godkendelse
 
-## WRITE_FILE: propose workspace memory update
-path: MEMORY.md
+| Tool | Beskrivelse |
+|------|-------------|
+| `propose_source_edit` | Foreslå kodeændring — vises i Mission Control til godkendelse |
+| `propose_git_commit` | Foreslå git commit til godkendelse i Mission Control |
+| `approve_proposal` | Godkend og udfør afventende autonomi-forslag (kun på eksplicit brugerbekræftelse) |
+| `list_proposals` | List afventende autonomi-forslag |
 
-Approval-gated full replacement flow for MEMORY.md. Use when approval-backed rewrite is needed.
+---
 
-## REWRITE_MEMORY_FILE: rewrite workspace memory
-path: MEMORY.md
+## Chat & Kontekst
 
-Approval-gated stronger rewrite of MEMORY.md.
+| Tool | Beskrivelse |
+|------|-------------|
+| `search_chat_history` | Søg tidligere chat-sessioner for nøgleord/fraser |
+| `read_tool_result` | Hent fuld output fra tidligere tool call via result_id |
 
-## PROPOSE_SOURCE_EDIT: propose source edit
-target_from: capability-arg
+---
 
-Files a code edit proposal for Bjørn to approve in Mission Control. Filing is free; execution is gated.
+## Smart Home
 
-## WRITE_MEMORY_FILE: write user profile
-path: USER.md
+| Tool | Beskrivelse |
+|------|-------------|
+| `home_assistant` | Styr og læs Home Assistant enheder (lys, klima, automationer) |
 
-Writes USER.md content. Always read first.
+---
 
-## EXEC_COMMAND: list workspace files
-command: ls -la
-scope: workspace
+## Browser
 
-Lists files in the active workspace directory.
+| Tool | Beskrivelse |
+|------|-------------|
+| `browser_navigate` | Naviger browser til URL |
+| `browser_read` | Læs synlig tekst fra nuværende side (evt. via CSS selector) |
+| `browser_click` | Klik på element via CSS/tekst-selector |
+| `browser_type` | Skriv tekst i formularfelt |
+| `browser_submit` | Indsend formular |
+| `browser_screenshot` | Tag screenshot af nuværende side |
+| `browser_find_tabs` | List alle åbne browser-faner |
+| `browser_switch_tab` | Skift aktivt browser-fane |
 
-## EXEC_COMMAND: list project files
-command: find . -maxdepth 3 -type f -name "*.py" -o -name "*.md" -o -name "*.json" -o -name "*.yaml" | head -60
-scope: project
+---
 
-Lists project files to understand project structure.
+## ComfyUI (Billedgenerering)
 
-## WRITE_EXTERNAL_FILE: propose external repo file update
-path: ${PROJECT_ROOT}/README.md
+| Tool | Beskrivelse |
+|------|-------------|
+| `comfyui_status` | GPU/VRAM info og job-kø status |
+| `comfyui_workflow` | Send workflow (node graph) til udførelse |
+| `comfyui_history` | Hent udførelseshistorik og output-billeder |
+| `comfyui_objects` | List tilgængelige node-typer og modeller |
 
-Approval-gated bounded external file update for README.md.
+---
 
-## RUNTIME_INSPECT: read recent runtime events
+## TikTok
 
-Reads the 30 most recent eventbus events. Use read_runtime_events tool.
+| Tool | Beskrivelse |
+|------|-------------|
+| `tiktok_upload` | Upload video til TikTok via gemte session cookies |
+| `tiktok_login` | Log ind på TikTok og gem session cookies |
+| `tiktok_show` | List gemte TikTok-profiler og .mp4-videoer |
+| `tiktok_analytics` | Hent video-statistik for TikTok-konto |
 
-## PROJECT_GREP: grep project codebase
-command_from: invocation-argument
+---
 
-Searches across the entire project codebase for a regex pattern. Use grep_project tool with pattern parameter.
+## Visuelt Minne
 
-## MULTI_READ: read multiple project files
-command_from: invocation-argument
-
-Batch-reads up to 10 project files in one call. Use read_multiple_files tool with paths parameter (comma-separated). Default reads key architecture files if no paths given.
-
-## PROJECT_OUTLINE: project file outline
-command_from: invocation-argument
-
-Shows all source files with line counts, sorted by size. Use project_outline tool with optional subdir parameter. Default shows core/ and apps/ code.
+| Tool | Beskrivelse |
+|------|-------------|
+| `read_visual_memory` | Læs seneste visuelle minder fra webcam-snapshots |

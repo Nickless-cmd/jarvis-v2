@@ -215,6 +215,7 @@ def _eventbus_subscriber_loop() -> None:
                     continue
                 content = str(msg.get("content") or "").strip()
                 if content:
+                    logger.info("telegram_sub: buffering reply session=%s chat_id=%s len=%d", session_id[:12], chat_id, len(content))
                     _pending[session_id] = (chat_id, content)
 
             elif kind == "memory.visible_run_postprocess_completed":
@@ -222,10 +223,16 @@ def _eventbus_subscriber_loop() -> None:
                 pending = _pending.pop(session_id, None)
                 if pending:
                     chat_id, content = pending
-                    cfg = _load_config()
-                    if cfg:
-                        send_message(content, chat_id=chat_id)
+                    logger.info("telegram_sub: flushing to chat_id=%s len=%d", chat_id, len(content))
+                    try:
+                        result = send_message(content, chat_id=chat_id)
+                        logger.info("telegram_sub: send result=%s", result.get("status"))
+                    except Exception as exc:
+                        logger.error("telegram_sub: send error: %s", exc)
+                else:
+                    logger.info("telegram_sub: postprocess sid=%s — no pending", session_id[:12])
     finally:
+        logger.warning("telegram_sub: subscriber loop exited")
         event_bus.unsubscribe(sub)
 
 

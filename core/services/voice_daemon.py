@@ -14,7 +14,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _PYTHON = "/opt/conda/envs/ai/bin/python3"
-_SCRIPT = str(Path(__file__).resolve().parents[4] / "core" / "skills" / "voice" / "voice_daemon_worker.py")
+_SCRIPT = str(Path(__file__).resolve().parents[2] / "core" / "skills" / "voice" / "voice_daemon_worker.py")
 
 _thread: threading.Thread | None = None
 _proc: subprocess.Popen | None = None

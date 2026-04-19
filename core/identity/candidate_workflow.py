@@ -374,7 +374,8 @@ def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
         return False
     if str(candidate.get("status") or "") != "proposed":
         return False
-    if str(candidate.get("confidence") or "") != "high":
+    confidence = str(candidate.get("confidence") or "")
+    if confidence not in {"high", "medium"}:
         return False
     canonical_key = str(candidate.get("canonical_key") or "")
     source_mode = str(candidate.get("source_mode") or "")
@@ -383,12 +384,16 @@ def _candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> bool:
     if canonical_key not in _AUTO_APPLY_SAFE_USER_MD_CANONICAL_KEYS:
         if not (
             source_mode == "end_of_run_memory_consolidation"
-            and source_kind == "user-explicit"
-            and evidence_class == "explicit_user_statement"
+            and source_kind in {"user-explicit", "runtime-inference"}
+            and evidence_class in {
+                "explicit_user_statement",
+                "explicit_assistant_confirmation",
+                "runtime-inference",
+            }
         ):
             return False
     readiness = candidate_apply_readiness(candidate)
-    if str(readiness.get("apply_readiness") or "") != "high":
+    if str(readiness.get("apply_readiness") or "") not in {"high", "medium"}:
         return False
     dimension_key = _candidate_dimension_key(candidate)
     if not dimension_key:
@@ -415,7 +420,8 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
         return False
     if str(candidate.get("status") or "") != "proposed":
         return False
-    if str(candidate.get("confidence") or "") != "high":
+    confidence = str(candidate.get("confidence") or "")
+    if confidence not in {"high", "medium"}:
         return False
     canonical_key = str(candidate.get("canonical_key") or "")
     source_mode = str(candidate.get("source_mode") or "")
@@ -442,6 +448,16 @@ def _memory_candidate_eligible_for_auto_apply(candidate: dict[str, object]) -> b
             return False
         if str(readiness.get("apply_reason") or "") != "factual-memory":
             return False
+    elif (
+        # Broaden: medium-confidence facts from end-of-run consolidation
+        # that aren't explicit-user-statement but are runtime-derived or
+        # assistant-confirmed — these are commonly dropped today
+        canonical_key.startswith("workspace-memory:remembered-fact:llm-")
+        and source_mode == "end_of_run_memory_consolidation"
+        and confidence == "medium"
+        and evidence_class in {"runtime-inference", "explicit_assistant_confirmation"}
+    ):
+        pass  # eligible — fall through to duplicate check
     else:
         return False
     for other in list_runtime_contract_candidates(

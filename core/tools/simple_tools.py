@@ -878,6 +878,23 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "send_discord_dm",
+            "description": "Send a direct message (DM) to Bjørn on Discord. Works even when he hasn't written first — use this for proactive reach-out, alerts, or sharing something interesting. Does not require an active Discord session.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "The message to send as a DM on Discord.",
+                    },
+                },
+                "required": ["content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "discord_channel",
             "description": "Interact with Discord guild channels: search message history, fetch specific messages, or send a message. Only works on guild channels (not DMs). Send is restricted to whitelisted channels.",
             "parameters": {
@@ -3181,6 +3198,21 @@ def _exec_trigger_heartbeat_tick(_args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc), "text": f"Tick failed: {exc}"}
 
 
+def _exec_send_discord_dm(args: dict[str, Any]) -> dict[str, Any]:
+    """Send a DM directly to the owner via Discord, no active session required."""
+    content = str(args.get("content") or "").strip()
+    if not content:
+        return {"status": "error", "text": "No content provided."}
+    try:
+        from core.services.discord_gateway import send_dm_to_owner
+        result = send_dm_to_owner(content)
+        if result["status"] == "sent":
+            return {"status": "ok", "text": f"Discord DM sent. channel_id={result.get('channel_id')}"}
+        return {"status": "error", "text": f"Discord DM failed: {result.get('reason')}"}
+    except Exception as exc:
+        return {"status": "error", "text": f"Discord DM error: {exc}"}
+
+
 def _exec_discord_status(_args: dict[str, Any]) -> dict[str, Any]:
     """Return Discord gateway connection state and activity summary."""
     try:
@@ -4161,6 +4193,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "heartbeat_status": _exec_heartbeat_status,
     "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,
     "search_chat_history": _exec_search_chat_history,
+    "send_discord_dm": _exec_send_discord_dm,
     "discord_status": _exec_discord_status,
     "discord_channel": _exec_discord_channel,
     "home_assistant": _exec_home_assistant,

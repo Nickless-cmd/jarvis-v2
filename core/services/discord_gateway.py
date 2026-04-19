@@ -75,6 +75,36 @@ def send_discord_message(channel_id: int, text: str) -> None:
     _outbound_queue.put_nowait((channel_id, text))
 
 
+def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:
+    """Send a DM directly to the owner via owner_discord_id.
+
+    Does not require an active session — opens the DM channel if needed.
+    Returns {"status": "sent"} or {"status": "error", "reason": str}.
+    """
+    if not _status["connected"] or _client is None or _loop is None:
+        return {"status": "error", "reason": "discord-not-connected"}
+
+    from core.services.discord_config import load_discord_config
+    cfg = load_discord_config()
+    if not cfg:
+        return {"status": "error", "reason": "discord-not-configured"}
+
+    owner_id = int(cfg["owner_discord_id"])
+
+    async def _open_and_queue() -> int:
+        user = await _client.fetch_user(owner_id)
+        dm_channel = await user.create_dm()
+        return dm_channel.id
+
+    try:
+        future = asyncio.run_coroutine_threadsafe(_open_and_queue(), _loop)
+        channel_id = future.result(timeout=timeout)
+        send_discord_message(channel_id, text)
+        return {"status": "sent", "channel_id": channel_id}
+    except Exception as exc:
+        return {"status": "error", "reason": str(exc)}
+
+
 def _get_or_create_discord_session(channel_id: int, is_dm: bool, owner_discord_id: str) -> str:
     """Return session_id for this Discord channel. Creates session if needed."""
     from core.services.chat_sessions import (

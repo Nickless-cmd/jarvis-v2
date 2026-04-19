@@ -421,6 +421,7 @@ def _eventbus_subscriber_loop() -> None:
                     continue
                 content = str(msg.get("content") or "").strip()
                 if content:
+                    logger.info("discord_sub: buffering reply session=%s channel=%s len=%d", session_id[:12], channel_id, len(content))
                     _pending[session_id] = (channel_id, content)
 
             # Flush buffer when run is fully complete
@@ -429,9 +430,13 @@ def _eventbus_subscriber_loop() -> None:
                 pending = _pending.pop(session_id, None)
                 if pending:
                     channel_id, content = pending
+                    logger.info("discord_sub: flushing to channel=%s len=%d", channel_id, len(content))
                     send_discord_message(channel_id, content)
+                else:
+                    logger.info("discord_sub: postprocess sid=%s — no pending", session_id[:12])
 
     finally:
+        logger.warning("discord_sub: subscriber loop exited")
         event_bus.unsubscribe(sub)
 
 

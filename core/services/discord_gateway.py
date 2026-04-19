@@ -177,13 +177,17 @@ async def _send_outbound_loop() -> None:
         # Stop typing indicator before sending
         with _typing_lock:
             _typing_channels.discard(channel_id)
+        logger.info("discord_outbound: dequeued channel=%s len=%d", channel_id, len(text))
         try:
             if _client:
                 channel = _client.get_channel(channel_id)
+                logger.info("discord_outbound: get_channel=%s", channel)
                 if channel is None:
                     channel = await _client.fetch_channel(channel_id)
+                    logger.info("discord_outbound: fetch_channel=%s", channel)
                 for chunk in _split_message(text, 1900):
                     await channel.send(chunk)
+                logger.info("discord_outbound: sent ok to channel=%s", channel_id)
                 _status["message_count"] += 1
                 _status["last_message_at"] = datetime.now(UTC).isoformat()
                 from core.eventbus.bus import event_bus
@@ -191,6 +195,8 @@ async def _send_outbound_loop() -> None:
                     "channel_id": str(channel_id),
                     "length": len(text),
                 })
+            else:
+                logger.warning("discord_outbound: _client is None, dropping message")
         except Exception as exc:
             logger.warning("discord_gateway: failed to send to channel %s: %s", channel_id, exc)
 

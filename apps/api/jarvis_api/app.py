@@ -43,6 +43,10 @@ from core.services.discord_gateway import (
     start_discord_gateway,
     stop_discord_gateway,
 )
+from core.services.telegram_gateway import (
+    start_telegram_gateway,
+    stop_telegram_gateway,
+)
 from core.services.voice_daemon import (
     start_voice_daemon,
     stop_voice_daemon,
@@ -95,6 +99,7 @@ def create_app() -> FastAPI:
             start_emotion_concept_listener()
             start_global_workspace_listener()
             start_discord_gateway()
+            start_telegram_gateway()
             start_voice_daemon()
             try:
                 from core.services.agent_runtime import recover_crashed_agents
@@ -113,6 +118,7 @@ def create_app() -> FastAPI:
             stop_notification_bridge()
             stop_scheduled_tasks_service()
             stop_discord_gateway()
+            stop_telegram_gateway()
             stop_voice_daemon()
             stop_global_workspace_listener()
             stop_emotion_concept_listener()

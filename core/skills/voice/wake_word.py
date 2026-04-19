@@ -17,7 +17,7 @@ import numpy as np
 import webrtcvad
 
 PAREC_BIN = "/home/linuxbrew/.linuxbrew/bin/parec"
-MIC_SOURCE = "alsa_input.usb-Generic_USB_Camera2_200901010001-03.iec958-stereo"
+MIC_SOURCE = "alsa_input.usb-Logitech_PRO_000000000000-00.mono-fallback"
 SAMPLE_RATE = 16000
 FRAME_MS = 30          # webrtcvad supports 10, 20, 30 ms
 FRAME_BYTES = int(SAMPLE_RATE * FRAME_MS / 1000) * 2  # s16le

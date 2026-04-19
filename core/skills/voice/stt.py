@@ -6,8 +6,8 @@ from faster_whisper import WhisperModel
 MODEL_SIZE = "tiny"
 SAMPLE_RATE = 16000
 
-# PipeWire source for USB camera mic (picks up voice reliably)
-MIC_SOURCE = "alsa_input.usb-Generic_USB_Camera2_200901010001-03.iec958-stereo"
+# PipeWire source for Logitech PRO USB sound card
+MIC_SOURCE = "alsa_input.usb-Logitech_PRO_000000000000-00.mono-fallback"
 PAREC_BIN = "/home/linuxbrew/.linuxbrew/bin/parec"
 
 

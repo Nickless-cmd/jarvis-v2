@@ -35,7 +35,7 @@ def _synthesize_elevenlabs(text: str) -> str:
     audio = client.text_to_speech.convert(
         voice_id=ELEVENLABS_VOICE_ID,
         text=text,
-        model_id="eleven_multilingual_v2",
+        model_id="eleven_flash_v2_5",
         output_format="mp3_44100_128",
     )
     path = tempfile.mktemp(suffix=".mp3", prefix="jarvis_el_")

@@ -163,6 +163,8 @@ def build_runtime_self_model() -> dict[str, object]:
             "spaced_repetition": _spaced_repetition_surface(),
             "scheduled_job_windows": _scheduled_job_windows_surface(),
             "automation_dsl": _automation_dsl_surface(),
+            "outcome_learning": _outcome_learning_surface(),
+            "jobs_engine": _jobs_engine_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5466,6 +5468,22 @@ def _automation_dsl_surface() -> dict[str, object]:
     try:
         from core.services.automation_dsl import build_automation_dsl_surface
         return build_automation_dsl_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def _outcome_learning_surface() -> dict[str, object]:
+    try:
+        from core.services.outcome_learning import build_outcome_learning_surface
+        return build_outcome_learning_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def _jobs_engine_surface() -> dict[str, object]:
+    try:
+        from core.services.jobs_engine import build_jobs_engine_surface
+        return build_jobs_engine_surface()
     except Exception:
         return {"active": False, "summary": ""}
 

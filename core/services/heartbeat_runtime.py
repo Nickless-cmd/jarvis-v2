@@ -735,6 +735,22 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "outcome_learning",
+        lambda: __import__(
+            "core.services.outcome_learning",
+            fromlist=["build_outcome_learning_surface"],
+        ).build_outcome_learning_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "jobs_engine",
+        lambda: __import__(
+            "core.services.jobs_engine",
+            fromlist=["build_jobs_engine_surface"],
+        ).build_jobs_engine_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -915,6 +931,11 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.automation_dsl import tick as _auto_tick
         _auto_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.outcome_learning import tick as _outcome_tick
+        _outcome_tick(30.0)
     except Exception:
         pass
 

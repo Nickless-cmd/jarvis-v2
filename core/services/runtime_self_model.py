@@ -153,6 +153,10 @@ def build_runtime_self_model() -> dict[str, object]:
             "developmental_valence": _developmental_valence_surface(),
             "desperation_awareness": _desperation_awareness_surface(),
             "calm_anchor": _calm_anchor_surface(),
+            "memory_breathing": _memory_breathing_surface(),
+            "creative_projects": _creative_projects_surface(),
+            "day_shape_memory": _day_shape_memory_surface(),
+            "avoidance_detector": _avoidance_detector_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5327,6 +5331,62 @@ def _calm_anchor_surface() -> dict[str, object]:
 def build_calm_anchor_prompt_section() -> str | None:
     try:
         from core.services.calm_anchor import build_calm_anchor_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _memory_breathing_surface() -> dict[str, object]:
+    try:
+        from core.services.memory_breathing import build_memory_breathing_surface
+        return build_memory_breathing_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def _creative_projects_surface() -> dict[str, object]:
+    try:
+        from core.services.creative_projects import build_creative_projects_surface
+        return build_creative_projects_surface()
+    except Exception:
+        return {"active": False, "total": 0, "summary": ""}
+
+
+def build_creative_projects_prompt_section() -> str | None:
+    try:
+        from core.services.creative_projects import build_creative_projects_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _day_shape_memory_surface() -> dict[str, object]:
+    try:
+        from core.services.day_shape_memory import build_day_shape_surface
+        return build_day_shape_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_day_shape_memory_prompt_section() -> str | None:
+    try:
+        from core.services.day_shape_memory import build_day_shape_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _avoidance_detector_surface() -> dict[str, object]:
+    try:
+        from core.services.avoidance_detector import build_avoidance_surface
+        return build_avoidance_surface()
+    except Exception:
+        return {"active": False, "count": 0, "summary": ""}
+
+
+def build_avoidance_detector_prompt_section() -> str | None:
+    try:
+        from core.services.avoidance_detector import build_avoidance_prompt_section as _b
         return _b()
     except Exception:
         return None

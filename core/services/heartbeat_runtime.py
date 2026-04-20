@@ -655,6 +655,38 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "memory_breathing",
+        lambda: __import__(
+            "core.services.memory_breathing",
+            fromlist=["build_memory_breathing_surface"],
+        ).build_memory_breathing_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "creative_projects",
+        lambda: __import__(
+            "core.services.creative_projects",
+            fromlist=["build_creative_projects_surface"],
+        ).build_creative_projects_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "day_shape_memory",
+        lambda: __import__(
+            "core.services.day_shape_memory",
+            fromlist=["build_day_shape_surface"],
+        ).build_day_shape_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "avoidance_detector",
+        lambda: __import__(
+            "core.services.avoidance_detector",
+            fromlist=["build_avoidance_surface"],
+        ).build_avoidance_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -815,6 +847,11 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.calm_anchor import tick as _calm_tick
         _calm_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.day_shape_memory import tick as _day_shape_tick
+        _day_shape_tick(30.0)
     except Exception:
         pass
 

@@ -2480,6 +2480,27 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.runtime_self_model import build_creative_projects_prompt_section
+        section = build_creative_projects_prompt_section()
+        if section:
+            _append_entry(key="creative-projects", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_day_shape_memory_prompt_section
+        section = build_day_shape_memory_prompt_section()
+        if section:
+            _append_entry(key="day-shape-memory", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_avoidance_detector_prompt_section
+        section = build_avoidance_detector_prompt_section()
+        if section:
+            _append_entry(key="avoidance-detector", section=section, importance="background")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_physical_presence_prompt_section
         section = build_physical_presence_prompt_section()
         if section:

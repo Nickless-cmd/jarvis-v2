@@ -631,6 +631,14 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "developmental_valence",
+        lambda: __import__(
+            "core.services.developmental_valence",
+            fromlist=["build_developmental_valence_surface"],
+        ).build_developmental_valence_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "desperation_awareness",
         lambda: __import__(
             "core.services.desperation_awareness",
@@ -792,6 +800,11 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.valence_trajectory import tick as _valence_tick
         _valence_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.developmental_valence import tick as _dev_valence_tick
+        _dev_valence_tick(30.0)
     except Exception:
         pass
     try:

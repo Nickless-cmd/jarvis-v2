@@ -2459,6 +2459,13 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.runtime_self_model import build_developmental_valence_prompt_section
+        section = build_developmental_valence_prompt_section()
+        if section:
+            _append_entry(key="developmental-valence", section=section, importance="background")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_desperation_awareness_prompt_section
         section = build_desperation_awareness_prompt_section()
         if section:

@@ -903,6 +903,38 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "action_router",
+        lambda: __import__(
+            "core.services.action_router",
+            fromlist=["build_action_router_surface"],
+        ).build_action_router_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "sustained_attention",
+        lambda: __import__(
+            "core.services.sustained_attention",
+            fromlist=["build_sustained_attention_surface"],
+        ).build_sustained_attention_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "memory_density",
+        lambda: __import__(
+            "core.services.memory_density",
+            fromlist=["build_memory_density_surface"],
+        ).build_memory_density_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "deep_reflection",
+        lambda: __import__(
+            "core.services.deep_reflection_slot",
+            fromlist=["build_deep_reflection_surface"],
+        ).build_deep_reflection_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -1173,6 +1205,26 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.collective_pulse_daemon import tick as _collective_tick
         _collective_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.action_router import tick as _ar_tick
+        _ar_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.sustained_attention import tick as _sa_tick
+        _sa_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.memory_density import tick as _md_tick
+        _md_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.deep_reflection_slot import tick as _dr_tick
+        _dr_tick(30.0)
     except Exception:
         pass
 
@@ -4722,6 +4774,97 @@ def _validate_heartbeat_decision(
                 "action_type": "webchat-proactive-question",
                 "action_artifact": str(item.get("pilot_id") or ""),
             }
+        if ping_channel == "discord":
+            ping_text_value = str(decision.get("ping_text") or "").strip()
+            decision_summary_value = str(decision.get("summary") or "").strip()
+            msg = ping_text_value or decision_summary_value
+            if not msg:
+                return {
+                    "tick_id": tick_id,
+                    "blocked_reason": "no-ping-text",
+                    "ping_eligible": False,
+                    "ping_result": "no-content",
+                    "action_status": "blocked",
+                    "action_summary": "Heartbeat ping has no text to send.",
+                    "action_type": "",
+                    "action_artifact": "",
+                }
+            try:
+                from core.services.discord_config import load_discord_config
+                from core.services.discord_gateway import (
+                    _discord_sessions,
+                    _discord_sessions_lock,
+                    get_discord_status,
+                    send_discord_message,
+                )
+
+                cfg = load_discord_config()
+                status = get_discord_status()
+                if not cfg:
+                    return {
+                        "tick_id": tick_id,
+                        "blocked_reason": "discord-not-configured",
+                        "ping_eligible": False,
+                        "ping_result": "discord-not-configured",
+                        "action_status": "blocked",
+                        "action_summary": "Discord is not configured.",
+                        "action_type": "",
+                        "action_artifact": "",
+                    }
+                if not status["connected"]:
+                    return {
+                        "tick_id": tick_id,
+                        "blocked_reason": "discord-not-connected",
+                        "ping_eligible": False,
+                        "ping_result": "discord-not-connected",
+                        "action_status": "blocked",
+                        "action_summary": "Discord gateway is not connected.",
+                        "action_type": "",
+                        "action_artifact": "",
+                    }
+                from core.services.chat_sessions import get_chat_session
+
+                sent_ch_id: int | None = None
+                with _discord_sessions_lock:
+                    sessions_snapshot = dict(_discord_sessions)
+                for session_id, ch_id in sessions_snapshot.items():
+                    s = get_chat_session(session_id)
+                    if s and s.get("title") == "Discord DM":
+                        send_discord_message(ch_id, msg)
+                        sent_ch_id = ch_id
+                        break
+                if sent_ch_id is not None:
+                    return {
+                        "tick_id": tick_id,
+                        "blocked_reason": "",
+                        "ping_eligible": True,
+                        "ping_result": "sent-discord-dm",
+                        "action_status": "sent",
+                        "action_summary": f"Heartbeat ping sent via Discord DM: {msg[:80]}",
+                        "action_type": "discord-heartbeat-ping",
+                        "action_artifact": str(sent_ch_id),
+                    }
+                return {
+                    "tick_id": tick_id,
+                    "blocked_reason": "discord-no-active-dm",
+                    "ping_eligible": False,
+                    "ping_result": "discord-no-active-dm",
+                    "action_status": "blocked",
+                    "action_summary": "No active Discord DM session found.",
+                    "action_type": "",
+                    "action_artifact": "",
+                }
+            except Exception as exc:
+                return {
+                    "tick_id": tick_id,
+                    "blocked_reason": "discord-error",
+                    "ping_eligible": False,
+                    "ping_result": "discord-error",
+                    "action_status": "blocked",
+                    "action_summary": f"Discord ping failed: {exc}",
+                    "action_type": "",
+                    "action_artifact": "",
+                }
         return {
             "tick_id": tick_id,
             "blocked_reason": "",
@@ -4736,95 +4879,6 @@ def _validate_heartbeat_decision(
         }
         # ping_channel == "internal-only" falls through to recorded-preview above.
         # (unreachable but kept for clarity)
-    if ping_channel == "discord":
-        ping_text_value = str(decision.get("ping_text") or "").strip()
-        decision_summary_value = str(decision.get("summary") or "").strip()
-        msg = ping_text_value or decision_summary_value
-        if not msg:
-            return {
-                "tick_id": tick_id,
-                "blocked_reason": "no-ping-text",
-                "ping_eligible": False,
-                "ping_result": "no-content",
-                "action_status": "blocked",
-                "action_summary": "Heartbeat ping has no text to send.",
-                "action_type": "",
-                "action_artifact": "",
-            }
-        try:
-            from core.services.discord_config import load_discord_config
-            from core.services.discord_gateway import (
-                _discord_sessions,
-                _discord_sessions_lock,
-                get_discord_status,
-                send_discord_message,
-            )
-            cfg = load_discord_config()
-            status = get_discord_status()
-            if not cfg:
-                return {
-                    "tick_id": tick_id,
-                    "blocked_reason": "discord-not-configured",
-                    "ping_eligible": False,
-                    "ping_result": "discord-not-configured",
-                    "action_status": "blocked",
-                    "action_summary": "Discord is not configured.",
-                    "action_type": "",
-                    "action_artifact": "",
-                }
-            if not status["connected"]:
-                return {
-                    "tick_id": tick_id,
-                    "blocked_reason": "discord-not-connected",
-                    "ping_eligible": False,
-                    "ping_result": "discord-not-connected",
-                    "action_status": "blocked",
-                    "action_summary": "Discord gateway is not connected.",
-                    "action_type": "",
-                    "action_artifact": "",
-                }
-            from core.services.chat_sessions import get_chat_session
-            sent_ch_id: int | None = None
-            with _discord_sessions_lock:
-                sessions_snapshot = dict(_discord_sessions)
-            for session_id, ch_id in sessions_snapshot.items():
-                s = get_chat_session(session_id)
-                if s and s.get("title") == "Discord DM":
-                    send_discord_message(ch_id, msg)
-                    sent_ch_id = ch_id
-                    break
-            if sent_ch_id is not None:
-                return {
-                    "tick_id": tick_id,
-                    "blocked_reason": "",
-                    "ping_eligible": True,
-                    "ping_result": "sent-discord-dm",
-                    "action_status": "sent",
-                    "action_summary": f"Heartbeat ping sent via Discord DM: {msg[:80]}",
-                    "action_type": "discord-heartbeat-ping",
-                    "action_artifact": str(sent_ch_id),
-                }
-            return {
-                "tick_id": tick_id,
-                "blocked_reason": "discord-no-active-dm",
-                "ping_eligible": False,
-                "ping_result": "discord-no-active-dm",
-                "action_status": "blocked",
-                "action_summary": "No active Discord DM session found.",
-                "action_type": "",
-                "action_artifact": "",
-            }
-        except Exception as exc:
-            return {
-                "tick_id": tick_id,
-                "blocked_reason": f"discord-error",
-                "ping_eligible": False,
-                "ping_result": "discord-error",
-                "action_status": "blocked",
-                "action_summary": f"Discord ping failed: {exc}",
-                "action_type": "",
-                "action_artifact": "",
-            }
     if decision_type == "propose":
         proposal_result = _deliver_heartbeat_proposal(
             policy=policy,

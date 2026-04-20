@@ -4,6 +4,7 @@ import asyncio
 import json
 import re
 from datetime import UTC, datetime
+from urllib import error as urllib_error
 from urllib import request as urllib_request
 from dataclasses import dataclass, field
 from typing import AsyncIterator
@@ -911,24 +912,59 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         rnd=_agentic_round,
                         failure=_a_failure,
                     ) -> None:
+                        import time as _time
+
                         try:
-                            with urllib_request.urlopen(req, timeout=90) as resp:
-                                for raw_line in resp:
-                                    line = raw_line.decode("utf-8").strip()
-                                    if not line:
-                                        continue
-                                    ev = _json.loads(line)
-                                    msg = ev.get("message") or {}
-                                    delta = str(msg.get("content") or "")
-                                    if delta:
-                                        loop.call_soon_threadsafe(q.put_nowait, delta)
-                                    tc = msg.get("tool_calls") or []
-                                    if tc:
-                                        loop.call_soon_threadsafe(
-                                            q.put_nowait, (_TOOL_CALL_MARKER, tc)
+                            # Transient provider overloads happen under load.
+                            # Retry a couple of times on 5xx / temporary network issues.
+                            _attempts = 3
+                            for _attempt in range(_attempts):
+                                try:
+                                    with urllib_request.urlopen(req, timeout=90) as resp:
+                                        for raw_line in resp:
+                                            line = raw_line.decode("utf-8").strip()
+                                            if not line:
+                                                continue
+                                            ev = _json.loads(line)
+                                            msg = ev.get("message") or {}
+                                            delta = str(msg.get("content") or "")
+                                            if delta:
+                                                loop.call_soon_threadsafe(q.put_nowait, delta)
+                                            tc = msg.get("tool_calls") or []
+                                            if tc:
+                                                loop.call_soon_threadsafe(
+                                                    q.put_nowait, (_TOOL_CALL_MARKER, tc)
+                                                )
+                                            if ev.get("done"):
+                                                break
+                                    break
+                                except urllib_error.HTTPError as _he:
+                                    _retryable = int(getattr(_he, "code", 0) or 0) in {502, 503, 504}
+                                    if _retryable and _attempt < (_attempts - 1):
+                                        _backoff = 0.6 * (2**_attempt)
+                                        _alog.getLogger(__name__).warning(
+                                            "agentic round %d retrying after HTTP %s (attempt %d/%d)",
+                                            rnd,
+                                            getattr(_he, "code", "?"),
+                                            _attempt + 1,
+                                            _attempts,
                                         )
-                                    if ev.get("done"):
-                                        break
+                                        _time.sleep(_backoff)
+                                        continue
+                                    raise
+                                except urllib_error.URLError as _ue:
+                                    if _attempt < (_attempts - 1):
+                                        _backoff = 0.6 * (2**_attempt)
+                                        _alog.getLogger(__name__).warning(
+                                            "agentic round %d retrying after URLError: %s (attempt %d/%d)",
+                                            rnd,
+                                            _ue,
+                                            _attempt + 1,
+                                            _attempts,
+                                        )
+                                        _time.sleep(_backoff)
+                                        continue
+                                    raise
                         except Exception as _ae:
                             _a_summary = f"agentic-round-{rnd + 1}-timeout"
                             if "timed out" not in str(_ae).lower():

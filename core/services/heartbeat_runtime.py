@@ -623,6 +623,30 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "valence_trajectory",
+        lambda: __import__(
+            "core.services.valence_trajectory",
+            fromlist=["build_valence_trajectory_surface"],
+        ).build_valence_trajectory_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "desperation_awareness",
+        lambda: __import__(
+            "core.services.desperation_awareness",
+            fromlist=["build_desperation_awareness_surface"],
+        ).build_desperation_awareness_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "calm_anchor",
+        lambda: __import__(
+            "core.services.calm_anchor",
+            fromlist=["build_calm_anchor_surface"],
+        ).build_calm_anchor_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -761,6 +785,23 @@ def _run_heartbeat_tick_locked(
         from core.services.ambient_presence import maybe_emit_phase_signal
         from core.services.living_heartbeat_cycle import determine_life_phase
         maybe_emit_phase_signal(determine_life_phase())
+    except Exception:
+        pass
+
+    # State-awareness signals (valence trajectory, desperation, calm anchor)
+    try:
+        from core.services.valence_trajectory import tick as _valence_tick
+        _valence_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.desperation_awareness import tick as _desp_tick
+        _desp_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.calm_anchor import tick as _calm_tick
+        _calm_tick(30.0)
     except Exception:
         pass
 

@@ -149,6 +149,9 @@ def build_runtime_self_model() -> dict[str, object]:
             "council_runtime": _council_runtime_surface(),
             "agent_outcomes": _agent_outcomes_surface(),
             "authenticity": _authenticity_surface(),
+            "valence_trajectory": _valence_trajectory_surface(),
+            "desperation_awareness": _desperation_awareness_surface(),
+            "calm_anchor": _calm_anchor_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5262,6 +5265,54 @@ def _authenticity_surface() -> dict[str, object]:
         }
     except Exception:
         return {"active": False, "crystallized_tastes": {}, "crystallized_values": []}
+
+
+def _valence_trajectory_surface() -> dict[str, object]:
+    try:
+        from core.services.valence_trajectory import build_valence_trajectory_surface
+        return build_valence_trajectory_surface()
+    except Exception:
+        return {"active": False, "trend": "unavailable", "summary": ""}
+
+
+def build_valence_trajectory_prompt_section() -> str | None:
+    try:
+        from core.services.valence_trajectory import build_valence_trajectory_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _desperation_awareness_surface() -> dict[str, object]:
+    try:
+        from core.services.desperation_awareness import build_desperation_awareness_surface
+        return build_desperation_awareness_surface()
+    except Exception:
+        return {"active": False, "level": "unavailable", "summary": ""}
+
+
+def build_desperation_awareness_prompt_section() -> str | None:
+    try:
+        from core.services.desperation_awareness import build_desperation_awareness_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _calm_anchor_surface() -> dict[str, object]:
+    try:
+        from core.services.calm_anchor import build_calm_anchor_surface
+        return build_calm_anchor_surface()
+    except Exception:
+        return {"active": False, "has_anchor": False, "summary": ""}
+
+
+def build_calm_anchor_prompt_section() -> str | None:
+    try:
+        from core.services.calm_anchor import build_calm_anchor_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
 
 
 def build_physical_presence_prompt_section() -> str | None:

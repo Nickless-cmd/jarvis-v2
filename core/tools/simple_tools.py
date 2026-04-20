@@ -1827,6 +1827,11 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
     if redirected_from:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"
+    try:
+        from core.services.self_mutation_lineage import record_self_mutation
+        record_self_mutation(target_path=str(target), change_type="write")
+    except Exception:
+        pass
     return result
 
 
@@ -1866,6 +1871,11 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
 
     new_content = content.replace(old_text, new_text, 1)
     target.write_text(new_content, encoding="utf-8")
+    try:
+        from core.services.self_mutation_lineage import record_self_mutation
+        record_self_mutation(target_path=str(target), change_type="edit")
+    except Exception:
+        pass
     result = {"status": "ok", "path": str(target), "replacements": 1}
     if redirected_from:
         result["redirected_from"] = redirected_from

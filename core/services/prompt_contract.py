@@ -2529,6 +2529,41 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.runtime_self_model import build_file_watch_prompt_section
+        section = build_file_watch_prompt_section()
+        if section:
+            _append_entry(key="file-watch", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_reboot_awareness_prompt_section
+        section = build_reboot_awareness_prompt_section()
+        if section:
+            _append_entry(key="reboot-awareness", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_proprioception_metrics_prompt_section
+        section = build_proprioception_metrics_prompt_section()
+        if section:
+            _append_entry(key="proprioception-metrics", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_anticipatory_action_prompt_section
+        section = build_anticipatory_action_prompt_section()
+        if section:
+            _append_entry(key="anticipatory-action", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_cross_session_threads_prompt_section
+        section = build_cross_session_threads_prompt_section()
+        if section:
+            _append_entry(key="cross-session-threads", section=section, importance="background")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_physical_presence_prompt_section
         section = build_physical_presence_prompt_section()
         if section:

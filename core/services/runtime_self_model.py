@@ -178,6 +178,12 @@ def build_runtime_self_model() -> dict[str, object]:
             "creative_instinct": _creative_instinct_surface(),
             "autonomous_work": _autonomous_work_surface(),
             "dream_consolidation": _dream_consolidation_surface(),
+            "text_resonance": _text_resonance_surface(),
+            "creative_impulse": _creative_impulse_surface(),
+            "shadow_scan": _shadow_scan_surface(),
+            "mortality_awareness": _mortality_awareness_surface(),
+            "relational_warmth": _relational_warmth_surface(),
+            "collective_pulse": _collective_pulse_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5696,6 +5702,102 @@ def _dream_consolidation_surface() -> dict[str, object]:
 def build_dream_consolidation_prompt_section() -> str | None:
     try:
         from core.services.dream_consolidation_daemon import build_dream_consolidation_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _text_resonance_surface() -> dict[str, object]:
+    try:
+        from core.services.text_resonance import build_text_resonance_surface
+        return build_text_resonance_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_text_resonance_prompt_section() -> str | None:
+    try:
+        from core.services.text_resonance import build_text_resonance_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _creative_impulse_surface() -> dict[str, object]:
+    try:
+        from core.services.creative_impulse_daemon import build_creative_impulse_surface
+        return build_creative_impulse_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_creative_impulse_prompt_section() -> str | None:
+    try:
+        from core.services.creative_impulse_daemon import build_creative_impulse_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _shadow_scan_surface() -> dict[str, object]:
+    try:
+        from core.services.shadow_scan_daemon import build_shadow_scan_surface
+        return build_shadow_scan_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_shadow_scan_prompt_section() -> str | None:
+    try:
+        from core.services.shadow_scan_daemon import build_shadow_scan_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _mortality_awareness_surface() -> dict[str, object]:
+    try:
+        from core.services.mortality_awareness import build_mortality_awareness_surface
+        return build_mortality_awareness_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_mortality_awareness_prompt_section() -> str | None:
+    try:
+        from core.services.mortality_awareness import build_mortality_awareness_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _relational_warmth_surface() -> dict[str, object]:
+    try:
+        from core.services.relational_warmth import build_relational_warmth_surface
+        return build_relational_warmth_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_relational_warmth_prompt_section() -> str | None:
+    try:
+        from core.services.relational_warmth import build_relational_warmth_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _collective_pulse_surface() -> dict[str, object]:
+    try:
+        from core.services.collective_pulse_daemon import build_collective_pulse_surface
+        return build_collective_pulse_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_collective_pulse_prompt_section() -> str | None:
+    try:
+        from core.services.collective_pulse_daemon import build_collective_pulse_prompt_section as _b
         return _b()
     except Exception:
         return None

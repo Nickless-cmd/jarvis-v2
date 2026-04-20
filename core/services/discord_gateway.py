@@ -430,16 +430,16 @@ def _eventbus_subscriber_loop() -> None:
                     logger.info("discord_sub: buffering reply session=%s channel=%s len=%d", session_id[:12], channel_id, len(content))
                     _pending[session_id] = (channel_id, content)
 
-            # Flush buffer when run is fully complete
-            elif kind == "memory.visible_run_postprocess_completed":
+            # Flush buffer when run is fully complete (before memory postprocess)
+            elif kind in ("runtime.autonomous_run_completed", "memory.visible_run_postprocess_completed"):
                 session_id = str(payload.get("session_id") or "")
                 pending = _pending.pop(session_id, None)
                 if pending:
                     channel_id, content = pending
-                    logger.info("discord_sub: flushing to channel=%s len=%d", channel_id, len(content))
+                    logger.info("discord_sub: flushing to channel=%s len=%d (trigger=%s)", channel_id, len(content), kind)
                     send_discord_message(channel_id, content)
                 else:
-                    logger.info("discord_sub: postprocess sid=%s — no pending", session_id[:12])
+                    logger.debug("discord_sub: %s sid=%s — no pending", kind.split(".")[-1], session_id[:12])
 
     finally:
         logger.warning("discord_sub: subscriber loop exited")

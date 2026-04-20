@@ -1650,6 +1650,40 @@ def mc_agent_tool_calls(agent_id: str) -> dict:
     }
 
 
+@router.get("/watcher-lineage")
+def mc_watcher_lineage() -> dict:
+    """Return persistent watcher history — agents with kind=persistent-watcher."""
+    from core.services.agent_runtime import build_agent_runtime_surface, list_agent_runs
+    surface = build_agent_runtime_surface(limit=200)
+    all_agents = surface.get("agents") or []
+    watchers = [a for a in all_agents if str(a.get("kind") or "") == "persistent-watcher"]
+    result = []
+    for w in watchers[:20]:
+        agent_id = str(w.get("agent_id") or "")
+        runs = list_agent_runs(agent_id=agent_id, limit=5)
+        ctx = w.get("context") or {}
+        result.append({
+            "agent_id": agent_id,
+            "name": str(w.get("name") or w.get("goal") or agent_id)[:80],
+            "goal": str(w.get("goal") or "")[:200],
+            "status": str(w.get("status") or ""),
+            "spawn_depth": int((ctx or {}).get("spawn_depth") or 0),
+            "next_wake_at": str(w.get("next_wake_at") or ""),
+            "completed_at": str(w.get("completed_at") or ""),
+            "tokens_burned": int(w.get("tokens_burned") or 0),
+            "recent_runs": [
+                {
+                    "run_id": str(r.get("run_id") or ""),
+                    "status": str(r.get("status") or ""),
+                    "output_summary": str(r.get("output_summary") or "")[:300],
+                    "finished_at": str(r.get("finished_at") or ""),
+                }
+                for r in runs
+            ],
+        })
+    return {"watchers": result, "watcher_count": len(result)}
+
+
 @router.get("/council-model-config")
 def mc_get_council_model_config() -> dict:
     """Return persisted per-role model overrides."""

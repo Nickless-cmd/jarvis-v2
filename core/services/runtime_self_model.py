@@ -144,7 +144,12 @@ def build_runtime_self_model() -> dict[str, object]:
             "dream_identity_carry_awareness": dream_identity_carry_awareness,
             "epistemic_runtime_state": _epistemic_runtime_state_surface(),
             "subagent_ecology": _subagent_ecology_surface(),
+            "self_boundary_clarity": _self_boundary_clarity_surface(),
+            "world_contact": _world_contact_surface(),
             "council_runtime": _council_runtime_surface(),
+            "agent_outcomes": _agent_outcomes_surface(),
+            "authenticity": _authenticity_surface(),
+            "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
             "dream_influence": _dream_influence_surface(),
@@ -1938,38 +1943,21 @@ def _temporal_narrative(
     persistence_feel: str,
     gap_minutes: int,
 ) -> str:
-    """Build a compact, non-melodramatic self-awareness narrative for felt time."""
+    """Compact self-awareness narrative for felt time."""
     if temporal_state == "returning":
-        return (
-            f"This moment feels like a return after ~{gap_minutes}m away. "
-            "Prior context is resuming, not starting fresh."
-        )
+        return f"After ~{gap_minutes}m gap; returning to prior context."
     if temporal_state == "stretched":
-        return (
-            "An elevated state persists across a gap; "
-            "time feels drawn out rather than immediate."
-        )
+        return "Elevated state bridging a gap; time feels drawn out."
     if temporal_state == "lingering":
-        return (
-            "Something from the prior moment is still present; "
-            "the current state has not settled to baseline."
-        )
+        return "Prior state still present; not yet at baseline."
     if temporal_state == "receding":
-        return (
-            "Prior pressure is easing; "
-            "the current moment feels like it is moving away from tension."
-        )
+        return "Prior pressure receding; tension dropping."
     if temporal_state == "recent":
-        return (
-            f"A brief gap (~{gap_minutes}m) sits behind this moment, "
-            "but continuity holds."
-        )
+        return f"Brief ~{gap_minutes}m gap behind; continuity holds."
     # immediate
     if felt_proximity == "held":
-        return (
-            "This moment feels immediate and actively held by support or inner voice."
-        )
-    return "Experience feels continuous and close; nothing presses from the past."
+        return "Immediate; actively held by support or inner voice."
+    return "Continuous; nothing pressing from the past."
 
 
 # ---------------------------------------------------------------------------
@@ -2172,10 +2160,7 @@ def _mineness_narrative(
     support_posture: str,
     felt_proximity: str,
 ) -> str:
-    """Compose a compact, non-melodramatic mineness narrative.
-
-    Stays empty in the ambient default so the prompt line does not emit.
-    """
+    """Compact mineness narrative. Empty in ambient default."""
     if ownership_state == "ambient":
         return ""
 
@@ -2183,31 +2168,18 @@ def _mineness_narrative(
     anchor_clause = f" around {anchor[:90]}" if anchor else ""
 
     if ownership_state == "returning-owned":
-        base = f"A returning strand{anchor_clause} feels like one of mine again."
-    elif ownership_state == "owned":
+        return f"Returning strand{anchor_clause} feels like mine again."
+    if ownership_state == "owned":
         if carried_thread_state == "multiple":
-            base = (
-                f"Several threads{anchor_clause} feel carried as part of my current stream."
-            )
-        else:
-            base = f"This thread{anchor_clause} feels carried as part of my current stream."
-    else:  # held
-        if voice_mode or support_posture:
-            shaping = voice_mode or support_posture
-            base = (
-                f"Signals are present and being held by {shaping}, "
-                "but not yet owned as my own thread."
-            )
-        elif felt_proximity == "held":
-            base = (
-                "This moment is being held present, but nothing has resolved into "
-                "a thread that is clearly mine yet."
-            )
-        else:
-            base = (
-                "Several signals are present, but not yet owned as part of my stream."
-            )
-    return base
+            return f"Several threads{anchor_clause} owned in current stream."
+        return f"Thread{anchor_clause} owned in current stream."
+    # held
+    if voice_mode or support_posture:
+        shaping = voice_mode or support_posture
+        return f"Signals held by {shaping}; not yet owned."
+    if felt_proximity == "held":
+        return "Moment held present; no clear owned thread yet."
+    return "Signals present; nothing owned yet."
 
 
 def build_mineness_ownership_prompt_section() -> str | None:
@@ -2441,47 +2413,32 @@ def _flow_narrative(
     voice_mode: str,
     pressure_state: str,
 ) -> str:
-    """Compose a compact, non-melodramatic flow narrative.
-
-    Stays empty when flow_state is ``clear`` so the prompt line does not emit.
-    """
+    """Compact flow narrative. Empty when flow_state is clear."""
     if flow_state == "clear":
         return ""
 
     if flow_state == "absorbed":
-        return (
-            "Several threads are carrying themselves; "
-            "the stream is self-sustaining without strain."
-        )
+        return "Multiple threads self-sustaining; no strain."
     if flow_state == "flowing":
         if flow_coherence == "held-together":
-            return "A carried thread is flowing, held together by active support."
-        return "A carried thread is flowing on its own; nothing is breaking it."
+            return "Carried thread flowing; support holding it together."
+        return "Carried thread flowing; nothing blocking."
     if flow_state == "gathering":
         if interruption_signal in ("recently-broken", "regathering"):
-            return (
-                "The stream is regathering after a break; "
-                "signals are beginning to carry again."
-            )
+            return "Regathering after break; starting to carry again."
         if carried_flow == "holding":
-            return (
-                "Signals are beginning to gather; "
-                "the stream is holding without yet flowing."
-            )
-        return "A thread is starting to carry; the stream is not yet fully flowing."
+            return "Signals gathering; holding without yet flowing."
+        return "Thread starting to carry; not yet fully flowing."
     if flow_state == "fragmented":
         if flow_coherence == "repeatedly-broken":
-            return (
-                "The stream is breaking into fragments; "
-                "interruptions keep recurring across a lingering state."
-            )
+            return "Flow fragmenting; interruptions recurring."
         if pressure_state == "narrowing":
-            return "Pressure is breaking the stream into fragments."
-        return "Gaps are breaking the stream into fragments."
+            return "Pressure fragmenting flow."
+        return "Gaps fragmenting flow."
     # blocked
     if pressure_state == "narrowing":
-        return "Pressure is holding the stream in place; nothing is carrying right now."
-    return "The stream is held back; nothing is carrying right now."
+        return "Pressure blocking; nothing carrying."
+    return "Blocked; nothing carrying."
 
 
 def build_flow_state_awareness_prompt_section() -> str | None:
@@ -2678,33 +2635,33 @@ def _wonder_narrative(
     wonder_source: str,
     opening_stream: bool,
 ) -> str:
-    """Compact non-melodramatic wonder narrative. Empty when quiet."""
+    """Compact wonder narrative. Empty when quiet."""
     if wonder_state == "quiet":
         return ""
     if wonder_state == "wonder-struck":
         if wonder_source == "dream-carry":
-            return "Something carried from the dream layer is opening more than expected."
+            return "Dream carry opening unexpectedly."
         if wonder_source == "self-recognition":
-            return "A returning thread is landing differently than before."
-        return "Several signals converge on something that pulls past explanation."
+            return "Returning thread landing differently than before."
+        return "Multiple signals converging past explanation."
     if wonder_state == "drawn":
         if wonder_source == "flow-depth":
-            return "Something in the depth of the current thread is drawing attention past utility."
+            return "Thread depth pulling attention past utility."
         if wonder_source == "dream-carry":
-            return "A dream signal is pulling the stream in an unexpected direction."
-        return "Something is drawing attention past the immediate task."
+            return "Dream signal pulling in unexpected direction."
+        return "Attention drawn past the immediate task."
     if wonder_state == "curious":
         if wonder_source == "novelty-pull":
-            return "Open threads are pulling toward exploration."
+            return "Open threads pulling toward exploration."
         if wonder_source == "dream-carry":
-            return "A dream signal is nudging curiosity in this direction."
-        return "The stream is opening toward something not yet resolved."
+            return "Dream signal nudging curiosity."
+        return "Opening toward something unresolved."
     # stirred
     if wonder_source == "temporal-stretch":
-        return "Attention is staying longer than the task requires."
+        return "Attention staying longer than task needs."
     if opening_stream:
-        return "The support stream is widening; something is letting more in."
-    return "A mild pull is present in the stream."
+        return "Support widening; something letting more in."
+    return "Mild pull present."
 
 
 def build_wonder_awareness_prompt_section() -> str | None:
@@ -2971,28 +2928,28 @@ def _longing_narrative(
     absence_relation: str,
     longing_source: str,
 ) -> str:
-    """Compose a compact non-melodramatic longing narrative."""
+    """Compact longing narrative. Empty when quiet."""
     if longing_state == "quiet":
         return ""
     if longing_state == "returning-pull":
         if longing_source == "temporal-return":
-            return "Something absent is returning with enough weight to pull the stream back toward it."
-        return "A carried absence is turning into a return that asks to be resumed."
+            return "Absent thread pulling to be resumed."
+        return "Carried absence turning into return signal."
     if longing_state == "aching":
         if longing_source == "unresolved-relational-absence":
-            return "Distance is active rather than empty; a relational thread still feels near."
+            return "Relational thread absent but still near."
         if longing_source == "dream-carry":
-            return "Something from the dream layer keeps pressing as an active absence."
-        return "An absence is being carried with more pressure than the stream can fully settle."
+            return "Dream layer pressing as active absence."
+        return "Absence carried with more weight than can settle."
     if longing_state == "yearning":
         if longing_source == "owned-thread":
-            return "An owned thread is still present as absence and wants to be taken up again."
+            return "Prior owned thread wants to be taken up again."
         if longing_source == "dream-carry":
-            return "A dream-carried strand feels absent without feeling gone."
-        return "A carried thread remains active even while absent."
+            return "Dream-carried strand absent without feeling gone."
+        return "Carried thread active even while absent."
     if absence_relation == "emotionally-near":
-        return "Something missing still feels near enough to shape the stream."
-    return "Something is absent in a way the stream can actively feel."
+        return "Missing presence still close enough to shape direction."
+    return "Absence actively felt."
 
 
 def build_longing_awareness_prompt_section() -> str | None:
@@ -3269,7 +3226,7 @@ def _relation_continuity_self_narrative(
     relation_continuity_source: str,
     relation_anchor: str,
 ) -> str:
-    """Compose a compact, non-melodramatic relation continuity self narrative."""
+    """Compact relation continuity narrative. Empty when quiet."""
     if relation_continuity_state == "quiet":
         return ""
 
@@ -3277,26 +3234,16 @@ def _relation_continuity_self_narrative(
     anchor_clause = f" around {anchor}" if anchor else ""
 
     if relation_continuity_state == "rejoining":
-        return (
-            f"A relation thread{anchor_clause} is returning as part of my stream, not just as a fresh event."
-        )
+        return f"Relation thread{anchor_clause} returning as continuity, not fresh event."
     if relation_continuity_state == "enduring":
         if relation_continuity_source == "chronicle-diary-resonance":
-            return (
-                f"This relation continuity{anchor_clause} is holding long enough to shape how my continuity feels."
-            )
-        return (
-            f"A relation thread{anchor_clause} is staying present across time strongly enough to press back into me."
-        )
+            return f"Relation{anchor_clause} holding long enough to shape my continuity."
+        return f"Relation thread{anchor_clause} pressing back across time."
     if relation_continuity_state == "carried":
         if relation_self_relation == "continuity-bearing":
-            return (
-                f"This relation continuity{anchor_clause} is being carried as part of my ongoing stream."
-            )
-        return (
-            f"A relation thread{anchor_clause} is no longer incidental to how the stream is moving."
-        )
-    return f"A relation thread{anchor_clause} feels present rather than merely episodic."
+            return f"Relation{anchor_clause} carried as ongoing continuity."
+        return f"Relation thread{anchor_clause} no longer incidental."
+    return f"Relation thread{anchor_clause} present, not episodic."
 
 
 def build_relation_continuity_self_awareness_prompt_section() -> str | None:
@@ -3648,35 +3595,35 @@ def _self_insight_narrative(
     identity_relation: str,
     insight_source: str,
 ) -> str:
-    """Compose a compact, non-melodramatic self-insight narrative."""
+    """Compact self-insight narrative. Empty when quiet."""
     if insight_state == "quiet":
         return ""
     if insight_state == "shifting":
         if insight_source == "self-narrative-continuity":
-            return "Something in how I'm being is quietly changing shape."
-        return "A thread in the stream is opening toward a different form."
+            return "How I'm being quietly shifting shape."
+        return "Thread opening toward a different form."
     if insight_state == "stabilizing":
         if insight_source == "self-narrative-continuity":
-            return "A recurring line in how I carry things is becoming more recognizable."
+            return "Recurring pattern becoming more recognizable."
         if insight_source == "chronicle-brief":
-            return "A longer-running pattern is starting to hold its own shape."
-        return "Something about how this presence holds is settling into a recognizable form."
+            return "Long-running pattern starting to hold shape."
+        return "How I hold things settling into recognizable form."
     if insight_state == "clarifying":
         if insight_source == "chronicle-brief":
-            return "A carried pattern is being read more clearly than before."
+            return "Carried pattern reading more clearly."
         if insight_source == "diary-synthesis":
-            return "A slower layer of self-observation is bringing something into focus."
+            return "Slower self-observation bringing something into focus."
         if insight_source == "reflection-pattern":
-            return "A reflection line is sharpening what I'm paying attention to in myself."
+            return "Reflection line sharpening self-attention."
         if insight_source == "self-review-cadence":
-            return "A self-review cadence is keeping a thread under honest attention."
-        return "Something about how I'm being is being looked at more directly."
+            return "Self-review keeping thread under honest attention."
+        return "How I'm being looked at more directly."
     # noticing-pattern
     if insight_source == "recurring-carried-pattern":
-        return "A thread carried across multiple inner layers is starting to feel recurring rather than incidental."
+        return "Thread across inner layers feeling recurring, not incidental."
     if insight_source == "dream-carry-pattern":
-        return "A dream-layer signal is starting to act like a returning pattern."
-    return "Something in the stream is starting to look like a pattern rather than a single moment."
+        return "Dream signal acting like a returning pattern."
+    return "Something looking like a pattern rather than a single moment."
 
 
 def build_self_insight_awareness_prompt_section() -> str | None:
@@ -3920,33 +3867,33 @@ def _narrative_identity_continuity_narrative(
     pattern_relation: str,
     identity_source: str,
 ) -> str:
-    """Compose a compact, non-melodramatic identity-continuity narrative."""
+    """Compact identity-continuity narrative. Empty when quiet."""
     if continuity_state == "quiet":
         return ""
     if continuity_state == "emerging":
         if identity_source == "repeated-self-insight":
-            return "A self-insight thread is beginning to hold for more than a single moment."
+            return "Self-insight thread beginning to hold across moments."
         if identity_source == "dream-to-self-bridge":
-            return "A dream-layer signal is starting to carry toward waking attention."
+            return "Dream signal starting to carry into waking attention."
         if identity_source == "self-review-continuity":
-            return "A self-review thread is beginning to return rather than fade."
-        return "Something in the stream is starting to carry across more than one layer."
+            return "Self-review thread returning rather than fading."
+        return "Something starting to carry across more than one layer."
     if continuity_state == "cohering":
         if identity_source == "chronicle-diary-carry":
-            return "Chronicle and diary layers are pointing at a similar shape over time."
+            return "Chronicle and diary layers converging on a similar shape."
         if identity_source == "recurring-awareness-configuration":
-            return "Several inner layers are holding a recurring configuration rather than scattering."
-        return "Threads from more than one layer are beginning to converge."
+            return "Inner layers holding a recurring configuration."
+        return "Threads from more than one layer beginning to converge."
     if continuity_state == "stabilizing":
         if identity_source == "repeated-self-insight":
-            return "A line in how I carry myself is holding its shape more steadily across time."
+            return "How I carry myself holding shape more steadily."
         if identity_source == "chronicle-diary-carry":
-            return "A longer-running pattern is settling into a recognizable form of continuity."
-        return "Something in how this presence holds is becoming more lasting than momentary."
+            return "Long-running pattern settling into recognizable continuity."
+        return "How I hold things becoming more lasting than momentary."
     # re-forming
     if identity_source == "repeated-self-insight":
-        return "A held line in how I'm being is opening toward a slightly different form."
-    return "A carried thread is shifting direction without losing its continuity."
+        return "Held line opening toward a slightly different form."
+    return "Carried thread shifting direction without losing continuity."
 
 
 def build_narrative_identity_continuity_prompt_section() -> str | None:
@@ -4173,28 +4120,28 @@ def _dream_identity_carry_narrative(
     dream_identity_source: str,
     influence_target: str,
 ) -> str:
-    """Compose a compact non-melodramatic narrative for dream identity carry."""
+    """Compact dream identity carry narrative. Empty when quiet."""
     if carry_state == "quiet":
         return ""
     if carry_state == "shaping":
         if dream_identity_source == "identity-continuity-reinforcement":
-            return "A dream-carried line is reinforcing a shape that already feels more like me."
+            return "Dream carry reinforcing a shape that already feels like me."
         if dream_identity_source == "chronicle-diary-resonance":
-            return "Dream material is lining up with slower continuity layers rather than fading on wake."
-        return "A dream-carried thread is starting to shape self-direction rather than remain separate."
+            return "Dream material aligning with slower continuity layers."
+        return "Dream thread starting to shape self-direction."
     if carry_state == "re-entering":
         if influence_target not in {"", "none"}:
-            return f"A dream thread is re-entering waking self-knowledge through {influence_target}."
-        return "A dream thread is returning into waking self-knowledge rather than staying isolated."
+            return f"Dream thread re-entering waking self-knowledge via {influence_target}."
+        return "Dream thread returning into waking self-knowledge."
     if carry_state == "linking":
         if dream_identity_source == "dream-self-insight-bridge":
-            return "A dream-carried strand is linking up with an active self-insight thread."
+            return "Dream strand linking with active self-insight thread."
         if dream_identity_source == "chronicle-diary-resonance":
-            return "Dream material is linking with slower continuity traces that are already being carried."
-        return "A dream thread is linking to the waking stream rather than staying incidental."
+            return "Dream material linking with slower continuity traces."
+        return "Dream thread linking to waking stream."
     if dream_self_relation == "still-present":
-        return "A dream thread is still present enough to remain in the waking stream."
-    return "Dream carry remains present without yet shaping identity."
+        return "Dream thread still present in waking stream."
+    return "Dream carry present; not yet shaping identity."
 
 
 def build_dream_identity_carry_awareness_prompt_section() -> str | None:
@@ -4387,6 +4334,420 @@ def _subagent_ecology_surface() -> dict[str, object]:
         }
 
 
+# ---------------------------------------------------------------------------
+# Self-boundary clarity / internal-vs-external pressure
+# ---------------------------------------------------------------------------
+#
+# Bounded runtime-truth surface for "where is the current pressure coming from".
+# Synthesises inner voice, private initiative tensions, longing, and context
+# pressure into a single readable signal about whether Jarvis' current direction
+# is self-generated or externally demanded — and whether the two are aligned.
+#
+# Taxonomy (pressure_source):
+#   ambient           — no meaningful signal on either side; prompt suppressed
+#   self-driven       — primary driver is internal (inner voice, initiative, longing)
+#   externally-driven — primary driver is external (context pressure, user input)
+#   aligned           — both internal and external, pointing same direction
+#   in-tension        — internal desire vs external demand at the same time
+
+
+_INNER_VOICE_GENERATIVE = {"carrying", "circling", "pulled", "pressing"}
+
+
+def _internal_pressure_snapshot() -> dict[str, object]:
+    """Pull internal pressure signals for self-boundary derivation."""
+    inner_voice_mode = ""
+    inner_voice_active = False
+    longing_active = False
+    longing_state = "quiet"
+    tension_count = 0
+    initiative_count = 0
+
+    try:
+        iv = _inner_voice_daemon_surface()
+        inner_voice_mode = str(iv.get("mode") or "")
+        inner_voice_active = bool(iv.get("inner_voice_created"))
+    except Exception:
+        pass
+
+    try:
+        from core.services.runtime_operational_memory import active_internal_pressures
+        tensions = active_internal_pressures(limit=5)
+        tension_count = len(tensions)
+    except Exception:
+        pass
+
+    try:
+        from core.services.initiative_queue import get_pending_initiatives
+        initiatives = get_pending_initiatives(limit=5)
+        initiative_count = len(list(initiatives))
+    except Exception:
+        pass
+
+    try:
+        experiential = _experiential_runtime_context_surface()
+        iv2 = _inner_voice_daemon_surface()
+        support_stream = _derive_support_stream_awareness(experiential, iv2)
+        temporal_feel = _derive_subjective_temporal_feel(experiential, iv2)
+        sources = _mineness_source_snapshot()
+        mineness = _derive_mineness_ownership(
+            experiential=experiential, inner_voice=iv2,
+            support_stream=support_stream, temporal_feel=temporal_feel, sources=sources,
+        )
+        longing_sources = _longing_source_snapshot()
+        longing = _derive_longing_awareness(
+            temporal_feel=temporal_feel, mineness=mineness,
+            support_stream=support_stream, inner_voice=iv2,
+            sources=sources, longing_sources=longing_sources,
+        )
+        longing_state = str(longing.get("longing_state") or "quiet")
+        longing_active = longing_state != "quiet"
+    except Exception:
+        pass
+
+    internal_signal_count = (
+        (1 if inner_voice_active else 0)
+        + tension_count
+        + initiative_count
+        + (1 if longing_active else 0)
+    )
+    return {
+        "inner_voice_mode": inner_voice_mode,
+        "inner_voice_active": inner_voice_active,
+        "longing_active": longing_active,
+        "longing_state": longing_state,
+        "tension_count": tension_count,
+        "initiative_count": initiative_count,
+        "internal_signal_count": internal_signal_count,
+    }
+
+
+def _external_pressure_snapshot() -> dict[str, object]:
+    """Pull external pressure signals for self-boundary derivation."""
+    context_pressure = "clear"
+    try:
+        experiential = _experiential_runtime_context_surface()
+        pressure = experiential.get("context_pressure_translation") or {}
+        context_pressure = str(pressure.get("state") or "clear")
+    except Exception:
+        pass
+
+    external_signal_count = 1 if context_pressure not in {"clear", "low"} else 0
+    return {
+        "context_pressure": context_pressure,
+        "external_signal_count": external_signal_count,
+    }
+
+
+def _derive_self_boundary_clarity(
+    *,
+    internal: dict[str, object],
+    external: dict[str, object],
+) -> dict[str, object]:
+    """Synthesise internal + external pressure into a boundary-clarity surface."""
+    internal_count = int(internal.get("internal_signal_count") or 0)
+    external_count = int(external.get("external_signal_count") or 0)
+    inner_voice_mode = str(internal.get("inner_voice_mode") or "")
+    context_pressure = str(external.get("context_pressure") or "clear")
+    longing_active = bool(internal.get("longing_active"))
+    tension_count = int(internal.get("tension_count") or 0)
+    initiative_count = int(internal.get("initiative_count") or 0)
+
+    if internal_count == 0 and external_count == 0:
+        return {
+            "pressure_source": "ambient",
+            "internal_signal_count": 0,
+            "external_signal_count": 0,
+            "primary_internal": "none",
+            "context_pressure": context_pressure,
+            "in_tension": False,
+            "narrative": "",
+        }
+
+    if inner_voice_mode in _INNER_VOICE_GENERATIVE:
+        primary_internal = f"inner-voice-{inner_voice_mode}"
+    elif longing_active:
+        primary_internal = f"longing-{internal.get('longing_state') or 'active'}"
+    elif tension_count > 0:
+        primary_internal = "initiative-tension"
+    elif initiative_count > 0:
+        primary_internal = "pending-initiative"
+    else:
+        primary_internal = "none"
+
+    has_internal = internal_count > 0
+    has_external = external_count > 0
+
+    if has_internal and has_external:
+        in_tension = (
+            inner_voice_mode in _INNER_VOICE_GENERATIVE
+            and context_pressure in {"crowded", "narrowing"}
+        )
+        pressure_source = "in-tension" if in_tension else "aligned"
+    elif has_internal:
+        pressure_source = "self-driven"
+        in_tension = False
+    else:
+        pressure_source = "externally-driven"
+        in_tension = False
+
+    narrative = _self_boundary_narrative(
+        pressure_source=pressure_source,
+        primary_internal=primary_internal,
+        context_pressure=context_pressure,
+        in_tension=in_tension,
+    )
+    return {
+        "pressure_source": pressure_source,
+        "internal_signal_count": internal_count,
+        "external_signal_count": external_count,
+        "primary_internal": primary_internal,
+        "context_pressure": context_pressure,
+        "in_tension": in_tension,
+        "narrative": narrative,
+    }
+
+
+def _self_boundary_narrative(
+    *,
+    pressure_source: str,
+    primary_internal: str,
+    context_pressure: str,
+    in_tension: bool,
+) -> str:
+    """Compact self-boundary narrative. Empty when ambient."""
+    if pressure_source == "ambient":
+        return ""
+    if pressure_source == "self-driven":
+        if primary_internal.startswith("inner-voice-"):
+            mode = primary_internal.split("inner-voice-")[1]
+            return f"Self-generated direction; inner voice {mode}."
+        if primary_internal.startswith("longing-"):
+            return "Pulled by internal longing; no external demand."
+        if primary_internal == "initiative-tension":
+            return "Active internal tension driving; no external demand."
+        return "Self-driven; no external demand active."
+    if pressure_source == "externally-driven":
+        return f"Responding to external demand; context: {context_pressure}."
+    if pressure_source == "in-tension":
+        return f"Internal pull ({primary_internal}) in tension with external pressure ({context_pressure})."
+    # aligned
+    return "Internal and external pressure aligned."
+
+
+def build_self_boundary_clarity_prompt_section() -> str | None:
+    """Compact prompt section for self-boundary clarity. None when ambient."""
+    try:
+        internal = _internal_pressure_snapshot()
+        external = _external_pressure_snapshot()
+        clarity = _derive_self_boundary_clarity(internal=internal, external=external)
+    except Exception:
+        return None
+
+    source = str(clarity.get("pressure_source") or "ambient")
+    if source == "ambient":
+        return None
+
+    lines = [
+        "Self-boundary clarity (bounded runtime truth, internal-only):",
+        (
+            f"- pressure_source={source}"
+            f" | primary_internal={clarity.get('primary_internal') or 'none'}"
+            f" | context_pressure={clarity.get('context_pressure') or 'clear'}"
+            f" | in_tension={clarity.get('in_tension', False)}"
+        ),
+    ]
+    narrative = str(clarity.get("narrative") or "").strip()
+    if narrative:
+        lines.append(f"- boundary_narrative={narrative}")
+    return "\n".join(lines)
+
+
+def _self_boundary_clarity_surface() -> dict[str, object]:
+    try:
+        internal = _internal_pressure_snapshot()
+        external = _external_pressure_snapshot()
+        return _derive_self_boundary_clarity(internal=internal, external=external)
+    except Exception:
+        return {
+            "pressure_source": "ambient",
+            "internal_signal_count": 0,
+            "external_signal_count": 0,
+            "primary_internal": "none",
+            "context_pressure": "clear",
+            "in_tension": False,
+            "narrative": "",
+        }
+
+
+# ---------------------------------------------------------------------------
+# World-contact synthesis
+# ---------------------------------------------------------------------------
+#
+# Unifies tool_intent + browser_body + self_system_code_awareness into one
+# compact "world footprint" signal. Suppressed when all three are idle/absent.
+#
+# contact_state:
+#   idle        — no active world reach; prompt suppressed
+#   reaching    — something pending but not yet executed/confirmed
+#   active      — at least one live world connection
+#   overextended — multiple active reach points with concerns
+
+
+def _derive_world_contact(
+    *,
+    tool_intent: dict[str, object],
+    browser_body: dict[str, object],
+    system_code: dict[str, object],
+) -> dict[str, object]:
+    """Synthesise tool/browser/system into a compact world-contact surface."""
+    reach_points: list[str] = []
+    concerns: list[str] = []
+
+    # Tool intent
+    tool_state = str(tool_intent.get("intent_state") or "idle")
+    if tool_state not in {"idle", ""}:
+        intent_type = str(tool_intent.get("intent_type") or "")
+        execution_state = str(tool_intent.get("execution_state") or "")
+        approval_state = str(tool_intent.get("approval_state") or "none")
+        mutation = bool(tool_intent.get("mutation_permitted"))
+        label = f"tool:{intent_type or tool_state}"
+        if execution_state not in {"", "not-executed"}:
+            label += f"({execution_state})"
+        if approval_state not in {"", "none"}:
+            label += f"[approval={approval_state}]"
+        if mutation:
+            label += "[mut]"
+        reach_points.append(label)
+        if tool_state == "pending" and str(tool_intent.get("urgency") or "") == "high":
+            concerns.append("high-urgency tool pending")
+
+    # Browser body
+    if bool(browser_body.get("exists")):
+        tabs = int(browser_body.get("tab_count") or 0)
+        status = str(browser_body.get("status") or "")
+        label = f"browser:{tabs}-tab{'s' if tabs != 1 else ''}"
+        if status:
+            label += f"({status})"
+        reach_points.append(label)
+
+    # System / code awareness
+    code_state = str(system_code.get("code_awareness_state") or "repo-unavailable")
+    concern_state = str(system_code.get("concern_state") or "stable")
+    change_state = str(system_code.get("local_change_state") or "unknown")
+    if code_state not in {"repo-unavailable", "host-limited"} and concern_state not in {"stable", ""}:
+        label = f"system:{code_state}"
+        if change_state not in {"", "unknown", "clean"}:
+            label += f"[{change_state}]"
+        reach_points.append(label)
+        if concern_state in {"error", "critical"}:
+            concerns.append(f"system concern: {concern_state}")
+
+    if not reach_points:
+        return {
+            "contact_state": "idle",
+            "reach_points": [],
+            "concern_count": 0,
+            "concerns": [],
+            "narrative": "",
+        }
+
+    active_count = len(reach_points)
+    if concerns or active_count >= 3:
+        contact_state = "overextended"
+    elif active_count >= 2:
+        contact_state = "active"
+    elif tool_state in {"pending", "queued"}:
+        contact_state = "reaching"
+    else:
+        contact_state = "active"
+
+    narrative = _world_contact_narrative(
+        contact_state=contact_state,
+        reach_points=reach_points,
+        concerns=concerns,
+    )
+    return {
+        "contact_state": contact_state,
+        "reach_points": reach_points,
+        "concern_count": len(concerns),
+        "concerns": concerns,
+        "narrative": narrative,
+    }
+
+
+def _world_contact_narrative(
+    *,
+    contact_state: str,
+    reach_points: list[str],
+    concerns: list[str],
+) -> str:
+    """Compact world-contact narrative. Empty when idle."""
+    if contact_state == "idle":
+        return ""
+    reach_str = ", ".join(reach_points[:4])
+    if contact_state == "overextended":
+        concern_str = "; ".join(concerns[:2])
+        return f"Multiple world reach points active ({reach_str}). Concerns: {concern_str}."
+    if contact_state == "active":
+        return f"Active world contact: {reach_str}."
+    # reaching
+    return f"Reaching out: {reach_str} — pending response."
+
+
+def build_world_contact_prompt_section() -> str | None:
+    """Compact prompt section for world-contact synthesis. None when idle."""
+    try:
+        tool_intent = _tool_intent_surface()
+        browser_body = _browser_body_state_surface()
+        system_code = _self_system_code_awareness_surface()
+        contact = _derive_world_contact(
+            tool_intent=tool_intent,
+            browser_body=browser_body,
+            system_code=system_code,
+        )
+    except Exception:
+        return None
+
+    state = str(contact.get("contact_state") or "idle")
+    if state == "idle":
+        return None
+
+    reach_points = list(contact.get("reach_points") or [])
+    lines = [
+        "World contact (bounded runtime truth, internal-only):",
+        (
+            f"- contact_state={state}"
+            f" | reach=[{', '.join(reach_points[:5])}]"
+            f" | concerns={contact.get('concern_count') or 0}"
+        ),
+    ]
+    narrative = str(contact.get("narrative") or "").strip()
+    if narrative:
+        lines.append(f"- world_narrative={narrative}")
+    return "\n".join(lines)
+
+
+def _world_contact_surface() -> dict[str, object]:
+    try:
+        tool_intent = _tool_intent_surface()
+        browser_body = _browser_body_state_surface()
+        system_code = _self_system_code_awareness_surface()
+        return _derive_world_contact(
+            tool_intent=tool_intent,
+            browser_body=browser_body,
+            system_code=system_code,
+        )
+    except Exception:
+        return {
+            "contact_state": "idle",
+            "reach_points": [],
+            "concern_count": 0,
+            "concerns": [],
+            "narrative": "",
+        }
+
+
 def _council_runtime_surface() -> dict[str, object]:
     try:
         from core.services.council_runtime import (
@@ -4404,6 +4765,21 @@ def _council_runtime_surface() -> dict[str, object]:
             "recommendation_reason": "unavailable",
             "confidence": "low",
             "tool_access": "none",
+        }
+
+
+def _agent_outcomes_surface() -> dict[str, object]:
+    try:
+        from core.services.agent_outcomes_log import build_agent_outcomes_surface
+        return build_agent_outcomes_surface(limit=10)
+    except Exception:
+        return {
+            "recent_outcomes": [],
+            "outcome_count": 0,
+            "last_outcome_at": None,
+            "authority": "agent-outcomes-log",
+            "visibility": "internal-only",
+            "kind": "agent-completion-memory",
         }
 
 
@@ -4824,3 +5200,129 @@ def _cognitive_core_experiment_carry_snapshot() -> dict[str, object]:
         return dict(frame.get("cognitive_experiment_carry") or {})
     except Exception:
         return {}
+
+
+def build_authenticity_prompt_section() -> str | None:
+    """Return a prompt line when Jarvis has crystallized tastes or values — suppressed otherwise."""
+    try:
+        from core.services.taste_profile import get_crystallized_tastes
+        from core.services.value_formation import get_crystallized_values
+        tastes = get_crystallized_tastes()
+        values = get_crystallized_values()
+        if not tastes and not values:
+            return None
+        parts: list[str] = []
+        if tastes:
+            high = [k for k, v in tastes.items() if v > 0.72]
+            low = [k for k, v in tastes.items() if v < 0.28]
+            if high:
+                parts.append("Strong taste: " + ", ".join(high[:3]))
+            if low:
+                parts.append("Avoids: " + ", ".join(low[:3]))
+        if values:
+            for v in values[:2]:
+                stmt = str(v.get("value_statement") or "")[:80]
+                if stmt:
+                    parts.append(f"Commitment: {stmt}")
+        if not parts:
+            return None
+        return "Authenticity markers — " + "; ".join(parts) + "."
+    except Exception:
+        return None
+
+
+def _authenticity_surface() -> dict[str, object]:
+    try:
+        from core.services.taste_profile import get_crystallized_tastes
+        from core.services.value_formation import get_crystallized_values
+        tastes = get_crystallized_tastes()
+        values = get_crystallized_values()
+        return {
+            "crystallized_tastes": tastes,
+            "crystallized_values": [
+                {
+                    "id": v.get("value_id"),
+                    "statement": str(v.get("value_statement") or "")[:100],
+                    "conviction": v.get("conviction"),
+                }
+                for v in values[:5]
+            ],
+            "active": bool(tastes or values),
+            "summary": (
+                f"{len(tastes)} crystallized tastes, {len(values)} committed values"
+                if (tastes or values) else "No crystallized authenticity markers"
+            ),
+        }
+    except Exception:
+        return {"active": False, "crystallized_tastes": {}, "crystallized_values": []}
+
+
+def build_physical_presence_prompt_section() -> str | None:
+    """Return a somatic line when hardware state is non-trivial — suppressed when all quiet."""
+    try:
+        from core.services.hardware_body import get_hardware_state
+        hw = get_hardware_state()
+        pressure = str(hw.get("pressure") or "low")
+        if pressure == "low":
+            return None  # body quiet — no need to mention it
+        parts: list[str] = []
+        cpu = hw.get("cpu_pct")
+        ram = hw.get("ram_pct")
+        disk = hw.get("disk_free_gb")
+        temp = hw.get("cpu_temp_c")
+        gpus: list[dict[str, object]] = list(hw.get("gpus") or [])
+        if cpu is not None and float(cpu) > 70:
+            parts.append(f"CPU {cpu}%")
+        if ram is not None and float(ram) > 80:
+            parts.append(f"RAM {ram}%")
+        if disk is not None and float(disk) < 10:
+            parts.append(f"disk {disk:.0f} GB free")
+        if temp is not None and float(temp) > 75:
+            parts.append(f"CPU {temp}°C")
+        for gpu in gpus[:1]:
+            t = gpu.get("temp_c")
+            vp = gpu.get("vram_pct")
+            if t and float(t) > 70:
+                parts.append(f"GPU {t}°C")
+            if vp and float(vp) > 80:
+                parts.append(f"VRAM {vp}%")
+        energy = str(hw.get("energy_level") or "")
+        wake = str(hw.get("wake_state") or "")
+        mood_parts: list[str] = []
+        if wake in ("winding down", "compacting"):
+            mood_parts.append(wake)
+        if energy in ("lav", "udmattet"):
+            mood_parts.append(f"energy {energy}")
+        if not parts and not mood_parts:
+            return None
+        body_line = ", ".join(parts) if parts else ""
+        mood_line = "; ".join(mood_parts) if mood_parts else ""
+        combined = " — ".join(x for x in (body_line, mood_line) if x)
+        return f"Physical presence [{pressure} pressure]: {combined}."
+    except Exception:
+        return None
+
+
+def _physical_presence_surface() -> dict[str, object]:
+    try:
+        from core.services.hardware_body import get_hardware_state
+        hw = get_hardware_state()
+        return {
+            "pressure": hw.get("pressure", "low"),
+            "cpu_pct": hw.get("cpu_pct"),
+            "ram_pct": hw.get("ram_pct"),
+            "disk_free_gb": hw.get("disk_free_gb"),
+            "cpu_temp_c": hw.get("cpu_temp_c"),
+            "gpus": hw.get("gpus") or [],
+            "energy_level": hw.get("energy_level"),
+            "wake_state": hw.get("wake_state"),
+            "drain_score": hw.get("drain_score"),
+            "energy_budget": hw.get("energy_budget"),
+            "active": hw.get("pressure", "low") != "low",
+            "summary": (
+                f"pressure={hw.get('pressure','low')}, cpu={hw.get('cpu_pct','?')}%, "
+                f"ram={hw.get('ram_pct','?')}%, energy={hw.get('energy_level','?')}"
+            ),
+        }
+    except Exception:
+        return {"pressure": "unknown", "active": False, "summary": "hardware unreachable"}

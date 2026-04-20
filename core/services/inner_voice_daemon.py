@@ -583,6 +583,27 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
     except Exception:
         pass
 
+    # 1.6 Anti-attractor — steer away from recently repeated themes
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT current_concern, mood_tone FROM protected_inner_voices "
+                "ORDER BY id DESC LIMIT 6"
+            ).fetchall()
+        recent_concerns = [
+            str(r["current_concern"] or "").strip()[:60]
+            for r in rows[1:]  # skip the most recent (already chained above)
+            if str(r["current_concern"] or "").strip()
+        ]
+        if recent_concerns:
+            context_lines.append(
+                "- Recent recurring concerns (steer away from these to avoid loops): "
+                + "; ".join(recent_concerns[:4])
+            )
+    except Exception:
+        pass
+
     context_lines.extend(
         [
             "- Inner voice may remain unresolved; candidate thoughts and half-formed pulls are allowed.",
@@ -1084,6 +1105,7 @@ def _looks_like_inner_voice_meta(text: str) -> bool:
 # ---------------------------------------------------------------------------
 
 _INITIATIVE_TOKENS = (
+    # English
     "i should",
     "i will",
     "i could",
@@ -1100,6 +1122,23 @@ _INITIATIVE_TOKENS = (
     "need to revisit",
     "should check",
     "might be worth",
+    # Danish
+    "jeg vil",
+    "jeg bør",
+    "jeg kunne",
+    "næste",
+    "følge op",
+    "huske at",
+    "værd at",
+    "nysgerrig på",
+    "det ville give mening",
+    "måske kunne",
+    "burde tjekke",
+    "lyst til",
+    "gider",
+    "tænker på",
+    "vende tilbage til",
+    "interesseret i",
 )
 
 

@@ -51,6 +51,12 @@ def detect_value_from_outcome(
     return None
 
 
+def get_crystallized_values(conviction_threshold: float = 0.65) -> list[dict[str, object]]:
+    """Return values with conviction above threshold — these have become commitments."""
+    values = list_cognitive_formed_values(limit=20)
+    return [v for v in values if float(v.get("conviction", 0)) >= conviction_threshold]
+
+
 def build_formed_values_surface() -> dict[str, object]:
     values = list_cognitive_formed_values(limit=10)
     high_conviction = [v for v in values if float(v.get("conviction", 0)) > 0.6]

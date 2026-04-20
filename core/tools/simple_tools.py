@@ -40,6 +40,11 @@ from core.tools.comfyui_tools import (
     _exec_comfyui_history,
     _exec_comfyui_objects,
 )
+from core.tools.pollinations_tools import (
+    POLLINATIONS_TOOL_DEFINITIONS,
+    _exec_pollinations_image,
+    _exec_pollinations_video,
+)
 from core.tools.tiktok_tools import (
     TIKTOK_TOOL_DEFINITIONS,
     _exec_tiktok_upload,
@@ -1473,6 +1478,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # --- Browser tools (Playwright) ---
     *BROWSER_TOOL_DEFINITIONS,
     *COMFYUI_TOOL_DEFINITIONS,
+    *POLLINATIONS_TOOL_DEFINITIONS,
     *TIKTOK_TOOL_DEFINITIONS,
     *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
@@ -4357,6 +4363,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "comfyui_workflow": _exec_comfyui_workflow,
     "comfyui_history": _exec_comfyui_history,
     "comfyui_objects": _exec_comfyui_objects,
+    # Pollinations.ai free image gen (no RAM, no auth)
+    "pollinations_image": _exec_pollinations_image,
+    "pollinations_video": _exec_pollinations_video,
     # TikTok tools
     "tiktok_upload": _exec_tiktok_upload,
     "tiktok_login": _exec_tiktok_login,

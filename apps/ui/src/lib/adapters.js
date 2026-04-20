@@ -4452,6 +4452,21 @@ export const backend = {
     }
   },
 
+  /**
+   * Fetch all cognitive surfaces from heartbeat_runtime.
+   * Returns the flat dict of surface-name → surface-data, including
+   * the 35+ services built 2026-04-20 (valence, proprioception, etc.).
+   */
+  async getCognitiveSurfaces() {
+    const runtime = await requestJson('/mc/runtime').catch(() => ({}))
+    const heartbeat = runtime?.heartbeat_runtime || {}
+    // cognitive_architecture is where _build_cognitive_surfaces() lands
+    return {
+      fetchedAt: new Date().toISOString(),
+      surfaces: heartbeat?.cognitive_architecture || {},
+    }
+  },
+
   async getMissionControlAgents() {
     return requestJson('/mc/agents')
   },

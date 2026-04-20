@@ -184,6 +184,10 @@ def build_runtime_self_model() -> dict[str, object]:
             "mortality_awareness": _mortality_awareness_surface(),
             "relational_warmth": _relational_warmth_surface(),
             "collective_pulse": _collective_pulse_surface(),
+            "action_router": _action_router_surface(),
+            "sustained_attention": _sustained_attention_surface(),
+            "memory_density": _memory_density_surface(),
+            "deep_reflection": _deep_reflection_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5798,6 +5802,70 @@ def _collective_pulse_surface() -> dict[str, object]:
 def build_collective_pulse_prompt_section() -> str | None:
     try:
         from core.services.collective_pulse_daemon import build_collective_pulse_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _action_router_surface() -> dict[str, object]:
+    try:
+        from core.services.action_router import build_action_router_surface
+        return build_action_router_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_action_router_prompt_section() -> str | None:
+    try:
+        from core.services.action_router import build_action_router_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _sustained_attention_surface() -> dict[str, object]:
+    try:
+        from core.services.sustained_attention import build_sustained_attention_surface
+        return build_sustained_attention_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_sustained_attention_prompt_section() -> str | None:
+    try:
+        from core.services.sustained_attention import build_sustained_attention_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _memory_density_surface() -> dict[str, object]:
+    try:
+        from core.services.memory_density import build_memory_density_surface
+        return build_memory_density_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_memory_density_prompt_section() -> str | None:
+    try:
+        from core.services.memory_density import build_memory_density_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _deep_reflection_surface() -> dict[str, object]:
+    try:
+        from core.services.deep_reflection_slot import build_deep_reflection_surface
+        return build_deep_reflection_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_deep_reflection_prompt_section() -> str | None:
+    try:
+        from core.services.deep_reflection_slot import build_deep_reflection_prompt_section as _b
         return _b()
     except Exception:
         return None

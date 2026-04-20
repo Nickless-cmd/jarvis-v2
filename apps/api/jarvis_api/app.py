@@ -108,6 +108,11 @@ def create_app() -> FastAPI:
                     logger.info("agent recovery: %s", recovery)
             except Exception as _exc:
                 logger.warning("agent recovery failed: %s", _exc)
+            try:
+                from core.services.cadence_producers import produce_emergent_signals_from_history
+                produce_emergent_signals_from_history()
+            except Exception as _exc:
+                logger.warning("emergent signal warm-start failed: %s", _exc)
             event_bus.publish("runtime.started", {"component": "api"})
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):

@@ -1421,6 +1421,13 @@ def mc_conflict_resolution() -> dict:
     return {"trace": trace, "active": trace is not None}
 
 
+@router.get("/self-code-changes")
+def mc_self_code_changes() -> dict:
+    """Return Jarvis' recent self-mutations — files he wrote or edited in his own runtime."""
+    from core.services.self_mutation_lineage import build_self_mutation_lineage_surface
+    return build_self_mutation_lineage_surface(limit=50)
+
+
 @router.get("/self-deception-guard")
 def mc_self_deception_guard() -> dict:
     """Return the last self-deception guard trace."""

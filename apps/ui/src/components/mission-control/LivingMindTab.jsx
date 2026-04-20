@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame, Archive, Stars, Palette, Infinity } from 'lucide-react'
+import { ChevronRight, Cpu, Activity, Moon, Sparkles, Heart, Brain, Network, Wand2, Users, Map, Lightbulb, GraduationCap, TrendingUp, Zap, Ghost, Swords, Eye, Compass, Layers, Clock, BookOpen, Wind, Shuffle, Flame, Archive, Stars, Palette, Infinity, GitBranch } from 'lucide-react'
 import { formatFreshness, sectionTitleWithMeta } from './meta'
 
 /* ─── Shared helpers ─── */
@@ -1114,6 +1114,8 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
   const hasMemoryDecay = Boolean(memoryDecay?.lastRediscovery || memoryDecay?.rediscoveryBuffer?.length > 0)
   const dreamInsights = data?.dreamInsights || null
   const hasDreamInsights = Boolean(dreamInsights?.latestInsight)
+  const selfCodeChanges = data?.selfCodeChanges || null
+  const hasSelfCodeChanges = Boolean(selfCodeChanges?.mutation_count > 0)
   const codeAesthetic = data?.codeAesthetic || null
   const hasCodeAesthetic = Boolean(codeAesthetic?.latestReflection)
   const existentialWonder = data?.existentialWonder || null
@@ -1238,6 +1240,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'desires', targetId: 'living-mind-desires', label: 'Appetitter', icon: Flame, active: hasDesires, status: null, statusLabel: `${desires?.activeCount ?? 0} aktive` },
     { id: 'memory-decay', targetId: 'living-mind-memory-decay', label: 'Glemsel', icon: Archive, active: hasMemoryDecay, status: null, statusLabel: memoryDecay?.lastRediscovery ? 'genfundet' : 'stille' },
     { id: 'dream-insights', targetId: 'living-mind-dream-insights', label: 'Drøm-indsigt', icon: Stars, active: hasDreamInsights, status: null, statusLabel: `${dreamInsights?.insightBuffer?.length ?? 0} indsigter` },
+    { id: 'self-code-changes', targetId: 'living-mind-self-code-changes', label: 'Self-code changes', icon: GitBranch, active: hasSelfCodeChanges, status: null, statusLabel: hasSelfCodeChanges ? `${selfCodeChanges?.mutation_count} ændringer` : 'ingen' },
     { id: 'code-aesthetic', targetId: 'living-mind-code-aesthetic', label: 'Kode-æstetik', icon: Palette, active: hasCodeAesthetic, status: null, statusLabel: hasCodeAesthetic ? 'ugentlig' : 'afventer' },
     { id: 'existential-wonder', targetId: 'living-mind-existential-wonder', label: 'Undren', icon: Infinity, active: hasExistentialWonder, status: null, statusLabel: `${existentialWonder?.wonderBuffer?.length ?? 0} spørgsmål` },
   ]
@@ -2313,6 +2316,37 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
                 <li key={i} className="muted" style={{ marginBottom: 4 }}>{s}</li>
               ))}
             </ul>
+          ) : null}
+        </article>
+      </section>
+      ) : null}
+
+      {hasSelfCodeChanges ? (
+      <section className="mc-section-grid">
+        <article id="living-mind-self-code-changes" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/self-code-changes',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header stacked">
+            <div>
+              <h3>Self-code changes</h3>
+              <p className="muted">Filer Jarvis selv har skrevet eller ændret i sit eget runtime, workspace eller apps.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{selfCodeChanges.mutation_count} ændringer</span>
+          </div>
+          <ul style={{ margin: '8px 0 0', paddingLeft: 16, fontSize: '0.85em' }}>
+            {(selfCodeChanges.recent_mutations || []).slice(0, 10).map((m) => (
+              <li key={m.mutation_id} style={{ marginBottom: 4 }}>
+                <span className="muted">[{m.when?.slice(0, 16) || '?'}]</span>{' '}
+                <strong>{m.change_type}</strong>{' '}
+                <code style={{ fontSize: '0.9em' }}>{m.path}</code>{' '}
+                <span className="muted">({m.category})</span>
+              </li>
+            ))}
+          </ul>
+          {selfCodeChanges.last_mutation_at ? (
+            <small className="muted" style={{ display: 'block', marginTop: 6 }}>{`seneste: ${selfCodeChanges.last_mutation_at?.slice(0, 16)}`}</small>
           ) : null}
         </article>
       </section>

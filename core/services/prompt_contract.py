@@ -378,6 +378,11 @@ def build_visible_chat_prompt_assembly(
         parts.append(channel_section)
         derived_inputs.append("channel context")
 
+    mutation_section = _self_mutation_lineage_section()
+    if mutation_section:
+        parts.append(mutation_section)
+        derived_inputs.append("self mutation lineage")
+
     if relevance.include_memory:
         memory_selection = _workspace_memory_section(
             workspace_dir / "MEMORY.md",
@@ -1142,6 +1147,18 @@ def _workspace_file_section(
     if not lines:
         return None
     return "\n".join([f"{label}:", *lines])
+
+
+def _self_mutation_lineage_section() -> str | None:
+    """Returns a compact section about recent self-changes, or None if none."""
+    try:
+        from core.services.self_mutation_lineage import build_self_mutation_prompt_lines
+        lines = build_self_mutation_prompt_lines(limit=5)
+        if not lines:
+            return None
+        return "## Recent self-changes\nI recently modified the following in myself:\n" + "\n".join(f"- {l}" for l in lines)
+    except Exception:
+        return None
 
 
 def _channel_workspace_path() -> Path:

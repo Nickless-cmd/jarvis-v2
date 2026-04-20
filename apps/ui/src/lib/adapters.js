@@ -3259,7 +3259,7 @@ export const backend = {
       requestJson('/mc/jarvis'),
       requestJson('/mc/runtime-contract'),
     ])
-    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload, absenceStatePayload, creativeDriftPayload, desiresPayload, memoryDecayPayload, dreamInsightsPayload, codeAestheticPayload, existentialWonderPayload] = await Promise.all([
+    const [attentionPayload, conflictPayload, guardPayload, selfModelPayload, internalCadencePayload, dreamInfluencePayload, selfSystemCodeAwarenessPayload, experientialRuntimeContextPayload, innerVoiceDaemonPayload, bodyStatePayload, surpriseStatePayload, tasteStatePayload, ironyStatePayload, thoughtStreamPayload, thoughtProposalsPayload, conflictSignalPayload, reflectionCyclePayload, curiosityPayload, metaReflectionPayload, experiencedTimePayload, developmentNarrativePayload, absenceStatePayload, creativeDriftPayload, desiresPayload, memoryDecayPayload, dreamInsightsPayload, codeAestheticPayload, existentialWonderPayload, selfCodeChangesPayload] = await Promise.all([
       requestJson('/mc/attention-budget').catch(() => null),
       requestJson('/mc/conflict-resolution').catch(() => null),
       requestJson('/mc/self-deception-guard').catch(() => null),
@@ -3288,6 +3288,7 @@ export const backend = {
       requestJson('/mc/dream-insights').catch(() => null),
       requestJson('/mc/code-aesthetic').catch(() => null),
       requestJson('/mc/existential-wonder').catch(() => null),
+      requestJson('/mc/self-code-changes').catch(() => null),
     ])
     const state = payload?.state || {}
     const memory = payload?.memory || {}
@@ -4191,6 +4192,7 @@ export const backend = {
       narrativeIdentityContinuity: normalizeNarrativeIdentityContinuity(selfModelPayload?.narrative_identity_continuity || {}),
       dreamIdentityCarryAwareness: normalizeDreamIdentityCarryAwareness(selfModelPayload?.dream_identity_carry_awareness || {}),
       relationContinuitySelfAwareness: normalizeRelationContinuitySelfAwareness(selfModelPayload?.relation_continuity_self_awareness || {}),
+      selfCodeChanges: selfCodeChangesPayload || null,
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

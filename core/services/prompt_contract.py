@@ -2134,13 +2134,19 @@ def _heartbeat_continuity_summary(context: dict[str, object]) -> str | None:
     session = visible_session_continuity()
     if not session.get("active"):
         return None
-    preview = str(session.get("latest_text_preview") or "").strip()
-    if not preview:
-        return None
+    latest_status = str(session.get("latest_status") or "").strip() or "unknown"
+    latest_finished_at = str(session.get("latest_finished_at") or "").strip() or "unknown"
+    latest_capability = str(session.get("latest_capability_id") or "").strip()
+    parts = [
+        f"latest_status={latest_status}",
+        f"latest_finished_at={latest_finished_at}",
+    ]
+    if latest_capability:
+        parts.append(f"latest_capability={latest_capability}")
     return "\n".join(
         [
             "Heartbeat continuity summary:",
-            f"- latest_visible_preview={preview}",
+            "- " + " | ".join(parts),
         ]
     )
 
@@ -2976,26 +2982,12 @@ def _visible_session_continuity_instruction() -> str | None:
     if not continuity["active"]:
         return None
 
-    def _trim(text: str | None, *, limit: int) -> str:
-        cleaned = " ".join(str(text or "").split()).strip()
-        if not cleaned:
-            return ""
-        if len(cleaned) > limit:
-            return cleaned[: limit - 1].rstrip() + "…"
-        return cleaned
-
     parts = [
         f"latest_status={continuity.get('latest_status') or 'unknown'}",
         f"latest_finished_at={continuity.get('latest_finished_at') or 'unknown'}",
     ]
     if continuity.get("latest_capability_id"):
         parts.append(f"latest_capability={continuity['latest_capability_id']}")
-    latest_user = _trim(continuity.get("latest_user_message_preview"), limit=120)
-    if latest_user:
-        parts.append(f"latest_user={latest_user}")
-    latest_assistant = _trim(continuity.get("latest_text_preview"), limit=140)
-    if latest_assistant:
-        parts.append(f"latest_assistant={latest_assistant}")
     lines = [
         "Visible session continuity:",
         "- " + " | ".join(parts),
@@ -3037,12 +3029,6 @@ def _visible_session_continuity_instruction() -> str | None:
             ]
             if item.get("capability_id"):
                 run_parts.append(f"cap={item.get('capability_id')}")
-            user_preview = _trim(item.get("user_message_preview"), limit=110)
-            if user_preview:
-                run_parts.append(f"user={user_preview}")
-            assistant_preview = _trim(item.get("text_preview"), limit=130)
-            if assistant_preview:
-                run_parts.append(f"assistant={assistant_preview}")
             lines.append("- " + " | ".join(run_parts))
     return "\n".join(lines)
 
@@ -4131,13 +4117,16 @@ def _delegated_continuity_summary(context: dict[str, object]) -> str | None:
     if not recent_runs:
         return None
     run = recent_runs[0]
-    preview = str(run.get("text_preview") or "").strip()
-    if not preview:
-        return None
+    status = str(run.get("status") or "").strip() or "unknown"
+    finished_at = str(run.get("finished_at") or "").strip() or "unknown"
+    capability_id = str(run.get("capability_id") or "").strip()
+    parts = [f"latest_status={status}", f"latest_finished_at={finished_at}"]
+    if capability_id:
+        parts.append(f"latest_capability={capability_id}")
     return "\n".join(
         [
             "Delegated continuity:",
-            f"- latest_visible_preview={preview}",
+            "- " + " | ".join(parts),
         ]
     )
 

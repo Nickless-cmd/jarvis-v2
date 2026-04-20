@@ -1617,7 +1617,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             unregister_visible_run(run.run_id)
 
 
-def _preview_text(text: str, limit: int = 120) -> str:
+def _preview_text(text: str, limit: int = 320) -> str:
     normalized = " ".join((text or "").split())
     if len(normalized) <= limit:
         return normalized

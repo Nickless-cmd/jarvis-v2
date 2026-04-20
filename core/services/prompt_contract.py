@@ -2501,6 +2501,13 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.runtime_self_model import build_thought_thread_prompt_section
+        section = build_thought_thread_prompt_section()
+        if section:
+            _append_entry(key="thought-thread", section=section, importance="background")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_physical_presence_prompt_section
         section = build_physical_presence_prompt_section()
         if section:

@@ -855,6 +855,54 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "text_resonance",
+        lambda: __import__(
+            "core.services.text_resonance",
+            fromlist=["build_text_resonance_surface"],
+        ).build_text_resonance_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "creative_impulse",
+        lambda: __import__(
+            "core.services.creative_impulse_daemon",
+            fromlist=["build_creative_impulse_surface"],
+        ).build_creative_impulse_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "shadow_scan",
+        lambda: __import__(
+            "core.services.shadow_scan_daemon",
+            fromlist=["build_shadow_scan_surface"],
+        ).build_shadow_scan_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "mortality_awareness",
+        lambda: __import__(
+            "core.services.mortality_awareness",
+            fromlist=["build_mortality_awareness_surface"],
+        ).build_mortality_awareness_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "relational_warmth",
+        lambda: __import__(
+            "core.services.relational_warmth",
+            fromlist=["build_relational_warmth_surface"],
+        ).build_relational_warmth_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "collective_pulse",
+        lambda: __import__(
+            "core.services.collective_pulse_daemon",
+            fromlist=["build_collective_pulse_surface"],
+        ).build_collective_pulse_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -1100,6 +1148,31 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.dream_consolidation_daemon import tick as _dream_con_tick
         _dream_con_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.creative_impulse_daemon import tick as _impulse_tick
+        _impulse_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.shadow_scan_daemon import tick as _shadow_tick
+        _shadow_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.mortality_awareness import tick as _mortality_tick
+        _mortality_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.relational_warmth import tick as _warmth_tick
+        _warmth_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.collective_pulse_daemon import tick as _collective_tick
+        _collective_tick(30.0)
     except Exception:
         pass
 

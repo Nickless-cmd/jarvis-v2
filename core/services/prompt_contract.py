@@ -2606,6 +2606,48 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.runtime_self_model import build_text_resonance_prompt_section
+        section = build_text_resonance_prompt_section()
+        if section:
+            _append_entry(key="text-resonance", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_creative_impulse_prompt_section
+        section = build_creative_impulse_prompt_section()
+        if section:
+            _append_entry(key="creative-impulse", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_shadow_scan_prompt_section
+        section = build_shadow_scan_prompt_section()
+        if section:
+            _append_entry(key="shadow-scan", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_mortality_awareness_prompt_section
+        section = build_mortality_awareness_prompt_section()
+        if section:
+            _append_entry(key="mortality-awareness", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_relational_warmth_prompt_section
+        section = build_relational_warmth_prompt_section()
+        if section:
+            _append_entry(key="relational-warmth", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_collective_pulse_prompt_section
+        section = build_collective_pulse_prompt_section()
+        if section:
+            _append_entry(key="collective-pulse", section=section, importance="background")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_physical_presence_prompt_section
         section = build_physical_presence_prompt_section()
         if section:

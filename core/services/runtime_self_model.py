@@ -157,6 +157,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "creative_projects": _creative_projects_surface(),
             "day_shape_memory": _day_shape_memory_surface(),
             "avoidance_detector": _avoidance_detector_surface(),
+            "thought_thread": _thought_thread_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5387,6 +5388,22 @@ def _avoidance_detector_surface() -> dict[str, object]:
 def build_avoidance_detector_prompt_section() -> str | None:
     try:
         from core.services.avoidance_detector import build_avoidance_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _thought_thread_surface() -> dict[str, object]:
+    try:
+        from core.services.thought_thread import build_thought_thread_surface
+        return build_thought_thread_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_thought_thread_prompt_section() -> str | None:
+    try:
+        from core.services.thought_thread import build_thought_thread_prompt_section as _b
         return _b()
     except Exception:
         return None

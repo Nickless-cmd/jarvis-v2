@@ -687,6 +687,14 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "thought_thread",
+        lambda: __import__(
+            "core.services.thought_thread",
+            fromlist=["build_thought_thread_surface"],
+        ).build_thought_thread_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -852,6 +860,11 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.day_shape_memory import tick as _day_shape_tick
         _day_shape_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.thought_thread import tick as _thought_thread_tick
+        _thought_thread_tick(30.0)
     except Exception:
         pass
 

@@ -4600,76 +4600,88 @@ def _derive_world_contact(
     browser_body: dict[str, object],
     system_code: dict[str, object],
 ) -> dict[str, object]:
-    """Synthesise tool/browser/system into a compact world-contact surface."""
-    reach_points: list[str] = []
-    concerns: list[str] = []
-
-    # Tool intent
+    """Synthesise tool/browser/system into a unified world-contact field."""
+    # --- Tool ---
     tool_state = str(tool_intent.get("intent_state") or "idle")
-    if tool_state not in {"idle", ""}:
-        intent_type = str(tool_intent.get("intent_type") or "")
-        execution_state = str(tool_intent.get("execution_state") or "")
-        approval_state = str(tool_intent.get("approval_state") or "none")
+    tool_active = tool_state not in {"idle", ""}
+    tool_label = ""
+    tool_concern = ""
+    if tool_active:
+        intent_type = str(tool_intent.get("intent_type") or tool_state)
+        approval = str(tool_intent.get("approval_state") or "")
+        executing = str(tool_intent.get("execution_state") or "") not in {"", "not-executed"}
         mutation = bool(tool_intent.get("mutation_permitted"))
-        label = f"tool:{intent_type or tool_state}"
-        if execution_state not in {"", "not-executed"}:
-            label += f"({execution_state})"
-        if approval_state not in {"", "none"}:
-            label += f"[approval={approval_state}]"
-        if mutation:
-            label += "[mut]"
-        reach_points.append(label)
+        # Human-readable label
+        if executing:
+            tool_label = f"tool running ({intent_type})"
+        elif approval == "pending":
+            tool_label = f"tool awaiting approval ({intent_type})"
+        elif approval == "approved":
+            tool_label = f"tool approved ({intent_type})"
+        elif mutation:
+            tool_label = f"tool ready to mutate ({intent_type})"
+        else:
+            tool_label = f"tool active ({intent_type})"
         if tool_state == "pending" and str(tool_intent.get("urgency") or "") == "high":
-            concerns.append("high-urgency tool pending")
+            tool_concern = "high-urgency tool pending"
 
-    # Browser body
-    if bool(browser_body.get("exists")):
+    # --- Browser ---
+    browser_active = bool(browser_body.get("exists"))
+    browser_label = ""
+    if browser_active:
         tabs = int(browser_body.get("tab_count") or 0)
-        status = str(browser_body.get("status") or "")
-        label = f"browser:{tabs}-tab{'s' if tabs != 1 else ''}"
-        if status:
-            label += f"({status})"
-        reach_points.append(label)
+        status = str(browser_body.get("status") or "idle")
+        if tabs == 0 or status == "idle":
+            browser_label = "browser quiet"
+        elif tabs == 1:
+            browser_label = f"browser open (1 tab, {status})"
+        else:
+            browser_label = f"browser open ({tabs} tabs, {status})"
 
-    # System / code awareness
+    # --- Code / system --- always include when repo is visible
     code_state = str(system_code.get("code_awareness_state") or "repo-unavailable")
     concern_state = str(system_code.get("concern_state") or "stable")
-    change_state = str(system_code.get("local_change_state") or "unknown")
-    if code_state not in {"repo-unavailable", "host-limited"} and concern_state not in {"stable", ""}:
-        label = f"system:{code_state}"
-        if change_state not in {"", "unknown", "clean"}:
-            label += f"[{change_state}]"
-        reach_points.append(label)
+    change_state = str(system_code.get("local_change_state") or "clean")
+    code_active = code_state not in {"repo-unavailable", "host-limited"}
+    code_label = ""
+    code_concern = ""
+    if code_active:
+        if change_state in {"uncommitted", "mixed"}:
+            code_label = f"codebase open ({change_state} changes)"
+        elif change_state == "clean":
+            code_label = "codebase clean"
+        else:
+            code_label = f"codebase visible ({code_state})"
         if concern_state in {"error", "critical"}:
-            concerns.append(f"system concern: {concern_state}")
+            code_concern = f"system {concern_state}"
 
-    if not reach_points:
-        return {
-            "contact_state": "idle",
-            "reach_points": [],
-            "concern_count": 0,
-            "concerns": [],
-            "narrative": "",
-        }
+    concerns = [c for c in (tool_concern, code_concern) if c]
+    parts = [p for p in (tool_label, browser_label, code_label) if p]
 
-    active_count = len(reach_points)
-    if concerns or active_count >= 3:
-        contact_state = "overextended"
-    elif active_count >= 2:
-        contact_state = "active"
+    if not parts:
+        return {"contact_state": "idle", "reach_points": [], "concern_count": 0,
+                "concerns": [], "narrative": ""}
+
+    # Contact state — semantically correct now
+    if concerns:
+        contact_state = "strained"
+    elif len(parts) >= 3:
+        contact_state = "extended"
+    elif len(parts) == 2:
+        contact_state = "present"
     elif tool_state in {"pending", "queued"}:
         contact_state = "reaching"
     else:
-        contact_state = "active"
+        contact_state = "present"
 
     narrative = _world_contact_narrative(
         contact_state=contact_state,
-        reach_points=reach_points,
+        parts=parts,
         concerns=concerns,
     )
     return {
         "contact_state": contact_state,
-        "reach_points": reach_points,
+        "reach_points": parts,
         "concern_count": len(concerns),
         "concerns": concerns,
         "narrative": narrative,
@@ -4679,24 +4691,25 @@ def _derive_world_contact(
 def _world_contact_narrative(
     *,
     contact_state: str,
-    reach_points: list[str],
+    parts: list[str],
     concerns: list[str],
 ) -> str:
-    """Compact world-contact narrative. Empty when idle."""
+    """Felt-sense world-contact narrative — signal-first, 6-14 words."""
     if contact_state == "idle":
         return ""
-    reach_str = ", ".join(reach_points[:4])
-    if contact_state == "overextended":
+    if contact_state == "strained":
         concern_str = "; ".join(concerns[:2])
-        return f"Multiple world reach points active ({reach_str}). Concerns: {concern_str}."
-    if contact_state == "active":
-        return f"Active world contact: {reach_str}."
-    # reaching
-    return f"Reaching out: {reach_str} — pending response."
+        body = ", ".join(parts[:3])
+        return f"{body} — concern: {concern_str}."
+    if contact_state == "reaching":
+        return f"{parts[0]} — waiting."
+    # present / extended: joined naturally
+    joined = ", ".join(parts[:3])
+    return f"{joined}."
 
 
 def build_world_contact_prompt_section() -> str | None:
-    """Compact prompt section for world-contact synthesis. None when idle."""
+    """Felt-sense prompt section for unified world awareness. None when idle."""
     try:
         tool_intent = _tool_intent_surface()
         browser_body = _browser_body_state_surface()
@@ -4713,19 +4726,13 @@ def build_world_contact_prompt_section() -> str | None:
     if state == "idle":
         return None
 
-    reach_points = list(contact.get("reach_points") or [])
-    lines = [
-        "World contact (bounded runtime truth, internal-only):",
-        (
-            f"- contact_state={state}"
-            f" | reach=[{', '.join(reach_points[:5])}]"
-            f" | concerns={contact.get('concern_count') or 0}"
-        ),
-    ]
     narrative = str(contact.get("narrative") or "").strip()
-    if narrative:
-        lines.append(f"- world_narrative={narrative}")
-    return "\n".join(lines)
+    if not narrative:
+        return None
+
+    concerns = contact.get("concern_count") or 0
+    concern_note = f" ({concerns} concern{'s' if concerns != 1 else ''})" if concerns else ""
+    return f"World field{concern_note}: {narrative}"
 
 
 def _world_contact_surface() -> dict[str, object]:

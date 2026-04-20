@@ -166,6 +166,12 @@ def confirm_dream(dream_id: str) -> None:
                     "confidence": d["confidence"],
                 },
             )
+            if confirmed_sessions >= 2:
+                try:
+                    from core.services.ambient_presence import emit_insight_signal
+                    emit_insight_signal(str(d.get("content") or "")[:100])
+                except Exception:
+                    pass
     _save()
 
 
@@ -244,12 +250,34 @@ def build_dream_carry_over_surface() -> dict[str, object]:
     }
 
 
+def maybe_auto_promote_dreams() -> list[str]:
+    """Promote high-confidence confirmed dreams to identity proposals. Returns promoted IDs."""
+    _ensure_loaded()
+    promoted: list[str] = []
+    for d in list(_ACTIVE_DREAMS):
+        if (
+            d.get("confirmed")
+            and float(d.get("confidence", 0)) >= 0.75
+            and int(d.get("confirmed_sessions") or 0) >= 2
+            and not d.get("promoted_to_identity")
+        ):
+            result = promote_confirmed_dream_to_identity(str(d.get("dream_id") or ""))
+            if result:
+                d["promoted_to_identity"] = True
+                d["updated_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+                promoted.append(str(d.get("dream_id") or ""))
+    if promoted:
+        _save()
+    return promoted
+
+
 def _maybe_fade_old_dreams() -> None:
-    """Archive unconfirmed dreams that have been presented too many times."""
+    """Archive unconfirmed dreams that have been presented too many times.
+    Confirmed dreams are never faded — they deepen instead."""
     now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     to_fade = [
         d for d in _ACTIVE_DREAMS
-        if not d.get("confirmed")
+        if not d.get("confirmed")  # confirmed dreams never fade
         and int(d.get("session_carry_count") or 0) >= _FADE_AFTER_SESSIONS
         and d.get("status") == "active"
     ]

@@ -756,6 +756,14 @@ def _run_heartbeat_tick_locked(
     except Exception:
         pass
 
+    # Ambient presence — mark state transitions in physical space
+    try:
+        from core.services.ambient_presence import maybe_emit_phase_signal
+        from core.services.living_heartbeat_cycle import determine_life_phase
+        maybe_emit_phase_signal(determine_life_phase())
+    except Exception:
+        pass
+
     # Life services: update internal state between ticks
     try:
         record_tick_elapsed(seconds=30)

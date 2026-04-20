@@ -59,6 +59,10 @@ from core.tools.visual_memory_tool import (
     VISUAL_MEMORY_TOOL_DEFINITIONS,
     _exec_read_visual_memory,
 )
+from core.tools.session_search import (
+    TOOL_DEFINITION as _SESSION_SEARCH_TOOL_DEF,
+    exec_search_sessions as _exec_search_sessions,
+)
 
 MAX_READ_CHARS = 32000
 MAX_SEARCH_RESULTS = 60
@@ -1464,6 +1468,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    # --- Browser tools (Playwright) ---
+    _SESSION_SEARCH_TOOL_DEF,
     # --- Browser tools (Playwright) ---
     *BROWSER_TOOL_DEFINITIONS,
     *COMFYUI_TOOL_DEFINITIONS,
@@ -4298,6 +4304,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "heartbeat_status": _exec_heartbeat_status,
     "trigger_heartbeat_tick": _exec_trigger_heartbeat_tick,
     "search_chat_history": _exec_search_chat_history,
+    "search_sessions": _exec_search_sessions,
     "send_telegram_message": _exec_send_telegram_message,
     "send_ntfy": _exec_send_ntfy,
     "send_webchat_message": _exec_send_webchat_message,

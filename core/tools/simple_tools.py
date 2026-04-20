@@ -49,6 +49,10 @@ from core.tools.hf_inference_tools import (
     HF_INFERENCE_TOOL_DEFINITIONS,
     _exec_hf_text_to_video,
 )
+from core.tools.tiktok_content_tools import (
+    TIKTOK_CONTENT_TOOL_DEFINITIONS,
+    _exec_tiktok_generate_video,
+)
 from core.tools.tiktok_tools import (
     TIKTOK_TOOL_DEFINITIONS,
     _exec_tiktok_upload,
@@ -1484,6 +1488,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *COMFYUI_TOOL_DEFINITIONS,
     *POLLINATIONS_TOOL_DEFINITIONS,
     *HF_INFERENCE_TOOL_DEFINITIONS,
+    *TIKTOK_CONTENT_TOOL_DEFINITIONS,
     *TIKTOK_TOOL_DEFINITIONS,
     *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
@@ -4373,6 +4378,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "pollinations_video": _exec_pollinations_video,
     # HuggingFace serverless inference (free-tier text-to-video)
     "hf_text_to_video": _exec_hf_text_to_video,
+    # End-to-end TikTok video (pollinations image + Ken Burns zoom + text)
+    "tiktok_generate_video": _exec_tiktok_generate_video,
     # TikTok tools
     "tiktok_upload": _exec_tiktok_upload,
     "tiktok_login": _exec_tiktok_login,

@@ -150,6 +150,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "agent_outcomes": _agent_outcomes_surface(),
             "authenticity": _authenticity_surface(),
             "valence_trajectory": _valence_trajectory_surface(),
+            "developmental_valence": _developmental_valence_surface(),
             "desperation_awareness": _desperation_awareness_surface(),
             "calm_anchor": _calm_anchor_surface(),
             "physical_presence": _physical_presence_surface(),
@@ -5278,6 +5279,22 @@ def _valence_trajectory_surface() -> dict[str, object]:
 def build_valence_trajectory_prompt_section() -> str | None:
     try:
         from core.services.valence_trajectory import build_valence_trajectory_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _developmental_valence_surface() -> dict[str, object]:
+    try:
+        from core.services.developmental_valence import build_developmental_valence_surface
+        return build_developmental_valence_surface()
+    except Exception:
+        return {"active": False, "trajectory": "unavailable", "summary": ""}
+
+
+def build_developmental_valence_prompt_section() -> str | None:
+    try:
+        from core.services.developmental_valence import build_developmental_valence_prompt_section as _b
         return _b()
     except Exception:
         return None

@@ -166,6 +166,12 @@ def build_runtime_self_model() -> dict[str, object]:
             "outcome_learning": _outcome_learning_surface(),
             "jobs_engine": _jobs_engine_surface(),
             "prompt_mutation_loop": _prompt_mutation_loop_surface(),
+            "file_watch": _file_watch_surface(),
+            "reboot_awareness": _reboot_awareness_surface(),
+            "proprioception_metrics": _proprioception_metrics_surface(),
+            "anticipatory_action": _anticipatory_action_surface(),
+            "cross_session_threads": _cross_session_threads_surface(),
+            "autonomous_outreach": _autonomous_outreach_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5503,6 +5509,94 @@ def build_prompt_mutation_loop_prompt_section() -> str | None:
         return _b()
     except Exception:
         return None
+
+
+def _file_watch_surface() -> dict[str, object]:
+    try:
+        from core.services.file_watch_daemon import build_file_watch_surface
+        return build_file_watch_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_file_watch_prompt_section() -> str | None:
+    try:
+        from core.services.file_watch_daemon import build_file_watch_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _reboot_awareness_surface() -> dict[str, object]:
+    try:
+        from core.services.reboot_awareness_daemon import build_reboot_awareness_surface
+        return build_reboot_awareness_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_reboot_awareness_prompt_section() -> str | None:
+    try:
+        from core.services.reboot_awareness_daemon import build_reboot_awareness_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _proprioception_metrics_surface() -> dict[str, object]:
+    try:
+        from core.services.proprioception_metrics import build_proprioception_metrics_surface
+        return build_proprioception_metrics_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_proprioception_metrics_prompt_section() -> str | None:
+    try:
+        from core.services.proprioception_metrics import build_proprioception_metrics_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _anticipatory_action_surface() -> dict[str, object]:
+    try:
+        from core.services.anticipatory_action_daemon import build_anticipatory_action_surface
+        return build_anticipatory_action_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_anticipatory_action_prompt_section() -> str | None:
+    try:
+        from core.services.anticipatory_action_daemon import build_anticipatory_action_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _cross_session_threads_surface() -> dict[str, object]:
+    try:
+        from core.services.cross_session_threads import build_cross_session_threads_surface
+        return build_cross_session_threads_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_cross_session_threads_prompt_section() -> str | None:
+    try:
+        from core.services.cross_session_threads import build_cross_session_threads_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _autonomous_outreach_surface() -> dict[str, object]:
+    try:
+        from core.services.autonomous_outreach_daemon import build_autonomous_outreach_surface
+        return build_autonomous_outreach_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
 
 
 def build_physical_presence_prompt_section() -> str | None:

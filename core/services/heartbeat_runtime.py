@@ -759,6 +759,54 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "file_watch",
+        lambda: __import__(
+            "core.services.file_watch_daemon",
+            fromlist=["build_file_watch_surface"],
+        ).build_file_watch_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "reboot_awareness",
+        lambda: __import__(
+            "core.services.reboot_awareness_daemon",
+            fromlist=["build_reboot_awareness_surface"],
+        ).build_reboot_awareness_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "proprioception_metrics",
+        lambda: __import__(
+            "core.services.proprioception_metrics",
+            fromlist=["build_proprioception_metrics_surface"],
+        ).build_proprioception_metrics_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "anticipatory_action",
+        lambda: __import__(
+            "core.services.anticipatory_action_daemon",
+            fromlist=["build_anticipatory_action_surface"],
+        ).build_anticipatory_action_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "cross_session_threads",
+        lambda: __import__(
+            "core.services.cross_session_threads",
+            fromlist=["build_cross_session_threads_surface"],
+        ).build_cross_session_threads_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "autonomous_outreach",
+        lambda: __import__(
+            "core.services.autonomous_outreach_daemon",
+            fromlist=["build_autonomous_outreach_surface"],
+        ).build_autonomous_outreach_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -949,6 +997,31 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.prompt_mutation_loop import tick as _pmut_tick
         _pmut_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.file_watch_daemon import tick as _fwatch_tick
+        _fwatch_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.reboot_awareness_daemon import tick as _reboot_tick
+        _reboot_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.proprioception_metrics import tick as _prop_tick
+        _prop_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.anticipatory_action_daemon import tick as _anti_tick
+        _anti_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.autonomous_outreach_daemon import tick as _outreach_tick
+        _outreach_tick(30.0)
     except Exception:
         pass
 

@@ -1684,6 +1684,66 @@ def mc_watcher_lineage() -> dict:
     return {"watchers": result, "watcher_count": len(result)}
 
 
+@router.get("/agent-lineage")
+def mc_agent_lineage() -> dict:
+    """Return full agent spawn lineage — parent→child chains with outcomes."""
+    import json as _json
+    from core.services.agent_runtime import build_agent_runtime_surface
+    from core.services.agent_outcomes_log import get_recent_agent_outcomes
+
+    surface = build_agent_runtime_surface(limit=200)
+    all_agents = surface.get("agents") or []
+    outcomes = get_recent_agent_outcomes(limit=50)
+    outcome_by_id = {str(o.get("agent_id") or ""): o for o in outcomes}
+
+    def _build_node(agent: dict) -> dict:
+        agent_id = str(agent.get("agent_id") or "")
+        ctx: dict = {}
+        try:
+            ctx = _json.loads(str(agent.get("context_json") or "{}"))
+        except Exception:
+            pass
+        outcome = outcome_by_id.get(agent_id)
+        children = [
+            _build_node(a) for a in all_agents
+            if str((lambda c: c.get("parent_agent_id") or "")(
+                _json.loads(str(a.get("context_json") or "{}"))
+            )) == agent_id
+        ]
+        return {
+            "agent_id": agent_id,
+            "name": str(agent.get("name") or agent.get("goal") or agent_id)[:80],
+            "goal": str(agent.get("goal") or "")[:200],
+            "status": str(agent.get("status") or ""),
+            "kind": str(agent.get("kind") or "solo-task"),
+            "spawn_depth": int(ctx.get("spawn_depth") or 0),
+            "parent_agent_id": str(ctx.get("parent_agent_id") or "jarvis"),
+            "tokens_burned": int(agent.get("tokens_burned") or 0),
+            "created_at": str(agent.get("created_at") or ""),
+            "completed_at": str(agent.get("completed_at") or ""),
+            "outcome_summary": str(outcome.get("outcome") or "")[:200] if outcome else None,
+            "children": children,
+        }
+
+    # Build forest: root nodes are those with parent = "jarvis" or no parent
+    roots = [
+        a for a in all_agents
+        if str((_json.loads(str(a.get("context_json") or "{}")) or {}).get("parent_agent_id") or "jarvis") == "jarvis"
+    ]
+    tree = [_build_node(a) for a in roots[:30]]
+    total_agents = len(all_agents)
+    max_depth = max(
+        (int((_json.loads(str(a.get("context_json") or "{}")) or {}).get("spawn_depth") or 0)
+         for a in all_agents), default=0
+    )
+    return {
+        "tree": tree,
+        "total_agents": total_agents,
+        "root_count": len(tree),
+        "max_spawn_depth": max_depth,
+    }
+
+
 @router.get("/council-model-config")
 def mc_get_council_model_config() -> dict:
     """Return persisted per-role model overrides."""

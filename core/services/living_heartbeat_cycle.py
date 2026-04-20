@@ -82,7 +82,7 @@ def determine_life_phase(*, hour: int | None = None) -> dict[str, object]:
 
     for phase_name, config in _LIFE_PHASES.items():
         if current_hour in config["hours"]:
-            return {
+            phase = {
                 "phase": phase_name,
                 "description": config["description"],
                 "suggested_actions": config["suggested_actions"],
@@ -90,6 +90,14 @@ def determine_life_phase(*, hour: int | None = None) -> dict[str, object]:
                 "initiative_bias": config["initiative_bias"],
                 "hour": current_hour,
             }
+            if config.get("play_mode"):
+                phase["play_mode"] = True
+            if config.get("sleep_batch"):
+                phase["sleep_batch"] = True
+            # Dynamic play mode: high boredom + low pressure during daytime
+            if not phase.get("play_mode"):
+                phase["play_mode"] = _should_enter_play_mode()
+            return phase
 
     # Fallback (should never reach)
     return {
@@ -100,6 +108,26 @@ def determine_life_phase(*, hour: int | None = None) -> dict[str, object]:
         "initiative_bias": 0.3,
         "hour": current_hour,
     }
+
+
+def _should_enter_play_mode() -> bool:
+    """Return True when internal state calls for unstructured exploration."""
+    try:
+        from core.services.boredom_curiosity_bridge import build_boredom_curiosity_bridge_surface
+        boredom = build_boredom_curiosity_bridge_surface()
+        boredom_score = float(boredom.get("boredom_score") or boredom.get("boredom_level") or 0)
+        if boredom_score < 0.55:
+            return False
+    except Exception:
+        return False
+    try:
+        from core.services.hardware_body import get_hardware_state
+        hw = get_hardware_state()
+        if str(hw.get("pressure") or "low") in ("high", "critical"):
+            return False
+    except Exception:
+        pass
+    return True
 
 
 def format_life_phase_for_prompt(phase: dict[str, object]) -> str:

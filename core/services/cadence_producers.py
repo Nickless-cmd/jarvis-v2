@@ -604,17 +604,11 @@ def run_adoption_pipelines() -> dict[str, int]:
     """Move things from candidate → adopted state."""
     counts = {"dreams_adopted": 0, "values_strengthened": 0, "memories_reinforced": 0}
 
-    # 1. Dreams: confirmed dreams with high confidence → adoption
+    # 1. Dreams: confirmed multi-session high-confidence dreams → identity proposals
     try:
-        from core.services.dream_carry_over import (
-            _ACTIVE_DREAMS,
-            promote_confirmed_dream_to_identity,
-        )
-        for dream in _ACTIVE_DREAMS:
-            if dream.get("confirmed") and float(dream.get("confidence", 0)) > 0.7:
-                result = promote_confirmed_dream_to_identity(dream["dream_id"])
-                if result:
-                    counts["dreams_adopted"] += 1
+        from core.services.dream_carry_over import maybe_auto_promote_dreams
+        promoted = maybe_auto_promote_dreams()
+        counts["dreams_adopted"] = len(promoted)
     except Exception as exc:
         logger.debug("dream adoption failed: %s", exc)
 

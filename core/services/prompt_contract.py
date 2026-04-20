@@ -373,6 +373,11 @@ def build_visible_chat_prompt_assembly(
         parts.append(visual_memory_hint)
         derived_inputs.append("visual room memory")
 
+    channel_section = _channel_context_section(session_id)
+    if channel_section:
+        parts.append(channel_section)
+        derived_inputs.append("channel context")
+
     if relevance.include_memory:
         memory_selection = _workspace_memory_section(
             workspace_dir / "MEMORY.md",

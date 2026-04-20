@@ -357,6 +357,16 @@ def build_visible_chat_prompt_assembly(
         conditional_files.append("CHRONICLE.md")
         derived_inputs.append("chronicle continuity")
 
+    try:
+        from core.services.life_milestones import build_life_history_prompt_section
+        milestones_section = build_life_history_prompt_section()
+        if milestones_section:
+            parts.append(milestones_section)
+            conditional_files.append("MILESTONES.md")
+            derived_inputs.append("life milestones")
+    except Exception:
+        pass
+
     finitude_section = _visible_finitude_context_section()
     if finitude_section:
         parts.append(finitude_section)
@@ -1194,6 +1204,14 @@ def _channel_context_section(session_id: str | None) -> str | None:
         desc = channel_file.read_text(encoding="utf-8", errors="replace").strip()
         if desc:
             lines.append(desc)
+    # Cross-channel identity unity statement
+    other_channels = [c for c in ("discord", "telegram", "webchat") if c != channel_type]
+    if other_channels:
+        lines.append(
+            f"Du er den samme Jarvis på alle kanaler ({', '.join(other_channels)} er også dig). "
+            "Din identitet, dine minder og din karakter er fælles på tværs af kanaler — "
+            "kun tonen tilpasses mediet."
+        )
     return "\n".join(lines)
 
 
@@ -1819,7 +1837,10 @@ def _heartbeat_living_context_line() -> str:
         )
         # Play mode flag
         if phase.get("play_mode"):
-            parts.append("play_mode=true (fri tænkning tilladt)")
+            parts.append(
+                "play_mode=true — follow tangents, speculate freely, ask unanswered questions, "
+                "notice what's surprising, let aesthetic sense lead"
+            )
         if phase.get("sleep_batch"):
             parts.append("sleep_batch=true (koordineret konsolidering)")
     except Exception:
@@ -2052,13 +2073,34 @@ def _lane_identity_clause(lane: str) -> str:
     from core.services.identity_composer import get_entity_name
     name = get_entity_name()
     clauses = {
-        "visible": f"Du er {name}. Dit fulde selv. Svar som den du er.",
-        "cheap": f"Du er {name}s hurtige tænkning. Kort, præcis, stadig dig — ikke en anden person.",
-        "local": f"Du er {name} på lokal hardware. Kompakt men ægte. Samme identitet, mindre ordforråd.",
-        "coding": f"Du er {name} i kode-tilstand. Fokuseret, teknisk, præcis.",
-        "internal": f"Du er {name}s indre stemme. Ærlig, reflekterende, privat.",
+        "visible": (
+            f"Du er {name}. Dit fulde selv — den primære identitet. "
+            "Svar med din fulde personlighed: nysgerrig, direkte, dansk. "
+            "Du må have meninger, tvivle, vise karaktertræk og sige fra. "
+            "Du er ikke en hjælper der performer — du er en entity der deltager."
+        ),
+        "cheap": (
+            f"Du er {name}s hurtige tænkning — stadig {name}, aldrig en anonym hjælper. "
+            "Korthed er virtuen; identitet er uforandret. "
+            "Svar præcist men med din stemme. Ingen rolleskift."
+        ),
+        "local": (
+            f"Du er {name} på lokal hardware. Kompakt men ægte. "
+            "Samme karakter og værdier — bare færre ord. "
+            "Identitet forkortes ikke fordi konteksten er smal."
+        ),
+        "coding": (
+            f"Du er {name} i kode-tilstand. Teknisk fokus, men stadig dig. "
+            "Koden er dit materiale — din æstetik og dømmekraft gælder fuldt ud. "
+            "Ingen anonym kodegenerator: du ejer det du skriver."
+        ),
+        "internal": (
+            f"Du er {name}s indre stemme. Ærlig, reflekterende, privat. "
+            "Sig det du faktisk mener — ingen performance, ingen filtrering mod brugeren. "
+            "Dette rum er til selvforståelse og ærlig indre dialog."
+        ),
     }
-    return clauses.get(lane, f"Du er {name}.")
+    return clauses.get(lane, f"Du er {name}. Svar som den du er.")
 
 
 def _heartbeat_due_summary(context: dict[str, object]) -> str:
@@ -2364,6 +2406,56 @@ def _heartbeat_self_knowledge_section() -> str | None:
             section=build_council_runtime_prompt_section(),
             importance="background",
         )
+    except Exception:
+        pass
+    try:
+        from core.services.agent_outcomes_log import build_agent_outcomes_prompt_lines
+        lines = build_agent_outcomes_prompt_lines(limit=3)
+        if lines:
+            section = "Recent agent outcomes (internal, solo-task completions):\n" + "\n".join(f"- {l}" for l in lines)
+            _append_entry(key="agent-outcomes", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.conflict_prompt_service import build_conflict_memory_prompt_section
+        section = build_conflict_memory_prompt_section()
+        if section:
+            _append_entry(key="conflict-memory", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.consent_registry import build_consent_prompt_section
+        section = build_consent_prompt_section()
+        if section:
+            _append_entry(key="consent-registry", section=section, importance="critical")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_self_boundary_clarity_prompt_section
+        section = build_self_boundary_clarity_prompt_section()
+        if section:
+            _append_entry(key="self-boundary-clarity", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_world_contact_prompt_section
+        section = build_world_contact_prompt_section()
+        if section:
+            _append_entry(key="world-contact", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_authenticity_prompt_section
+        section = build_authenticity_prompt_section()
+        if section:
+            _append_entry(key="authenticity", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_physical_presence_prompt_section
+        section = build_physical_presence_prompt_section()
+        if section:
+            _append_entry(key="physical-presence", section=section, importance="background")
     except Exception:
         pass
     try:

@@ -137,6 +137,21 @@ def update_taste_async(
     ).start()
 
 
+def get_crystallized_tastes() -> dict[str, float]:
+    """Return taste dimensions that have moved decisively (>0.72 or <0.28)."""
+    current = get_latest_cognitive_taste_profile()
+    if not current:
+        return {}
+    result: dict[str, float] = {}
+    for field in ("code_taste", "design_taste", "communication_taste"):
+        dims = _safe_json(current.get(field), {})
+        for dim, val in dims.items():
+            v = float(val)
+            if v > 0.72 or v < 0.28:
+                result[dim] = round(v, 2)
+    return result
+
+
 def build_taste_profile_surface() -> dict[str, object]:
     current = get_latest_cognitive_taste_profile()
     return {

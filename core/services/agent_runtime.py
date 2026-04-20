@@ -11,10 +11,12 @@ logger = logging.getLogger(__name__)
 # ── Spawn / budget limits ──────────────────────────────────────────────
 MAX_CONCURRENT_AGENTS = 12
 MAX_SWARM_WORKERS = 8
+MAX_SPAWN_DEPTH = 4  # max recursive spawn chain length
 MAX_COUNCIL_MEMBERS = 6
 MAX_OFFSPRING_DEPTH = 3
 RETRY_BASE_SECONDS = 60      # doubles per failure, capped at 1 h
 
+from core.eventbus.bus import event_bus
 from core.services.cheap_provider_runtime import cheap_lane_status_surface
 from core.services.non_visible_lane_execution import execute_cheap_lane
 from core.runtime.db import (
@@ -245,6 +247,45 @@ def build_council_detail_surface(council_id: str) -> dict[str, object] | None:
     return enrich_council_surface(session)
 
 
+_WATCHER_RELAY_KEYWORDS = frozenset({
+    "found", "changed", "alert", "detected", "important", "critical",
+    "urgent", "noticed", "update", "warning", "significant", "new",
+})
+
+
+def _maybe_relay_watcher_signal(*, agent_id: str, name: str, text: str) -> None:
+    """Emit watcher.signal event when output contains notable content."""
+    words = set(text.lower().split())
+    if not words.intersection(_WATCHER_RELAY_KEYWORDS):
+        return
+    try:
+        event_bus.publish(
+            "watcher.signal",
+            {
+                "agent_id": agent_id,
+                "name": name,
+                "excerpt": text[:300],
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
+        )
+    except Exception:
+        pass
+
+
+def _spawn_depth_for(parent_agent_id: str) -> int:
+    """Return depth for a new child agent (parent_depth + 1)."""
+    if not parent_agent_id or parent_agent_id == "jarvis":
+        return 0
+    parent = get_agent_registry_entry(parent_agent_id)
+    if parent is None:
+        return 0
+    try:
+        ctx = json.loads(str(parent.get("context_json") or "{}"))
+        return int(ctx.get("spawn_depth") or 0) + 1
+    except Exception:
+        return 1
+
+
 def spawn_agent_task(
     *,
     role: str,
@@ -265,8 +306,14 @@ def spawn_agent_task(
     model: str = "",
 ) -> dict[str, object]:
     _check_spawn_limits()
+    spawn_depth = _spawn_depth_for(str(parent_agent_id or ""))
+    if spawn_depth > MAX_SPAWN_DEPTH:
+        raise ValueError(
+            f"spawn depth limit reached: {spawn_depth}/{MAX_SPAWN_DEPTH} — recursion chain too deep"
+        )
     allowed_tools = allowed_tools or []
     context = context or {}
+    context["spawn_depth"] = spawn_depth
     result_contract = result_contract or {
         "summary": True,
         "findings": True,
@@ -587,6 +634,25 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
         )
         # Budget enforcement: expire if over token budget
         _check_budget_and_expire(agent_id, tokens_used=tokens_used)
+        # Persist outcome to AGENT_OUTCOMES.md for self-model continuity
+        try:
+            from core.services.agent_outcomes_log import append_agent_outcome
+            append_agent_outcome(
+                agent_id=agent_id,
+                name=str(agent.get("name") or agent_id),
+                goal=str(agent.get("goal") or ""),
+                outcome=text,
+                execution_mode=execution_mode,
+            )
+        except Exception:
+            pass
+        # Relay watcher signals to event bus when notable content found
+        if bool(agent.get("persistent")) and text:
+            _maybe_relay_watcher_signal(
+                agent_id=agent_id,
+                name=str(agent.get("name") or agent_id),
+                text=text,
+            )
     except Exception as exc:
         message = str(exc)
         create_agent_message(

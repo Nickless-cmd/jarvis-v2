@@ -158,6 +158,11 @@ def build_runtime_self_model() -> dict[str, object]:
             "day_shape_memory": _day_shape_memory_surface(),
             "avoidance_detector": _avoidance_detector_surface(),
             "thought_thread": _thought_thread_surface(),
+            "skill_contract_registry": _skill_contract_registry_surface(),
+            "memory_write_policy": _memory_write_policy_surface(),
+            "spaced_repetition": _spaced_repetition_surface(),
+            "scheduled_job_windows": _scheduled_job_windows_surface(),
+            "automation_dsl": _automation_dsl_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5407,6 +5412,62 @@ def build_thought_thread_prompt_section() -> str | None:
         return _b()
     except Exception:
         return None
+
+
+def _skill_contract_registry_surface() -> dict[str, object]:
+    try:
+        from core.services.skill_contract_registry import build_skill_contract_registry_surface
+        return build_skill_contract_registry_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def _memory_write_policy_surface() -> dict[str, object]:
+    try:
+        from core.services.memory_write_policy import build_memory_write_policy_surface
+        return build_memory_write_policy_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_memory_write_policy_prompt_section() -> str | None:
+    try:
+        from core.services.memory_write_policy import build_memory_write_policy_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _spaced_repetition_surface() -> dict[str, object]:
+    try:
+        from core.services.spaced_repetition import build_spaced_repetition_surface
+        return build_spaced_repetition_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_spaced_repetition_prompt_section() -> str | None:
+    try:
+        from core.services.spaced_repetition import build_spaced_repetition_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _scheduled_job_windows_surface() -> dict[str, object]:
+    try:
+        from core.services.scheduled_job_windows import build_scheduled_job_windows_surface
+        return build_scheduled_job_windows_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def _automation_dsl_surface() -> dict[str, object]:
+    try:
+        from core.services.automation_dsl import build_automation_dsl_surface
+        return build_automation_dsl_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
 
 
 def build_physical_presence_prompt_section() -> str | None:

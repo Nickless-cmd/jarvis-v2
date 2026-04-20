@@ -695,6 +695,46 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "skill_contract_registry",
+        lambda: __import__(
+            "core.services.skill_contract_registry",
+            fromlist=["build_skill_contract_registry_surface"],
+        ).build_skill_contract_registry_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "memory_write_policy",
+        lambda: __import__(
+            "core.services.memory_write_policy",
+            fromlist=["build_memory_write_policy_surface"],
+        ).build_memory_write_policy_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "spaced_repetition",
+        lambda: __import__(
+            "core.services.spaced_repetition",
+            fromlist=["build_spaced_repetition_surface"],
+        ).build_spaced_repetition_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "scheduled_job_windows",
+        lambda: __import__(
+            "core.services.scheduled_job_windows",
+            fromlist=["build_scheduled_job_windows_surface"],
+        ).build_scheduled_job_windows_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "automation_dsl",
+        lambda: __import__(
+            "core.services.automation_dsl",
+            fromlist=["build_automation_dsl_surface"],
+        ).build_automation_dsl_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -865,6 +905,16 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.thought_thread import tick as _thought_thread_tick
         _thought_thread_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.scheduled_job_windows import tick as _jobwin_tick
+        _jobwin_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.automation_dsl import tick as _auto_tick
+        _auto_tick(30.0)
     except Exception:
         pass
 

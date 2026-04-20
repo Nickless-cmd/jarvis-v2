@@ -2508,6 +2508,20 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.runtime_self_model import build_memory_write_policy_prompt_section
+        section = build_memory_write_policy_prompt_section()
+        if section:
+            _append_entry(key="memory-write-policy", section=section, importance="critical")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_spaced_repetition_prompt_section
+        section = build_spaced_repetition_prompt_section()
+        if section:
+            _append_entry(key="spaced-repetition", section=section, importance="background")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_physical_presence_prompt_section
         section = build_physical_presence_prompt_section()
         if section:

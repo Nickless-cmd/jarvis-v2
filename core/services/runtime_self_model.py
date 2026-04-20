@@ -165,6 +165,7 @@ def build_runtime_self_model() -> dict[str, object]:
             "automation_dsl": _automation_dsl_surface(),
             "outcome_learning": _outcome_learning_surface(),
             "jobs_engine": _jobs_engine_surface(),
+            "prompt_mutation_loop": _prompt_mutation_loop_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5486,6 +5487,22 @@ def _jobs_engine_surface() -> dict[str, object]:
         return build_jobs_engine_surface()
     except Exception:
         return {"active": False, "summary": ""}
+
+
+def _prompt_mutation_loop_surface() -> dict[str, object]:
+    try:
+        from core.services.prompt_mutation_loop import build_prompt_mutation_loop_surface
+        return build_prompt_mutation_loop_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_prompt_mutation_loop_prompt_section() -> str | None:
+    try:
+        from core.services.prompt_mutation_loop import build_prompt_mutation_loop_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
 
 
 def build_physical_presence_prompt_section() -> str | None:

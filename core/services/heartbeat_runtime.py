@@ -751,6 +751,14 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "prompt_mutation_loop",
+        lambda: __import__(
+            "core.services.prompt_mutation_loop",
+            fromlist=["build_prompt_mutation_loop_surface"],
+        ).build_prompt_mutation_loop_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -936,6 +944,11 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.outcome_learning import tick as _outcome_tick
         _outcome_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.prompt_mutation_loop import tick as _pmut_tick
+        _pmut_tick(30.0)
     except Exception:
         pass
 

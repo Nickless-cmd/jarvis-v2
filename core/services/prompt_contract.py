@@ -2452,6 +2452,27 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.runtime_self_model import build_valence_trajectory_prompt_section
+        section = build_valence_trajectory_prompt_section()
+        if section:
+            _append_entry(key="valence-trajectory", section=section, importance="background")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_desperation_awareness_prompt_section
+        section = build_desperation_awareness_prompt_section()
+        if section:
+            _append_entry(key="desperation-awareness", section=section, importance="critical")
+    except Exception:
+        pass
+    try:
+        from core.services.runtime_self_model import build_calm_anchor_prompt_section
+        section = build_calm_anchor_prompt_section()
+        if section:
+            _append_entry(key="calm-anchor", section=section, importance="background")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_physical_presence_prompt_section
         section = build_physical_presence_prompt_section()
         if section:

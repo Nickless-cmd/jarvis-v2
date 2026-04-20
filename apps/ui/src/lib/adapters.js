@@ -1284,6 +1284,20 @@ function normalizeDreamIdentityCarryAwareness(item = {}) {
   }
 }
 
+function normalizeRelationContinuitySelfAwareness(item = {}) {
+  if (!item || !item.kind) return null
+  return {
+    relationContinuityState: item.relation_continuity_state || 'quiet',
+    relationSelfRelation: item.relation_self_relation || 'incidental',
+    relationContinuitySource: item.relation_continuity_source || 'none',
+    continuityAnchor: item.continuity_anchor || '',
+    narrative: item.narrative || '',
+    authority: item.authority || 'derived-runtime-truth',
+    visibility: item.visibility || 'internal-only',
+    kind: item.kind || 'relation-continuity-self-awareness',
+  }
+}
+
 function normalizeAffectiveMetaState(item = {}) {
   const freshness = item.freshness || {}
   const seamUsage = item.seam_usage || {}
@@ -4176,6 +4190,7 @@ export const backend = {
       selfInsightAwareness: normalizeSelfInsightAwareness(selfModelPayload?.self_insight_awareness || {}),
       narrativeIdentityContinuity: normalizeNarrativeIdentityContinuity(selfModelPayload?.narrative_identity_continuity || {}),
       dreamIdentityCarryAwareness: normalizeDreamIdentityCarryAwareness(selfModelPayload?.dream_identity_carry_awareness || {}),
+      relationContinuitySelfAwareness: normalizeRelationContinuitySelfAwareness(selfModelPayload?.relation_continuity_self_awareness || {}),
       internalCadence: normalizeInternalCadence(internalCadencePayload || {}),
       attentionTraces: attentionPayload?.live_traces || {},
       conflictResolution: conflictPayload?.trace || null,

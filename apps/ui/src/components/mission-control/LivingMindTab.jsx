@@ -1166,6 +1166,12 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     dreamIdentityCarryAwareness.kind === 'dream-identity-carry-awareness' &&
     dreamIdentityCarryAwareness.dreamIdentityCarryState !== 'quiet'
   )
+  const relationContinuitySelfAwareness = data?.relationContinuitySelfAwareness || null
+  const hasRelationContinuitySelfAwareness = Boolean(
+    relationContinuitySelfAwareness &&
+    relationContinuitySelfAwareness.kind === 'relation-continuity-self-awareness' &&
+    relationContinuitySelfAwareness.relationContinuityState !== 'quiet'
+  )
   const hasExperientialRuntimeContext = Boolean(
     experientialRuntimeContext?.kind === 'experiential-runtime-context' && (
       experientialEmbodied.state !== 'steady' ||
@@ -1215,6 +1221,7 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
     { id: 'longing', targetId: 'living-mind-longing-awareness', label: 'Longing Awareness', icon: Ghost, active: hasLongingAwareness, status: longingAwareness?.longingState, statusLabel: longingAwareness?.longingState || 'quiet' },
     { id: 'self-insight', targetId: 'living-mind-self-insight-awareness', label: 'Self-Insight Awareness', icon: Brain, active: hasSelfInsightAwareness, status: selfInsightAwareness?.insightState, statusLabel: selfInsightAwareness?.insightState || 'quiet' },
     { id: 'dream-identity-carry', targetId: 'living-mind-dream-identity-carry', label: 'Dream Identity Carry', icon: Moon, active: hasDreamIdentityCarryAwareness, status: dreamIdentityCarryAwareness?.dreamIdentityCarryState, statusLabel: dreamIdentityCarryAwareness?.dreamIdentityCarryState || 'quiet' },
+    { id: 'relation-continuity-self', targetId: 'living-mind-relation-continuity-self', label: 'Relation Continuity as Self', icon: Heart, active: hasRelationContinuitySelfAwareness, status: relationContinuitySelfAwareness?.relationContinuityState, statusLabel: relationContinuitySelfAwareness?.relationContinuityState || 'quiet' },
     { id: 'body-state', targetId: 'living-mind-body-state', label: 'Krop', icon: Heart, active: hasBodyState, status: bodyState?.energyLevel, statusLabel: bodyState?.energyLevel || 'ukendt' },
     { id: 'surprise-state', targetId: 'living-mind-surprise-state', label: 'Overraskelse', icon: Zap, active: hasSurpriseState, status: surpriseState?.surpriseType, statusLabel: surpriseState?.surpriseType || 'ingen' },
     { id: 'taste-state', targetId: 'living-mind-taste-state', label: 'Smag', icon: Sparkles, active: hasTasteState, status: null, statusLabel: `${tasteState?.choiceCount ?? 0} valg` },
@@ -1805,6 +1812,45 @@ export function LivingMindTab({ data, onOpenItem, onHeartbeatTick, heartbeatBusy
           </div>
           {dreamIdentityCarryAwareness.narrative ? <ExpandableText text={dreamIdentityCarryAwareness.narrative} /> : null}
           <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${dreamIdentityCarryAwareness.authority} · kind: ${dreamIdentityCarryAwareness.kind}`}</small>
+        </article>
+        ) : null}
+
+        {hasRelationContinuitySelfAwareness ? (
+        <article id="living-mind-relation-continuity-self" tabIndex={-1} className="support-card living-surface-card mc-scroll-target" title={sectionTitleWithMeta({
+          source: '/mc/runtime-self-model::relation_continuity_self_awareness',
+          fetchedAt: data?.fetchedAt,
+          mode: 'derived runtime truth',
+        })}>
+          <div className="panel-header stacked">
+            <div>
+              <h3>Relation Continuity as Self</h3>
+              <p className="muted">Self-aware runtime truth: whether the relation with the user has become self-relevant — part of continuity, not merely context.</p>
+            </div>
+            <span className="mc-section-hint tone-accent">{humanizeToken(relationContinuitySelfAwareness.relationContinuityState)}</span>
+          </div>
+          <div className="compact-grid compact-grid-4">
+            <div className="compact-metric">
+              <span>Continuity state</span>
+              <strong>{humanizeToken(relationContinuitySelfAwareness.relationContinuityState)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Self relation</span>
+              <strong>{humanizeToken(relationContinuitySelfAwareness.relationSelfRelation)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Source</span>
+              <strong>{humanizeToken(relationContinuitySelfAwareness.relationContinuitySource)}</strong>
+            </div>
+            <div className="compact-metric">
+              <span>Visibility</span>
+              <strong>{humanizeToken(relationContinuitySelfAwareness.visibility)}</strong>
+            </div>
+          </div>
+          {relationContinuitySelfAwareness.continuityAnchor ? (
+            <p className="muted" style={{ marginTop: 6, fontStyle: 'italic' }}>{relationContinuitySelfAwareness.continuityAnchor}</p>
+          ) : null}
+          {relationContinuitySelfAwareness.narrative ? <ExpandableText text={relationContinuitySelfAwareness.narrative} /> : null}
+          <small className="muted" style={{ display: 'block', marginTop: 4 }}>{`authority: ${relationContinuitySelfAwareness.authority} · kind: ${relationContinuitySelfAwareness.kind}`}</small>
         </article>
         ) : null}
 

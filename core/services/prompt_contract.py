@@ -1139,6 +1139,42 @@ def _workspace_file_section(
     return "\n".join([f"{label}:", *lines])
 
 
+def _channel_workspace_path() -> Path:
+    return Path(__file__).resolve().parent.parent.parent / "workspace" / "channels"
+
+
+def _channel_context_section(session_id: str | None) -> str | None:
+    """Returns current channel context for the prompt, or None.
+
+    Injects channel name + optional workspace description for Discord/Telegram.
+    Webchat is the implicit default — only injected if webchat.md exists.
+    Unknown channel titles are silently skipped.
+    """
+    if not session_id:
+        return None
+    from core.services.chat_sessions import get_chat_session, parse_channel_from_session_title
+    session = get_chat_session(session_id)
+    if not session:
+        return None
+    title = str(session.get("title") or "").strip()
+    channel_type, channel_detail = parse_channel_from_session_title(title)
+    if channel_type == "unknown":
+        return None
+    channel_file = _channel_workspace_path() / f"{channel_type}.md"
+    if channel_type == "webchat" and not channel_file.exists():
+        return None
+    if channel_detail:
+        label = f"{channel_type.capitalize()} {channel_detail}"
+    else:
+        label = channel_type.capitalize()
+    lines = ["## Current channel", f"Du kommunikerer via {label}."]
+    if channel_file.exists():
+        desc = channel_file.read_text(encoding="utf-8", errors="replace").strip()
+        if desc:
+            lines.append(desc)
+    return "\n".join(lines)
+
+
 def _workspace_guidance_section(
     path: Path,
     *,

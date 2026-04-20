@@ -332,3 +332,34 @@ def _time_label(value: str) -> str:
     except ValueError:
         return value
     return dt.astimezone().strftime("%I:%M %p")
+
+
+def parse_channel_from_session_title(title: str | None) -> tuple[str, str | None]:
+    """Parse channel type and detail from a session title.
+
+    Returns (channel_type, channel_detail) where channel_type is one of:
+    'discord', 'telegram', 'webchat', 'unknown'.
+
+    Examples:
+        "Discord DM"         -> ("discord", "DM")
+        "Discord #123456789" -> ("discord", "#123456789")
+        "Telegram DM"        -> ("telegram", "DM")
+        "New chat"           -> ("webchat", None)
+        None                 -> ("webchat", None)
+        "Something weird"    -> ("unknown", None)
+    """
+    if not title or title.strip() in ("New chat", ""):
+        return ("webchat", None)
+    t = title.strip()
+    if t == "Discord DM":
+        return ("discord", "DM")
+    if t.startswith("Discord #"):
+        return ("discord", t[len("Discord "):])
+    if t.startswith("Discord"):
+        return ("discord", None)
+    if t == "Telegram DM":
+        return ("telegram", "DM")
+    if t.startswith("Telegram"):
+        return ("telegram", None)
+    return ("unknown", None)
+

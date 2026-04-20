@@ -20,6 +20,11 @@ import { AgentsTab } from '../components/mission-control/AgentsTab'
 import { CouncilTab } from '../components/mission-control/CouncilTab'
 import { CognitiveStateTab } from '../components/mission-control/CognitiveStateTab'
 import { RelationshipTab } from '../components/mission-control/RelationshipTab'
+import { SoulTab } from '../components/mission-control/SoulTab'
+import { ProprioceptionTab } from '../components/mission-control/ProprioceptionTab'
+import { AutonomyTab } from '../components/mission-control/AutonomyTab'
+import { ThreadsTab } from '../components/mission-control/ThreadsTab'
+import { GovernanceTab } from '../components/mission-control/GovernanceTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
 import { useMissionControlPhaseA } from './useMissionControlPhaseA'
 import { AmbientPresence } from '../components/AmbientPresence'
@@ -243,6 +248,11 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
           {activeTab === 'lab' ? <LabTab /> : null}
           {activeTab === 'cognitive-state' ? <CognitiveStateTab /> : null}
           {activeTab === 'relationship' ? <RelationshipTab /> : null}
+          {activeTab === 'soul' ? <SoulTab /> : null}
+          {activeTab === 'proprioception' ? <ProprioceptionTab /> : null}
+          {activeTab === 'autonomy' ? <AutonomyTab /> : null}
+          {activeTab === 'threads' ? <ThreadsTab /> : null}
+          {activeTab === 'governance' ? <GovernanceTab /> : null}
         </div>
 
       <DetailDrawer

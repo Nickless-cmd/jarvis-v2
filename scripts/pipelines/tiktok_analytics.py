@@ -82,7 +82,15 @@ def fetch_profile() -> tuple[dict, str, str]:
 
 
 def _load_saved_cookies() -> dict[str, str]:
-    """Load sessionid m.fl. fra TikTok uploader pickle-fil."""
+    """Load sessionid m.fl. fra TikTok uploader cookie-fil (JSON eller pickle)."""
+    # Try JSON format first (tiktokautouploader)
+    try:
+        with open(COOKIE_FILE, "r") as f:
+            raw = json.load(f)
+        return {str(c["name"]): str(c["value"]) for c in raw if "name" in c and "value" in c}
+    except Exception:
+        pass
+    # Fallback: old pickle format
     try:
         with open(COOKIE_FILE, "rb") as f:
             raw = pickle.load(f)

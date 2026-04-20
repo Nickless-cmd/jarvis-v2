@@ -2522,6 +2522,13 @@ def _heartbeat_self_knowledge_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.runtime_self_model import build_prompt_mutation_loop_prompt_section
+        section = build_prompt_mutation_loop_prompt_section()
+        if section:
+            _append_entry(key="prompt-mutation-loop", section=section, importance="critical")
+    except Exception:
+        pass
+    try:
         from core.services.runtime_self_model import build_physical_presence_prompt_section
         section = build_physical_presence_prompt_section()
         if section:

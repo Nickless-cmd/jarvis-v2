@@ -172,6 +172,12 @@ def build_runtime_self_model() -> dict[str, object]:
             "anticipatory_action": _anticipatory_action_surface(),
             "cross_session_threads": _cross_session_threads_surface(),
             "autonomous_outreach": _autonomous_outreach_surface(),
+            "infra_weather": _infra_weather_surface(),
+            "temporal_rhythm": _temporal_rhythm_surface(),
+            "relation_dynamics": _relation_dynamics_surface(),
+            "creative_instinct": _creative_instinct_surface(),
+            "autonomous_work": _autonomous_work_surface(),
+            "dream_consolidation": _dream_consolidation_surface(),
             "physical_presence": _physical_presence_surface(),
             "adaptive_planner": _adaptive_planner_surface(),
             "adaptive_reasoning": _adaptive_reasoning_surface(),
@@ -5597,6 +5603,102 @@ def _autonomous_outreach_surface() -> dict[str, object]:
         return build_autonomous_outreach_surface()
     except Exception:
         return {"active": False, "summary": ""}
+
+
+def _infra_weather_surface() -> dict[str, object]:
+    try:
+        from core.services.infra_weather_daemon import build_infra_weather_surface
+        return build_infra_weather_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_infra_weather_prompt_section() -> str | None:
+    try:
+        from core.services.infra_weather_daemon import build_infra_weather_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _temporal_rhythm_surface() -> dict[str, object]:
+    try:
+        from core.services.temporal_rhythm import build_temporal_rhythm_surface
+        return build_temporal_rhythm_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_temporal_rhythm_prompt_section() -> str | None:
+    try:
+        from core.services.temporal_rhythm import build_temporal_rhythm_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _relation_dynamics_surface() -> dict[str, object]:
+    try:
+        from core.services.relation_dynamics import build_relation_dynamics_surface
+        return build_relation_dynamics_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_relation_dynamics_prompt_section() -> str | None:
+    try:
+        from core.services.relation_dynamics import build_relation_dynamics_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _creative_instinct_surface() -> dict[str, object]:
+    try:
+        from core.services.creative_instinct_daemon import build_creative_instinct_surface
+        return build_creative_instinct_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_creative_instinct_prompt_section() -> str | None:
+    try:
+        from core.services.creative_instinct_daemon import build_creative_instinct_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _autonomous_work_surface() -> dict[str, object]:
+    try:
+        from core.services.autonomous_work_daemon import build_autonomous_work_surface
+        return build_autonomous_work_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_autonomous_work_prompt_section() -> str | None:
+    try:
+        from core.services.autonomous_work_daemon import build_autonomous_work_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
+
+
+def _dream_consolidation_surface() -> dict[str, object]:
+    try:
+        from core.services.dream_consolidation_daemon import build_dream_consolidation_surface
+        return build_dream_consolidation_surface()
+    except Exception:
+        return {"active": False, "summary": ""}
+
+
+def build_dream_consolidation_prompt_section() -> str | None:
+    try:
+        from core.services.dream_consolidation_daemon import build_dream_consolidation_prompt_section as _b
+        return _b()
+    except Exception:
+        return None
 
 
 def build_physical_presence_prompt_section() -> str | None:

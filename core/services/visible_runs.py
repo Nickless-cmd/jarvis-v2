@@ -4065,6 +4065,41 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
+        # --- Consent registry: detect user preferences/boundaries ---
+        try:
+            from core.services.consent_registry import register_consent
+            _msg = user_message.lower()
+            _avoid = ("gør ikke", "stop med", "undgå", "vil ikke have at du", "ikke mere", "aldrig igen", "lad være med")
+            _prefer = ("altid", "foretrækker", "vil gerne have at du", "husk at", "jeg vil have at du", "sørg for at")
+            if any(p in _msg for p in _avoid):
+                register_consent(
+                    kind="avoid",
+                    statement=user_message[:200],
+                    source_session_id=run_id,
+                )
+            elif any(p in _msg for p in _prefer):
+                register_consent(
+                    kind="prefer",
+                    statement=user_message[:200],
+                    source_session_id=run_id,
+                )
+        except Exception:
+            pass
+
+        # --- Conflict memory: track pushback outcomes ---
+        try:
+            from core.services.relationship_texture import track_pushback_outcome
+            _msg2 = user_message.lower()
+            _pushback = any(m in _msg2 for m in ("nej", "forkert", "ikke det", "det er stadig", "prøv igen"))
+            if _pushback:
+                track_pushback_outcome(
+                    jarvis_disagreed=True,
+                    user_was_right=True,
+                    topic=user_message[:100],
+                )
+        except Exception:
+            pass
+
     threading.Thread(target=_run, daemon=True).start()
 
 

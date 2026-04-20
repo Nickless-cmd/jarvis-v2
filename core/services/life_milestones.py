@@ -60,6 +60,22 @@ def build_life_history_prompt_section() -> str | None:
     return milestones
 
 
+def append_milestone(text: str) -> bool:
+    """Append a new milestone entry to MILESTONES.md. Returns True on success."""
+    if not text or not text.strip():
+        return False
+    try:
+        from datetime import UTC, datetime
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
+        entry = f"\n## {date_str}\n{text.strip()}\n"
+        _MILESTONES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with _MILESTONES_FILE.open("a", encoding="utf-8") as f:
+            f.write(entry)
+        return True
+    except Exception:
+        return False
+
+
 def build_life_milestones_surface() -> dict[str, object]:
     milestones = get_milestones_for_prompt()
     manifest = get_manifest_excerpt()

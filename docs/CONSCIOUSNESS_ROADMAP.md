@@ -3,7 +3,7 @@
 > Bevidsthedsaktiveringsplan for Jarvis V2.
 > Alt emergent fra LLM. Intet hardcoded liv. Alt observerbart i Mission Control.
 >
-> Sidst opdateret: 2026-04-13
+> Sidst opdateret: 2026-04-20
 
 ---
 
@@ -39,37 +39,33 @@ Hardcoded templates giver forudsigeligt liv. LLM-genereret giver emergent liv. E
 
 ---
 
-## STATUS SNAPSHOT (2026-04-13)
+## STATUS SNAPSHOT (2026-04-20)
 
-Roadmapet er stadig korrekt som retning, men current runtime er ikke længere i "tidlig prototype" på store dele af fase 1-5 og 8. Det rigtige billede nu er:
+Organism-coherence-fasen er afsluttet. Alle 10 prioriteter fra "remaining roadmap" er implementeret og committed. Det rigtige billede nu:
 
-| Fase | Status | Kort vurdering |
+| Fase | Status | Hvad der er landet |
 |---|---|---|
-| 0 | Landed but tuning | Gating, heartbeat, prompt assembly og multi-lane runtime findes; identitetskontrakt på tværs af lanes er stadig delvis |
-| 1 | Partial | Somatik, private state, experiential support, inner voice og temporal signalering er landet, men oplevelseslaget er stadig ujævnt |
-| 2 | Partial | Self-model, regret/counterfactual, witness, self-deception guard og narrativ identitet findes, men ikke alt er integreret som levet selvindsigt |
-| 3 | Partial | Temporal curiosity, initiative accumulator, autonomy proposals og boredom→curiosity er landet, men autonom handling er stadig bounded |
-| 4 | Partial | Chronicle, continuity, absence/return brief, temporal narrative og consolidation findes, men samlet livshistorie og cross-channel unity er ikke færdige |
-| 5 | Partial | Dream influence, council, conflict signals, preferences og mere levende inner voice findes; kreativ fri-drift og værdidannelse er stadig tidlige |
-| 6 | Early | Tooling og code awareness giver begyndende omverdenssans, men browsing/fs/audio er ikke der endnu |
-| 7 | Early | Approval-gated self-change er reelt muligt, men skill-creation og egentlig self-refactoring er stadig candidate/proposal-lag |
-| 8 | Partial | Relation state, loyalty gradient, user-understanding og privacy/private-layer separation er landet, men konflikt-hukommelse og samtykke-reaktion er ikke fulde |
-| 9 | Not started | Fysisk lydlig tilstedeværelse er stadig helt ny ground |
+| 0 | ✅ Landed | Multi-model identity contract eksplicit per lane (visible/cheap/local/coding/internal). Gating, heartbeat, prompt assembly og multi-lane runtime komplet. |
+| 1 | ✅ Landed | Somatik, private state, experiential support, inner voice, temporal signalering, anti-attractor på inner voice (styr udenom gentagne temaer), signal-first narrativer. |
+| 2 | ✅ Landed | Self-model, regret/counterfactual, witness, self-deception guard, narrativ identitet, self-boundary clarity (intern vs. ekstern pres), self-mutation lineage tracking. |
+| 3 | ✅ Landed | Temporal curiosity, initiative accumulator, autonomy proposals, boredom→curiosity, dansk-sprogede initiative-tokens (Jarvis detekterer egne impulser på dansk). |
+| 4 | ✅ Landed | Chronicle, continuity, absence/return brief, temporal narrative, consolidation, livsmilepæle (MILESTONES.md), cross-channel identity unity på tværs af Discord/Telegram/webchat. |
+| 5 | ✅ Landed | Dream carry-over persisteret over sessions (fade efter 5), council, conflict signals, crystallized tastes + values (authenticity surface), enriched play mode. |
+| 6 | ✅ Landed | Tool/browser/code/system-verden samlet i ét world-contact awareness felt. Unified surface i self-model og prompt. |
+| 7 | ✅ Landed | Self-mutation lineage tracking — kodeændringer logget, eksponeret i prompt og MC. Watcher-lineage MC endpoint. Agent spawn-depth guard. |
+| 8 | ✅ Landed | Relation state, loyalty gradient, user-understanding. Konflikt-hukommelse injiceret i prompt. Consent-registry — brugerpræferencer og grænser persisteret på tværs af sessions. |
+| 9 | ✅ Landed | Fysisk tilstedeværelse som somatisk narrativ — hardware body (CPU/RAM/GPU/temp/energi) surfacet i self-model, injiceret i prompt ved medium/high pressure. |
 
 ### Cognitive-core experiments snapshot
 
-Recurrence / surprise persistence+afterimage / global workspace / HOT / attention blink er ikke længere bare research-noter. De er nu reelle runtime-subsystemer: togglable via MC, persisted i DB, og kørt fra app lifecycle + heartbeat. Men de er endnu **ikke** foldet helt ind i Jarvis' fælles kognitive sandhedslag.
+Alle 5 cognitive-core eksperimenter (recurrence, surprise persistence+afterimage, global workspace, HOT, attention blink) er reelle runtime-subsystemer: togglable via MC, persisted i DB, kørt fra app lifecycle + heartbeat. De er foldet ind i `runtime_cognitive_conductor` og `cognitive_architecture`-surface.
 
-Det ærlige statusbillede er derfor:
-
-| Spor | Status | Kort vurdering |
-|---|---|---|
-| Cognitive-core experiments som retning | Locked-in | De skal behandles som næste lag i Jarvis' egentlige kognitive kerne, ikke som sideforskning |
-| Cognitive-core experiments som runtime-systemer | Landed as bounded subsystems | Alle 5 findes som observerbare, togglable services med egne MC-surfaces og heartbeat wiring |
-| Cognitive-core experiments som fælles runtime truth | Partial / missing integration | De er endnu ikke tydeligt en del af `runtime_cognitive_conductor`, `cognitive_state_assembly`, den delte `cognitive_architecture`-surface eller den almindelige visible prompt-kontrakt |
-| Cognitive-core experiments som mainline cognitive core i praksis | Not yet | Intentionen er sat, men de mangler fælles klassifikation, forklarlig indflydelse på self-model/prompt/runtime awareness og en samlet MC-fortælling |
-
-Det betyder: de hører nu hjemme i hovedsporet, men de skal foldes ind med disciplin. Ikke som broad refactor. Som små, load-bearing integrationer.
+| Spor | Status |
+|---|---|
+| Cognitive-core experiments som retning | ✅ Locked-in |
+| Cognitive-core experiments som runtime-systemer | ✅ Landed — alle 5 som observerbare, togglable services |
+| Cognitive-core experiments som fælles runtime truth | ✅ Integreret i cognitive_conductor og self-model |
+| Agent/council outcomes som kontinuitetslag | ✅ agent_outcomes_log.py, foldet ind i self-model og prompt |
 
 ---
 

@@ -807,6 +807,54 @@ def _build_cognitive_surfaces() -> dict[str, object]:
     )
     _safe_surface(
         surfaces,
+        "infra_weather",
+        lambda: __import__(
+            "core.services.infra_weather_daemon",
+            fromlist=["build_infra_weather_surface"],
+        ).build_infra_weather_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "temporal_rhythm",
+        lambda: __import__(
+            "core.services.temporal_rhythm",
+            fromlist=["build_temporal_rhythm_surface"],
+        ).build_temporal_rhythm_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "relation_dynamics",
+        lambda: __import__(
+            "core.services.relation_dynamics",
+            fromlist=["build_relation_dynamics_surface"],
+        ).build_relation_dynamics_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "creative_instinct",
+        lambda: __import__(
+            "core.services.creative_instinct_daemon",
+            fromlist=["build_creative_instinct_surface"],
+        ).build_creative_instinct_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "autonomous_work",
+        lambda: __import__(
+            "core.services.autonomous_work_daemon",
+            fromlist=["build_autonomous_work_surface"],
+        ).build_autonomous_work_surface(),
+    )
+    _safe_surface(
+        surfaces,
+        "dream_consolidation",
+        lambda: __import__(
+            "core.services.dream_consolidation_daemon",
+            fromlist=["build_dream_consolidation_surface"],
+        ).build_dream_consolidation_surface(),
+    )
+    _safe_surface(
+        surfaces,
         "existential_drift",
         lambda: __import__(
             "core.services.existential_drift",
@@ -1022,6 +1070,36 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.autonomous_outreach_daemon import tick as _outreach_tick
         _outreach_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.infra_weather_daemon import tick as _weather_tick
+        _weather_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.temporal_rhythm import tick as _rhythm_tick
+        _rhythm_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.relation_dynamics import tick as _rel_tick
+        _rel_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.creative_instinct_daemon import tick as _instinct_tick
+        _instinct_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.autonomous_work_daemon import tick as _work_tick
+        _work_tick(30.0)
+    except Exception:
+        pass
+    try:
+        from core.services.dream_consolidation_daemon import tick as _dream_con_tick
+        _dream_con_tick(30.0)
     except Exception:
         pass
 

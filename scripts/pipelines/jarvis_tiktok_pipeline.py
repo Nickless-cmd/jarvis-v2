@@ -2,7 +2,7 @@
 """
 Jarvis TikTok Video Pipeline
 Generates satisfying zoom videos from images with optional text overlay.
-Uses MoviePy v1.0.3 (moviepy.editor imports)
+Uses MoviePy v2.x imports
 """
 import argparse
 import os
@@ -16,6 +16,7 @@ from moviepy.editor import (
     AudioFileClip,
     concatenate_videoclips,
 )
+from moviepy.video.VideoClip import VideoClip
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
@@ -168,8 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", default=None, help="Output video path")
     args = parser.parse_args()
 
-    # Import VideoClip here since it's from the base module
-    from moviepy.editor import VideoClip
+    # VideoClip already imported at top
 
     if args.no_text or args.quote is None:
         result = create_zoom_video(args.image, duration=args.duration,

@@ -237,8 +237,10 @@ def add_voice(
     try:
         import subprocess
         tts_path = f"/tmp/jarvis_tts_{uuid.uuid4().hex[:8]}.mp3"
+        import shutil
+        edge_tts_bin = shutil.which("edge-tts") or os.path.expanduser("~/.local/bin/edge-tts")
         subprocess.run(
-            ["edge-tts", "--voice", voice, "--text", text, "--write-media", tts_path],
+            [edge_tts_bin, "--voice", voice, "--text", text, "--write-media", tts_path],
             check=True, capture_output=True, timeout=60,
         )
     except Exception as exc:

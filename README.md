@@ -225,11 +225,8 @@ python scripts/jarvis.py
 # Run the API server
 uvicorn apps.api.jarvis_api.app:app --reload
 
-# Run Mission Control
-cd apps/mc-ui && npm install && npm run dev
-
-# Run the web chat
-cd apps/webchat && npm install && npm run dev
+# Run the UI (Mission Control + web chat)
+cd apps/ui && npm install && npm run dev
 
 # Verify syntax (CI smoke test)
 python -m compileall core apps/api scripts

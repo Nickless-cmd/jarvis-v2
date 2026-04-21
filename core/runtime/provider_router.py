@@ -493,6 +493,13 @@ def _credentials_ready(*, provider: str, auth_profile: str) -> bool:
         return False
     if provider in {"phase1-runtime", "codex-cli", "ollamafreeapi"}:
         return True
+    # Providers configured with auth_mode=none don't need per-call credentials
+    # from provider_auth_config — auth is handled externally (e.g. ollama daemon
+    # holds its own cloud-login key). Treat them as ready.
+    registry = load_provider_router_registry()
+    auth_mode = _provider_auth_mode(provider=provider, registry=registry)
+    if auth_mode == "none":
+        return True
     if not auth_profile:
         return False
     return provider_has_real_credentials(profile=auth_profile, provider=provider)

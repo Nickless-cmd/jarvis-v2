@@ -100,20 +100,37 @@ def tick_mail_checker_daemon() -> dict[str, object]:
     _last_senders = [m.get("from", "") for m in new_mails]
     _last_subjects = [m.get("subject", "") for m in new_mails]
 
-    # Publish event for each new mail
+    # Publish event for each new mail + proactive notification
     for mail in new_mails:
+        sender = mail.get("from", "")
+        subject = mail.get("subject", "")
         try:
             event_bus.publish(
                 "mail_checker.new_mail",
                 {
-                    "from": mail.get("from", ""),
-                    "subject": mail.get("subject", ""),
+                    "from": sender,
+                    "subject": subject,
                     "date": mail.get("date", ""),
                     "snippet": mail.get("snippet", "")[:200],
                 },
             )
         except Exception:
             pass
+
+        # Proactive notification for non-self mail
+        if "jarvis@srvlab.dk" not in sender and "root@srvlab.dk" not in sender:
+            try:
+                from core.services.notification_helpers import send_ntfy_notification
+                decoded_subject = subject
+                if isinstance(subject, bytes):
+                    decoded_subject = subject.decode("utf-8", errors="replace")
+                send_ntfy_notification(
+                    title="📧 Ny mail",
+                    message=f"Fra: {sender}\nEmne: {decoded_subject}",
+                    priority="default",
+                )
+            except Exception:
+                pass
 
     # If new mail, store private brain record
     if new_mails:

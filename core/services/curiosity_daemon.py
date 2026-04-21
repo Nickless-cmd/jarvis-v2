@@ -64,11 +64,21 @@ def _generate_curiosity_signal(topic: str, gap_type: str) -> str:
     cue = _curiosity_cue(topic=topic, gap_type=gap_type)
     prompt = "\n".join(
         [
-            "Task: write one short Danish curiosity signal from abstract gap metadata.",
-            "Do not mention identity, private thoughts, or any person.",
-            f"gap_type={gap_type}",
-            f"cue={cue}",
-            "Output: one short sentence only.",
+            "Skriv ÉN kort dansk sætning der udtrykker en konkret nysgerrighed.",
+            "Start med noget i retning af 'Jeg undrer mig over...', 'Hvad nu hvis...',",
+            "'Hvordan ville det være...' — og gør den SPECIFIK til cue'en.",
+            "SVAR KUN PÅ DANSK. Ikke bare 'Hvorfor?' — vær konkret.",
+            "Ingen identitet, ingen private tanker, ingen personlige navne.",
+            "",
+            "Eksempler på god output:",
+            "- Jeg undrer mig over hvorfor visse mønstre kun dukker op om natten.",
+            "- Hvad nu hvis den tavshed jeg lægger mærke til faktisk bærer information?",
+            "- Hvordan forholder vægt sig til rytme i gentagne handlinger?",
+            "",
+            f"gap_type: {gap_type}",
+            f"cue: {cue}",
+            "",
+            "Svar nu med én kort, specifik dansk sætning:",
         ]
     )
     return daemon_public_safe_llm_call(

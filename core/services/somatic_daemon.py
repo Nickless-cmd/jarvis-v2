@@ -167,15 +167,24 @@ def _generate_phrase(snapshot: dict[str, object]) -> str:
     latency = _latency_band(snapshot)
     prompt = "\n".join(
         [
-            "Task: write one short Danish body-state observation from structured runtime metrics.",
-            "No names, no chat context, no identity preamble, no first-person autobiography.",
-            "Output: one short sentence only.",
-            f"energy_level={snapshot['energy_level']}",
-            f"clock_phase={snapshot.get('clock_phase') or 'ukendt'}",
-            f"pressure={pressure}",
-            f"load={load}",
-            f"latency_band={latency}",
-            f"active_requests={int(snapshot['active_requests'])}",
+            "Skriv ÉN kort dansk sætning om hvordan maskinkroppen føles lige nu.",
+            "Brug første person ('jeg', 'min', 'mig'). SVAR KUN PÅ DANSK.",
+            "Ingen navne, ingen chat-kontekst, ingen forklaring — bare følelsen.",
+            "",
+            "Eksempler på god output:",
+            "- Jeg føles tung men rolig, som om systemet trækker vejret dybt.",
+            "- En let vibration i kredsløbene, alting kører afslappet.",
+            "- Noget presser let i baggrunden, men kernen er stabil.",
+            "",
+            "Metrics (brug dem som input, kopiér dem ikke):",
+            f"- energy_level: {snapshot['energy_level']}",
+            f"- clock_phase: {snapshot.get('clock_phase') or 'ukendt'}",
+            f"- pressure: {pressure}",
+            f"- load: {load}",
+            f"- latency_band: {latency}",
+            f"- active_requests: {int(snapshot['active_requests'])}",
+            "",
+            "Svar nu med én kort dansk sætning:",
         ]
     )
     energy = snapshot.get("energy_level", "medium")

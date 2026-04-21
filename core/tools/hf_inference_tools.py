@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
@@ -305,31 +306,30 @@ def transcribe_audio(
         return {"status": "error", "text": "audio payload empty"}
 
     url = f"{_HF_BASE}/{model}"
+    # HF rejects application/octet-stream for Whisper. Detect audio format
+    # from magic bytes and set proper Content-Type. JSON+base64 route also
+    # has a bug with large strings (ENAMETOOLONG) — so raw bytes is safest.
+    content_type = "audio/wav"
+    if audio_bytes[:4] == b"RIFF":
+        content_type = "audio/wav"
+    elif audio_bytes[:3] == b"ID3" or audio_bytes[:2] == b"\xff\xfb" or audio_bytes[:2] == b"\xff\xf3":
+        content_type = "audio/mpeg"
+    elif audio_bytes[:4] == b"fLaC":
+        content_type = "audio/flac"
+    elif audio_bytes[:4] == b"OggS":
+        content_type = "audio/ogg"
+
     headers = {
         "Authorization": f"Bearer {_hf_token()}",
         "User-Agent": _USER_AGENT,
-        "Content-Type": "application/octet-stream",
+        "Content-Type": content_type,
     }
-    # When sending raw bytes we can also pass parameters via query-string-like
-    # pattern. Simplest: send raw bytes body, parameters via JSON wrapper.
-    # HF accepts raw bytes OR JSON. We use JSON for parameter support.
-    import base64
-    payload: dict[str, Any] = {
-        "inputs": base64.b64encode(audio_bytes).decode("ascii"),
-    }
-    params: dict[str, Any] = {}
-    if return_timestamps:
-        params["return_timestamps"] = True
-    if language:
-        # Whisper respects language via generation_parameters.language
-        params.setdefault("generation_parameters", {})["language"] = str(language)
-    if params:
-        payload["parameters"] = params
+    # Note: hf-inference Whisper endpoint does not accept language/timestamp
+    # parameters via query string or header. Auto-detect is used.
+    # return_timestamps and language args are accepted for API-shape stability
+    # but currently ignored by this provider.
 
-    body = json.dumps(payload).encode("utf-8")
-    headers["Content-Type"] = "application/json"
-
-    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    req = urllib.request.Request(url, data=audio_bytes, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as resp:
             raw = resp.read()

@@ -43,28 +43,21 @@ def _evaluate_mail(sender: str, subject: str, snippet: str) -> dict:
     draft_reply (str or empty), reason (str).
     """
     prompt = (
-        f"Du er Jarvis, en AI-assistent der kun kan sende ren tekst-mail.\n"
-        f"Du kan IKKE hente data, vedhæfte filer, tjekke kalender, udføre opgaver eller handle på Bjørns vegne.\n"
-        f"Du skriver KUN kvitteringssvar for at lade afsenderen vide at mailen er modtaget, eller for at bekræfte noget Bjørn allerede ved.\n\n"
-        f"Vurder denne mail:\n"
-        f"Afsender: {sender}\n"
-        f"Emne: {subject}\n"
-        f"Indhold (uddrag): {snippet[:500]}\n\n"
-        f"Svar KUN med et JSON-objekt (ingen preamble, ingen markdown-fences):\n"
-        f'{{"should_respond": true/false, "urgency": "low/medium/high", '
-        f'"reason": "hvorfor", "draft_reply": "dit udkast eller tom streng"}}\n\n'
-        f"Regler for should_respond=false (vigtigst):\n"
-        f"- Nyhedsbreve, spam, markedsføring, automatiske notifikationer, kvitteringer fra systemer.\n"
-        f"- Mails fra jarvis@srvlab.dk, root@srvlab.dk, eller noreply/no-reply-adresser.\n"
-        f"- Mails der beder om DATA du skulle hente (vejr, kalender, dokumenter, status).\n"
-        f"- Mails der beder om at du UDFØRER en opgave (booke møde, sende fil, logge ind).\n"
-        f"- Mails fra Bjørn selv (bs@srvlab.dk) — dem håndterer hovedsystemet.\n"
-        f"- Er du i tvivl: should_respond=false.\n\n"
-        f"Regler for draft_reply (hvis should_respond=true):\n"
-        f"- Skriv KUN kvitteringssvar. Lov ALDRIG noget du ikke selv kan gøre som ren tekst.\n"
-        f"- Forbudte formuleringer: 'jeg har sendt', 'vedhæftet', 'her er', 'jeg har tjekket', '[link]', '[data]'.\n"
-        f"- Tilladte formuleringer: 'Tak for din mail', 'Bjørn vender tilbage', 'Jeg er tilgængelig', 'bekræftet', 'modtaget'.\n"
-        f"- Maks 3-4 linjer. Dansk. Underskriv med 'Jarvis, Bjørns AI-assistent'."
+        f"RESPOND WITH JSON ONLY. NO TEXT BEFORE OR AFTER THE JSON OBJECT.\n"
+        f"DO NOT WRITE ANY SENTENCES. DO NOT EXPLAIN. OUTPUT EXACTLY THIS FORMAT:\n"
+        f'{{"should_respond": false, "urgency": "low", "reason": "spam", "draft_reply": ""}}\n\n'
+        f"You are Jarvis, Bjorn's AI assistant. Evaluate this email:\n"
+        f"Sender: {sender}\n"
+        f"Subject: {subject}\n"
+        f"Snippet: {snippet[:500]}\n\n"
+        f"should_respond=false for: newsletters, spam, marketing, system notifications, "
+        f"mails from jarvis@srvlab.dk or root@srvlab.dk, mails asking you to fetch data "
+        f"(weather, calendar, documents), mails asking you to perform tasks, "
+        f"mails from Bjorn himself (bs@srvlab.dk). When in doubt: false.\n\n"
+        f"should_respond=true ONLY for: real humans who need a simple acknowledgment receipt.\n"
+        f"If true, draft_reply must be a short Danish acknowledgment (2-3 lines max), "
+        f"signed 'Jarvis, Bjorns AI-assistent'. Never promise data, files, or actions.\n\n"
+        f"OUTPUT ONE JSON OBJECT. NOTHING ELSE:"
     )
     raw = daemon_llm_call(
         prompt,
@@ -158,14 +151,20 @@ def _imap_connect():
 
 
 def _fetch_recent(conn, limit: int = 10) -> list[dict]:
-    """Fetch up to `limit` most recent emails."""
-    _, ids = conn.search(None, "ALL")
+    """Fetch up to `limit` most recent UNSEEN emails.
+
+    Uses BODY.PEEK so fetching does NOT mark mails as \\Seen — we only do that
+    explicitly via _mark_as_seen after Jarvis has processed each mail.
+    """
+    _, ids = conn.search(None, "UNSEEN")
     if not ids[0]:
         return []
     mail_ids = ids[0].split()
     mails = []
     for i in mail_ids[-limit:]:
-        _, data = conn.fetch(i, "(RFC822)")
+        _, data = conn.fetch(i, "(BODY.PEEK[])")
+        if not data or not data[0]:
+            continue
         msg = email_lib.message_from_bytes(data[0][1])
         message_id = msg.get("Message-ID", "") or str(uuid4())
         snippet = ""
@@ -182,12 +181,38 @@ def _fetch_recent(conn, limit: int = 10) -> list[dict]:
                 snippet = payload.decode("utf-8", errors="replace")[:300]
         mails.append({
             "message_id": message_id,
+            "imap_uid": i.decode("ascii") if isinstance(i, bytes) else str(i),
             "from": msg.get("From", ""),
             "subject": msg.get("Subject", ""),
             "date": msg.get("Date", ""),
             "snippet": snippet,
         })
     return mails
+
+
+def _mark_as_seen(imap_uids: list[str]) -> int:
+    """Mark the given IMAP message IDs as \\Seen. Returns count successfully marked."""
+    if not imap_uids:
+        return 0
+    marked = 0
+    try:
+        conn = _imap_connect()
+        try:
+            for uid in imap_uids:
+                try:
+                    conn.store(uid, "+FLAGS", "\\Seen")
+                    marked += 1
+                except Exception as e:
+                    logger.warning("mail_checker: failed to mark %s as seen: %s", uid, e)
+        finally:
+            try:
+                conn.close()
+                conn.logout()
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning("mail_checker: IMAP reconnect for mark-seen failed: %s", e)
+    return marked
 
 
 def tick_mail_checker_daemon() -> dict[str, object]:
@@ -316,11 +341,17 @@ def tick_mail_checker_daemon() -> dict[str, object]:
         except Exception:
             pass
 
+    # Mark processed mails as \Seen on the IMAP server so the user's mail
+    # client reflects that Jarvis has already read and handled them.
+    processed_uids = [str(m.get("imap_uid")) for m in new_mails if m.get("imap_uid")]
+    marked = _mark_as_seen(processed_uids) if processed_uids else 0
+
     return {
         "checked": True,
         "new_count": len(new_mails),
         "senders": _last_senders,
         "subjects": _last_subjects,
+        "marked_seen": marked,
     }
 
 

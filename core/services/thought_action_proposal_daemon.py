@@ -1,12 +1,15 @@
 """Thought-action proposal daemon — turns action impulses in thought stream into MC proposals."""
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import insert_private_brain_record
 from core.services.proposal_classifier import classify_fragment
+
+logger = logging.getLogger(__name__)
 
 _MAX_PENDING = 10
 _MAX_RESOLVED = 20
@@ -15,19 +18,42 @@ _pending_proposals: list[dict] = []
 _resolved_proposals: list[dict] = []
 _last_classified_fragment: str = ""
 
+# Diagnose counters for why the daemon appears silent
+_classify_total: int = 0
+_classify_no_action: int = 0
+_classify_has_action: int = 0
+
 
 def tick_thought_action_proposal_daemon(fragment: str) -> dict[str, object]:
     """Classify fragment and create a proposal if an action impulse is detected."""
-    global _last_classified_fragment
+    global _last_classified_fragment, _classify_total, _classify_no_action, _classify_has_action
 
-    if not fragment or fragment == _last_classified_fragment:
-        return {"generated": False}
+    if not fragment:
+        return {"generated": False, "skip_reason": "empty_fragment"}
+    if fragment == _last_classified_fragment:
+        return {"generated": False, "skip_reason": "duplicate_fragment"}
 
     _last_classified_fragment = fragment
+    _classify_total += 1
     classification = classify_fragment(fragment)
 
     if not classification["has_action"]:
-        return {"generated": False}
+        _classify_no_action += 1
+        # Log once per 50 to avoid noise but show the daemon IS evaluating
+        if _classify_total % 50 == 0:
+            logger.info(
+                "thought_action_proposal: %d/%d fragments had no action impulse (working as designed)",
+                _classify_no_action, _classify_total,
+            )
+        return {
+            "generated": False,
+            "skip_reason": "no_action_impulse",
+            "classify_total": _classify_total,
+            "classify_no_action": _classify_no_action,
+            "classify_has_action": _classify_has_action,
+        }
+
+    _classify_has_action += 1
 
     if len(_pending_proposals) >= _MAX_PENDING:
         return {"generated": False}

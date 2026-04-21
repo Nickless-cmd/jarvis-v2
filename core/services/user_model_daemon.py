@@ -52,24 +52,34 @@ def tick_user_model_daemon(recent_messages: list[str]) -> dict:
 
     if _last_tick_at is not None:
         if (now - _last_tick_at) < timedelta(minutes=_CADENCE_MINUTES):
-            return {"generated": False}
+            return {"generated": False, "skip_reason": "cadence_gate"}
 
     # Pull recent runs from DB if no messages provided
     messages = list(recent_messages)
+    runs_fetched = 0
     if not messages:
         try:
             runs = recent_visible_runs(limit=10)
+            runs_fetched = len(runs)
+            # Accept runs from user-facing lanes (primary/visible). Historical
+            # 'visible' label is now 'primary' in most deployments.
+            visible_lanes = {"visible", "primary"}
             messages = [
                 str(r.get("text_preview") or "")
                 for r in runs
-                if r.get("lane") == "visible" and r.get("text_preview")
+                if str(r.get("lane") or "").lower() in visible_lanes
+                and r.get("text_preview")
             ]
         except Exception:
             pass
 
     if not messages:
         _last_tick_at = now
-        return {"generated": False}
+        return {
+            "generated": False,
+            "skip_reason": "no_messages",
+            "runs_fetched": runs_fetched,
+        }
 
     model = _analyze_messages(messages)
     summary = _generate_model_summary(messages, model)

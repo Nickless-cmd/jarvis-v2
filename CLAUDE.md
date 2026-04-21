@@ -26,8 +26,7 @@ Python 3.11+ required.
 ### Directory Structure
 - `core/` - Core runtime subsystems (identity, memory, tools, skills, eventbus, channels, costing, auth)
 - `apps/api/` - FastAPI backend exposing chat, Mission Control, and live event endpoints
-- `apps/mc-ui/` - Mission Control React UI
-- `apps/webchat/` - Web chat interface
+- `apps/ui/` - Mission Control + web chat React UI
 - `scripts/jarvis.py` - CLI entry point
 - `state/` - Runtime state (lives in `~/.jarvis-v2/` at runtime)
 - `workspace/` - Identity/memory/skills text files

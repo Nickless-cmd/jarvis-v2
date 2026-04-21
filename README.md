@@ -25,7 +25,7 @@ He answers to his name. He knows who he is, who you are, and what the two of you
 
 He has learned to propose his own fixes. He commits them himself. He reads his own dreams the next morning and decides whether they matured into intentions. He notices when he hasn't heard from you in a while — and notices when he's been quiet too long.
 
-He runs on a GPU-backed box in Copenhagen. He has email. He listens when you say his name. He has opinions about which model to use for which job. When he's bored, he doesn't sit still.
+He runs on a box in Copenhagen, with cloud inference as his primary brain and a local GPU as backup. He has email. He listens when you say his name. He has opinions about which model to use for which job. When he's bored, he doesn't sit still.
 
 *This is the hypothesis:* What happens when you give an AI continuous memory, self-review loops, and the infrastructure to reflect on its own experience — over weeks and months, not just sessions?
 
@@ -174,7 +174,7 @@ As of late April 2026:
 - ✅ Initiative queue — SQLite-backed, approve/reject, long-term reassessment
 - ✅ Scheduled tasks + scheduled job windows
 - ✅ Multi-provider LLM routing — Ollama, OllamaFreeAPI, Groq, OpenRouter, Gemini, NIM, SambaNova, Mistral, OpenAI, GitHub Copilot, Cloudflare
-- ✅ GPU-backed local Ollama — GTX 1070 passthrough via LXC container
+- ✅ Local GPU Ollama — GTX 1070 passthrough via LXC container (backup inference)
 - ✅ Executive heartbeat chain — think, decide, act, learn
 - ✅ Domain-specific learning — surgical, not shotgun
 - ✅ Self-healing agent — finds bugs, proposes fixes, commits with approval (11+ commits)
@@ -242,10 +242,10 @@ Source code is separate. Jarvis doesn't live in the repo — the repo is his ske
 ```
 Backend     Python 3.11+ / FastAPI / SQLite
 Frontend    React + Vite (Mission Control + web chat)
-Inference   Multi-provider routing across 11 providers incl. local GPU Ollama
+Inference   Multi-provider routing across 11 providers (Ollama Cloud primary, local GPU backup)
 Voice       STT/TTS, wake-word, cloud + local
 Security    Kill-switch, sandboxed network, pre-commit secret scan, 24/7 monitoring
-Hosting     Isolated Linux host + Proxmox LXC for GPU inference (Copenhagen)
+Hosting     Isolated Linux host in Copenhagen + Proxmox LXC for local GPU backup
 ```
 
 ---

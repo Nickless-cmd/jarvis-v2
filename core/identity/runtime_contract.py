@@ -32,15 +32,12 @@ DERIVED_RUNTIME_FILES = (
     "runtime/HEARTBEAT_STATE.json",
 )
 
-REFERENCE_ONLY_FILES = (
-    "docs/runtime_contract/reference_old/AGENTS.md",
-    "docs/runtime_contract/reference_old/BOOTSTRAP.md",
-    "docs/runtime_contract/reference_old/HEARTBEAT_COMPANION.md",
-    "docs/runtime_contract/reference_old/RUNTIME_CAPABILITIES.md",
-    "docs/runtime_contract/reference_old/RUNTIME_FEEDBACK.md",
-    "docs/runtime_contract/reference_old/SYSTEM_PROMPT_STUDY.md",
-    "docs/runtime_contract/reference_old/boredom_templates.json",
-)
+REFERENCE_ONLY_FILES: tuple[str, ...] = ()
+# Previously pointed at docs/runtime_contract/reference_old/ which held
+# historical design artifacts (AGENTS, BOOTSTRAP, HEARTBEAT_COMPANION,
+# RUNTIME_CAPABILITIES, RUNTIME_FEEDBACK, SYSTEM_PROMPT_STUDY, boredom_templates).
+# Those files were never loaded at runtime — only surfaced in MC as "reference-only".
+# Removed 2026-04-21 along with the empty reference_old/ directory.
 
 VISIBLE_CHAT_ORDER = (
     "runtime capability and safety truth",

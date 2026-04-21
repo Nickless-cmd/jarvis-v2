@@ -1,9 +1,0 @@
-# Tilføj MCP server til Claude Code
-claude mcp add --transport http jarvis http://localhost:8010/mcp
-
-jarvis_memory_read
-jarvis_identity
-jarvis_chat_sessions
-
-# Eller brug som OpenAI-compatible provider
-# apiBaseUrl: http://localhost:8010/v1, model: jarvis

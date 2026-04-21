@@ -188,6 +188,31 @@ def ensure_default_automations() -> list[str]:
     return created
 
 
+def ensure_warmup_job() -> str | None:
+    """Enqueue a single low-priority warmup job on first boot so the
+    jobs_engine surface has at least one entry showing the system works.
+    Idempotent: checks if any jobs exist first.
+    """
+    from core.services.jobs_engine import enqueue_job, list_jobs
+
+    existing = list_jobs(limit=1)
+    if existing:
+        return None  # Already have job history
+
+    try:
+        job_id = enqueue_job(
+            job_type="chronicle_refresh",
+            payload={"reason": "warmup on first boot"},
+            priority=9,  # low priority
+            max_requests=1,
+        )
+        logger.info("governance_bootstrap: enqueued warmup job %s", job_id)
+        return job_id
+    except Exception as exc:
+        logger.warning("governance_bootstrap: warmup job failed: %s", exc)
+        return None
+
+
 def bootstrap_all() -> dict[str, Any]:
     """Run all idempotent bootstrap helpers. Safe at any startup."""
     result: dict[str, Any] = {}
@@ -203,4 +228,8 @@ def bootstrap_all() -> dict[str, Any]:
         result["automations_created"] = ensure_default_automations()
     except Exception as exc:
         result["automations_error"] = str(exc)
+    try:
+        result["warmup_job"] = ensure_warmup_job()
+    except Exception as exc:
+        result["warmup_error"] = str(exc)
     return result

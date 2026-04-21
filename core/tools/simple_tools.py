@@ -1783,10 +1783,24 @@ def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         result = {"error": str(exc), "status": "error"}
 
+    status = str(result.get("status", "ok"))
     event_bus.publish("tool.completed", {
         "tool": name,
-        "status": result.get("status", "ok"),
+        "status": status,
     })
+
+    # Outcome learning — same hook as execute_tool so force-path is observed too
+    try:
+        from core.services.outcome_learning import record_outcome
+        outcome_label = "error" if status == "error" else "success"
+        record_outcome(
+            context=f"tool:{name}",
+            outcome=outcome_label,
+            weight=1.0,
+        )
+    except Exception:
+        pass
+
     return result
 
 

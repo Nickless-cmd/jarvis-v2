@@ -48,6 +48,10 @@ from core.tools.pollinations_tools import (
 from core.tools.hf_inference_tools import (
     HF_INFERENCE_TOOL_DEFINITIONS,
     _exec_hf_text_to_video,
+    _exec_hf_transcribe_audio,
+    _exec_hf_embed,
+    _exec_hf_zero_shot_classify,
+    _exec_hf_vision_analyze,
 )
 from core.tools.tiktok_content_tools import (
     TIKTOK_CONTENT_TOOL_DEFINITIONS,
@@ -4376,8 +4380,12 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Pollinations.ai free image gen (no RAM, no auth)
     "pollinations_image": _exec_pollinations_image,
     "pollinations_video": _exec_pollinations_video,
-    # HuggingFace serverless inference (free-tier text-to-video)
+    # HuggingFace serverless inference
     "hf_text_to_video": _exec_hf_text_to_video,
+    "hf_transcribe_audio": _exec_hf_transcribe_audio,
+    "hf_embed": _exec_hf_embed,
+    "hf_zero_shot_classify": _exec_hf_zero_shot_classify,
+    "hf_vision_analyze": _exec_hf_vision_analyze,
     # End-to-end TikTok video (pollinations image + Ken Burns zoom + text)
     "tiktok_generate_video": _exec_tiktok_generate_video,
     # TikTok tools

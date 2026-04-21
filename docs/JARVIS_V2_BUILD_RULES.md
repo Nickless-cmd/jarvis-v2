@@ -46,6 +46,12 @@ Codex must:
 - UI session auth is separate from provider OAuth auth
 - GitHub/Codex provider credentials must never be stored in repo
 - all provider auth is profile-scoped and revocable
+- credentials live in runtime state dir (`~/.jarvis-v2/config/`), never in repo
+- all connections are observable in Mission Control
+- revoke / rotate must be supported
+- first-class connections: GitHub, Codex/OpenAI, Anthropic, Ollama (cloud), Groq,
+  OpenRouter, Gemini, NIM, SambaNova, Mistral, Cloudflare, OllamaFreeAPI
+- additional providers may be added under the same auth profile model
 
 ## Cache / Token / Cost Rules
 - prompt/native caching must be used where provider supports it
@@ -64,3 +70,9 @@ Codex must:
 - no core runtime file over 2000 lines
 - split at 1200 lines
 - one responsibility per module
+
+## Coding Rules
+- no hidden side effects
+- no dual truth between config and DB
+- no fake agent-authored work when LLM-led output is expected
+- all risky actions require explicit policy/approval path

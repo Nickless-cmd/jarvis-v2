@@ -1,9 +1,28 @@
 # UI ROADMAP — Jarvis V2
 
+> ⚠️ **Status 2026-04-21:** NUVÆRENDE STATUS-sektionen nedenfor er fra
+> 2026-04-03 og 18 dage bagud. For real-time overblik over hvad der er live,
+> brug [CURRENT_STATUS.md](CURRENT_STATUS.md). Principper og overordnet plan
+> her er stadig gyldige som reference.
+>
+> **Landet siden 2026-04-03:**
+> - 5 nye MC-tabs (2026-04-20) til propriocetion-daemons
+> - Webchat approval cards + tool result visibility
+> - SSE streaming til chat, WebSocket til control plane (se TRANSPORTS.md)
+> - Design tokens: theme.js i MC (teal #3d8f7c), CSS vars i webchat (warm earth)
+>
+> **Stadig åbent (Fase 1):**
+> - Unified design tokens på tværs af MC og webchat
+> - Keyboard shortcuts i begge apps
+> - "Breathing dot" som live-indikator
+> - Shared component library mellem MC og webchat
+>
+> ---
+
 > Komplet plan for at bringe V2's UI op til feature-paritet med den gamle UI,
 > tilføje bevidsthed-specifikke views, og bygge ting ingen af UI'erne har haft.
 >
-> Sidst opdateret: 2026-04-03
+> Originalt dokument sidst opdateret: 2026-04-03
 
 ---
 

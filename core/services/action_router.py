@@ -81,6 +81,12 @@ _MOOD_EVENTS: frozenset[str] = frozenset({
     "anticipation.contact_expected",
 })
 
+# Privacy: ambient_sound_daemon is no-content by contract. When it classifies
+# the room as "talk", we never auto-record. We route a SUGGESTION to the bus
+# that Jarvis can choose to act on (or ignore). The user remains in control.
+_AMBIENT_SUGGESTION_COOLDOWN_MINUTES = 60
+_last_ambient_suggestion_ts: float | None = None
+
 _WARNING_EVENTS: frozenset[str] = frozenset({
     "desperation-awareness",  # inner_voice.signal payload kind
     "infra_weather.critical",
@@ -103,6 +109,9 @@ _INFORMATIONAL_EVENTS: frozenset[str] = frozenset({
     "file_watch.change",
     "autonomous_outreach.sent",
     "autonomous_work.proposal",
+    "ambient_sound.sampled",
+    "mic.transcribed",
+    "voice_journal.recorded",
 })
 
 
@@ -120,6 +129,47 @@ def classify(event_kind: str, payload: dict[str, Any]) -> str:
     if event_kind in _INFORMATIONAL_EVENTS:
         return "info"
     return "unknown"
+
+
+def _maybe_suggest_listen_on_ambient_talk(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """When ambient_sound_daemon reports 'talk', emit a SUGGESTION event that
+    Jarvis can choose to act on. Never auto-records — respects privacy contract.
+
+    Rate-limited to once per hour to avoid suggestion fatigue.
+    """
+    global _last_ambient_suggestion_ts
+    category = str(payload.get("category") or "").lower()
+    if category != "talk":
+        return None
+
+    now_ts = datetime.now(UTC).timestamp()
+    if _last_ambient_suggestion_ts is not None:
+        elapsed = (now_ts - _last_ambient_suggestion_ts) / 60
+        if elapsed < _AMBIENT_SUGGESTION_COOLDOWN_MINUTES:
+            return {
+                "outcome": "skipped",
+                "reason": f"suggestion-cooldown-{elapsed:.0f}m",
+            }
+
+    _last_ambient_suggestion_ts = now_ts
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish({
+            "kind": "ambient.talk_suggests_listen",
+            "payload": {
+                "at": datetime.now(UTC).isoformat(),
+                "amplitude_mean": payload.get("amplitude_mean"),
+                "note": (
+                    "ambient_sound_daemon classified the room as 'talk' (no "
+                    "content captured). If you want to listen actively, call "
+                    "mic_listen; this suggestion is advisory and the user "
+                    "remains in control."
+                ),
+            },
+        })
+    except Exception:
+        pass
+    return {"outcome": "suggestion-emitted", "reason": "ambient-talk-detected"}
 
 
 # ─── Execution primitives ─────────────────────────────────────────────
@@ -318,6 +368,10 @@ def route(event_kind: str, payload: dict[str, Any] | None = None) -> dict[str, A
         decision = _route_mood(event_kind, payload)
     elif cls == "creative":
         decision = _route_creative(event_kind, payload)
+    elif cls == "info" and event_kind == "ambient_sound.sampled":
+        # Privacy-respecting: suggest listen only if ambient classifies "talk"
+        ambient_decision = _maybe_suggest_listen_on_ambient_talk(payload)
+        decision = ambient_decision or {"outcome": "logged", "reason": "ambient-non-talk"}
     else:
         decision = {"outcome": "logged", "reason": cls}
 
@@ -339,7 +393,10 @@ def route(event_kind: str, payload: dict[str, Any] | None = None) -> dict[str, A
 # ─── Eventbus listener ────────────────────────────────────────────────
 
 _ROUTABLE_KINDS: frozenset[str] = (
-    _MOOD_EVENTS | _WARNING_EVENTS | _CREATIVE_EVENTS | frozenset({"inner_voice.signal"})
+    _MOOD_EVENTS | _WARNING_EVENTS | _CREATIVE_EVENTS | frozenset({
+        "inner_voice.signal",
+        "ambient_sound.sampled",
+    })
 )
 
 

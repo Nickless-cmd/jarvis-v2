@@ -61,6 +61,14 @@ from core.tools.mic_listen_tool import (
     MIC_LISTEN_TOOL_DEFINITIONS,
     _exec_mic_listen,
 )
+from core.tools.voice_journal_tool import (
+    VOICE_JOURNAL_TOOL_DEFINITIONS,
+    _exec_voice_journal,
+)
+from core.tools.wake_word_tool import (
+    WAKE_WORD_TOOL_DEFINITIONS,
+    _exec_wake_word,
+)
 from core.tools.tiktok_tools import (
     TIKTOK_TOOL_DEFINITIONS,
     _exec_tiktok_upload,
@@ -1498,6 +1506,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *HF_INFERENCE_TOOL_DEFINITIONS,
     *TIKTOK_CONTENT_TOOL_DEFINITIONS,
     *MIC_LISTEN_TOOL_DEFINITIONS,
+    *VOICE_JOURNAL_TOOL_DEFINITIONS,
+    *WAKE_WORD_TOOL_DEFINITIONS,
     *TIKTOK_TOOL_DEFINITIONS,
     *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
@@ -4395,6 +4405,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "tiktok_generate_video": _exec_tiktok_generate_video,
     # Active mic listening + transcription
     "mic_listen": _exec_mic_listen,
+    # Voice journal (30-60s → memory_density)
+    "voice_journal": _exec_voice_journal,
+    # Wake-word listener ('Hey Jarvis' via ElevenLabs STT)
+    "wake_word": _exec_wake_word,
     # TikTok tools
     "tiktok_upload": _exec_tiktok_upload,
     "tiktok_login": _exec_tiktok_login,

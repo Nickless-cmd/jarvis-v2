@@ -39,6 +39,134 @@ _PAREC_BIN_CANDIDATES = (
 )
 _RECORDINGS_REL = "workspaces/default/memory/generated/mic"
 
+# Trigger phrases Jarvis recognizes in transcripts. Matched case-insensitively
+# as substrings. Each trigger maps to a structured action the helper below
+# routes to.
+_TRIGGER_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    # action_key, phrases
+    ("remember", ("jarvis husk dette", "husk dette jarvis", "husk det her",
+                  "jarvis remember this", "remember this jarvis")),
+    ("note", ("jarvis note", "skriv en note", "take a note")),
+    ("journal", ("jarvis journal", "start journal", "journal entry")),
+)
+
+
+def _normalize_for_match(text: str) -> str:
+    """Lowercase + replace punctuation with spaces + collapse whitespace.
+
+    So 'Jarvis, remember this:' matches the pattern 'jarvis remember this'.
+    """
+    import re
+    low = str(text or "").lower()
+    low = re.sub(r"[,:;!?.\-—_]+", " ", low)
+    low = re.sub(r"\s+", " ", low).strip()
+    return low
+
+
+def detect_trigger(text: str) -> str | None:
+    """Return the action_key of a trigger matched in text, or None."""
+    if not text:
+        return None
+    normalized = _normalize_for_match(text)
+    for action_key, phrases in _TRIGGER_PATTERNS:
+        for phrase in phrases:
+            if phrase in normalized:
+                return action_key
+    return None
+
+
+def _strip_trigger(text: str, action_key: str) -> str:
+    """Remove the matched trigger phrase from the transcript so the remainder
+    is the actual content Bjørn wanted recorded.
+
+    Uses a regex that tolerates punctuation between words (so 'Jarvis, husk
+    dette:' strips the same way as 'Jarvis husk dette').
+    """
+    import re
+    for ak, phrases in _TRIGGER_PATTERNS:
+        if ak != action_key:
+            continue
+        for phrase in phrases:
+            # Build a regex allowing any non-alphanumeric characters between
+            # words (so commas/colons/dashes don't break the match).
+            words = phrase.split()
+            pattern = r"[^a-zæøå0-9]*".join(re.escape(w) for w in words)
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                before = text[:match.start()].rstrip(" .,:;-—")
+                after = text[match.end():].lstrip(" .,:;-—")
+                return (before + " " + after).strip()
+    return text.strip()
+
+
+def _route_trigger(action_key: str, transcript: str, metadata: dict[str, Any]) -> dict[str, Any] | None:
+    """Route a detected trigger to the appropriate downstream system.
+
+    Returns a small dict describing what was done, or None on failure.
+    Gracefully soft-fails if dependencies aren't available.
+    """
+    content = _strip_trigger(transcript, action_key)
+    if not content:
+        return {"routed": action_key, "action": "skipped", "reason": "no-content-after-trigger"}
+
+    if action_key == "remember":
+        try:
+            from core.services.memory_density import write_density_note
+            # Derive short title from first 60 chars
+            title = content[:60].rstrip(".,!?:;") or "Voice capture"
+            note = write_density_note(
+                title=title,
+                what_happened=content,
+                what_it_meant="(unfilled — voice capture, enrich later)",
+                how_it_felt="(unfilled)",
+                what_it_changed="(unfilled)",
+                trigger_type="manual",
+                metadata={
+                    "source": "mic_listen_trigger",
+                    "trigger_action": action_key,
+                    **metadata,
+                },
+            )
+            return {
+                "routed": action_key,
+                "action": "memory_density.written",
+                "note_id": note.get("note_id"),
+                "title": note.get("title"),
+            }
+        except Exception as exc:
+            logger.debug("mic_listen trigger 'remember' routing failed: %s", exc)
+            return {"routed": action_key, "action": "error", "error": str(exc)}
+
+    if action_key == "note":
+        # Lightweight: append to workspace NOTES.md (create if missing)
+        try:
+            from datetime import UTC, datetime as _dt
+            from pathlib import Path as _Path
+            base = os.environ.get("JARVIS_HOME") or os.path.expanduser("~/.jarvis-v2")
+            notes_path = _Path(base) / "workspaces/default/NOTES.md"
+            notes_path.parent.mkdir(parents=True, exist_ok=True)
+            timestamp = _dt.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+            entry = f"\n- **{timestamp}** (voice): {content}\n"
+            if notes_path.exists():
+                notes_path.write_text(notes_path.read_text() + entry)
+            else:
+                notes_path.write_text("# NOTES\n\n*Voice and text captures.*\n" + entry)
+            return {"routed": action_key, "action": "notes.appended", "path": str(notes_path)}
+        except Exception as exc:
+            return {"routed": action_key, "action": "error", "error": str(exc)}
+
+    if action_key == "journal":
+        # Don't recurse into voice_journal (already-captured audio); just flag
+        # to caller that user intended a journal entry — they should call
+        # voice_journal separately for a longer dedicated recording.
+        return {
+            "routed": action_key,
+            "action": "intent-detected",
+            "note": "User asked to start a journal — caller should invoke voice_journal for longer recording",
+        }
+
+    return {"routed": action_key, "action": "unhandled"}
+
 
 def _parec_binary() -> str | None:
     for path in _PAREC_BIN_CANDIDATES:
@@ -213,17 +341,29 @@ def listen_and_transcribe(
         return result
 
     # Emit event for action_router / memory_density / etc.
+    transcript = str(result.get("text") or "")
+    trigger_action = detect_trigger(transcript)
+    trigger_result: dict[str, Any] | None = None
+    if trigger_action:
+        trigger_result = _route_trigger(trigger_action, transcript, {
+            "duration_s": duration,
+            "backend": backend_used,
+            "wav_path": saved_path,
+        })
+
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish({
             "kind": "mic.transcribed",
             "payload": {
-                "text": str(result.get("text") or "")[:500],
-                "chars": len(str(result.get("text") or "")),
+                "text": transcript[:500],
+                "chars": len(transcript),
                 "backend": backend_used,
                 "duration_s": duration,
                 "capture": capture_path,
                 "saved_path": saved_path,
+                "trigger": trigger_action,
+                "trigger_result": trigger_result,
             },
         })
     except Exception:
@@ -231,12 +371,14 @@ def listen_and_transcribe(
 
     return {
         "status": "ok",
-        "text": result.get("text", ""),
+        "text": transcript,
         "backend": backend_used,
         "capture_device": capture_path,
         "duration_s": duration,
         "saved_path": saved_path,
         "bytes_recorded": len(raw_pcm),
+        "trigger": trigger_action,
+        "trigger_result": trigger_result,
     }
 
 

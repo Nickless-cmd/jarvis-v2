@@ -971,10 +971,10 @@ conda run -n ai python scripts/jarvis.py discord-setup
 ```
 
 Enter when prompted:
-- Bot token: `MTQ3MjI3NzI0MTEyMjc4MzQ5Ng.GF1HAm.wIj141SGr66cR1PGrP92eSwg8joHt_fTi_ZxsY`
-- Guild ID: `1474039062284206161`
+- Bot token: `<REDACTED — originally committed here; see ~/.jarvis-v2/config/discord.json at runtime>`
+- Guild ID: `<your-guild-id>`
 - Allowed channel IDs: (enter the channel ID where Jarvis should respond)
-- Owner Discord user ID: `1474039062284203496`
+- Owner Discord user ID: `<your-user-id>`
 
 Expected: "Token valid — bot username: ..." then "Config saved..."
 

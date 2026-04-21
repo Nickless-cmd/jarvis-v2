@@ -202,6 +202,9 @@ def add_text_overlay(
     text_clip = ImageClip(text_png).set_duration(base.duration)
 
     final = CompositeVideoClip([base, text_clip])
+    # Preserve audio from base clip (TTS voiceover etc.)
+    if base.audio is not None:
+        final = final.set_audio(base.audio)
     final.write_videofile(
         output_path, fps=base.fps, codec="libx264",
         audio_codec="aac", preset="medium", threads=4,

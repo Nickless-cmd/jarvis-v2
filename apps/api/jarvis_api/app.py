@@ -113,6 +113,12 @@ def create_app() -> FastAPI:
                 produce_emergent_signals_from_history()
             except Exception as _exc:
                 logger.warning("emergent signal warm-start failed: %s", _exc)
+            try:
+                from core.services.governance_bootstrap import bootstrap_all
+                _gov_result = bootstrap_all()
+                logger.info("governance bootstrap: %s", _gov_result)
+            except Exception as _exc:
+                logger.warning("governance bootstrap failed: %s", _exc)
             event_bus.publish("runtime.started", {"component": "api"})
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):

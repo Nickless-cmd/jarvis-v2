@@ -1745,10 +1745,24 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         result = {"error": str(exc), "status": "error"}
 
+    status = str(result.get("status", "ok"))
     event_bus.publish("tool.completed", {
         "tool": name,
-        "status": result.get("status", "ok"),
+        "status": status,
     })
+
+    # Outcome learning: each tool execution is a datapoint. Context = tool name,
+    # outcome = success/error. Fire-and-forget — must never break tool flow.
+    try:
+        from core.services.outcome_learning import record_outcome
+        outcome_label = "error" if status == "error" else "success"
+        record_outcome(
+            context=f"tool:{name}",
+            outcome=outcome_label,
+            weight=1.0,
+        )
+    except Exception:
+        pass
 
     return result
 

@@ -86,6 +86,22 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             "cognitive_chronicle.entry_written",
             {"entry_id": entry_id, "period": period},
         )
+
+        # Spaced repetition: schedule reviews for lessons this period. Each
+        # lesson becomes a topic Jarvis will revisit at expanding intervals
+        # (1d, 3d, 7d, 14d, 30d — the module defaults). Fire-and-forget.
+        try:
+            from core.services.spaced_repetition import schedule_reviews_on_completion
+            for lesson in (lessons or [])[:3]:  # top 3 lessons per chronicle
+                topic = str(lesson or "").strip()[:160]
+                if topic:
+                    schedule_reviews_on_completion(
+                        topic=topic,
+                        plan_id=entry_id,
+                    )
+        except Exception:
+            pass
+
         return result
 
 

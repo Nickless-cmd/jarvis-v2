@@ -129,6 +129,16 @@ def append_chat_message(
         raise ValueError("content must not be empty")
 
     timestamp = created_at or datetime.now(UTC).isoformat()
+
+    # Feel-layer: let incoming user text produce a micro-resonance signal
+    # BEFORE meaning-making. Fire-and-forget — never break chat persistence.
+    if normalized_role == "user":
+        try:
+            from core.services.text_resonance import resonate
+            resonate(normalized_content, source=f"chat:{normalized_session}")
+        except Exception:
+            pass
+
     if normalized_role == "tool" and not parse_tool_result_reference(normalized_content):
         normalized_tool_name = (tool_name or _infer_tool_name_from_content(normalized_content) or "tool").strip()
         result_id = save_tool_result(

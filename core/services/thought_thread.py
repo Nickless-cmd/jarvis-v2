@@ -142,6 +142,20 @@ def _find_thread(thoughts: list[dict[str, Any]]) -> dict[str, Any] | None:
 
     last_thought = carrying_thoughts[0]  # already sorted newest first in thoughts
 
+    # Memory breathing: mark the carrying thoughts as accessed.
+    # When the same theme keeps re-surfacing, those records get reinforced.
+    try:
+        from core.services.memory_breathing import record_access
+        carrying_ids = [str(t.get("record_id")) for t in carrying_thoughts if t.get("record_id")]
+        if carrying_ids:
+            record_access(
+                carrying_ids,
+                context=f"thought_thread:{' '.join(theme_tokens)}"[:80],
+                boost=0.03,
+            )
+    except Exception:
+        pass
+
     return {
         "theme": " ".join(theme_tokens),
         "theme_tokens": theme_tokens,

@@ -1755,19 +1755,50 @@ def _run_memory_postprocess(run: VisibleRun, assistant_text: str) -> None:
         )
 
     # Generate session summary for cross-session continuity
+    session_summary_text = ""
     try:
         from core.services.session_distillation import (
             generate_session_summary,
         )
 
-        generate_session_summary(
+        session_summary_text = generate_session_summary(
             session_id=run.session_id,
             run_id=run.run_id,
             user_message=run.user_message,
             assistant_response=assistant_text,
-        )
+        ) or ""
     except Exception as exc:
         errors.append(f"session_summary:{type(exc).__name__}:{exc}")
+
+    # Cross-session threads: create or resume a thread for this session once
+    # it has a meaningful title (not "New chat") and a summary. Uses session_id
+    # as the de-dup key so we never open more than one thread per session.
+    try:
+        if session_summary_text:
+            from core.services.chat_sessions import get_chat_session
+            from core.services.cross_session_threads import (
+                create_thread,
+                list_threads,
+                update_synopsis,
+            )
+            session_data = get_chat_session(run.session_id) or {}
+            title = str(session_data.get("title") or "").strip()
+            if title and title.lower() != "new chat":
+                existing = [
+                    t for t in list_threads()
+                    if t.get("opened_in_session") == run.session_id
+                ]
+                if existing:
+                    update_synopsis(existing[0]["thread_id"], session_summary_text[:500])
+                else:
+                    create_thread(
+                        topic=title,
+                        synopsis=session_summary_text[:500],
+                        status="active",
+                        opened_in_session=run.session_id,
+                    )
+    except Exception as exc:
+        errors.append(f"cross_session_threads:{type(exc).__name__}:{exc}")
 
     event_bus.publish(
         "memory.visible_run_postprocess_completed",

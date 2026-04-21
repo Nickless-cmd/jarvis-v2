@@ -69,7 +69,7 @@ def build_zoom_video(
     output_path: str | None = None,
 ) -> str:
     """Slow-zoom animation from a still image. No GPU, bounded RAM."""
-    from moviepy.editor import VideoClip
+    from moviepy.video.VideoClip import VideoClip
     import numpy as np
     from PIL import Image
 

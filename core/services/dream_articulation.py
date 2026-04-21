@@ -421,8 +421,22 @@ def _adjacent_producer_block(*, now: datetime, trigger: str) -> dict[str, object
 
 
 def _latest_dream_articulation_signal() -> dict[str, object] | None:
-    for item in list_runtime_dream_hypothesis_signals(limit=20):
+    """Return the latest dream hypothesis signal.
+
+    Prefers signals originated by this module (source_kind=internal-dream-articulation),
+    but falls back to any dream_hypothesis signal (visible_run, heartbeat-forced, etc.)
+    so that downstream dream_insight has something to consume even if this producer
+    runs rarely. Signals from other sources still represent genuine dream hypotheses —
+    they just didn't originate from the passive articulation pathway.
+    """
+    items = list_runtime_dream_hypothesis_signals(limit=20)
+    # First pass — prefer signals we authored
+    for item in items:
         if str(item.get("source_kind") or "") == "internal-dream-articulation":
+            return item
+    # Fallback — accept any dream hypothesis signal as articulation substrate
+    for item in items:
+        if item.get("summary") and item.get("signal_id"):
             return item
     return None
 

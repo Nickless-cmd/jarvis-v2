@@ -3738,6 +3738,14 @@ def mc_mood_dialer() -> dict:
     return build_mood_dialer_surface()
 
 
+@router.get("/self-review-unified")
+def mc_self_review_unified() -> dict:
+    """Return unified self-review — periodic LLM-generated Jarvis self-audit."""
+    from core.services.self_review_unified import build_self_review_surface
+
+    return build_self_review_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

@@ -142,6 +142,24 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             generate_dream_hypothesis()
         except Exception:
             pass
+        # Unified self-review — periodic LLM-audit of Jarvis' own state
+        try:
+            from core.services.self_review_unified import maybe_run_self_review
+            maybe_run_self_review(min_hours_between=24)
+        except Exception:
+            pass
+        # Weekly paradox capture — max 1 per 7 days, signature-deduped
+        try:
+            from core.services.paradoxes_capture import maybe_capture_weekly_paradox
+            maybe_capture_weekly_paradox()
+        except Exception:
+            pass
+        # Weekly shorthand suggestion — max 1 new shared-language term per week
+        try:
+            from core.services.shared_language_extended import maybe_weekly_shorthand_suggestion
+            maybe_weekly_shorthand_suggestion()
+        except Exception:
+            pass
         return result
 
 

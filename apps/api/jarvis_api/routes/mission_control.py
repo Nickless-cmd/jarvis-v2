@@ -3730,6 +3730,86 @@ def mc_emotional_controls() -> dict:
     return build_emotional_controls_surface()
 
 
+@router.get("/mood-dialer")
+def mc_mood_dialer() -> dict:
+    """Return mood-dialed params: initiative_multiplier, confidence_threshold, style_preset."""
+    from core.services.mood_dialer import build_mood_dialer_surface
+
+    return build_mood_dialer_surface()
+
+
+@router.get("/self-review-unified")
+def mc_self_review_unified() -> dict:
+    """Return unified self-review — periodic LLM-generated Jarvis self-audit."""
+    from core.services.self_review_unified import build_self_review_surface
+
+    return build_self_review_surface()
+
+
+@router.get("/habits-pipeline")
+def mc_habits_pipeline() -> dict:
+    """Return habits + friction + automation-suggestions pipeline."""
+    from core.services.habits_pipeline import build_habits_pipeline_surface
+
+    return build_habits_pipeline_surface()
+
+
+@router.get("/paradoxes-capture")
+def mc_paradoxes_capture() -> dict:
+    """Return captured paradoxes: Speed/Quality, Autonomy/Approval, Explore/Stabilize."""
+    from core.services.paradoxes_capture import build_paradoxes_surface
+
+    return build_paradoxes_surface()
+
+
+@router.get("/shared-language-extended")
+def mc_shared_language_extended() -> dict:
+    """Return extended shorthand/shared-vocabulary developed with user."""
+    from core.services.shared_language_extended import build_shared_language_extended_surface
+
+    return build_shared_language_extended_surface()
+
+
+@router.get("/procedure-bank-pipeline")
+def mc_procedure_bank_pipeline() -> dict:
+    """Return procedure bank — learned, pinned, trigger-matched routines."""
+    from core.services.procedure_bank_pipeline import build_procedure_bank_surface
+
+    return build_procedure_bank_surface()
+
+
+@router.get("/negotiation-pipeline")
+def mc_negotiation_pipeline() -> dict:
+    """Return internal trade-off negotiation outcomes."""
+    from core.services.negotiation_pipeline import build_negotiation_surface
+
+    return build_negotiation_surface()
+
+
+@router.get("/reflection-to-plan")
+def mc_reflection_to_plan() -> dict:
+    """Return reflective plans — reflections converted to executable steps."""
+    from core.services.reflection_to_plan import build_reflection_to_plan_surface
+
+    return build_reflection_to_plan_surface()
+
+
+@router.get("/missions-pipeline")
+def mc_missions_pipeline() -> dict:
+    """Return multi-session missions: researcher/implementer/reviewer flow."""
+    from core.services.missions_pipeline import build_missions_surface
+
+    return build_missions_surface()
+
+
+@router.get("/deep-analyzer")
+def mc_deep_analyzer() -> dict:
+    """Return deep analyzer capability — scoped codebase introspection."""
+    from core.services.deep_analyzer import build_deep_analyzer_surface
+
+    return build_deep_analyzer_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

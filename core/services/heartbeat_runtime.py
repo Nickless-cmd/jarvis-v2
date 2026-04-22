@@ -6376,8 +6376,37 @@ def _execute_heartbeat_internal_action(
     if action_type == "check_seed_activation":
         try:
             from core.services.seed_system import check_seed_activation
+            from core.eventbus.bus import event_bus as _ebus
 
-            activated = check_seed_activation()
+            # Pass recent events as potential triggers — was broken before
+            # (called with empty args → only time-based seeds could ever fire).
+            # Now: iterate recent event kinds and check activation against each,
+            # collecting all seeds that sprout.
+            activated_all: list[dict] = []
+            seen_ids: set = set()
+            # Time-only check (no context/event)
+            for s in check_seed_activation():
+                sid = str(s.get("seed_id") or "")
+                if sid and sid not in seen_ids:
+                    seen_ids.add(sid)
+                    activated_all.append(s)
+            # Event-based check — iterate distinct kinds in recent events
+            try:
+                recent_kinds: set = set()
+                for ev in _ebus.recent(limit=80):
+                    kind = str(ev.get("kind") or "").strip()
+                    if kind:
+                        recent_kinds.add(kind)
+                for kind in sorted(recent_kinds):
+                    for s in check_seed_activation(current_event=kind):
+                        sid = str(s.get("seed_id") or "")
+                        if sid and sid not in seen_ids:
+                            seen_ids.add(sid)
+                            activated_all.append(s)
+            except Exception:
+                pass
+
+            activated = activated_all
             if activated:
                 titles = [s.get("title", "?") for s in activated[:3]]
                 return {

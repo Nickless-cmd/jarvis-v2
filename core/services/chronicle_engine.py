@@ -102,6 +102,46 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
         except Exception:
             pass
 
+        # Periodic rupture/regret sweep — chronicle runs every ~3 days which
+        # matches our relational accountability cadence.
+        try:
+            from core.services.rupture_repair import evaluate_ruptures
+            evaluate_ruptures(lookback_hours=72, event_limit=300)
+        except Exception:
+            pass
+        try:
+            from core.services.regret_engine import reconcile_open_regrets
+            reconcile_open_regrets()
+        except Exception:
+            pass
+        try:
+            from core.services.self_model_blind_spots import discover_blind_spots
+            discover_blind_spots()
+        except Exception:
+            pass
+        # Classified counterfactuals — scan recent events for specific what-ifs
+        try:
+            from core.eventbus.bus import event_bus as _ebus
+            from core.services.counterfactual_engine import generate_classified_counterfactual
+            for ev in _ebus.recent(limit=80):
+                kind = str(ev.get("kind") or "")
+                payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
+                if kind and payload:
+                    generate_classified_counterfactual(kind, payload)
+        except Exception:
+            pass
+        # Weekly aesthetic note — at most one per week, signature-deduped
+        try:
+            from core.services.aesthetic_sense import maybe_capture_weekly_aesthetic_note
+            maybe_capture_weekly_aesthetic_note()
+        except Exception:
+            pass
+        # Dream hypothesis — try generating one surprising connection
+        try:
+            from core.services.dream_hypothesis_generator import generate_dream_hypothesis
+            generate_dream_hypothesis()
+        except Exception:
+            pass
         return result
 
 

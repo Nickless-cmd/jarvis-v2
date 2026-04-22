@@ -3666,6 +3666,70 @@ def mc_self_compassion() -> dict:
     return build_self_compassion_surface()
 
 
+@router.get("/regret")
+def mc_regret() -> dict:
+    """Return the regret engine state — open/resolved regrets with lessons."""
+    from core.services.regret_engine import build_regret_engine_surface
+
+    return build_regret_engine_surface()
+
+
+@router.get("/rupture-repair")
+def mc_rupture_repair() -> dict:
+    """Return rupture & repair state — relational tension tracking."""
+    from core.services.rupture_repair import build_rupture_repair_surface
+
+    return build_rupture_repair_surface()
+
+
+@router.get("/silence-patterns")
+def mc_silence_patterns() -> dict:
+    """Return silence pattern detection — what the user is NOT saying."""
+    from core.services.silence_patterns import build_silence_patterns_surface
+
+    return build_silence_patterns_surface()
+
+
+@router.get("/blind-spots")
+def mc_blind_spots() -> dict:
+    """Return self-model blind spots — patterns Jarvis hasn't seen yet."""
+    from core.services.self_model_blind_spots import build_blind_spots_surface
+
+    return build_blind_spots_surface()
+
+
+@router.get("/dream-hypotheses")
+def mc_dream_hypotheses() -> dict:
+    """Return surprising dream-phase hypotheses linking disparate signals."""
+    from core.services.dream_hypothesis_generator import build_dream_hypothesis_surface
+
+    return build_dream_hypothesis_surface()
+
+
+@router.get("/decisions-journal")
+def mc_decisions_journal() -> dict:
+    """Return decisions journal — moralsk beslutnings-log."""
+    from core.services.decisions_journal import build_decisions_journal_surface
+
+    return build_decisions_journal_surface()
+
+
+@router.get("/epistemics")
+def mc_epistemics() -> dict:
+    """Return epistemic layers — i_know / i_believe / i_suspect / i_dont_know / i_was_wrong."""
+    from core.services.epistemics import build_epistemics_surface
+
+    return build_epistemics_surface()
+
+
+@router.get("/emotional-controls")
+def mc_emotional_controls() -> dict:
+    """Return emotional state + whether it would gate kernel actions right now."""
+    from core.services.emotional_controls import build_emotional_controls_surface
+
+    return build_emotional_controls_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

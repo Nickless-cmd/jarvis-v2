@@ -33,7 +33,14 @@ def push_initiative(
     source_id: str = "",
     priority: str = "medium",
 ) -> str:
-    """Push a new initiative to the queue. Returns the initiative_id."""
+    """Push a new initiative to the queue. Returns the initiative_id.
+
+    Mood dialer gating:
+    - level 0 (distressed): afviser nye initiativer — retur tom streng
+    - level 1 (melancholic): downgrader priority til low
+    - level 2 (neutral): passerer uændret
+    - level 3-4 (content/euphoric): kan upgradere low→medium
+    """
     now = datetime.now(UTC)
     initiative_id = f"init-{uuid4().hex[:10]}"
     normalized_focus = focus[:200].strip()
@@ -42,6 +49,25 @@ def push_initiative(
     normalized_priority = (
         priority.strip().lower() if priority.strip().lower() in {"low", "medium", "high"} else "medium"
     )
+
+    # Mood dialer gate — kun hvis initiative ikke er explicitly "high"
+    if normalized_priority != "high":
+        try:
+            from core.services.mood_dialer import derive_from_v2_mood
+            params = derive_from_v2_mood()
+            if params.mood_level == 0:
+                # Distressed: refuse new initiatives entirely
+                event_bus.publish("heartbeat.initiative_gated", {
+                    "focus": normalized_focus[:100], "reason": "mood_distressed",
+                    "mood_level": 0,
+                })
+                return ""
+            elif params.mood_level == 1 and normalized_priority == "medium":
+                normalized_priority = "low"
+            elif params.mood_level >= 3 and normalized_priority == "low":
+                normalized_priority = "medium"
+        except Exception:
+            pass
 
     with _QUEUE_LOCK:
         _expire_stale(now)

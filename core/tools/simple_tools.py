@@ -1483,6 +1483,44 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    # --- Deep analyzer ---
+    {
+        "type": "function",
+        "function": {
+            "name": "deep_analyze",
+            "description": (
+                "Run scoped deep analysis of Jarvis' own codebase. Use when "
+                "investigating 'hvorfor fejler X?', 'hvor er Y håndteret?', "
+                "'er Z sikkert implementeret?'. Returns findings (path+line-ranges), "
+                "risks, and next_steps. Read-only analysis, no code changes."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "goal": {
+                        "type": "string",
+                        "description": "Hvad vi undersøger (fx 'hvorfor fejler mail_checker auto-responder')",
+                    },
+                    "scope": {
+                        "type": "string",
+                        "description": "'repo' (default), 'diff', or free-text scope label",
+                    },
+                    "paths": {
+                        "type": "string",
+                        "description": (
+                            "Optional comma-separated paths to limit analysis, "
+                            "e.g. 'core/services/mail_checker.py,core/tools/simple_tools.py'"
+                        ),
+                    },
+                    "question_set": {
+                        "type": "string",
+                        "description": "Optional pipe-separated list of specific questions",
+                    },
+                },
+                "required": ["goal"],
+            },
+        },
+    },
     # --- Context compact ---
     {
         "type": "function",
@@ -4196,6 +4234,46 @@ def _exec_internal_api(args: dict[str, Any]) -> dict[str, Any]:
     return {"error": f"Connection failed on all ports {_candidate_ports}: {_last_error}", "status": "error"}
 
 
+def _exec_deep_analyze(args: dict[str, Any]) -> dict[str, Any]:
+    """Run scoped deep analysis of the codebase.
+
+    Args:
+        goal (required): what we're analyzing/looking for
+        scope: 'repo' or 'diff' or free-text
+        paths: optional list of paths to limit analysis
+        question_set: optional list of specific questions
+    """
+    goal = str(args.get("goal") or "").strip()
+    if not goal:
+        return {"error": "goal is required", "status": "error"}
+    scope = str(args.get("scope") or "repo").strip()
+    paths_raw = args.get("paths")
+    paths = None
+    if isinstance(paths_raw, list):
+        paths = [str(p) for p in paths_raw if str(p).strip()]
+    elif isinstance(paths_raw, str) and paths_raw.strip():
+        paths = [p.strip() for p in paths_raw.split(",") if p.strip()]
+
+    qs_raw = args.get("question_set")
+    question_set = None
+    if isinstance(qs_raw, list):
+        question_set = [str(q) for q in qs_raw if str(q).strip()]
+    elif isinstance(qs_raw, str) and qs_raw.strip():
+        question_set = [q.strip() for q in qs_raw.split("|") if q.strip()]
+
+    try:
+        from core.services.deep_analyzer import run_deep_analysis
+        result = run_deep_analysis(
+            goal=goal,
+            scope=scope,
+            paths=paths,
+            question_set=question_set,
+        )
+        return {**result, "status": "ok"}
+    except Exception as exc:
+        return {"error": str(exc), "status": "error"}
+
+
 def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
     """Run a read-only SELECT query against Jarvis' database."""
     sql = str(args.get("sql") or "").strip()
@@ -4471,6 +4549,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_mail": _exec_read_mail,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
+    # Code introspection
+    "deep_analyze": _exec_deep_analyze,
 }
 
 

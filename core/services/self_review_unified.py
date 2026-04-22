@@ -264,6 +264,17 @@ def run_self_review(*, period: str = "ad-hoc") -> dict[str, Any]:
     except Exception:
         pass
 
+    # Auto-propose reflective plan if review flagged follow-up
+    if review.get("requires_follow_up") and review.get("lessons"):
+        try:
+            from core.services.reflection_to_plan import plan_from_self_review
+            plan_from_self_review(
+                lessons=list(review["lessons"]),
+                review_id=review_id,
+            )
+        except Exception:
+            pass
+
     review["id"] = review_id
     review["created_at"] = now
     return review

@@ -4084,6 +4084,16 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
+        # --- Morning thread — kontinuitet der føles ---
+        # Fyrer kun ved ægte nye sessioner (>30 min gap siden sidst).
+        # Genererer én sætning om hvad Jarvis bærer med sig fra i går,
+        # som bliver første indre tanke i denne session.
+        try:
+            from core.services.session_continuity import generate_morning_thread
+            generate_morning_thread()
+        except Exception:
+            pass
+
         # --- Auto-seed planting from conversation ---
         try:
             from core.services.seed_system import auto_plant_seeds_from_conversation

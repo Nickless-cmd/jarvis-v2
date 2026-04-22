@@ -7,6 +7,10 @@ Design constraints:
 - Non-user-facing, non-canonical, non-workspace-memory
 - Observable in Mission Control
 - Deterministic base + bounded event nudges
+
+**Persistent mood (2026-04-22):** state persists across reboots via
+runtime_state_kv so Jarvis does not start neutral every morning.
+If yesterday ended in distress, today does not begin neutral.
 """
 
 from __future__ import annotations
@@ -20,6 +24,8 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+_MOOD_STATE_KEY = "mood_oscillator.state"
+
 _phase_offset: float = 0.0
 _tick_count: int = 0
 
@@ -27,14 +33,58 @@ _tick_count: int = 0
 _mood_nudge: float = 0.0
 _NUDGE_DECAY_HALF_LIFE_SECONDS: float = 300.0  # halves every 5 minutes
 _last_tick_ts: float | None = None
+_loaded_from_disk: bool = False
 
 _listener_thread: threading.Thread | None = None
 _listener_running: bool = False
 
 
+def _persist_state() -> None:
+    """Write current oscillator state to runtime_state_kv."""
+    try:
+        from core.runtime.db import set_runtime_state_value
+        set_runtime_state_value(_MOOD_STATE_KEY, {
+            "phase_offset": float(_phase_offset),
+            "tick_count": int(_tick_count),
+            "mood_nudge": float(_mood_nudge),
+            "last_tick_ts": _last_tick_ts,
+            "saved_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        })
+    except Exception as exc:
+        logger.debug("mood_oscillator: persist failed: %s", exc)
+
+
+def _load_state_if_needed() -> None:
+    """One-time load of persisted state at first use after module import."""
+    global _phase_offset, _tick_count, _mood_nudge, _last_tick_ts, _loaded_from_disk
+    if _loaded_from_disk:
+        return
+    _loaded_from_disk = True
+    try:
+        from core.runtime.db import get_runtime_state_value
+        loaded = get_runtime_state_value(_MOOD_STATE_KEY, default=None)
+        if isinstance(loaded, dict):
+            _phase_offset = float(loaded.get("phase_offset", 0.0) or 0.0)
+            _tick_count = int(loaded.get("tick_count", 0) or 0)
+            _mood_nudge = float(loaded.get("mood_nudge", 0.0) or 0.0)
+            last_ts = loaded.get("last_tick_ts")
+            if last_ts is not None:
+                try:
+                    _last_tick_ts = float(last_ts)
+                except Exception:
+                    _last_tick_ts = None
+            logger.info(
+                "mood_oscillator: restored state (phase=%.3f nudge=%.3f ticks=%d)",
+                _phase_offset, _mood_nudge, _tick_count,
+            )
+    except Exception as exc:
+        logger.debug("mood_oscillator: load failed: %s", exc)
+
+
 def tick(seconds: float) -> dict[str, Any]:
     """Update phase offset based on elapsed time and decay nudge."""
     global _phase_offset, _tick_count, _mood_nudge, _last_tick_ts
+    _load_state_if_needed()
     _tick_count += 1
     _phase_offset += seconds / 600
 
@@ -46,6 +96,9 @@ def tick(seconds: float) -> dict[str, Any]:
             _mood_nudge = 0.0
 
     _last_tick_ts = datetime.now(UTC).timestamp()
+    # Persist every 10 ticks to avoid DB churn
+    if _tick_count % 10 == 0:
+        _persist_state()
     return {
         "phase_offset": _phase_offset,
         "tick_count": _tick_count,
@@ -56,12 +109,16 @@ def tick(seconds: float) -> dict[str, Any]:
 def apply_bump(delta: float, reason: str = "") -> None:
     """Apply an event-driven nudge to mood. Clamped to [-1, 1] total nudge."""
     global _mood_nudge
+    _load_state_if_needed()
     _mood_nudge = max(-1.0, min(1.0, _mood_nudge + delta))
     logger.debug("mood_oscillator: bump %.2f (%s) → nudge=%.3f", delta, reason, _mood_nudge)
+    # Bumps are semantically important — persist immediately
+    _persist_state()
 
 
 def _combined_value() -> float:
     """Sine base + nudge, clamped to [-1, 1]."""
+    _load_state_if_needed()
     base = math.sin(_phase_offset)
     return max(-1.0, min(1.0, base + _mood_nudge))
 

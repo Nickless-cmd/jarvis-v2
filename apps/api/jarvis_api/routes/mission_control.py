@@ -3722,6 +3722,14 @@ def mc_epistemics() -> dict:
     return build_epistemics_surface()
 
 
+@router.get("/emotional-controls")
+def mc_emotional_controls() -> dict:
+    """Return emotional state + whether it would gate kernel actions right now."""
+    from core.services.emotional_controls import build_emotional_controls_surface
+
+    return build_emotional_controls_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

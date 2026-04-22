@@ -395,6 +395,38 @@ def execute_visible_model(
         )
     if provider == "phase1-runtime":
         return _execute_phase1_model(message=message, provider=provider, model=model)
+
+    # Fallback: openai-chat-compatible providers (groq, nvidia-nim, openrouter,
+    # mistral, sambanova, opencode) — dispatch via cheap_provider_runtime's
+    # _execute_openai_compatible_chat so visible lane can use them too.
+    try:
+        from core.services.cheap_provider_runtime import (
+            _OPENAI_COMPATIBLE_PROVIDERS,
+            _execute_openai_compatible_chat,
+            provider_runtime_defaults,
+        )
+        if provider in _OPENAI_COMPATIBLE_PROVIDERS:
+            defaults = provider_runtime_defaults(provider)
+            base_url = str(defaults.get("base_url") or "")
+            # auth_profile defaults to provider name (convention in v2)
+            result = _execute_openai_compatible_chat(
+                provider=provider,
+                model=model,
+                auth_profile=provider,
+                base_url=base_url,
+                message=message,
+            )
+            return VisibleModelResult(
+                text=str(result.get("text") or ""),
+                input_tokens=int(result.get("input_tokens") or 0),
+                output_tokens=int(result.get("output_tokens") or 0),
+                cost_usd=float(result.get("cost_usd") or 0.0),
+            )
+    except Exception as exc:
+        raise ValueError(
+            f"Visible model dispatch failed for {provider}/{model}: {exc}"
+        ) from exc
+
     raise ValueError(f"Unsupported visible model provider: {provider}")
 
 

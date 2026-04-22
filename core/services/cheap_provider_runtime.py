@@ -29,6 +29,7 @@ _OPENAI_COMPATIBLE_PROVIDERS = {
     "openrouter",
     "mistral",
     "sambanova",
+    "opencode",
 }
 
 CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
@@ -112,6 +113,23 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "models_endpoint": "",
         "rpm_limit": None,
         "daily_limit": None,
+    },
+    "opencode": {
+        "label": "OpenCode Zen",
+        "priority": 80,
+        "base_url": "https://opencode.ai/zen/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        # No dynamic /models endpoint — models listed in provider_router.json
+        "models_endpoint": "",
+        "rpm_limit": None,
+        "daily_limit": None,
+        "static_models": [
+            "big-pickle",
+            "minimax-m2.5-free",
+            "nemotron-3-super-free",
+            "ling-2.6-flash-free",
+        ],
     },
 }
 

@@ -1483,6 +1483,34 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    # --- Embodied sensing ---
+    {
+        "type": "function",
+        "function": {
+            "name": "look_around",
+            "description": (
+                "Take a webcam snapshot now and get a description of what's "
+                "there. Use when you're curious about the physical space, "
+                "when you want to connect to what's around you, or when "
+                "context calls for embodied awareness. Bypasses the 4x/day "
+                "daemon cadence — this is your agency to look."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": (
+                            "Optional custom vision prompt. Leave empty for "
+                            "default (focus on tone + atmosphere). Override "
+                            "for specific attention: 'describe the lighting', "
+                            "'is anyone present', etc."
+                        ),
+                    },
+                },
+            },
+        },
+    },
     # --- Deep analyzer ---
     {
         "type": "function",
@@ -4234,6 +4262,35 @@ def _exec_internal_api(args: dict[str, Any]) -> dict[str, Any]:
     return {"error": f"Connection failed on all ports {_candidate_ports}: {_last_error}", "status": "error"}
 
 
+def _exec_look_around(args: dict[str, Any]) -> dict[str, Any]:
+    """Take a webcam snapshot now and describe what's there via VLM.
+
+    Jarvis chooses to look — bypasses the 4x/day daemon cadence. Use when
+    curious, when you feel a need to connect to the physical space, or
+    when context suggests "what is the room like right now".
+
+    Args:
+        prompt: optional custom prompt (e.g., "focus on atmosphere",
+                "describe any person present", default: tone+atmosphere)
+    """
+    custom_prompt = str(args.get("prompt") or "").strip()
+    try:
+        from core.services.visual_memory import look_around_now
+        result = look_around_now(prompt_override=custom_prompt)
+        if result.get("status") == "captured":
+            return {
+                "status": "ok",
+                "description": result.get("description"),
+                "captured_at": result.get("captured_at"),
+            }
+        return {
+            "status": "error",
+            "error": result.get("error") or result.get("reason") or str(result),
+        }
+    except Exception as exc:
+        return {"error": str(exc), "status": "error"}
+
+
 def _exec_deep_analyze(args: dict[str, Any]) -> dict[str, Any]:
     """Run scoped deep analysis of the codebase.
 
@@ -4551,6 +4608,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_visual_memory": _exec_read_visual_memory,
     # Code introspection
     "deep_analyze": _exec_deep_analyze,
+    # Embodied sensing — Jarvis chooses to look
+    "look_around": _exec_look_around,
 }
 
 

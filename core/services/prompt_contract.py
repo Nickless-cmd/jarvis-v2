@@ -3627,14 +3627,30 @@ def _visible_current_pull_section() -> str | None:
 
 
 def _visible_visual_memory_section() -> str | None:
-    """Lag 6: inject latest visual room memory as quiet background hint."""
+    """Lag 6: inject latest visual room memory + ambient sound as quiet background hints.
+
+    Combines visual (from visual_memory) and auditory (from ambient_sound_daemon)
+    impressions into a single "senses" section so Jarvis can naturally reference
+    his physical surroundings.
+    """
+    parts: list[str] = []
     try:
         from core.services.visual_memory import get_latest_visual_memory_for_prompt
-
-        section = get_latest_visual_memory_for_prompt()
-        return section or None
+        v = get_latest_visual_memory_for_prompt()
+        if v:
+            parts.append(v)
     except Exception:
+        pass
+    try:
+        from core.services.ambient_sound_daemon import get_latest_ambient_sound_for_prompt
+        a = get_latest_ambient_sound_for_prompt()
+        if a:
+            parts.append(a)
+    except Exception:
+        pass
+    if not parts:
         return None
+    return "\n".join(parts)
 
 
 def _runtime_self_report_query_profile(user_message: str) -> dict[str, bool]:

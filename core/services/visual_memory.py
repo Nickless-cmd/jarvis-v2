@@ -45,8 +45,22 @@ _VISION_PROMPT = (
     "Skriv max 2 sætninger på dansk."
 )
 _MAX_DESC_CHARS = 300
-_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 _VISION_TIMEOUT = 45
+
+
+def _ollama_base_url() -> str:
+    """Pull Ollama base URL from provider_router.json (falls back to localhost)."""
+    try:
+        from core.runtime.provider_router import load_provider_router_registry
+        registry = load_provider_router_registry()
+        for p in registry.get("providers", []):
+            if str(p.get("provider", "")).lower() == "ollama" and p.get("enabled"):
+                url = str(p.get("base_url") or "").strip()
+                if url:
+                    return url.rstrip("/")
+    except Exception:
+        pass
+    return "http://127.0.0.1:11434"
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +159,65 @@ def get_latest_visual_memory_for_prompt() -> str:
     return f"[rum{time_label}]: {desc[:_MAX_DESC_CHARS]}"
 
 
+def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
+    """On-demand capture — Jarvis chooses to look. Bypasses cadence-limit.
+
+    Returns {status, description, captured_at} or {status, error}.
+    Called from the `look_around` tool.
+    """
+    if not _enabled():
+        return {"status": "disabled", "reason": "layer_visual_memory_enabled=false"}
+    _prune_old_records()
+    model, provider = _vision_model()
+    if not model:
+        return {"status": "no_model", "reason": "vision_model_name not configured"}
+
+    try:
+        image_b64 = _capture_webcam()
+    except Exception as exc:
+        logger.warning("look_around: webcam capture failed: %s", exc)
+        return {"status": "capture_failed", "error": str(exc)}
+
+    # Use custom prompt if given, else default
+    original_prompt = globals().get("_VISION_PROMPT", "")
+    prompt_to_use = prompt_override.strip() or original_prompt
+    try:
+        if prompt_override.strip():
+            globals()["_VISION_PROMPT"] = prompt_override.strip()
+        description = _describe_image(image_b64, model=model, provider=provider)
+    finally:
+        globals()["_VISION_PROMPT"] = original_prompt
+    if not description:
+        return {"status": "empty_description"}
+
+    # Persist as a new visual memory record
+    now = datetime.now(UTC).isoformat()
+    record = {
+        "captured_at": now,
+        "description": description,
+        "model": model,
+        "provider": provider,
+        "on_demand": True,
+    }
+    records = _load_records()
+    records.append(record)
+    if len(records) > _MAX_RECORDS:
+        records = records[-_MAX_RECORDS:]
+    set_runtime_state_value(_STATE_KEY, records)
+    try:
+        event_bus.publish(
+            "cognitive_state.visual_memory_captured",
+            {"captured_at": now, "provider": provider, "on_demand": True},
+        )
+    except Exception:
+        pass
+    return {
+        "status": "captured",
+        "captured_at": now,
+        "description": description,
+    }
+
+
 def build_visual_memory_surface() -> dict[str, object]:
     """MC observability surface."""
     _prune_old_records()
@@ -212,7 +285,7 @@ def _describe_via_ollama(image_b64: str, *, model: str) -> str:
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        f"{_OLLAMA_BASE_URL}/api/generate",
+        f"{_ollama_base_url()}/api/generate",
         data=payload,
         headers={
             "Content-Type": "application/json",

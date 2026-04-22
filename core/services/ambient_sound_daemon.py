@@ -152,6 +152,47 @@ def _store_sample(sample: dict, now: datetime) -> None:
         pass
 
 
+def get_latest_ambient_sound_for_prompt() -> str:
+    """Return a quiet one-liner about recent ambient sound for prompt injection.
+
+    Examples:
+    - "[lyd (for 2t siden)]: det var stille"
+    - "[lyd (for 45 min siden)]: der var tale i rummet"
+    Returns empty string if nothing recent or feature disabled.
+    """
+    if not _experiment_enabled():
+        return ""
+    state = _state()
+    last_cat = str(state.get("last_category") or "").strip()
+    last_at = state.get("last_sample_at") or ""
+    if not last_cat or not last_at:
+        return ""
+    dt = _parse_iso(str(last_at))
+    if dt is None:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    minutes_ago = int((datetime.now(UTC) - dt).total_seconds() / 60)
+    # Only show if within last 12 hours — otherwise too stale to mean anything
+    if minutes_ago > 12 * 60:
+        return ""
+    time_label = ""
+    if minutes_ago < 60:
+        time_label = f" (for {minutes_ago} min siden)"
+    else:
+        time_label = f" (for {minutes_ago // 60}t siden)"
+    # Human-friendly Danish labels
+    _LABELS = {
+        "talk": "der var tale i rummet",
+        "music": "der var musik",
+        "silence": "det var stille",
+        "noise": "der var baggrundsstøj",
+        "mixed": "blandet lyd — tale + musik/støj",
+    }
+    label = _LABELS.get(last_cat, last_cat)
+    return f"[lyd{time_label}]: {label}"
+
+
 def build_ambient_sound_surface() -> dict:
     state = _state()
     return {

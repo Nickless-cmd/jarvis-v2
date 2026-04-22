@@ -1773,6 +1773,30 @@ def execute_tool_force(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     if not handler:
         return {"error": f"Unknown tool: {name}", "status": "error"}
 
+    # Emotional gate — kan transformere "execute" til escalate/verify/simplify
+    # baseret på humør-tilstand. Fire-and-forget safe.
+    try:
+        from core.services.emotional_controls import (
+            apply_emotional_controls, format_gate_message,
+        )
+        gate_action, gate_reason = apply_emotional_controls(kernel_action="execute")
+        if gate_action != "execute" and gate_reason:
+            msg = format_gate_message(gate_action, gate_reason, tool_name=name)
+            event_bus.publish("emotional.gate_triggered", {
+                "tool": name,
+                "gate_action": gate_action,
+                "reason": gate_reason,
+            })
+            return {
+                "status": "gated",
+                "gate_action": gate_action,
+                "gate_reason": gate_reason,
+                "message": msg,
+                "tool": name,
+            }
+    except Exception:
+        pass  # never block tool execution on emotional_controls errors
+
     event_bus.publish("tool.force_invoked", {
         "tool": name,
         "arguments": {k: str(v)[:100] for k, v in arguments.items()},

@@ -3762,6 +3762,14 @@ def mc_paradoxes_capture() -> dict:
     return build_paradoxes_surface()
 
 
+@router.get("/shared-language-extended")
+def mc_shared_language_extended() -> dict:
+    """Return extended shorthand/shared-vocabulary developed with user."""
+    from core.services.shared_language_extended import build_shared_language_extended_surface
+
+    return build_shared_language_extended_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

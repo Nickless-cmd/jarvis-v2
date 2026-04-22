@@ -779,6 +779,130 @@ def schedule_agent_task(
     return build_agent_detail_surface(agent_id) or {}
 
 
+def cleanup_stale_agents(
+    *,
+    waiting_timeout_minutes: int = 120,
+    failed_timeout_minutes: int = 30,
+    max_per_run: int = 20,
+) -> dict[str, object]:
+    """Auto-cancel agents hanging in waiting or failed state for too long.
+
+    Rules:
+    - status='waiting' og updated_at < now - waiting_timeout_minutes → cancelled
+    - status='failed' og updated_at < now - failed_timeout_minutes → cancelled
+
+    Cancelled agents få last_error='auto_cleanup_stale_{state}' + status='cancelled'.
+    Fire-and-forget safe — fejl per agent logges men stopper ikke loopet.
+
+    Returns dict med cancelled-counts + liste af cancelled agent_ids.
+    """
+    now = datetime.now(UTC)
+    waiting_cutoff = now - timedelta(minutes=max(1, int(waiting_timeout_minutes)))
+    failed_cutoff = now - timedelta(minutes=max(1, int(failed_timeout_minutes)))
+    now_iso = _now_iso()
+
+    cancelled_waiting: list[str] = []
+    cancelled_failed: list[str] = []
+    errors: list[str] = []
+
+    def _parse_ts(value: object) -> datetime | None:
+        raw = str(value or "").strip()
+        if not raw:
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=UTC)
+            return parsed.astimezone(UTC)
+        except Exception:
+            return None
+
+    # Process waiting agents
+    try:
+        waiting_agents = list_agent_registry_entries(
+            status="waiting", limit=int(max_per_run),
+        )
+    except Exception as exc:
+        errors.append(f"list_waiting_failed: {exc}")
+        waiting_agents = []
+
+    for agent in waiting_agents:
+        agent_id = str(agent.get("agent_id") or "")
+        if not agent_id:
+            continue
+        updated = _parse_ts(agent.get("updated_at"))
+        if updated is None or updated > waiting_cutoff:
+            continue
+        age_minutes = int((now - updated).total_seconds() / 60)
+        try:
+            update_agent_registry_entry(
+                agent_id,
+                status="cancelled",
+                last_error=f"auto_cleanup_stale_waiting_after_{age_minutes}min",
+                completed_at=now_iso,
+            )
+            cancelled_waiting.append(agent_id)
+            try:
+                event_bus.publish("runtime.agent_auto_cancelled", {
+                    "agent_id": agent_id,
+                    "reason": "stale_waiting",
+                    "age_minutes": age_minutes,
+                })
+            except Exception:
+                pass
+        except Exception as exc:
+            errors.append(f"{agent_id}:{exc}")
+
+    # Process failed agents
+    try:
+        failed_agents = list_agent_registry_entries(
+            status="failed", limit=int(max_per_run),
+        )
+    except Exception as exc:
+        errors.append(f"list_failed_failed: {exc}")
+        failed_agents = []
+
+    for agent in failed_agents:
+        agent_id = str(agent.get("agent_id") or "")
+        if not agent_id:
+            continue
+        updated = _parse_ts(agent.get("updated_at"))
+        if updated is None or updated > failed_cutoff:
+            continue
+        age_minutes = int((now - updated).total_seconds() / 60)
+        try:
+            update_agent_registry_entry(
+                agent_id,
+                status="cancelled",
+                last_error=f"auto_cleanup_stale_failed_after_{age_minutes}min",
+                completed_at=now_iso,
+            )
+            cancelled_failed.append(agent_id)
+            try:
+                event_bus.publish("runtime.agent_auto_cancelled", {
+                    "agent_id": agent_id,
+                    "reason": "stale_failed",
+                    "age_minutes": age_minutes,
+                })
+            except Exception:
+                pass
+        except Exception as exc:
+            errors.append(f"{agent_id}:{exc}")
+
+    return {
+        "cancelled_waiting_count": len(cancelled_waiting),
+        "cancelled_failed_count": len(cancelled_failed),
+        "cancelled_waiting_ids": cancelled_waiting,
+        "cancelled_failed_ids": cancelled_failed,
+        "errors": errors,
+        "thresholds": {
+            "waiting_timeout_minutes": int(waiting_timeout_minutes),
+            "failed_timeout_minutes": int(failed_timeout_minutes),
+        },
+        "ran_at": now_iso,
+    }
+
+
 def run_due_agent_schedules(*, limit: int = 10) -> dict[str, object]:
     now = _now_iso()
     due = list_agent_schedules(active_only=True, due_before=now, limit=limit)

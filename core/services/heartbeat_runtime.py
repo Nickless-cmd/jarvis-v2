@@ -1319,6 +1319,18 @@ def _run_heartbeat_tick_locked(
         except Exception:
             pass
 
+    # Every 10th tick: auto-cleanup stale agents (hanging waiting/failed)
+    # Tærskler: waiting>2t, failed>30min. Fire-and-forget safe.
+    if tick_count % 10 == 0:
+        try:
+            from core.services.agent_runtime import cleanup_stale_agents
+            cleanup_stale_agents(
+                waiting_timeout_minutes=120,
+                failed_timeout_minutes=30,
+            )
+        except Exception:
+            pass
+
     now = datetime.now(UTC)
     workspace_dir = ensure_default_workspace(name=name)
     policy = load_heartbeat_policy(name=name)

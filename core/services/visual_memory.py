@@ -45,7 +45,7 @@ _VISION_PROMPT = (
     "Skriv max 2 sætninger på dansk."
 )
 _MAX_DESC_CHARS = 300
-_VISION_TIMEOUT = 45
+_VISION_TIMEOUT = 90  # qwen2.5vl:3b lokalt bruger ~10-15s; 90s buffer
 
 
 def _ollama_base_url() -> str:
@@ -331,7 +331,9 @@ def _vision_model() -> tuple[str, str]:
     model = str(settings.extra.get("vision_model_name") or "").strip()
     provider = str(settings.extra.get("vision_model_provider") or "").strip()
     if not model:
-        model = "gemma4:31b-cloud"
+        # qwen2.5vl:3b — lokal vision model, dansk-kapabel, ~10s responser
+        # (gemma4:31b-cloud var tidligere default men cloud-timeouts > 45s)
+        model = "qwen2.5vl:3b"
     if not provider:
         provider = "ollama"
     return model, provider

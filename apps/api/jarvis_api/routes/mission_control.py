@@ -3802,6 +3802,14 @@ def mc_missions_pipeline() -> dict:
     return build_missions_surface()
 
 
+@router.get("/deep-analyzer")
+def mc_deep_analyzer() -> dict:
+    """Return deep analyzer capability — scoped codebase introspection."""
+    from core.services.deep_analyzer import build_deep_analyzer_surface
+
+    return build_deep_analyzer_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

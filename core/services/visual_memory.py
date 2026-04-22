@@ -331,9 +331,11 @@ def _vision_model() -> tuple[str, str]:
     model = str(settings.extra.get("vision_model_name") or "").strip()
     provider = str(settings.extra.get("vision_model_provider") or "").strip()
     if not model:
-        # qwen2.5vl:3b — lokal vision model, dansk-kapabel, ~10s responser
+        # qwen2.5vl:7b — lokal vision model, dansk, bedre kvalitet end 3b
+        # Kræver ~8.6 GiB RAM i Ollama-LXC'en — fungerer fra 12 GB opefter.
+        # Fald-tilbage til qwen2.5vl:3b hvis RAM er knapt.
         # (gemma4:31b-cloud var tidligere default men cloud-timeouts > 45s)
-        model = "qwen2.5vl:3b"
+        model = "qwen2.5vl:7b"
     if not provider:
         provider = "ollama"
     return model, provider

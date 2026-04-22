@@ -161,12 +161,28 @@ def append_chat_message(
         if exists is None:
             raise ValueError("chat session not found")
 
+        # Pull user_id + workspace_name fra ContextVar — discord_gateway
+        # har sat dem før start_autonomous_run. Tom streng hvis ikke sat.
+        _user_id = ""
+        _workspace_name = ""
+        try:
+            from core.identity.workspace_context import (
+                current_user_id as _cuid,
+                current_workspace_name as _cwn,
+            )
+            _user_id = _cuid() or ""
+            _workspace_name = _cwn() or ""
+        except Exception:
+            pass
+
         conn.execute(
             """
-            INSERT INTO chat_messages (message_id, session_id, role, content, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO chat_messages (message_id, session_id, role, content,
+                                        user_id, workspace_name, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (message_id, normalized_session, normalized_role, normalized_content, timestamp),
+            (message_id, normalized_session, normalized_role, normalized_content,
+             _user_id, _workspace_name, timestamp),
         )
 
         next_title = str(exists["title"])

@@ -465,7 +465,17 @@ def start_autonomous_run(message: str, session_id: str | None = None) -> None:
                 )
             loop.close()
 
-    threading.Thread(target=_in_thread, name="jarvis-autonomous-run", daemon=True).start()
+    # Propagate ContextVars (workspace_name, user_id) into the new thread.
+    # threading.Thread does NOT inherit context by default — without this
+    # all downstream code would see default workspace regardless of what
+    # discord_gateway bound. This is the pivot for multi-user to work.
+    import contextvars as _ctxvars
+    _ctx = _ctxvars.copy_context()
+    threading.Thread(
+        target=lambda: _ctx.run(_in_thread),
+        name="jarvis-autonomous-run",
+        daemon=True,
+    ).start()
 
 
 def _compact_llm_for_run(prompt: str) -> str:

@@ -3754,6 +3754,14 @@ def mc_habits_pipeline() -> dict:
     return build_habits_pipeline_surface()
 
 
+@router.get("/paradoxes-capture")
+def mc_paradoxes_capture() -> dict:
+    """Return captured paradoxes: Speed/Quality, Autonomy/Approval, Explore/Stabilize."""
+    from core.services.paradoxes_capture import build_paradoxes_surface
+
+    return build_paradoxes_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

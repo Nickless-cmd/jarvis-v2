@@ -3714,6 +3714,14 @@ def mc_decisions_journal() -> dict:
     return build_decisions_journal_surface()
 
 
+@router.get("/epistemics")
+def mc_epistemics() -> dict:
+    """Return epistemic layers — i_know / i_believe / i_suspect / i_dont_know / i_was_wrong."""
+    from core.services.epistemics import build_epistemics_surface
+
+    return build_epistemics_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

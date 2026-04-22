@@ -1171,6 +1171,36 @@ def _self_mutation_lineage_section() -> str | None:
         return None
 
 
+def _build_epistemic_layers_line() -> str:
+    """Build compact line summarizing epistemic layer-distribution + wrongness.
+
+    Tells Jarvis how many claims he has at each level (i_know, i_believe,
+    i_suspect, i_dont_know, i_was_wrong) so he can express appropriate
+    epistemic humility when giving advice.
+    """
+    try:
+        from core.services.epistemics import build_epistemics_surface
+        surface = build_epistemics_surface()
+        counts = surface.get("layer_counts") or {}
+        wrongness = int(surface.get("wrongness_count") or 0)
+        total = int(surface.get("total_claims") or 0)
+        if total == 0 and wrongness == 0:
+            return "- epistemic_layers=empty | stance=form-your-own-when-asserting"
+        parts = []
+        for layer in ("i_know", "i_believe", "i_suspect", "i_dont_know", "i_was_wrong"):
+            c = int(counts.get(layer, 0))
+            if c > 0:
+                parts.append(f"{layer}={c}")
+        claims_str = " ".join(parts) if parts else "none"
+        return (
+            f"- epistemic_layers={claims_str}"
+            f" | wrongness_log={wrongness}"
+            " | guidance=når-du-giver-anbefalinger-prefix-'Jeg-tror/Jeg-mistænker'-hvis-lav-confidence"
+        )
+    except Exception:
+        return "- epistemic_layers=unavailable"
+
+
 def _channel_workspace_path() -> Path:
     return Path(__file__).resolve().parent.parent.parent / "workspace" / "channels"
 
@@ -1721,6 +1751,7 @@ def _heartbeat_runtime_truth_instruction(context: dict[str, object]) -> str:
                 f" | regret={epistemic.get('regret_signal') or 'none'}"
                 f" | counterfactual={epistemic.get('counterfactual_mode') or 'none'}"
             ),
+            _build_epistemic_layers_line(),
             (
                 f"- adaptive_planner={adaptive_planner.get('planner_mode') or 'incremental'}"
                 f" | horizon={adaptive_planner.get('plan_horizon') or 'near'}"

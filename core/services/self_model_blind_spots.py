@@ -236,6 +236,15 @@ def discover_blind_spots() -> list[dict[str, Any]]:
             })
         except Exception:
             pass
+        # Auto-propose reflective plan for each new blind spot
+        try:
+            from core.services.reflection_to_plan import plan_from_blind_spot
+            plan_from_blind_spot(
+                description=s["description"],
+                blind_spot_id=int(s["id"]),
+            )
+        except Exception:
+            pass
 
     return new_spots
 

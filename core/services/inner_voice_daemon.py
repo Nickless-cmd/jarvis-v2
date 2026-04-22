@@ -243,6 +243,20 @@ def run_inner_voice_daemon(
         except Exception:
             pass
 
+    # Reflection → Plan: konvertér substantive thoughts til eksekverbar plan.
+    # Kun thoughts ≥40 tegn (filter ud "jeg er træt", "det er sent" etc).
+    # Fire-and-forget — plans er foreslåede, kræver accept for at køre.
+    thought_text = str(note.get("summary") or "")
+    if len(thought_text.strip()) >= 40:
+        try:
+            from core.services.reflection_to_plan import plan_from_inner_voice_thought
+            plan_from_inner_voice_thought(
+                thought=thought_text,
+                voice_id=record_id,
+            )
+        except Exception:
+            pass
+
     result = {
         "daemon_ran": True,
         "daemon_blocked_reason": "",

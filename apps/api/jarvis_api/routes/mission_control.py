@@ -3778,6 +3778,14 @@ def mc_procedure_bank_pipeline() -> dict:
     return build_procedure_bank_surface()
 
 
+@router.get("/negotiation-pipeline")
+def mc_negotiation_pipeline() -> dict:
+    """Return internal trade-off negotiation outcomes."""
+    from core.services.negotiation_pipeline import build_negotiation_surface
+
+    return build_negotiation_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

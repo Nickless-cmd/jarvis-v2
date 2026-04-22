@@ -119,6 +119,14 @@ def create_app() -> FastAPI:
                 logger.info("governance bootstrap: %s", _gov_result)
             except Exception as _exc:
                 logger.warning("governance bootstrap failed: %s", _exc)
+            try:
+                from core.identity.user_attribution_migrations import run_user_attribution_migrations
+                _attr_result = run_user_attribution_migrations()
+                logger.info("user_attribution migrations: added=%d present=%d",
+                            len(_attr_result.get("added", [])),
+                            len(_attr_result.get("already_present", [])))
+            except Exception as _exc:
+                logger.warning("user_attribution migrations failed: %s", _exc)
             event_bus.publish("runtime.started", {"component": "api"})
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):

@@ -285,11 +285,27 @@ async def _run_client(config: dict) -> None:
                     return
                 if message.channel.id not in allowed_channel_ids:
                     return
-            # DM: only accept from owner
-            if is_dm and str(message.author.id) != owner_discord_id:
+            # User resolution — lookup in users.json (multi-user support).
+            # Owner via owner_discord_id is always allowed. Other registered
+            # users (role=member) are allowed in DM. Unknown users: accepted
+            # only in public channels (routed to shared 'public' workspace),
+            # never in DM.
+            author_id_str = str(message.author.id)
+            is_owner_id_match = author_id_str == owner_discord_id
+
+            try:
+                from core.identity.users import find_user_by_discord_id
+                registered_user = find_user_by_discord_id(author_id_str)
+            except Exception:
+                registered_user = None
+
+            # DM policy: owner + any registered member allowed; unknown rejected
+            if is_dm and not is_owner_id_match and registered_user is None:
                 return
 
-            is_owner = str(message.author.id) == owner_discord_id
+            is_owner = is_owner_id_match or (
+                registered_user is not None and registered_user.role == "owner"
+            )
 
             # Rate limit non-owner users
             if not is_owner:
@@ -338,16 +354,47 @@ async def _run_client(config: dict) -> None:
                 _typing_channels.add(channel_id)
             asyncio.ensure_future(_typing_loop(channel_id))
 
-            # Trigger autonomous run (fire-and-forget in its own thread)
-            from core.services.visible_runs import start_autonomous_run
+            # Resolve workspace binding based on user lookup
+            if registered_user is not None:
+                workspace_name = registered_user.workspace
+                user_display = registered_user.name
+            elif is_owner_id_match:
+                # Owner known via owner_discord_id but not in users.json yet
+                # (bootstrap case) — use 'default' workspace
+                workspace_name = "default"
+                user_display = "Bjørn"
+            else:
+                # Public channel with unregistered user → shared public workspace
+                workspace_name = "public"
+                user_display = str(getattr(message.author, "name", author_id_str))
+
+            # Trigger autonomous run with workspace context bound
+            def _run_in_context(
+                _content: str, _session_id: str, _user_id: str,
+                _workspace: str, _display: str,
+            ) -> None:
+                from core.identity.workspace_context import set_context, reset_context
+                from core.services.visible_runs import start_autonomous_run
+                token = set_context(
+                    workspace_name=_workspace,
+                    user_id=_user_id,
+                    user_display_name=_display,
+                )
+                try:
+                    start_autonomous_run(_content, session_id=_session_id)
+                finally:
+                    reset_context(token)
+
             threading.Thread(
-                target=start_autonomous_run,
-                args=(content,),
-                kwargs={"session_id": session_id},
+                target=_run_in_context,
+                args=(content, session_id, author_id_str, workspace_name, user_display),
                 daemon=True,
                 name=f"discord-run-{session_id[-8:]}",
             ).start()
-            logger.info("discord on_message: autonomous run started for session %s", session_id)
+            logger.info(
+                "discord on_message: run started session=%s user=%s workspace=%s",
+                session_id, user_display, workspace_name,
+            )
         except Exception as exc:
             logger.error("discord on_message: unhandled error: %s", exc, exc_info=True)
             try:

@@ -3730,6 +3730,14 @@ def mc_emotional_controls() -> dict:
     return build_emotional_controls_surface()
 
 
+@router.get("/mood-dialer")
+def mc_mood_dialer() -> dict:
+    """Return mood-dialed params: initiative_multiplier, confidence_threshold, style_preset."""
+    from core.services.mood_dialer import build_mood_dialer_surface
+
+    return build_mood_dialer_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

@@ -98,6 +98,11 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             reconcile_open_regrets()
         except Exception:
             pass
+        try:
+            from core.services.self_model_blind_spots import discover_blind_spots
+            discover_blind_spots()
+        except Exception:
+            pass
         return result
 
 

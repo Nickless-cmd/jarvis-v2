@@ -3690,6 +3690,14 @@ def mc_silence_patterns() -> dict:
     return build_silence_patterns_surface()
 
 
+@router.get("/blind-spots")
+def mc_blind_spots() -> dict:
+    """Return self-model blind spots — patterns Jarvis hasn't seen yet."""
+    from core.services.self_model_blind_spots import build_blind_spots_surface
+
+    return build_blind_spots_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

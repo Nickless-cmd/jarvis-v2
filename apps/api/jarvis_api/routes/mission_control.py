@@ -3786,6 +3786,14 @@ def mc_negotiation_pipeline() -> dict:
     return build_negotiation_surface()
 
 
+@router.get("/reflection-to-plan")
+def mc_reflection_to_plan() -> dict:
+    """Return reflective plans — reflections converted to executable steps."""
+    from core.services.reflection_to_plan import build_reflection_to_plan_surface
+
+    return build_reflection_to_plan_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

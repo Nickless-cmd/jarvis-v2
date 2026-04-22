@@ -120,6 +120,12 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             maybe_capture_weekly_aesthetic_note()
         except Exception:
             pass
+        # Dream hypothesis — try generating one surprising connection
+        try:
+            from core.services.dream_hypothesis_generator import generate_dream_hypothesis
+            generate_dream_hypothesis()
+        except Exception:
+            pass
         return result
 
 

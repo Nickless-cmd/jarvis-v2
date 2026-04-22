@@ -3794,6 +3794,14 @@ def mc_reflection_to_plan() -> dict:
     return build_reflection_to_plan_surface()
 
 
+@router.get("/missions-pipeline")
+def mc_missions_pipeline() -> dict:
+    """Return multi-session missions: researcher/implementer/reviewer flow."""
+    from core.services.missions_pipeline import build_missions_surface
+
+    return build_missions_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

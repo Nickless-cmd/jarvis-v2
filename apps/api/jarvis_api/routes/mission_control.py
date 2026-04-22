@@ -3666,6 +3666,22 @@ def mc_self_compassion() -> dict:
     return build_self_compassion_surface()
 
 
+@router.get("/regret")
+def mc_regret() -> dict:
+    """Return the regret engine state — open/resolved regrets with lessons."""
+    from core.services.regret_engine import build_regret_engine_surface
+
+    return build_regret_engine_surface()
+
+
+@router.get("/rupture-repair")
+def mc_rupture_repair() -> dict:
+    """Return rupture & repair state — relational tension tracking."""
+    from core.services.rupture_repair import build_rupture_repair_surface
+
+    return build_rupture_repair_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

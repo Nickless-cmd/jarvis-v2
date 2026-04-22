@@ -86,6 +86,18 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             "cognitive_chronicle.entry_written",
             {"entry_id": entry_id, "period": period},
         )
+        # Periodic rupture/regret sweep — chronicle runs every ~3 days which
+        # matches our relational accountability cadence.
+        try:
+            from core.services.rupture_repair import evaluate_ruptures
+            evaluate_ruptures(lookback_hours=72, event_limit=300)
+        except Exception:
+            pass
+        try:
+            from core.services.regret_engine import reconcile_open_regrets
+            reconcile_open_regrets()
+        except Exception:
+            pass
         return result
 
 

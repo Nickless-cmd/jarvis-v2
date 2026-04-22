@@ -138,6 +138,12 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             maybe_capture_weekly_paradox()
         except Exception:
             pass
+        # Weekly shorthand suggestion — max 1 new shared-language term per week
+        try:
+            from core.services.shared_language_extended import maybe_weekly_shorthand_suggestion
+            maybe_weekly_shorthand_suggestion()
+        except Exception:
+            pass
         return result
 
 

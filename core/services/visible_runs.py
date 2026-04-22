@@ -2373,6 +2373,55 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
             "approved": False,
             "status": "denied",
         })
+        # Fire-and-forget: approval denial is both a rupture (relational) and
+        # a regret (cognitive — Jarvis predicted user would approve, but didn't).
+        _tool_name = pending.get("tool_name") or ""
+        _session_id = str(pending.get("session_id") or "")
+        try:
+            from core.services.rupture_repair import (
+                _ensure_tables as _rupture_ensure,
+                _rupture_key,
+                _upsert_rupture,
+            )
+            from core.runtime.db import connect as _connect
+            _rupture_ensure()
+            topic = f"approval:{_tool_name}"
+            rkey = _rupture_key(source_kind="approval_rejected", topic=topic)
+            from datetime import UTC as _UTC, datetime as _dt
+            _now = _dt.now(_UTC).isoformat().replace("+00:00", "Z")
+            with _connect() as _conn:
+                _upsert_rupture(
+                    _conn,
+                    rupture_key=rkey,
+                    topic=topic,
+                    source_kind="approval_rejected",
+                    reason=f"User denied approval for tool {_tool_name}",
+                    evidence={"approval_id": approval_id, "tool": _tool_name},
+                    tension_level=0.7,
+                    linked_run_id=str(pending.get("run_id") or ""),
+                    linked_session_id=_session_id,
+                    linked_incident_id="",
+                    status="open",
+                    last_seen_at=_now,
+                )
+                _conn.commit()
+        except Exception:
+            pass
+        try:
+            from core.services.regret_engine import open_or_update_regret
+            open_or_update_regret(
+                decision_id=f"approval:{approval_id}",
+                context={"tool": _tool_name, "approval_id": approval_id},
+                expected_outcome="approved",
+                actual_outcome="rejected",
+                lesson=f"Bruger afviste tool-call til {_tool_name}",
+                confidence_before=0.7,
+                confidence_after=0.1,
+                linked_run_id=str(pending.get("run_id") or ""),
+                linked_session_id=_session_id,
+            )
+        except Exception:
+            pass
         return {"status": "denied", "tool": pending["tool_name"]}
 
     result = execute_tool_force(pending["tool_name"], pending["arguments"])

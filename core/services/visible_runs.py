@@ -4060,6 +4060,17 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
+        # --- Context-based seed activation ---
+        # Use user_message as current_context so seeds with
+        # activate_on_context matching keywords in the message can sprout.
+        # This was a broken link before: seeds were planted but context
+        # activation never fired.
+        try:
+            from core.services.seed_system import check_seed_activation
+            check_seed_activation(current_context=user_message)
+        except Exception:
+            pass
+
         # --- Self-surprise detection ---
         try:
             from core.services.self_surprise_detection import detect_self_surprise

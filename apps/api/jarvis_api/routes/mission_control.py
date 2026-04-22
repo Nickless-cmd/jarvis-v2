@@ -3698,6 +3698,14 @@ def mc_blind_spots() -> dict:
     return build_blind_spots_surface()
 
 
+@router.get("/dream-hypotheses")
+def mc_dream_hypotheses() -> dict:
+    """Return surprising dream-phase hypotheses linking disparate signals."""
+    from core.services.dream_hypothesis_generator import build_dream_hypothesis_surface
+
+    return build_dream_hypothesis_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

@@ -119,6 +119,8 @@ def user_context(
 
     if workspace_override:
         workspace_name = str(workspace_override).strip()
+        if user_display_name_override:
+            display = str(user_display_name_override).strip()
     elif discord_id:
         user = find_user_by_discord_id(discord_id)
         if user:
@@ -131,7 +133,7 @@ def user_context(
             user_id = str(discord_id).strip()
             display = user_display_name_override or "unknown"
     elif user_display_name_override:
-        display = user_display_name_override
+        display = str(user_display_name_override).strip()
 
     token = set_context(
         workspace_name=workspace_name,

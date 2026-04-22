@@ -114,6 +114,12 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
                     generate_classified_counterfactual(kind, payload)
         except Exception:
             pass
+        # Weekly aesthetic note — at most one per week, signature-deduped
+        try:
+            from core.services.aesthetic_sense import maybe_capture_weekly_aesthetic_note
+            maybe_capture_weekly_aesthetic_note()
+        except Exception:
+            pass
         return result
 
 

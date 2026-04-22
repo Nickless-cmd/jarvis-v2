@@ -3627,11 +3627,16 @@ def _visible_current_pull_section() -> str | None:
 
 
 def _visible_visual_memory_section() -> str | None:
-    """Lag 6: inject latest visual room memory + ambient sound as quiet background hints.
+    """Lag 6: inject latest visual room memory + ambient sound + echo signals + morning thread.
 
-    Combines visual (from visual_memory) and auditory (from ambient_sound_daemon)
-    impressions into a single "senses" section so Jarvis can naturally reference
-    his physical surroundings.
+    Combines:
+    - visual (from visual_memory)
+    - auditory (from ambient_sound_daemon)
+    - echo themes (from session_continuity) — recurring concerns de sidste dage
+    - morning thread (from session_continuity) — hvad han bærer med fra sidst
+
+    Into a single "senses + continuity" section so Jarvis can naturally reference
+    his physical surroundings AND his felt continuity with yesterday.
     """
     parts: list[str] = []
     try:
@@ -3646,6 +3651,28 @@ def _visible_visual_memory_section() -> str | None:
         a = get_latest_ambient_sound_for_prompt()
         if a:
             parts.append(a)
+    except Exception:
+        pass
+    try:
+        from core.services.session_continuity import get_echo_signals_for_prompt, get_latest_morning_thread
+        e = get_echo_signals_for_prompt()
+        if e:
+            parts.append(e)
+        mt = get_latest_morning_thread()
+        if mt and mt.get("thread_text"):
+            # Only surface if recent (within last 6 hours)
+            import datetime as _dt
+            from datetime import UTC as _UTC, timedelta as _td
+            try:
+                created = _dt.datetime.fromisoformat(
+                    str(mt.get("created_at") or "").replace("Z", "+00:00")
+                )
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=_UTC)
+                if (_dt.datetime.now(_UTC) - created) < _td(hours=6):
+                    parts.append(f"[morgentråd]: {str(mt['thread_text'])[:200]}")
+            except Exception:
+                pass
     except Exception:
         pass
     if not parts:

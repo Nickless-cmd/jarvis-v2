@@ -3810,6 +3810,14 @@ def mc_deep_analyzer() -> dict:
     return build_deep_analyzer_surface()
 
 
+@router.get("/session-continuity")
+def mc_session_continuity() -> dict:
+    """Return felt-continuity surface: morning thread + echo themes + session gap."""
+    from core.services.session_continuity import build_session_continuity_surface
+
+    return build_session_continuity_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

@@ -103,6 +103,17 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             discover_blind_spots()
         except Exception:
             pass
+        # Classified counterfactuals — scan recent events for specific what-ifs
+        try:
+            from core.eventbus.bus import event_bus as _ebus
+            from core.services.counterfactual_engine import generate_classified_counterfactual
+            for ev in _ebus.recent(limit=80):
+                kind = str(ev.get("kind") or "")
+                payload = ev.get("payload") if isinstance(ev.get("payload"), dict) else {}
+                if kind and payload:
+                    generate_classified_counterfactual(kind, payload)
+        except Exception:
+            pass
         return result
 
 

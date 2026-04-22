@@ -25,6 +25,125 @@ _TRIGGER_TEMPLATES = {
     "dream": "Hvad hvis {anchor} havde været løst fra starten?",
 }
 
+# Event-klassifikations-tabel porteret fra jarvis-ai/counterfactuals.py.
+# Specifikke what-if'er pr. event-mønster, ikke generiske templates.
+_CLASSIFIED_WHAT_IFS: list[dict[str, object]] = [
+    {
+        "match_kinds": ("regret.opened", "regret.updated"),
+        "match_payload_keys": ("regret_id",),
+        "trigger_type": "regret_validation",
+        "what_if": "Hvad hvis vi havde valgt en langsommere valideringssti før vi committede?",
+        "confidence": 0.68,
+    },
+    {
+        "match_kinds": ("rupture.approval_rejected", "tool.approval_resolved"),
+        "match_payload_status": ("denied", "rejected"),
+        "trigger_type": "approval_rejected",
+        "what_if": "Hvad hvis jeg havde foreslået et mindre skridt først?",
+        "confidence": 0.65,
+    },
+    {
+        "match_kinds_startswith": ("incident.", "tool.completed"),
+        "match_payload_status": ("error", "failed", "degraded"),
+        "trigger_type": "mitigation_timing",
+        "what_if": "Hvad hvis mitigation var aktiveret ét skridt tidligere?",
+        "confidence": 0.64,
+    },
+    {
+        "match_text_terms": ("architecture", "arkitektur", "tradeoff", "design choice"),
+        "trigger_type": "architecture_tradeoff",
+        "what_if": "Hvad hvis vi havde valgt den alternative arkitektur-tradeoff her?",
+        "confidence": 0.62,
+    },
+    {
+        "match_kinds": ("cognitive_chronicle.entry_written",),
+        "trigger_type": "weekly_direction",
+        "what_if": "Hvad hvis denne periode havde prioriteret det næstbedste initiativ i stedet?",
+        "confidence": 0.55,
+    },
+]
+
+
+def classify_event_to_counterfactual(
+    event_kind: str, payload: dict[str, object]
+) -> dict[str, object] | None:
+    """Classify an event into a specific counterfactual, or None if no match.
+
+    Returns {"trigger_type", "what_if", "confidence", "anchor"} on match.
+    Ported from jarvis-ai/counterfactuals._classify_trigger — v2-tilpasset
+    med nye match-kriterier (fx rupture.* events + approval-flows).
+    """
+    kind = str(event_kind or "").strip().lower()
+    if not kind:
+        return None
+    status = str(
+        payload.get("status") or payload.get("outcome") or payload.get("decision") or ""
+    ).strip().lower()
+    text_blob = " ".join([
+        kind,
+        str(payload.get("reason") or ""),
+        str(payload.get("summary") or ""),
+        str(payload.get("message") or ""),
+    ]).lower()
+
+    for rule in _CLASSIFIED_WHAT_IFS:
+        matched = False
+        if "match_kinds" in rule:
+            if kind in tuple(rule["match_kinds"]):  # type: ignore[arg-type]
+                matched = True
+        if not matched and "match_kinds_startswith" in rule:
+            if any(kind.startswith(pre) for pre in tuple(rule["match_kinds_startswith"])):  # type: ignore[arg-type]
+                matched = True
+        if not matched and "match_payload_keys" in rule:
+            if any(payload.get(k) for k in tuple(rule["match_payload_keys"])):  # type: ignore[arg-type]
+                matched = True
+        if not matched and "match_text_terms" in rule:
+            if any(term in text_blob for term in tuple(rule["match_text_terms"])):  # type: ignore[arg-type]
+                matched = True
+        if not matched:
+            continue
+
+        # Secondary filter on status if specified
+        if "match_payload_status" in rule:
+            if status not in tuple(rule["match_payload_status"]):  # type: ignore[arg-type]
+                continue
+
+        anchor = (
+            str(payload.get("regret_id") or "")
+            or str(payload.get("incident_id") or "")
+            or str(payload.get("run_id") or "")
+            or str(payload.get("approval_id") or "")
+            or str(payload.get("tool") or "")
+            or str(payload.get("summary") or "")[:80]
+            or kind
+        )
+        return {
+            "trigger_type": str(rule["trigger_type"]),
+            "what_if": str(rule["what_if"]),
+            "confidence": float(rule["confidence"]),  # type: ignore[arg-type]
+            "anchor": anchor,
+        }
+    return None
+
+
+def generate_classified_counterfactual(
+    event_kind: str, payload: dict[str, object]
+) -> dict[str, object] | None:
+    """Convenience: classify event → persist counterfactual if matched.
+
+    Returns the persisted counterfactual row or None.
+    """
+    classification = classify_event_to_counterfactual(event_kind, payload)
+    if classification is None:
+        return None
+    return generate_counterfactual(
+        trigger_type=str(classification["trigger_type"]),
+        anchor=str(classification["anchor"]),
+        source="classified",
+        confidence=float(classification["confidence"]),
+        cf_question=str(classification["what_if"]),
+    )
+
 
 def generate_counterfactual(
     *,
@@ -32,10 +151,18 @@ def generate_counterfactual(
     anchor: str,
     source: str = "runtime",
     confidence: float = 0.5,
+    cf_question: str = "",
 ) -> dict[str, object]:
-    """Generate a counterfactual question from a trigger event."""
-    template = _TRIGGER_TEMPLATES.get(trigger_type, "Hvad hvis {anchor} var gået anderledes?")
-    question = template.format(anchor=anchor[:80])
+    """Generate a counterfactual question from a trigger event.
+
+    If cf_question is provided (non-empty), it overrides the template —
+    used by classify_event_to_counterfactual for specific what-ifs.
+    """
+    if cf_question.strip():
+        question = cf_question.strip()
+    else:
+        template = _TRIGGER_TEMPLATES.get(trigger_type, "Hvad hvis {anchor} var gået anderledes?")
+        question = template.format(anchor=anchor[:80])
 
     cf_id = f"cf-{uuid4().hex[:10]}"
     result = insert_cognitive_counterfactual(

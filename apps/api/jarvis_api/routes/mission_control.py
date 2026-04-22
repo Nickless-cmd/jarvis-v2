@@ -3682,6 +3682,14 @@ def mc_rupture_repair() -> dict:
     return build_rupture_repair_surface()
 
 
+@router.get("/silence-patterns")
+def mc_silence_patterns() -> dict:
+    """Return silence pattern detection — what the user is NOT saying."""
+    from core.services.silence_patterns import build_silence_patterns_surface
+
+    return build_silence_patterns_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

@@ -27,9 +27,19 @@ from core.runtime.config import CONFIG_DIR
 
 logger = logging.getLogger(__name__)
 
+# Kept for backwards compat + tests — but the authoritative path is
+# computed lazily by _users_file() so tests can monkeypatch CONFIG_DIR
+# or HOME safely.
 USERS_FILE = CONFIG_DIR / "users.json"
 _VALID_ROLES = {"owner", "member"}
 _LOCK = threading.Lock()
+
+
+def _users_file() -> Path:
+    """Resolve users.json path at call time so tests can isolate via HOME."""
+    # Re-import to pick up any patched CONFIG_DIR
+    from core.runtime.config import CONFIG_DIR as _CONFIG_DIR
+    return Path(_CONFIG_DIR) / "users.json"
 
 
 @dataclass(frozen=True)
@@ -49,10 +59,10 @@ def _now_iso() -> str:
 
 
 def _ensure_file() -> None:
-    if USERS_FILE.exists():
+    if _users_file().exists():
         return
-    USERS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    USERS_FILE.write_text(
+    _users_file().parent.mkdir(parents=True, exist_ok=True)
+    _users_file().write_text(
         json.dumps({"users": []}, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
@@ -63,7 +73,7 @@ def load_users() -> list[User]:
     with _LOCK:
         _ensure_file()
         try:
-            data = json.loads(USERS_FILE.read_text(encoding="utf-8"))
+            data = json.loads(_users_file().read_text(encoding="utf-8"))
         except Exception as exc:
             logger.error("users.py: failed to load users.json: %s", exc)
             return []
@@ -96,7 +106,7 @@ def _save_users(users: list[User]) -> None:
     with _LOCK:
         _ensure_file()
         payload = {"users": [u.as_dict() for u in users]}
-        USERS_FILE.write_text(
+        _users_file().write_text(
             json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=False),
             encoding="utf-8",
         )

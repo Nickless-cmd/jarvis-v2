@@ -119,6 +119,9 @@ def isolated_runtime(
         "core.services.unconscious_temperature_field",
         "core.services.runtime_self_model",
         "apps.api.jarvis_api.routes.mission_control",
+        "core.identity.users",
+        "core.identity.workspace_context",
+        "core.identity.user_attribution_migrations",
     ]
     modules: dict[str, object] = {}
     for name in module_names:

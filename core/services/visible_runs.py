@@ -4071,6 +4071,15 @@ def _update_cognitive_systems_async(
         except Exception:
             pass
 
+        # --- Habit signal recording ---
+        # Hver bruger-besked tracker habit-patterns + friction.
+        # Trigger'er automation-suggestions når thresholds nås.
+        try:
+            from core.services.habits_pipeline import record_habit_signal
+            record_habit_signal(message=user_message)
+        except Exception:
+            pass
+
         # --- Self-surprise detection ---
         try:
             from core.services.self_surprise_detection import detect_self_surprise

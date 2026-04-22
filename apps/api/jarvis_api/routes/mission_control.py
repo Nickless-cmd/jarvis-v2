@@ -3746,6 +3746,14 @@ def mc_self_review_unified() -> dict:
     return build_self_review_surface()
 
 
+@router.get("/habits-pipeline")
+def mc_habits_pipeline() -> dict:
+    """Return habits + friction + automation-suggestions pipeline."""
+    from core.services.habits_pipeline import build_habits_pipeline_surface
+
+    return build_habits_pipeline_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

@@ -3770,6 +3770,14 @@ def mc_shared_language_extended() -> dict:
     return build_shared_language_extended_surface()
 
 
+@router.get("/procedure-bank-pipeline")
+def mc_procedure_bank_pipeline() -> dict:
+    """Return procedure bank — learned, pinned, trigger-matched routines."""
+    from core.services.procedure_bank_pipeline import build_procedure_bank_surface
+
+    return build_procedure_bank_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

@@ -105,23 +105,37 @@ def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:
         return {"status": "error", "reason": str(exc)}
 
 
-def _get_or_create_discord_session(channel_id: int, is_dm: bool, owner_discord_id: str) -> str:
-    """Return session_id for this Discord channel. Creates session if needed."""
+def _get_or_create_discord_session(
+    channel_id: int,
+    is_dm: bool,
+    owner_discord_id: str,
+    author_id: str = "",
+) -> str:
+    """Return session_id for this Discord channel. Creates session if needed.
+
+    DM sessions: ONE per author_id — så Bjørn og Michelle ikke deler DM-historie.
+    Public channel sessions: one per channel_id (multi-user by design).
+    """
     from core.services.chat_sessions import (
         create_chat_session,
         list_chat_sessions,
     )
 
     if is_dm:
-        # DM: always use a dedicated Discord DM session.
-        # Do NOT use the pinned webchat session — that would cause all webchat
-        # responses to be forwarded to Discord via the eventbus subscriber.
+        # DM: one dedicated session PER user — crucial for multi-user isolation.
+        # Backwards-compat: gammel "Discord DM"-session uden user-suffix bliver
+        # automatisk forladet (ny title-struktur); eksisterende chat-history
+        # ligger under den gamle session.
+        target_title = (
+            f"Discord DM — {author_id}" if author_id
+            else "Discord DM"
+        )
         for s in list_chat_sessions():
-            if s.get("title") == "Discord DM":
+            if s.get("title") == target_title:
                 return str(s["id"])
-        return str(create_chat_session(title="Discord DM")["id"])
+        return str(create_chat_session(title=target_title)["id"])
     else:
-        # Public channel: one session per channel
+        # Public channel: one session per channel (flere brugere kan dele)
         target_title = f"Discord #{channel_id}"
         for s in list_chat_sessions():
             if s.get("title") == target_title:
@@ -330,7 +344,9 @@ async def _run_client(config: dict) -> None:
 
             channel_id = message.channel.id
             logger.info("discord on_message: handling message from %s (owner=%s) in channel %s", message.author.id, is_owner, channel_id)
-            session_id = _get_or_create_discord_session(channel_id, is_dm, owner_discord_id)
+            session_id = _get_or_create_discord_session(
+                channel_id, is_dm, owner_discord_id, author_id=author_id_str,
+            )
 
             # Register this session so the eventbus listener knows to route responses here
             with _discord_sessions_lock:

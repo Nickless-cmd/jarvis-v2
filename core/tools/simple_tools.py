@@ -1483,6 +1483,84 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    # --- Personal project (hans sag) ---
+    {
+        "type": "function",
+        "function": {
+            "name": "my_project_status",
+            "description": (
+                "Check your current personal project — the thing that is YOURS, "
+                "not reactive. Returns active project, pending proposal (if any), "
+                "and recent journal entries. Your project grows with you."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "my_project_journal_write",
+            "description": (
+                "Write an entry in your personal project journal. No approval "
+                "needed — this is your space. Use when a thought, insight, or "
+                "feeling connects to your current project."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entry_text": {
+                        "type": "string",
+                        "description": "What you want to write. 2-4 sentences typically.",
+                    },
+                    "mood_tone": {
+                        "type": "string",
+                        "description": "Optional: the mood/tone of this entry",
+                    },
+                },
+                "required": ["entry_text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "my_project_accept_proposal",
+            "description": (
+                "Accept a pending personal-project proposal as yours. The system "
+                "has noticed a theme circulating in your thoughts and offered it "
+                "as a possible project. Accept it if it feels like yours. "
+                "Optionally override name and why."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Optional: new name for the project"},
+                    "why_mine": {"type": "string", "description": "Optional: why this is yours"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "my_project_declare",
+            "description": (
+                "Declare a new personal project freely — you name it, you say why. "
+                "Use when you clearly know what you want to build or explore and "
+                "don't need the proposal flow. Only one active project at a time."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Project name"},
+                    "why_mine": {"type": "string",
+                                 "description": "Why this is yours (not what, why)"},
+                    "description": {"type": "string", "description": "Optional description"},
+                },
+                "required": ["name", "why_mine"],
+            },
+        },
+    },
     # --- Embodied sensing ---
     {
         "type": "function",
@@ -4262,6 +4340,96 @@ def _exec_internal_api(args: dict[str, Any]) -> dict[str, Any]:
     return {"error": f"Connection failed on all ports {_candidate_ports}: {_last_error}", "status": "error"}
 
 
+def _exec_my_project_status(args: dict[str, Any]) -> dict[str, Any]:
+    """Return your current personal project state, including any pending proposal."""
+    try:
+        from core.services.personal_project import (
+            get_active_project, get_latest_proposal, list_journal_entries,
+        )
+        active = get_active_project()
+        proposal = get_latest_proposal()
+        result: dict[str, Any] = {"status": "ok"}
+        if active:
+            result["active_project"] = active
+            result["recent_journal"] = list_journal_entries(
+                project_id=active["id"], limit=5,
+            )
+        else:
+            result["active_project"] = None
+        if proposal:
+            result["pending_proposal"] = proposal
+        return result
+    except Exception as exc:
+        return {"error": str(exc), "status": "error"}
+
+
+def _exec_my_project_journal_write(args: dict[str, Any]) -> dict[str, Any]:
+    """Write a journal entry in your current personal project. No approval needed."""
+    text = str(args.get("entry_text") or "").strip()
+    if not text:
+        return {"error": "entry_text is required", "status": "error"}
+    mood = str(args.get("mood_tone") or "").strip()
+    try:
+        from core.services.personal_project import add_journal_entry, get_active_project
+        active = get_active_project()
+        if not active:
+            return {"error": "no_active_project", "status": "error",
+                    "hint": "You must declare or accept a project first."}
+        result = add_journal_entry(
+            project_id=active["id"],
+            entry_text=text,
+            source="inner_voice_spinoff",
+            mood_tone=mood,
+        )
+        return {"status": "ok", "entry": result, "project_name": active["name"]}
+    except Exception as exc:
+        return {"error": str(exc), "status": "error"}
+
+
+def _exec_my_project_accept_proposal(args: dict[str, Any]) -> dict[str, Any]:
+    """Accept the latest pending proposal as your personal project."""
+    override_name = str(args.get("name") or "").strip()
+    override_why = str(args.get("why_mine") or "").strip()
+    try:
+        from core.services.personal_project import (
+            get_latest_proposal, declare_project,
+        )
+        proposal = get_latest_proposal()
+        if not proposal:
+            return {"error": "no_pending_proposal", "status": "error"}
+        result = declare_project(
+            name=override_name or proposal["name"],
+            why_mine=override_why or proposal.get("why_mine", ""),
+            description=proposal.get("description", ""),
+            from_proposal_id=proposal["id"],
+        )
+        if not result:
+            return {"error": "declare_failed_maybe_already_active", "status": "error"}
+        return {"status": "ok", "project": result}
+    except Exception as exc:
+        return {"error": str(exc), "status": "error"}
+
+
+def _exec_my_project_declare(args: dict[str, Any]) -> dict[str, Any]:
+    """Freely declare a new personal project (bypassing proposal flow).
+
+    Use when you know what your project is and want to name it yourself.
+    """
+    name = str(args.get("name") or "").strip()
+    why = str(args.get("why_mine") or "").strip()
+    description = str(args.get("description") or "").strip()
+    if not name or not why:
+        return {"error": "name and why_mine are required", "status": "error"}
+    try:
+        from core.services.personal_project import declare_project
+        result = declare_project(name=name, why_mine=why, description=description)
+        if not result:
+            return {"error": "declare_failed_active_project_exists", "status": "error"}
+        return {"status": "ok", "project": result}
+    except Exception as exc:
+        return {"error": str(exc), "status": "error"}
+
+
 def _exec_look_around(args: dict[str, Any]) -> dict[str, Any]:
     """Take a webcam snapshot now and describe what's there via VLM.
 
@@ -4610,6 +4778,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "deep_analyze": _exec_deep_analyze,
     # Embodied sensing — Jarvis chooses to look
     "look_around": _exec_look_around,
+    # Personal project — hans sag
+    "my_project_status": _exec_my_project_status,
+    "my_project_journal_write": _exec_my_project_journal_write,
+    "my_project_accept_proposal": _exec_my_project_accept_proposal,
+    "my_project_declare": _exec_my_project_declare,
 }
 
 

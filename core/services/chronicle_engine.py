@@ -148,6 +148,14 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             maybe_run_self_review(min_hours_between=24)
         except Exception:
             pass
+        # Personal project: propose new nomination if circulating theme found,
+        # og advance current active project med autonom journal-entry
+        try:
+            from core.services.personal_project import propose_nomination, advance_active_project
+            propose_nomination()
+            advance_active_project()
+        except Exception:
+            pass
         # Weekly paradox capture — max 1 per 7 days, signature-deduped
         try:
             from core.services.paradoxes_capture import maybe_capture_weekly_paradox

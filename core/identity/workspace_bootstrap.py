@@ -44,12 +44,30 @@ class WorkspaceBootstrapResult:
         }
 
 
+def _resolve_workspace_name(name: str) -> str:
+    """Resolve 'default' to current contextvar workspace if one is bound.
+
+    This is the pivot that makes 66 hardcoded ensure_default_workspace()
+    calls automatically honor per-user context. If name is explicitly
+    something other than 'default', caller wins.
+    """
+    if name != "default":
+        return name
+    try:
+        from core.identity.workspace_context import current_workspace_name
+        return current_workspace_name() or "default"
+    except Exception:
+        return "default"
+
+
 def ensure_default_workspace(name: str = "default") -> Path:
-    return bootstrap_workspace(name=name).workspace_dir
+    resolved = _resolve_workspace_name(name)
+    return bootstrap_workspace(name=resolved).workspace_dir
 
 
 def ensure_layered_memory_dirs(name: str = "default") -> dict[str, Path]:
-    workspace_dir = Path(WORKSPACES_DIR) / name
+    resolved = _resolve_workspace_name(name)
+    workspace_dir = Path(WORKSPACES_DIR) / resolved
     workspace_dir.mkdir(parents=True, exist_ok=True)
     memory_dir = workspace_dir / "memory"
     daily_dir = memory_dir / "daily"
@@ -65,7 +83,8 @@ def ensure_layered_memory_dirs(name: str = "default") -> dict[str, Path]:
 
 
 def workspace_memory_paths(name: str = "default") -> dict[str, Path]:
-    dirs = ensure_layered_memory_dirs(name=name)
+    resolved = _resolve_workspace_name(name)
+    dirs = ensure_layered_memory_dirs(name=resolved)
     workspace_dir = dirs["workspace_dir"]
     today = datetime.now(UTC).date().isoformat()
     return {
@@ -267,4 +286,79 @@ def bootstrap_workspace(name: str = "default") -> WorkspaceBootstrapResult:
         workspace_dir=workspace_dir,
         created_files=created_files,
         existing_files=existing_files,
+    )
+
+
+def bootstrap_user_workspace(workspace_name: str, *, display_name: str = "") -> WorkspaceBootstrapResult:
+    """Bootstrap a per-user workspace. Unlike bootstrap_workspace(),
+    this creates MEMORY.md and USER.md as EMPTY stubs rather than copying
+    from template — each user starts with a clean relation.
+
+    SOUL.md, IDENTITY.md, STANDING_ORDERS.md etc. are copied from template
+    (fælles personlighed, per-user relation).
+
+    Raises FileNotFoundError if template files are missing.
+    Safe to call repeatedly — existing files are preserved.
+    """
+    name = str(workspace_name or "").strip()
+    if not name:
+        raise ValueError("bootstrap_user_workspace: workspace_name is required")
+
+    workspace_dir = Path(WORKSPACES_DIR) / name
+    workspace_dir.mkdir(parents=True, exist_ok=True)
+
+    created: list[str] = []
+    existing: list[str] = []
+
+    # Identity files (shared personality) — copy from template
+    _SHARED_IDENTITY_FILES = (
+        "SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md",
+        "TOOLS.md", "SKILLS.md", "HEARTBEAT.md",
+    )
+    for filename in _SHARED_IDENTITY_FILES:
+        src = TEMPLATE_DIR / filename
+        if not src.exists():
+            LOGGER.warning("bootstrap_user_workspace: template missing: %s", filename)
+            continue
+        dest = workspace_dir / filename
+        if dest.exists():
+            existing.append(filename)
+            continue
+        shutil.copy2(src, dest)
+        created.append(filename)
+
+    # Per-user relation files — EMPTY stubs, not template content
+    user_md = workspace_dir / "USER.md"
+    if not user_md.exists():
+        stub = f"# {display_name or name}\n\n_Jeg kender endnu ikke denne bruger._\n"
+        user_md.write_text(stub, encoding="utf-8")
+        created.append("USER.md")
+    else:
+        existing.append("USER.md")
+
+    memory_md = workspace_dir / "MEMORY.md"
+    if not memory_md.exists():
+        memory_md.write_text("# MEMORY\n\n_Ingen erindringer endnu._\n", encoding="utf-8")
+        created.append("MEMORY.md")
+    else:
+        existing.append("MEMORY.md")
+
+    # Optional identity extensions (copy if present)
+    for filename in OPTIONAL_WORKSPACE_FILES:
+        src = TEMPLATE_DIR / filename
+        if not src.exists():
+            continue
+        dest = workspace_dir / filename
+        if dest.exists():
+            existing.append(filename)
+            continue
+        shutil.copy2(src, dest)
+        created.append(filename)
+
+    ensure_layered_memory_dirs(name=name)
+
+    return WorkspaceBootstrapResult(
+        workspace_dir=workspace_dir,
+        created_files=created,
+        existing_files=existing,
     )

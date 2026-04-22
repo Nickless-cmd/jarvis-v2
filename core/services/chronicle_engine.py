@@ -126,6 +126,12 @@ def maybe_write_chronicle_entry() -> dict[str, object] | None:
             generate_dream_hypothesis()
         except Exception:
             pass
+        # Unified self-review — periodic LLM-audit of Jarvis' own state
+        try:
+            from core.services.self_review_unified import maybe_run_self_review
+            maybe_run_self_review(min_hours_between=24)
+        except Exception:
+            pass
         return result
 
 

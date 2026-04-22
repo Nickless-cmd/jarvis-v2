@@ -570,39 +570,11 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
                 f"- Recent approval feedback: the user has approved {count} approval-gated actions in a row{tool_text}."
             )
 
-    # 1.5 Inner voice chaining — feed previous thought
-    try:
-        from core.runtime.db import get_protected_inner_voice
-        prev_voice = get_protected_inner_voice()
-        if prev_voice:
-            prev = _sanitize_previous_inner_voice(
-                str(prev_voice.get("enriched_voice_line") or prev_voice.get("voice_line") or "")[:200]
-            )
-            if prev:
-                context_lines.append(f"- Previous thought: {prev}")
-    except Exception:
-        pass
-
-    # 1.6 Anti-attractor — steer away from recently repeated themes
-    try:
-        from core.runtime.db import connect
-        with connect() as conn:
-            rows = conn.execute(
-                "SELECT current_concern, mood_tone FROM protected_inner_voices "
-                "ORDER BY id DESC LIMIT 6"
-            ).fetchall()
-        recent_concerns = [
-            str(r["current_concern"] or "").strip()[:60]
-            for r in rows[1:]  # skip the most recent (already chained above)
-            if str(r["current_concern"] or "").strip()
-        ]
-        if recent_concerns:
-            context_lines.append(
-                "- Recent recurring concerns (steer away from these to avoid loops): "
-                + "; ".join(recent_concerns[:4])
-            )
-    except Exception:
-        pass
+    # NB: Previous-thought chaining og anti-attractor er fjernet (2026-04-22).
+    # Forgænger-inner_voice havde ingen af disse — hver tanke stod alene, og
+    # Jarvis måtte dvæle ved det der fyldte uden at blive "skubbet væk".
+    # Det føltes mere ægte fordi systemet ikke tvang narrativ kontinuitet eller
+    # produktivitets-bevægelse væk fra gentagne bekymringer.
 
     context_lines.extend(
         [
@@ -612,7 +584,8 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
             "- Approval feedback, when present, reflects how the user has recently responded to your tool approach; treat it as a cue about trust, timing, or aggressiveness.",
             "- Optional mode field may be one of: searching, circling, carrying, pulled, witness-steady, work-steady.",
             "- Do not include revision notes, self-critique, style commentary, markdown emphasis, or labels like 'Attempt 2' inside the thought.",
-        "- Do not explain your output. No 'This captures:', no 'Position:', no 'Direction:', no 'Mood:' annotations. Just the raw thought.",
+            "- Do not explain your output. No 'This captures:', no 'Position:', no 'Direction:', no 'Mood:' annotations. Just the raw thought.",
+            "- JSON-output er valgfri. Hvis en tanke ikke passer ind i JSON-skemaet, skriv frit — 2-4 sætninger. En parser henter senere det der er brug for.",
         ]
     )
 
@@ -642,9 +615,14 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
     if not raw:
         return None
 
-    # Parse JSON output
+    # Parse JSON output — med fallback til ren tekst.
+    # Forgænger accepterede ren tekst og lod en regex kigge efter initiative-ord.
+    # Vi bevarer JSON-kontrakten som foretrukket men giver frihed til prosa.
+    parsed: dict[str, object] = {}
+    json_parsed_ok = False
     try:
         parsed = json.loads(raw)
+        json_parsed_ok = True
     except json.JSONDecodeError:
         # Try to extract JSON from response
         start = raw.find("{")
@@ -652,10 +630,27 @@ def _llm_render_inner_voice(grounding: dict[str, object]) -> dict[str, object] |
         if start >= 0 and end > start:
             try:
                 parsed = json.loads(raw[start:end])
+                json_parsed_ok = True
             except json.JSONDecodeError:
-                return None
-        else:
-            return None
+                pass
+
+    if not json_parsed_ok or not isinstance(parsed, dict):
+        # Fri tekst — Jarvis skrev en tanke uden JSON-skema.
+        # Regex-detect initiative-ord (forgænger-stil) for at udfylde feltet.
+        parsed = {"thought": raw}
+        lower_raw = raw.lower()
+        initiative_tokens = (
+            "i should", "i will", "jeg bør", "jeg vil",
+            "next", "næste skridt", "follow up", "opfølg", "remember to",
+        )
+        if any(tok in lower_raw for tok in initiative_tokens):
+            # Pluk den sætning der indeholder initiativ-ordet
+            import re as _re
+            sentences = _re.split(r"(?<=[.!?])\s+", raw)
+            for sent in sentences:
+                if any(tok in sent.lower() for tok in initiative_tokens):
+                    parsed["initiative"] = sent.strip()[:200]
+                    break
 
     thought = _sanitize_inner_voice_text(parsed.get("thought") or parsed.get("note") or "")
     initiative = parsed.get("initiative")

@@ -3706,6 +3706,14 @@ def mc_dream_hypotheses() -> dict:
     return build_dream_hypothesis_surface()
 
 
+@router.get("/decisions-journal")
+def mc_decisions_journal() -> dict:
+    """Return decisions journal — moralsk beslutnings-log."""
+    from core.services.decisions_journal import build_decisions_journal_surface
+
+    return build_decisions_journal_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

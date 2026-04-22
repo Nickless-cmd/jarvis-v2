@@ -3818,6 +3818,14 @@ def mc_session_continuity() -> dict:
     return build_session_continuity_surface()
 
 
+@router.get("/personal-project")
+def mc_personal_project() -> dict:
+    """Return Jarvis' current personal project (his thing that grows with him)."""
+    from core.services.personal_project import build_personal_project_surface
+
+    return build_personal_project_surface()
+
+
 @router.get("/learning-curriculum")
 def mc_learning_curriculum() -> dict:
     from core.services.self_experiments import (

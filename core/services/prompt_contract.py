@@ -3654,6 +3654,13 @@ def _visible_visual_memory_section() -> str | None:
     except Exception:
         pass
     try:
+        from core.services.personal_project import get_project_prompt_hint
+        pp = get_project_prompt_hint()
+        if pp:
+            parts.append(pp)
+    except Exception:
+        pass
+    try:
         from core.services.session_continuity import get_echo_signals_for_prompt, get_latest_morning_thread
         e = get_echo_signals_for_prompt()
         if e:

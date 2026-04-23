@@ -33291,3 +33291,91 @@ def aesthetic_motif_log_summary() -> list[dict]:
             {"motif": row[0], "count": row[1], "avg_confidence": row[2]}
             for row in rows
         ]
+
+
+# ---------------------------------------------------------------------------
+# Channel Attachments
+# ---------------------------------------------------------------------------
+
+def _ensure_channel_attachments_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS channel_attachments (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            attachment_id TEXT    NOT NULL UNIQUE,
+            session_id    TEXT    NOT NULL,
+            channel_type  TEXT    NOT NULL,
+            filename      TEXT    NOT NULL,
+            mime_type     TEXT    NOT NULL DEFAULT '',
+            size_bytes    INTEGER NOT NULL DEFAULT 0,
+            local_path    TEXT    NOT NULL,
+            source_url    TEXT    NOT NULL DEFAULT '',
+            created_at    TEXT    NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_channel_attachments_session "
+        "ON channel_attachments(session_id)"
+    )
+
+
+def store_channel_attachment(
+    *,
+    conn: sqlite3.Connection,
+    attachment_id: str,
+    session_id: str,
+    channel_type: str,
+    filename: str,
+    mime_type: str,
+    size_bytes: int,
+    local_path: str,
+    source_url: str,
+) -> None:
+    _ensure_channel_attachments_table(conn)
+    now = datetime.now(UTC).isoformat()
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO channel_attachments
+            (attachment_id, session_id, channel_type, filename, mime_type,
+             size_bytes, local_path, source_url, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (attachment_id, session_id, channel_type, filename, mime_type,
+         size_bytes, local_path, source_url, now),
+    )
+
+
+def get_channel_attachment(
+    *, conn: sqlite3.Connection, attachment_id: str
+) -> dict | None:
+    _ensure_channel_attachments_table(conn)
+    row = conn.execute(
+        """
+        SELECT attachment_id, session_id, channel_type, filename, mime_type,
+               size_bytes, local_path, source_url, created_at
+        FROM channel_attachments WHERE attachment_id = ?
+        """,
+        (attachment_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    return dict(row)
+
+
+def list_channel_attachments(
+    *, conn: sqlite3.Connection, session_id: str, limit: int = 20
+) -> list[dict]:
+    _ensure_channel_attachments_table(conn)
+    rows = conn.execute(
+        """
+        SELECT attachment_id, session_id, channel_type, filename, mime_type,
+               size_bytes, local_path, source_url, created_at
+        FROM channel_attachments
+        WHERE session_id = ?
+        ORDER BY created_at DESC
+        LIMIT ?
+        """,
+        (session_id, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]

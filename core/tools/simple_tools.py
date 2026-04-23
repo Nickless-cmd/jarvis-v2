@@ -161,6 +161,11 @@ from core.tools.health_monitor_tools import (
     _exec_health_status,
     _exec_health_history,
 )
+from core.tools.sensory_tools import (
+    SENSORY_TOOL_DEFINITIONS,
+    _exec_record_sensory_memory,
+    _exec_recall_sensory_memories,
+)
 from core.tools.visual_memory_tool import (
     VISUAL_MEMORY_TOOL_DEFINITIONS,
     _exec_read_visual_memory,
@@ -1827,6 +1832,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
+    *SENSORY_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -5059,6 +5065,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "health_register": _exec_health_register,
     "health_status": _exec_health_status,
     "health_history": _exec_health_history,
+    # Sansernes Arkiv
+    "record_sensory_memory": _exec_record_sensory_memory,
+    "recall_sensory_memories": _exec_recall_sensory_memories,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     # Code introspection

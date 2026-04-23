@@ -10,10 +10,9 @@ import { MindTab } from '../components/mission-control/MindTab'
 import { MemoryTab } from '../components/mission-control/MemoryTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
 import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
-import { OperationsTab } from '../components/mission-control/OperationsTab'
+import { OpsTab } from '../components/mission-control/OpsTab'
 import { OverviewTab } from '../components/mission-control/OverviewTab'
 import { SkillsTab } from '../components/mission-control/SkillsTab'
-import { AgentsTab } from '../components/mission-control/AgentsTab'
 import { CouncilTab } from '../components/mission-control/CouncilTab'
 import { RelationshipTab } from '../components/mission-control/RelationshipTab'
 import { ProprioceptionTab } from '../components/mission-control/ProprioceptionTab'
@@ -155,7 +154,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
           ) : null}
 
           {activeTab === 'operations' ? (
-            <OperationsTab
+            <OpsTab
               data={sections.operations}
               selection={selection}
               onSelectionChange={onSelectionChange}
@@ -228,7 +227,6 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
           ) : null}
 
 
-          {activeTab === 'agents' ? <AgentsTab /> : null}
           {activeTab === 'council' ? <CouncilTab /> : null}
           {activeTab === 'memory' ? <MemoryTab /> : null}
           {activeTab === 'skills' ? <SkillsTab /> : null}

@@ -1526,6 +1526,8 @@ def _invoke_runnable_capability(
                     merged_content,
                     limit=min(MAX_FILE_OUTPUT_CHARS, 400),
                 ),
+                "content_after": merged_content,
+                "content_before": existing_content,
                 "content_fingerprint": merged_fingerprint,
                 "content_fingerprint_before": existing_fingerprint,
                 "readback_fingerprint": readback_fingerprint,
@@ -1536,7 +1538,9 @@ def _invoke_runnable_capability(
             "detail": (
                 f"Memory write executed for {target_path} at {candidate.resolve()}. "
                 f"{bytes_delta:+d} bytes, "
-                f"readback={'verified' if readback_match else 'MISMATCH'}."
+                f"readback={'verified' if readback_match else 'MISMATCH'}. "
+                f"Review 'content_before' to see what existed before this write — "
+                f"check for semantic duplicates and use workspace-memory-rewrite if cleanup is needed."
             ),
         }
 
@@ -3896,6 +3900,15 @@ def _merge_workspace_memory_content(*, existing_content: str, incoming_content: 
     if not existing_lines:
         return incoming_content if incoming_content.endswith("\n") else incoming_content + "\n"
 
+    # Collect existing section headings (## or ###) to detect semantic duplicates.
+    # If incoming content has a heading that already exists, skip lines under it
+    # rather than appending a duplicate section.
+    existing_headings = {
+        " ".join(str(line).split()).strip().lower()
+        for line in existing_lines
+        if str(line).lstrip().startswith("##")
+    }
+
     seen = {
         " ".join(str(line).split()).strip()
         for line in existing_lines
@@ -3903,8 +3916,18 @@ def _merge_workspace_memory_content(*, existing_content: str, incoming_content: 
     }
     appended: list[str] = []
     rejected: list[str] = []
+    skip_until_next_heading = False
     for line in incoming_lines:
         normalized = " ".join(str(line).split()).strip()
+        # Detect section heading in incoming content
+        if normalized.startswith("##"):
+            skip_until_next_heading = normalized.lower() in existing_headings
+            if skip_until_next_heading:
+                rejected.append(line)
+                continue
+        if skip_until_next_heading:
+            rejected.append(line)
+            continue
         if not normalized or normalized in seen:
             continue
         if not _is_durable_memory_line(line):

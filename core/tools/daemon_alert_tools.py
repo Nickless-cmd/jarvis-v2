@@ -130,6 +130,59 @@ def _exec_daemon_alert_status(args: dict[str, Any]) -> dict[str, Any]:
     return {"status": "ok", "alerts": entries, "count": len(entries)}
 
 
+def _exec_restart_overdue_daemons(args: dict[str, Any]) -> dict[str, Any]:
+    """Restart daemons that have been overdue for more than threshold_minutes."""
+    threshold_minutes = float(args.get("threshold_minutes") or 30)
+    dry_run = bool(args.get("dry_run", False))
+
+    try:
+        from core.services.daemon_manager import get_all_daemon_states, control_daemon
+        daemons = get_all_daemon_states()
+    except Exception as e:
+        return {"status": "error", "error": f"Could not get daemon states: {e}"}
+
+    threshold_hours = threshold_minutes / 60
+    overdue = []
+    for d in daemons:
+        if not d.get("enabled"):
+            continue
+        hours_since = d.get("hours_since_last_run")
+        if hours_since is None:
+            continue
+        if hours_since >= threshold_hours:
+            overdue.append({"name": d["name"], "hours_since_last_run": round(hours_since, 1)})
+
+    if not overdue:
+        return {
+            "status": "ok",
+            "restarted": [],
+            "text": f"No daemons overdue by more than {threshold_minutes} minutes.",
+        }
+
+    restarted = []
+    errors = []
+    for d in overdue:
+        name = d["name"]
+        if dry_run:
+            restarted.append(name)
+            continue
+        try:
+            control_daemon(name=name, action="restart")
+            restarted.append(name)
+        except Exception as e:
+            errors.append(f"{name}: {e}")
+
+    prefix = "[DRY RUN] Would restart" if dry_run else "Restarted"
+    return {
+        "status": "ok",
+        "restarted": restarted,
+        "errors": errors or None,
+        "dry_run": dry_run,
+        "threshold_minutes": threshold_minutes,
+        "text": f"{prefix}: {', '.join(restarted)}" + (f". Errors: {errors}" if errors else ""),
+    }
+
+
 DAEMON_ALERT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
@@ -167,6 +220,31 @@ DAEMON_ALERT_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "name": "daemon_alert_status",
             "description": "Show when each daemon was last alerted for inactivity.",
             "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "restart_overdue_daemons",
+            "description": (
+                "Automatically restart enabled daemons that have been overdue "
+                "for more than threshold_minutes. Use dry_run=true to preview "
+                "without actually restarting."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "threshold_minutes": {
+                        "type": "number",
+                        "description": "Restart daemons inactive for more than this many minutes (default 30).",
+                    },
+                    "dry_run": {
+                        "type": "boolean",
+                        "description": "Preview which daemons would be restarted without acting (default false).",
+                    },
+                },
+                "required": [],
+            },
         },
     },
 ]

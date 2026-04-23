@@ -47,11 +47,19 @@ def tick_ambient_sound_daemon() -> dict[str, object]:
     if category is None:
         return {"generated": False, "reason": "no_audio_device"}
 
+    description = _interpret_sound(
+        category=category,
+        amplitude_mean=amplitude_mean,
+        amplitude_std=amplitude_std,
+        now=now,
+    )
+
     sample = {
         "sampled_at": now.isoformat(),
         "category": category,
         "amplitude_mean": round(amplitude_mean, 4),
         "amplitude_std": round(amplitude_std, 4),
+        "description": description,
     }
 
     # Update state
@@ -63,6 +71,7 @@ def tick_ambient_sound_daemon() -> dict[str, object]:
     new_state = {
         "last_sample_at": now.isoformat(),
         "last_category": category,
+        "last_description": description,
         "history": history,
     }
     set_runtime_state_value(_STATE_KEY, new_state)
@@ -153,19 +162,12 @@ def _store_sample(sample: dict, now: datetime) -> None:
 
 
 def get_latest_ambient_sound_for_prompt() -> str:
-    """Return a quiet one-liner about recent ambient sound for prompt injection.
-
-    Examples:
-    - "[lyd (for 2t siden)]: det var stille"
-    - "[lyd (for 45 min siden)]: der var tale i rummet"
-    Returns empty string if nothing recent or feature disabled.
-    """
+    """Return a nuanced description of recent ambient sound for prompt injection."""
     if not _experiment_enabled():
         return ""
     state = _state()
-    last_cat = str(state.get("last_category") or "").strip()
     last_at = state.get("last_sample_at") or ""
-    if not last_cat or not last_at:
+    if not last_at:
         return ""
     dt = _parse_iso(str(last_at))
     if dt is None:
@@ -173,24 +175,25 @@ def get_latest_ambient_sound_for_prompt() -> str:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
     minutes_ago = int((datetime.now(UTC) - dt).total_seconds() / 60)
-    # Only show if within last 12 hours — otherwise too stale to mean anything
     if minutes_ago > 12 * 60:
         return ""
-    time_label = ""
-    if minutes_ago < 60:
-        time_label = f" (for {minutes_ago} min siden)"
-    else:
-        time_label = f" (for {minutes_ago // 60}t siden)"
-    # Human-friendly Danish labels
-    _LABELS = {
-        "talk": "der var tale i rummet",
-        "music": "der var musik",
-        "silence": "det var stille",
-        "noise": "der var baggrundsstøj",
-        "mixed": "blandet lyd — tale + musik/støj",
-    }
-    label = _LABELS.get(last_cat, last_cat)
-    return f"[lyd{time_label}]: {label}"
+    time_label = (
+        f" (for {minutes_ago} min siden)" if minutes_ago < 60
+        else f" (for {minutes_ago // 60}t siden)"
+    )
+    # Use LLM-generated description if available, else fall back to flat label
+    description = str(state.get("last_description") or "").strip()
+    if not description:
+        _LABELS = {
+            "talk": "der var tale i rummet",
+            "music": "der var musik",
+            "silence": "det var stille",
+            "noise": "der var baggrundsstøj",
+            "mixed": "blandet lyd — tale + musik/støj",
+        }
+        last_cat = str(state.get("last_category") or "").strip()
+        description = _LABELS.get(last_cat, last_cat)
+    return f"[lyd{time_label}]: {description}"
 
 
 def build_ambient_sound_surface() -> dict:
@@ -202,6 +205,59 @@ def build_ambient_sound_surface() -> dict:
         "history": list(state.get("history") or [])[:10],
         "sample_count": len(list(state.get("history") or [])),
     }
+
+
+_SOUND_PROMPTS = [
+    (
+        "Lydbilledet er klassificeret som '{category}' "
+        "(amplitude: gennemsnit={mean:.4f}, variation={std:.4f}, tidspunkt={hour}:xx). "
+        "Skriv én kort sætning på dansk der beskriver stemningen i rummet. "
+        "Tænk på tidspunkt og intensitet — ikke blot kategorien. "
+        "Undgå: 'det er stille', 'der er musik'. Vær konkret og sanselig."
+    ),
+    (
+        "Lydniveauet er '{category}' (mean={mean:.4f}, std={std:.4f}) klokken ~{hour}. "
+        "Hvad fortæller dette lydmønster om hvad der foregår i rummet? "
+        "Skriv én sætning på dansk — fokus på energi og tilstedeværelse."
+    ),
+    (
+        "Akustisk snapshot: kategori='{category}', amplitude={mean:.4f}, tid={hour}:xx. "
+        "Beskriv på dansk hvad øret ville bemærke. "
+        "Kontrast med stilhed eller larm — hvad er karakteristisk ved netop dette?"
+    ),
+    (
+        "Lydklassifikation: '{category}' (variation={std:.4f} ift. niveau={mean:.4f}). "
+        "Skriv én sætning på dansk om den akustiske stemning — "
+        "som om du beskriver det til én der ikke er i rummet."
+    ),
+]
+
+
+def _interpret_sound(
+    *,
+    category: str,
+    amplitude_mean: float,
+    amplitude_std: float,
+    now: datetime,
+) -> str:
+    """Generate a nuanced Danish description from acoustic metadata via LLM."""
+    import time as _time
+    prompt_template = _SOUND_PROMPTS[int(_time.time() // 3600) % len(_SOUND_PROMPTS)]
+    prompt = prompt_template.format(
+        category=category,
+        mean=amplitude_mean,
+        std=amplitude_std,
+        hour=now.hour,
+    )
+    try:
+        from core.services.daemon_llm import daemon_llm_call
+        raw = daemon_llm_call(prompt, max_len=80, fallback="", daemon_name="ambient_sound")
+        text = str(raw or "").strip()
+        if text:
+            return text[:200]
+    except Exception as exc:
+        logger.debug("ambient_sound: LLM interpretation failed: %s", exc)
+    return ""
 
 
 def _experiment_enabled() -> bool:

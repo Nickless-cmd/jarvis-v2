@@ -33,6 +33,23 @@ def _format_uptime(seconds: float) -> str:
     return f"{d}d {h}h" if h else f"{d}d"
 
 
+def _daemon_count() -> int:
+    try:
+        from core.services.daemon_manager import get_all_daemon_states
+        return sum(1 for d in get_all_daemon_states() if d.get("enabled"))
+    except Exception:
+        return 0
+
+
+def _visible_model_label() -> str:
+    try:
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        return s.visible_model_name or "unknown"
+    except Exception:
+        return "unknown"
+
+
 @router.get("/status")
 def status() -> dict:
     uptime_seconds = max(0.0, time.time() - _STARTED_AT)
@@ -40,4 +57,7 @@ def status() -> dict:
         "online": True,
         "uptime_seconds": int(uptime_seconds),
         "uptime_human": _format_uptime(uptime_seconds),
+        "uptime": _format_uptime(uptime_seconds),
+        "daemons": _daemon_count(),
+        "model": _visible_model_label(),
     }

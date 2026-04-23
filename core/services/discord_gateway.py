@@ -75,6 +75,53 @@ def send_discord_message(channel_id: int, text: str) -> None:
     _outbound_queue.put_nowait((channel_id, text))
 
 
+def _download_attachment(attachment: Any, session_id: str) -> dict:
+    """Download a single discord.Attachment via attachment_service."""
+    from core.services.attachment_service import download_and_store
+    return download_and_store(
+        url=attachment.url,
+        filename=attachment.filename,
+        mime_type=attachment.content_type or "",
+        size_bytes=attachment.size,
+        session_id=session_id,
+        channel_type="discord",
+    )
+
+
+def _build_attachment_prefix(attachments: list, session_id: str) -> str:
+    """Build content prefix lines for all attachments in a Discord message."""
+    if not attachments:
+        return ""
+    lines = []
+    for att in attachments:
+        result = _download_attachment(att, session_id)
+        if result["status"] == "ok":
+            aid = result["attachment_id"]
+            mime = att.content_type or "?"
+            size_kb = round(att.size / 1024, 1)
+            lines.append(
+                f"[Fil modtaget: {att.filename} ({mime}, {size_kb} KB) — id: {aid}]"
+            )
+        else:
+            reason = result.get("reason", "ukendt fejl")
+            lines.append(f"[Fil kunne ikke hentes: {att.filename} — {reason}]")
+    return "\n".join(lines) + "\n"
+
+
+def _validate_send_path(path: str) -> tuple[bool, str]:
+    from core.services.attachment_service import validate_send_path
+    return validate_send_path(path)
+
+
+def send_discord_file(channel_id: int, text: str, file_path: str) -> dict:
+    """Queue a file send to a Discord channel. Validates path first."""
+    ok, err = _validate_send_path(file_path)
+    if not ok:
+        return {"status": "error", "reason": err}
+    _outbound_queue.put_nowait({"channel_id": channel_id, "text": text, "file_path": file_path})
+    return {"status": "queued", "channel_id": channel_id, "file_path": file_path}
+
+
 def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:
     """Send a DM directly to the owner via owner_discord_id.
 
@@ -184,14 +231,24 @@ async def _send_outbound_loop() -> None:
     """Asyncio coroutine that drains the outbound queue and sends to Discord."""
     while _thread_running:
         try:
-            channel_id, text = _outbound_queue.get_nowait()
+            item = _outbound_queue.get_nowait()
         except queue.Empty:
             await asyncio.sleep(0.2)
             continue
+
+        # Support both old tuple format (channel_id, text) and new dict format
+        if isinstance(item, tuple):
+            channel_id, text = item
+            file_path = None
+        else:
+            channel_id = item["channel_id"]
+            text = item.get("text", "")
+            file_path = item.get("file_path")
+
         # Stop typing indicator before sending
         with _typing_lock:
             _typing_channels.discard(channel_id)
-        logger.info("discord_outbound: dequeued channel=%s len=%d", channel_id, len(text))
+        logger.info("discord_outbound: dequeued channel=%s len=%d file=%s", channel_id, len(text), file_path)
         try:
             if _client:
                 channel = _client.get_channel(channel_id)
@@ -199,8 +256,15 @@ async def _send_outbound_loop() -> None:
                 if channel is None:
                     channel = await _client.fetch_channel(channel_id)
                     logger.info("discord_outbound: fetch_channel=%s", channel)
-                for chunk in _split_message(text, 1900):
-                    await channel.send(chunk)
+                if file_path:
+                    import discord as _discord_lib
+                    await channel.send(
+                        content=text or None,
+                        file=_discord_lib.File(file_path),
+                    )
+                else:
+                    for chunk in _split_message(text, 1900):
+                        await channel.send(chunk)
                 logger.info("discord_outbound: sent ok to channel=%s", channel_id)
                 _status["message_count"] += 1
                 _status["last_message_at"] = datetime.now(UTC).isoformat()
@@ -329,7 +393,20 @@ async def _run_client(config: dict) -> None:
                     return
                 _user_last_response[message.author.id] = now
 
-            content = content_raw.strip()
+            # Extract file attachments and build content prefix
+            attachment_prefix = ""
+            try:
+                if message.attachments:
+                    _att_session = _get_or_create_discord_session(
+                        message.channel.id, is_dm, owner_discord_id, author_id=author_id_str,
+                    )
+                    attachment_prefix = _build_attachment_prefix(
+                        list(message.attachments), session_id=_att_session
+                    )
+            except Exception as _att_exc:
+                logger.warning("discord on_message: attachment handling failed: %s", _att_exc)
+
+            content = (attachment_prefix + content_raw).strip()
             if not content:
                 try:
                     from core.eventbus.bus import event_bus as _ebus3

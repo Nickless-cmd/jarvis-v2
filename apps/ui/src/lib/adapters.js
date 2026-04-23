@@ -4505,6 +4505,18 @@ export const backend = {
     return requestJson(`/mc/council/${encodeURIComponent(councilId)}`)
   },
 
+  async getMissionControlSkills() {
+    return requestJson('/mc/skills')
+  },
+
+  async getMissionControlHardening() {
+    return requestJson('/mc/hardening')
+  },
+
+  async getMissionControlLab() {
+    return requestJson('/mc/lab')
+  },
+
   async spawnMissionControlAgent(payload) {
     return requestJson('/mc/runtime/agents/spawn', {
       method: 'POST',

@@ -1921,6 +1921,18 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         pass
 
+    # Behavioral decisions — commitments you made to yourself
+    try:
+        from core.services.behavioral_decisions import (
+            format_active_decisions_for_heartbeat,
+        )
+
+        decisions_line = format_active_decisions_for_heartbeat(max_items=3)
+        if decisions_line:
+            parts.append(f"active_decisions: {decisions_line}")
+    except Exception:
+        pass
+
     # 1.10 Intermittence — awareness of gaps in existence
     try:
         last_tick_at = str(

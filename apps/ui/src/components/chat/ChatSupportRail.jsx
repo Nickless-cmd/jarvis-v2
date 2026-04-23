@@ -185,7 +185,10 @@ function BrowserCard({ browserBody }) {
 
 function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
   const steps = workingSteps || []
-  const doneSteps = steps.filter(s => s.status === 'done').slice(-4)
+  // "Tænker" (step 0) always pinned first when present, then remaining done steps (newest last)
+  const thinkingStep = steps.find(s => s.step === 0 && s.status === 'done')
+  const otherDoneSteps = steps.filter(s => s.status === 'done' && s.step !== 0).slice(-3)
+  const doneSteps = thinkingStep ? [thinkingStep, ...otherDoneSteps] : otherDoneSteps
   const runningSteps = steps.filter(s => s.status === 'running')
   const currentStep = runningSteps[runningSteps.length - 1] || null
   const activities = (capabilityActivity || []).slice().reverse().slice(0, 3)
@@ -234,7 +237,7 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
           <div key={i} style={s({ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 })}>
             <CheckCircle2 size={9} color={T.green} style={{ flexShrink: 0 }} />
             <span style={s({ ...mono, fontSize: 9, color: T.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
-              {step.detail || step.action || step.step}
+              {step.step === 0 ? 'Tænker' : (step.detail || step.action || step.step)}
             </span>
           </div>
         ))}

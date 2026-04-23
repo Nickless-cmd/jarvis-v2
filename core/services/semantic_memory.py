@@ -271,33 +271,53 @@ def _row_id(table: str, row: dict[str, Any]) -> str:
 def backfill_all(*, max_per_table: int | None = None) -> dict[str, Any]:
     """Embed every unindexed row across registered source tables.
 
-    Safe to run repeatedly — skips rows whose content_hash matches an
-    existing embedding.
+    Queries the DB directly for rows not yet in memory_embeddings, so this
+    scales past any lister's internal cap. Safe to run repeatedly.
     """
     _default_sources_registered()
+    from core.runtime.db import connect
+
+    tables_plan = {
+        "sensory_memories": (
+            "SELECT id FROM sensory_memories ORDER BY timestamp DESC",
+            "id",
+        ),
+        "private_brain_records": (
+            "SELECT record_id FROM private_brain_records "
+            "WHERE status != 'deleted' ORDER BY created_at DESC",
+            "record_id",
+        ),
+    }
+
     summary: dict[str, Any] = {"tables": {}, "total_indexed": 0, "total_failed": 0}
-    for table, lister in _LISTERS.items():
+    for table, (query, id_col) in tables_plan.items():
+        resolver = _RESOLVERS.get(table)
+        if not resolver:
+            continue
         try:
-            rows = lister()
+            with connect() as conn:
+                rows = conn.execute(query).fetchall()
+            all_ids = [str(r[id_col]) for r in rows if r[id_col]]
         except Exception as exc:
-            logger.warning("semantic_memory: lister %s failed: %s", table, exc)
+            logger.warning("semantic_memory: list ids %s failed: %s", table, exc)
             summary["tables"][table] = {"error": str(exc)}
             continue
+
+        already = list_indexed_source_ids(table)
+        missing = [sid for sid in all_ids if sid not in already]
         if max_per_table is not None:
-            rows = rows[: int(max_per_table)]
+            missing = missing[: int(max_per_table)]
+
         indexed = 0
         failed = 0
         skipped = 0
-        already = list_indexed_source_ids(table)
-        for row in rows:
-            sid = _row_id(table, row)
-            if not sid:
-                continue
-            content, modality = _extract_content_for_row(table, row)
-            if not content.strip():
+        for sid in missing:
+            record = resolver(sid)
+            if not record:
                 skipped += 1
                 continue
-            if sid in already and _content_hash_unchanged(table, sid, content):
+            content, modality = _extract_content_for_row(table, record)
+            if not content.strip():
                 skipped += 1
                 continue
             ok = index_memory(
@@ -310,11 +330,13 @@ def backfill_all(*, max_per_table: int | None = None) -> dict[str, Any]:
                 indexed += 1
             else:
                 failed += 1
+
         summary["tables"][table] = {
             "indexed": indexed,
             "failed": failed,
             "skipped": skipped,
-            "total_rows": len(rows),
+            "total_rows": len(all_ids),
+            "already_indexed": len(already),
         }
         summary["total_indexed"] += indexed
         summary["total_failed"] += failed

@@ -1,18 +1,16 @@
-import { Activity, Eye, Bot, Brain, Database, Package, Lock, FlaskConical, Fingerprint, Heart, Users, Crown, Hourglass, Anchor, Network, ShieldCheck } from 'lucide-react'
+import { Activity, Eye, Bot, Brain, Database, Package, Lock, FlaskConical, Heart, Users, Crown, Anchor, Network, ShieldCheck } from 'lucide-react'
 import { s, T } from '../../shared/theme/tokens'
 
 const ALL_TABS = [
   { id: 'overview', label: 'Overview', icon: Activity },
   { id: 'operations', label: 'Operations', icon: Bot },
   { id: 'observability', label: 'Observability', icon: Eye },
-  { id: 'living-mind', label: 'Living Mind', icon: Brain },
-  { id: 'soul', label: 'Soul', icon: Hourglass },
+  { id: 'mind', label: 'Mind', icon: Brain },
   { id: 'proprioception', label: 'Proprioception', icon: Anchor },
   { id: 'threads', label: 'Threads', icon: Network },
   { id: 'memory', label: 'Memory', icon: Database },
   { id: 'agents', label: 'Agents', icon: Users },
   { id: 'council', label: 'Council', icon: Crown },
-  { id: 'cognitive-state', label: 'Cognitive', icon: Fingerprint },
   { id: 'relationship', label: 'Relationship', icon: Heart },
   { id: 'reflection', label: 'Reflection', icon: Eye },
   { id: 'skills', label: 'Skills', icon: Package },

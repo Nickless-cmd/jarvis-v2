@@ -150,7 +150,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   }, [runRefresh])
 
   const isJarvisTab = useCallback(
-    (tabId) => ['living-mind', 'self-review', 'continuity', 'development'].includes(tabId),
+    (tabId) => ['mind', 'reflection'].includes(tabId),
     []
   )
 

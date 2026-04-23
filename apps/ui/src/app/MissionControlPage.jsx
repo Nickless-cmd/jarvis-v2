@@ -6,7 +6,7 @@ import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { ReflectionTab } from '../components/mission-control/ReflectionTab'
 import { HardeningTab } from '../components/mission-control/HardeningTab'
 import { LabTab } from '../components/mission-control/LabTab'
-import { LivingMindTab } from '../components/mission-control/LivingMindTab'
+import { MindTab } from '../components/mission-control/MindTab'
 import { MemoryTab } from '../components/mission-control/MemoryTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
 import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
@@ -15,9 +15,7 @@ import { OverviewTab } from '../components/mission-control/OverviewTab'
 import { SkillsTab } from '../components/mission-control/SkillsTab'
 import { AgentsTab } from '../components/mission-control/AgentsTab'
 import { CouncilTab } from '../components/mission-control/CouncilTab'
-import { CognitiveStateTab } from '../components/mission-control/CognitiveStateTab'
 import { RelationshipTab } from '../components/mission-control/RelationshipTab'
-import { SoulTab } from '../components/mission-control/SoulTab'
 import { ProprioceptionTab } from '../components/mission-control/ProprioceptionTab'
 import { ThreadsTab } from '../components/mission-control/ThreadsTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
@@ -66,7 +64,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
     }
   }, [sections.observability, eventFamilyFilter])
 
-  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' || activeTab === 'reflection' ? sections.jarvis : null) || null
+  const activeSectionData = sections[activeTab] || (activeTab === 'mind' || activeTab === 'reflection' ? sections.jarvis : null) || null
   const freshnessLabel = formatFreshness(activeSectionData?.fetchedAt)
   const updateModeLabel = mcUpdateModeLabel(activeTab)
 
@@ -212,8 +210,8 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
             </div>
           ) : null}
 
-          {activeTab === 'living-mind' ? (
-            <LivingMindTab
+          {activeTab === 'mind' ? (
+            <MindTab
               data={sections.jarvis}
               onOpenItem={openJarvisDetail}
               onHeartbeatTick={actOnHeartbeatTick}
@@ -236,9 +234,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
           {activeTab === 'skills' ? <SkillsTab /> : null}
           {activeTab === 'hardening' ? <HardeningTab /> : null}
           {activeTab === 'lab' ? <LabTab /> : null}
-          {activeTab === 'cognitive-state' ? <CognitiveStateTab /> : null}
           {activeTab === 'relationship' ? <RelationshipTab /> : null}
-          {activeTab === 'soul' ? <SoulTab /> : null}
           {activeTab === 'proprioception' ? <ProprioceptionTab /> : null}
 {activeTab === 'threads' ? <ThreadsTab /> : null}
         </div>

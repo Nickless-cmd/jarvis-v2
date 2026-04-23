@@ -9,7 +9,6 @@ const ALL_TABS = [
   { id: 'soul', label: 'Soul', icon: Hourglass },
   { id: 'proprioception', label: 'Proprioception', icon: Anchor },
   { id: 'threads', label: 'Threads', icon: Network },
-  { id: 'governance', label: 'Governance', icon: ShieldCheck },
   { id: 'cost', label: 'Cost', icon: DollarSign },
   { id: 'memory', label: 'Memory', icon: Database },
   { id: 'agents', label: 'Agents', icon: Users },

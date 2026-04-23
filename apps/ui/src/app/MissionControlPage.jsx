@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { s, T, mono } from '../shared/theme/tokens'
 import { Chip } from '../components/mission-control/shared'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
-import { CostTab } from '../components/mission-control/CostTab'
 import { ReflectionTab } from '../components/mission-control/ReflectionTab'
 import { HardeningTab } from '../components/mission-control/HardeningTab'
 import { LabTab } from '../components/mission-control/LabTab'
@@ -230,7 +229,6 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
             />
           ) : null}
 
-          {activeTab === 'cost' ? <CostTab data={sections.cost} /> : null}
 
           {activeTab === 'agents' ? <AgentsTab /> : null}
           {activeTab === 'council' ? <CouncilTab /> : null}

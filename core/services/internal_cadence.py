@@ -176,6 +176,13 @@ def run_cadence_tick(
                     reason="cadence-dispatched",
                     result=result,
                 ))
+                # Mirror to daemon_manager so Mission Control sees the timestamp
+                try:
+                    from core.services import daemon_manager as _dm
+                    if spec.name in _dm.get_daemon_names():
+                        _dm.record_daemon_tick(spec.name, result if isinstance(result, dict) else {})
+                except Exception:
+                    pass
             except Exception as exc:
                 error_names.append(spec.name)
                 logger.warning("cadence producer %s failed: %s", spec.name, exc)

@@ -174,6 +174,10 @@ from core.tools.goals_tools import (
     GOAL_TOOL_DEFINITIONS,
     GOAL_TOOL_HANDLERS,
 )
+from core.tools.decisions_tools import (
+    DECISION_TOOL_DEFINITIONS,
+    DECISION_TOOL_HANDLERS,
+)
 from core.tools.visual_memory_tool import (
     VISUAL_MEMORY_TOOL_DEFINITIONS,
     _exec_read_visual_memory,
@@ -1843,6 +1847,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *SENSORY_TOOL_DEFINITIONS,
     *RECALL_MEMORY_TOOL_DEFINITIONS,
     *GOAL_TOOL_DEFINITIONS,
+    *DECISION_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -5081,6 +5086,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "recall_memories": _exec_recall_memories,
     # Long-horizon goals
     **GOAL_TOOL_HANDLERS,
+    # Behavioral decisions
+    **DECISION_TOOL_HANDLERS,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     # Code introspection

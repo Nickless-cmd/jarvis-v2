@@ -744,16 +744,25 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
         # ── Native tool_calls: execute directly via simple_tools ──
         if _collected_native_tool_calls:
+            # Mark initial "thinking" step done so it moves to top of done list
+            yield _sse("working_step", {
+                "type": "working_step",
+                "run_id": run.run_id,
+                "action": "thinking",
+                "step": 0,
+                "status": "done",
+            })
             # Announce each tool before execution so the user sees activity
             for _tc in _collected_native_tool_calls:
                 _tc_name = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
                 if _tc_name:
                     _step_counter += 1
+                    _tc_args = _parse_tc_args(_tc)
                     yield _sse("working_step", {
                         "type": "working_step",
                         "run_id": run.run_id,
                         "action": _tc_name,
-                        "detail": _tool_label(_tc_name),
+                        "detail": _tool_label(_tc_name, _tc_args),
                         "step": _step_counter,
                         "status": "running",
                     })
@@ -1079,11 +1088,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         _a_tc_name = str((_a_tc.get("function") or {}).get("name") or _a_tc.get("name") or "")
                         if _a_tc_name:
                             _step_counter += 1
+                            _a_tc_args = _parse_tc_args(_a_tc)
                             yield _sse("working_step", {
                                 "type": "working_step",
                                 "run_id": run.run_id,
                                 "action": _a_tc_name,
-                                "detail": _tool_label(_a_tc_name),
+                                "detail": _tool_label(_a_tc_name, _a_tc_args),
                                 "step": _step_counter,
                                 "status": "running",
                             })
@@ -3510,8 +3520,46 @@ _TOOL_LABELS: dict[str, str] = {
 }
 
 
-def _tool_label(tool_name: str) -> str:
-    return _TOOL_LABELS.get(str(tool_name or ""), str(tool_name or "tool"))
+def _tool_label(tool_name: str, arguments: dict | None = None) -> str:
+    base = _TOOL_LABELS.get(str(tool_name or ""), str(tool_name or "tool"))
+    if not arguments:
+        return base
+    # Append a short context hint from the arguments
+    hint = ""
+    name = str(tool_name or "")
+    if name in {"read_file", "write_file", "edit_file", "publish_file"}:
+        path = str(arguments.get("path") or arguments.get("file_path") or "")
+        if path:
+            hint = path.split("/")[-1]  # basename only
+    elif name == "find_files":
+        hint = str(arguments.get("pattern") or arguments.get("path") or "")[:40]
+    elif name in {"search", "web_search", "search_memory", "search_chat_history"}:
+        hint = str(arguments.get("query") or arguments.get("q") or "")[:40]
+    elif name == "web_fetch":
+        url = str(arguments.get("url") or "")
+        hint = url.replace("https://", "").replace("http://", "").split("/")[0][:40]
+    elif name == "bash":
+        cmd = str(arguments.get("command") or "")
+        hint = cmd.split()[0][:30] if cmd else ""
+    elif name in {"discord_channel", "send_discord_dm"}:
+        hint = str(arguments.get("channel") or arguments.get("user") or "")[:30]
+    elif name == "home_assistant":
+        hint = str(arguments.get("action") or arguments.get("entity_id") or "")[:30]
+    elif name in {"spawn_agent_task", "send_message_to_agent", "relay_to_agent", "cancel_agent"}:
+        hint = str(arguments.get("agent_id") or arguments.get("task_id") or "")[:20]
+    return f"{base}: {hint}" if hint else base
+
+
+def _parse_tc_args(tc: dict) -> dict:
+    """Extract arguments dict from a tool call (handles both string and dict forms)."""
+    raw = (tc.get("function") or {}).get("arguments") or tc.get("arguments") or {}
+    if isinstance(raw, str):
+        try:
+            import json as _json
+            return _json.loads(raw)
+        except Exception:
+            return {}
+    return dict(raw) if isinstance(raw, dict) else {}
 
 
 def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]:

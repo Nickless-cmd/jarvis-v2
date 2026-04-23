@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { RefreshCcw, FlaskConical } from 'lucide-react'
+import { RefreshCcw, FlaskConical, DollarSign, Hash, AlertCircle } from 'lucide-react'
 import { s, T, mono } from '../../shared/theme/tokens'
-import { Card, SectionTitle, MetricCard, ScrollPanel, EmptyState, Skeleton } from './shared'
+import { Card, SectionTitle, MetricCard, ScrollPanel, EmptyState, Skeleton, SubTabs } from './shared'
 import { backend } from '../../lib/adapters'
 import { formatFreshness } from './meta'
 
@@ -24,7 +24,7 @@ function FamilyChip({ family }) {
   )
 }
 
-export function LabTab() {
+function LabPanel() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [fetchedAt, setFetchedAt] = useState('')
@@ -35,13 +35,8 @@ export function LabTab() {
       setLoading(true)
       try {
         const result = await backend.getMissionControlLab()
-        if (!cancelled) {
-          setData(result)
-          setFetchedAt(new Date().toISOString())
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+        if (!cancelled) { setData(result); setFetchedAt(new Date().toISOString()) }
+      } finally { if (!cancelled) setLoading(false) }
     }
     load()
     return () => { cancelled = true }
@@ -51,11 +46,8 @@ export function LabTab() {
     setLoading(true)
     try {
       const result = await backend.getMissionControlLab()
-      setData(result)
-      setFetchedAt(new Date().toISOString())
-    } finally {
-      setLoading(false)
-    }
+      setData(result); setFetchedAt(new Date().toISOString())
+    } finally { setLoading(false) }
   }
 
   const costs = data?.costs_today || {}
@@ -63,15 +55,10 @@ export function LabTab() {
 
   return (
     <div style={s({ display: 'flex', flexDirection: 'column', gap: 16 })}>
-      <div style={s({ display: 'flex', alignItems: 'center', gap: 10 })}>
-        <FlaskConical size={15} color={T.accent} />
-        <span style={s({ fontSize: 14, fontWeight: 500, color: T.text1 })}>Lab</span>
+      <div style={s({ display: 'flex', alignItems: 'center', gap: 8 })}>
         <span style={s({ ...mono, fontSize: 9, color: T.text3 })}>{fetchedAt ? formatFreshness(fetchedAt) : ''}</span>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          style={s({ marginLeft: 'auto', padding: '4px 8px', borderRadius: 7, border: `1px solid ${T.border1}`, background: T.bgOverlay, color: T.text2, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1 })}
-        >
+        <button onClick={refresh} disabled={loading}
+          style={s({ marginLeft: 'auto', padding: '4px 8px', borderRadius: 7, border: `1px solid ${T.border1}`, background: T.bgOverlay, color: T.text2, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1 })}>
           <RefreshCcw size={11} />
         </button>
       </div>
@@ -164,6 +151,99 @@ export function LabTab() {
           </ScrollPanel>
         )}
       </Card>
+    </div>
+  )
+}
+
+function CostPanel() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      try {
+        const result = await fetch('/mc/costs').then((r) => r.json())
+        if (!cancelled) setData(result)
+      } finally { if (!cancelled) setLoading(false) }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  const cost = data || {}
+  const providers = cost.providers || []
+
+  if (loading) {
+    return (
+      <div style={s({ display: 'flex', flexDirection: 'column', gap: 16 })}>
+        <div style={s({ display: 'flex', gap: 10 })}>
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} height={56} style={{ flex: 1 }} />)}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={s({ display: 'flex', flexDirection: 'column', gap: 16 })}>
+      <div style={s({ display: 'flex', gap: 10 })}>
+        <MetricCard label="24h Cost (USD)" value={`$${Number(cost.cost_24h_usd || 0).toFixed(4)}`} icon={DollarSign} />
+        <MetricCard label="24h Tokens" value={(cost.tokens_24h || 0).toLocaleString()} icon={Hash} />
+        <MetricCard label="Unknown Pricing (24h)" value={cost.unknown_pricing_24h || 0} icon={AlertCircle} />
+      </div>
+
+      <Card>
+        <SectionTitle>Top Providers (24h)</SectionTitle>
+        {providers.length === 0 ? (
+          <EmptyState title="Ingen data">Ingen provider-data endnu.</EmptyState>
+        ) : (
+          <table style={s({ width: '100%', borderCollapse: 'collapse' })}>
+            <thead>
+              <tr>
+                {['Provider', 'Cost USD', 'Tokens', 'Calls'].map((h) => (
+                  <th key={h} style={s({ ...mono, fontSize: 9, color: T.text3, textAlign: 'left', padding: '4px 8px' })}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {providers.map((p) => (
+                <tr key={p.provider}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = T.bgHover)}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={s({ padding: '7px 8px', ...mono, fontSize: 11, color: T.accentText })}>{p.provider}</td>
+                  <td style={s({ padding: '7px 8px', ...mono, fontSize: 11, color: T.text1 })}>{Number(p.cost_usd || 0).toFixed(4)}</td>
+                  <td style={s({ padding: '7px 8px', ...mono, fontSize: 11, color: T.text1 })}>{p.tokens}</td>
+                  <td style={s({ padding: '7px 8px', ...mono, fontSize: 11, color: T.text1 })}>{p.calls}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+const LAB_SUBTABS = [
+  { id: 'lab', label: 'Lab' },
+  { id: 'cost', label: 'Omkostninger' },
+]
+
+export function LabTab() {
+  const [sub, setSub] = useState('lab')
+
+  return (
+    <div style={s({ display: 'flex', flexDirection: 'column', gap: 0 })}>
+      <div style={s({ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 })}>
+        <FlaskConical size={15} color={T.accent} />
+        <span style={s({ fontSize: 14, fontWeight: 500, color: T.text1 })}>Lab</span>
+        <div style={s({ marginLeft: 'auto' })}>
+          <SubTabs tabs={LAB_SUBTABS} active={sub} onChange={setSub} />
+        </div>
+      </div>
+      {sub === 'lab' ? <LabPanel /> : <CostPanel />}
     </div>
   )
 }

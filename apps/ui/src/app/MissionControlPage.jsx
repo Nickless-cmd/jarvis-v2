@@ -4,13 +4,11 @@ import { s, T, mono } from '../shared/theme/tokens'
 import { Chip } from '../components/mission-control/shared'
 import { DetailDrawer } from '../components/mission-control/DetailDrawer'
 import { CostTab } from '../components/mission-control/CostTab'
-import { ContinuityTab } from '../components/mission-control/ContinuityTab'
-import { DevelopmentTab } from '../components/mission-control/DevelopmentTab'
+import { ReflectionTab } from '../components/mission-control/ReflectionTab'
 import { HardeningTab } from '../components/mission-control/HardeningTab'
 import { LabTab } from '../components/mission-control/LabTab'
 import { LivingMindTab } from '../components/mission-control/LivingMindTab'
 import { MemoryTab } from '../components/mission-control/MemoryTab'
-import { SelfReviewTab } from '../components/mission-control/SelfReviewTab'
 import { MCTabBar } from '../components/mission-control/MCTabBar'
 import { ObservabilityTab } from '../components/mission-control/ObservabilityTab'
 import { OperationsTab } from '../components/mission-control/OperationsTab'
@@ -69,7 +67,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
     }
   }, [sections.observability, eventFamilyFilter])
 
-  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' || activeTab === 'self-review' || activeTab === 'continuity' || activeTab === 'development' ? sections.jarvis : null) || null
+  const activeSectionData = sections[activeTab] || (activeTab === 'living-mind' || activeTab === 'reflection' ? sections.jarvis : null) || null
   const freshnessLabel = formatFreshness(activeSectionData?.fetchedAt)
   const updateModeLabel = mcUpdateModeLabel(activeTab)
 
@@ -224,19 +222,15 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
             />
           ) : null}
 
-          {activeTab === 'self-review' ? (
-            <SelfReviewTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
-          ) : null}
-
-          {activeTab === 'continuity' ? (
-            <ContinuityTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
+          {activeTab === 'reflection' ? (
+            <ReflectionTab
+              data={sections.jarvis}
+              onOpenItem={openJarvisDetail}
+              onDevelopmentFocusAction={actOnDevelopmentFocus}
+            />
           ) : null}
 
           {activeTab === 'cost' ? <CostTab data={sections.cost} /> : null}
-
-          {activeTab === 'development' ? (
-            <DevelopmentTab data={sections.jarvis} onOpenItem={openJarvisDetail} />
-          ) : null}
 
           {activeTab === 'agents' ? <AgentsTab /> : null}
           {activeTab === 'council' ? <CouncilTab /> : null}

@@ -44,32 +44,52 @@ _VISION_TIMEOUT = 90  # qwen2.5vl:3b lokalt bruger ~10-15s; 90s buffer
 
 # Roterende fokus-prompts — én per optagelse (cyklisk efter index).
 # Hvert fokus giver modellen et konkret sanseankre så output varierer.
+# Alle prompts spørger om stemning, lys, tilstedeværelse og det der springer
+# i øjnene — men med forskellig indgangsvinkel så output ikke bliver fladt.
+_VISION_PROMPT_PREFIX = (
+    "Se på billedet og beskriv rummet i 2-3 korte sætninger på dansk. "
+    "SVAR KUN PÅ DANSK. Undgå generelle vendinger som "
+    "'professionelt arbejdsrum' eller 'et rum med ting i'."
+)
+
 _VISION_PROMPTS = [
     (
-        "Se på billedet og beskriv rummet i max 2 korte sætninger på dansk. "
-        "Fokus: lyset — retning, styrke, varme eller kølighed. "
-        "Hvad fortæller lyset om tidspunktet eller stemningen? "
-        "Undgå generelle vendinger som 'professionelt arbejdsrum'."
+        "Fokus: STEMNINGEN og LYSET. Hvilken atmosfære har rummet lige nu — "
+        "intim, travl, tom, koncentreret, søvnig? Beskriv lyskilderne og "
+        "farvetonen (varmt/køligt, gult/blåt, skarpt/dæmpet). Hvad fortæller "
+        "lyset om tidspunktet eller sindsstemningen i rummet?"
     ),
     (
-        "Se på billedet og beskriv rummet i max 2 korte sætninger på dansk. "
-        "Fokus: energien — er rummet aktivt, roligt, tomt, levende, stille? "
-        "Hvad ville du fremhæve til nogen der ikke har set rummet i en uge? "
-        "Undgå generelle vendinger som 'professionelt arbejdsrum'."
+        "Fokus: TILSTEDEVÆRELSE. Er der mennesker i billedet — eller spor "
+        "efter nogen (en jakke på stolen, en åben kop, en tændt skærm)? "
+        "Hvad fortæller det om rummet? Og hvordan er lysets farvetone mens "
+        "du observerer det?"
     ),
     (
-        "Se på billedet og beskriv rummet i max 2 korte sætninger på dansk. "
-        "Fokus: kontraster — lys/mørke, orden/kaos, varmt/koldt, nært/fjernt. "
-        "Hvad springer mest i øjnene? "
-        "Undgå generelle vendinger som 'professionelt arbejdsrum'."
+        "Fokus: KONTRASTER og DET DER SPRINGER I ØJNENE. Beskriv "
+        "modsætninger: lys/mørke, orden/kaos, bevægelse/stilhed, nært/fjernt. "
+        "Nævn også lysets farvetone og om nogen er til stede. Hvad er det "
+        "første et menneske ville lægge mærke til?"
     ),
     (
-        "Se på billedet og beskriv rummet i max 2 korte sætninger på dansk. "
-        "Fokus: nuet — hvad signalerer billedet om hvad der lige er sket "
-        "eller er ved at ske? Spor af aktivitet, pause, afslutning? "
-        "Undgå generelle vendinger som 'professionelt arbejdsrum'."
+        "Fokus: NUET og STEMNINGEN. Hvad signalerer billedet om hvad der "
+        "lige er sket eller er ved at ske? Spor af aktivitet, pause, "
+        "afslutning? Beskriv også lysets tone og om du fornemmer nogens "
+        "tilstedeværelse."
     ),
 ]
+
+
+def _compare_suffix(previous_desc: str, time_ago_label: str) -> str:
+    """Optional instruction: ask the VLM to note what has changed."""
+    trimmed = (previous_desc or "").strip().replace("\n", " ")
+    if len(trimmed) > 240:
+        trimmed = trimmed[:240].rstrip() + "…"
+    return (
+        f"\n\nForrige beskrivelse ({time_ago_label}): «{trimmed}»\n"
+        "HVIS noget tydeligt har ændret sig siden da, nævn det kort. "
+        "HVIS rummet virker uændret, så skriv slet ingen sammenligning."
+    )
 
 
 def _ollama_base_url() -> str:
@@ -110,9 +130,13 @@ def tick_visual_memory_daemon() -> dict[str, object]:
         logger.warning("visual_memory: webcam capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
 
-    # Describe
+    # Describe — feed most recent record for change detection
+    existing_records = _load_records()
+    previous = existing_records[-1] if existing_records else None
     try:
-        description = _describe_image(image_b64, model=model, provider=provider)
+        description = _describe_image(
+            image_b64, model=model, provider=provider, previous=previous
+        )
     except Exception as exc:
         logger.warning("visual_memory: vision model call failed: %s", exc)
         return {"status": "vision_failed", "error": str(exc)}
@@ -128,11 +152,21 @@ def tick_visual_memory_daemon() -> dict[str, object]:
         "model": model,
         "provider": provider,
     }
-    records = _load_records()
+    records = existing_records
     records.append(record)
     if len(records) > _MAX_RECORDS:
         records = records[-_MAX_RECORDS:]
     set_runtime_state_value(_STATE_KEY, records)
+
+    _archive_sensory(
+        description,
+        metadata={
+            "source": "visual_memory_daemon",
+            "model": model,
+            "provider": provider,
+            "on_demand": False,
+        },
+    )
 
     try:
         event_bus.publish(
@@ -202,8 +236,16 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
         logger.warning("look_around: webcam capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
 
+    existing_records = _load_records()
+    previous = existing_records[-1] if existing_records else None
     prompt_to_use = prompt_override.strip() or None
-    description = _describe_image(image_b64, model=model, provider=provider, prompt=prompt_to_use)
+    description = _describe_image(
+        image_b64,
+        model=model,
+        provider=provider,
+        prompt=prompt_to_use,
+        previous=previous if prompt_to_use is None else None,
+    )
     if not description:
         return {"status": "empty_description"}
 
@@ -216,11 +258,23 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
         "provider": provider,
         "on_demand": True,
     }
-    records = _load_records()
+    records = existing_records
     records.append(record)
     if len(records) > _MAX_RECORDS:
         records = records[-_MAX_RECORDS:]
     set_runtime_state_value(_STATE_KEY, records)
+
+    _archive_sensory(
+        description,
+        metadata={
+            "source": "look_around",
+            "model": model,
+            "provider": provider,
+            "on_demand": True,
+            "custom_prompt": bool(prompt_to_use),
+        },
+    )
+
     try:
         event_bus.publish(
             "cognitive_state.visual_memory_captured",
@@ -284,18 +338,61 @@ def _capture_webcam(device_index: int = 0) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _describe_image(image_b64: str, *, model: str, provider: str, prompt: str | None = None) -> str:
+def _describe_image(
+    image_b64: str,
+    *,
+    model: str,
+    provider: str,
+    prompt: str | None = None,
+    previous: dict[str, object] | None = None,
+) -> str:
     """Send image to vision model and return description."""
     if provider == "ollama":
-        return _describe_via_ollama(image_b64, model=model, prompt=prompt)
+        return _describe_via_ollama(
+            image_b64, model=model, prompt=prompt, previous=previous
+        )
     raise RuntimeError(f"visual_memory: unsupported vision provider: {provider}")
 
 
-def _describe_via_ollama(image_b64: str, *, model: str, prompt: str | None = None) -> str:
+def _previous_time_label(captured_at: str) -> str:
+    try:
+        dt = datetime.fromisoformat(captured_at.replace("Z", "+00:00"))
+        minutes_ago = int((datetime.now(UTC) - dt.astimezone(UTC)).total_seconds() / 60)
+    except Exception:
+        return "tidligere"
+    if minutes_ago < 2:
+        return "lige før"
+    if minutes_ago < 60:
+        return f"for {minutes_ago} min siden"
+    if minutes_ago < 1440:
+        return f"for {minutes_ago // 60}t siden"
+    return f"for {minutes_ago // 1440}d siden"
+
+
+def _build_prompt(previous: dict[str, object] | None = None, prompt_index: int | None = None) -> str:
+    """Assemble the full vision prompt: prefix + rotating focus + optional compare."""
+    if prompt_index is None:
+        prompt_index = int(time.time() // 3600) % len(_VISION_PROMPTS)
+    focus = _VISION_PROMPTS[prompt_index % len(_VISION_PROMPTS)]
+    parts = [_VISION_PROMPT_PREFIX, focus]
+    if previous:
+        prev_desc = str(previous.get("description") or "").strip()
+        prev_at = str(previous.get("captured_at") or "")
+        if prev_desc and prev_at:
+            parts.append(_compare_suffix(prev_desc, _previous_time_label(prev_at)))
+    return "\n\n".join(parts)
+
+
+def _describe_via_ollama(
+    image_b64: str,
+    *,
+    model: str,
+    prompt: str | None = None,
+    previous: dict[str, object] | None = None,
+) -> str:
     """Call Ollama generate API with image payload."""
     if prompt is None:
-        # Rotate focus based on time so each daily capture has a different angle
-        prompt = _VISION_PROMPTS[int(time.time() // 3600) % len(_VISION_PROMPTS)]
+        prompt = _build_prompt(previous=previous)
     payload = json.dumps({
         "model": model,
         "prompt": prompt,
@@ -368,3 +465,12 @@ def _vision_model() -> tuple[str, str]:
 def _enabled() -> bool:
     settings = load_settings()
     return bool(settings.extra.get("layer_visual_memory_enabled", True))
+
+
+def _archive_sensory(description: str, *, metadata: dict[str, object]) -> None:
+    """Mirror every visual memory into Sansernes Arkiv. Silent on failure."""
+    try:
+        from core.services.sensory_archive import record_visual
+        record_visual(description, metadata=dict(metadata))
+    except Exception as exc:
+        logger.debug("visual_memory: archive mirror failed: %s", exc)

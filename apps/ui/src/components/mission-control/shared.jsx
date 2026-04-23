@@ -1,5 +1,35 @@
 import { s, T, mono } from '../../shared/theme/tokens'
 
+export function SubTabs({ tabs, active, onChange }) {
+  return (
+    <div style={s({ display: 'flex', gap: 4, flexWrap: 'wrap' })}>
+      {tabs.map(({ id, label }) => {
+        const isActive = active === id
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            style={s({
+              padding: '4px 14px',
+              borderRadius: 20,
+              border: `1px solid ${isActive ? T.accent : T.border1}`,
+              background: isActive ? `${T.accent}22` : 'transparent',
+              color: isActive ? T.accentText : T.text3,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontFamily: T.sans,
+              fontWeight: isActive ? 500 : 400,
+              transition: 'all 0.15s',
+            })}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function Chip({ children, color = T.text3, bg }) {
   return (
     <span

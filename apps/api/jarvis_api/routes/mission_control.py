@@ -3925,3 +3925,255 @@ def mc_cognitive_core_experiments() -> dict:
         build_cognitive_core_experiments_surface,
     )
     return build_cognitive_core_experiments_surface()
+
+
+# ── MC Tab helpers ─────────────────────────────────────────────────────────
+
+def _get_all_tools() -> list[dict]:
+    try:
+        from core.tools.simple_tools import _TOOLS
+        return list(_TOOLS)
+    except Exception:
+        return []
+
+
+def _skills_recent_invocations(limit: int = 10) -> list[dict]:
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT capability_name, status, invoked_at
+                FROM capability_invocations
+                ORDER BY id DESC LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "capability_name": row["capability_name"] or "",
+                "status": row["status"] or "",
+                "invoked_at": row["invoked_at"] or "",
+            }
+            for row in rows
+        ]
+    except Exception:
+        return []
+
+
+def _skills_calls_today() -> int:
+    try:
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM capability_invocations WHERE date(invoked_at) = date('now')"
+            ).fetchone()
+        return int(row["n"]) if row else 0
+    except Exception:
+        return 0
+
+
+@router.get("/skills")
+def mc_skills() -> dict:
+    tools_raw = _get_all_tools()
+    tools = []
+    for entry in tools_raw:
+        fn = entry.get("function") or {}
+        name = str(fn.get("name") or "")
+        if not name:
+            continue
+        desc = str(fn.get("description") or "")
+        params = fn.get("parameters") or {}
+        required = list(params.get("required") or [])
+        tools.append({
+            "name": name,
+            "description": desc[:120],
+            "required": required,
+        })
+    return {
+        "tools": tools,
+        "total": len(tools),
+        "calls_today": _skills_calls_today(),
+        "recent_invocations": _skills_recent_invocations(),
+    }
+
+
+def _hardening_approval_counts() -> dict:
+    try:
+        with connect() as conn:
+            pending = conn.execute(
+                "SELECT COUNT(*) AS n FROM tool_intent_approval_requests WHERE approval_state = 'pending'"
+            ).fetchone()["n"]
+            approved = conn.execute(
+                "SELECT COUNT(*) AS n FROM tool_intent_approval_requests WHERE approval_state = 'approved' AND date(resolved_at) = date('now')"
+            ).fetchone()["n"]
+            denied = conn.execute(
+                "SELECT COUNT(*) AS n FROM tool_intent_approval_requests WHERE approval_state = 'denied' AND date(resolved_at) = date('now')"
+            ).fetchone()["n"]
+        return {"pending": int(pending), "approved_today": int(approved), "denied_today": int(denied)}
+    except Exception:
+        return {"pending": 0, "approved_today": 0, "denied_today": 0}
+
+
+def _hardening_autonomy_level() -> str:
+    try:
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT value FROM runtime_state_kv WHERE key = 'autonomy_level' LIMIT 1"
+            ).fetchone()
+        return str(row["value"]) if row else "direct"
+    except Exception:
+        return "direct"
+
+
+def _hardening_integrations() -> dict:
+    import json as _json
+    from pathlib import Path as _Path
+    result = {"telegram": False, "discord": False, "home_assistant": False, "anthropic": False}
+    try:
+        cfg_path = _Path.home() / ".jarvis-v2" / "config" / "runtime.json"
+        cfg = _json.loads(cfg_path.read_text(encoding="utf-8"))
+        result["telegram"] = bool(cfg.get("telegram_bot_token"))
+        result["discord"] = bool(cfg.get("discord_bot_token"))
+        result["home_assistant"] = bool(cfg.get("home_assistant_url"))
+        result["anthropic"] = bool(cfg.get("anthropic_api_key"))
+    except Exception:
+        pass
+    return result
+
+
+def _hardening_recent_approvals(limit: int = 10) -> list[dict]:
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT intent_type, intent_target, approval_state, requested_at
+                FROM tool_intent_approval_requests
+                ORDER BY id DESC LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "intent_type": row["intent_type"] or "",
+                "intent_target": str(row["intent_target"] or "")[:80],
+                "approval_state": row["approval_state"] or "",
+                "requested_at": row["requested_at"] or "",
+            }
+            for row in rows
+        ]
+    except Exception:
+        return []
+
+
+@router.get("/hardening")
+def mc_hardening() -> dict:
+    counts = _hardening_approval_counts()
+    return {
+        "pending": counts["pending"],
+        "approved_today": counts["approved_today"],
+        "denied_today": counts["denied_today"],
+        "autonomy_level": _hardening_autonomy_level(),
+        "integrations": _hardening_integrations(),
+        "recent_approvals": _hardening_recent_approvals(),
+    }
+
+
+def _lab_costs_today() -> dict:
+    try:
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    COUNT(*) AS calls,
+                    COALESCE(SUM(input_tokens), 0) AS input_tokens,
+                    COALESCE(SUM(output_tokens), 0) AS output_tokens,
+                    COALESCE(SUM(cost_usd), 0) AS total_usd
+                FROM costs
+                WHERE date(created_at) = date('now')
+                """
+            ).fetchone()
+        return {
+            "total_usd": round(float(row["total_usd"]), 6),
+            "input_tokens": int(row["input_tokens"]),
+            "output_tokens": int(row["output_tokens"]),
+            "calls": int(row["calls"]),
+        }
+    except Exception:
+        return {"total_usd": 0.0, "input_tokens": 0, "output_tokens": 0, "calls": 0}
+
+
+def _lab_providers_today() -> list[dict]:
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    provider,
+                    COUNT(*) AS calls,
+                    COALESCE(SUM(input_tokens), 0) AS input_tokens,
+                    COALESCE(SUM(output_tokens), 0) AS output_tokens,
+                    COALESCE(SUM(cost_usd), 0) AS cost_usd
+                FROM costs
+                WHERE date(created_at) = date('now')
+                GROUP BY provider
+                ORDER BY cost_usd DESC
+                """
+            ).fetchall()
+        return [
+            {
+                "provider": row["provider"] or "unknown",
+                "cost_usd": round(float(row["cost_usd"]), 6),
+                "input_tokens": int(row["input_tokens"]),
+                "output_tokens": int(row["output_tokens"]),
+                "calls": int(row["calls"]),
+            }
+            for row in rows
+        ]
+    except Exception:
+        return []
+
+
+def _lab_db_stats() -> dict:
+    try:
+        with connect() as conn:
+            events = conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"]
+            runs = conn.execute("SELECT COUNT(*) AS n FROM visible_runs").fetchone()["n"]
+            sessions = conn.execute("SELECT COUNT(*) AS n FROM chat_sessions").fetchone()["n"]
+            approvals = conn.execute("SELECT COUNT(*) AS n FROM tool_intent_approval_requests").fetchone()["n"]
+        return {
+            "events": int(events),
+            "runs": int(runs),
+            "sessions": int(sessions),
+            "approvals": int(approvals),
+        }
+    except Exception:
+        return {"events": 0, "runs": 0, "sessions": 0, "approvals": 0}
+
+
+def _lab_recent_events(limit: int = 15) -> list[dict]:
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT id, kind, family, created_at FROM events ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "id": int(row["id"]),
+                "kind": str(row["kind"] or ""),
+                "family": str(row["family"] or ""),
+                "created_at": str(row["created_at"] or ""),
+            }
+            for row in rows
+        ]
+    except Exception:
+        return []
+
+
+@router.get("/lab")
+def mc_lab() -> dict:
+    return {
+        "costs_today": _lab_costs_today(),
+        "providers_today": _lab_providers_today(),
+        "db_stats": _lab_db_stats(),
+        "recent_events": _lab_recent_events(),
+    }

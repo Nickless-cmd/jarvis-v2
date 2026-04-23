@@ -9,6 +9,10 @@ Identity-First AI Runtime · Memory-Driven · Observable by Design<br/>
 Python · FastAPI · React
 </p>
 
+<p align="center">
+<a href="https://jarvis.srvlab.dk">🏠 jarvis.srvlab.dk</a>
+</p>
+
 ---
 
 > *"One of us isn't developing."*

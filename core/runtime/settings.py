@@ -138,17 +138,22 @@ def update_visible_execution_settings(
     previous_provider = settings.visible_model_provider
     previous_model = settings.visible_model_name
 
+    updates: dict[str, Any] = {}
     if visible_model_provider is not None:
         settings.visible_model_provider = visible_model_provider
+        updates["visible_model_provider"] = visible_model_provider
     if visible_model_name is not None:
         settings.visible_model_name = visible_model_name
+        updates["visible_model_name"] = visible_model_name
     if visible_auth_profile is not None:
         settings.visible_auth_profile = visible_auth_profile
+        updates["visible_auth_profile"] = visible_auth_profile
 
-    SETTINGS_FILE.write_text(
-        json.dumps(settings.to_dict(), indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    # Safe merge write — reads raw dict, applies only the delta, atomic rename,
+    # auto-backup. Prevents accidental reset of other runtime.json keys.
+    from core.runtime.runtime_json_io import write_runtime_merged
+    if updates:
+        write_runtime_merged(updates)
     try:
         from core.services.finitude_runtime import record_visible_model_transition
 

@@ -22,7 +22,6 @@ import { CognitiveStateTab } from '../components/mission-control/CognitiveStateT
 import { RelationshipTab } from '../components/mission-control/RelationshipTab'
 import { SoulTab } from '../components/mission-control/SoulTab'
 import { ProprioceptionTab } from '../components/mission-control/ProprioceptionTab'
-import { AutonomyTab } from '../components/mission-control/AutonomyTab'
 import { ThreadsTab } from '../components/mission-control/ThreadsTab'
 import { GovernanceTab } from '../components/mission-control/GovernanceTab'
 import { formatFreshness, mcUpdateModeLabel } from '../components/mission-control/meta'
@@ -250,8 +249,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
           {activeTab === 'relationship' ? <RelationshipTab /> : null}
           {activeTab === 'soul' ? <SoulTab /> : null}
           {activeTab === 'proprioception' ? <ProprioceptionTab /> : null}
-          {activeTab === 'autonomy' ? <AutonomyTab /> : null}
-          {activeTab === 'threads' ? <ThreadsTab /> : null}
+{activeTab === 'threads' ? <ThreadsTab /> : null}
           {activeTab === 'governance' ? <GovernanceTab /> : null}
         </div>
 

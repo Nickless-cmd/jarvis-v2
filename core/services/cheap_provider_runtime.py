@@ -512,7 +512,7 @@ def execute_cheap_lane_via_pool(
                     "reason": exc.code,
                 },
             )
-            return execute_cheap_lane_via_pool(message=message, skip_providers=skip_providers)
+            return execute_cheap_lane_via_pool(message=message, skip_providers=skip_providers | {provider})
         raise RuntimeError(f"{provider} cheap lane failed: {exc.code}: {exc.message}")
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result["text"]))
@@ -868,7 +868,7 @@ def _register_provider_failure(
         cooldown_until = (now + timedelta(seconds=retry_after)).isoformat()
     elif error.code == "auth-rejected":
         auth_ready = False
-    elif error.code in {"provider-blocked", "provider-error", "model-not-found", "model-unavailable"}:
+    elif error.code in {"provider-blocked", "provider-error", "model-not-found", "model-unavailable", "request-failed"}:
         retry_after = error.retry_after_seconds or _default_failure_cooldown_seconds(error.code)
         cooldown_until = (now + timedelta(seconds=retry_after)).isoformat()
     record_cheap_provider_invocation(

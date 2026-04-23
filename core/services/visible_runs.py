@@ -3452,6 +3452,7 @@ _TOOL_LABELS: dict[str, str] = {
     "compact_context": "Komprimerer kontekst",
     # Web
     "web_fetch": "Henter webside",
+    "web_scrape": "Skraber webside",
     "web_search": "Søger på nettet",
     "get_weather": "Henter vejr",
     "get_news": "Henter nyheder",

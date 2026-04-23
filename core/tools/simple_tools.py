@@ -324,6 +324,42 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "web_scrape",
+            "description": (
+                "Fetch a URL and return structured, cleaned content: title, body text, "
+                "metadata (author, date, language), and optionally links or item lists. "
+                "Smarter than web_fetch — handles JS-rendered pages via Playwright fallback, "
+                "removes nav/ads/footers, detects content type automatically. "
+                "Use for articles, product pages, listings, or any structured web content."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "URL to scrape (https:// added if missing)",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["auto", "article", "listing", "product", "social"],
+                        "description": "Extraction mode. 'auto' detects from page structure.",
+                    },
+                    "extract": {
+                        "type": "string",
+                        "description": "Optional free-text hint: what to extract (e.g. 'prices', 'contact info')",
+                    },
+                    "include_links": {
+                        "type": "boolean",
+                        "description": "Include extracted links in output (default false)",
+                    },
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "web_search",
             "description": "Search the web using Tavily. Returns clean summaries and source URLs. Use for current events, facts, documentation lookups.",
             "parameters": {
@@ -2272,6 +2308,17 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
         text = text[:MAX_WEB_FETCH_CHARS - 1] + "…"
 
     return {"text": text, "url": url, "chars": len(text), "status": "ok"}
+
+
+def _exec_web_scrape(args: dict[str, Any]) -> dict[str, Any]:
+    from core.tools.web_scrape_tool import web_scrape
+    url = str(args.get("url") or "").strip()
+    if not url:
+        return {"error": "url is required", "status": "error"}
+    mode = str(args.get("mode") or "auto").strip()
+    extract = str(args.get("extract") or "").strip()
+    include_links = bool(args.get("include_links", False))
+    return web_scrape(url, mode=mode, extract=extract, include_links=include_links)
 
 
 def _read_api_key(key: str) -> str:
@@ -4678,6 +4725,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "find_files": _exec_find_files,
     "bash": _exec_bash,
     "web_fetch": _exec_web_fetch,
+    "web_scrape": _exec_web_scrape,
     "web_search": _exec_web_search,
     "get_weather": _exec_get_weather,
     "get_exchange_rate": _exec_get_exchange_rate,

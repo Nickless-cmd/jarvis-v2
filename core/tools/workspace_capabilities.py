@@ -3955,7 +3955,7 @@ def _merge_workspace_memory_content(*, existing_content: str, incoming_content: 
     if not appended:
         return existing_content if existing_content.endswith("\n") else existing_content + "\n"
 
-    return f"{existing_content.rstrip()}\n" + "\n".join(appended).rstrip() + "\n"
+    return f"{existing_content.rstrip()}\n\n" + "\n".join(appended).rstrip() + "\n"
 
 
 def _result_preview(result: object) -> str | None:

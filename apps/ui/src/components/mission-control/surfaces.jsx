@@ -59,7 +59,7 @@ export function Section({ icon: Icon, title, active, children, subtitle }) {
         border: `1px solid ${T.border0}`,
         borderRadius: T.r_sm,
         padding: 14,
-        opacity: active === false ? 0.55 : 1,
+        opacity: active === false ? 0.75 : 1,
       })}
     >
       <div style={s({ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 })}>

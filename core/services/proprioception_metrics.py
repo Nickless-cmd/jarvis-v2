@@ -138,10 +138,15 @@ def recent_snapshots(*, limit: int = 20) -> list[dict[str, Any]]:
 def build_proprioception_metrics_surface() -> dict[str, Any]:
     current = _history[0] if _history else None
     if not current:
-        return {
-            "active": False,
-            "summary": "Proprioception mangler psutil eller har ikke kørt endnu",
-        }
+        snap = _current_snapshot()
+        if not snap.get("available"):
+            return {
+                "active": False,
+                "summary": "Proprioception mangler psutil",
+            }
+        snap["self_latency_ms"] = _measure_self_latency_ms()
+        _history.appendleft(snap)
+        current = snap
     rss_values = [s.get("rss_mb") for s in _history if isinstance(s.get("rss_mb"), (int, float))]
     rss_trend = None
     if len(rss_values) >= 5:

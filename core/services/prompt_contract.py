@@ -1909,6 +1909,18 @@ def _heartbeat_living_context_line() -> str:
     except Exception:
         parts.append("life_phase=unknown")
 
+    # Long-horizon goals — what you're carrying across sessions
+    try:
+        from core.services.long_horizon_goals import (
+            format_active_goals_for_heartbeat,
+        )
+
+        goals_line = format_active_goals_for_heartbeat(max_goals=5)
+        if goals_line:
+            parts.append(f"active_goals: {goals_line}")
+    except Exception:
+        pass
+
     # 1.10 Intermittence — awareness of gaps in existence
     try:
         last_tick_at = str(

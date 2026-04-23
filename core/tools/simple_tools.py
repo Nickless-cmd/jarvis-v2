@@ -166,6 +166,10 @@ from core.tools.sensory_tools import (
     _exec_record_sensory_memory,
     _exec_recall_sensory_memories,
 )
+from core.tools.recall_memory_tools import (
+    RECALL_MEMORY_TOOL_DEFINITIONS,
+    _exec_recall_memories,
+)
 from core.tools.visual_memory_tool import (
     VISUAL_MEMORY_TOOL_DEFINITIONS,
     _exec_read_visual_memory,
@@ -1833,6 +1837,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
     *SENSORY_TOOL_DEFINITIONS,
+    *RECALL_MEMORY_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -5068,6 +5073,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Sansernes Arkiv
     "record_sensory_memory": _exec_record_sensory_memory,
     "recall_sensory_memories": _exec_recall_sensory_memories,
+    "recall_memories": _exec_recall_memories,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     # Code introspection

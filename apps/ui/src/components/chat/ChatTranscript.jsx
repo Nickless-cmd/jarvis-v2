@@ -69,9 +69,12 @@ function MessageWithActions({ message, workingSteps }) {
         {message.pending && !message.content ? (
           workingSteps?.some(s => s.status === 'running') ? (
             <span className="working-shimmer">
-              {workingSteps.find(s => s.status === 'running')?.detail ||
-               workingSteps.find(s => s.status === 'running')?.action ||
-               'working…'}
+              {(() => {
+                const running = workingSteps.filter(s => s.status === 'running')
+                const latest = running[running.length - 1]
+                const label = latest?.detail || latest?.action || 'working…'
+                return running.length > 1 ? `${label} (+${running.length - 1})` : label
+              })()}
             </span>
           ) : (
             <div className="thinking-indicator">

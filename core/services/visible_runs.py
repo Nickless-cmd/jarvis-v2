@@ -571,12 +571,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             "type": "working_step",
             "run_id": run.run_id,
             "action": "thinking",
-            "detail": f"Preparing response via {run.provider}/{run.model}",
+            "detail": f"Tænker via {run.provider}/{run.model}",
             "step": 0,
             "status": "running",
         },
     )
 
+    _step_counter = 0
     result = None
     visible_output_text = ""
     markup_buffer = _CapabilityMarkupBuffer()
@@ -743,6 +744,20 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
         # ── Native tool_calls: execute directly via simple_tools ──
         if _collected_native_tool_calls:
+            # Announce each tool before execution so the user sees activity
+            for _tc in _collected_native_tool_calls:
+                _tc_name = str((_tc.get("function") or {}).get("name") or _tc.get("name") or "")
+                if _tc_name:
+                    _step_counter += 1
+                    yield _sse("working_step", {
+                        "type": "working_step",
+                        "run_id": run.run_id,
+                        "action": _tc_name,
+                        "detail": _tool_label(_tc_name),
+                        "step": _step_counter,
+                        "status": "running",
+                    })
+
             simple_results = _execute_simple_tool_calls(
                 _collected_native_tool_calls, force=run.autonomous, run_id=run.run_id,
             )
@@ -843,6 +858,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         "type": "tool_result",
                         "tool": sr["tool_name"],
                         "status": sr["status"],
+                    })
+                    yield _sse("working_step", {
+                        "type": "working_step",
+                        "run_id": run.run_id,
+                        "action": sr["tool_name"],
+                        "step": _step_counter - len(simple_results) + _idx + 1,
+                        "status": "done",
                     })
 
                 # Persist tool results to session DB after all approvals are resolved.
@@ -1053,6 +1075,19 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         break
 
                     # ── Execute tools for this agentic round ───────────────────────
+                    for _a_tc in _a_tool_calls:
+                        _a_tc_name = str((_a_tc.get("function") or {}).get("name") or _a_tc.get("name") or "")
+                        if _a_tc_name:
+                            _step_counter += 1
+                            yield _sse("working_step", {
+                                "type": "working_step",
+                                "run_id": run.run_id,
+                                "action": _a_tc_name,
+                                "detail": _tool_label(_a_tc_name),
+                                "step": _step_counter,
+                                "status": "running",
+                            })
+
                     _a_results = _execute_simple_tool_calls(
                         _a_tool_calls, force=run.autonomous, run_id=run.run_id,
                     )
@@ -1134,6 +1169,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "type": "tool_result",
                             "tool": _a_sr["tool_name"],
                             "status": _a_sr["status"],
+                        })
+                        yield _sse("working_step", {
+                            "type": "working_step",
+                            "run_id": run.run_id,
+                            "action": _a_sr["tool_name"],
+                            "step": _step_counter - len(_a_results) + _a_idx + 1,
+                            "status": "done",
                         })
 
                     # Persist tool results to DB
@@ -3381,6 +3423,55 @@ def _bounded_error(error_message: str, limit: int = 160) -> str:
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+_TOOL_LABELS: dict[str, str] = {
+    "read_file": "Læser fil",
+    "write_file": "Skriver fil",
+    "edit_file": "Redigerer fil",
+    "find_files": "Søger filer",
+    "search": "Søger i filer",
+    "bash": "Kører kommando",
+    "web_fetch": "Henter webside",
+    "web_search": "Søger på nettet",
+    "search_memory": "Søger i hukommelse",
+    "read_chronicles": "Læser krøniker",
+    "read_dreams": "Læser drømme",
+    "read_self_state": "Læser selvtilstand",
+    "read_model_config": "Læser modelkonfig",
+    "read_mood": "Læser stemning",
+    "adjust_mood": "Justerer stemning",
+    "read_self_docs": "Læser selvdokumentation",
+    "read_tool_result": "Læser tool-resultat",
+    "analyze_image": "Analyserer billede",
+    "read_archive": "Læser arkiv",
+    "get_weather": "Henter vejr",
+    "get_news": "Henter nyheder",
+    "get_exchange_rate": "Henter valutakurs",
+    "wolfram_query": "Beregner (Wolfram)",
+    "push_initiative": "Registrerer initiativ",
+    "list_initiatives": "Lister initiativer",
+    "propose_source_edit": "Foreslår kodeændring",
+    "propose_git_commit": "Foreslår commit",
+    "approve_proposal": "Godkender forslag",
+    "list_proposals": "Lister forslag",
+    "schedule_task": "Planlægger opgave",
+    "list_scheduled_tasks": "Lister planlagte opgaver",
+    "cancel_task": "Annullerer opgave",
+    "edit_task": "Redigerer opgave",
+    "heartbeat_status": "Tjekker heartbeat",
+    "trigger_heartbeat_tick": "Trigger heartbeat",
+    "search_chat_history": "Søger i chathistorik",
+    "discord_status": "Tjekker Discord",
+    "send_telegram_message": "Sender Telegram-besked",
+    "send_ntfy": "Sender notifikation",
+    "notify_user": "Notificerer bruger",
+    "look_around": "Kigger rundt",
+}
+
+
+def _tool_label(tool_name: str) -> str:
+    return _TOOL_LABELS.get(str(tool_name or ""), str(tool_name or "tool"))
 
 
 def _fail_visible_run(run: VisibleRun, error_message: str) -> AsyncIterator[str]:

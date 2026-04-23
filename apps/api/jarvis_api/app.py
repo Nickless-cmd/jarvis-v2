@@ -28,6 +28,10 @@ from core.services.approval_feedback_subscriber import (
     start_approval_feedback_subscriber,
     stop_approval_feedback_subscriber,
 )
+from core.services.inner_voice_notifier import (
+    start_inner_voice_notifier,
+    stop_inner_voice_notifier,
+)
 from core.services.mood_oscillator import (
     register_event_listeners as start_mood_listener,
     stop_event_listeners as stop_mood_listener,
@@ -95,6 +99,7 @@ def create_app() -> FastAPI:
         if runtime_services_enabled:
             start_runtime_hook_runtime()
             start_approval_feedback_subscriber()
+            start_inner_voice_notifier()
             start_heartbeat_scheduler()
             start_notification_bridge()
             start_scheduled_tasks_service()
@@ -146,6 +151,7 @@ def create_app() -> FastAPI:
             stop_global_workspace_listener()
             stop_emotion_concept_listener()
             stop_mood_listener()
+            stop_inner_voice_notifier()
             stop_approval_feedback_subscriber()
             stop_runtime_hook_runtime()
         try:

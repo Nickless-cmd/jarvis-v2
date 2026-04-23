@@ -19,6 +19,7 @@ from core.services.scheduled_tasks import (
     start_scheduled_tasks_service,
     stop_scheduled_tasks_service,
 )
+from core.services.recurring_tasks import start_recurring_tasks_service
 from core.services.runtime_hook_runtime import (
     start_runtime_hook_runtime,
     stop_runtime_hook_runtime,
@@ -95,6 +96,7 @@ def create_app() -> FastAPI:
             start_heartbeat_scheduler()
             start_notification_bridge()
             start_scheduled_tasks_service()
+            start_recurring_tasks_service()
             start_mood_listener()
             start_emotion_concept_listener()
             start_global_workspace_listener()

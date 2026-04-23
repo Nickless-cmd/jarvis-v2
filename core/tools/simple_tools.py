@@ -111,6 +111,27 @@ from core.tools.calendar_tools import (
     _exec_create_event,
     _exec_delete_event,
 )
+from core.tools.recurring_scheduler_tools import (
+    RECURRING_TOOL_DEFINITIONS,
+    _exec_schedule_recurring,
+    _exec_list_recurring,
+    _exec_cancel_recurring,
+)
+from core.tools.webhook_tools import (
+    WEBHOOK_TOOL_DEFINITIONS,
+    _exec_webhook_register,
+    _exec_webhook_send,
+    _exec_webhook_list,
+    _exec_webhook_test,
+    _exec_webhook_delete,
+)
+from core.tools.health_monitor_tools import (
+    HEALTH_MONITOR_TOOL_DEFINITIONS,
+    _exec_health_check,
+    _exec_health_register,
+    _exec_health_status,
+    _exec_health_history,
+)
 from core.tools.visual_memory_tool import (
     VISUAL_MEMORY_TOOL_DEFINITIONS,
     _exec_read_visual_memory,
@@ -1769,6 +1790,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
+    *RECURRING_TOOL_DEFINITIONS,
+    *WEBHOOK_TOOL_DEFINITIONS,
+    *HEALTH_MONITOR_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -4967,6 +4991,21 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,
     "delete_event": _exec_delete_event,
+    # Recurring scheduler
+    "schedule_recurring": _exec_schedule_recurring,
+    "list_recurring": _exec_list_recurring,
+    "cancel_recurring": _exec_cancel_recurring,
+    # Webhook tools
+    "webhook_register": _exec_webhook_register,
+    "webhook_send": _exec_webhook_send,
+    "webhook_list": _exec_webhook_list,
+    "webhook_test": _exec_webhook_test,
+    "webhook_delete": _exec_webhook_delete,
+    # Health monitor
+    "health_check": _exec_health_check,
+    "health_register": _exec_health_register,
+    "health_status": _exec_health_status,
+    "health_history": _exec_health_history,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     # Code introspection

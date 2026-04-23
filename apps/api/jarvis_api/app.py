@@ -56,6 +56,7 @@ from apps.api.jarvis_api.routes.attachments import router as attachments_router
 from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
+from apps.api.jarvis_api.routes.status import router as status_router
 from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.mission_control import router as mc_router
 from apps.api.jarvis_api.routes.openai_compat import router as openai_compat_router
@@ -165,6 +166,7 @@ def create_app() -> FastAPI:
     app.include_router(files_router)
     app.include_router(chat_router)
     app.include_router(health_router)
+    app.include_router(status_router)
     app.include_router(mc_router)
     app.include_router(live_router)
     app.include_router(system_health_router, prefix="/mc")

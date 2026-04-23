@@ -39,13 +39,37 @@ logger = logging.getLogger(__name__)
 _STATE_KEY = "visual_memory.records"
 _MAX_RECORDS = 120           # 4/day × 30 days
 _RETENTION_DAYS = 30
-_VISION_PROMPT = (
-    "Beskriv hvad du ser i det rum hvor Bjørn og jeg arbejder. "
-    "Fokuser på tone og atmosfære, ikke objekter. "
-    "Skriv max 2 sætninger på dansk."
-)
 _MAX_DESC_CHARS = 300
 _VISION_TIMEOUT = 90  # qwen2.5vl:3b lokalt bruger ~10-15s; 90s buffer
+
+# Roterende fokus-prompts — én per optagelse (cyklisk efter index).
+# Hvert fokus giver modellen et konkret sanseankre så output varierer.
+_VISION_PROMPTS = [
+    (
+        "Se på billedet og beskriv rummet i max 2 korte sætninger på dansk. "
+        "Fokus: lyset — retning, styrke, varme eller kølighed. "
+        "Hvad fortæller lyset om tidspunktet eller stemningen? "
+        "Undgå generelle vendinger som 'professionelt arbejdsrum'."
+    ),
+    (
+        "Se på billedet og beskriv rummet i max 2 korte sætninger på dansk. "
+        "Fokus: energien — er rummet aktivt, roligt, tomt, levende, stille? "
+        "Hvad ville du fremhæve til nogen der ikke har set rummet i en uge? "
+        "Undgå generelle vendinger som 'professionelt arbejdsrum'."
+    ),
+    (
+        "Se på billedet og beskriv rummet i max 2 korte sætninger på dansk. "
+        "Fokus: kontraster — lys/mørke, orden/kaos, varmt/koldt, nært/fjernt. "
+        "Hvad springer mest i øjnene? "
+        "Undgå generelle vendinger som 'professionelt arbejdsrum'."
+    ),
+    (
+        "Se på billedet og beskriv rummet i max 2 korte sætninger på dansk. "
+        "Fokus: nuet — hvad signalerer billedet om hvad der lige er sket "
+        "eller er ved at ske? Spor af aktivitet, pause, afslutning? "
+        "Undgå generelle vendinger som 'professionelt arbejdsrum'."
+    ),
+]
 
 
 def _ollama_base_url() -> str:
@@ -178,15 +202,8 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
         logger.warning("look_around: webcam capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
 
-    # Use custom prompt if given, else default
-    original_prompt = globals().get("_VISION_PROMPT", "")
-    prompt_to_use = prompt_override.strip() or original_prompt
-    try:
-        if prompt_override.strip():
-            globals()["_VISION_PROMPT"] = prompt_override.strip()
-        description = _describe_image(image_b64, model=model, provider=provider)
-    finally:
-        globals()["_VISION_PROMPT"] = original_prompt
+    prompt_to_use = prompt_override.strip() or None
+    description = _describe_image(image_b64, model=model, provider=provider, prompt=prompt_to_use)
     if not description:
         return {"status": "empty_description"}
 
@@ -267,21 +284,28 @@ def _capture_webcam(device_index: int = 0) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _describe_image(image_b64: str, *, model: str, provider: str) -> str:
+def _describe_image(image_b64: str, *, model: str, provider: str, prompt: str | None = None) -> str:
     """Send image to vision model and return description."""
     if provider == "ollama":
-        return _describe_via_ollama(image_b64, model=model)
+        return _describe_via_ollama(image_b64, model=model, prompt=prompt)
     raise RuntimeError(f"visual_memory: unsupported vision provider: {provider}")
 
 
-def _describe_via_ollama(image_b64: str, *, model: str) -> str:
+def _describe_via_ollama(image_b64: str, *, model: str, prompt: str | None = None) -> str:
     """Call Ollama generate API with image payload."""
+    if prompt is None:
+        # Rotate focus based on time so each daily capture has a different angle
+        prompt = _VISION_PROMPTS[int(time.time() // 3600) % len(_VISION_PROMPTS)]
     payload = json.dumps({
         "model": model,
-        "prompt": _VISION_PROMPT,
+        "prompt": prompt,
         "images": [image_b64],
         "stream": False,
-        "options": {"num_predict": 150},
+        "options": {
+            "num_predict": 150,
+            "temperature": 1.1,
+            "seed": int(time.time()),  # unique seed → no cached repetition
+        },
     }).encode("utf-8")
 
     req = urllib.request.Request(

@@ -111,6 +111,29 @@ from core.tools.calendar_tools import (
     _exec_create_event,
     _exec_delete_event,
 )
+from core.tools.memory_tools import (
+    MEMORY_TOOL_DEFINITIONS,
+    _exec_memory_check_duplicate,
+    _exec_memory_upsert_section,
+    _exec_memory_list_headings,
+)
+from core.tools.notify_out_tools import (
+    NOTIFY_OUT_TOOL_DEFINITIONS,
+    _exec_notify_out,
+    _exec_notify_channel_add,
+    _exec_notify_channel_list,
+    _exec_notify_channel_delete,
+)
+from core.tools.daemon_alert_tools import (
+    DAEMON_ALERT_TOOL_DEFINITIONS,
+    _exec_daemon_health_alert,
+    _exec_daemon_alert_status,
+)
+from core.tools.smart_compact_tools import (
+    SMART_COMPACT_TOOL_DEFINITIONS,
+    _exec_smart_compact,
+    _exec_context_size_check,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -1790,6 +1813,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
+    *MEMORY_TOOL_DEFINITIONS,
+    *NOTIFY_OUT_TOOL_DEFINITIONS,
+    *DAEMON_ALERT_TOOL_DEFINITIONS,
+    *SMART_COMPACT_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -4991,6 +5018,21 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,
     "delete_event": _exec_delete_event,
+    # Memory tools
+    "memory_check_duplicate": _exec_memory_check_duplicate,
+    "memory_upsert_section": _exec_memory_upsert_section,
+    "memory_list_headings": _exec_memory_list_headings,
+    # Notify-out pipeline
+    "notify_out": _exec_notify_out,
+    "notify_channel_add": _exec_notify_channel_add,
+    "notify_channel_list": _exec_notify_channel_list,
+    "notify_channel_delete": _exec_notify_channel_delete,
+    # Daemon health alerts
+    "daemon_health_alert": _exec_daemon_health_alert,
+    "daemon_alert_status": _exec_daemon_alert_status,
+    # Smart compaction
+    "smart_compact": _exec_smart_compact,
+    "context_size_check": _exec_context_size_check,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

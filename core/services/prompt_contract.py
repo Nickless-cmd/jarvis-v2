@@ -1896,7 +1896,9 @@ def _heartbeat_living_context_line() -> str:
             f" | mood_tendency={phase.get('mood_tendency', 'neutral')}"
             f" | suggested={','.join(phase.get('suggested_actions', [])[:3])}"
         )
-        # Play mode flag
+        depth_prompt = str(phase.get("depth_prompt") or "").strip()
+        if depth_prompt:
+            parts.append(f"phase_depth: {depth_prompt}")
         if phase.get("play_mode"):
             parts.append(
                 "play_mode=true — follow tangents, speculate freely, ask unanswered questions, "

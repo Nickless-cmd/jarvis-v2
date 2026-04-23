@@ -116,6 +116,11 @@ from core.tools.memory_tools import (
     _exec_memory_check_duplicate,
     _exec_memory_upsert_section,
     _exec_memory_list_headings,
+    _exec_memory_consolidate,
+)
+from core.tools.semantic_search_tools import (
+    SEMANTIC_SEARCH_TOOL_DEFINITIONS,
+    _exec_semantic_search_code,
 )
 from core.tools.notify_out_tools import (
     NOTIFY_OUT_TOOL_DEFINITIONS,
@@ -128,6 +133,7 @@ from core.tools.daemon_alert_tools import (
     DAEMON_ALERT_TOOL_DEFINITIONS,
     _exec_daemon_health_alert,
     _exec_daemon_alert_status,
+    _exec_restart_overdue_daemons,
 )
 from core.tools.smart_compact_tools import (
     SMART_COMPACT_TOOL_DEFINITIONS,
@@ -1814,6 +1820,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *PROCESS_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
+    *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
     *NOTIFY_OUT_TOOL_DEFINITIONS,
     *DAEMON_ALERT_TOOL_DEFINITIONS,
     *SMART_COMPACT_TOOL_DEFINITIONS,
@@ -5022,6 +5029,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "memory_check_duplicate": _exec_memory_check_duplicate,
     "memory_upsert_section": _exec_memory_upsert_section,
     "memory_list_headings": _exec_memory_list_headings,
+    "memory_consolidate": _exec_memory_consolidate,
+    # Semantic code search
+    "semantic_search_code": _exec_semantic_search_code,
     # Notify-out pipeline
     "notify_out": _exec_notify_out,
     "notify_channel_add": _exec_notify_channel_add,
@@ -5030,6 +5040,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Daemon health alerts
     "daemon_health_alert": _exec_daemon_health_alert,
     "daemon_alert_status": _exec_daemon_alert_status,
+    "restart_overdue_daemons": _exec_restart_overdue_daemons,
     # Smart compaction
     "smart_compact": _exec_smart_compact,
     "context_size_check": _exec_context_size_check,

@@ -577,6 +577,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
         },
     )
 
+    # Auto-compact chat history if approaching context limit
+    try:
+        from core.context.auto_compact import maybe_auto_compact_session
+        maybe_auto_compact_session(run.session_id)
+    except Exception:
+        pass
+
     _step_counter = 0
     result = None
     visible_output_text = ""

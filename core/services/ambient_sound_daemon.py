@@ -4,9 +4,13 @@ Per roadmap v6/v7 (Jarvis' forslag, bekræftet af Claude):
   "Lag 6½: 4 gange om dagen, 10 sekunders lydniveau-sample, metadata-only.
   Ingen indhold gemmes — kun nøgle-ratio (talk/silence/music/noise)."
 
-PRIVACY: No audio content is stored. The daemon captures only numeric
-amplitude statistics and classifies them into categories. The raw audio
-buffer is discarded immediately after classification.
+PRIVACY: The daemon is opt-in (ambient_sound_experiment_enabled, default
+False). When enabled AND category == "talk" AND
+ambient_sound_transcribe_enabled is True (default True), the 10s buffer
+is written to a temp WAV, transcribed via HF Whisper, and the temp file
+is deleted immediately after. Non-talk samples remain metadata-only.
+Every sample (with or without transcript) is mirrored into Sansernes
+Arkiv so Jarvis has a recallable audio timeline.
 
 Requires `sounddevice` (optional dep). If unavailable, daemon silently skips.
 If microphone is not accessible (permission denied, no device), same.
@@ -16,6 +20,9 @@ Categories: talk, music, silence, noise, mixed
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
+import wave
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -29,6 +36,8 @@ _SAMPLE_DURATION_SECONDS = 10
 _SAMPLES_PER_DAY = 4
 _COOLDOWN_HOURS = 24 / _SAMPLES_PER_DAY  # 6 hours between samples
 _BUFFER_MAX = 50
+_TRANSCRIBE_AMPLITUDE_FLOOR = 0.015  # below this, never bother transcribing
+_SAMPLE_RATE = 44100
 
 
 def tick_ambient_sound_daemon() -> dict[str, object]:
@@ -43,9 +52,25 @@ def tick_ambient_sound_daemon() -> dict[str, object]:
         if (now - last_sample) < timedelta(hours=_COOLDOWN_HOURS):
             return {"generated": False, "reason": "cooldown"}
 
-    category, amplitude_mean, amplitude_std = _capture_sample()
+    category, amplitude_mean, amplitude_std, wav_path = _capture_sample()
     if category is None:
         return {"generated": False, "reason": "no_audio_device"}
+
+    transcript = ""
+    try:
+        if (
+            wav_path
+            and category == "talk"
+            and amplitude_mean >= _TRANSCRIBE_AMPLITUDE_FLOOR
+            and _ambient_transcribe_enabled()
+        ):
+            transcript = _transcribe_sample(wav_path)
+    finally:
+        if wav_path:
+            try:
+                os.unlink(wav_path)
+            except Exception:
+                pass
 
     description = _interpret_sound(
         category=category,
@@ -60,9 +85,9 @@ def tick_ambient_sound_daemon() -> dict[str, object]:
         "amplitude_mean": round(amplitude_mean, 4),
         "amplitude_std": round(amplitude_std, 4),
         "description": description,
+        "transcript": transcript,
     }
 
-    # Update state
     history = list(state.get("history") or [])
     history.insert(0, sample)
     if len(history) > _BUFFER_MAX:
@@ -72,44 +97,95 @@ def tick_ambient_sound_daemon() -> dict[str, object]:
         "last_sample_at": now.isoformat(),
         "last_category": category,
         "last_description": description,
+        "last_transcript": transcript,
         "history": history,
     }
     set_runtime_state_value(_STATE_KEY, new_state)
 
     _store_sample(sample, now)
+    _archive_sensory(sample, now)
 
     return {
         "generated": True,
         "category": category,
         "amplitude_mean": amplitude_mean,
+        "transcribed": bool(transcript),
     }
 
 
-def _capture_sample() -> tuple[str | None, float, float]:
-    """Record 10 seconds of audio, classify. Returns (category, mean, std) or (None, 0, 0)."""
+def _capture_sample() -> tuple[str | None, float, float, str | None]:
+    """Record 10 seconds of audio, classify, save to temp WAV.
+
+    Returns (category, mean, std, wav_path) on success; (None, 0, 0, None) if
+    the mic/device is unavailable. Caller is responsible for deleting the
+    WAV file after transcription (or not) — see tick_ambient_sound_daemon.
+    """
     try:
         import numpy as np
         import sounddevice as sd
 
         samples = sd.rec(
-            int(_SAMPLE_DURATION_SECONDS * 44100),
-            samplerate=44100,
+            int(_SAMPLE_DURATION_SECONDS * _SAMPLE_RATE),
+            samplerate=_SAMPLE_RATE,
             channels=1,
             dtype="float32",
             blocking=True,
         )
-        # Raw buffer discarded after stats
         amplitude = np.abs(samples.flatten())
         mean = float(amplitude.mean())
         std = float(amplitude.std())
         category = _classify(mean, std)
-        return category, mean, std
+        wav_path = _save_wav(samples)
+        return category, mean, std, wav_path
     except ImportError:
         logger.debug("ambient_sound: sounddevice not available")
-        return None, 0.0, 0.0
+        return None, 0.0, 0.0, None
     except Exception as exc:
         logger.debug("ambient_sound: capture failed: %s", exc)
-        return None, 0.0, 0.0
+        return None, 0.0, 0.0, None
+
+
+def _save_wav(samples) -> str | None:
+    """Write float32 mono samples to a temp 16-bit PCM WAV. Returns path or None."""
+    try:
+        import numpy as np
+
+        fd, path = tempfile.mkstemp(prefix="jarvis-ambient-", suffix=".wav")
+        os.close(fd)
+        pcm = np.clip(samples.flatten() * 32767.0, -32768, 32767).astype("<i2")
+        with wave.open(path, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(_SAMPLE_RATE)
+            wf.writeframes(pcm.tobytes())
+        return path
+    except Exception as exc:
+        logger.debug("ambient_sound: wav save failed: %s", exc)
+        return None
+
+
+def _transcribe_sample(wav_path: str) -> str:
+    """Transcribe a WAV via HF Whisper. Returns empty string on failure."""
+    try:
+        from core.tools.hf_inference_tools import transcribe_audio
+        result = transcribe_audio(audio_source=wav_path, language="da")
+        text = str(result.get("text") or "").strip()
+        if result.get("status") == "error":
+            logger.debug("ambient_sound: transcribe error: %s", text)
+            return ""
+        return text[:2000]
+    except Exception as exc:
+        logger.debug("ambient_sound: transcribe raised: %s", exc)
+        return ""
+
+
+def _ambient_transcribe_enabled() -> bool:
+    try:
+        from core.runtime.settings import load_settings
+        settings = load_settings()
+        return bool(settings.extra.get("ambient_sound_transcribe_enabled", True))
+    except Exception:
+        return True
 
 
 def _classify(mean: float, std: float) -> str:
@@ -132,6 +208,13 @@ def _store_sample(sample: dict, now: datetime) -> None:
     now_iso = now.isoformat()
     category = str(sample.get("category") or "")
     amplitude = float(sample.get("amplitude_mean") or 0)
+    transcript = str(sample.get("transcript") or "").strip()
+    detail = f"amplitude_mean={amplitude:.4f} category={category}"
+    if transcript:
+        detail += f" transcript={transcript[:400]}"
+    summary = f"Ambient: {category}"
+    if transcript:
+        summary = f"Ambient talk: {transcript[:120]}"
     try:
         insert_private_brain_record(
             record_id=f"pb-ambient-{uuid4().hex[:12]}",
@@ -140,8 +223,8 @@ def _store_sample(sample: dict, now: datetime) -> None:
             session_id="heartbeat",
             run_id=f"ambient-sound-{uuid4().hex[:12]}",
             focus="ambient_acoustics",
-            summary=f"Ambient: {category}",
-            detail=f"amplitude_mean={amplitude:.4f} category={category}",
+            summary=summary,
+            detail=detail,
             source_signals="ambient_sound_daemon",
             confidence="high",
             created_at=now_iso,
@@ -155,10 +238,43 @@ def _store_sample(sample: dict, now: datetime) -> None:
                 "category": category,
                 "amplitude_mean": amplitude,
                 "sampled_at": now_iso,
+                "has_transcript": bool(transcript),
             },
         )
     except Exception:
         pass
+
+
+def _archive_sensory(sample: dict, now: datetime) -> None:
+    """Mirror every ambient sample into Sansernes Arkiv. Silent on failure."""
+    category = str(sample.get("category") or "")
+    description = str(sample.get("description") or "").strip()
+    transcript = str(sample.get("transcript") or "").strip()
+    amplitude_mean = float(sample.get("amplitude_mean") or 0)
+    amplitude_std = float(sample.get("amplitude_std") or 0)
+    if transcript:
+        content = f"[hørt tale]: {transcript}"
+        if description:
+            content += f"\n\n(rumstemning: {description})"
+    elif description:
+        content = description
+    else:
+        content = f"Lydbillede: {category}"
+    try:
+        from core.services.sensory_archive import record_audio
+        record_audio(
+            content,
+            metadata={
+                "source": "ambient_sound_daemon",
+                "category": category,
+                "amplitude_mean": round(amplitude_mean, 4),
+                "amplitude_std": round(amplitude_std, 4),
+                "transcribed": bool(transcript),
+                "sampled_at": now.isoformat(),
+            },
+        )
+    except Exception as exc:
+        logger.debug("ambient_sound: archive mirror failed: %s", exc)
 
 
 def get_latest_ambient_sound_for_prompt() -> str:
@@ -181,7 +297,7 @@ def get_latest_ambient_sound_for_prompt() -> str:
         f" (for {minutes_ago} min siden)" if minutes_ago < 60
         else f" (for {minutes_ago // 60}t siden)"
     )
-    # Use LLM-generated description if available, else fall back to flat label
+    transcript = str(state.get("last_transcript") or "").strip()
     description = str(state.get("last_description") or "").strip()
     if not description:
         _LABELS = {
@@ -193,6 +309,8 @@ def get_latest_ambient_sound_for_prompt() -> str:
         }
         last_cat = str(state.get("last_category") or "").strip()
         description = _LABELS.get(last_cat, last_cat)
+    if transcript:
+        return f"[lyd{time_label}]: {description} — hørte: \"{transcript[:140]}\""
     return f"[lyd{time_label}]: {description}"
 
 

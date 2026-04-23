@@ -300,6 +300,15 @@ def build_visible_chat_prompt_assembly(
     parts.append(lane_clause)
     derived_inputs.append(f"lane identity ({lane})")
 
+    # 0.6 Quick Facts — always-on stable references (URLs, paths, logins, hosts).
+    # Deliberately bypasses relevance filter so facts that don't semantically match
+    # the user message still reach the model. Prevents re-discovery of known info.
+    quick_facts = _quick_facts_section(workspace_dir=workspace_dir)
+    if quick_facts:
+        parts.append(quick_facts)
+        conditional_files.append("QUICK_FACTS.md")
+        derived_inputs.append("quick facts (always-on)")
+
     # Inject model awareness so the model knows what it is (not Claude, not GPT)
     parts.append(
         f"You are running as model: {model} via provider: {provider}. "
@@ -1645,6 +1654,27 @@ def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
         label="Visible chat guidance rules",
         max_lines=14,
         max_chars=600,
+    )
+
+
+def _quick_facts_section(*, workspace_dir: Path, max_chars: int = 1800) -> str | None:
+    """Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered —
+    stable references (URLs, paths, logins, hosts) must always be in view so
+    Jarvis doesn't re-discover them locally every session."""
+    path = workspace_dir / "QUICK_FACTS.md"
+    if not path.exists():
+        return None
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace").strip()
+    except Exception:
+        return None
+    if not text:
+        return None
+    if len(text) > max_chars:
+        text = text[: max_chars - 1].rstrip() + "…"
+    return (
+        "Quick Facts (altid gældende — tjek her FØR du leder lokalt eller på nettet):\n"
+        f"{text}"
     )
 
 

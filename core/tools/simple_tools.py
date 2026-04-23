@@ -84,6 +84,33 @@ from core.tools.mail_tools import (
     _exec_send_mail,
     _exec_read_mail,
 )
+from core.tools.github_tools import (
+    GITHUB_TOOL_DEFINITIONS,
+    _exec_git_log,
+    _exec_git_diff,
+    _exec_git_status,
+    _exec_git_branch,
+    _exec_git_blame,
+)
+from core.tools.math_tools import (
+    MATH_TOOL_DEFINITIONS,
+    _exec_calculate,
+    _exec_unit_convert,
+    _exec_percentage,
+)
+from core.tools.process_tools import (
+    PROCESS_TOOL_DEFINITIONS,
+    _exec_service_status,
+    _exec_process_list,
+    _exec_disk_usage,
+    _exec_memory_usage,
+)
+from core.tools.calendar_tools import (
+    CALENDAR_TOOL_DEFINITIONS,
+    _exec_list_events,
+    _exec_create_event,
+    _exec_delete_event,
+)
 from core.tools.visual_memory_tool import (
     VISUAL_MEMORY_TOOL_DEFINITIONS,
     _exec_read_visual_memory,
@@ -1738,6 +1765,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *TIKTOK_ANALYTICS_TOOL_DEFINITIONS,
     *MAIL_TOOL_DEFINITIONS,
     *VISUAL_MEMORY_TOOL_DEFINITIONS,
+    *GITHUB_TOOL_DEFINITIONS,
+    *MATH_TOOL_DEFINITIONS,
+    *PROCESS_TOOL_DEFINITIONS,
+    *CALENDAR_TOOL_DEFINITIONS,
     {
         "type": "function",
         "function": {
@@ -4917,6 +4948,25 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Mail tools
     "send_mail": _exec_send_mail,
     "read_mail": _exec_read_mail,
+    # Git tools
+    "git_log": _exec_git_log,
+    "git_diff": _exec_git_diff,
+    "git_status": _exec_git_status,
+    "git_branch": _exec_git_branch,
+    "git_blame": _exec_git_blame,
+    # Math tools
+    "calculate": _exec_calculate,
+    "unit_convert": _exec_unit_convert,
+    "percentage": _exec_percentage,
+    # Process/system tools
+    "service_status": _exec_service_status,
+    "process_list": _exec_process_list,
+    "disk_usage": _exec_disk_usage,
+    "memory_usage": _exec_memory_usage,
+    # Calendar tools
+    "list_events": _exec_list_events,
+    "create_event": _exec_create_event,
+    "delete_event": _exec_delete_event,
     # Visual memory (Lag 6)
     "read_visual_memory": _exec_read_visual_memory,
     # Code introspection

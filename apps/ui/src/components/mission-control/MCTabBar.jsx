@@ -1,4 +1,4 @@
-import { Activity, Eye, Bot, Brain, DollarSign, Layers, Shield, TrendingUp, Database, Package, Lock, FlaskConical, Fingerprint, Heart, Users, Crown, Hourglass, Anchor, Zap, Network, ShieldCheck } from 'lucide-react'
+import { Activity, Eye, Bot, Brain, DollarSign, Layers, Shield, TrendingUp, Database, Package, Lock, FlaskConical, Fingerprint, Heart, Users, Crown, Hourglass, Anchor, Network, ShieldCheck } from 'lucide-react'
 import { s, T } from '../../shared/theme/tokens'
 
 const ALL_TABS = [
@@ -8,7 +8,6 @@ const ALL_TABS = [
   { id: 'living-mind', label: 'Living Mind', icon: Brain },
   { id: 'soul', label: 'Soul', icon: Hourglass },
   { id: 'proprioception', label: 'Proprioception', icon: Anchor },
-  { id: 'autonomy', label: 'Autonomy', icon: Zap },
   { id: 'threads', label: 'Threads', icon: Network },
   { id: 'governance', label: 'Governance', icon: ShieldCheck },
   { id: 'cost', label: 'Cost', icon: DollarSign },

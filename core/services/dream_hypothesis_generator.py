@@ -206,6 +206,29 @@ def _extract_dream_json(raw: str) -> dict[str, Any] | None:
     return parsed
 
 
+def _recently_used_signal_refs(*, limit: int = 8) -> set[str]:
+    """Return refs of signals used in the last N hypotheses."""
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT source_signals FROM cognitive_dream_hypotheses "
+                "ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        used: set[str] = set()
+        for row in rows:
+            try:
+                for s in json.loads(row["source_signals"] or "[]"):
+                    ref = str(s.get("ref") or "").strip()
+                    if ref:
+                        used.add(ref)
+            except Exception:
+                pass
+        return used
+    except Exception:
+        return set()
+
+
 def generate_dream_hypothesis() -> dict[str, Any]:
     """Generate one surprising hypothesis by combining 3 random signals.
 
@@ -221,7 +244,29 @@ def generate_dream_hypothesis() -> dict[str, Any]:
             "count": len(signals),
         }
 
-    sampled = random.sample(signals, _MIN_SIGNALS_FOR_DREAM)
+    # Prefer signals that haven't been used in recent hypotheses to prevent
+    # the same few signals dominating every dream and causing semantic loops.
+    recently_used = _recently_used_signal_refs(limit=8)
+    fresh = [s for s in signals if str(s.get("ref") or "") not in recently_used]
+    stale = [s for s in signals if str(s.get("ref") or "") in recently_used]
+
+    if len(fresh) >= _MIN_SIGNALS_FOR_DREAM:
+        pool = fresh
+    elif len(fresh) > 0:
+        # Mix: as many fresh as possible, pad with stale
+        needed = _MIN_SIGNALS_FOR_DREAM - len(fresh)
+        pool = fresh + random.sample(stale, min(needed, len(stale)))
+    else:
+        pool = signals  # all stale — fall back to full pool
+
+    if len(pool) < _MIN_SIGNALS_FOR_DREAM:
+        return {
+            "outcome": "skipped",
+            "reason": "insufficient_signals",
+            "count": len(pool),
+        }
+
+    sampled = random.sample(pool, _MIN_SIGNALS_FOR_DREAM)
     basis_fp = _basis_fingerprint(sampled)
 
     # Dedup: have we already dreamed from this exact basis?

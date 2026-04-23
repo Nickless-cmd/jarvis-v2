@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes as _mimetypes
 import threading
 import time
 import urllib.error
@@ -71,6 +72,196 @@ def _api(token: str, method: str, payload: dict) -> dict:
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read())
+
+
+def _api_get(token: str, method: str, payload: dict) -> dict:
+    """HTTP GET to Telegram Bot API (used for getFile)."""
+    import urllib.parse
+    params = urllib.parse.urlencode(payload)
+    url = f"https://api.telegram.org/bot{token}/{method}?{params}"
+    req = urllib.request.Request(url, method="GET")
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.loads(resp.read())
+
+
+def _api_post_file(token: str, method: str, data: dict, files: dict) -> dict:
+    """HTTP POST multipart/form-data to Telegram Bot API (sendPhoto etc.)."""
+    import http.client
+    import urllib.parse
+
+    boundary = "---JarvisBoundary"
+    body_parts = []
+    for key, value in data.items():
+        body_parts.append(
+            f"--{boundary}\r\nContent-Disposition: form-data; name=\"{key}\"\r\n\r\n{value}\r\n".encode()
+        )
+    for field, (filename, content, mime) in files.items():
+        body_parts.append(
+            (
+                f"--{boundary}\r\n"
+                f"Content-Disposition: form-data; name=\"{field}\"; filename=\"{filename}\"\r\n"
+                f"Content-Type: {mime}\r\n\r\n"
+            ).encode() + content + b"\r\n"
+        )
+    body_parts.append(f"--{boundary}--\r\n".encode())
+    body = b"".join(body_parts)
+
+    parsed = urllib.parse.urlparse(f"https://api.telegram.org/bot{token}/{method}")
+    conn = http.client.HTTPSConnection(parsed.netloc, timeout=60)
+    conn.request(
+        "POST", parsed.path,
+        body=body,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
+    resp = conn.getresponse()
+    return json.loads(resp.read())
+
+
+def _resolve_telegram_file_url(*, token: str, file_id: str) -> str | None:
+    """Call getFile to get a download URL for a Telegram file_id."""
+    try:
+        result = _api_get(token, "getFile", {"file_id": file_id})
+        if not result.get("ok"):
+            return None
+        file_path = result.get("result", {}).get("file_path")
+        if not file_path:
+            return None
+        return f"https://api.telegram.org/file/bot{token}/{file_path}"
+    except Exception as exc:
+        logger.warning("telegram_gateway: getFile failed for %s: %s", file_id, exc)
+        return None
+
+
+def _extract_telegram_media(msg: dict) -> list[dict]:
+    """Extract media items from a Telegram message dict.
+
+    Returns list of dicts: file_id, filename, mime_type, file_size.
+    Files larger than 20 MB (Telegram getFile limit) are skipped.
+    """
+    _TG_MAX = 20 * 1024 * 1024
+    items = []
+
+    if "photo" in msg:
+        photos = msg["photo"]
+        if photos:
+            largest = photos[-1]
+            size = largest.get("file_size", 0)
+            if size <= _TG_MAX:
+                items.append({
+                    "file_id": largest["file_id"],
+                    "filename": "photo.jpg",
+                    "mime_type": "image/jpeg",
+                    "file_size": size,
+                })
+
+    for media_type, default_mime, default_name in [
+        ("document", "", ""),
+        ("audio", "audio/mpeg", "audio.mp3"),
+        ("video", "video/mp4", "video.mp4"),
+        ("voice", "audio/ogg", "voice.ogg"),
+        ("sticker", "image/webp", "sticker.webp"),
+    ]:
+        if media_type in msg:
+            m = msg[media_type]
+            size = m.get("file_size", 0)
+            if size > _TG_MAX:
+                continue
+            items.append({
+                "file_id": m["file_id"],
+                "filename": m.get("file_name") or default_name,
+                "mime_type": m.get("mime_type") or default_mime,
+                "file_size": size,
+            })
+
+    return items
+
+
+def _download_tg_attachment(
+    url: str, filename: str, mime: str, size: int, session_id: str
+) -> dict:
+    from core.services.attachment_service import download_and_store
+    return download_and_store(
+        url=url,
+        filename=filename,
+        mime_type=mime,
+        size_bytes=size,
+        session_id=session_id,
+        channel_type="telegram",
+    )
+
+
+def _build_telegram_attachment_prefix(
+    media_items: list[dict], *, token: str, session_id: str
+) -> str:
+    if not media_items:
+        return ""
+    lines = []
+    for item in media_items:
+        url = _resolve_telegram_file_url(token=token, file_id=item["file_id"])
+        if url is None:
+            lines.append(f"[Fil kunne ikke hentes: {item['filename']} — getFile fejlede]")
+            continue
+        result = _download_tg_attachment(
+            url, item["filename"], item["mime_type"], item["file_size"], session_id
+        )
+        if result["status"] == "ok":
+            aid = result["attachment_id"]
+            size_kb = round(item["file_size"] / 1024, 1)
+            lines.append(
+                f"[Fil modtaget: {item['filename']} ({item['mime_type']}, {size_kb} KB) — id: {aid}]"
+            )
+        else:
+            lines.append(
+                f"[Fil kunne ikke hentes: {item['filename']} — {result.get('reason', '?')}]"
+            )
+    return "\n".join(lines) + "\n"
+
+
+def _validate_send_path(path: str) -> tuple[bool, str]:
+    from core.services.attachment_service import validate_send_path
+    return validate_send_path(path)
+
+
+def send_telegram_file(text: str, file_path: str, chat_id: str | int | None = None) -> dict:
+    """Send a file to owner (or chat_id) via Telegram."""
+    ok, err = _validate_send_path(file_path)
+    if not ok:
+        return {"status": "error", "reason": err}
+
+    cfg = _load_config()
+    if not cfg:
+        return {"status": "error", "reason": "telegram-not-configured"}
+
+    target = str(chat_id) if chat_id else cfg["chat_id"]
+    mime = _mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+
+    if mime.startswith("image/"):
+        method, field = "sendPhoto", "photo"
+    elif mime.startswith("audio/"):
+        method, field = "sendAudio", "audio"
+    elif mime.startswith("video/"):
+        method, field = "sendVideo", "video"
+    else:
+        method, field = "sendDocument", "document"
+
+    filename = Path(file_path).name
+    try:
+        data = Path(file_path).read_bytes()
+        result = _api_post_file(
+            cfg["token"],
+            method,
+            data={"chat_id": target, "caption": text or ""},
+            files={field: (filename, data, mime)},
+        )
+        if result.get("ok"):
+            return {
+                "status": "sent",
+                "method": method,
+                "message_id": result.get("result", {}).get("message_id"),
+            }
+        return {"status": "error", "reason": str(result.get("description", "unknown"))}
+    except Exception as exc:
+        return {"status": "error", "reason": str(exc)}
 
 
 def send_message(text: str, chat_id: str | int | None = None, parse_mode: str = "") -> dict:
@@ -137,8 +328,11 @@ def _poll_loop(token: str, owner_chat_id: str) -> None:
                 chat_id = msg.get("chat", {}).get("id")
                 text = (msg.get("text") or "").strip()
 
-                # Only accept messages from owner
-                if str(chat_id) != owner_chat_id or not text:
+                if str(chat_id) != owner_chat_id:
+                    continue
+
+                media_items = _extract_telegram_media(msg)
+                if not text and not media_items:
                     continue
 
                 logger.info("telegram_gateway: inbound from owner: %r", text[:80])
@@ -149,8 +343,13 @@ def _poll_loop(token: str, owner_chat_id: str) -> None:
                 with _telegram_sessions_lock:
                     _telegram_sessions[session_id] = chat_id
 
+                attachment_prefix = _build_telegram_attachment_prefix(
+                    media_items, token=token, session_id=session_id
+                )
+                full_content = (attachment_prefix + text).strip()
+
                 from core.services.chat_sessions import append_chat_message
-                append_chat_message(session_id=session_id, role="user", content=text)
+                append_chat_message(session_id=session_id, role="user", content=full_content)
 
                 try:
                     from core.eventbus.bus import event_bus
@@ -164,7 +363,7 @@ def _poll_loop(token: str, owner_chat_id: str) -> None:
                 from core.services.visible_runs import start_autonomous_run
                 threading.Thread(
                     target=start_autonomous_run,
-                    args=(text,),
+                    args=(full_content,),
                     kwargs={"session_id": session_id},
                     daemon=True,
                     name=f"telegram-run-{session_id[-8:]}",

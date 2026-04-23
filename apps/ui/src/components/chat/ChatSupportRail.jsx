@@ -186,7 +186,8 @@ function BrowserCard({ browserBody }) {
 function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
   const steps = workingSteps || []
   const doneSteps = steps.filter(s => s.status === 'done').slice(-4)
-  const currentStep = steps.find(s => s.status === 'running')
+  const runningSteps = steps.filter(s => s.status === 'running')
+  const currentStep = runningSteps[runningSteps.length - 1] || null
   const activities = (capabilityActivity || []).slice().reverse().slice(0, 3)
 
   const hasActivity = currentStep || doneSteps.length > 0 || activities.length > 0
@@ -261,14 +262,12 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
             <div style={s({ display: 'flex', alignItems: 'center', gap: 5 })}>
               {(() => { const Icon = stepIcon(currentStep); return <Icon size={11} color={T.accentText} style={{ flexShrink: 0 }} /> })()}
               <span style={s({ ...mono, fontSize: 10, color: T.accentText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
-                {currentStep.action || currentStep.step || 'working'}
+                {currentStep.detail || currentStep.action || 'working'}
+                {runningSteps.length > 1 && (
+                  <span style={{ color: T.text3, marginLeft: 4 }}>(+{runningSteps.length - 1})</span>
+                )}
               </span>
             </div>
-            {(currentStep.detail) && (
-              <div style={s({ ...mono, fontSize: 9, color: T.text3, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
-                {currentStep.detail}
-              </div>
-            )}
           </>
         )}
       </div>

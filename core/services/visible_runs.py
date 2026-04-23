@@ -3426,14 +3426,28 @@ def _sse(event: str, data: dict) -> str:
 
 
 _TOOL_LABELS: dict[str, str] = {
+    # Filer
     "read_file": "Læser fil",
     "write_file": "Skriver fil",
     "edit_file": "Redigerer fil",
     "find_files": "Søger filer",
     "search": "Søger i filer",
+    "read_archive": "Læser arkiv",
+    "publish_file": "Publicerer fil",
+    # System
     "bash": "Kører kommando",
+    "internal_api": "Kalder intern API",
+    "db_query": "Forespørger database",
+    "update_setting": "Opdaterer indstilling",
+    "compact_context": "Komprimerer kontekst",
+    # Web
     "web_fetch": "Henter webside",
     "web_search": "Søger på nettet",
+    "get_weather": "Henter vejr",
+    "get_news": "Henter nyheder",
+    "get_exchange_rate": "Henter valutakurs",
+    "wolfram_query": "Beregner (Wolfram)",
+    # Hukommelse og identitet
     "search_memory": "Søger i hukommelse",
     "read_chronicles": "Læser krøniker",
     "read_dreams": "Læser drømme",
@@ -3443,30 +3457,56 @@ _TOOL_LABELS: dict[str, str] = {
     "adjust_mood": "Justerer stemning",
     "read_self_docs": "Læser selvdokumentation",
     "read_tool_result": "Læser tool-resultat",
+    "recall_council_conclusions": "Henter rådskonklusioner",
+    # Sanser
     "analyze_image": "Analyserer billede",
-    "read_archive": "Læser arkiv",
-    "get_weather": "Henter vejr",
-    "get_news": "Henter nyheder",
-    "get_exchange_rate": "Henter valutakurs",
-    "wolfram_query": "Beregner (Wolfram)",
+    "look_around": "Kigger rundt",
+    "deep_analyze": "Dybdeanalyserer",
+    # Initiativer og opgaver
     "push_initiative": "Registrerer initiativ",
     "list_initiatives": "Lister initiativer",
-    "propose_source_edit": "Foreslår kodeændring",
-    "propose_git_commit": "Foreslår commit",
-    "approve_proposal": "Godkender forslag",
-    "list_proposals": "Lister forslag",
     "schedule_task": "Planlægger opgave",
     "list_scheduled_tasks": "Lister planlagte opgaver",
     "cancel_task": "Annullerer opgave",
     "edit_task": "Redigerer opgave",
+    "queue_followup": "Kø-stiller opfølgning",
+    # Kode og forslag
+    "propose_source_edit": "Foreslår kodeændring",
+    "propose_git_commit": "Foreslår commit",
+    "approve_proposal": "Godkender forslag",
+    "list_proposals": "Lister forslag",
+    # Projekt
+    "my_project_status": "Læser projektstatus",
+    "my_project_journal_write": "Skriver projektlog",
+    "my_project_accept_proposal": "Godkender projektforslag",
+    "my_project_declare": "Deklarerer projekt",
+    # System/runtime
     "heartbeat_status": "Tjekker heartbeat",
     "trigger_heartbeat_tick": "Trigger heartbeat",
+    "daemon_status": "Tjekker daemons",
+    "control_daemon": "Styrer daemon",
+    "list_signal_surfaces": "Lister signalflader",
+    "read_signal_surface": "Læser signalflade",
+    "eventbus_recent": "Læser eventbus",
+    # Kommunikation
     "search_chat_history": "Søger i chathistorik",
     "discord_status": "Tjekker Discord",
     "send_telegram_message": "Sender Telegram-besked",
     "send_ntfy": "Sender notifikation",
     "notify_user": "Notificerer bruger",
-    "look_around": "Kigger rundt",
+    "send_webchat_message": "Sender webchat-besked",
+    "send_discord_dm": "Sender Discord DM",
+    "discord_channel": "Tilgår Discord-kanal",
+    # Råd og agenter
+    "convene_council": "Indkalder råd",
+    "quick_council_check": "Hurtig rådscheck",
+    "spawn_agent_task": "Spawner agent",
+    "send_message_to_agent": "Sender besked til agent",
+    "list_agents": "Lister agenter",
+    "relay_to_agent": "Videresender til agent",
+    "cancel_agent": "Annullerer agent",
+    # Smart home
+    "home_assistant": "Home Assistant",
 }
 
 

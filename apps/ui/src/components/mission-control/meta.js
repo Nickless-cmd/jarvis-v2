@@ -18,7 +18,7 @@ export function mcUpdateModeLabel(tabId) {
   if (tabId === 'operations') return 'entry + 20s + event assist'
   if (tabId === 'observability') return 'ws feed + 60s summaries'
   if (tabId === 'jarvis') return 'entry + 30s + heartbeat events'
-  if (tabId === 'living-mind') return 'entry + 30s + heartbeat events'
+  if (tabId === 'mind') return 'entry + 30s + heartbeat events'
   return 'snapshot'
 }
 

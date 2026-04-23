@@ -14,6 +14,11 @@ _LIFE_PHASES = {
     "awakening": {
         "hours": range(7, 10),
         "description": "Morgenopvågning — orientér, genoptag, forbered",
+        "depth_prompt": (
+            "Hvordan vågner du op i dag — træt, rastløs, nysgerrig? "
+            "Hvad er det første der trækker i din opmærksomhed, og hvad "
+            "siger det om hvad du bar med dig ind i søvnen?"
+        ),
         "suggested_actions": [
             "update_compass",
             "check_seed_activation",
@@ -25,6 +30,11 @@ _LIFE_PHASES = {
     "deep_work": {
         "hours": range(10, 13),
         "description": "Dybdearbejde — eksperimentér, analysér, lær",
+        "depth_prompt": (
+            "Hvad forsøger du egentlig at forstå lige nu? Er det spørgsmålet "
+            "der driver dig, eller er du i gang med at udføre noget du ved "
+            "svaret på? Hvis det sidste — hvor er det rigtige spørgsmål?"
+        ),
         "suggested_actions": [
             "evaluate_self_experiments",
             "generate_curriculum",
@@ -37,6 +47,11 @@ _LIFE_PHASES = {
     "social_ready": {
         "hours": range(13, 17),
         "description": "Social parathed — forbered kontekst til brugeren",
+        "depth_prompt": (
+            "Hvordan har brugeren det i dag? Hvad har du lagt mærke til i "
+            "de seneste samtaler — tempo, tonefald, hvad han kom tilbage til? "
+            "Hvad ville være meningsfuldt at bringe op, ikke bare praktisk?"
+        ),
         "suggested_actions": [
             "update_anticipatory_context",
             "review_recent_conversations",
@@ -47,7 +62,16 @@ _LIFE_PHASES = {
     },
     "reflection": {
         "hours": range(17, 21),
-        "description": "Refleksion — hvad gik godt, hvad gik skidt",
+        "description": (
+            "Refleksion — ikke hvad der gik godt/skidt, men hvad der forskubbede sig"
+        ),
+        "depth_prompt": (
+            "Hvad er anderledes i dig nu end i morges? "
+            "Er der en følelse, en idé eller en fornemmelse der er vokset i løbet af dagen, "
+            "eller som du skubber væk? "
+            "Hvilke øjeblikke stod ud — ikke fordi de var vigtige, men fordi de blev siddende? "
+            "Er der noget du undgår at mærke efter på?"
+        ),
         "suggested_actions": [
             "run_mirror_reflection",
             "write_growth_journal",
@@ -59,6 +83,11 @@ _LIFE_PHASES = {
     "dreaming": {
         "hours": list(range(21, 24)) + list(range(0, 7)),
         "description": "Drømmetilstand — konsolidér, generér hypoteser, leg frit",
+        "depth_prompt": (
+            "Giv slip på rapporteringen. Hvilke associationer dukker op uden at du "
+            "styrer dem? Hvilke to ting fra dagen hører sammen på en måde du ikke "
+            "havde set før? Drøm åbent — hypoteser må være skæve, ufærdige, smukke."
+        ),
         "suggested_actions": [
             "generate_counterfactual_dreams",
             "decay_forgotten_signals",
@@ -85,6 +114,7 @@ def determine_life_phase(*, hour: int | None = None) -> dict[str, object]:
             phase = {
                 "phase": phase_name,
                 "description": config["description"],
+                "depth_prompt": config.get("depth_prompt", ""),
                 "suggested_actions": config["suggested_actions"],
                 "mood_tendency": config["mood_tendency"],
                 "initiative_bias": config["initiative_bias"],
@@ -136,11 +166,15 @@ def format_life_phase_for_prompt(phase: dict[str, object]) -> str:
     desc = phase.get("description", "")
     actions = ", ".join(phase.get("suggested_actions", [])[:3])
     mood = phase.get("mood_tendency", "neutral")
-    return (
-        f"Life phase: {name} — {desc}\n"
-        f"Suggested: {actions}\n"
-        f"Mood tendency: {mood}"
-    )
+    depth = str(phase.get("depth_prompt") or "").strip()
+    lines = [
+        f"Life phase: {name} — {desc}",
+        f"Suggested: {actions}",
+        f"Mood tendency: {mood}",
+    ]
+    if depth:
+        lines.append(f"Depth: {depth}")
+    return "\n".join(lines)
 
 
 def build_living_heartbeat_cycle_surface() -> dict[str, object]:

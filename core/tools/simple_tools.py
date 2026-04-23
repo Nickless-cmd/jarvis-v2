@@ -948,13 +948,17 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_telegram_message",
-            "description": "Send a message to Bjørn via Telegram. Very reliable delivery — use this for proactive reach-out, alerts, findings, or anything important. Works even when Discord is flaky.",
+            "description": "Send a message to Bjørn via Telegram. Very reliable delivery — use this for proactive reach-out, alerts, findings, or anything important. Works even when Discord is flaky. Optionally attach a file from uploads/ or workspaces/.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "content": {
                         "type": "string",
                         "description": "The message to send via Telegram.",
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "description": "Optional absolute path to a file to attach (must be inside uploads/ or workspaces/).",
                     },
                 },
                 "required": ["content"],
@@ -1062,8 +1066,50 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "type": "string",
                         "description": "(send) Message text to post. Max 2000 characters.",
                     },
+                    "file_path": {
+                        "type": "string",
+                        "description": "(send) Optional absolute path to a file to attach (must be inside uploads/ or workspaces/).",
+                    },
                 },
                 "required": ["action", "channel_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_attachment",
+            "description": "Read the content of a file received via Discord or Telegram. Images are described via vision model. Text/JSON returned directly. PDF extracted as text. Other files return a hex preview.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "attachment_id": {
+                        "type": "string",
+                        "description": "The attachment_id from a '[Fil modtaget: ...]' prefix in an incoming message.",
+                    },
+                },
+                "required": ["attachment_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_attachments",
+            "description": "List files received in the current session via Discord or Telegram, newest first.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "description": "Session ID to list attachments for. Omit to use the current session.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max number of attachments to return (default 20).",
+                    },
+                },
+                "required": [],
             },
         },
     },
@@ -3556,7 +3602,14 @@ def _exec_send_telegram_message(args: dict[str, Any]) -> dict[str, Any]:
     content = str(args.get("content") or "").strip()
     if not content:
         return {"status": "error", "text": "No content provided."}
+    file_path = str(args.get("file_path") or "").strip()
     try:
+        if file_path:
+            from core.services.telegram_gateway import send_telegram_file
+            result = send_telegram_file(text=content, file_path=file_path)
+            if result["status"] == "sent":
+                return {"status": "ok", "text": f"Telegram file sent via {result.get('method')} (id={result.get('message_id')})"}
+            return {"status": "error", "text": f"Telegram file failed: {result.get('reason')}"}
         from core.services.telegram_gateway import send_message
         result = send_message(content)
         if result["status"] == "sent":
@@ -3564,6 +3617,40 @@ def _exec_send_telegram_message(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "text": f"Telegram failed: {result.get('reason')}"}
     except Exception as exc:
         return {"status": "error", "text": f"Telegram error: {exc}"}
+
+
+def _exec_read_attachment(args: dict[str, Any]) -> dict[str, Any]:
+    attachment_id = str(args.get("attachment_id") or "").strip()
+    if not attachment_id:
+        return {"status": "error", "text": "attachment_id is required"}
+    try:
+        from core.services.attachment_service import read_attachment_content
+        result = read_attachment_content(attachment_id)
+        if result.get("status") == "error":
+            return {"status": "error", "text": f"Attachment error: {result.get('reason')}"}
+        content = result.get("content", "")
+        atype = result.get("type", "")
+        filename = result.get("filename", "")
+        return {"status": "ok", "text": f"[{filename} — {atype}]\n{content}"}
+    except Exception as exc:
+        return {"status": "error", "text": f"read_attachment error: {exc}"}
+
+
+def _exec_list_attachments(args: dict[str, Any]) -> dict[str, Any]:
+    session_id = str(args.get("session_id") or "").strip() or None
+    limit = min(int(args.get("limit") or 20), 50)
+    try:
+        from core.services.attachment_service import list_attachments
+        if session_id is None:
+            try:
+                from core.services.chat_sessions import get_active_session_id
+                session_id = get_active_session_id() or ""
+            except Exception:
+                session_id = ""
+        items = list_attachments(session_id, limit=limit)
+        return {"status": "ok", "count": len(items), "attachments": items}
+    except Exception as exc:
+        return {"status": "error", "text": f"list_attachments error: {exc}"}
 
 
 def _exec_send_ntfy(args: dict[str, Any]) -> dict[str, Any]:
@@ -3779,10 +3866,18 @@ def _exec_discord_channel(args: dict[str, Any]) -> dict[str, Any]:
         _DISCORD_CHANNEL_SEND_RATE[channel_id_str] = now
 
         content = str(args.get("content") or "").strip()
-        if not content:
-            return {"status": "error", "error": "content is required for send"}
+        file_path = str(args.get("file_path") or "").strip()
+        if not content and not file_path:
+            return {"status": "error", "error": "content or file_path is required for send"}
         if len(content) > 2000:
             return {"status": "error", "error": f"Content too long ({len(content)} chars, max 2000)"}
+
+        if file_path:
+            from core.services.discord_gateway import send_discord_file
+            result = send_discord_file(channel_id=channel_id, text=content, file_path=file_path)
+            if result["status"] == "queued":
+                return {"status": "ok", "action": "send", "channel_id": channel_id_str, "text": "File queued for delivery"}
+            return {"status": "error", "error": result.get("reason", "send_discord_file failed")}
 
         async def _do_send():
             channel = _client.get_channel(channel_id)
@@ -4754,6 +4849,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "search_chat_history": _exec_search_chat_history,
     "search_sessions": _exec_search_sessions,
     "send_telegram_message": _exec_send_telegram_message,
+    "read_attachment": _exec_read_attachment,
+    "list_attachments": _exec_list_attachments,
     "send_ntfy": _exec_send_ntfy,
     "send_webchat_message": _exec_send_webchat_message,
     "send_discord_dm": _exec_send_discord_dm,

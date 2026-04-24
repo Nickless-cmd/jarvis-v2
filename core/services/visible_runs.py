@@ -793,7 +793,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     serialize_ollama_chat_messages,
                 )
                 visible_input_pre = _build_visible_input(
-                    run.user_message, session_id=run.session_id
+                    run.user_message,
+                    session_id=run.session_id,
+                    provider=run.provider,
+                    model=run.model,
                 )
                 base_messages = serialize_ollama_chat_messages(visible_input_pre)
 

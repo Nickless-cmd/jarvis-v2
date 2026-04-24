@@ -95,54 +95,17 @@ class VisibleModelRateLimited(RuntimeError):
     pass
 
 
-_GITHUB_MODELS_MODEL_PREFIXES = {
-    "gpt-4.1": "openai/gpt-4.1",
-    "gpt-4o": "openai/gpt-4o",
-    "gpt-4o-mini": "openai/gpt-4o-mini",
-    "gpt-5": "openai/gpt-5",
-    "gpt-5-mini": "openai/gpt-5-mini",
-    "o1": "openai/o1",
-    "o1-mini": "openai/o1-mini",
-    "o3": "openai/o3",
-    "o3-mini": "openai/o3-mini",
-    "claude-3-5-sonnet": "anthropic/claude-3-5-sonnet",
-    "claude-3-5-haiku": "anthropic/claude-3-5-haiku",
-    "claude-4-opus": "anthropic/claude-4-opus",
-    "claude-4-sonnet": "anthropic/claude-4-sonnet",
-    "llama-3.1-70b": "meta-llama/llama-3.1-70b",
-    "llama-3.1-8b": "meta-llama/llama-3.1-8b",
-    "llama-3.3-70b": "meta-llama/llama-3.3-70b",
-    "deepseek-chat": "deepseek/deepseek-chat",
-    "deepseek-coder": "deepseek/deepseek-coder",
-    "gpt-5 mini": "openai/gpt-5-mini",
-    "gpt-5mini": "openai/gpt-5-mini",
-}
-
-
 def _normalize_github_models_model_id(model: str) -> str:
+    # Copilot's api.githubcopilot.com accepts flat model IDs verbatim
+    # (e.g. "gpt-5.4", "claude-sonnet-4.6", "gemini-3.1-pro-preview").
+    # No provider prefix rewriting — that was for the old models.github.ai
+    # free tier. Case and whitespace normalization only.
     if not model:
-        raise ValueError("GitHub Models: empty model ID")
-
-    original = model.strip()
-    if original.startswith("/"):
-        raise ValueError(f"GitHub Models: invalid model ID with leading slash: {model}")
-
-    normalized = original.lower()
-
-    if "/" in normalized and not normalized.startswith("/"):
-        return original
-
-    if normalized in _GITHUB_MODELS_MODEL_PREFIXES:
-        return _GITHUB_MODELS_MODEL_PREFIXES[normalized]
-
-    for key, api_id in _GITHUB_MODELS_MODEL_PREFIXES.items():
-        if key in normalized or normalized in key:
-            return api_id
-
-    raise ValueError(
-        f"GitHub Models: cannot resolve model ID '{model}'. "
-        f"Use a known model name (e.g., 'gpt-4.1', 'gpt-5-mini') or full API ID (e.g., 'openai/gpt-4.1')."
-    )
+        raise ValueError("Copilot: empty model ID")
+    trimmed = model.strip()
+    if trimmed.startswith("/"):
+        raise ValueError(f"Copilot: invalid model ID with leading slash: {model}")
+    return trimmed
 
 
 def _github_model_matches_requested(*, requested: str, candidate: str) -> bool:

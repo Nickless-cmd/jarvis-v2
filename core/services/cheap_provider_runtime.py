@@ -961,16 +961,21 @@ def _execute_openai_compatible_chat(
     model: str,
     auth_profile: str,
     base_url: str,
-    message: str,
+    message: str | None = None,
+    messages: list[dict] | None = None,
 ) -> dict[str, object]:
     credentials = _require_credentials(profile=auth_profile, provider=provider)
     root = str(base_url or provider_runtime_defaults(provider).get("base_url") or "").rstrip("/")
     headers = {
         "Authorization": f"Bearer {str(credentials.get('api_key') or '').strip()}",
     }
+    if messages is None:
+        if message is None:
+            raise ValueError("Either 'messages' or 'message' must be provided")
+        messages = [{"role": "user", "content": message}]
     payload = {
         "model": model,
-        "messages": [{"role": "user", "content": message}],
+        "messages": messages,
         "stream": False,
     }
     if provider == "groq":
@@ -989,8 +994,14 @@ def _execute_openai_compatible_chat(
         )
     text = _extract_openai_compatible_text(provider=provider, data=data)
     usage = data.get("usage") or {}
+    prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
     return {
         "text": text,
+        "input_tokens": int(
+            usage.get("prompt_tokens")
+            or usage.get("input_tokens")
+            or prompt_estimate
+        ),
         "output_tokens": int(
             usage.get("completion_tokens")
             or usage.get("output_tokens")

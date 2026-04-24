@@ -459,3 +459,51 @@ def test_public_safe_lane_prefers_ollamafreeapi_and_falls_back_local(
 
     assert result["provider"] == "ollama"
     assert result["text"] == "fallback-ok"
+
+
+def test_openai_compat_chat_accepts_messages_list(isolated_runtime, monkeypatch) -> None:
+    """Regression: OpenCode/Groq/etc. must receive full chat messages (incl.
+    system prompt) so the visible lane keeps Jarvis identity. Previously the
+    function only accepted a bare `message` string and wrapped it as a user
+    message, causing remote models to reply as themselves (e.g. MiniMax)."""
+    auth_profiles = isolated_runtime.auth_profiles
+    cheap = isolated_runtime.cheap_provider_runtime
+
+    auth_profiles.save_provider_credentials(
+        profile="opencode",
+        provider="opencode",
+        credentials={"api_key": "oc_test_key"},  # pragma: allowlist secret
+    )
+
+    captured: dict[str, object] = {}
+
+    def _fake_http_json(url, *, payload, headers, provider, method="POST"):
+        captured["url"] = url
+        captured["payload"] = payload
+        captured["provider"] = provider
+        return (
+            {
+                "choices": [{"message": {"content": "ok"}}],
+                "usage": {"prompt_tokens": 42, "completion_tokens": 3},
+            },
+            {},
+        )
+
+    monkeypatch.setattr(cheap, "_http_json", _fake_http_json)
+
+    chat_messages = [
+        {"role": "system", "content": "Du er Jarvis."},
+        {"role": "user", "content": "hvem er du?"},
+    ]
+    result = cheap._execute_openai_compatible_chat(
+        provider="opencode",
+        model="big-pickle",
+        auth_profile="opencode",
+        base_url="https://opencode.ai/zen/v1",
+        messages=chat_messages,
+    )
+
+    assert captured["payload"]["messages"] == chat_messages
+    assert result["text"] == "ok"
+    assert result["input_tokens"] == 42
+    assert result["output_tokens"] == 3

@@ -930,9 +930,25 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     }
                 ]
                 _all_followup_parts: list[str] = []
+                # Initialized outside the for-loop so the non-Ollama skip path
+                # (where the loop runs zero iterations) can still reference
+                # _a_parts without NameError in the followup_text computation.
+                _a_parts: list[str] = []
+                # The loop body below POSTs to a hardcoded Ollama /api/chat
+                # endpoint and parses Ollama's NDJSON response shape. For
+                # non-Ollama visible providers (Copilot, Anthropic, OpenAI
+                # cheap-lane, etc.) it either hangs or hits the wrong backend.
+                # Guard by provider until visible_followup adapter (Option B)
+                # lands. For skipped providers the first-pass text (already
+                # streamed via VisibleModelDelta) stands as the response.
+                _is_ollama_visible = (
+                    (run.provider or "").strip().lower() == "ollama"
+                )
 
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
-                    _a_parts: list[str] = []
+                    if not _is_ollama_visible:
+                        break
+                    _a_parts = []
                     _a_tool_calls: list[dict] = []
                     _a_queue: asyncio.Queue = asyncio.Queue()
                     _a_sentinel = object()
@@ -1259,10 +1275,13 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     followup_text = "".join(_a_parts).strip()
                 else:
                     followup_text = "".join(_all_followup_parts).strip()
-                if not followup_text:
+                if not followup_text and _is_ollama_visible:
                     # LLM only produced tool calls with no text summary.
                     # Make one final LLM call WITHOUT tools to force a
                     # natural-language response based on the tool results.
+                    # (Ollama-only: the request below is hardcoded to
+                    # /api/chat NDJSON — non-Ollama providers fall through
+                    # to the first-pass-text fallback below.)
                     _summary_payload: dict[str, object] = {
                         "model": run.model,
                         "messages": _agentic_messages + [
@@ -1330,16 +1349,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     followup_text = "".join(_summary_parts).strip()
 
                 if not followup_text:
-                    # Absolute fallback — should rarely trigger now.
-                    _all_tool_names = []
-                    for _sr in simple_results:
-                        _all_tool_names.append(str(_sr.get("tool_name") or "tool"))
-                    if _all_tool_names:
-                        _tool_summary = ", ".join(dict.fromkeys(_all_tool_names))
-                        followup_text = f"[Completed: {_tool_summary}]"
-                    else:
-                        followup_text = "[Completed]"
-                    yield _sse("delta", {"type": "delta", "run_id": run.run_id, "delta": followup_text})
+                    # No follow-up text from the Ollama agentic loop (or we
+                    # skipped it for a non-Ollama provider). Fall back to the
+                    # first-pass text — already streamed live to the user via
+                    # VisibleModelDelta — as the persisted assistant message.
+                    # If the first pass was tool-calls-only with no prose,
+                    # followup_text stays empty and _persist_session_assistant_message
+                    # declines to persist. NEVER emit synthetic internal
+                    # markers like "[Completed: ...]" to the user.
+                    followup_text = (getattr(result, "text", "") or "").strip()
 
                 total_input_tokens = result.input_tokens * 2
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
@@ -1735,6 +1753,7 @@ def _persist_session_assistant_message(run: VisibleRun, text: str) -> None:
     normalized = str(text or "").strip()
     if not normalized:
         return
+    _assert_presentation_invariant(normalized)
     message = append_chat_message(session_id=run.session_id, role="assistant", content=normalized)
     try:
         from core.eventbus.bus import event_bus
@@ -3440,6 +3459,34 @@ def _bounded_error(error_message: str, limit: int = 160) -> str:
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+class PresentationInvariantError(RuntimeError):
+    """Raised when user-visible text contains internal runtime markers.
+
+    Internal runtime artifacts — tool-result markers like ``[search_memory]:``,
+    completion placeholders like ``[Completed: foo]`` — must never leak into
+    the visible chat stream or persisted assistant messages. This exception
+    exists so regressions fail loudly rather than silently polluting user UX.
+    """
+
+
+_PRESENTATION_INVARIANT_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^\s*\[Completed(?:[:\]]|$)"),
+    re.compile(r"^\s*\[[a-z_][a-z0-9_]*\]\s*:", re.IGNORECASE),
+)
+
+
+def _assert_presentation_invariant(text: str) -> None:
+    stripped = (text or "").lstrip()
+    if not stripped:
+        return
+    for pattern in _PRESENTATION_INVARIANT_PATTERNS:
+        if pattern.match(stripped):
+            raise PresentationInvariantError(
+                f"internal runtime marker leaked into user-visible text: "
+                f"{stripped[:80]!r}"
+            )
 
 
 _TOOL_LABELS: dict[str, str] = {

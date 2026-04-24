@@ -1050,6 +1050,7 @@ def _stream_github_copilot_model(
     collected_tool_calls = [
         tool_call_accumulator[idx] for idx in sorted(tool_call_accumulator.keys())
     ]
+    collected_tool_calls = _finalize_openai_tool_calls(collected_tool_calls)
     if collected_tool_calls:
         yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
 
@@ -1820,6 +1821,34 @@ def _extract_chat_completion_delta(event: dict) -> str:
                 if text:
                     parts.append(text)
     return "".join(parts)
+
+
+def _finalize_openai_tool_calls(tool_calls: list[dict]) -> list[dict]:
+    """Normalize OpenAI-style tool_calls so arguments is a dict, not a JSON string.
+
+    OpenAI Chat Completions returns ``function.arguments`` as a JSON-encoded
+    string. Downstream executors (execute_tool) expect a dict, matching how
+    Ollama returns tool_calls. Parse once here so consumers see one shape.
+    """
+    finalized: list[dict] = []
+    for tc in tool_calls:
+        if not isinstance(tc, dict):
+            continue
+        fn = dict(tc.get("function") or {})
+        args = fn.get("arguments")
+        if isinstance(args, str):
+            stripped = args.strip()
+            if stripped:
+                try:
+                    fn["arguments"] = json.loads(stripped)
+                except (json.JSONDecodeError, ValueError):
+                    fn["arguments"] = {}
+            else:
+                fn["arguments"] = {}
+        elif args is None:
+            fn["arguments"] = {}
+        finalized.append({**tc, "function": fn})
+    return finalized
 
 
 def _merge_openai_tool_call_deltas(

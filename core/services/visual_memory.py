@@ -125,9 +125,9 @@ def tick_visual_memory_daemon() -> dict[str, object]:
 
     # Capture
     try:
-        image_b64 = _capture_webcam()
+        image_b64 = _capture_image()
     except Exception as exc:
-        logger.warning("visual_memory: webcam capture failed: %s", exc)
+        logger.warning("visual_memory: image capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
 
     # Describe — feed most recent record for change detection
@@ -231,9 +231,9 @@ def look_around_now(*, prompt_override: str = "") -> dict[str, object]:
         return {"status": "no_model", "reason": "vision_model_name not configured"}
 
     try:
-        image_b64 = _capture_webcam()
+        image_b64 = _capture_image()
     except Exception as exc:
-        logger.warning("look_around: webcam capture failed: %s", exc)
+        logger.warning("look_around: image capture failed: %s", exc)
         return {"status": "capture_failed", "error": str(exc)}
 
     existing_records = _load_records()
@@ -311,6 +311,59 @@ def build_visual_memory_surface() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 # Internal: image capture
 # ---------------------------------------------------------------------------
+
+
+def _capture_image() -> str:
+    """Capture image from configured source (HA camera or webcam) and return as base64 JPEG."""
+    source = _capture_source()
+    if source == "ha_camera":
+        try:
+            return _capture_ha_camera()
+        except Exception as exc:
+            logger.warning("visual_memory: HA camera capture failed (%s), falling back to webcam", exc)
+            return _capture_webcam()
+    return _capture_webcam()
+
+
+def _capture_source() -> str:
+    """Return 'ha_camera' or 'webcam' based on runtime config."""
+    settings = load_settings()
+    return str(settings.extra.get("visual_memory_source") or "webcam").strip()
+
+
+def _ha_camera_entity() -> str:
+    """Return HA camera entity_id from runtime config."""
+    settings = load_settings()
+    return str(settings.extra.get("visual_memory_ha_camera_entity") or "camera.camera_hub_g2hpro_9a57").strip()
+
+
+def _capture_ha_camera() -> str:
+    """Fetch snapshot from Home Assistant camera and return as base64 JPEG string."""
+    settings = load_settings()
+    ha_url = str(settings.extra.get("home_assistant_url") or "").strip()
+    ha_token = str(settings.extra.get("home_assistant_token") or "").strip()
+    entity_id = _ha_camera_entity()
+
+    if not ha_url or not ha_token:
+        raise RuntimeError("home_assistant_url eller home_assistant_token ikke konfigureret")
+
+    # HA camera_proxy endpoint returns the live camera image directly
+    url = f"{ha_url.rstrip('/')}/api/camera_proxy/{entity_id}"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {ha_token}",
+            "User-Agent": "Jarvis-VisualMemory/1.0",
+        },
+        method="GET",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        image_bytes = resp.read()
+
+    if not image_bytes or len(image_bytes) < 100:
+        raise RuntimeError("HA kamera returnerede tomt/ugyldigt billede")
+
+    return base64.b64encode(image_bytes).decode("ascii")
 
 
 def _capture_webcam(device_index: int = 0) -> str:

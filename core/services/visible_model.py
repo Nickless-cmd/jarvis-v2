@@ -376,13 +376,21 @@ def execute_visible_model(
         if provider in _OPENAI_COMPATIBLE_PROVIDERS:
             defaults = provider_runtime_defaults(provider)
             base_url = str(defaults.get("base_url") or "")
+            # Build full chat messages with Jarvis identity, transcript and
+            # user turn — same assembly used for GitHub Copilot. Without this
+            # the remote model replies with its own native identity (e.g.
+            # "I am MiniMax-M2.5") because no system prompt is sent.
+            chat_messages = _build_visible_chat_messages_for_github(
+                message=message,
+                session_id=session_id,
+            )
             # auth_profile defaults to provider name (convention in v2)
             result = _execute_openai_compatible_chat(
                 provider=provider,
                 model=model,
                 auth_profile=provider,
                 base_url=base_url,
-                message=message,
+                messages=chat_messages,
             )
             return VisibleModelResult(
                 text=str(result.get("text") or ""),

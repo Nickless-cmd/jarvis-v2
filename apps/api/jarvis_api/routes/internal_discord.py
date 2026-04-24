@@ -18,6 +18,7 @@ from core.services.discord_gateway import (
     send_discord_file,
     send_discord_message,
     send_dm_to_owner,
+    send_dm_to_user,
 )
 
 router = APIRouter(prefix="/api/internal/discord", tags=["internal"])
@@ -54,5 +55,11 @@ def dispatch(req: DispatchRequest, request: Request) -> dict:
         )
     if action == "send_dm_to_owner":
         return send_dm_to_owner(str(args["text"]), float(args.get("timeout", 10.0)))
+    if action == "send_dm_to_user":
+        return send_dm_to_user(
+            str(args["recipient_discord_id"]),
+            str(args["text"]),
+            float(args.get("timeout", 10.0)),
+        )
 
     raise HTTPException(status_code=400, detail=f"unknown action: {action}")

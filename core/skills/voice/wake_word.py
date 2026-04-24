@@ -32,6 +32,11 @@ SILENCE_FRAMES = 20     # frames of silence before we consider speech done
 TRIGGER_WORDS = ["jarvis", "jarvi", "javis", "davis", "jarbs", "jarv", "arvis"]
 TRIGGER_PREFIX = ["hey", "hej", "hi", "yo", "ok", "okay"]
 
+# Shared parec stream for post-wake recording.  Reusing the same stream
+# avoids a ~20dB capture-gain drop that happens on USB audio devices when
+# parec reconnects right after a playback stream (TTS) closed.
+_shared_stdout = None
+
 # Local whisper model — loaded lazily and cached. 'tiny' is plenty for
 # wake-word detection, our TRIGGER_WORDS list already tolerates slop.
 _LOCAL_WHISPER_SIZE = os.environ.get("JARVIS_WAKE_WHISPER_SIZE", "tiny")
@@ -139,12 +144,22 @@ def _is_wake_word(text: str) -> bool:
     return has_jarvis and has_prefix
 
 
+def get_shared_stdout():
+    """Return the currently open parec stdout pipe, or None if not listening.
+
+    Used by post-wake STT to read from the same capture stream instead of
+    opening a fresh parec (which comes up gain-dampened after TTS playback).
+    """
+    return _shared_stdout
+
+
 def listen(callback=None, interrupt_event=None):
     """
     Continuously listen for 'Hey Jarvis'.
-    Uses VAD to gate speech, ElevenLabs STT to transcribe.
+    Uses VAD to gate speech, local whisper to transcribe.
     Calls callback('hey_jarvis') on detection.
     """
+    global _shared_stdout
     if interrupt_event is None:
         interrupt_event = threading.Event()
 
@@ -162,6 +177,7 @@ def listen(callback=None, interrupt_event=None):
 
     print("👂 Listening for 'Hey Jarvis'...")
     proc = _make_proc()
+    _shared_stdout = proc.stdout
 
     speech_frames: list[bytes] = []
     silence_count = 0
@@ -187,7 +203,7 @@ def listen(callback=None, interrupt_event=None):
                     if text:
                         print(f"  heard: {text!r}")
                     if _is_wake_word(text):
-                        _trigger(proc, callback, interrupt_event, _make_proc)
+                        _trigger(proc, callback, interrupt_event)
                     speech_frames = []
                     in_speech = False
 
@@ -202,24 +218,48 @@ def listen(callback=None, interrupt_event=None):
                         if text:
                             print(f"  heard: {text!r}")
                         if _is_wake_word(text):
-                            _trigger(proc, callback, interrupt_event, _make_proc)
-                            proc = _make_proc()
+                            _trigger(proc, callback, interrupt_event)
                     speech_frames = []
                     silence_count = 0
                     in_speech = False
     finally:
+        _shared_stdout = None
         proc.terminate()
         proc.wait()
         print("🛑 Stopped listening")
 
 
-def _trigger(proc, callback, interrupt_event, make_proc):
-    """Handle wake word detection: kill parec, run callback, restart."""
+def _trigger(proc, callback, interrupt_event):
+    """Handle wake word: run callback while keeping parec stream alive."""
     print("🔊 Wake word detected!")
-    proc.terminate()
-    proc.wait()
     if callback:
         callback("hey_jarvis")
+    # Drain backlog that accumulated while callback was busy so the next
+    # VAD cycle sees only fresh audio.
+    _drain_pipe(proc.stdout)
     if not interrupt_event.is_set():
         import time
-        time.sleep(2.0)  # brief cooldown after TTS finishes
+        time.sleep(0.5)  # short cooldown after TTS finishes
+        _drain_pipe(proc.stdout)
+
+
+def _drain_pipe(stdout) -> int:
+    """Non-blocking drain of any pending bytes in stdout. Returns bytes dropped."""
+    import fcntl
+    import os as _os
+    fd = stdout.fileno()
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | _os.O_NONBLOCK)
+    total = 0
+    try:
+        while True:
+            try:
+                chunk = _os.read(fd, 65536)
+            except BlockingIOError:
+                break
+            if not chunk:
+                break
+            total += len(chunk)
+    finally:
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+    return total

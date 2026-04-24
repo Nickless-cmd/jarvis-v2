@@ -60,20 +60,23 @@ _CACHE_INVALIDATION_SNAPSHOT: dict[str, object] = {}
 
 
 def _cache_ttl_seconds() -> float:
-    """Read TTL from settings; default 120s."""
+    """Read TTL from settings; default 120s. TTL=0 disables caching."""
     try:
         from core.runtime.settings import load_settings
         s = load_settings()
-        return float(s.cognitive_state_cache_ttl_seconds)
+        return float(s.cognitive_state_cache_ttl)
     except Exception:
         return 120.0
 
 
 def _cache_enabled() -> bool:
-    """Check if caching is enabled in settings."""
+    """Check if caching is enabled in settings. TTL=0 also disables."""
     try:
         from core.runtime.settings import load_settings
-        return bool(load_settings().cognitive_state_cache_enabled)
+        s = load_settings()
+        if int(s.cognitive_state_cache_ttl) <= 0:
+            return False
+        return bool(s.cognitive_state_cache_enabled)
     except Exception:
         return True  # default on
 

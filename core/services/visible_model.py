@@ -749,7 +749,12 @@ def _execute_github_copilot_visible_model(
     )
 
     from core.tools.simple_tools import get_tool_definitions
-    tools = get_tool_definitions()
+    from core.tools.copilot_tool_pruning import select_tools_for_copilot
+    tools = select_tools_for_copilot(
+        get_tool_definitions(),
+        user_message=message,
+        session_id=session_id,
+    )
 
     payload: dict[str, object] = {
         "model": normalized_model,
@@ -984,7 +989,12 @@ def _stream_github_copilot_model(
     _ensure_github_copilot_model_available(profile=profile, model=normalized_model)
 
     from core.tools.simple_tools import get_tool_definitions
-    tools = get_tool_definitions()
+    from core.tools.copilot_tool_pruning import select_tools_for_copilot
+    tools = select_tools_for_copilot(
+        get_tool_definitions(),
+        user_message=message,
+        session_id=session_id,
+    )
 
     payload: dict[str, object] = {
         "model": normalized_model,

@@ -1110,13 +1110,17 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_discord_dm",
-            "description": "Send a direct message (DM) to Bjørn on Discord. Works even when he hasn't written first — use this for proactive reach-out, alerts, or sharing something interesting. Does not require an active Discord session.",
+            "description": "Send a direct message (DM) on Discord to a known user. Works even when they haven't written first. Defaults to Bjørn (owner) when no recipient is specified. Use the `recipient` field to DM other known users (e.g. Michelle) — recipient must be registered in users.json.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "content": {
                         "type": "string",
                         "description": "The message to send as a DM on Discord.",
+                    },
+                    "recipient": {
+                        "type": "string",
+                        "description": "Optional. Discord user ID or name of a known user to DM (e.g. '1313522677369143429' or 'Michelle'). Omit to DM Bjørn (owner). Must be registered in users.json — Jarvis cannot DM strangers.",
                     },
                 },
                 "required": ["content"],
@@ -3800,15 +3804,44 @@ def _exec_send_webchat_message(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_send_discord_dm(args: dict[str, Any]) -> dict[str, Any]:
-    """Send a DM directly to the owner via Discord, no active session required."""
+    """Send a DM on Discord. Defaults to owner; resolves optional recipient from users.json."""
     content = str(args.get("content") or "").strip()
     if not content:
         return {"status": "error", "text": "No content provided."}
+    recipient_raw = str(args.get("recipient") or "").strip()
+
     try:
-        from core.services.discord_gateway import send_dm_to_owner
-        result = send_dm_to_owner(content)
-        if result["status"] == "sent":
-            return {"status": "ok", "text": f"Discord DM sent. channel_id={result.get('channel_id')}"}
+        from core.services.discord_gateway import send_dm_to_owner, send_dm_to_user
+
+        if not recipient_raw:
+            result = send_dm_to_owner(content)
+            who = "Bjørn (owner)"
+        else:
+            from core.identity.users import load_users
+            users = load_users()
+            # Accept either discord_id or (case-insensitive) name
+            matched = next(
+                (
+                    u for u in users
+                    if str(u.discord_id) == recipient_raw
+                    or u.name.lower() == recipient_raw.lower()
+                ),
+                None,
+            )
+            if matched is None:
+                known = ", ".join(f"{u.name} ({u.discord_id})" for u in users) or "(none)"
+                return {
+                    "status": "error",
+                    "text": f"Unknown Discord recipient '{recipient_raw}'. Known users: {known}",
+                }
+            result = send_dm_to_user(matched.discord_id, content)
+            who = f"{matched.name} ({matched.discord_id})"
+
+        if result.get("status") == "sent":
+            return {
+                "status": "ok",
+                "text": f"Discord DM sent to {who}. channel_id={result.get('channel_id')}",
+            }
         return {"status": "error", "text": f"Discord DM failed: {result.get('reason')}"}
     except Exception as exc:
         return {"status": "error", "text": f"Discord DM error: {exc}"}

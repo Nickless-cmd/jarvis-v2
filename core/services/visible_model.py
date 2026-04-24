@@ -374,30 +374,13 @@ def execute_visible_model(
             provider_runtime_defaults,
         )
         if provider in _OPENAI_COMPATIBLE_PROVIDERS:
-            defaults = provider_runtime_defaults(provider)
-            base_url = str(defaults.get("base_url") or "")
-            # Build full chat messages with Jarvis identity, transcript and
-            # user turn — same assembly used for GitHub Copilot. Without this
-            # the remote model replies with its own native identity (e.g.
-            # "I am MiniMax-M2.5") because no system prompt is sent.
-            chat_messages = _build_visible_chat_messages_for_github(
+            result, _tool_calls = _run_openai_compatible_visible(
+                provider=provider,
+                model=model,
                 message=message,
                 session_id=session_id,
             )
-            # auth_profile defaults to provider name (convention in v2)
-            result = _execute_openai_compatible_chat(
-                provider=provider,
-                model=model,
-                auth_profile=provider,
-                base_url=base_url,
-                messages=chat_messages,
-            )
-            return VisibleModelResult(
-                text=str(result.get("text") or ""),
-                input_tokens=int(result.get("input_tokens") or 0),
-                output_tokens=int(result.get("output_tokens") or 0),
-                cost_usd=float(result.get("cost_usd") or 0.0),
-            )
+            return result
     except Exception as exc:
         raise ValueError(
             f"Visible model dispatch failed for {provider}/{model}: {exc}"
@@ -439,6 +422,24 @@ def stream_visible_model(
         )
         return
 
+    # openai-compat providers (opencode, groq, openrouter, nvidia-nim, mistral,
+    # sambanova) — non-streaming call with tools, then yield chunks + tool_calls
+    # so the agentic loop can pick them up and run the follow-up round.
+    from core.services.cheap_provider_runtime import _OPENAI_COMPATIBLE_PROVIDERS
+    if provider in _OPENAI_COMPATIBLE_PROVIDERS:
+        result, tool_calls = _run_openai_compatible_visible(
+            provider=provider,
+            model=model,
+            message=message,
+            session_id=session_id,
+        )
+        for chunk in _chunk_text(result.text):
+            yield VisibleModelDelta(delta=chunk)
+        if tool_calls:
+            yield VisibleModelToolCalls(tool_calls=tool_calls)
+        yield VisibleModelStreamDone(result=result)
+        return
+
     result = execute_visible_model(
         message=message,
         provider=provider,
@@ -448,6 +449,46 @@ def stream_visible_model(
     for chunk in _chunk_text(result.text):
         yield VisibleModelDelta(delta=chunk)
     yield VisibleModelStreamDone(result=result)
+
+
+def _run_openai_compatible_visible(
+    *, provider: str, model: str, message: str, session_id: str | None,
+) -> tuple[VisibleModelResult, list[dict]]:
+    """Shared entry point for openai-compat visible providers.
+
+    Builds Jarvis-identity chat messages, passes tool definitions so the
+    model can actually call tools, and returns (result, tool_calls) so
+    callers can choose whether to drive an agentic follow-up loop.
+    """
+    from core.services.cheap_provider_runtime import (
+        _execute_openai_compatible_chat,
+        provider_runtime_defaults,
+    )
+    from core.tools.simple_tools import get_tool_definitions
+
+    defaults = provider_runtime_defaults(provider)
+    base_url = str(defaults.get("base_url") or "")
+    chat_messages = _build_visible_chat_messages_for_github(
+        message=message,
+        session_id=session_id,
+    )
+    tools = get_tool_definitions()
+    raw = _execute_openai_compatible_chat(
+        provider=provider,
+        model=model,
+        auth_profile=provider,
+        base_url=base_url,
+        messages=chat_messages,
+        tools=tools or None,
+    )
+    result = VisibleModelResult(
+        text=str(raw.get("text") or ""),
+        input_tokens=int(raw.get("input_tokens") or 0),
+        output_tokens=int(raw.get("output_tokens") or 0),
+        cost_usd=float(raw.get("cost_usd") or 0.0),
+    )
+    tool_calls = list(raw.get("tool_calls") or [])
+    return result, tool_calls
 
 
 def visible_execution_readiness() -> dict[str, str | bool | None]:

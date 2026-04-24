@@ -507,3 +507,77 @@ def test_openai_compat_chat_accepts_messages_list(isolated_runtime, monkeypatch)
     assert result["text"] == "ok"
     assert result["input_tokens"] == 42
     assert result["output_tokens"] == 3
+
+
+def test_openai_compat_chat_forwards_tools_and_returns_tool_calls(
+    isolated_runtime, monkeypatch
+) -> None:
+    """Regression: visible lane for OpenCode/Groq/etc. must forward tool
+    definitions and surface tool_calls from the response. Without this
+    the model either refuses to call tools (no tools known) or emits
+    them as inline text markup that no agentic loop picks up."""
+    auth_profiles = isolated_runtime.auth_profiles
+    cheap = isolated_runtime.cheap_provider_runtime
+
+    auth_profiles.save_provider_credentials(
+        profile="opencode",
+        provider="opencode",
+        credentials={"api_key": "oc_test_key"},  # pragma: allowlist secret
+    )
+
+    captured: dict[str, object] = {}
+
+    def _fake_http_json(url, *, payload, headers, provider, method="POST"):
+        captured["payload"] = payload
+        return (
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "",
+                            "tool_calls": [
+                                {
+                                    "id": "call_1",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "read_file",
+                                        "arguments": '{"path": "/tmp/x"}',
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+            },
+            {},
+        )
+
+    monkeypatch.setattr(cheap, "_http_json", _fake_http_json)
+
+    tool_defs = [
+        {
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "description": "Read a file",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}},
+                    "required": ["path"],
+                },
+            },
+        }
+    ]
+    result = cheap._execute_openai_compatible_chat(
+        provider="opencode",
+        model="big-pickle",
+        auth_profile="opencode",
+        base_url="https://opencode.ai/zen/v1",
+        messages=[{"role": "user", "content": "read /tmp/x"}],
+        tools=tool_defs,
+    )
+
+    assert captured["payload"]["tools"] == tool_defs
+    assert len(result["tool_calls"]) == 1
+    assert result["tool_calls"][0]["function"]["name"] == "read_file"

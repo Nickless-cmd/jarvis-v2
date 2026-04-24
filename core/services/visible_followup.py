@@ -350,8 +350,42 @@ class OpenAICompatFollowupAdapter:
                 method="POST",
             )
 
-        raise RuntimeError(
-            f"OpenAICompatFollowupAdapter: no request builder for provider '{self.provider_id}'"
+        # Generic openai-compat provider (opencode, groq, openrouter, mistral,
+        # nvidia-nim, sambanova). Look up base_url + credentials via the cheap
+        # provider runtime so we don't duplicate config here.
+        from core.services.cheap_provider_runtime import (
+            _OPENAI_COMPATIBLE_PROVIDERS,
+            _require_credentials,
+            provider_runtime_defaults,
+        )
+
+        if self.provider_id not in _OPENAI_COMPATIBLE_PROVIDERS:
+            raise RuntimeError(
+                f"OpenAICompatFollowupAdapter: no request builder for provider '{self.provider_id}'"
+            )
+
+        defaults = provider_runtime_defaults(self.provider_id)
+        base_url = str(defaults.get("base_url") or "").rstrip("/")
+        credentials = _require_credentials(
+            profile=self.provider_id, provider=self.provider_id
+        )
+        api_key = str(credentials.get("api_key") or "").strip()
+        payload: dict[str, object] = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+        }
+        if tool_definitions:
+            payload["tools"] = list(tool_definitions)
+        return urllib_request.Request(
+            f"{base_url}/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Accept": "text/event-stream",
+            },
+            method="POST",
         )
 
     def _serialize_exchanges(self, exchanges: list[ToolExchange]) -> list[dict]:
@@ -497,6 +531,16 @@ _COPILOT_ADAPTER = OpenAICompatFollowupAdapter(provider_id="github-copilot")
 _ADAPTERS: dict[str, FollowupAdapter] = {
     "ollama": _OLLAMA_ADAPTER,
     "github-copilot": _COPILOT_ADAPTER,
+    # Share a single OpenAICompatFollowupAdapter instance per openai-compat
+    # provider so agentic tool-calling loops work for the same providers the
+    # visible lane can already dispatch to (see cheap_provider_runtime
+    # _OPENAI_COMPATIBLE_PROVIDERS).
+    "opencode": OpenAICompatFollowupAdapter(provider_id="opencode"),
+    "groq": OpenAICompatFollowupAdapter(provider_id="groq"),
+    "openrouter": OpenAICompatFollowupAdapter(provider_id="openrouter"),
+    "mistral": OpenAICompatFollowupAdapter(provider_id="mistral"),
+    "nvidia-nim": OpenAICompatFollowupAdapter(provider_id="nvidia-nim"),
+    "sambanova": OpenAICompatFollowupAdapter(provider_id="sambanova"),
 }
 
 

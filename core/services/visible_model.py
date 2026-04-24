@@ -748,11 +748,16 @@ def _execute_github_copilot_visible_model(
         session_id=session_id,
     )
 
-    payload = {
+    from core.tools.simple_tools import get_tool_definitions
+    tools = get_tool_definitions()
+
+    payload: dict[str, object] = {
         "model": normalized_model,
         "messages": messages,
         "stream": False,
     }
+    if tools:
+        payload["tools"] = tools
     try:
         data = _post_github_copilot_chat_completion(
             payload=payload,
@@ -964,7 +969,7 @@ def _stream_ollama_model(
 
 def _stream_github_copilot_model(
     *, message: str, model: str, session_id: str | None = None, controller=None
-) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+) -> Iterator[VisibleModelDelta | VisibleModelToolCalls | VisibleModelStreamDone]:
     settings = load_settings()
     profile = settings.visible_auth_profile or "default"
 
@@ -978,7 +983,10 @@ def _stream_github_copilot_model(
     normalized_model = _normalize_github_models_model_id(model)
     _ensure_github_copilot_model_available(profile=profile, model=normalized_model)
 
-    payload = {
+    from core.tools.simple_tools import get_tool_definitions
+    tools = get_tool_definitions()
+
+    payload: dict[str, object] = {
         "model": normalized_model,
         "messages": _build_visible_chat_messages_for_github(
             message=message,
@@ -986,6 +994,8 @@ def _stream_github_copilot_model(
         ),
         "stream": True,
     }
+    if tools:
+        payload["tools"] = tools
     req = urllib_request.Request(
         f"{_COPILOT_API_ROOT}/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
@@ -994,6 +1004,7 @@ def _stream_github_copilot_model(
     )
 
     parts: list[str] = []
+    tool_call_accumulator: dict[int, dict] = {}
 
     try:
         with urllib_request.urlopen(req, timeout=180) as response:
@@ -1004,6 +1015,7 @@ def _stream_github_copilot_model(
                 if delta:
                     parts.append(delta)
                     yield VisibleModelDelta(delta=delta)
+                _merge_openai_tool_call_deltas(tool_call_accumulator, event)
                 if _chat_completion_stream_is_terminal(event):
                     break
     except urllib_error.HTTPError as exc:
@@ -1025,8 +1037,14 @@ def _stream_github_copilot_model(
         if controller is not None:
             controller.clear_stream()
 
+    collected_tool_calls = [
+        tool_call_accumulator[idx] for idx in sorted(tool_call_accumulator.keys())
+    ]
+    if collected_tool_calls:
+        yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
+
     text = "".join(parts).strip()
-    if not text:
+    if not text and not collected_tool_calls:
         if controller is not None and controller.is_cancelled():
             raise VisibleModelStreamCancelled("visible-run-cancelled")
         raise RuntimeError("GitHub Copilot visible execution returned no streamed text")
@@ -1792,6 +1810,43 @@ def _extract_chat_completion_delta(event: dict) -> str:
                 if text:
                     parts.append(text)
     return "".join(parts)
+
+
+def _merge_openai_tool_call_deltas(
+    accumulator: dict[int, dict], event: dict
+) -> None:
+    """Merge OpenAI SSE tool_calls delta chunks into a per-index accumulator.
+
+    Tool calls stream as partial objects keyed by `index`: the first chunk
+    carries id/name, later chunks append to `function.arguments`. This merges
+    them in-place so the caller can yield complete tool calls once the stream
+    terminates.
+    """
+    for item in event.get("choices") or []:
+        if not isinstance(item, dict):
+            continue
+        delta = item.get("delta") or {}
+        for tc in delta.get("tool_calls") or []:
+            if not isinstance(tc, dict):
+                continue
+            idx = int(tc.get("index") or 0)
+            slot = accumulator.setdefault(
+                idx,
+                {
+                    "id": None,
+                    "type": "function",
+                    "function": {"name": None, "arguments": ""},
+                },
+            )
+            if tc.get("id"):
+                slot["id"] = tc["id"]
+            if tc.get("type"):
+                slot["type"] = tc["type"]
+            fn = tc.get("function") or {}
+            if fn.get("name"):
+                slot["function"]["name"] = fn["name"]
+            if "arguments" in fn and fn["arguments"] is not None:
+                slot["function"]["arguments"] += str(fn["arguments"])
 
 
 def _chat_completion_stream_is_terminal(event: dict) -> bool:

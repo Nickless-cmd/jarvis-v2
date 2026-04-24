@@ -33,6 +33,8 @@ class RuntimeSettings:
     cognitive_state_assembly_enabled: bool = True
     # Cognitive state cache TTL (seconds). 0 = disabled.
     cognitive_state_cache_ttl: int = 120
+    # Cognitive state cache on/off toggle (independent of TTL).
+    cognitive_state_cache_enabled: bool = True
     # Emotion decay
     emotion_decay_factor: float = 0.97
     # Context compact thresholds

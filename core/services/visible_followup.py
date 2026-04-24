@@ -468,10 +468,16 @@ class OpenAICompatFollowupAdapter:
 
         parts: list[str] = []
         tool_call_accumulator: dict[int, dict] = {}
+        import time as _time
+        _t0 = _time.monotonic()
+        _ttfb_ms: int | None = None
+        _prompt_chars = sum(len(str(m.get("content", ""))) for m in messages)
 
         try:
             with urllib_request.urlopen(req, timeout=180) as response:
                 for event in _iter_sse_events(response):
+                    if _ttfb_ms is None:
+                        _ttfb_ms = int((_time.monotonic() - _t0) * 1000)
                     delta = _extract_chat_completion_delta(event)
                     if delta:
                         parts.append(delta)
@@ -521,6 +527,17 @@ class OpenAICompatFollowupAdapter:
             tool_call_accumulator[idx] for idx in sorted(tool_call_accumulator.keys())
         ]
         tool_calls = _finalize_openai_tool_calls(tool_calls)
+        _total_ms = int((_time.monotonic() - _t0) * 1000)
+        _log.info(
+            "visible-latency provider=%s round=followup-%d prompt_chars=%d ttfb_ms=%s total_ms=%d text_chars=%d tool_calls=%d",
+            self.provider_id,
+            round_index,
+            _prompt_chars,
+            _ttfb_ms if _ttfb_ms is not None else -1,
+            _total_ms,
+            sum(len(p) for p in parts),
+            len(tool_calls),
+        )
         if tool_calls:
             yield FollowupToolCalls(tool_calls=tool_calls)
         yield FollowupDone(text="".join(parts))

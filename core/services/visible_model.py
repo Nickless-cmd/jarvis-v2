@@ -114,19 +114,18 @@ def _github_model_matches_requested(*, requested: str, candidate: str) -> bool:
     if not requested_clean or not candidate_clean:
         return False
 
-    try:
-        requested_normalized = _normalize_github_models_model_id(requested_clean).lower()
-    except ValueError:
-        requested_normalized = requested_clean.lower()
+    def _strip_provider_prefix(model_id: str) -> str:
+        # "openai/gpt-5-mini" → "gpt-5-mini", so a user-typed flat ID matches
+        # the catalog's provider-prefixed form.
+        if "/" in model_id and not model_id.startswith("/"):
+            return model_id.split("/", 1)[1]
+        return model_id
 
-    try:
-        candidate_normalized = _normalize_github_models_model_id(candidate_clean).lower()
-    except ValueError:
-        candidate_normalized = candidate_clean.lower()
-
-    if requested_normalized == candidate_normalized:
+    req_lower = requested_clean.lower().replace(" ", "-")
+    cand_lower = candidate_clean.lower()
+    if req_lower == cand_lower:
         return True
-    return requested_clean.lower() == candidate_clean.lower()
+    return _strip_provider_prefix(req_lower) == _strip_provider_prefix(cand_lower)
 
 
 def _probe_github_copilot_model(*, profile: str, model: str) -> dict[str, str | bool | None]:

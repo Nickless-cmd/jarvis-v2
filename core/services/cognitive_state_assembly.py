@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 from core.services.cognitive_state_narrativizer import (
@@ -70,27 +71,75 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     parts: list[str] = []
     sources_used: list[str] = []
 
+    # --- Kick off the heaviest independent LLM calls first ---
+    # `recall_for_message` is the dominant bottleneck (~15s on cold scoring).
+    # Fetching user_mood (a fast DB read) unblocks it. Launching it here,
+    # at function entry, lets it overlap with EVERY other section's work
+    # instead of waiting until we reach the associative-recall block.
+    _heavy_executor = ThreadPoolExecutor(
+        max_workers=6, thread_name_prefix="cognitive-state"
+    )
+    _early_user_mood = _safe_call(get_latest_cognitive_user_emotional_state)
+    future_recall_for_message = None
+    if not compact and _early_user_mood:
+        _recall_message_text = str(_early_user_mood.get("user_message_preview") or "")
+        _recall_emotional_state: dict[str, object] = {}
+        try:
+            from core.services.affective_meta_state import build_affective_meta_state
+            aff = build_affective_meta_state()
+            baseline = aff.get("emotional_baseline") or {}
+            if isinstance(baseline, dict):
+                _recall_emotional_state = {
+                    k: float(v) for k, v in baseline.items()
+                    if isinstance(v, (int, float))
+                }
+        except Exception:
+            pass
+        future_recall_for_message = _heavy_executor.submit(
+            _safe_call,
+            lambda: recall_for_message(_recall_message_text, _recall_emotional_state),
+        )
+
+    # Parallelize the 4 LLM-narrativized lines. They're independent (each
+    # reads runtime state and calls the narrativizer once) so run them
+    # concurrently and resolve in the original order to preserve layout.
+    future_self_anchor = _heavy_executor.submit(_safe_call, _narrativize_self_anchor)
+    future_embodied = _heavy_executor.submit(_safe_call, _narrativize_embodied_state)
+    future_affective = _heavy_executor.submit(_safe_call, _narrativize_affective_state)
+    future_boundary = (
+        _heavy_executor.submit(_safe_call, _narrativize_boundary)
+        if not compact
+        else None
+    )
+
+    # The cognitive-core experiment state line builds a cognitive frame
+    # internally (~2.65s). Kick it off in parallel too.
+    future_experiment_state = _heavy_executor.submit(
+        _build_cognitive_core_experiment_state_line, compact=compact
+    )
+    _heavy_executor.shutdown(wait=False)
+
     # --- Ejerskab / Mineness (LLM-narrativized self-anchor) ---
-    self_anchor = _safe_call(_narrativize_self_anchor)
+    self_anchor = future_self_anchor.result()
     if self_anchor:
         parts.append(f"[SELF] {self_anchor}")
         sources_used.append("self_anchor")
 
     # --- Narrativ embodied state (LLM-grounded in real embodied state) ---
-    narrativ_body = _safe_call(_narrativize_embodied_state)
+    narrativ_body = future_embodied.result()
     if narrativ_body:
         parts.append(narrativ_body)
         sources_used.append("embodied_narrative")
 
     # --- Narrativ affective state (LLM-grounded in real affective state) ---
-    narrativ_affect = _safe_call(_narrativize_affective_state)
+    narrativ_affect = future_affective.result()
     if narrativ_affect:
         parts.append(narrativ_affect)
         sources_used.append("affective_narrative")
 
     # --- Boundary awareness (LLM-grounded in real runtime context) ---
-    if not compact:
-        boundary_line = _safe_call(_narrativize_boundary)
+    if not compact and future_boundary is not None:
+        boundary_line = future_boundary.result()
         if boundary_line:
             parts.append(boundary_line)
             sources_used.append("boundary")
@@ -256,7 +305,9 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
                 sources_used.append("chronicle")
 
     # --- User Emotional Resonance ---
-    user_mood = _safe_call(get_latest_cognitive_user_emotional_state)
+    # user_mood was already fetched at function entry to unblock the heavy
+    # recall_for_message future. Re-use it here.
+    user_mood = _early_user_mood
     if user_mood:
         mood = str(user_mood.get("detected_mood") or "").strip()
         adjustment = str(user_mood.get("response_adjustment") or "").strip()
@@ -299,18 +350,14 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
 
     # --- Associative Memory Recall ---
     if not compact:
-        if user_mood:
-            message_text = str(user_mood.get("user_message_preview") or "")
-            emotional_state: dict[str, object] = {}
+        # The scoring call was kicked off earlier in parallel with fast DB
+        # reads. Resolve it now so _active_memories is populated before
+        # build_recall_prompt_section reads it.
+        if future_recall_for_message is not None:
             try:
-                from core.services.affective_meta_state import build_affective_meta_state
-                aff = build_affective_meta_state()
-                baseline = aff.get("emotional_baseline") or {}
-                if isinstance(baseline, dict):
-                    emotional_state = {k: float(v) for k, v in baseline.items() if isinstance(v, (int, float))}
+                future_recall_for_message.result()
             except Exception:
                 pass
-            _safe_call(lambda: recall_for_message(message_text, emotional_state))
 
         recall_section = _safe_call(build_recall_prompt_section)
         if recall_section:
@@ -349,7 +396,11 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
             pass
 
     # --- Cognitive-core experiment carry (shared truth + bounded conductor carry) ---
-    experiment_state_line = _build_cognitive_core_experiment_state_line(compact=compact)
+    # Submitted as a future at function entry — resolve here.
+    try:
+        experiment_state_line = future_experiment_state.result()
+    except Exception:
+        experiment_state_line = None
     if experiment_state_line:
         parts.append(experiment_state_line)
         sources_used.append("cognitive_core_experiments")

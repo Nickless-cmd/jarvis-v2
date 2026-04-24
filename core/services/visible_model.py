@@ -473,6 +473,11 @@ def _run_openai_compatible_visible(
         session_id=session_id,
     )
     tools = get_tool_definitions()
+    import time as _time
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+    _prompt_chars = sum(len(str(m.get("content", ""))) for m in chat_messages)
+    _t0 = _time.monotonic()
     raw = _execute_openai_compatible_chat(
         provider=provider,
         model=model,
@@ -480,6 +485,18 @@ def _run_openai_compatible_visible(
         base_url=base_url,
         messages=chat_messages,
         tools=tools or None,
+    )
+    _total_ms = int((_time.monotonic() - _t0) * 1000)
+    _log.info(
+        "visible-latency provider=%s model=%s round=first-pass prompt_chars=%d total_ms=%d text_chars=%d tool_calls=%d input_tokens=%s output_tokens=%s",
+        provider,
+        model,
+        _prompt_chars,
+        _total_ms,
+        len(str(raw.get("text") or "")),
+        len(list(raw.get("tool_calls") or [])),
+        raw.get("input_tokens"),
+        raw.get("output_tokens"),
     )
     result = VisibleModelResult(
         text=str(raw.get("text") or ""),

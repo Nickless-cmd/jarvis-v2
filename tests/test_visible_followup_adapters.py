@@ -431,3 +431,82 @@ def test_openai_compat_adapter_failed_on_http_error(
     failed = [e for e in events if isinstance(e, vf.FollowupFailed)]
     assert len(failed) == 1
     assert "HTTP 429" in failed[0].summary
+
+
+def test_openai_compat_adapter_caps_tools_to_128_for_copilot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.auth import copilot_session
+    from core.services import non_visible_lane_execution, visible_model
+    from core.runtime import settings as settings_mod
+
+    monkeypatch.setattr(
+        copilot_session, "get_copilot_session_token", lambda *, profile: "fake-token"
+    )
+    monkeypatch.setattr(
+        non_visible_lane_execution,
+        "_load_github_copilot_token",
+        lambda *, profile: None,
+    )
+    monkeypatch.setattr(
+        non_visible_lane_execution,
+        "_github_copilot_request_headers",
+        lambda token, accept="application/json": {
+            "Authorization": f"Bearer {token}",
+            "Accept": accept,
+        },
+    )
+    monkeypatch.setattr(
+        non_visible_lane_execution, "_COPILOT_API_ROOT", "https://copilot.test"
+    )
+    monkeypatch.setattr(
+        visible_model, "_normalize_github_models_model_id", lambda m: m
+    )
+
+    class _Stub:
+        visible_auth_profile = "default"
+
+    monkeypatch.setattr(settings_mod, "load_settings", lambda: _Stub())
+
+    sse_lines = [
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n',
+        b"\n",
+        b"data: [DONE]\n",
+        b"\n",
+    ]
+
+    oversized_tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": f"tool_{idx}",
+                "description": "d",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+        }
+        for idx in range(162)
+    ]
+
+    with _patched_urlopen(monkeypatch, sse_lines) as captured:
+        list(
+            vf.stream_visible_followup(
+                provider="github-copilot",
+                model="gpt-5.4",
+                base_messages=[{"role": "user", "content": "hi"}],
+                exchanges=[
+                    vf.ToolExchange(
+                        text="",
+                        tool_calls=[],
+                        results=[vf.ToolResult("", "search_memory", "none")],
+                    )
+                ],
+                tool_definitions=oversized_tools,
+            )
+        )
+
+    body = captured["body"]
+    assert isinstance(body, dict)
+    assert len(body.get("tools") or []) == 128

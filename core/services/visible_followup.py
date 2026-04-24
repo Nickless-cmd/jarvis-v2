@@ -337,7 +337,10 @@ class OpenAICompatFollowupAdapter:
                 "stream": True,
             }
             if tool_definitions:
-                payload["tools"] = tool_definitions
+                # Copilot chat/completions currently enforces max 128 tools.
+                # Without this cap the followup stream fails with HTTP 400 and
+                # visible runs are interrupted mid tool-calling loop.
+                payload["tools"] = list(tool_definitions)[:128]
             return urllib_request.Request(
                 f"{_COPILOT_API_ROOT}/chat/completions",
                 data=json.dumps(payload).encode("utf-8"),

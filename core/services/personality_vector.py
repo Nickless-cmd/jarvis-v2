@@ -128,6 +128,14 @@ def update_personality_vector_from_run(
             "source": "llm" if updates else "deterministic",
         },
     )
+
+    # Invalidate cognitive state cache — bearing/mood may have shifted
+    try:
+        from core.services.cognitive_state_assembly import invalidate_cognitive_state_cache
+        invalidate_cognitive_state_cache()
+    except Exception:
+        pass
+
     return result
 
 

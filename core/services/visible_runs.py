@@ -2246,6 +2246,16 @@ def _native_tool_calls_to_capabilities(tool_calls: list[dict]) -> list[dict]:
         fn = tc.get("function") or {}
         name = str(fn.get("name") or "")
         arguments = fn.get("arguments") or {}
+        # OpenAI-compat providers (Copilot, OpenCode, Groq, ...) serialize
+        # tool_call arguments as a JSON string per the OpenAI wire spec.
+        # Downstream executors expect a dict, so parse once here.
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments) if arguments.strip() else {}
+            except (ValueError, TypeError):
+                arguments = {}
+        if not isinstance(arguments, dict):
+            arguments = {}
         if not name:
             continue
         resolved = resolve_tool_call_to_capability(name, arguments)
@@ -2289,6 +2299,16 @@ def _execute_simple_tool_calls(
         fn = tc.get("function") or {}
         name = str(fn.get("name") or "")
         arguments = fn.get("arguments") or {}
+        # OpenAI-compat providers (Copilot, OpenCode, Groq, ...) serialize
+        # tool_call arguments as a JSON string per the OpenAI wire spec.
+        # Downstream executors expect a dict, so parse once here.
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments) if arguments.strip() else {}
+            except (ValueError, TypeError):
+                arguments = {}
+        if not isinstance(arguments, dict):
+            arguments = {}
         if not name:
             continue
         signature = json.dumps(

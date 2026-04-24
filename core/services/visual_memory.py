@@ -358,10 +358,17 @@ def _capture_ha_camera() -> str:
         method="GET",
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
+        content_type = str(resp.headers.get("Content-Type") or "").lower()
         image_bytes = resp.read()
 
-    if not image_bytes or len(image_bytes) < 100:
-        raise RuntimeError("HA kamera returnerede tomt/ugyldigt billede")
+    if not image_bytes or len(image_bytes) < 1024:
+        raise RuntimeError(
+            f"HA kamera returnerede for lille payload ({len(image_bytes)} bytes)"
+        )
+    if content_type and not content_type.startswith("image/"):
+        raise RuntimeError(
+            f"HA kamera returnerede non-image content-type: {content_type}"
+        )
 
     return base64.b64encode(image_bytes).decode("ascii")
 

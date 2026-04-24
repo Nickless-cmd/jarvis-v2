@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -271,6 +272,16 @@ class InnerVisiblePromptBridgeDecision:
     subordinate: bool
 
 
+def _safe_build_cognitive_state_for_prompt(*, compact: bool) -> str | None:
+    try:
+        from core.services.cognitive_state_assembly import (
+            build_cognitive_state_for_prompt,
+        )
+        return build_cognitive_state_for_prompt(compact=compact)
+    except Exception:
+        return None
+
+
 def build_visible_chat_prompt_assembly(
     *,
     provider: str,
@@ -287,11 +298,30 @@ def build_visible_chat_prompt_assembly(
     conditional_files: list[str] = []
     derived_inputs: list[str] = []
     excluded_files = ["BOOTSTRAP.md", "HEARTBEAT.md", *DEFAULT_EXCLUDED_FILES]
-    relevance = build_prompt_relevance_decision(
+
+    # --- Phase 1: launch heavy independent Ollama calls in parallel ---
+    # These are the main TTFT bottleneck. Running them concurrently with
+    # each other (and with the fast synchronous file reads below) cuts
+    # prompt assembly time from ~15s down to roughly the slowest single
+    # call (~8s for build_cognitive_state_for_prompt).
+    executor = ThreadPoolExecutor(max_workers=6, thread_name_prefix="prompt-assembly")
+    frame_fn = _micro_cognitive_frame_section if compact else _cognitive_frame_section
+
+    future_relevance = executor.submit(
+        build_prompt_relevance_decision,
         user_message,
         mode="visible_chat",
         compact=compact,
         name=name,
+    )
+    future_cognitive_state = executor.submit(
+        _safe_build_cognitive_state_for_prompt, compact=compact
+    )
+    future_frame = executor.submit(frame_fn)
+    future_self_report = executor.submit(
+        _runtime_self_report_instruction,
+        user_message=user_message,
+        runtime_self_report_context=runtime_self_report_context or {},
     )
 
     # 0.5 Lane identity — inject before everything else
@@ -402,8 +432,14 @@ def build_visible_chat_prompt_assembly(
         parts.append(mutation_section)
         derived_inputs.append("self mutation lineage")
 
-    if relevance.include_memory:
-        memory_selection = _workspace_memory_section(
+    # Resolve relevance — blocks until the bounded NL prompt relevance call
+    # returns, but happens concurrently with fast file reads above.
+    relevance = future_relevance.result()
+
+    # --- Phase 2: launch relevance-dependent Ollama calls in parallel ---
+    future_memory_selection = (
+        executor.submit(
+            _workspace_memory_section,
             workspace_dir / "MEMORY.md",
             label="MEMORY.md",
             user_message=user_message,
@@ -412,6 +448,29 @@ def build_visible_chat_prompt_assembly(
             workspace_dir=workspace_dir,
             mode="visible_chat",
         )
+        if relevance.include_memory
+        else None
+    )
+    future_recall_bundle = (
+        executor.submit(
+            _visible_memory_recall_bundle_section,
+            session_id=session_id,
+            user_message=user_message,
+            compact=compact,
+        )
+        if relevance.include_memory
+        else None
+    )
+    future_bridge_decision = executor.submit(
+        _build_inner_visible_prompt_bridge_decision,
+        user_message=user_message,
+        mode="visible_chat",
+        compact=compact,
+        relevance=relevance,
+    )
+
+    if relevance.include_memory:
+        memory_selection = future_memory_selection.result()
         if memory_selection:
             parts.append(
                 "\n".join(
@@ -440,11 +499,7 @@ def build_visible_chat_prompt_assembly(
             )
             derived_inputs.append("daily memory sidecar")
 
-        recall_bundle = _visible_memory_recall_bundle_section(
-            session_id=session_id,
-            user_message=user_message,
-            compact=compact,
-        )
+        recall_bundle = future_recall_bundle.result()
         if recall_bundle:
             parts.append(recall_bundle)
             derived_inputs.append("bounded memory recall bundle")
@@ -474,10 +529,7 @@ def build_visible_chat_prompt_assembly(
         else None
     )
 
-    self_report_content = _runtime_self_report_instruction(
-        user_message=user_message,
-        runtime_self_report_context=runtime_self_report_context or {},
-    )
+    self_report_content = future_self_report.result()
 
     support_raw = _visible_support_signal_sections(
         compact=compact,
@@ -485,22 +537,14 @@ def build_visible_chat_prompt_assembly(
     )
     support_content = "\n\n".join(support_raw) if support_raw else None
 
-    bridge_decision = _build_inner_visible_prompt_bridge_decision(
-        user_message=user_message,
-        mode="visible_chat",
-        compact=compact,
-        relevance=relevance,
-    )
+    bridge_decision = future_bridge_decision.result()
     bridge_content = (
         bridge_decision.line
         if bridge_decision.included and bridge_decision.line
         else None
     )
 
-    if compact:
-        frame_content = _micro_cognitive_frame_section()
-    else:
-        frame_content = _cognitive_frame_section()
+    frame_content = future_frame.result()
 
     # Build structured transcript messages for multi-turn injection
     structured_transcript = _build_structured_transcript_messages(
@@ -516,14 +560,8 @@ def build_visible_chat_prompt_assembly(
     ) if not structured_transcript else None
 
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
-    try:
-        from core.services.cognitive_state_assembly import (
-            build_cognitive_state_for_prompt,
-        )
-
-        cognitive_state_content = build_cognitive_state_for_prompt(compact=compact)
-    except Exception:
-        cognitive_state_content = None
+    # Submitted as a future at function entry; resolve here.
+    cognitive_state_content = future_cognitive_state.result()
 
     raw_sections = {
         "capability_truth": capability_truth,
@@ -579,6 +617,8 @@ def build_visible_chat_prompt_assembly(
     elif transcript_content:
         parts.append(transcript_content)
         derived_inputs.append("recent transcript slice (flat text fallback)")
+
+    executor.shutdown(wait=False)
 
     return PromptAssembly(
         mode="visible_chat",

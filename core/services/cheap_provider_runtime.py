@@ -963,6 +963,7 @@ def _execute_openai_compatible_chat(
     base_url: str,
     message: str | None = None,
     messages: list[dict] | None = None,
+    tools: list[dict] | None = None,
 ) -> dict[str, object]:
     credentials = _require_credentials(profile=auth_profile, provider=provider)
     root = str(base_url or provider_runtime_defaults(provider).get("base_url") or "").rstrip("/")
@@ -973,11 +974,13 @@ def _execute_openai_compatible_chat(
         if message is None:
             raise ValueError("Either 'messages' or 'message' must be provided")
         messages = [{"role": "user", "content": message}]
-    payload = {
+    payload: dict[str, object] = {
         "model": model,
         "messages": messages,
         "stream": False,
     }
+    if tools:
+        payload["tools"] = tools
     if provider == "groq":
         data, _headers = _http_json_httpx(
             f"{root}/chat/completions",
@@ -992,11 +995,22 @@ def _execute_openai_compatible_chat(
             headers=headers,
             provider=provider,
         )
-    text = _extract_openai_compatible_text(provider=provider, data=data)
+    first_msg = ((data.get("choices") or [{}])[0] or {}).get("message") or {}
+    tool_calls = list(first_msg.get("tool_calls") or [])
+    # Tool-only responses (no assistant text) are valid when tools are in
+    # play — don't raise empty-response in that case.
+    if tool_calls:
+        try:
+            text = _extract_openai_compatible_text(provider=provider, data=data)
+        except CheapProviderError:
+            text = ""
+    else:
+        text = _extract_openai_compatible_text(provider=provider, data=data)
     usage = data.get("usage") or {}
     prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
     return {
         "text": text,
+        "tool_calls": tool_calls,
         "input_tokens": int(
             usage.get("prompt_tokens")
             or usage.get("input_tokens")

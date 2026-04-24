@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Callable
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
@@ -14,6 +16,281 @@ RELEVANCE_TIMEOUT_SECONDS = 3
 RELEVANCE_MAX_TEXT_CHARS = 240
 MEMORY_SELECTION_MAX_ENTRIES = 8
 MEMORY_ENTRY_MAX_CHARS = 140
+
+
+def _run_with_wall_clock_timeout(
+    fn: Callable[[], Any], *, timeout: float
+) -> tuple[str, Any]:
+    """Run ``fn()`` in a daemon thread with a hard wall-clock deadline.
+
+    Returns ("timeout", None) if the deadline is exceeded, ("error", exc) if
+    ``fn`` raised, or ("ok", result) otherwise. The daemon thread keeps running
+    after a timeout — it does not block process exit — and its eventual return
+    value is discarded.
+    """
+    holder: dict[str, Any] = {}
+
+    def _runner() -> None:
+        try:
+            holder["result"] = fn()
+        except BaseException as exc:  # noqa: BLE001 — propagate via holder
+            holder["exc"] = exc
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
+    thread.join(timeout=max(0.1, float(timeout)))
+    if thread.is_alive():
+        return "timeout", None
+    if "exc" in holder:
+        return "error", holder["exc"]
+    return "ok", holder.get("result")
+
+
+@dataclass(slots=True)
+class _BoundedLLMCall:
+    """Result of a bounded LLM call — neutral across Ollama / OllamaFreeAPI."""
+
+    success: bool
+    backend: str
+    provider: str | None
+    model: str | None
+    status: str
+    text: str
+
+
+def _call_bounded_relevance_llm(prompt: str) -> _BoundedLLMCall:
+    """Dispatch a bounded relevance/memory-selection prompt.
+
+    Tries the configured primary backend (OpenCode Zen by default) and falls
+    back to local Ollama on failure. All backends produce the same JSON-in-text
+    response shape, which the parsers handle.
+    """
+    settings = load_settings()
+    primary = str(settings.relevance_backend_primary or "opencode").strip().lower()
+
+    if primary == "opencode":
+        attempt = _call_opencode_relevance(
+            prompt=prompt,
+            model=str(settings.relevance_opencode_model or "minimax-m2.5-free"),
+            timeout=int(settings.relevance_opencode_timeout or 6),
+        )
+        if attempt.success:
+            return attempt
+        fallback = _call_local_ollama_relevance(prompt=prompt)
+        return fallback if fallback.success else attempt
+
+    if primary == "ollamafreeapi":
+        attempt = _call_ollamafreeapi_relevance(
+            prompt=prompt,
+            model=str(settings.relevance_ollamafreeapi_model or "gpt-oss:20b"),
+            timeout=int(settings.relevance_ollamafreeapi_timeout or 6),
+        )
+        if attempt.success:
+            return attempt
+        fallback = _call_local_ollama_relevance(prompt=prompt)
+        return fallback if fallback.success else attempt
+
+    return _call_local_ollama_relevance(prompt=prompt)
+
+
+def _call_opencode_relevance(
+    *, prompt: str, model: str, timeout: int
+) -> _BoundedLLMCall:
+    """Call OpenCode Zen free models via the OpenAI-compatible cheap lane.
+
+    Public-safe only — do not pass identity/chat/chronicle content here.
+    """
+    try:
+        from core.services.cheap_provider_runtime import (
+            CHEAP_PROVIDER_DEFAULTS,
+            _execute_openai_compatible_chat,
+        )
+    except Exception as exc:
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-opencode",
+            provider="opencode",
+            model=model,
+            status=f"import-failed:{type(exc).__name__}",
+            text="",
+        )
+
+    defaults = CHEAP_PROVIDER_DEFAULTS.get("opencode") or {}
+    base_url = str(defaults.get("base_url") or "https://opencode.ai/zen/v1")
+    auth_profile = str(defaults.get("auth_profile") or "opencode")
+
+    def _do_call() -> dict[str, Any]:
+        return _execute_openai_compatible_chat(
+            provider="opencode",
+            model=model,
+            auth_profile=auth_profile,
+            base_url=base_url,
+            message=prompt,
+        )
+
+    outcome, payload = _run_with_wall_clock_timeout(_do_call, timeout=timeout)
+    if outcome == "timeout":
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-opencode",
+            provider="opencode",
+            model=model,
+            status="timeout",
+            text="",
+        )
+    if outcome == "error":
+        exc = payload
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-opencode",
+            provider="opencode",
+            model=model,
+            status=f"request-failed:{type(exc).__name__}",
+            text="",
+        )
+    text = str((payload or {}).get("text") or "").strip()
+    if not text:
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-opencode",
+            provider="opencode",
+            model=model,
+            status="empty-response",
+            text="",
+        )
+    return _BoundedLLMCall(
+        success=True,
+        backend="bounded-opencode",
+        provider="opencode",
+        model=model,
+        status="success",
+        text=text,
+    )
+
+
+def _call_ollamafreeapi_relevance(
+    *, prompt: str, model: str, timeout: int
+) -> _BoundedLLMCall:
+    """OllamaFreeAPI silently drops its ``timeout`` kwarg, so we run the call
+    in a daemon thread and apply a wall-clock deadline ourselves. The thread
+    keeps running after a timeout but doesn't block interpreter exit.
+    """
+    try:
+        from core.runtime.ollamafreeapi_provider import call_ollamafreeapi
+    except Exception as exc:
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-ollamafreeapi",
+            provider="ollamafreeapi",
+            model=model,
+            status=f"import-failed:{type(exc).__name__}",
+            text="",
+        )
+
+    def _do_call() -> dict[str, Any]:
+        return call_ollamafreeapi(model=model, prompt=prompt, timeout=timeout)
+
+    outcome, payload = _run_with_wall_clock_timeout(_do_call, timeout=timeout)
+    if outcome == "timeout":
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-ollamafreeapi",
+            provider="ollamafreeapi",
+            model=model,
+            status="timeout",
+            text="",
+        )
+    if outcome == "error":
+        exc = payload
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-ollamafreeapi",
+            provider="ollamafreeapi",
+            model=model,
+            status=f"request-failed:{type(exc).__name__}",
+            text="",
+        )
+    text = str(((payload or {}).get("message") or {}).get("content") or "").strip()
+    if not text:
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-ollamafreeapi",
+            provider="ollamafreeapi",
+            model=model,
+            status="empty-response",
+            text="",
+        )
+    return _BoundedLLMCall(
+        success=True,
+        backend="bounded-ollamafreeapi",
+        provider="ollamafreeapi",
+        model=model,
+        status="success",
+        text=text,
+    )
+
+
+def _call_local_ollama_relevance(*, prompt: str) -> _BoundedLLMCall:
+    target = _resolve_relevance_target()
+    if target is None:
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-local-ollama",
+            provider=None,
+            model=_selected_relevance_model(),
+            status="backend-unavailable",
+            text="",
+        )
+    model = str(target.get("model") or "").strip()
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "format": "json",
+        "options": {"temperature": 0, "num_predict": 96},
+    }
+    req = urllib_request.Request(
+        f"{str(target.get('base_url') or '').rstrip('/')}/api/generate",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=RELEVANCE_TIMEOUT_SECONDS) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except (
+        urllib_error.URLError,
+        urllib_error.HTTPError,
+        TimeoutError,
+        json.JSONDecodeError,
+        OSError,
+    ):
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-local-ollama",
+            provider="ollama",
+            model=model,
+            status="request-failed",
+            text="",
+        )
+    text = str(data.get("response") or "").strip()
+    if not text:
+        return _BoundedLLMCall(
+            success=False,
+            backend="bounded-local-ollama",
+            provider="ollama",
+            model=model,
+            status="empty-response",
+            text="",
+        )
+    return _BoundedLLMCall(
+        success=True,
+        backend="bounded-local-ollama",
+        provider="ollama",
+        model=model,
+        status="success",
+        text=text,
+    )
 
 
 @dataclass(slots=True)
@@ -76,26 +353,14 @@ def run_bounded_nl_prompt_relevance(
             result=None,
         )
 
-    target = _resolve_relevance_target()
-    if target is None:
-        return BoundedPromptRelevanceAttempt(
-            attempted=False,
-            success=False,
-            backend="bounded-local-ollama",
-            provider=None,
-            model=_selected_relevance_model(),
-            status="backend-unavailable",
-            result=None,
-        )
-
     instructions = load_visible_relevance_prompt(workspace_dir=workspace_dir)
     if not instructions:
         return BoundedPromptRelevanceAttempt(
             attempted=False,
             success=False,
             backend="bounded-local-ollama",
-            provider=str(target.get("provider") or "").strip() or None,
-            model=str(target.get("model") or "").strip() or None,
+            provider=None,
+            model=_selected_relevance_model(),
             status="prompt-missing",
             result=None,
         )
@@ -106,60 +371,35 @@ def run_bounded_nl_prompt_relevance(
         mode=mode,
         compact=compact,
     )
-    payload = {
-        "model": str(target.get("model") or "").strip(),
-        "prompt": prompt,
-        "stream": False,
-        "format": "json",
-        "options": {
-            "temperature": 0,
-            "num_predict": 96,
-        },
-    }
-    req = urllib_request.Request(
-        f"{str(target.get('base_url') or '').rstrip('/')}/api/generate",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
-    try:
-        with urllib_request.urlopen(req, timeout=RELEVANCE_TIMEOUT_SECONDS) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except (
-        urllib_error.URLError,
-        urllib_error.HTTPError,
-        TimeoutError,
-        json.JSONDecodeError,
-        OSError,
-    ):
+    call = _call_bounded_relevance_llm(prompt)
+    if not call.success:
         return BoundedPromptRelevanceAttempt(
             attempted=True,
             success=False,
-            backend="bounded-local-ollama",
-            provider=str(target.get("provider") or "").strip() or None,
-            model=str(target.get("model") or "").strip() or None,
-            status="request-failed",
+            backend=call.backend,
+            provider=call.provider,
+            model=call.model,
+            status=call.status,
             result=None,
         )
 
-    parsed = _parse_relevance_response(str(data.get("response") or ""), mode)
+    parsed = _parse_relevance_response(call.text, mode)
     if parsed is None:
         return BoundedPromptRelevanceAttempt(
             attempted=True,
             success=False,
-            backend="bounded-local-ollama",
-            provider=str(target.get("provider") or "").strip() or None,
-            model=str(target.get("model") or "").strip() or None,
+            backend=call.backend,
+            provider=call.provider,
+            model=call.model,
             status="parse-failed",
             result=None,
         )
     return BoundedPromptRelevanceAttempt(
         attempted=True,
         success=True,
-        backend="bounded-local-ollama",
-        provider=str(target.get("provider") or "").strip() or None,
-        model=str(target.get("model") or "").strip() or None,
+        backend=call.backend,
+        provider=call.provider,
+        model=call.model,
         status="success",
         result=parsed,
     )
@@ -209,26 +449,14 @@ def run_bounded_nl_memory_entry_selection(
             result=None,
         )
 
-    target = _resolve_relevance_target()
-    if target is None:
-        return BoundedMemorySelectionAttempt(
-            attempted=False,
-            success=False,
-            backend="bounded-local-ollama",
-            provider=None,
-            model=_selected_relevance_model(),
-            status="backend-unavailable",
-            result=None,
-        )
-
     instructions = load_visible_memory_selection_prompt(workspace_dir=workspace_dir)
     if not instructions:
         return BoundedMemorySelectionAttempt(
             attempted=False,
             success=False,
             backend="bounded-local-ollama",
-            provider=str(target.get("provider") or "").strip() or None,
-            model=str(target.get("model") or "").strip() or None,
+            provider=None,
+            model=_selected_relevance_model(),
             status="prompt-missing",
             result=None,
         )
@@ -241,45 +469,20 @@ def run_bounded_nl_memory_entry_selection(
         max_lines=max_lines,
         mode=mode,
     )
-    payload = {
-        "model": str(target.get("model") or "").strip(),
-        "prompt": prompt,
-        "stream": False,
-        "format": "json",
-        "options": {
-            "temperature": 0,
-            "num_predict": 96,
-        },
-    }
-    req = urllib_request.Request(
-        f"{str(target.get('base_url') or '').rstrip('/')}/api/generate",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
-    try:
-        with urllib_request.urlopen(req, timeout=RELEVANCE_TIMEOUT_SECONDS) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except (
-        urllib_error.URLError,
-        urllib_error.HTTPError,
-        TimeoutError,
-        json.JSONDecodeError,
-        OSError,
-    ):
+    call = _call_bounded_relevance_llm(prompt)
+    if not call.success:
         return BoundedMemorySelectionAttempt(
             attempted=True,
             success=False,
-            backend="bounded-local-ollama",
-            provider=str(target.get("provider") or "").strip() or None,
-            model=str(target.get("model") or "").strip() or None,
-            status="request-failed",
+            backend=call.backend,
+            provider=call.provider,
+            model=call.model,
+            status=call.status,
             result=None,
         )
 
     parsed = _parse_memory_selection_response(
-        str(data.get("response") or ""),
+        call.text,
         entry_count=len(bounded_entries),
         max_lines=max_lines,
     )
@@ -287,18 +490,18 @@ def run_bounded_nl_memory_entry_selection(
         return BoundedMemorySelectionAttempt(
             attempted=True,
             success=False,
-            backend="bounded-local-ollama",
-            provider=str(target.get("provider") or "").strip() or None,
-            model=str(target.get("model") or "").strip() or None,
+            backend=call.backend,
+            provider=call.provider,
+            model=call.model,
             status="parse-failed",
             result=None,
         )
     return BoundedMemorySelectionAttempt(
         attempted=True,
         success=True,
-        backend="bounded-local-ollama",
-        provider=str(target.get("provider") or "").strip() or None,
-        model=str(target.get("model") or "").strip() or None,
+        backend=call.backend,
+        provider=call.provider,
+        model=call.model,
         status="success",
         result=parsed,
     )

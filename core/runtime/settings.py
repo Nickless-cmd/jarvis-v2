@@ -35,6 +35,15 @@ class RuntimeSettings:
     cognitive_state_cache_ttl: int = 120
     # Cognitive state cache on/off toggle (independent of TTL).
     cognitive_state_cache_enabled: bool = True
+    # Bounded relevance/memory-selection LLM backend.
+    # "opencode"      = OpenCode Zen free models via cheap lane (real timeouts).
+    # "ollamafreeapi" = public cloud (free models, timeout kwarg is silently dropped).
+    # "ollama"        = local LXC GPU (slower, private-safe).
+    relevance_backend_primary: str = "opencode"
+    relevance_opencode_model: str = "minimax-m2.5-free"
+    relevance_opencode_timeout: int = 6
+    relevance_ollamafreeapi_model: str = "gpt-oss:20b"
+    relevance_ollamafreeapi_timeout: int = 6
     # Emotion decay
     emotion_decay_factor: float = 0.97
     # Context compact thresholds

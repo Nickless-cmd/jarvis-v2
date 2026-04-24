@@ -913,17 +913,27 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     resolved_texts: dict[int, str],
                 ) -> list[_vf.ToolResult]:
                     out: list[_vf.ToolResult] = []
-                    for _idx, _sr in enumerate(round_results):
+                    for _idx, _tc in enumerate(tool_calls):
+                        _sr = round_results[_idx] if _idx < len(round_results) else {}
                         _content = str(
-                            resolved_texts.get(_idx, _sr.get("result_text", "")) or ""
+                            resolved_texts.get(_idx, (_sr or {}).get("result_text", "")) or ""
+                        ).strip()
+                        _tc_name = str(
+                            (_sr or {}).get("tool_name")
+                            or ((_tc.get("function") or {}).get("name") or _tc.get("name") or "tool")
                         )
-                        if not _content or _sr.get("status") == "duplicate_suppressed":
-                            continue
-                        _tc = tool_calls[_idx] if _idx < len(tool_calls) else {}
+                        if not _content:
+                            if _idx >= len(round_results):
+                                _content = (
+                                    f"[{_tc_name}]: Tool call was not executed in this round "
+                                    "(bounded tool-execution limit reached)."
+                                )
+                            else:
+                                _content = f"[{_tc_name}]: Tool call completed with no output."
                         out.append(
                             _vf.ToolResult(
                                 tool_call_id=str(_tc.get("id") or ""),
-                                tool_name=str(_sr.get("tool_name") or ""),
+                                tool_name=_tc_name,
                                 content=_content,
                             )
                         )

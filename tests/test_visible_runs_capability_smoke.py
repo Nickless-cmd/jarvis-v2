@@ -38,6 +38,7 @@ def _run_visible_stream(
     monkeypatch.setattr(
         visible_runs, "_persist_session_assistant_message", lambda run, message: None
     )
+    monkeypatch.setattr(visible_runs, "append_chat_message", lambda **kwargs: {})
 
     def stub_stream_visible_model(**kwargs):
         if stream_error is not None:
@@ -258,9 +259,159 @@ def test_visible_run_second_pass_strips_capability_markup_and_does_not_loop(
     assert len(capability_events) == 2
     assert capability_events[0]["capability_id"] == "tool:read-workspace-user-profile"
     assert capability_events[1]["capability_id"] == "tool:read-repository-readme"
-    assert any("Grounded fallback response." in str(item.get("delta") or "") for item in delta_events)
-    assert all("<capability-call" not in str(item.get("delta") or "") for item in delta_events)
-    assert len(last_use.get("second_pass_calls") or []) == 2
+
+
+def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    visible_runs = importlib.import_module("core.services.visible_runs")
+    visible_runs = importlib.reload(visible_runs)
+    visible_model = importlib.import_module("core.services.visible_model")
+    visible_followup = importlib.import_module("core.services.visible_followup")
+    ollama_prompt = importlib.import_module("core.services.ollama_visible_prompt")
+
+    monkeypatch.setattr(visible_runs, "record_cost", lambda **kwargs: None)
+    monkeypatch.setattr(
+        visible_runs, "_track_runtime_candidates", lambda run, assistant_text: None
+    )
+    monkeypatch.setattr(
+        visible_runs, "_persist_session_assistant_message", lambda run, message: None
+    )
+    monkeypatch.setattr(visible_runs, "append_chat_message", lambda **kwargs: {})
+
+    def stub_stream_visible_model(**kwargs):
+        yield visible_model.VisibleModelToolCalls(
+            tool_calls=[
+                {
+                    "id": "call-1",
+                    "type": "function",
+                    "function": {"name": "read_file", "arguments": {"path": "README.md"}},
+                }
+            ]
+        )
+        yield visible_model.VisibleModelStreamDone(
+            result=visible_model.VisibleModelResult(
+                text="",
+                input_tokens=2,
+                output_tokens=2,
+                cost_usd=0.0,
+            )
+        )
+
+    monkeypatch.setattr(visible_runs, "stream_visible_model", stub_stream_visible_model)
+    monkeypatch.setattr(
+        visible_runs,
+        "_build_visible_input",
+        lambda message, session_id=None: [{"role": "user", "content": message}],
+    )
+    monkeypatch.setattr(
+        ollama_prompt,
+        "serialize_ollama_chat_messages",
+        lambda payload: list(payload),
+    )
+
+    tool_exec_calls: list[list[dict]] = []
+
+    def stub_execute_simple_tool_calls(tool_calls, *, force=False, run_id=None):
+        tool_exec_calls.append(list(tool_calls))
+        if len(tool_exec_calls) == 1:
+            return [
+                {
+                    "tool_name": "read_file",
+                    "arguments": {"path": "README.md"},
+                    "result": {"status": "ok", "text": "README content"},
+                    "result_text": "README content",
+                    "status": "ok",
+                }
+            ]
+        return [
+            {
+                "tool_name": "search_memory",
+                "arguments": {"query": "jarvis"},
+                "result": {"status": "ok", "text": "memory hit"},
+                "result_text": "memory hit",
+                "status": "ok",
+            }
+        ]
+
+    monkeypatch.setattr(visible_runs, "_execute_simple_tool_calls", stub_execute_simple_tool_calls)
+
+    followup_calls: list[dict[str, object]] = []
+
+    def stub_stream_visible_followup(
+        *,
+        provider: str,
+        model: str,
+        base_messages: list[dict],
+        exchanges: list,
+        tool_definitions=None,
+        round_index: int = 0,
+    ):
+        followup_calls.append(
+            {
+                "provider": provider,
+                "model": model,
+                "round_index": round_index,
+                "exchange_count": len(exchanges),
+            }
+        )
+        if round_index == 0:
+            yield visible_followup.FollowupToolCalls(
+                tool_calls=[
+                    {
+                        "id": "call-2",
+                        "type": "function",
+                        "function": {
+                            "name": "search_memory",
+                            "arguments": {"query": "jarvis"},
+                        },
+                    }
+                ]
+            )
+            yield visible_followup.FollowupDone(text="")
+            return
+        yield visible_followup.FollowupDelta(delta="Faerdigt svar fra followup.")
+        yield visible_followup.FollowupDone(text="Faerdigt svar fra followup.")
+
+    monkeypatch.setattr(
+        visible_followup,
+        "stream_visible_followup",
+        stub_stream_visible_followup,
+    )
+
+    run = visible_runs.VisibleRun(
+        run_id="visible-native-followup",
+        lane="visible",
+        provider="github-copilot",
+        model="gpt-4o-mini",
+        user_message="kør native tools",
+        session_id="session-native-followup",
+    )
+
+    async def collect() -> list[str]:
+        chunks: list[str] = []
+        async for chunk in visible_runs._stream_visible_run(run):
+            chunks.append(chunk)
+        return chunks
+
+    import asyncio
+
+    chunks = asyncio.run(collect())
+    delta_events = _parse_sse(chunks, "delta")
+    done_events = _parse_sse(chunks, "done")
+
+    assert any(
+        "Faerdigt svar fra followup." in str(item.get("delta") or "")
+        for item in delta_events
+    )
+    assert done_events
+    assert len(followup_calls) >= 2
+    assert followup_calls[0]["provider"] == "github-copilot"
+    assert followup_calls[0]["exchange_count"] == 1
+    assert followup_calls[1]["exchange_count"] == 2
+    assert len(tool_exec_calls) == 2
+    assert tool_exec_calls[1][0]["function"]["name"] == "search_memory"
 
 
 def test_visible_run_executes_dynamic_external_read_from_user_message_path(

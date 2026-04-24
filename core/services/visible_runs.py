@@ -4,8 +4,6 @@ import asyncio
 import json
 import re
 from datetime import UTC, datetime
-from urllib import error as urllib_error
-from urllib import request as urllib_request
 from dataclasses import dataclass, field
 from typing import AsyncIterator
 from uuid import uuid4
@@ -197,7 +195,6 @@ from core.services.visible_model import (
     execute_visible_model,
     stream_visible_model,
 )
-from core.runtime.provider_router import resolve_provider_router_target
 from core.memory.private_layer_pipeline import write_private_terminal_layers
 from core.costing.ledger import record_cost
 from core.eventbus.bus import event_bus
@@ -902,51 +899,54 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 # execute them and continue. If the model produces text we stream
                 # it and stop. This lets Jarvis work through multi-step tasks
                 # without the user needing to send a new message for every tool.
-                import json as _json
-                import logging as _alog
+                from core.services import visible_followup as _vf
                 from core.tools.simple_tools import get_tool_definitions as _get_tool_defs
 
                 _AGENTIC_MAX_ROUNDS = 40
-                _TOOL_CALL_MARKER = "__TOOL_CALLS__"
-                target = resolve_provider_router_target(lane="visible")
-                base_url = str(target.get("base_url") or "").strip() or "http://127.0.0.1:11434"
                 _agentic_tools = _get_tool_defs()
-
-                # Seed the conversation for the first agentic pass:
-                # user-message format works reliably across local models.
-                _first_results_block = "\n\n".join(
-                    f"[{sr['tool_name']}]:\n{_resolved_result_texts.get(_idx, sr['result_text'])}"
-                    for _idx, sr in enumerate(simple_results)
-                )
-                _agentic_messages: list[dict] = base_messages + [
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Here are the tool results for your previous request:\n\n"
-                            f"{_first_results_block}\n\n"
-                            f"Please respond based on these results. "
-                            f"You may call additional tools if you need more information."
-                        ),
-                    }
-                ]
                 _all_followup_parts: list[str] = []
-                # Initialized outside the for-loop so the non-Ollama skip path
-                # (where the loop runs zero iterations) can still reference
-                # _a_parts without NameError in the followup_text computation.
                 _a_parts: list[str] = []
-                # The loop body below POSTs to a hardcoded Ollama /api/chat
-                # endpoint and parses Ollama's NDJSON response shape. For
-                # non-Ollama visible providers (Copilot, Anthropic, OpenAI
-                # cheap-lane, etc.) it either hangs or hits the wrong backend.
-                # Guard by provider until visible_followup adapter (Option B)
-                # lands. For skipped providers the first-pass text (already
-                # streamed via VisibleModelDelta) stands as the response.
-                _is_ollama_visible = (
-                    (run.provider or "").strip().lower() == "ollama"
+
+                def _to_followup_results(
+                    tool_calls: list[dict],
+                    round_results: list[dict[str, object]],
+                    resolved_texts: dict[int, str],
+                ) -> list[_vf.ToolResult]:
+                    out: list[_vf.ToolResult] = []
+                    for _idx, _sr in enumerate(round_results):
+                        _content = str(
+                            resolved_texts.get(_idx, _sr.get("result_text", "")) or ""
+                        )
+                        if not _content or _sr.get("status") == "duplicate_suppressed":
+                            continue
+                        _tc = tool_calls[_idx] if _idx < len(tool_calls) else {}
+                        out.append(
+                            _vf.ToolResult(
+                                tool_call_id=str(_tc.get("id") or ""),
+                                tool_name=str(_sr.get("tool_name") or ""),
+                                content=_content,
+                            )
+                        )
+                    return out
+
+                _followup_exchanges: list[_vf.ToolExchange] = [
+                    _vf.ToolExchange(
+                        text="",
+                        tool_calls=list(_collected_native_tool_calls),
+                        results=_to_followup_results(
+                            _collected_native_tool_calls,
+                            simple_results,
+                            _resolved_result_texts,
+                        ),
+                    )
+                ]
+                _supported_followup_providers = set(_vf.supported_followup_providers())
+                _provider_supports_followup = (
+                    (run.provider or "").strip().lower() in _supported_followup_providers
                 )
 
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
-                    if not _is_ollama_visible:
+                    if not _provider_supports_followup:
                         break
                     _a_parts = []
                     _a_tool_calls: list[dict] = []
@@ -954,94 +954,29 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     _a_sentinel = object()
                     _a_failure: dict[str, object] = {}
 
-                    _a_payload: dict[str, object] = {
-                        "model": run.model,
-                        "messages": _agentic_messages,
-                        "stream": True,
-                    }
-                    if _agentic_tools:
-                        _a_payload["tools"] = _agentic_tools
-
-                    _a_req = urllib_request.Request(
-                        f"{base_url.rstrip('/')}/api/chat",
-                        data=_json.dumps(_a_payload, ensure_ascii=False).encode("utf-8"),
-                        headers={"Content-Type": "application/json"},
-                        method="POST",
-                    )
-
                     def _pump_agentic(
-                        req=_a_req,
                         q=_a_queue,
                         sentinel=_a_sentinel,
                         rnd=_agentic_round,
                         failure=_a_failure,
                     ) -> None:
-                        import time as _time
-
                         try:
-                            # Transient provider overloads happen under load.
-                            # Retry a couple of times on 5xx / temporary network issues.
-                            _attempts = 3
-                            for _attempt in range(_attempts):
-                                try:
-                                    with urllib_request.urlopen(req, timeout=90) as resp:
-                                        for raw_line in resp:
-                                            line = raw_line.decode("utf-8").strip()
-                                            if not line:
-                                                continue
-                                            ev = _json.loads(line)
-                                            msg = ev.get("message") or {}
-                                            delta = str(msg.get("content") or "")
-                                            if delta:
-                                                loop.call_soon_threadsafe(q.put_nowait, delta)
-                                            tc = msg.get("tool_calls") or []
-                                            if tc:
-                                                loop.call_soon_threadsafe(
-                                                    q.put_nowait, (_TOOL_CALL_MARKER, tc)
-                                                )
-                                            if ev.get("done"):
-                                                break
-                                    break
-                                except urllib_error.HTTPError as _he:
-                                    _retryable = int(getattr(_he, "code", 0) or 0) in {502, 503, 504}
-                                    if _retryable and _attempt < (_attempts - 1):
-                                        _backoff = 0.6 * (2**_attempt)
-                                        _alog.getLogger(__name__).warning(
-                                            "agentic round %d retrying after HTTP %s (attempt %d/%d)",
-                                            rnd,
-                                            getattr(_he, "code", "?"),
-                                            _attempt + 1,
-                                            _attempts,
-                                        )
-                                        _time.sleep(_backoff)
-                                        continue
-                                    raise
-                                except urllib_error.URLError as _ue:
-                                    if _attempt < (_attempts - 1):
-                                        _backoff = 0.6 * (2**_attempt)
-                                        _alog.getLogger(__name__).warning(
-                                            "agentic round %d retrying after URLError: %s (attempt %d/%d)",
-                                            rnd,
-                                            _ue,
-                                            _attempt + 1,
-                                            _attempts,
-                                        )
-                                        _time.sleep(_backoff)
-                                        continue
-                                    raise
+                            for _event in _vf.stream_visible_followup(
+                                provider=run.provider,
+                                model=run.model,
+                                base_messages=base_messages,
+                                exchanges=_followup_exchanges,
+                                tool_definitions=_agentic_tools,
+                                round_index=rnd,
+                            ):
+                                loop.call_soon_threadsafe(q.put_nowait, _event)
                         except Exception as _ae:
-                            _a_summary = f"agentic-round-{rnd + 1}-timeout"
-                            if "timed out" not in str(_ae).lower():
-                                _a_summary = f"agentic-round-{rnd + 1}-provider-error: {str(_ae) or 'unknown'}"
                             failure.update(
                                 {
                                     "round": rnd + 1,
                                     "error": str(_ae) or "unknown",
-                                    "summary": _a_summary,
+                                    "summary": f"followup-round-{rnd + 1}-provider-error: {str(_ae) or 'unknown'}",
                                 }
-                            )
-                            _alog.getLogger(__name__).error(
-                                "agentic round %d failed: %s", rnd, _ae, exc_info=True
                             )
                         finally:
                             loop.call_soon_threadsafe(q.put_nowait, sentinel)
@@ -1063,16 +998,36 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             break
                         if _a_item is _a_sentinel:
                             break
-                        if isinstance(_a_item, tuple) and _a_item[0] == _TOOL_CALL_MARKER:
-                            _a_tool_calls.extend(_a_item[1])
+                        if isinstance(_a_item, _vf.FollowupDelta):
+                            if _a_item.delta:
+                                _a_parts.append(_a_item.delta)
+                                _all_followup_parts.append(_a_item.delta)
+                                yield _sse("delta", {
+                                    "type": "delta",
+                                    "run_id": run.run_id,
+                                    "delta": _a_item.delta,
+                                })
                             continue
-                        _a_parts.append(_a_item)
-                        _all_followup_parts.append(_a_item)
-                        yield _sse("delta", {
-                            "type": "delta",
-                            "run_id": run.run_id,
-                            "delta": _a_item,
-                        })
+                        if isinstance(_a_item, _vf.FollowupToolCalls):
+                            _a_tool_calls.extend(_a_item.tool_calls)
+                            continue
+                        if isinstance(_a_item, _vf.FollowupFailed):
+                            _a_failure = {
+                                "round": _a_item.round_index + 1,
+                                "error": _a_item.error,
+                                "summary": _a_item.summary,
+                            }
+                            continue
+                        if isinstance(_a_item, _vf.FollowupDone):
+                            if _a_item.text and not _a_parts:
+                                _a_parts.append(_a_item.text)
+                                _all_followup_parts.append(_a_item.text)
+                                yield _sse("delta", {
+                                    "type": "delta",
+                                    "run_id": run.run_id,
+                                    "delta": _a_item.text,
+                                })
+                            continue
 
                     if _a_failure:
                         _failure_summary = str(_a_failure.get("summary") or "agentic-round-provider-error")
@@ -1224,46 +1179,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     tool_arguments=dict(_a_sr.get("arguments") or {}),
                                 )
 
-                    # Append this round's exchange to the conversation for next round
-                    _a_results_block = "\n\n".join(
-                        f"[{_a_sr['tool_name']}]:\n{_a_resolved.get(_a_idx, _a_sr['result_text'])}"
-                        for _a_idx, _a_sr in enumerate(_a_results)
-                    )
-                    _agentic_messages = _agentic_messages + [
-                        {
-                            "role": "assistant",
-                            "content": "".join(_a_parts) or "",
-                        },
-                        {
-                            "role": "user",
-                            "content": (
-                                f"Tool results:\n\n{_a_results_block}\n\nContinue."
+                    _followup_exchanges.append(
+                        _vf.ToolExchange(
+                            text="".join(_a_parts) or "",
+                            tool_calls=list(_a_tool_calls),
+                            results=_to_followup_results(
+                                _a_tool_calls,
+                                _a_results,
+                                _a_resolved,
                             ),
-                        },
-                    ]
-
-                    # ── Run-level auto-compact ─────────────────────────────────────
-                    try:
-                        from core.runtime.settings import load_settings as _lcs
-                        _run_settings = _lcs()
-                        _base_count = len(base_messages) + 1  # base + first tool-results msg
-                        _compacted = _maybe_compact_agentic_messages(
-                            _agentic_messages,
-                            base_count=_base_count,
-                            settings=_run_settings,
                         )
-                        if _compacted is not _agentic_messages:
-                            _agentic_messages = _compacted
-                            _agentic_messages.append({
-                                "role": "user",
-                                "content": (
-                                    "Note: Dit arbejdende kontekstvindue er netop komprimeret "
-                                    "for at frigøre plads. Nævn kort at du kompakterer "
-                                    "(1 sætning) og fortsæt din opgave."
-                                ),
-                            })
-                    except Exception:
-                        pass  # Never let compact crash the agentic loop
+                    )
 
                 # ── End agentic loop ───────────────────────────────────────────────
 
@@ -1275,82 +1201,10 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     followup_text = "".join(_a_parts).strip()
                 else:
                     followup_text = "".join(_all_followup_parts).strip()
-                if not followup_text and _is_ollama_visible:
-                    # LLM only produced tool calls with no text summary.
-                    # Make one final LLM call WITHOUT tools to force a
-                    # natural-language response based on the tool results.
-                    # (Ollama-only: the request below is hardcoded to
-                    # /api/chat NDJSON — non-Ollama providers fall through
-                    # to the first-pass-text fallback below.)
-                    _summary_payload: dict[str, object] = {
-                        "model": run.model,
-                        "messages": _agentic_messages + [
-                            {
-                                "role": "user",
-                                "content": (
-                                    "Summarise what you just did in 1-2 sentences "
-                                    "as a natural reply to the user. "
-                                    "Do NOT mention tool names or internal details."
-                                ),
-                            },
-                        ],
-                        "stream": True,
-                        # No "tools" key — forces text-only response
-                    }
-                    _summary_req = urllib_request.Request(
-                        f"{base_url.rstrip('/')}/api/chat",
-                        data=_json.dumps(_summary_payload, ensure_ascii=False).encode("utf-8"),
-                        headers={"Content-Type": "application/json"},
-                        method="POST",
-                    )
-                    _summary_parts: list[str] = []
-                    try:
-                        _s_queue: asyncio.Queue = asyncio.Queue()
-                        _s_sentinel = object()
-
-                        def _pump_summary(
-                            req=_summary_req,
-                            q=_s_queue,
-                            sentinel=_s_sentinel,
-                        ) -> None:
-                            try:
-                                with urllib_request.urlopen(req, timeout=45) as resp:
-                                    for raw_line in resp:
-                                        line = raw_line.decode("utf-8").strip()
-                                        if not line:
-                                            continue
-                                        ev = _json.loads(line)
-                                        delta = str((ev.get("message") or {}).get("content") or "")
-                                        if delta:
-                                            loop.call_soon_threadsafe(q.put_nowait, delta)
-                                        if ev.get("done"):
-                                            break
-                            except Exception:
-                                pass
-                            finally:
-                                loop.call_soon_threadsafe(q.put_nowait, sentinel)
-
-                        loop.run_in_executor(None, _pump_summary)
-                        while True:
-                            try:
-                                _s_item = await asyncio.wait_for(_s_queue.get(), timeout=50)
-                            except asyncio.TimeoutError:
-                                break
-                            if _s_item is _s_sentinel:
-                                break
-                            _summary_parts.append(_s_item)
-                            yield _sse("delta", {
-                                "type": "delta",
-                                "run_id": run.run_id,
-                                "delta": _s_item,
-                            })
-                    except Exception:
-                        pass
-                    followup_text = "".join(_summary_parts).strip()
 
                 if not followup_text:
-                    # No follow-up text from the Ollama agentic loop (or we
-                    # skipped it for a non-Ollama provider). Fall back to the
+                    # No follow-up text from the provider-specific agentic loop.
+                    # Fall back to the
                     # first-pass text — already streamed live to the user via
                     # VisibleModelDelta — as the persisted assistant message.
                     # If the first pass was tool-calls-only with no prose,

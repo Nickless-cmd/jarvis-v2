@@ -11,9 +11,15 @@ from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from core.auth.copilot_oauth import get_copilot_oauth_truth
+from core.auth.copilot_session import (
+    get_copilot_session_token,
+    invalidate_session_cache as invalidate_copilot_session_cache,
+)
 from core.auth.profiles import get_provider_state, list_auth_profiles
 from core.services.non_visible_lane_execution import (
+    _COPILOT_API_ROOT,
     _extract_github_copilot_text,
+    _github_copilot_request_headers,
     _load_github_copilot_token,
     _post_github_copilot_chat_completion,
     fetch_github_copilot_models,
@@ -770,7 +776,7 @@ def _execute_github_copilot_visible_model(
             "GitHub Copilot visible lane is temporarily rate-limited. Please try again in a few minutes, or switch to a local lane."
         )
 
-    access_token = _load_github_copilot_token(profile=profile)
+    _load_github_copilot_token(profile=profile)
 
     normalized_model = _normalize_github_models_model_id(model)
     _ensure_github_copilot_model_available(profile=profile, model=normalized_model)
@@ -788,7 +794,7 @@ def _execute_github_copilot_visible_model(
     try:
         data = _post_github_copilot_chat_completion(
             payload=payload,
-            access_token=access_token,
+            profile=profile,
         )
     except RuntimeError as exc:
         error_msg = str(exc)
@@ -1005,7 +1011,8 @@ def _stream_github_copilot_model(
             "GitHub Copilot visible lane is temporarily rate-limited. Please try again in a few minutes, or switch to a local lane."
         )
 
-    access_token = _load_github_copilot_token(profile=profile)
+    _load_github_copilot_token(profile=profile)
+    session_token = get_copilot_session_token(profile=profile)
     normalized_model = _normalize_github_models_model_id(model)
     _ensure_github_copilot_model_available(profile=profile, model=normalized_model)
 
@@ -1018,14 +1025,9 @@ def _stream_github_copilot_model(
         "stream": True,
     }
     req = urllib_request.Request(
-        "https://models.github.ai/inference/chat/completions",
+        f"{_COPILOT_API_ROOT}/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "text/event-stream",
-            "Authorization": f"Bearer {access_token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
+        headers=_github_copilot_request_headers(session_token, accept="text/event-stream"),
         method="POST",
     )
 
@@ -1050,6 +1052,8 @@ def _stream_github_copilot_model(
             raise VisibleModelRateLimited(
                 "GitHub Copilot visible lane is temporarily rate-limited. Please try again in a few minutes, or switch to a local lane."
             )
+        if exc.code in (401, 403):
+            invalidate_copilot_session_cache(profile=profile)
         raise RuntimeError(error_msg)
     except Exception:
         if controller is not None and controller.is_cancelled():

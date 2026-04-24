@@ -29,10 +29,15 @@ _CREATED_BY = "jarvis-cli"
 _GITHUB_OAUTH_DEVICE_CODE_URL = "https://github.com/login/device/code"
 _GITHUB_OAUTH_TOKEN_URL = "https://github.com/login/oauth/access_token"
 
+# VSCode's public GitHub OAuth client_id. Registered as a Copilot-authorized app,
+# so tokens obtained via this client_id can call /copilot_internal/v2/token and
+# reach the full Copilot model catalog (Claude, GPT-5, Gemini, etc).
+# Used by numerous community tools (aider, opencode, avante.nvim, continue.dev).
+_VSCODE_COPILOT_CLIENT_ID = "01ab8ac9400c4e429b23"
+
 
 def _get_github_copilot_client_id() -> str:
-    from pathlib import Path
-    import json
+    import os
     from core.runtime.config import CONFIG_DIR
 
     provider_auth_config = CONFIG_DIR / "provider_auth_config.json"
@@ -45,18 +50,11 @@ def _get_github_copilot_client_id() -> str:
         except Exception:
             pass
 
-    env_client_id = str(
-        __import__("os").environ.get("JARVIS_GITHUB_COPILOT_CLIENT_ID", "")
-    ).strip()
+    env_client_id = str(os.environ.get("JARVIS_GITHUB_COPILOT_CLIENT_ID", "")).strip()
     if env_client_id:
         return env_client_id
 
-    raise ValueError(
-        "GitHub Copilot client_id not configured. "
-        "Set either:\n"
-        "  1. JARVIS_GITHUB_COPILOT_CLIENT_ID environment variable, or\n"
-        '  2. {"github_copilot": {"client_id": "..."}} in config/provider_auth_config.json'
-    )
+    return _VSCODE_COPILOT_CLIENT_ID
 
 
 def _save_github_copilot_client_id(client_id: str) -> None:
@@ -359,7 +357,7 @@ def _request_github_device_code() -> dict:
     data = urllib_parse.urlencode(
         {
             "client_id": client_id,
-            "scope": "read:user user:email",
+            "scope": "read:user",
         }
     ).encode("utf-8")
 

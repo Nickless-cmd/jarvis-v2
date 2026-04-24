@@ -125,6 +125,11 @@ def test_github_streaming_emits_deltas_for_chat_completions_sse(
     )
     monkeypatch.setattr(
         visible_model,
+        "get_copilot_session_token",
+        lambda profile: "tid_test_session",
+    )
+    monkeypatch.setattr(
+        visible_model,
         "fetch_github_copilot_models",
         lambda profile: ["gpt-4o-2024-11-20"],
     )

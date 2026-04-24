@@ -384,6 +384,10 @@ class OpenAICompatFollowupAdapter:
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "Accept": "text/event-stream",
+                # OpenCode is fronted by Cloudflare and blocks the default
+                # Python urllib user-agent (HTTP 403 error code 1010). Set
+                # the same UA we use on first-pass calls via _http_json.
+                "User-Agent": "jarvis-v2/cheap-lane",
             },
             method="POST",
         )

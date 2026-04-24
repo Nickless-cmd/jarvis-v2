@@ -14,6 +14,10 @@ from core.auth.profiles import (
     get_provider_state,
 )
 from core.auth.copilot_oauth import get_copilot_oauth_truth
+from core.auth.copilot_session import (
+    get_copilot_session_token,
+    invalidate_session_cache as invalidate_copilot_session_cache,
+)
 from core.auth.openai_oauth import get_openai_bearer_token, get_openai_oauth_truth
 from core.runtime.provider_router import resolve_provider_router_target
 from core.services.cheap_provider_runtime import (
@@ -723,14 +727,13 @@ def _execute_lane(*, message: str, truth: dict[str, object]) -> dict[str, object
         output_tokens = int(usage.get("output_tokens", _estimate_tokens(text)))
     elif provider == "github-copilot":
         profile = str(target.get("auth_profile") or "").strip()
-        access_token = _load_github_copilot_token(profile=profile)
         data = _post_github_copilot_chat_completion(
             payload={
                 "model": model,
                 "messages": [{"role": "user", "content": message}],
                 "stream": False,
             },
-            access_token=access_token,
+            profile=profile,
         )
         text = _extract_github_copilot_text(data)
         usage = data.get("usage", {})
@@ -936,17 +939,30 @@ def _load_github_copilot_token(*, profile: str) -> str:
     return token
 
 
-def _post_github_copilot_chat_completion(*, payload: dict, access_token: str) -> dict:
-    root = "https://models.github.ai"
+_COPILOT_API_ROOT = "https://api.githubcopilot.com"
+
+
+def _github_copilot_request_headers(session_token: str, *, accept: str = "application/json") -> dict[str, str]:
+    # Editor-Version + Copilot-Integration-Id are mandatory for api.githubcopilot.com.
+    # Values match what VSCode chat sends; changing them can get the request rejected.
+    return {
+        "Content-Type": "application/json",
+        "Accept": accept,
+        "Authorization": f"Bearer {session_token}",
+        "Editor-Version": "vscode/1.95.0",
+        "Editor-Plugin-Version": "copilot-chat/0.23.0",
+        "Copilot-Integration-Id": "vscode-chat",
+        "User-Agent": "GitHubCopilotChat/0.23.0",
+        "OpenAI-Intent": "conversation-panel",
+    }
+
+
+def _post_github_copilot_chat_completion(*, payload: dict, profile: str) -> dict:
+    session_token = get_copilot_session_token(profile=profile)
     req = urllib_request.Request(
-        f"{root}/inference/chat/completions",
+        f"{_COPILOT_API_ROOT}/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {access_token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
+        headers=_github_copilot_request_headers(session_token),
         method="POST",
     )
     try:
@@ -954,6 +970,8 @@ def _post_github_copilot_chat_completion(*, payload: dict, access_token: str) ->
             return json.loads(response.read().decode("utf-8"))
     except urllib_error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
+        if exc.code in (401, 403):
+            invalidate_copilot_session_cache(profile=profile)
         raise RuntimeError(f"GitHub Copilot API error: HTTP {exc.code}: {body}")
 
 
@@ -970,14 +988,13 @@ def _extract_github_copilot_text(data: dict) -> str:
 
 
 def fetch_github_copilot_models(*, profile: str) -> list[str]:
-    access_token = _load_github_copilot_token(profile=profile)
-    root = "https://api.githubcopilot.com"
+    try:
+        session_token = get_copilot_session_token(profile=profile)
+    except RuntimeError:
+        return []
     req = urllib_request.Request(
-        f"{root}/models",
-        headers={
-            "Authorization": f"Bearer {access_token}",
-            "Copilot-Integration-Id": "cli",
-        },
+        f"{_COPILOT_API_ROOT}/models",
+        headers=_github_copilot_request_headers(session_token),
         method="GET",
     )
     try:
@@ -989,6 +1006,10 @@ def fetch_github_copilot_models(*, profile: str) -> list[str]:
             for item in models
             if isinstance(item, dict) and item.get("id")
         ]
+    except urllib_error.HTTPError as exc:
+        if exc.code in (401, 403):
+            invalidate_copilot_session_cache(profile=profile)
+        return []
     except Exception:
         return []
 

@@ -8,14 +8,25 @@ and routes them back to Discord.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
 import queue
 import threading
 import time
+import urllib.error
+import urllib.request
 from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("uvicorn.error")
+
+# Runtime process URL — where the gateway actually runs. API process
+# dispatches send intents here via HTTP because _outbound_queue is
+# module-local and can't cross process boundaries.
+_RUNTIME_DISPATCH_URL = os.environ.get(
+    "JARVIS_RUNTIME_URL", "http://127.0.0.1:8011"
+).rstrip("/")
 
 # ── State ──────────────────────────────────────────────────────────────
 
@@ -57,9 +68,81 @@ _seen_message_ids: set[str] = set()
 _seen_message_ids_lock = threading.Lock()
 _SEEN_MESSAGE_IDS_MAX = 200
 
+# Cross-process status sharing: the gateway owns a module-level `_status`
+# dict, but tools in other processes (jarvis-api) can't see it. We mirror
+# status to runtime_state_kv so any reader sees the same truth.
+_STATUS_KV_KEY = "discord_gateway.status"
+_STATUS_STALE_AFTER = 120.0  # seconds before persisted state is suspect
+_STATUS_HB_INTERVAL = 30.0   # seconds between heartbeat refreshes
+
+_hb_thread: threading.Thread | None = None
+_hb_running: bool = False
+
+
+def _persist_status() -> None:
+    """Mirror current _status to runtime_state_kv for cross-process readers."""
+    try:
+        from core.runtime.db import set_runtime_state_value
+        set_runtime_state_value(_STATUS_KV_KEY, {
+            "connected": _status["connected"],
+            "guild_name": _status["guild_name"],
+            "last_message_at": _status["last_message_at"],
+            "message_count": _status["message_count"],
+            "connect_error": _status["connect_error"],
+            "active_discord_sessions": len(_discord_sessions),
+            "updated_at": datetime.now(UTC).isoformat(),
+        })
+    except Exception as exc:
+        logger.debug("discord_gateway: persist_status failed: %s", exc)
+
+
+def _status_heartbeat_loop() -> None:
+    """Refresh persisted status every _STATUS_HB_INTERVAL seconds.
+
+    Without this, a silent crash (no `connected=False` write) would leave a
+    stale 'connected=True' in the KV forever. The heartbeat's fresh timestamp
+    lets readers detect staleness.
+    """
+    while _hb_running:
+        _persist_status()
+        for _ in range(int(_STATUS_HB_INTERVAL * 10)):
+            if not _hb_running:
+                return
+            time.sleep(0.1)
+
 
 def get_discord_status() -> dict[str, Any]:
-    """Return current gateway status."""
+    """Return current gateway status.
+
+    Reads from runtime_state_kv so processes that don't own the gateway
+    (jarvis-api) still see the correct state. Falls back to module-local
+    state only when nothing has been persisted yet.
+    """
+    try:
+        from core.runtime.db import get_runtime_state_value
+        persisted = get_runtime_state_value(_STATUS_KV_KEY, None)
+    except Exception:
+        persisted = None
+
+    if isinstance(persisted, dict) and persisted.get("updated_at"):
+        stale = True
+        try:
+            updated = datetime.fromisoformat(str(persisted["updated_at"]))
+            age = (datetime.now(UTC) - updated).total_seconds()
+            stale = age > _STATUS_STALE_AFTER
+        except Exception:
+            pass
+        out = {
+            "connected": bool(persisted.get("connected")) and not stale,
+            "guild_name": persisted.get("guild_name"),
+            "last_message_at": persisted.get("last_message_at"),
+            "message_count": int(persisted.get("message_count") or 0),
+            "connect_error": persisted.get("connect_error"),
+            "active_discord_sessions": int(persisted.get("active_discord_sessions") or 0),
+            "stale": stale,
+        }
+        return out
+
     return {
         "connected": _status["connected"],
         "guild_name": _status["guild_name"],
@@ -67,12 +150,52 @@ def get_discord_status() -> dict[str, Any]:
         "message_count": _status["message_count"],
         "connect_error": _status["connect_error"],
         "active_discord_sessions": len(_discord_sessions),
+        "stale": False,
     }
 
 
+def _is_gateway_owner() -> bool:
+    """True if the discord client thread is running in this process."""
+    return _thread is not None and _thread.is_alive()
+
+
+def _dispatch_to_runtime(action: str, args: dict) -> dict:
+    """Forward a send intent to the runtime process via internal HTTP."""
+    url = f"{_RUNTIME_DISPATCH_URL}/api/internal/discord/dispatch"
+    payload = json.dumps({"action": action, "args": args}).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8")
+            return json.loads(body)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:200]
+        return {"status": "error", "reason": f"runtime-http-{exc.code}: {detail}"}
+    except Exception as exc:
+        return {"status": "error", "reason": f"runtime-dispatch-failed: {exc}"}
+
+
 def send_discord_message(channel_id: int, text: str) -> None:
-    """Thread-safe: queue a message to be sent to a Discord channel."""
-    _outbound_queue.put_nowait((channel_id, text))
+    """Thread-safe: queue a message to be sent to a Discord channel.
+
+    Runs locally if this process owns the gateway; otherwise dispatches
+    to the runtime process via internal HTTP.
+    """
+    if _is_gateway_owner():
+        _outbound_queue.put_nowait((channel_id, text))
+        return
+    result = _dispatch_to_runtime(
+        "send_message", {"channel_id": int(channel_id), "text": str(text)}
+    )
+    if result.get("status") == "error":
+        logger.warning(
+            "discord_gateway: cross-process send failed: %s", result.get("reason")
+        )
 
 
 def _download_attachment(attachment: Any, session_id: str) -> dict:
@@ -115,11 +238,16 @@ def _validate_send_path(path: str) -> tuple[bool, str]:
 
 def send_discord_file(channel_id: int, text: str, file_path: str) -> dict:
     """Queue a file send to a Discord channel. Validates path first."""
-    ok, err = _validate_send_path(file_path)
-    if not ok:
-        return {"status": "error", "reason": err}
-    _outbound_queue.put_nowait({"channel_id": channel_id, "text": text, "file_path": file_path})
-    return {"status": "queued", "channel_id": channel_id, "file_path": file_path}
+    if _is_gateway_owner():
+        ok, err = _validate_send_path(file_path)
+        if not ok:
+            return {"status": "error", "reason": err}
+        _outbound_queue.put_nowait({"channel_id": channel_id, "text": text, "file_path": file_path})
+        return {"status": "queued", "channel_id": channel_id, "file_path": file_path}
+    return _dispatch_to_runtime(
+        "send_file",
+        {"channel_id": int(channel_id), "text": str(text), "file_path": str(file_path)},
+    )
 
 
 def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:
@@ -128,6 +256,11 @@ def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:
     Does not require an active session — opens the DM channel if needed.
     Returns {"status": "sent"} or {"status": "error", "reason": str}.
     """
+    if not _is_gateway_owner():
+        return _dispatch_to_runtime(
+            "send_dm_to_owner",
+            {"text": str(text), "timeout": float(timeout)},
+        )
     if not _status["connected"] or _client is None or _loop is None:
         return {"status": "error", "reason": "discord-not-connected"}
 
@@ -268,6 +401,7 @@ async def _send_outbound_loop() -> None:
                 logger.info("discord_outbound: sent ok to channel=%s", channel_id)
                 _status["message_count"] += 1
                 _status["last_message_at"] = datetime.now(UTC).isoformat()
+                _persist_status()
                 from core.eventbus.bus import event_bus
                 event_bus.publish("discord.message_sent", {
                     "channel_id": str(channel_id),
@@ -299,6 +433,7 @@ async def _run_client(config: dict) -> None:
         _status["connect_error"] = None
         guild = _client.get_guild(guild_id)
         _status["guild_name"] = guild.name if guild else str(guild_id)
+        _persist_status()
         logger.info(
             "discord_gateway: connected as %s to guild %s",
             _client.user,
@@ -507,6 +642,7 @@ async def _run_client(config: dict) -> None:
     except Exception as exc:
         _status["connected"] = False
         _status["connect_error"] = str(exc)
+        _persist_status()
         logger.error("discord_gateway: client error: %s", exc)
 
 
@@ -523,6 +659,7 @@ def _discord_thread_func(config: dict) -> None:
     finally:
         _thread_running = False
         _status["connected"] = False
+        _persist_status()
         _loop.close()
         _loop = None
 
@@ -588,7 +725,7 @@ def _eventbus_subscriber_loop() -> None:
 
 def start_discord_gateway() -> None:
     """Start gateway if config exists. Safe to call unconditionally."""
-    global _thread, _sub_thread, _sub_running
+    global _thread, _sub_thread, _sub_running, _hb_thread, _hb_running
 
     from core.services.discord_config import load_discord_config
     config = load_discord_config()
@@ -617,17 +754,30 @@ def start_discord_gateway() -> None:
         name="discord-gateway",
     )
     _thread.start()
+
+    # Start status heartbeat so other processes can see liveness
+    _hb_running = True
+    _hb_thread = threading.Thread(
+        target=_status_heartbeat_loop,
+        daemon=True,
+        name="discord-status-hb",
+    )
+    _hb_thread.start()
+
     logger.info("discord_gateway: started")
 
 
 def stop_discord_gateway() -> None:
     """Stop the gateway gracefully."""
-    global _sub_running, _thread_running
+    global _sub_running, _thread_running, _hb_running
     _sub_running = False
     _thread_running = False
+    _hb_running = False
     if _loop and _client:
         try:
             asyncio.run_coroutine_threadsafe(_client.close(), _loop)
         except Exception:
             pass
+    _status["connected"] = False
+    _persist_status()
     logger.info("discord_gateway: stopped")

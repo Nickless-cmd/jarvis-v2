@@ -325,6 +325,9 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
                     "status": "ok",
                 }
             ]
+        # Intentionally return fewer results than requested tool calls
+        # to ensure visible_runs still emits one tool-result per tool_call_id
+        # when building followup exchanges.
         return [
             {
                 "tool_name": "search_memory",
@@ -354,6 +357,8 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
                 "model": model,
                 "round_index": round_index,
                 "exchange_count": len(exchanges),
+                "last_tool_calls": len(exchanges[-1].tool_calls) if exchanges else 0,
+                "last_results": len(exchanges[-1].results) if exchanges else 0,
             }
         )
         if round_index == 0:
@@ -365,6 +370,14 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
                         "function": {
                             "name": "search_memory",
                             "arguments": {"query": "jarvis"},
+                        },
+                    },
+                    {
+                        "id": "call-3",
+                        "type": "function",
+                        "function": {
+                            "name": "read_file",
+                            "arguments": {"path": "README.md"},
                         },
                     }
                 ]
@@ -410,6 +423,8 @@ def test_visible_run_native_tool_calls_use_visible_followup_dispatcher(
     assert followup_calls[0]["provider"] == "github-copilot"
     assert followup_calls[0]["exchange_count"] == 1
     assert followup_calls[1]["exchange_count"] == 2
+    assert followup_calls[1]["last_tool_calls"] == 2
+    assert followup_calls[1]["last_results"] == 2
     assert len(tool_exec_calls) == 2
     assert tool_exec_calls[1][0]["function"]["name"] == "search_memory"
 

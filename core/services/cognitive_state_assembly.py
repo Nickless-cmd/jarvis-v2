@@ -47,6 +47,190 @@ logger = logging.getLogger(__name__)
 _LAST_COGNITIVE_INJECTION: dict[str, object] = {}
 _LAST_COGNITIVE_INJECTION_AT: str = ""
 
+# ---------------------------------------------------------------------------
+# Option 2: TTL-based cognitive state cache
+# ---------------------------------------------------------------------------
+# Caches assembled cognitive state per mode (full/compact) with configurable
+# TTL. Invalidated automatically when underlying state shifts significantly
+# (personality vector, bearing, mood, chronicle entry).
+# ---------------------------------------------------------------------------
+
+_COHERENT_CACHE: dict[str, dict[str, object]] = {}
+_CACHE_INVALIDATION_SNAPSHOT: dict[str, object] = {}
+
+
+def _cache_ttl_seconds() -> float:
+    """Read TTL from settings; default 120s."""
+    try:
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        return float(s.cognitive_state_cache_ttl_seconds)
+    except Exception:
+        return 120.0
+
+
+def _cache_enabled() -> bool:
+    """Check if caching is enabled in settings."""
+    try:
+        from core.runtime.settings import load_settings
+        return bool(load_settings().cognitive_state_cache_enabled)
+    except Exception:
+        return True  # default on
+
+
+def _build_invalidation_snapshot() -> dict[str, object]:
+    """Snapshot the key state signals that invalidate the cache.
+
+    If any of these change between calls, the cache is considered stale.
+    This does 3 fast DB reads — cheap enough for cache-miss paths,
+    but skipped entirely on cache hits (TTL still valid).
+    """
+    snapshot: dict[str, object] = {}
+
+    # Personality vector: version + bearing + mood fingerprint
+    pv = _safe_call(get_latest_cognitive_personality_vector)
+    if pv:
+        snapshot["pv_version"] = pv.get("version")
+        snapshot["pv_bearing"] = str(pv.get("current_bearing") or "")[:80]
+        eb = _safe_json(pv.get("emotional_baseline"))
+        if eb:
+            # Round to 1 decimal to avoid float-noise invalidation
+            snapshot["pv_mood_fingerprint"] = tuple(
+                round(float(v), 1) for v in eb.values() if isinstance(v, (int, float))
+            )
+        snapshot["pv_updated_at"] = str(pv.get("updated_at") or "")
+
+    # Chronicle: latest entry timestamp
+    chronicle = _safe_call(get_latest_cognitive_chronicle_entry)
+    if chronicle:
+        snapshot["chronicle_at"] = str(chronicle.get("created_at") or "")
+
+    # Rhythm phase
+    rhythm = _safe_call(get_latest_cognitive_rhythm_state)
+    if rhythm:
+        snapshot["rhythm_phase"] = str(rhythm.get("phase") or "")
+
+    return snapshot
+
+
+def _is_cache_valid(cache_key: str) -> bool:
+    """Check if cached state for `cache_key` is still fresh and coherent.
+
+    Two-tier check:
+    1. Within TTL → immediate return True (zero DB reads)
+    2. TTL expired → build snapshot, compare to stored one:
+       - Changed → invalidate (state shifted)
+       - Unchanged → extend cache TTL (state stable, no need to rebuild)
+    """
+    global _COHERENT_CACHE
+
+    if cache_key not in _COHERENT_CACHE:
+        return False
+
+    entry = _COHERENT_CACHE[cache_key]
+    cached_at = entry.get("cached_at")
+    if not cached_at:
+        return False
+
+    # Tier 1: TTL check — if within TTL, return immediately (zero DB reads)
+    ttl = _cache_ttl_seconds()
+    try:
+        age = (datetime.now(UTC) - datetime.fromisoformat(str(cached_at).replace("Z", "+00:00"))).total_seconds()
+    except Exception:
+        return False
+
+    if age <= ttl:
+        logger.debug("cognitive_state_cache: TTL HIT for %s (age=%.1fs / %.1fs)", cache_key, age, ttl)
+        return True
+
+    # Tier 2: TTL expired — check if underlying state has actually changed
+    # before throwing away the cache. This costs 3-4 DB reads but only
+    # runs once per TTL window.
+    current_snapshot = _build_invalidation_snapshot()
+    stored_snapshot = entry.get("invalidation_snapshot") or {}
+
+    if current_snapshot != stored_snapshot:
+        # State has changed — cache is stale
+        changed = [k for k in set(list(stored_snapshot.keys()) + list(current_snapshot.keys()))
+                   if stored_snapshot.get(k) != current_snapshot.get(k)]
+        logger.info("cognitive_state_cache: snapshot changed (%s) — invalidating %s", ", ".join(changed), cache_key)
+        _COHERENT_CACHE.pop(cache_key, None)
+        return False
+
+    # State hasn't changed — extend the cache TTL by updating cached_at
+    entry["cached_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    logger.info("cognitive_state_cache: TTL expired but state unchanged, extending cache for %s", cache_key)
+    return True
+
+
+def _get_cached_state(cache_key: str) -> str | None:
+    """Return cached cognitive state string if valid, None otherwise."""
+    if not _cache_enabled():
+        return None
+    if _is_cache_valid(cache_key):
+        entry = _COHERENT_CACHE[cache_key]
+        return str(entry.get("text") or "")
+    return None
+
+
+def _set_cached_state(cache_key: str, text: str, sources: list[str]) -> None:
+    """Store assembled cognitive state in cache."""
+    global _CACHE_INVALIDATION_SNAPSHOT
+    if not _cache_enabled():
+        return
+
+    # Update invalidation snapshot when we write fresh state
+    if not _CACHE_INVALIDATION_SNAPSHOT:
+        _CACHE_INVALIDATION_SNAPSHOT = _build_invalidation_snapshot()
+
+    _COHERENT_CACHE[cache_key] = {
+        "text": text,
+        "sources": sources,
+        "cached_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "chars": len(text),
+    }
+    logger.info(
+        "cognitive_state_cache: cached %s (%d chars, %d sources)",
+        cache_key, len(text), len(sources),
+    )
+
+
+def invalidate_cognitive_state_cache() -> None:
+    """Explicitly invalidate all cognitive state caches.
+
+    Call this when state is known to have changed (e.g. after heartbeat tick,
+    mood update, or chronicle write).
+    """
+    global _COHERENT_CACHE, _CACHE_INVALIDATION_SNAPSHOT
+    _COHERENT_CACHE.clear()
+    _CACHE_INVALIDATION_SNAPSHOT.clear()
+    logger.info("cognitive_state_cache: explicitly invalidated all caches")
+
+
+def get_cognitive_state_cache_status() -> dict[str, object]:
+    """Return cache status for MC transparency."""
+    global _COHERENT_CACHE, _CACHE_INVALIDATION_SNAPSHOT
+    entries = {}
+    for key, entry in _COHERENT_CACHE.items():
+        cached_at = str(entry.get("cached_at") or "")
+        age_s = 0.0
+        try:
+            age_s = (datetime.now(UTC) - datetime.fromisoformat(cached_at.replace("Z", "+00:00"))).total_seconds()
+        except Exception:
+            pass
+        entries[key] = {
+            "cached_at": cached_at,
+            "age_seconds": round(age_s, 1),
+            "chars": entry.get("chars", 0),
+            "sources": entry.get("sources", []),
+        }
+    return {
+        "enabled": _cache_enabled(),
+        "ttl_seconds": _cache_ttl_seconds(),
+        "entries": entries,
+        "invalidation_snapshot_keys": list(_CACHE_INVALIDATION_SNAPSHOT.keys()),
+    }
+
 
 def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
     """Build the [COGNITIVE STATE] section for visible chat prompt injection.
@@ -67,6 +251,22 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
             return None
     except Exception:
         pass
+
+    # --- Option 2: Cache lookup ---
+    cache_key = "visible_compact" if compact else "visible_full"
+    cached = _get_cached_state(cache_key)
+    if cached is not None:
+        # Update MC transparency to reflect cache hit
+        _LAST_COGNITIVE_INJECTION = {
+            "text": cached,
+            "sources": ["cache_hit"],
+            "compact": compact,
+            "chars": len(cached),
+            "assembled_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "from_cache": True,
+        }
+        _LAST_COGNITIVE_INJECTION_AT = _LAST_COGNITIVE_INJECTION["assembled_at"]
+        return cached
 
     parts: list[str] = []
     sources_used: list[str] = []
@@ -436,6 +636,10 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         "assembled_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     }
     _LAST_COGNITIVE_INJECTION_AT = _LAST_COGNITIVE_INJECTION["assembled_at"]
+
+    # Option 2: Cache the assembled state for reuse within TTL window
+    cache_key = "visible_compact" if compact else "visible_full"
+    _set_cached_state(cache_key, result, sources_used)
 
     return result
 

@@ -31,6 +31,8 @@ class RuntimeSettings:
     recall_repetition_multiplier: float = 1.5
     # Cognitive state assembly toggle
     cognitive_state_assembly_enabled: bool = True
+    # Cognitive state cache TTL (seconds). 0 = disabled.
+    cognitive_state_cache_ttl: int = 120
     # Emotion decay
     emotion_decay_factor: float = 0.97
     # Context compact thresholds

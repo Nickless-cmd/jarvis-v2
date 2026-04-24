@@ -1,11 +1,13 @@
-"""Wake word detection using webrtcvad + ElevenLabs STT.
+"""Wake word detection using webrtcvad + local Whisper (cloud fallback).
 
 Pipeline:
   parec → webrtcvad (speech/silence) → collect speech chunk
-  → ElevenLabs STT → check for "hey jarvis"
+  → faster-whisper (local) → check for "hey jarvis"
+  → ElevenLabs STT only as fallback if local fails
 
 Only sends audio to the cloud when webrtcvad detects actual speech,
-which eliminates Whisper hallucinations on silence.
+which eliminates hallucinations on silence. Local whisper keeps us
+independent of API credits; cloud fallback covers model-load errors.
 """
 
 import io
@@ -30,6 +32,12 @@ SILENCE_FRAMES = 20     # frames of silence before we consider speech done
 TRIGGER_WORDS = ["jarvis", "jarvi", "javis", "davis", "jarbs", "jarv", "arvis"]
 TRIGGER_PREFIX = ["hey", "hej", "hi", "yo", "ok", "okay"]
 
+# Local whisper model — loaded lazily and cached. 'tiny' is plenty for
+# wake-word detection, our TRIGGER_WORDS list already tolerates slop.
+_LOCAL_WHISPER_SIZE = os.environ.get("JARVIS_WAKE_WHISPER_SIZE", "tiny")
+_local_whisper = None
+_local_whisper_failed = False
+
 
 def _get_elevenlabs_key() -> str | None:
     try:
@@ -41,11 +49,49 @@ def _get_elevenlabs_key() -> str | None:
         return None
 
 
-def _transcribe(frames: list[bytes]) -> str:
-    """Send collected audio frames to ElevenLabs STT."""
+def _get_local_whisper():
+    """Load faster-whisper once and cache. Returns None if import fails."""
+    global _local_whisper, _local_whisper_failed
+    if _local_whisper_failed:
+        return None
+    if _local_whisper is not None:
+        return _local_whisper
+    try:
+        from faster_whisper import WhisperModel
+        _local_whisper = WhisperModel(
+            _LOCAL_WHISPER_SIZE, device="cpu", compute_type="int8"
+        )
+        print(f"  [stt] local whisper loaded ({_LOCAL_WHISPER_SIZE}, cpu/int8)")
+        return _local_whisper
+    except Exception as exc:
+        print(f"  [stt] local whisper load failed: {exc}")
+        _local_whisper_failed = True
+        return None
+
+
+def _transcribe_local(frames: list[bytes]) -> str | None:
+    """Transcribe with local faster-whisper. Returns None on error."""
+    model = _get_local_whisper()
+    if model is None:
+        return None
+    try:
+        audio = (
+            np.frombuffer(b"".join(frames), dtype=np.int16)
+            .astype(np.float32)
+            / 32768.0
+        )
+        segments, _ = model.transcribe(audio, language="da", beam_size=1)
+        return " ".join(s.text.strip() for s in segments).strip()
+    except Exception as exc:
+        print(f"  [stt] local whisper transcribe failed: {exc}")
+        return None
+
+
+def _transcribe_elevenlabs(frames: list[bytes]) -> str | None:
+    """Fallback: send audio to ElevenLabs STT. Returns None on error."""
     key = _get_elevenlabs_key()
     if not key:
-        return ""
+        return None
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wf:
         wf.setnchannels(1)
@@ -59,17 +105,31 @@ def _transcribe(frames: list[bytes]) -> str:
         result = client.speech_to_text.convert(
             file=("audio.wav", buf, "audio/wav"),
             model_id="scribe_v1",
-            language_code="da",  # pin to Danish — prevents multi-language hallucinations
+            language_code="da",
         )
-        text = (result.text or "").strip()
-        # Ignore pure sound-effect descriptions like "(background noise)"
-        import re
-        if re.fullmatch(r"[\s()\[\].,!?–-]*|\(.*\)", text):
-            return ""
-        return text
+        return (result.text or "").strip()
     except Exception as e:
-        print(f"  [stt] ElevenLabs error: {e}")
+        print(f"  [stt] ElevenLabs fallback error: {e}")
+        return None
+
+
+def _clean_transcript(text: str) -> str:
+    """Strip sound-effect artefacts like '(background noise)'."""
+    import re
+    if re.fullmatch(r"[\s()\[\].,!?–-]*|\(.*\)", text):
         return ""
+    return text
+
+
+def _transcribe(frames: list[bytes]) -> str:
+    """Local whisper first, ElevenLabs fallback."""
+    local = _transcribe_local(frames)
+    if local is not None:
+        return _clean_transcript(local)
+    cloud = _transcribe_elevenlabs(frames)
+    if cloud is not None:
+        return _clean_transcript(cloud)
+    return ""
 
 
 def _is_wake_word(text: str) -> bool:

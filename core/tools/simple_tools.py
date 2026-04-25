@@ -209,6 +209,15 @@ _AUTO_APPROVE_WRITE_PREFIXES = [
     str(WORKSPACE_DIR) + "/",                          # all runtime workspace files
     str(Path(PROJECT_ROOT) / "workspace" / "default") + "/",  # repo workspace template
     "/tmp/",                                            # safe temp directory
+    "/media/projects/mini-jarvis/",                    # Bjørn's mini-jarvis
+    # training project — explicit project dir for Jarvis' own custom-model
+    # work. Auto-approving here lets Jarvis write training scripts, manifest
+    # files, dataset preparers without an approval-card per file. Does NOT
+    # cover other /media/projects/* dirs (e.g. jarvis-v2 source itself) —
+    # those still go through approval for safety.
+    str(Path(JARVIS_HOME) / "workspaces" / "michelle") + "/",
+    # Michelle's workspace — separate persona space, owned by her.
+    # Same auto-approve treatment as default workspace.
 ]
 _BLOCKED_WRITE_PATTERNS = [
     "/.git/",

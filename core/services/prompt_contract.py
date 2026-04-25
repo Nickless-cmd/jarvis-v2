@@ -1707,12 +1707,19 @@ def _contains_any(text: str, needles: tuple[str, ...]) -> bool:
 
 
 def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
+    # Bumped from 14/600 to 30/2000 to make room for explicit critical
+    # rules at the top of VISIBLE_CHAT_RULES.md (no inline tool markup,
+    # no promises without action, verify after critical writes,
+    # memory-first). The original budget truncated those rules before
+    # the model saw them — leading to "silent lying" patterns where the
+    # model emitted text-form tool calls or promised actions without
+    # executing them.
     return _workspace_optional_file_section(
         workspace_dir / "VISIBLE_CHAT_RULES.md",
         fallback_path=TEMPLATE_DIR / "VISIBLE_CHAT_RULES.md",
         label="Visible chat guidance rules",
-        max_lines=14,
-        max_chars=600,
+        max_lines=30,
+        max_chars=2000,
     )
 
 

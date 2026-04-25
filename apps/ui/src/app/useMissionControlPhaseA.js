@@ -85,6 +85,7 @@ export function useMissionControlPhaseA({ active, selection }) {
   const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastRealtimeEventAt, setLastRealtimeEventAt] = useState('')
+  const [realtimeConnected, setRealtimeConnected] = useState(false)
   const [drawer, setDrawer] = useState(null)
   const [toolIntentActionState, setToolIntentActionState] = useState({ busy: false, error: '' })
   const refreshQueue = useRef(new Set())
@@ -280,6 +281,16 @@ export function useMissionControlPhaseA({ active, selection }) {
       stop?.()
     }
   }, [active, activeTab, data.jarvis, isJarvisTab, scheduleRefresh])
+
+  useEffect(() => {
+    if (!active) return
+    const stop = backend.subscribeMissionControlConnection?.((connected) => {
+      setRealtimeConnected(Boolean(connected))
+    })
+    return () => {
+      stop?.()
+    }
+  }, [active])
 
   useEffect(() => {
     if (!active) return
@@ -534,6 +545,7 @@ export function useMissionControlPhaseA({ active, selection }) {
     isLoading,
     isRefreshing,
     lastRealtimeEventAt,
+    realtimeConnected,
     navigateTo,
     refreshAll,
     closeDrawer,

@@ -81,9 +81,17 @@ function normalizeMissionControlOperationsPayload(payload = {}) {
 }
 
 const missionControlEventListeners = new Set()
+const missionControlConnectionListeners = new Set()
 let missionControlSocket = null
 let missionControlReconnectTimer = null
 let missionControlRetryDelay = 1000
+let missionControlConnected = false
+
+function notifyMissionControlConnection(connected) {
+  if (missionControlConnected === connected) return
+  missionControlConnected = connected
+  missionControlConnectionListeners.forEach((listener) => listener?.(connected))
+}
 
 function scheduleMissionControlReconnect() {
   if (missionControlReconnectTimer || missionControlEventListeners.size === 0) return
@@ -102,6 +110,7 @@ function ensureMissionControlSocket() {
 
   socket.onopen = () => {
     missionControlRetryDelay = 1000
+    notifyMissionControlConnection(true)
   }
 
   socket.onmessage = (message) => {
@@ -119,6 +128,7 @@ function ensureMissionControlSocket() {
 
   socket.onclose = () => {
     if (missionControlSocket === socket) missionControlSocket = null
+    notifyMissionControlConnection(false)
     if (missionControlEventListeners.size === 0) return
     scheduleMissionControlReconnect()
   }
@@ -4288,6 +4298,15 @@ export const backend = {
         missionControlSocket.close()
         missionControlSocket = null
       }
+    }
+  },
+
+  subscribeMissionControlConnection(onChange) {
+    missionControlConnectionListeners.add(onChange)
+    // Fire immediately with current state so consumers don't show stale UI.
+    onChange?.(missionControlConnected)
+    return () => {
+      missionControlConnectionListeners.delete(onChange)
     }
   },
 

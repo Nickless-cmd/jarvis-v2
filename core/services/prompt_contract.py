@@ -304,6 +304,17 @@ def build_visible_chat_prompt_assembly(
     # each other (and with the fast synchronous file reads below) cuts
     # prompt assembly time from ~15s down to roughly the slowest single
     # call (~8s for build_cognitive_state_for_prompt).
+    import time as _t_mod
+    import sys as _sys_mod
+    _t_assembly_start = _t_mod.monotonic()
+    _phase_timings: dict[str, int] = {}
+
+    def _timed_result(_future, _name: str):
+        _t = _t_mod.monotonic()
+        _val = _future.result()
+        _phase_timings[_name] = int((_t_mod.monotonic() - _t) * 1000)
+        return _val
+
     executor = ThreadPoolExecutor(max_workers=6, thread_name_prefix="prompt-assembly")
     frame_fn = _micro_cognitive_frame_section if compact else _cognitive_frame_section
 
@@ -434,7 +445,7 @@ def build_visible_chat_prompt_assembly(
 
     # Resolve relevance — blocks until the bounded NL prompt relevance call
     # returns, but happens concurrently with fast file reads above.
-    relevance = future_relevance.result()
+    relevance = _timed_result(future_relevance, "relevance")
 
     # --- Phase 2: launch relevance-dependent Ollama calls in parallel ---
     future_memory_selection = (
@@ -470,7 +481,7 @@ def build_visible_chat_prompt_assembly(
     )
 
     if relevance.include_memory:
-        memory_selection = future_memory_selection.result()
+        memory_selection = _timed_result(future_memory_selection, "memory_selection")
         if memory_selection:
             parts.append(
                 "\n".join(
@@ -499,7 +510,7 @@ def build_visible_chat_prompt_assembly(
             )
             derived_inputs.append("daily memory sidecar")
 
-        recall_bundle = future_recall_bundle.result()
+        recall_bundle = _timed_result(future_recall_bundle, "recall_bundle")
         if recall_bundle:
             parts.append(recall_bundle)
             derived_inputs.append("bounded memory recall bundle")
@@ -529,7 +540,7 @@ def build_visible_chat_prompt_assembly(
         else None
     )
 
-    self_report_content = future_self_report.result()
+    self_report_content = _timed_result(future_self_report, "self_report")
 
     support_raw = _visible_support_signal_sections(
         compact=compact,
@@ -537,14 +548,14 @@ def build_visible_chat_prompt_assembly(
     )
     support_content = "\n\n".join(support_raw) if support_raw else None
 
-    bridge_decision = future_bridge_decision.result()
+    bridge_decision = _timed_result(future_bridge_decision, "bridge_decision")
     bridge_content = (
         bridge_decision.line
         if bridge_decision.included and bridge_decision.line
         else None
     )
 
-    frame_content = future_frame.result()
+    frame_content = _timed_result(future_frame, "frame")
 
     # Build structured transcript messages for multi-turn injection
     structured_transcript = _build_structured_transcript_messages(
@@ -561,7 +572,7 @@ def build_visible_chat_prompt_assembly(
 
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
     # Submitted as a future at function entry; resolve here.
-    cognitive_state_content = future_cognitive_state.result()
+    cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")
 
     raw_sections = {
         "capability_truth": capability_truth,
@@ -619,6 +630,14 @@ def build_visible_chat_prompt_assembly(
         derived_inputs.append("recent transcript slice (flat text fallback)")
 
     executor.shutdown(wait=False)
+
+    _total_ms = int((_t_mod.monotonic() - _t_assembly_start) * 1000)
+    _phases_str = " ".join(f"{k}_ms={v}" for k, v in sorted(_phase_timings.items()))
+    print(
+        f"prompt-assembly-timing total_ms={_total_ms} {_phases_str}",
+        file=_sys_mod.stderr,
+        flush=True,
+    )
 
     return PromptAssembly(
         mode="visible_chat",

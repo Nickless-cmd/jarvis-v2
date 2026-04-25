@@ -293,21 +293,23 @@ class OpenAICompatFollowupAdapter:
         self.provider_id = provider_id
 
     def _normalize_assistant_tool_calls(self, tool_calls: list[dict]) -> list[dict]:
-        """Normalize assistant tool_calls for provider-specific API quirks.
+        """Normalize assistant tool_calls to match the OpenAI chat-completions
+        wire spec.
 
-        GitHub Copilot's ``/chat/completions`` rejects request bodies where
-        ``function.arguments`` is an object. It expects the OpenAI wire shape:
-        a JSON-encoded string.
+        Per spec, ``function.arguments`` must be a JSON-encoded string —
+        not an object. Several providers (GitHub Copilot, OpenCode/MiniMax)
+        reject requests where arguments is a dict with HTTP 400. We parse
+        incoming tool_call args to dict in visible_runs; here we re-encode
+        them on the way back out so every openai-compat provider is happy.
         """
         normalized: list[dict] = []
         for raw in tool_calls:
             tc = dict(raw or {})
             fn = dict(tc.get("function") or {})
-            if self.provider_id == "github-copilot" and fn:
+            if fn:
                 args = fn.get("arguments")
                 if isinstance(args, dict):
                     fn["arguments"] = json.dumps(args, ensure_ascii=False)
-            if fn:
                 tc["function"] = fn
             normalized.append(tc)
         return normalized

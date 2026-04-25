@@ -528,7 +528,7 @@ class OpenAICompatFollowupAdapter:
         ]
         tool_calls = _finalize_openai_tool_calls(tool_calls)
         _total_ms = int((_time.monotonic() - _t0) * 1000)
-        _log.info(
+        _log.warning(
             "visible-latency provider=%s round=followup-%d prompt_chars=%d ttfb_ms=%s total_ms=%d text_chars=%d tool_calls=%d",
             self.provider_id,
             round_index,

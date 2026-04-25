@@ -4904,13 +4904,43 @@ def _validate_heartbeat_decision(
                         "action_type": "discord-heartbeat-ping",
                         "action_artifact": str(sent_ch_id),
                     }
+                # Discord configured + connected, but no active DM session
+                # to deliver into. Fall back to webchat so Jarvis isn't
+                # silenced — the user's chosen primary channel just isn't
+                # currently reachable, that doesn't mean his thought is
+                # worthless. Override ping_channel for this single delivery
+                # so _deliver_heartbeat_ping_directly takes the actual
+                # webchat path (not the gate-triggered path that would
+                # only record a preview).
+                fallback_policy = dict(policy)
+                fallback_policy["ping_channel"] = "webchat"
+                fallback_result = _deliver_heartbeat_ping_directly(
+                    policy=fallback_policy,
+                    tick_id=tick_id,
+                    ping_text=msg,
+                    summary=decision_summary_value,
+                )
+                if str(fallback_result.get("status") or "") == "sent":
+                    return {
+                        "tick_id": tick_id,
+                        "blocked_reason": "",
+                        "ping_eligible": True,
+                        "ping_result": "sent-webchat-fallback-from-discord",
+                        "action_status": "sent",
+                        "action_summary": str(fallback_result.get("summary") or ""),
+                        "action_type": "webchat-heartbeat-ping",
+                        "action_artifact": str(fallback_result.get("artifact") or ""),
+                    }
                 return {
                     "tick_id": tick_id,
-                    "blocked_reason": "discord-no-active-dm",
+                    "blocked_reason": "discord-no-active-dm-and-webchat-fallback-blocked",
                     "ping_eligible": False,
                     "ping_result": "discord-no-active-dm",
                     "action_status": "blocked",
-                    "action_summary": "No active Discord DM session found.",
+                    "action_summary": (
+                        "No active Discord DM session found, and webchat fallback "
+                        f"was unavailable: {fallback_result.get('blocked_reason') or 'unknown'}."
+                    ),
                     "action_type": "",
                     "action_artifact": "",
                 }

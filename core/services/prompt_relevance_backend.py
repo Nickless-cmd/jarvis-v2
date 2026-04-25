@@ -90,7 +90,104 @@ def _call_bounded_relevance_llm(prompt: str) -> _BoundedLLMCall:
         fallback = _call_local_ollama_relevance(prompt=prompt)
         return fallback if fallback.success else attempt
 
+    # Generic OpenAI-compat providers (mistral, nvidia-nim, openrouter,
+    # sambanova, groq) — share the same wire format as opencode and benefit
+    # from the same bounded timeout wrapper. The model id is read from a
+    # provider-specific setting if present, else from a generic
+    # ``relevance_<provider>_model`` field, else from the cheap-lane defaults.
+    from core.services.cheap_provider_runtime import (
+        _OPENAI_COMPATIBLE_PROVIDERS,
+        CHEAP_PROVIDER_DEFAULTS,
+    )
+    if primary in _OPENAI_COMPATIBLE_PROVIDERS:
+        model_attr = f"relevance_{primary.replace('-', '_')}_model"
+        timeout_attr = f"relevance_{primary.replace('-', '_')}_timeout"
+        defaults = CHEAP_PROVIDER_DEFAULTS.get(primary) or {}
+        static_models = defaults.get("static_models") or []
+        default_model = static_models[0] if static_models else ""
+        attempt = _call_openai_compat_relevance(
+            provider=primary,
+            prompt=prompt,
+            model=str(getattr(settings, model_attr, None) or default_model),
+            timeout=int(getattr(settings, timeout_attr, None) or 6),
+        )
+        if attempt.success:
+            return attempt
+        fallback = _call_local_ollama_relevance(prompt=prompt)
+        return fallback if fallback.success else attempt
+
     return _call_local_ollama_relevance(prompt=prompt)
+
+
+def _call_openai_compat_relevance(
+    *, provider: str, prompt: str, model: str, timeout: int
+) -> _BoundedLLMCall:
+    """Generic openai-compat relevance call (mistral, nim, openrouter, ...)."""
+    try:
+        from core.services.cheap_provider_runtime import (
+            CHEAP_PROVIDER_DEFAULTS,
+            _execute_openai_compatible_chat,
+        )
+    except Exception as exc:
+        return _BoundedLLMCall(
+            success=False,
+            backend=f"bounded-{provider}",
+            provider=provider,
+            model=model,
+            status=f"import-failed:{type(exc).__name__}",
+            text="",
+        )
+
+    defaults = CHEAP_PROVIDER_DEFAULTS.get(provider) or {}
+    base_url = str(defaults.get("base_url") or "")
+
+    def _do_call() -> dict[str, Any]:
+        return _execute_openai_compatible_chat(
+            provider=provider,
+            model=model,
+            auth_profile=provider,
+            base_url=base_url,
+            message=prompt,
+        )
+
+    outcome, payload = _run_with_wall_clock_timeout(_do_call, timeout=timeout)
+    if outcome == "timeout":
+        return _BoundedLLMCall(
+            success=False,
+            backend=f"bounded-{provider}",
+            provider=provider,
+            model=model,
+            status="timeout",
+            text="",
+        )
+    if outcome == "error":
+        exc = payload
+        return _BoundedLLMCall(
+            success=False,
+            backend=f"bounded-{provider}",
+            provider=provider,
+            model=model,
+            status=f"request-failed:{type(exc).__name__}",
+            text="",
+        )
+    text = str((payload or {}).get("text") or "").strip()
+    if not text:
+        return _BoundedLLMCall(
+            success=False,
+            backend=f"bounded-{provider}",
+            provider=provider,
+            model=model,
+            status="empty-response",
+            text="",
+        )
+    return _BoundedLLMCall(
+        success=True,
+        backend=f"bounded-{provider}",
+        provider=provider,
+        model=model,
+        status="success",
+        text=text,
+    )
 
 
 def _call_opencode_relevance(

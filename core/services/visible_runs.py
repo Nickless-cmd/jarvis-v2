@@ -2427,7 +2427,16 @@ def _execute_simple_tool_calls(
             continue
         result = _exec(name, arguments)
         result_text = format_tool_result_for_model(name, result)
-        if controller and result.get("status") in {"ok", "approval_needed"}:
+        # Only mark as "seen" if the call genuinely succeeded. Including
+        # `approval_needed` here was a bug: when approval is later denied
+        # OR the approval flow fails silently, the signature stays in the
+        # seen-set forever and every retry returns duplicate_suppressed
+        # even though the write never happened. Observed today with
+        # write_file to /media/projects/mini-jarvis/ — pre-fix that path
+        # required approval, approval flow didn't reach the user, signature
+        # got stuck, retries blocked. Errors (error/blocked/timeout)
+        # likewise MUST stay retryable.
+        if controller and result.get("status") == "ok":
             controller.seen_simple_tool_call_signatures.add(signature)
         results.append({
             "tool_name": name,

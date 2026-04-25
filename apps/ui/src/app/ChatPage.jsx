@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChatTranscript } from '../components/chat/ChatTranscript'
 import { Composer } from '../components/chat/Composer'
 import { ChatHeader } from '../components/chat/ChatHeader'
@@ -24,10 +24,27 @@ export function ChatPage({
   streamingTokenEstimate,
 }) {
   const [draft, setDraft] = useState('')
+  // Queue a follow-up message while Jarvis is still streaming, so the user
+  // doesn't have to wait or cancel just to add a thought. Same UX as Claude
+  // Code's composer. Auto-flushes when the current run ends.
+  const [queuedMessage, setQueuedMessage] = useState(null)
+  const wasStreamingRef = useRef(isStreaming)
   const hero = useMemo(() => ({
     title: activeSession?.title || 'New chat',
     subtitle: activeSession?.subtitle || 'Conversation-first front door',
   }), [activeSession])
+
+  // Flush queued message as soon as the active run finishes.
+  useEffect(() => {
+    if (wasStreamingRef.current && !isStreaming && queuedMessage) {
+      const { msg, opts } = queuedMessage
+      setQueuedMessage(null)
+      // Defer one tick so React has flushed the streaming-end state before
+      // we kick off the new run. Otherwise we can race the parent hook.
+      setTimeout(() => onSend(msg, opts), 0)
+    }
+    wasStreamingRef.current = isStreaming
+  }, [isStreaming, queuedMessage, onSend])
 
   return (
     <div className="chat-shell-grid">
@@ -49,8 +66,15 @@ export function ChatPage({
           value={draft}
           onChange={setDraft}
           isStreaming={isStreaming}
+          queuedMessage={queuedMessage}
+          onClearQueued={() => setQueuedMessage(null)}
           onSend={(msg, opts) => {
-            if (isStreaming) return
+            if (isStreaming) {
+              // Queue rather than dispatch — auto-sends when run ends.
+              setQueuedMessage({ msg, opts })
+              setDraft('')
+              return
+            }
             onSend(msg, opts)
             setDraft('')
           }}

@@ -127,42 +127,69 @@ class FollowupAdapter(Protocol):
 class OllamaFollowupAdapter:
     """Follow-up via Ollama's ``/api/chat`` streaming NDJSON endpoint.
 
-    Preserves the legacy message shape used by ``visible_runs.py`` prior to
-    this adapter: tool results are packed into a single user-role message
-    using ``[tool_name]:\\nresult`` blocks. Many local models handle this
-    shape more reliably than the OpenAI ``role=tool`` message.
+    Uses the modern OpenAI-spec tool message format: assistant turns carry
+    structured ``tool_calls``, and results are sent back as ``role=tool``
+    messages with ``tool_call_id`` linking them to the originating call.
+    Modern Ollama (0.2+) and modern instruction-tuned models (Qwen3+,
+    Llama 3+, deepseek-v4 etc.) are all trained on this format and continue
+    agentic loops naturally — no soft "you may call more tools" prompt
+    needed.
+
+    Historical context: until 2026-04-25 this adapter packed tool results
+    into a synthetic *user* message ("[tool_name]:\\nresult ... Please
+    respond. You may call additional tools."). That worked OK for old
+    models (Llama 2, tiny Qwens) but starved newer ones of the structural
+    cue they were trained on. Symptom: the model would write a "Lad mig X"
+    plan in prose and end its turn instead of emitting another tool_call.
+    Switching to the structured format gives the same agentic-loop quality
+    we always had on the GitHub Copilot path.
     """
 
     provider_id = "ollama"
 
-    def _serialize_exchanges(self, exchanges: list[ToolExchange]) -> list[dict]:
-        """Turn accumulated exchanges into the legacy Ollama message block.
+    def _normalize_tool_calls(self, tool_calls: list[dict]) -> list[dict]:
+        """Pass through tool_calls untouched.
 
-        For each exchange we append: an assistant text message (if non-empty)
-        followed by a user message containing ``[tool]:\\nresult`` blocks.
-        The final exchange uses the first-turn seed prose; intermediate
-        exchanges use the ``Continue.`` seed.
+        Unlike the OpenAI-compat adapter (which JSON-encodes args for
+        Copilot/MiniMax), Ollama's /api/chat accepts ``arguments`` as a
+        dict. We don't re-serialize.
+        """
+        out: list[dict] = []
+        for raw in tool_calls:
+            if isinstance(raw, dict):
+                out.append(dict(raw))
+        return out
+
+    def _serialize_exchanges(self, exchanges: list[ToolExchange]) -> list[dict]:
+        """Replay exchanges as structured assistant + role=tool messages.
+
+        For each exchange:
+          {"role": "assistant", "content": <text>, "tool_calls": [...]}
+          {"role": "tool", "tool_call_id": "...", "name": "...", "content": "..."}
+          (one tool message per result)
+
+        No "Continue." or "Please respond" seed prompt — modern models
+        infer continuation from the structured turn pattern.
         """
         messages: list[dict] = []
-        last_index = len(exchanges) - 1
-        for idx, exch in enumerate(exchanges):
-            if exch.text:
-                messages.append({"role": "assistant", "content": exch.text})
-            results_block = "\n\n".join(
-                f"[{tr.tool_name}]:\n{tr.content}" for tr in exch.results
+        for exch in exchanges:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": exch.text,
+                    "tool_calls": self._normalize_tool_calls(list(exch.tool_calls)),
+                }
             )
-            if idx == 0:
-                seed = (
-                    "Here are the tool results for your previous request:\n\n"
-                    f"{results_block}\n\n"
-                    "Please respond based on these results. "
-                    "You may call additional tools if you need more information."
-                )
-            elif idx == last_index:
-                seed = f"Tool results:\n\n{results_block}\n\nContinue."
-            else:
-                seed = f"Tool results:\n\n{results_block}"
-            messages.append({"role": "user", "content": seed})
+            for tr in exch.results:
+                tool_msg: dict[str, object] = {
+                    "role": "tool",
+                    "content": tr.content,
+                }
+                if tr.tool_call_id:
+                    tool_msg["tool_call_id"] = tr.tool_call_id
+                if tr.tool_name:
+                    tool_msg["name"] = tr.tool_name
+                messages.append(tool_msg)
         return messages
 
     def stream_followup(

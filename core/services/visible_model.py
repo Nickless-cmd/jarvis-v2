@@ -471,6 +471,8 @@ def _run_openai_compatible_visible(
     chat_messages = _build_visible_chat_messages_for_github(
         message=message,
         session_id=session_id,
+        provider=provider,
+        model=model,
     )
     tools = get_tool_definitions()
     import time as _time
@@ -1396,11 +1398,23 @@ def _build_visible_input(
 
 
 def _build_visible_chat_messages_for_github(
-    message: str, *, session_id: str | None
+    message: str,
+    *,
+    session_id: str | None,
+    provider: str = "github-copilot",
+    model: str = "",
 ) -> list[dict[str, str]]:
+    """Build OpenAI chat-completions messages for the visible lane.
+
+    Despite the historical name, this helper now serves all OpenAI-compat
+    visible providers — github-copilot, opencode, groq, openrouter, mistral,
+    nvidia-nim, sambanova. Pass the actual ``provider`` so the prompt
+    assembly can reflect it in model-awareness lines and provider-specific
+    tweaks (e.g. compact mode for ollama, which is dispatched separately).
+    """
     assembly = _build_visible_prompt_assembly(
-        provider="github-copilot",
-        model="",
+        provider=provider,
+        model=model,
         user_message=message,
         session_id=session_id,
     )

@@ -2695,7 +2695,98 @@ def _capability_call_state(text: str) -> str:
 
 
 def _strip_capability_markup(text: str) -> str:
-    return CAPABILITY_CALL_SCAN_PATTERN.sub("", str(text or ""))
+    out = CAPABILITY_CALL_SCAN_PATTERN.sub("", str(text or ""))
+    out = _strip_tool_call_text_markup(out)
+    return out
+
+
+# Some models (notably big-pickle/MiniMax and deepseek-v4-flash) emit a
+# preview of their tool call as plain text before the actual response, e.g.
+#   ([deep_analyze]: { "summary": "...", "findings": [...] })
+#   ([read_file]: /home/bs/.jarvis-v2/workspaces/default/SOUL.md)
+#   ([list_recurring]): {" recurring ": [...]}
+# The structured tool_call is already in the response's tool_calls field —
+# this text is purely decorative and looks like garbage in the chat. Strip
+# both shapes here.
+_TOOL_TEXT_MARKUP_OPEN = "(["
+
+
+def _try_match_tool_text_markup(text: str) -> int:
+    """Return length of a leading tool-text-markup block, or 0 if no match,
+    or -1 if it looks like the start of one but is still incomplete (the
+    caller should keep buffering).
+
+    Recognized shapes:
+      ([word]: <anything until matching outer )>
+      ([word]):\\s*{<balanced json>}
+      ([word]):\\s*<text up to newline>
+    """
+    if not text.startswith(_TOOL_TEXT_MARKUP_OPEN):
+        return 0
+    import re as _re
+    m = _re.match(r"\(\[([\w._-]+)\](\))?:\s*", text)
+    if m is None:
+        # Could still become a match while we're streaming — buffer it
+        # unless we've already accumulated enough to know it never will.
+        return -1 if len(text) < 80 else 0
+    end = m.end()
+
+    # Shape B: ([word]):  → expect JSON or until-newline
+    if m.group(2):
+        if end >= len(text):
+            return -1
+        if text[end] == "{":
+            depth = 0
+            i = end
+            while i < len(text):
+                c = text[i]
+                if c == "{":
+                    depth += 1
+                elif c == "}":
+                    depth -= 1
+                    if depth == 0:
+                        return i + 1
+                i += 1
+            return -1  # incomplete JSON
+        nl = text.find("\n", end)
+        return nl if nl != -1 else (-1 if len(text) < 800 else len(text))
+
+    # Shape A: ([word]: <stuff> ) — scan to matching closing paren.
+    # Outer "(" already at position 0 → depth starts at 1.
+    depth = 1
+    i = end
+    while i < len(text):
+        c = text[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return -1  # incomplete, keep buffering
+
+
+def _strip_tool_call_text_markup(text: str) -> str:
+    """Non-streaming variant: strip all occurrences from a finished string."""
+    if not text or _TOOL_TEXT_MARKUP_OPEN not in text:
+        return text
+    out_parts: list[str] = []
+    i = 0
+    while i < len(text):
+        idx = text.find(_TOOL_TEXT_MARKUP_OPEN, i)
+        if idx == -1:
+            out_parts.append(text[i:])
+            break
+        out_parts.append(text[i:idx])
+        consumed = _try_match_tool_text_markup(text[idx:])
+        if consumed > 0:
+            i = idx + consumed
+        else:
+            # No match at this site — emit the "([" literally and continue.
+            out_parts.append(text[idx:idx + len(_TOOL_TEXT_MARKUP_OPEN)])
+            i = idx + len(_TOOL_TEXT_MARKUP_OPEN)
+    return "".join(out_parts)
 
 
 class _CapabilityMarkupBuffer:
@@ -2730,36 +2821,58 @@ class _CapabilityMarkupBuffer:
         """Return sendable prefix, keeping potential markup buffered."""
         out_parts: list[str] = []
         while self._buf:
-            tag_start = self._buf.find("<")
-            if tag_start == -1:
-                # No '<' at all — everything is safe.
+            # Find earliest interesting char: '<' (capability-call tag) or
+            # '(' (start of tool-text-markup like "([read_file]: ...)").
+            lt = self._buf.find("<")
+            paren = self._buf.find("(")
+            # Pick whichever appears first (treat -1 as +inf).
+            candidates = [c for c in (lt, paren) if c != -1]
+            if not candidates:
+                # Nothing interesting — emit everything.
                 out_parts.append(self._buf)
                 self._buf = ""
                 break
+            tag_start = min(candidates)
             if tag_start > 0:
-                # Text before '<' is safe to send.
                 out_parts.append(self._buf[:tag_start])
                 self._buf = self._buf[tag_start:]
-            # self._buf now starts with '<'.
-            # Check if it is (or could become) a capability tag.
-            if self._is_capability_prefix(self._buf):
-                # Could still be a capability tag — check for complete match.
-                m = CAPABILITY_CALL_SCAN_PATTERN.match(self._buf)
-                if m:
-                    # Complete self-closing tag — swallow it.
-                    self._buf = self._buf[m.end():]
+
+            if self._buf.startswith("<"):
+                # Capability-call tag handling (existing).
+                if self._is_capability_prefix(self._buf):
+                    m = CAPABILITY_CALL_SCAN_PATTERN.match(self._buf)
+                    if m:
+                        self._buf = self._buf[m.end():]
+                        continue
+                    bm = CAPABILITY_BLOCK_PATTERN.match(self._buf)
+                    if bm:
+                        self._buf = self._buf[bm.end():]
+                        continue
+                    # Incomplete prefix — keep buffering.
+                    break
+                else:
+                    out_parts.append(self._buf[0])
+                    self._buf = self._buf[1:]
                     continue
-                bm = CAPABILITY_BLOCK_PATTERN.match(self._buf)
-                if bm:
-                    # Complete block tag — swallow it.
-                    self._buf = self._buf[bm.end():]
+
+            # self._buf starts with '('
+            if self._buf.startswith(_TOOL_TEXT_MARKUP_OPEN):
+                consumed = _try_match_tool_text_markup(self._buf)
+                if consumed > 0:
+                    # Complete tool-text-markup — swallow it.
+                    self._buf = self._buf[consumed:]
                     continue
-                # Incomplete prefix — keep buffering.
-                break
-            else:
-                # '<' is not part of a capability tag — safe to send.
+                if consumed < 0:
+                    # Incomplete — keep buffering until we see the close.
+                    break
+                # consumed == 0: not really markup — emit the '(' and move on.
                 out_parts.append(self._buf[0])
                 self._buf = self._buf[1:]
+                continue
+
+            # '(' but not '([' — emit the '(' as plain text.
+            out_parts.append(self._buf[0])
+            self._buf = self._buf[1:]
         return "".join(out_parts)
 
     @staticmethod

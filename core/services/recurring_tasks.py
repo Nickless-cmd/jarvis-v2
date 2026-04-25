@@ -195,24 +195,41 @@ def _fire_due() -> None:
     if not due:
         return
 
-    from core.services.notification_bridge import send_session_notification
+    # Recurring tasks should EXECUTE the focus (autonomously do the work)
+    # rather than just send themselves as a reminder. Without this, a task
+    # like "Send morgenbriefing til Bjørn kl 07:00 via Discord: vejr, nyheder,
+    # noget inspirerende" would just deliver the focus text back to the user
+    # as a notification — useless. Triggering an autonomous run lets Jarvis
+    # use his tools (discord_channel.send, web_search etc.) to actually carry
+    # out the task. The focus becomes the user-message of an autonomous run.
+    from core.services.visible_runs import start_autonomous_run
 
     for task in due:
         task_id = str(task["task_id"])
         focus = str(task["focus"])
         interval_minutes = int(task["interval_minutes"])
         try:
-            result = send_session_notification(f"[recurring] {focus}", source="recurring-task")
-            if result.get("status") == "ok":
-                _advance(task_id, interval_minutes, now)
-                logger.info("recurring_tasks: fired %s (every %dm)", task_id, interval_minutes)
-                try:
-                    from core.services.initiative_queue import push_initiative
-                    push_initiative(focus=focus, source="recurring-task", source_id=task_id, priority="medium")
-                except Exception as exc:
-                    logger.warning("recurring_tasks: initiative push failed for %s: %s", task_id, exc)
-            else:
-                logger.warning("recurring_tasks: %s delivery failed — will retry next poll", task_id)
+            start_autonomous_run(message=focus, session_id=None)
+            _advance(task_id, interval_minutes, now)
+            logger.info(
+                "recurring_tasks: fired %s as autonomous run (every %dm)",
+                task_id,
+                interval_minutes,
+            )
+            try:
+                from core.services.initiative_queue import push_initiative
+                push_initiative(
+                    focus=focus,
+                    source="recurring-task",
+                    source_id=task_id,
+                    priority="medium",
+                )
+            except Exception as exc:
+                logger.warning(
+                    "recurring_tasks: initiative push failed for %s: %s",
+                    task_id,
+                    exc,
+                )
         except Exception as exc:
             logger.error("recurring_tasks: error firing %s: %s", task_id, exc)
 

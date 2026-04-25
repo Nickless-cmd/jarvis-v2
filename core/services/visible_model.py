@@ -396,6 +396,7 @@ def stream_visible_model(
     model: str,
     session_id: str | None = None,
     controller=None,
+    thinking_mode: str = "think",
 ) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
     if provider == "openai":
         yield from _stream_openai_model(
@@ -411,6 +412,7 @@ def stream_visible_model(
             model=model,
             session_id=session_id,
             controller=controller,
+            thinking_mode=thinking_mode,
         )
         return
     if provider == "github-copilot":
@@ -942,8 +944,32 @@ def _stream_openai_model(
     )
 
 
+def _apply_thinking_mode(payload: dict, thinking_mode: str) -> None:
+    """Translate UI thinking-mode label to ollama-chat payload keys.
+
+    Models like deepseek-v4-flash expose 3 reasoning modes via the chat API:
+      - 'fast' → think=False (intuitive, no <thinking> output)
+      - 'think' → default (omitted; model decides) — balanced
+      - 'deep' → reasoning_effort='high' (max reasoning effort)
+
+    For models that ignore these keys (older Llama, Qwen non-reasoning)
+    Ollama silently drops them, so it's safe to always send.
+    """
+    mode = (thinking_mode or "think").strip().lower()
+    if mode == "fast":
+        payload["think"] = False
+    elif mode == "deep":
+        payload["reasoning_effort"] = "high"
+    # 'think' (default) → don't add anything; let model use its own default
+
+
 def _stream_ollama_model(
-    *, message: str, model: str, session_id: str | None = None, controller=None
+    *,
+    message: str,
+    model: str,
+    session_id: str | None = None,
+    controller=None,
+    thinking_mode: str = "think",
 ) -> Iterator[VisibleModelDelta | VisibleModelToolCalls | VisibleModelStreamDone]:
     from core.services.ollama_visible_prompt import (
         serialize_ollama_chat_messages,
@@ -962,6 +988,7 @@ def _stream_ollama_model(
         "messages": messages,
         "stream": True,
     }
+    _apply_thinking_mode(payload, thinking_mode)
     if tools:
         payload["tools"] = tools
 

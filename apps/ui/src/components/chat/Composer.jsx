@@ -79,6 +79,19 @@ export function Composer({
 
   const [planMode, setPlanMode] = useState(false)
   const [approvalMode, setApprovalMode] = useState('auto')
+  // Thinking mode for reasoning-capable models (deepseek-v4-flash et al.).
+  // Persists last choice across reloads. Models that ignore the param
+  // (older Llamas) just behave normally.
+  const [thinkingMode, setThinkingMode] = useState(() => {
+    try {
+      return localStorage.getItem('jarvis.thinkingMode') || 'think'
+    } catch {
+      return 'think'
+    }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('jarvis.thinkingMode', thinkingMode) } catch {}
+  }, [thinkingMode])
   const [gitInfo, setGitInfo] = useState(null)
   const [commitOpen, setCommitOpen] = useState(false)
   const [commitMsg, setCommitMsg] = useState('')
@@ -207,7 +220,7 @@ export function Composer({
       mimeType: a.mime,
       objectUrl: a.objectUrl,
     }))
-    onSend(msg, { approvalMode, attachmentIds, attachmentMeta })
+    onSend(msg, { approvalMode, thinkingMode, attachmentIds, attachmentMeta })
     setAttachments([])
   }
 
@@ -433,6 +446,13 @@ export function Composer({
                 <option value="auto">Auto</option>
                 <option value="ask">Ask permissions</option>
                 <option value="trust">Trust all</option>
+              </select>
+            </div>
+            <div className="composer-thinking-group" title="Thinking mode (reasoning effort)">
+              <select className="composer-select mono" value={thinkingMode} onChange={(e) => setThinkingMode(e.target.value)}>
+                <option value="fast">⚡ Fast</option>
+                <option value="think">🧠 Think</option>
+                <option value="deep">🔬 Deep</option>
               </select>
             </div>
           </div>

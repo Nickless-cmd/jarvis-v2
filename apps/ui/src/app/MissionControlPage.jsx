@@ -30,6 +30,7 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
     isLoading,
     isRefreshing,
     lastRealtimeEventAt,
+    realtimeConnected,
     navigateTo,
     refreshAll,
     closeDrawer,
@@ -67,8 +68,12 @@ export function MissionControlPage({ selection, onSelectionChange, initialTab, o
   const freshnessLabel = formatFreshness(activeSectionData?.fetchedAt)
   const updateModeLabel = mcUpdateModeLabel(activeTab)
 
-  const realtimeColor = lastRealtimeEventAt ? T.green : T.text3
-  const realtimeLabel = lastRealtimeEventAt ? 'Realtime: Connected' : 'Realtime: Offline'
+  // The chip reflects WebSocket connection state, not event arrival —
+  // a quiet eventbus shouldn't make the indicator say "Offline" when the
+  // socket is actually healthy. lastRealtimeEventAt is still tracked for
+  // freshness-style use cases elsewhere.
+  const realtimeColor = realtimeConnected ? T.green : T.text3
+  const realtimeLabel = realtimeConnected ? 'Realtime: Connected' : 'Realtime: Offline'
   const pendingApprovals = sections.overview?.summaries?.pendingApprovals ?? 0
   const totalCost = sections.overview?.summaries?.totalCostUsd ?? 0
 

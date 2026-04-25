@@ -1444,3 +1444,43 @@ button { cursor: pointer; }
   border-radius: 8px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.6);
 }
+
+/* Queued follow-up chip — shown above composer when user types while
+   Jarvis is still streaming. Auto-flushes when current run ends. */
+.composer-queued-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(76, 175, 130, 0.08);
+  border: 1px solid rgba(76, 175, 130, 0.25);
+  font-size: 12px;
+  color: #cbd5e0;
+}
+.composer-queued-label {
+  color: rgba(76, 175, 130, 0.95);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  flex: 0 0 auto;
+}
+.composer-queued-text {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #a0aec0;
+  font-style: italic;
+}
+.composer-queued-cancel {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 0;
+  color: #718096;
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+}
+.composer-queued-cancel:hover { color: #e53e3e; }

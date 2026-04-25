@@ -70,6 +70,8 @@ export function Composer({
   lastRunTokens,
   streamingTokenEstimate,
   sessionId,
+  queuedMessage,
+  onClearQueued,
 }) {
   const textareaRef = useRef(null)
   const commitInputRef = useRef(null)
@@ -90,7 +92,12 @@ export function Composer({
   const [isDragOver, setIsDragOver] = useState(false)
 
   const doneAttachments = attachments.filter((a) => a.status === 'done')
-  const canSend = (Boolean(value.trim()) || doneAttachments.length > 0) && !isStreaming
+  // Allow sending while streaming so the user can queue a follow-up.
+  // Don't allow if a queued message is already pending — keep one slot.
+  const canSend = (
+    (Boolean(value.trim()) || doneAttachments.length > 0)
+    && !queuedMessage
+  )
 
   useEffect(() => {
     setProvider(selection?.currentProvider || '')
@@ -309,6 +316,24 @@ export function Composer({
         </div>
       )}
 
+      {queuedMessage && (
+        <div className="composer-queued-chip" title="Queued follow-up">
+          <span className="composer-queued-label mono">queued ▸</span>
+          <span className="composer-queued-text">
+            {String(queuedMessage.msg || '').slice(0, 120)}
+            {String(queuedMessage.msg || '').length > 120 ? '…' : ''}
+          </span>
+          <button
+            className="composer-queued-cancel"
+            type="button"
+            onClick={onClearQueued}
+            title="Cancel queued message"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
       <div
         className={`composer-card${isStreaming ? ' working' : ''}${isDragOver ? ' drop-active' : ''}`}
         onDragOver={handleDragOver}
@@ -381,11 +406,13 @@ export function Composer({
             }
           }}
           placeholder={
-            isStreaming
-              ? 'Jarvis is responding…'
-              : planMode
-                ? 'Describe what to plan…'
-                : 'Message Jarvis…'
+            queuedMessage
+              ? 'Queued — will send when current run finishes'
+              : isStreaming
+                ? 'Type a follow-up — sends when Jarvis is done…'
+                : planMode
+                  ? 'Describe what to plan…'
+                  : 'Message Jarvis…'
           }
           rows={1}
         />
@@ -428,9 +455,15 @@ export function Composer({
             )}
 
             {isStreaming ? (
-              <button className="send-btn cancel" onClick={onCancel} title="Stop generating">
-                <Square size={14} />
-              </button>
+              <>
+                <button className="send-btn" onClick={handleSend} disabled={!canSend}
+                  title={canSend ? 'Queue follow-up — sends when Jarvis finishes' : 'Already queued'}>
+                  <ArrowUp size={16} />
+                </button>
+                <button className="send-btn cancel" onClick={onCancel} title="Stop generating">
+                  <Square size={14} />
+                </button>
+              </>
             ) : (
               <button className="send-btn" onClick={handleSend} disabled={!canSend}
                 title={canSend ? 'Send message' : 'Write a message or attach a file first'}>

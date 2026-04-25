@@ -57,6 +57,38 @@ class EventBus:
             for row in rows
         ]
 
+    def recent_by_family(self, family: str, *, limit: int = 50) -> list[dict[str, Any]]:
+        """Return the latest events whose kind belongs to a given family.
+
+        Family is the prefix before the first dot in `kind` (see Event.from_record).
+        Use this when a caller would otherwise pull recent(limit=N) and filter
+        client-side — that pattern misses entire families when high-volume kinds
+        like circadian.energy_changed dominate the recent window.
+        """
+        family_clean = str(family or "").strip()
+        if not family_clean:
+            return []
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, kind, payload_json, created_at
+                FROM events
+                WHERE kind LIKE ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (f"{family_clean}.%", max(int(limit), 1)),
+            ).fetchall()
+        return [
+            self._deserialize_row(
+                event_id=int(row["id"]),
+                kind=row["kind"],
+                payload_json=row["payload_json"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
+
     def recent_since_id(self, after_id: int, *, limit: int = 100) -> list[dict[str, Any]]:
         with connect() as conn:
             rows = conn.execute(

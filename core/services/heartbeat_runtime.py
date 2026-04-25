@@ -384,11 +384,10 @@ def _heartbeat_runtime_surface_uncached(name: str = "default") -> dict[str, obje
     # Cognitive architecture surfaces (safe — all return dicts on error)
     cognitive_surfaces = _build_cognitive_surfaces()
     recent_ticks = recent_heartbeat_runtime_ticks(limit=8)
-    recent_events = [
-        item
-        for item in event_bus.recent(limit=20)
-        if str(item.get("family") or "") == "heartbeat"
-    ][:8]
+    # Use SQL-direct family lookup instead of fetch-and-filter — high-volume
+    # kinds like circadian.energy_changed otherwise push every heartbeat
+    # event out of the limit-20 window, leaving the MC tab perpetually empty.
+    recent_events = event_bus.recent_by_family("heartbeat", limit=8)
     merged = _merge_runtime_state(policy=policy, persisted=persisted, now=now)
     liveness = _build_heartbeat_liveness_signal(
         merged_state=merged,

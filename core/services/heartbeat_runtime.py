@@ -102,6 +102,7 @@ from core.services.witness_signal_tracking import (
 )
 from core.services.runtime_surface_cache import (
     get_cached_runtime_surface,
+    runtime_surface_cache,
 )
 from core.auth.profiles import get_provider_state
 from core.eventbus.bus import event_bus
@@ -284,21 +285,28 @@ def stop_heartbeat_scheduler(*, name: str = "default") -> None:
 
 
 def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
-    surface = heartbeat_runtime_surface(name=name)
-    state = dict(surface["state"])
-    _emit_schedule_transitions(state)
-    _log_debug(
-        "heartbeat schedule poll",
-        name=name,
-        schedule_state=state.get("schedule_state"),
-        due=state.get("due"),
-        next_tick_at=state.get("next_tick_at"),
-        last_tick_at=state.get("last_tick_at"),
-    )
-    if state.get("schedule_state") == "due":
-        run_heartbeat_tick(name=name, trigger="scheduled")
-        return heartbeat_runtime_surface(name=name)
-    return surface
+    # Share a per-poll cache so the dozen sub-surfaces built inside
+    # heartbeat_runtime_surface (council, loop, affective_meta_state, etc.)
+    # don't each rebuild their common dependencies from scratch. Without
+    # this context the ContextVar cache is empty and every
+    # get_cached_runtime_surface() call falls through to builder() — which
+    # turned a 30s scheduler tick into a multi-second CPU spike.
+    with runtime_surface_cache():
+        surface = heartbeat_runtime_surface(name=name)
+        state = dict(surface["state"])
+        _emit_schedule_transitions(state)
+        _log_debug(
+            "heartbeat schedule poll",
+            name=name,
+            schedule_state=state.get("schedule_state"),
+            due=state.get("due"),
+            next_tick_at=state.get("next_tick_at"),
+            last_tick_at=state.get("last_tick_at"),
+        )
+        if state.get("schedule_state") == "due":
+            run_heartbeat_tick(name=name, trigger="scheduled")
+            return heartbeat_runtime_surface(name=name)
+        return surface
 
 
 def _poll_heartbeat_schedule_with_trigger(
@@ -306,30 +314,31 @@ def _poll_heartbeat_schedule_with_trigger(
     name: str,
     due_trigger: str,
 ) -> dict[str, object]:
-    surface = heartbeat_runtime_surface(name=name)
-    state = dict(surface["state"])
-    _emit_schedule_transitions(state)
-    _log_debug(
-        "heartbeat startup poll",
-        name=name,
-        due_trigger=due_trigger,
-        schedule_state=state.get("schedule_state"),
-        due=state.get("due"),
-        next_tick_at=state.get("next_tick_at"),
-    )
-    if state.get("schedule_state") == "due":
-        if due_trigger == "startup-recovery":
-            event_bus.publish(
-                "heartbeat.startup_recovery_triggered",
-                {
-                    "schedule_state": state.get("schedule_state"),
-                    "next_tick_at": state.get("next_tick_at"),
-                    "last_tick_at": state.get("last_tick_at"),
-                },
-            )
-        run_heartbeat_tick(name=name, trigger=due_trigger)
-        return heartbeat_runtime_surface(name=name)
-    return surface
+    with runtime_surface_cache():
+        surface = heartbeat_runtime_surface(name=name)
+        state = dict(surface["state"])
+        _emit_schedule_transitions(state)
+        _log_debug(
+            "heartbeat startup poll",
+            name=name,
+            due_trigger=due_trigger,
+            schedule_state=state.get("schedule_state"),
+            due=state.get("due"),
+            next_tick_at=state.get("next_tick_at"),
+        )
+        if state.get("schedule_state") == "due":
+            if due_trigger == "startup-recovery":
+                event_bus.publish(
+                    "heartbeat.startup_recovery_triggered",
+                    {
+                        "schedule_state": state.get("schedule_state"),
+                        "next_tick_at": state.get("next_tick_at"),
+                        "last_tick_at": state.get("last_tick_at"),
+                    },
+                )
+            run_heartbeat_tick(name=name, trigger=due_trigger)
+            return heartbeat_runtime_surface(name=name)
+        return surface
 
 
 def heartbeat_runtime_surface(name: str = "default") -> dict[str, object]:

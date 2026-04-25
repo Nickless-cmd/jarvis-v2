@@ -161,11 +161,20 @@ def test_ollama_adapter_hits_api_chat_and_streams_delta(
     body = captured["body"]
     assert isinstance(body, dict)
     assert body["model"] == "llama3.1:8b"
-    # Legacy Ollama shape: last message is user with "[tool]:\nresult" block.
-    last_msg = body["messages"][-1]
-    assert last_msg["role"] == "user"
-    assert "[search_memory]:" in last_msg["content"]
-    assert "result" in last_msg["content"]
+    # Modern Ollama shape (post 2026-04-25): role=tool messages with the
+    # tool result, not a synthetic user message. Each ToolExchange contributes
+    # one assistant turn plus one tool turn per result.
+    msgs_by_role = [m["role"] for m in body["messages"]]
+    assert "tool" in msgs_by_role
+    tool_msgs = [m for m in body["messages"] if m["role"] == "tool"]
+    assert any("result" in str(m.get("content", "")) for m in tool_msgs)
+    # No more "[search_memory]:" prefix wrapping or "Continue." seed —
+    # those were the legacy soft-prompt hack.
+    assert all(
+        "Continue." not in str(m.get("content", ""))
+        and "[search_memory]:" not in str(m.get("content", ""))
+        for m in body["messages"]
+    )
 
     deltas = [e.delta for e in events if isinstance(e, vf.FollowupDelta)]
     assert "".join(deltas) == "Hello!"
@@ -260,10 +269,18 @@ def test_ollama_adapter_second_round_uses_continue_seed(
         )
 
     body = captured["body"]
-    # Last exchange's seed prose should use "Continue." since it's the
-    # latest round (index 1, which equals last_index).
-    assert body["messages"][-1]["content"].startswith("Tool results:")
-    assert "Continue." in body["messages"][-1]["content"]
+    # Modern Ollama shape: structured tool messages, no "Continue." seed.
+    # Two exchanges → two assistant turns + two tool turns (one per result).
+    role_seq = [m["role"] for m in body["messages"]]
+    assert role_seq.count("assistant") == 2
+    assert role_seq.count("tool") == 2
+    # Last tool message carries the second-round result.
+    last_tool = [m for m in body["messages"] if m["role"] == "tool"][-1]
+    assert last_tool["content"] == "r2"
+    # Confirm the legacy "Continue." seed is gone.
+    assert all(
+        "Continue." not in str(m.get("content", "")) for m in body["messages"]
+    )
 
 
 # ── OpenAI-compatible (Copilot) adapter ─────────────────────────────────────

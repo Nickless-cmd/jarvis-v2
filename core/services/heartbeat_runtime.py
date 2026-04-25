@@ -1533,9 +1533,36 @@ def _run_heartbeat_tick_locked(
                 _primary_exc = None
         except Exception:
             pass
-        # On LLM failure, use rule-based phase1 logic so pending initiatives
-        # are still honoured rather than silently falling to noop → propose → blocked.
-        if _primary_exc is not None:
+        if _primary_exc is None:
+            # Cheap fallback supplied raw_response — parse it the same way the
+            # success branch does. Without this, `decision` stays unset and the
+            # downstream `_recover_bounded_heartbeat_liveness_decision` call
+            # raises UnboundLocalError on every cheap-fallback tick.
+            decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
+            if parse_status == "parse-failed":
+                try:
+                    phase1_result = _phase1_rule_based_decision(
+                        policy=policy,
+                        open_loops=context["open_loops"],
+                        liveness=context.get("liveness"),
+                        prompt=prompt,
+                    )
+                    raw_response = str(phase1_result.get("text") or "")
+                    decision, parse_status = _parse_heartbeat_decision_bounded(raw_response)
+                    logger.info(
+                        "heartbeat: cheap fallback parse failed, fell back to phase1 rule-based decision: %s",
+                        decision.get("decision_type"),
+                    )
+                except Exception:
+                    decision = _bounded_heartbeat_failure_decision(
+                        failure_kind="parse",
+                        detail="cheap-fallback-parse-failed",
+                        target=target,
+                    )
+        # On LLM failure with no cheap fallback, use rule-based phase1 logic so
+        # pending initiatives are still honoured rather than silently falling
+        # to noop → propose → blocked.
+        else:
             try:
                 phase1_result = _phase1_rule_based_decision(
                     policy=policy,

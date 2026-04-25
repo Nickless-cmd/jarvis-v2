@@ -188,6 +188,10 @@ class OllamaFollowupAdapter:
             "model": model,
             "messages": messages,
             "stream": True,
+            # Match the first-pass num_ctx so accumulated tool-result rounds
+            # don't get truncated. See _VISIBLE_OLLAMA_NUM_CTX in
+            # core/services/visible_model.py.
+            "options": {"num_ctx": 262_144},
         }
         # Mirror first-pass thinking-mode controls so subsequent rounds
         # respect the user's choice (Fast/Think/Deep) for reasoning models

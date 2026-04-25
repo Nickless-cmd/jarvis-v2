@@ -911,14 +911,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 from core.services import visible_followup as _vf
                 from core.tools.simple_tools import get_tool_definitions as _get_tool_defs
 
-                # 40 was set when Copilot was the only agentic provider and
-                # rarely loops past 3 rounds. Big-pickle (OpenCode) is much
-                # more eager to keep calling tools — observed runs of 30+
-                # rounds producing no text and ballooning the prompt to
-                # 200k+ chars before the user's stream effectively stalls.
-                # 10 rounds is plenty for legit multi-step tasks; runaway
-                # loops now stop cleanly.
-                _AGENTIC_MAX_ROUNDS = 10
+                # History:
+                #   40 was the original cap when Copilot was the only agentic
+                #   provider; rarely went past 3 rounds.
+                #   10 was set after big-pickle (OpenCode) loop runaways at 30+
+                #   rounds with empty text — too restrictive for legit
+                #   multi-step work (pip-install loops, dataset prep etc.).
+                #   25 is the current sweet spot: room for genuine tool chains
+                #   (verify → install → verify → install → verify ≈ 8-12) plus
+                #   buffer, without re-opening the runaway-loop window —
+                #   _MAX_EMPTY_TEXT_ROUNDS still kills text-empty spirals at 4.
+                _AGENTIC_MAX_ROUNDS = 25
                 _agentic_tools = _get_tool_defs()
                 _all_followup_parts: list[str] = []
                 _a_parts: list[str] = []
@@ -2807,7 +2810,23 @@ def _try_match_tool_text_markup(text: str) -> int:
 
 
 def _strip_tool_call_text_markup(text: str) -> str:
-    """Non-streaming variant: strip all occurrences from a finished string."""
+    """Non-streaming variant: strip all occurrences from a finished string.
+
+    If stripping would leave the result empty (i.e. the entire input was
+    tool-text-markup like "([write_file]: …)" with no real prose), fall
+    back to returning the original text unchanged. Background:
+
+      - The model emits markup-form tool calls when its real structured
+        tool_calls slot was empty for that turn (a known hallucination
+        mode for big-pickle/MiniMax and occasionally deepseek-v4-flash).
+      - Stripping the markup AND silently dropping the empty turn made
+        Jarvis appear to "lose" messages — user sees nothing, model
+        believes its action succeeded, file was never written.
+      - Keeping the markup visible is uglier in the rare case it slips
+        through, but it surfaces the failure honestly so the user can
+        notice and correct course. Strict tool-call rules in
+        VISIBLE_CHAT_RULES.md should make this rare.
+    """
     if not text or _TOOL_TEXT_MARKUP_OPEN not in text:
         return text
     out_parts: list[str] = []
@@ -2822,10 +2841,12 @@ def _strip_tool_call_text_markup(text: str) -> str:
         if consumed > 0:
             i = idx + consumed
         else:
-            # No match at this site — emit the "([" literally and continue.
             out_parts.append(text[idx:idx + len(_TOOL_TEXT_MARKUP_OPEN)])
             i = idx + len(_TOOL_TEXT_MARKUP_OPEN)
-    return "".join(out_parts)
+    stripped = "".join(out_parts)
+    if not stripped.strip():
+        return text  # Preserve original markup rather than silently drop the turn.
+    return stripped
 
 
 class _CapabilityMarkupBuffer:

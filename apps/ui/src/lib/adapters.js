@@ -4542,6 +4542,15 @@ export const backend = {
     return requestJson('/mc/lab')
   },
 
+  async getMissionControlMemory({ query = '', scope = '', limit = 100 } = {}) {
+    const params = new URLSearchParams()
+    if (query) params.set('q', query)
+    if (scope) params.set('scope', scope)
+    if (limit) params.set('limit', String(limit))
+    const qs = params.toString()
+    return requestJson(`/mc/memory${qs ? `?${qs}` : ''}`)
+  },
+
   async spawnMissionControlAgent(payload) {
     return requestJson('/mc/runtime/agents/spawn', {
       method: 'POST',

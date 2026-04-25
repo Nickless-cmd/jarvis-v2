@@ -3930,9 +3930,15 @@ def mc_cognitive_core_experiments() -> dict:
 # ── MC Tab helpers ─────────────────────────────────────────────────────────
 
 def _get_all_tools() -> list[dict]:
+    """Return the OpenAI-style tool definitions registered in the runtime.
+
+    The symbol was renamed from `_TOOLS` to `TOOL_DEFINITIONS` and the
+    silent except above hid the resulting ImportError, leaving the Skills
+    tab showing 0/0/0 even though tools were registered.
+    """
     try:
-        from core.tools.simple_tools import _TOOLS
-        return list(_TOOLS)
+        from core.tools.simple_tools import TOOL_DEFINITIONS
+        return list(TOOL_DEFINITIONS)
     except Exception:
         return []
 
@@ -4025,18 +4031,44 @@ def _hardening_autonomy_level() -> str:
 
 
 def _hardening_integrations() -> dict:
+    """Report which external integrations are configured.
+
+    Each integration stores credentials in its own canonical location —
+    not all in runtime.json. Mission Control was checking the wrong
+    fields and reporting "Ikke sat op" for live integrations:
+    - Discord uses ~/.jarvis-v2/config/discord.json (bot_token + guild_id)
+    - Home Assistant uses home_assistant_url + home_assistant_token in runtime.json
+    - Telegram uses telegram_bot_token in runtime.json
+    - Anthropic uses anthropic_api_key in runtime.json (most users won't have one)
+    """
     import json as _json
     from pathlib import Path as _Path
-    result = {"telegram": False, "discord": False, "home_assistant": False, "anthropic": False}
+
+    result = {
+        "telegram": False,
+        "discord": False,
+        "home_assistant": False,
+        "anthropic": False,
+    }
     try:
         cfg_path = _Path.home() / ".jarvis-v2" / "config" / "runtime.json"
         cfg = _json.loads(cfg_path.read_text(encoding="utf-8"))
         result["telegram"] = bool(cfg.get("telegram_bot_token"))
-        result["discord"] = bool(cfg.get("discord_bot_token"))
-        result["home_assistant"] = bool(cfg.get("home_assistant_url"))
+        result["home_assistant"] = bool(
+            cfg.get("home_assistant_url") and cfg.get("home_assistant_token")
+        )
         result["anthropic"] = bool(cfg.get("anthropic_api_key"))
     except Exception:
         pass
+
+    # Discord lives in its own config file with its own validation.
+    try:
+        from core.services.discord_config import is_discord_configured
+
+        result["discord"] = bool(is_discord_configured())
+    except Exception:
+        result["discord"] = False
+
     return result
 
 
@@ -4062,6 +4094,85 @@ def _hardening_recent_approvals(limit: int = 10) -> list[dict]:
         ]
     except Exception:
         return []
+
+
+@router.get("/memory")
+def mc_memory(q: str = "", limit: int = 100, scope: str = "") -> dict:
+    """Search/list private retained memory records.
+
+    - q: optional substring filter on retained_value
+    - limit: max rows to return (capped at 500)
+    - scope: optional retention_scope filter (e.g. 'development', 'identity')
+    """
+    limit_clamped = max(1, min(int(limit or 100), 500))
+    where: list[str] = []
+    params: list = []
+    q_clean = (q or "").strip()
+    if q_clean:
+        where.append("retained_value LIKE ?")
+        params.append(f"%{q_clean}%")
+    scope_clean = (scope or "").strip()
+    if scope_clean:
+        where.append("retention_scope = ?")
+        params.append(scope_clean)
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+    params.append(limit_clamped)
+
+    items: list[dict] = []
+    total = 0
+    scope_counts: dict[str, int] = {}
+    try:
+        with connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT id, record_id, source, retained_value, retained_kind,
+                       retention_scope, retention_horizon, confidence, created_at
+                FROM private_retained_memory_records
+                {where_sql}
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                params,
+            ).fetchall()
+            for row in rows:
+                items.append({
+                    "id": int(row["id"]),
+                    "record_id": row["record_id"] or "",
+                    "source": row["source"] or "",
+                    "value": (row["retained_value"] or "")[:600],
+                    "kind": row["retained_kind"] or "",
+                    "scope": row["retention_scope"] or "",
+                    "horizon": row["retention_horizon"] or "",
+                    "confidence": row["confidence"] or "",
+                    "created_at": row["created_at"] or "",
+                })
+            total_row = conn.execute(
+                "SELECT COUNT(*) AS n FROM private_retained_memory_records"
+            ).fetchone()
+            total = int(total_row["n"]) if total_row else 0
+            scope_rows = conn.execute(
+                """
+                SELECT retention_scope AS scope, COUNT(*) AS n
+                FROM private_retained_memory_records
+                GROUP BY retention_scope
+                ORDER BY n DESC
+                """
+            ).fetchall()
+            for row in scope_rows:
+                key = row["scope"] or "(none)"
+                scope_counts[key] = int(row["n"])
+    except Exception:
+        pass
+
+    return {
+        "items": items,
+        "total": total,
+        "scope_counts": scope_counts,
+        "query": q_clean,
+        "scope_filter": scope_clean,
+        "limit": limit_clamped,
+        "matched": len(items),
+    }
 
 
 @router.get("/hardening")

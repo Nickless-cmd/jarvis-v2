@@ -115,16 +115,24 @@ def _build_movie(
         })
 
     # Text overlay — centered, large, styled.
-    # width: integer pixels (json2video v2 rejects floats). 918 = 85% of 1080.
+    # json2video v2 schema notes:
+    # - x/y must be integer pixels; use `position` for keyword placement
+    # - width is integer pixels (918 ≈ 85% of 1080-wide canvas)
+    # - styling goes in `settings` (CSS-like), not legacy `style: "00X"` ids
     elements.append({
         "type": "text",
         "text": text,
-        "y": "center",
-        "x": "center",
+        "position": "center-center",
         "width": 918,
         "duration": duration,
         "z-index": 1,
-        "style": "004",  # Clean white text, json2video built-in style
+        "settings": {
+            "font-family": "Roboto",
+            "font-size": "72px",
+            "font-weight": "700",
+            "color": text_color,
+            "text-align": "center",
+        },
     })
 
     # Fade in/out on text

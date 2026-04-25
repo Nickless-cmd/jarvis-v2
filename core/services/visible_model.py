@@ -468,18 +468,19 @@ def _run_openai_compatible_visible(
 
     defaults = provider_runtime_defaults(provider)
     base_url = str(defaults.get("base_url") or "")
+    import time as _time
+    import sys as _sys
+    _t_assembly = _time.monotonic()
     chat_messages = _build_visible_chat_messages_for_github(
         message=message,
         session_id=session_id,
         provider=provider,
         model=model,
     )
+    _assembly_ms = int((_time.monotonic() - _t_assembly) * 1000)
     tools = get_tool_definitions()
-    import time as _time
-    import logging as _logging
-    _log = _logging.getLogger(__name__)
     _prompt_chars = sum(len(str(m.get("content", ""))) for m in chat_messages)
-    _t0 = _time.monotonic()
+    _t_api = _time.monotonic()
     raw = _execute_openai_compatible_chat(
         provider=provider,
         model=model,
@@ -488,17 +489,15 @@ def _run_openai_compatible_visible(
         messages=chat_messages,
         tools=tools or None,
     )
-    _total_ms = int((_time.monotonic() - _t0) * 1000)
-    _log.info(
-        "visible-latency provider=%s model=%s round=first-pass prompt_chars=%d total_ms=%d text_chars=%d tool_calls=%d input_tokens=%s output_tokens=%s",
-        provider,
-        model,
-        _prompt_chars,
-        _total_ms,
-        len(str(raw.get("text") or "")),
-        len(list(raw.get("tool_calls") or [])),
-        raw.get("input_tokens"),
-        raw.get("output_tokens"),
+    _api_ms = int((_time.monotonic() - _t_api) * 1000)
+    print(
+        f"visible-latency provider={provider} model={model} round=first-pass "
+        f"assembly_ms={_assembly_ms} api_ms={_api_ms} "
+        f"prompt_chars={_prompt_chars} text_chars={len(str(raw.get('text') or ''))} "
+        f"tool_calls={len(list(raw.get('tool_calls') or []))} "
+        f"input_tokens={raw.get('input_tokens')} output_tokens={raw.get('output_tokens')}",
+        file=_sys.stderr,
+        flush=True,
     )
     result = VisibleModelResult(
         text=str(raw.get("text") or ""),

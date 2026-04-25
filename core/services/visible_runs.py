@@ -1666,12 +1666,51 @@ def _preview_text(text: str, limit: int = 320) -> str:
     return normalized[: limit - 1].rstrip() + "…"
 
 
+def _mark_mid_word_truncation(text: str) -> str:
+    """Append "…" if the assistant text ends abruptly mid-word.
+
+    Reasoning models (deepseek-v4-flash et al.) sometimes interleave text
+    and tool_calls — emitting a tool_call mid-sentence and then never
+    resuming the prose after the tool result lands. The user is left
+    staring at half a word ("Jeg skrev et journa"). Detecting this in
+    a robust way is hard, but the cheap heuristic of "ends with an
+    alphanumeric character and is long enough to not be a single-word
+    reply" catches the common case and gives the user a visible signal
+    that something cut off, instead of silently lying about completeness.
+    """
+    if not text:
+        return text
+    stripped = text.rstrip()
+    if not stripped:
+        return text
+    # Look at the LAST line only — multi-paragraph replies often end with
+    # a short final sentence, but if that sentence itself is mid-word we
+    # still want to flag it.
+    last_line = stripped.splitlines()[-1].strip()
+    if not last_line:
+        return text
+    # Short terse replies ("ja", "nej", "okay", "Done", "OK") are legit
+    # without punctuation. Use word-count, not char-count: 3+ words ending
+    # alphanumerically is almost always a cut-off sentence.
+    if len(last_line.split()) < 3:
+        return text
+    last = last_line[-1]
+    # Anything terminal-like is fine: punctuation, brackets, quotes,
+    # emoji ranges, code-block fences, list-item dashes ending a line.
+    if not last.isalnum():
+        return text
+    # Mid-word — annotate. The "…" stays inside the chat-display invariant
+    # (no internal markers) and looks natural to the reader.
+    return stripped + "…"
+
+
 def _persist_session_assistant_message(run: VisibleRun, text: str) -> None:
     if not run.session_id:
         return
     normalized = str(text or "").strip()
     if not normalized:
         return
+    normalized = _mark_mid_word_truncation(normalized)
     _assert_presentation_invariant(normalized)
     message = append_chat_message(session_id=run.session_id, role="assistant", content=normalized)
     try:

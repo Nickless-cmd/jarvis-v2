@@ -978,6 +978,11 @@ def _execute_openai_compatible_chat(
         "model": model,
         "messages": messages,
         "stream": False,
+        # Without an explicit max_tokens, OpenCode/MiniMax defaults to ~512
+        # which truncates Jarvis mid-sentence (observed cutoff at "**Capability"
+        # after exactly 549 output tokens). 4096 is generous enough for any
+        # single visible reply without burning the free quota.
+        "max_tokens": 4096,
     }
     if tools:
         payload["tools"] = tools

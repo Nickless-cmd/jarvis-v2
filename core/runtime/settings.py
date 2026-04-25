@@ -44,6 +44,14 @@ class RuntimeSettings:
     relevance_opencode_timeout: int = 6
     relevance_ollamafreeapi_model: str = "gpt-oss:20b"
     relevance_ollamafreeapi_timeout: int = 6
+    relevance_mistral_model: str = "mistral-small-latest"
+    relevance_mistral_timeout: int = 5
+    relevance_nvidia_nim_model: str = "meta/llama-3.1-8b-instruct"
+    relevance_nvidia_nim_timeout: int = 5
+    relevance_openrouter_model: str = ""
+    relevance_openrouter_timeout: int = 5
+    relevance_sambanova_model: str = ""
+    relevance_sambanova_timeout: int = 5
     # Emotion decay
     emotion_decay_factor: float = 0.97
     # Context compact thresholds
@@ -126,6 +134,45 @@ def load_settings() -> RuntimeSettings:
         ),
         relevance_model_name=str(
             data.get("relevance_model_name", defaults.relevance_model_name)
+        ),
+        relevance_backend_primary=str(
+            data.get("relevance_backend_primary", defaults.relevance_backend_primary)
+        ),
+        relevance_opencode_model=str(
+            data.get("relevance_opencode_model", defaults.relevance_opencode_model)
+        ),
+        relevance_opencode_timeout=int(
+            data.get("relevance_opencode_timeout", defaults.relevance_opencode_timeout)
+        ),
+        relevance_ollamafreeapi_model=str(
+            data.get("relevance_ollamafreeapi_model", defaults.relevance_ollamafreeapi_model)
+        ),
+        relevance_ollamafreeapi_timeout=int(
+            data.get("relevance_ollamafreeapi_timeout", defaults.relevance_ollamafreeapi_timeout)
+        ),
+        relevance_mistral_model=str(
+            data.get("relevance_mistral_model", defaults.relevance_mistral_model)
+        ),
+        relevance_mistral_timeout=int(
+            data.get("relevance_mistral_timeout", defaults.relevance_mistral_timeout)
+        ),
+        relevance_nvidia_nim_model=str(
+            data.get("relevance_nvidia_nim_model", defaults.relevance_nvidia_nim_model)
+        ),
+        relevance_nvidia_nim_timeout=int(
+            data.get("relevance_nvidia_nim_timeout", defaults.relevance_nvidia_nim_timeout)
+        ),
+        relevance_openrouter_model=str(
+            data.get("relevance_openrouter_model", defaults.relevance_openrouter_model)
+        ),
+        relevance_openrouter_timeout=int(
+            data.get("relevance_openrouter_timeout", defaults.relevance_openrouter_timeout)
+        ),
+        relevance_sambanova_model=str(
+            data.get("relevance_sambanova_model", defaults.relevance_sambanova_model)
+        ),
+        relevance_sambanova_timeout=int(
+            data.get("relevance_sambanova_timeout", defaults.relevance_sambanova_timeout)
         ),
         recall_strong_threshold=float(data.get("recall_strong_threshold", defaults.recall_strong_threshold)),
         recall_weak_threshold=float(data.get("recall_weak_threshold", defaults.recall_weak_threshold)),

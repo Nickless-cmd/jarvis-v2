@@ -14,10 +14,12 @@ Design:
 """
 from __future__ import annotations
 
+import json
 import logging
 import statistics
 from collections import deque
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Deque
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,41 @@ logger = logging.getLogger(__name__)
 # Rolling buffer of snapshots captured during positive-stable periods.
 _ANCHOR_BUFFER_MAX = 120
 _anchor_samples: Deque[dict[str, float]] = deque(maxlen=_ANCHOR_BUFFER_MAX)
+
+# Persist samples to disk so a restart doesn't reset Jarvis' baseline.
+# Heartbeat ticks fire every 15 minutes — without persistence, every
+# service restart cost ~2.5 hours of cognitive warm-up to refill 10 samples.
+_PERSIST_PATH = Path.home() / ".jarvis-v2" / "state" / "calm_anchor_samples.json"
+
+
+def _load_persisted_samples() -> None:
+    try:
+        if not _PERSIST_PATH.exists():
+            return
+        raw = json.loads(_PERSIST_PATH.read_text(encoding="utf-8"))
+        if not isinstance(raw, list):
+            return
+        for entry in raw[-_ANCHOR_BUFFER_MAX:]:
+            if isinstance(entry, dict):
+                _anchor_samples.append({
+                    str(k): float(v)
+                    for k, v in entry.items()
+                    if isinstance(v, (int, float))
+                })
+    except Exception as exc:
+        logger.debug("calm_anchor: failed to load persisted samples: %s", exc)
+
+
+def _persist_samples() -> None:
+    try:
+        _PERSIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _PERSIST_PATH.write_text(
+            json.dumps(list(_anchor_samples), ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        logger.debug("calm_anchor: failed to persist samples: %s", exc)
+
 
 # Cached computed anchor signature
 _cached_anchor: dict[str, float] = {}
@@ -92,6 +129,7 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
         snap = _current_snapshot()
         if _is_positive_stable(snap):
             _anchor_samples.append(snap)
+            _persist_samples()
     except Exception as exc:
         logger.debug("calm_anchor.tick failed: %s", exc)
     return {"buffer_size": len(_anchor_samples)}
@@ -213,3 +251,8 @@ def reset_calm_anchor() -> None:
     _anchor_samples.clear()
     _cached_anchor = {}
     _last_anchor_compute_ts = 0.0
+
+
+# Load persisted samples once at module import. Done at the bottom so all
+# helpers above are defined when the load runs.
+_load_persisted_samples()

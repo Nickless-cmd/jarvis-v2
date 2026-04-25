@@ -13,9 +13,11 @@ Design constraints:
 """
 from __future__ import annotations
 
+import json
 import logging
 from collections import deque
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Deque
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,39 @@ logger = logging.getLogger(__name__)
 # Rolling window of (ts, score) samples. ~24h @ 1 sample/tick.
 _WINDOW_MAX = 2000
 _samples: Deque[tuple[float, float]] = deque(maxlen=_WINDOW_MAX)
+
+# Persist samples so a service restart doesn't reset the trajectory window.
+# Without this, the "valence" surface stays empty for 30+ ticks (~7+ hours
+# at 15-min cadence) every time jarvis-runtime is restarted.
+_PERSIST_PATH = Path.home() / ".jarvis-v2" / "state" / "valence_trajectory_samples.json"
+
+
+def _load_persisted_samples() -> None:
+    try:
+        if not _PERSIST_PATH.exists():
+            return
+        raw = json.loads(_PERSIST_PATH.read_text(encoding="utf-8"))
+        if not isinstance(raw, list):
+            return
+        for entry in raw[-_WINDOW_MAX:]:
+            if isinstance(entry, list) and len(entry) == 2:
+                try:
+                    _samples.append((float(entry[0]), float(entry[1])))
+                except (TypeError, ValueError):
+                    continue
+    except Exception as exc:
+        logger.debug("valence_trajectory: failed to load persisted samples: %s", exc)
+
+
+def _persist_samples() -> None:
+    try:
+        _PERSIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _PERSIST_PATH.write_text(
+            json.dumps([list(item) for item in _samples], ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        logger.debug("valence_trajectory: failed to persist samples: %s", exc)
 
 # Cache of last computed trajectory (avoid re-running on every surface read)
 _last_summary: dict[str, Any] = {}
@@ -94,6 +129,7 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
     try:
         score = _sample_current_valence()
         _samples.append((datetime.now(UTC).timestamp(), score))
+        _persist_samples()
     except Exception as exc:
         logger.debug("valence_trajectory.tick failed: %s", exc)
     return {"samples": len(_samples)}
@@ -227,3 +263,7 @@ def reset_valence_trajectory() -> None:
     _samples.clear()
     _last_summary = {}
     _last_computed_ts = 0.0
+
+
+# Load persisted samples once at module import.
+_load_persisted_samples()

@@ -54,9 +54,12 @@ class RuntimeSettings:
     relevance_sambanova_timeout: int = 5
     # Emotion decay
     emotion_decay_factor: float = 0.97
-    # Context compact thresholds
-    context_compact_threshold_tokens: int = 40_000
-    context_run_compact_threshold_tokens: int = 60_000
+    # Context compact thresholds. Bumped from 40k/60k now that visible lane
+    # runs deepseek-v4-flash (1M context) with num_ctx=256k. Auto-compaction
+    # at 40k was a holdover from when the visible model had a tight 64k
+    # context window — premature now and was forcing summarization mid-run.
+    context_compact_threshold_tokens: int = 200_000
+    context_run_compact_threshold_tokens: int = 240_000
     context_keep_recent: int = 20
     context_keep_recent_pairs: int = 4
     extra: dict[str, Any] = field(default_factory=dict)

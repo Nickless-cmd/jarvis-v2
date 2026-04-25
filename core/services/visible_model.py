@@ -765,6 +765,7 @@ def _execute_ollama_model(
         "messages": messages,
         "stream": False,
     }
+    _apply_visible_ollama_options(payload)
     if tools:
         payload["tools"] = tools
 
@@ -963,6 +964,25 @@ def _apply_thinking_mode(payload: dict, thinking_mode: str) -> None:
     # 'think' (default) → don't add anything; let model use its own default
 
 
+# Visible-lane num_ctx for ollama. deepseek-v4-flash:cloud supports 1M tokens,
+# but full-1M is wasteful (slower attention compute). 256k covers any realistic
+# Jarvis transcript with full identity + memory + tool history + room to grow.
+# Raise here when we move to bigger sessions or longer agentic loops.
+_VISIBLE_OLLAMA_NUM_CTX = 262_144
+
+
+def _apply_visible_ollama_options(payload: dict) -> None:
+    """Set ollama generation options for the visible lane.
+
+    Currently only num_ctx (context window). Larger num_ctx costs more memory
+    and attention compute per token — keep this conservative relative to the
+    model's max so we don't burn latency on context we never use.
+    """
+    options = dict(payload.get("options") or {})
+    options.setdefault("num_ctx", _VISIBLE_OLLAMA_NUM_CTX)
+    payload["options"] = options
+
+
 def _stream_ollama_model(
     *,
     message: str,
@@ -989,6 +1009,7 @@ def _stream_ollama_model(
         "stream": True,
     }
     _apply_thinking_mode(payload, thinking_mode)
+    _apply_visible_ollama_options(payload)
     if tools:
         payload["tools"] = tools
 

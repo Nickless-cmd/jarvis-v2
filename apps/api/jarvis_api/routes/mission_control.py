@@ -3944,37 +3944,101 @@ def _get_all_tools() -> list[dict]:
 
 
 def _skills_recent_invocations(limit: int = 10) -> list[dict]:
+    """Return the most recent tool/capability invocations.
+
+    Reads tool.completed events first (the live channel for simple_tools),
+    falling back to the legacy capability_invocations table when there are
+    fewer than `limit` recent events. Each row is normalised to the same
+    {capability_name, status, invoked_at} shape the UI expects.
+    """
+    import json as _json
+
+    items: list[dict] = []
     try:
         with connect() as conn:
-            rows = conn.execute(
+            # tool.completed always carries a `tool` field with the
+            # actual tool name. tool.error events are reused by unrelated
+            # subsystems (attention_blink research) with a different
+            # payload shape — excluded here to avoid muddying the list.
+            event_rows = conn.execute(
                 """
-                SELECT capability_name, status, invoked_at
-                FROM capability_invocations
-                ORDER BY id DESC LIMIT ?
+                SELECT kind, payload_json, created_at
+                FROM events
+                WHERE kind = 'tool.completed'
+                ORDER BY id DESC
+                LIMIT ?
                 """,
                 (limit,),
             ).fetchall()
-        return [
-            {
-                "capability_name": row["capability_name"] or "",
-                "status": row["status"] or "",
-                "invoked_at": row["invoked_at"] or "",
-            }
-            for row in rows
-        ]
+            for row in event_rows:
+                try:
+                    payload = _json.loads(row["payload_json"] or "{}")
+                except Exception:
+                    payload = {}
+                name = str(
+                    payload.get("tool")
+                    or payload.get("name")
+                    or payload.get("tool_name")
+                    or "tool"
+                )
+                status = str(payload.get("status") or "ok")
+                items.append({
+                    "capability_name": name,
+                    "status": status,
+                    "invoked_at": row["created_at"] or "",
+                })
+            if len(items) < limit:
+                legacy_rows = conn.execute(
+                    """
+                    SELECT capability_name, status, invoked_at
+                    FROM capability_invocations
+                    ORDER BY id DESC LIMIT ?
+                    """,
+                    (limit - len(items),),
+                ).fetchall()
+                for row in legacy_rows:
+                    items.append({
+                        "capability_name": row["capability_name"] or "",
+                        "status": row["status"] or "",
+                        "invoked_at": row["invoked_at"] or "",
+                    })
     except Exception:
         return []
+    return items[:limit]
 
 
 def _skills_calls_today() -> int:
+    """Count tool invocations made today.
+
+    The legacy capability_invocations table only covers workspace_capabilities,
+    which was effectively retired around April 9 2026 in favour of simple_tools
+    (OpenAI tool_calls). Today's actual tool activity lives in the events table
+    as `tool.invoked` events. Sum both so this metric reflects reality across
+    the migration boundary.
+    """
+    total = 0
     try:
         with connect() as conn:
             row = conn.execute(
-                "SELECT COUNT(*) AS n FROM capability_invocations WHERE date(invoked_at) = date('now')"
+                """
+                SELECT COUNT(*) AS n
+                FROM capability_invocations
+                WHERE date(invoked_at) = date('now')
+                """
             ).fetchone()
-        return int(row["n"]) if row else 0
+            total += int(row["n"]) if row else 0
+            row2 = conn.execute(
+                """
+                SELECT COUNT(*) AS n
+                FROM events
+                WHERE kind = 'tool.invoked'
+                  AND date(created_at) = date('now')
+                """
+            ).fetchone()
+            total += int(row2["n"]) if row2 else 0
     except Exception:
-        return 0
+        pass
+    return total
 
 
 @router.get("/skills")

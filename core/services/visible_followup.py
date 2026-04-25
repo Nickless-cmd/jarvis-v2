@@ -376,6 +376,10 @@ class OpenAICompatFollowupAdapter:
             "model": model,
             "messages": messages,
             "stream": True,
+            # Without explicit max_tokens, MiniMax/OpenCode caps at ~512 and
+            # cuts the assistant off mid-sentence. 4096 is plenty for any
+            # follow-up turn while staying within the free quota.
+            "max_tokens": 4096,
         }
         if tool_definitions:
             payload["tools"] = list(tool_definitions)

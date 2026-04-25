@@ -16,7 +16,15 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
+import requests
+
 from _config import read_runtime_key
+
+# NOTE on _post/_get_status: we use `requests` rather than urllib because
+# urllib normalizes header keys (`x-api-key` → `X-api-key`), which json2video's
+# parser does not match. The endpoint silently rejects the request with
+# "API Key not available" — looks like a bad key, but is actually our HTTP
+# client mangling the header. requests preserves case verbatim.
 
 # ---------------------------------------------------------------------------
 # Config
@@ -52,24 +60,25 @@ _SLOT_TEXT_COLOR = {
 
 
 def _post(body: dict) -> dict:
-    req = urllib.request.Request(
+    resp = requests.post(
         f"{J2V_BASE}/movies",
-        data=json.dumps(body).encode(),
         headers=_headers(),
-        method="POST",
+        data=json.dumps(body),
+        timeout=30,
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+    resp.raise_for_status()
+    return resp.json()
 
 
 def _get_status(project_id: str) -> dict:
-    req = urllib.request.Request(
-        f"{J2V_BASE}/movies?project={project_id}",
+    resp = requests.get(
+        f"{J2V_BASE}/movies",
         headers=_headers(),
-        method="GET",
+        params={"project": project_id},
+        timeout=30,
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+    resp.raise_for_status()
+    return resp.json()
 
 
 def _download(url: str, output_path: str) -> None:
@@ -93,7 +102,9 @@ def _build_movie(
     """Build a json2video movie payload for a TikTok text-overlay video."""
     elements = []
 
-    # Background: image or solid color
+    # Background: image element only when an actual URL is supplied.
+    # json2video v2 rejects data:image/svg+xml URIs, so for solid-color
+    # backgrounds we rely on the scene's `background-color` property below.
     if bg_image_url:
         elements.append({
             "type": "image",
@@ -102,22 +113,15 @@ def _build_movie(
             "duration": duration,
             "z-index": -1,
         })
-    else:
-        elements.append({
-            "type": "image",
-            "src": f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1080' height='1920'><rect width='100%' height='100%' fill='{bg_color}'/></svg>",
-            "resize": "cover",
-            "duration": duration,
-            "z-index": -1,
-        })
 
-    # Text overlay — centered, large, styled
+    # Text overlay — centered, large, styled.
+    # width: integer pixels (json2video v2 rejects floats). 918 = 85% of 1080.
     elements.append({
         "type": "text",
         "text": text,
         "y": "center",
         "x": "center",
-        "width": 0.85,
+        "width": 918,
         "duration": duration,
         "z-index": 1,
         "style": "004",  # Clean white text, json2video built-in style

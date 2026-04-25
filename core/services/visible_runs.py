@@ -905,7 +905,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 from core.services import visible_followup as _vf
                 from core.tools.simple_tools import get_tool_definitions as _get_tool_defs
 
-                _AGENTIC_MAX_ROUNDS = 40
+                # 40 was set when Copilot was the only agentic provider and
+                # rarely loops past 3 rounds. Big-pickle (OpenCode) is much
+                # more eager to keep calling tools — observed runs of 30+
+                # rounds producing no text and ballooning the prompt to
+                # 200k+ chars before the user's stream effectively stalls.
+                # 10 rounds is plenty for legit multi-step tasks; runaway
+                # loops now stop cleanly.
+                _AGENTIC_MAX_ROUNDS = 10
                 _agentic_tools = _get_tool_defs()
                 _all_followup_parts: list[str] = []
                 _a_parts: list[str] = []
@@ -958,6 +965,8 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     (run.provider or "").strip().lower() in _supported_followup_providers
                 )
 
+                _consecutive_empty_text_rounds = 0
+                _MAX_EMPTY_TEXT_ROUNDS = 4
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
                         break
@@ -1073,6 +1082,29 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     if not _a_tool_calls:
                         # No more tool calls — this round produced the final response.
                         break
+
+                    # Track text-empty rounds. Some models (notably big-pickle
+                    # via OpenCode) keep emitting tool calls without ever
+                    # producing user-visible text, ballooning the prompt
+                    # past 200k chars over 30+ rounds. Force-stop after
+                    # _MAX_EMPTY_TEXT_ROUNDS in a row so the user gets at
+                    # least the last partial text instead of a stalled stream.
+                    _round_text_total = sum(len(p) for p in _a_parts)
+                    if _round_text_total == 0:
+                        _consecutive_empty_text_rounds += 1
+                        if _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS:
+                            _update_visible_execution_trace(
+                                run,
+                                {
+                                    "agentic_loop_terminated_reason": (
+                                        f"early-exit-{_MAX_EMPTY_TEXT_ROUNDS}-empty-text-rounds"
+                                    ),
+                                    "agentic_loop_rounds_completed": _agentic_round + 1,
+                                },
+                            )
+                            break
+                    else:
+                        _consecutive_empty_text_rounds = 0
 
                     # ── Execute tools for this agentic round ───────────────────────
                     for _a_tc in _a_tool_calls:

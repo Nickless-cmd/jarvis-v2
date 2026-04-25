@@ -976,11 +976,24 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     _a_sentinel = object()
                     _a_failure: dict[str, object] = {}
 
+                    # On the final allowed round (or when we are 1 round away
+                    # from the empty-text early-exit threshold), force the
+                    # model to summarize by withholding tool definitions.
+                    # Without this, eager models (big-pickle/MiniMax) keep
+                    # calling tools forever and the user never gets a coherent
+                    # closing answer — only fragmented progress text.
+                    _is_last_round = (
+                        _agentic_round == _AGENTIC_MAX_ROUNDS - 1
+                        or _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS - 1
+                    )
+                    _round_tool_definitions = None if _is_last_round else _agentic_tools
+
                     def _pump_agentic(
                         q=_a_queue,
                         sentinel=_a_sentinel,
                         rnd=_agentic_round,
                         failure=_a_failure,
+                        tool_defs=_round_tool_definitions,
                     ) -> None:
                         try:
                             for _event in _vf.stream_visible_followup(
@@ -988,7 +1001,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 model=run.model,
                                 base_messages=base_messages,
                                 exchanges=_followup_exchanges,
-                                tool_definitions=_agentic_tools,
+                                tool_definitions=tool_defs,
                                 round_index=rnd,
                             ):
                                 loop.call_soon_threadsafe(q.put_nowait, _event)

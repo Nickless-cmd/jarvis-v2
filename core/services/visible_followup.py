@@ -173,6 +173,7 @@ class OllamaFollowupAdapter:
         exchanges: list[ToolExchange],
         tool_definitions: list[dict] | None = None,
         round_index: int = 0,
+        thinking_mode: str = "think",
     ) -> Iterator[FollowupEvent]:
         from core.runtime.provider_router import resolve_provider_router_target
 
@@ -188,6 +189,14 @@ class OllamaFollowupAdapter:
             "messages": messages,
             "stream": True,
         }
+        # Mirror first-pass thinking-mode controls so subsequent rounds
+        # respect the user's choice (Fast/Think/Deep) for reasoning models
+        # like deepseek-v4-flash.
+        _mode = (thinking_mode or "think").strip().lower()
+        if _mode == "fast":
+            payload["think"] = False
+        elif _mode == "deep":
+            payload["reasoning_effort"] = "high"
         if tool_definitions:
             payload["tools"] = tool_definitions
 
@@ -589,6 +598,7 @@ def stream_visible_followup(
     exchanges: list[ToolExchange],
     tool_definitions: list[dict] | None = None,
     round_index: int = 0,
+    thinking_mode: str = "think",
 ) -> Iterator[FollowupEvent]:
     """Dispatch to the provider's follow-up adapter; yield FollowupEvents.
 
@@ -608,10 +618,15 @@ def stream_visible_followup(
             summary=f"followup-round-{round_index + 1}-unsupported-provider:{provider}",
         )
         return
-    yield from adapter.stream_followup(
+    # Only the OllamaFollowupAdapter currently honors thinking_mode; the
+    # OpenAI-compat adapter ignores unknown kwargs gracefully if added later.
+    _kwargs: dict = dict(
         model=model,
         base_messages=base_messages,
         exchanges=exchanges,
         tool_definitions=tool_definitions,
         round_index=round_index,
     )
+    if isinstance(adapter, OllamaFollowupAdapter):
+        _kwargs["thinking_mode"] = thinking_mode
+    yield from adapter.stream_followup(**_kwargs)

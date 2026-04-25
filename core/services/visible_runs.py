@@ -245,6 +245,7 @@ class VisibleRun:
     session_id: str | None = None
     autonomous: bool = False  # True = heartbeat-triggered, no user present
     trust_all: bool = False   # True = auto-approve all tool calls without prompting
+    thinking_mode: str = "think"  # "fast" | "think" | "deep" — for reasoning models
 
 
 @dataclass(slots=True)
@@ -362,7 +363,10 @@ def _classify_visible_run_interruption(error_message: str) -> dict[str, str]:
 
 
 def start_visible_run(
-    message: str, session_id: str | None = None, approval_mode: str = "ask"
+    message: str,
+    session_id: str | None = None,
+    approval_mode: str = "ask",
+    thinking_mode: str = "think",
 ) -> AsyncIterator[str]:
     settings = load_settings()
     run = VisibleRun(
@@ -373,6 +377,7 @@ def start_visible_run(
         user_message=(message or "").strip() or "Tom synlig forespoergsel",
         session_id=(session_id or "").strip() or None,
         trust_all=(approval_mode == "trust"),
+        thinking_mode=(thinking_mode or "think").strip().lower(),
     )
     return _stream_visible_run(run)
 
@@ -602,6 +607,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         model=run.model,
                         session_id=run.session_id,
                         controller=controller,
+                        thinking_mode=run.thinking_mode,
                     ):
                         loop.call_soon_threadsafe(queue.put_nowait, item)
                 except Exception as exc:
@@ -1003,6 +1009,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 exchanges=_followup_exchanges,
                                 tool_definitions=tool_defs,
                                 round_index=rnd,
+                                thinking_mode=run.thinking_mode,
                             ):
                                 loop.call_soon_threadsafe(q.put_nowait, _event)
                         except Exception as _ae:

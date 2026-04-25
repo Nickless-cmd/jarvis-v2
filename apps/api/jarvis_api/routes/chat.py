@@ -26,6 +26,12 @@ class ChatStreamRequest(BaseModel):
     session_id: str = ""
     attachment_ids: list[str] = []
     approval_mode: str = "ask"  # "ask" | "trust"
+    # Thinking mode for reasoning-capable models (deepseek-v4-flash et al.).
+    # "fast" = no thinking (intuitive answer)
+    # "think" = default thinking (balanced)
+    # "deep" = max reasoning effort (slowest, hardest problems)
+    # Ignored for models that don't support thinking parameters.
+    thinking_mode: str = "think"
 
 
 class ChatSessionCreateRequest(BaseModel):
@@ -94,7 +100,12 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
     from core.services.notification_bridge import pin_session
     pin_session(session_id)
     return StreamingResponse(
-        start_visible_run(message=effective_message, session_id=session_id, approval_mode=request.approval_mode),
+        start_visible_run(
+            message=effective_message,
+            session_id=session_id,
+            approval_mode=request.approval_mode,
+            thinking_mode=request.thinking_mode,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

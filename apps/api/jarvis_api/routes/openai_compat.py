@@ -1,6 +1,7 @@
 """OpenAI-compatible proxy: /v1/chat/completions wrapping Jarvis visible lane."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -14,15 +15,13 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from core.services.chat_sessions import (
     create_chat_session,
     get_chat_session,
+    list_chat_sessions,
     append_chat_message,
 )
 from core.services.visible_model import (
-    stream_visible_model,
     execute_visible_model,
-    VisibleModelDelta,
-    VisibleModelStreamDone,
-    VisibleModelToolCalls,
 )
+from core.services.visible_runs import start_visible_run
 from core.eventbus.bus import event_bus
 from core.runtime.provider_router import resolve_provider_router_target
 
@@ -134,36 +133,70 @@ def _stream_response(
     model: str,
     session_id: str,
 ) -> Iterator[str]:
-    """Yield OpenAI-format SSE chunks from Jarvis' visible model stream."""
-    full_text = ""
-    for event in stream_visible_model(
-        message=message,
-        provider=provider,
-        model=model,
-        session_id=session_id,
-    ):
-        if isinstance(event, VisibleModelDelta):
-            full_text += event.delta
-            chunk = _build_stream_chunk(
-                run_id=run_id,
-                model=model,
-                delta_content=event.delta,
-            )
-            yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
-        elif isinstance(event, VisibleModelStreamDone):
-            if full_text.strip():
-                append_chat_message(
-                    session_id=session_id, role="assistant", content=full_text
-                )
-            yield "data: [DONE]\n\n"
-            return
+    """Yield OpenAI-format SSE chunks from Jarvis' visible run.
 
-    # Fallback if stream ends without done event
-    if full_text.strip():
-        append_chat_message(
-            session_id=session_id, role="assistant", content=full_text
+    Delegates to ``start_visible_run`` so the full agentic loop runs (tool
+    calls, follow-up rounds, presentation invariant guards). Internal
+    webchat SSE frames are filtered down to plain prose deltas and a
+    terminal ``[DONE]`` marker — opencode and other OpenAI-compatible
+    clients see only assistant text. Tools auto-approve via
+    ``approval_mode="trust"`` because no approval UI exists in the proxy
+    transport. The visible run persists the assistant message itself, so
+    we do not re-append here.
+    """
+    loop = asyncio.new_event_loop()
+    try:
+        agen = start_visible_run(
+            message=message,
+            session_id=session_id,
+            approval_mode="trust",
+        ).__aiter__()
+        while True:
+            try:
+                frame = loop.run_until_complete(agen.__anext__())
+            except StopAsyncIteration:
+                break
+            event_type, data = _parse_sse_frame(frame)
+            if event_type == "delta":
+                delta = str(data.get("delta") or data.get("text") or "")
+                if delta:
+                    chunk = _build_stream_chunk(
+                        run_id=run_id, model=model, delta_content=delta
+                    )
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            elif event_type == "done":
+                # visible run finished its final round; stop translating
+                break
+            # Internal webchat frames (working_step, capability,
+            # approval_request, trace, run) are intentionally suppressed —
+            # opencode has no UI for them.
+    except Exception as exc:
+        logger.exception("openai_compat proxy stream failed: %s", exc)
+        err_chunk = _build_stream_chunk(
+            run_id=run_id,
+            model=model,
+            delta_content=f"\n[jarvis-proxy-error: {exc}]",
         )
+        yield f"data: {json.dumps(err_chunk, ensure_ascii=False)}\n\n"
+    finally:
+        loop.close()
     yield "data: [DONE]\n\n"
+
+
+def _parse_sse_frame(frame: str) -> tuple[str, dict]:
+    """Parse a webchat SSE frame ``event: <type>\\ndata: <json>\\n\\n``."""
+    event_type = ""
+    data_json = ""
+    for line in frame.splitlines():
+        if line.startswith("event: "):
+            event_type = line[len("event: "):].strip()
+        elif line.startswith("data: "):
+            data_json = line[len("data: "):]
+    try:
+        data = json.loads(data_json) if data_json else {}
+    except Exception:
+        data = {}
+    return event_type, data
 
 
 # ---------------------------------------------------------------------------
@@ -261,18 +294,25 @@ def _build_stream_chunk(
 # Session management
 # ---------------------------------------------------------------------------
 
-_PROXY_SESSION_ID: str | None = None
+_PROXY_SESSION_TITLE = "Claude Code"
 
 
 def _get_or_create_proxy_session() -> str:
-    """Return or create a persistent proxy chat session."""
-    global _PROXY_SESSION_ID
-    if _PROXY_SESSION_ID:
-        session = get_chat_session(_PROXY_SESSION_ID)
-        if session is not None:
-            return _PROXY_SESSION_ID
+    """Return the shared proxy chat session id.
 
-    title = f"Claude Code — {datetime.now(UTC).strftime('%Y-%m-%d %H:%M')}"
-    session = create_chat_session(title=title)
-    _PROXY_SESSION_ID = str(session.get("id") or session.get("session_id", ""))
-    return _PROXY_SESSION_ID
+    All uvicorn workers must converge on the same session — otherwise each
+    worker spawns its own "Claude Code — <timestamp>" session and opencode
+    bounces between them, fragmenting context. We resolve by title lookup
+    against the DB (single source of truth) instead of a process-local
+    module global.
+    """
+    for s in list_chat_sessions():
+        title = str(s.get("title", ""))
+        if title == _PROXY_SESSION_TITLE or title.startswith(
+            _PROXY_SESSION_TITLE + " —"
+        ):
+            sid = str(s.get("id") or s.get("session_id", ""))
+            if sid and get_chat_session(sid) is not None:
+                return sid
+    session = create_chat_session(title=_PROXY_SESSION_TITLE)
+    return str(session.get("id") or session.get("session_id", ""))

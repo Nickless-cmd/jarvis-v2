@@ -59,6 +59,19 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "read_archive", "get_weather", "get_exchange_rate", "get_news",
     "convene_council", "quick_council_check", "recall_council_conclusions",
     "read_visual_memory",
+    # New core ergonomics from T/X/E/P-series — must always be visible
+    # otherwise Jarvis "forgets" he has them after pruning kicks in.
+    "bash_session_open", "bash_session_run", "bash_session_close", "bash_session_list",
+    "todo_list", "todo_set", "todo_add", "todo_update_status", "todo_remove",
+    "tail_log", "gpu_status", "run_pytest",
+    "verify_file_contains", "verify_service_active", "verify_endpoint_responds",
+    "monitor_open", "monitor_close", "monitor_list",
+    "check_surprises", "check_good_enough",
+    "delegation_advisor",
+    "propose_plan", "approve_plan", "dismiss_plan", "list_plans",
+    "classify_clarification",
+    "flag_side_task", "list_side_tasks", "dismiss_side_task", "activate_side_task",
+    "smart_outline",
 })
 
 
@@ -267,3 +280,24 @@ def select_tools_for_copilot(
 def _stable_idx(name: str) -> int:
     """Deterministic tiebreak — lexicographic by name."""
     return sum((ord(c) * (i + 1)) for i, c in enumerate(name[:16]))
+
+
+def select_tools_for_visible(
+    tools: list[dict],
+    *,
+    user_message: str = "",
+    session_id: str | None = None,
+    max_tools: int = 140,
+) -> list[dict]:
+    """Provider-neutral pruning wrapper for the visible lane.
+
+    Same scoring as ``select_tools_for_copilot`` but with a softer cap (140
+    instead of 128) since non-Copilot providers don't have a hard 128-tool
+    limit. Conservative default — ~165 → ~140 saves roughly 7 KB / 2 KT
+    per turn while every Tier-1 tool (including the new T/X/E/P series)
+    stays visible. Bump max_tools higher if a model starts noticeably
+    forgetting capabilities.
+    """
+    return select_tools_for_copilot(
+        tools, user_message=user_message, session_id=session_id, max_tools=max_tools,
+    )

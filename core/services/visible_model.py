@@ -480,7 +480,10 @@ def _run_openai_compatible_visible(
         model=model,
     )
     _assembly_ms = int((_time.monotonic() - _t_assembly) * 1000)
-    tools = get_tool_definitions()
+    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    tools = select_tools_for_visible(
+        get_tool_definitions(), user_message=message, session_id=session_id,
+    )
     _prompt_chars = sum(len(str(m.get("content", ""))) for m in chat_messages)
     _t_api = _time.monotonic()
     raw = _execute_openai_compatible_chat(
@@ -758,7 +761,10 @@ def _execute_ollama_model(
 
     visible_input = _build_visible_input(message, session_id=session_id)
     messages = serialize_ollama_chat_messages(visible_input)
-    tools = get_tool_definitions()
+    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    tools = select_tools_for_visible(
+        get_tool_definitions(), user_message=message, session_id=session_id,
+    )
 
     payload: dict[str, object] = {
         "model": model,
@@ -1001,7 +1007,10 @@ def _stream_ollama_model(
 
     visible_input = _build_visible_input(message, session_id=session_id)
     messages = serialize_ollama_chat_messages(visible_input)
-    tools = get_tool_definitions()
+    from core.tools.copilot_tool_pruning import select_tools_for_visible
+    tools = select_tools_for_visible(
+        get_tool_definitions(), user_message=message, session_id=session_id,
+    )
 
     payload: dict[str, object] = {
         "model": model,

@@ -308,6 +308,14 @@ def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
     # build the full surface (which run_heartbeat_tick needs anyway).
     state = _cheap_heartbeat_schedule_state(name)
     _emit_schedule_transitions(state)
+    # Cheap idempotent check — enqueue any periodic background jobs whose
+    # cadence threshold is exceeded (chronicle_refresh, weekly_manifest_refresh).
+    # Best-effort; never blocks the poll if jobs_engine is unavailable.
+    try:
+        from core.services.periodic_jobs_scheduler import check_and_enqueue_due_periodic_jobs
+        check_and_enqueue_due_periodic_jobs()
+    except Exception as _exc:
+        _log_debug("periodic jobs check failed", error=str(_exc))
     _log_debug(
         "heartbeat schedule poll",
         name=name,

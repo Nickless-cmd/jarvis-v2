@@ -21,6 +21,7 @@ from core.auth.copilot_session import (
 from core.auth.openai_oauth import get_openai_bearer_token, get_openai_oauth_truth
 from core.runtime.provider_router import resolve_provider_router_target
 from core.services.cheap_provider_runtime import (
+    CheapProviderError,
     cheap_lane_status_surface,
     execute_cheap_lane_via_pool,
     select_cheap_lane_target,
@@ -49,6 +50,99 @@ def cheap_lane_execution_truth() -> dict[str, object]:
 
 def execute_cheap_lane(*, message: str) -> dict[str, object]:
     return execute_cheap_lane_via_pool(message=message)
+
+
+def execute_with_role_or_fallback(
+    *, message: str, provider: str = "", model: str = ""
+) -> dict[str, object]:
+    """Run the message on the role's preferred provider/model first, fall
+    through to the cheap-lane chain on failure.
+
+    Used by agent_runtime so per-role council config in council_models.json
+    actually drives the LLM call instead of always defaulting to whatever
+    select_cheap_lane_target picks. The cheap-lane chain itself already
+    has an ollamafreeapi last-resort fallback (Phase B), so a primary
+    failure can still land on the free pool when paid options are
+    exhausted.
+    """
+    primary_provider = (provider or "").strip()
+    primary_model = (model or "").strip()
+    if not primary_provider or not primary_model:
+        return execute_cheap_lane_via_pool(message=message)
+
+    # Lazy imports — keep this module light for places that just want
+    # the legacy execute_cheap_lane.
+    from core.services.cheap_provider_runtime import (
+        _execute_provider_chat,
+        provider_runtime_defaults,
+        record_cheap_provider_invocation,
+    )
+    from core.runtime.provider_router import load_provider_router_registry
+    from datetime import UTC, datetime
+
+    # Resolve auth profile + base_url from registry, fall through silently
+    # if anything is unfound — the cheap_lane fallback will handle it.
+    registry = load_provider_router_registry() or {}
+    provider_entries = {
+        str(item.get("provider") or "").strip(): item
+        for item in registry.get("providers") or []
+    }
+    entry = provider_entries.get(primary_provider) or {}
+    auth_profile = str(entry.get("auth_profile") or "").strip()
+    defaults = provider_runtime_defaults(primary_provider)
+    base_url = str(entry.get("base_url") or defaults.get("base_url") or "").strip()
+
+    started_at = datetime.now(UTC)
+    try:
+        result = _execute_provider_chat(
+            provider=primary_provider,
+            model=primary_model,
+            auth_profile=auth_profile,
+            base_url=base_url,
+            message=message,
+        )
+    except Exception as exc:
+        # Best-effort telemetry; never block on logging.
+        try:
+            record_cheap_provider_invocation(
+                provider=primary_provider,
+                model=primary_model,
+                status="failed",
+                latency_ms=int((datetime.now(UTC) - started_at).total_seconds() * 1000),
+                input_tokens=_estimate_tokens(message),
+                output_tokens=0,
+                cost_usd=0.0,
+            )
+        except Exception:
+            pass
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish(
+                "runtime.role_primary_failed_over",
+                {
+                    "from_provider": primary_provider,
+                    "from_model": primary_model,
+                    "reason": type(exc).__name__,
+                    "error": str(exc)[:200],
+                },
+            )
+        except Exception:
+            pass
+        return execute_cheap_lane_via_pool(message=message)
+
+    output_tokens = int(result.get("output_tokens") or _estimate_tokens(result.get("text") or ""))
+    return {
+        "lane": "cheap",
+        "provider": primary_provider,
+        "model": primary_model,
+        "status": "completed",
+        "execution_mode": "role-primary-direct",
+        "source": "role-config",
+        "text": str(result.get("text") or ""),
+        "input_tokens": _estimate_tokens(message),
+        "output_tokens": output_tokens,
+        "cost_usd": float(result.get("cost_usd") or 0.0),
+    }
 
 
 def local_lane_execution_truth() -> dict[str, object]:

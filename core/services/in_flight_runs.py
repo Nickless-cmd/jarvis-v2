@@ -25,6 +25,11 @@ logger = logging.getLogger(__name__)
 
 _STATE_KEY = "in_flight_runs"
 _EXCERPT_LIMIT = 240
+# A run that's been "in flight" for less than this is probably just still
+# streaming on another worker, NOT actually interrupted. Avoid the false
+# positive where the next user message races the previous run's finally
+# block.
+_MIN_AGE_TO_SURFACE_SECONDS = 90
 
 
 def _load() -> dict[str, dict[str, Any]]:
@@ -43,13 +48,28 @@ def _save(records: dict[str, dict[str, Any]]) -> None:
 
 
 def mark_started(*, run_id: str, session_id: str | None, user_message: str) -> None:
-    """Record that a visible run is in flight. Keyed by run_id (unique)."""
+    """Record that a visible run is in flight. Keyed by run_id (unique).
+
+    Side effect: clears any prior in_flight records for the same session.
+    A new turn implies the previous turn finished (or won't finish) — keep
+    only the most recent so the digest never sees zombies left behind by
+    crashes, killed runs, or finally-blocks that didn't complete.
+    """
     if not run_id:
         return
+    sid = str(session_id or "")
     records = _load()
+    # Drop any earlier in_flight for the same session before adding the new one.
+    if sid:
+        stale_run_ids = [
+            rid for rid, rec in records.items()
+            if rec.get("session_id") == sid and rid != str(run_id)
+        ]
+        for rid in stale_run_ids:
+            records.pop(rid, None)
     records[str(run_id)] = {
         "run_id": str(run_id),
-        "session_id": str(session_id or ""),
+        "session_id": sid,
         "excerpt": (user_message or "")[:_EXCERPT_LIMIT],
         "started_at": datetime.now(UTC).isoformat(),
         "last_tool": "",
@@ -114,13 +134,30 @@ def clear_session(session_id: str | None) -> int:
 
 
 def interruption_prompt_section(session_id: str | None) -> str | None:
-    """Format an interrupted record as a system-prompt block, or None."""
+    """Format an interrupted record as a system-prompt block, or None.
+
+    Race-aware: only surfaces if the in_flight record is older than
+    _MIN_AGE_TO_SURFACE_SECONDS. The previous run's finally-block (which
+    calls mark_completed) runs *after* the [DONE] event reaches the
+    client, so a fast follow-up message can race the cleanup. A genuine
+    interruption (crash, restart) leaves the record older than the
+    threshold and surfaces correctly.
+    """
     rec = interrupted_for_session(session_id)
     if not rec:
         return None
+    started_iso = str(rec.get("started_at") or "")
+    if started_iso:
+        try:
+            started_dt = datetime.fromisoformat(started_iso)
+            age = (datetime.now(UTC) - started_dt).total_seconds()
+            if age < _MIN_AGE_TO_SURFACE_SECONDS:
+                return None
+        except Exception:
+            pass
     excerpt = str(rec.get("excerpt") or "(intet uddrag)")
     last_tool = str(rec.get("last_tool") or "")
-    started_at = str(rec.get("started_at") or "")[11:19]
+    started_at = started_iso[11:19] if started_iso else ""
     tool_clause = f" — sidste tool var {last_tool}" if last_tool else ""
     return (
         "Du blev afbrudt midt i en opgave (startet "

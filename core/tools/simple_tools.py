@@ -148,6 +148,13 @@ from core.services.delegation_advisor import (
     DELEGATION_ADVISOR_TOOL_DEFINITIONS,
     _exec_delegation_advisor,
 )
+from core.services.plan_proposals import (
+    PLAN_PROPOSALS_TOOL_DEFINITIONS,
+    _exec_propose_plan,
+    _exec_approve_plan,
+    _exec_dismiss_plan,
+    _exec_list_plans,
+)
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
     _exec_list_events,
@@ -1918,6 +1925,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *SURPRISE_TOOL_DEFINITIONS,
     *GOOD_ENOUGH_TOOL_DEFINITIONS,
     *DELEGATION_ADVISOR_TOOL_DEFINITIONS,
+    *PLAN_PROPOSALS_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
@@ -5240,6 +5248,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "check_surprises": _exec_check_surprises,
     "check_good_enough": _exec_check_good_enough,
     "delegation_advisor": _exec_delegation_advisor,
+    "propose_plan": _exec_propose_plan,
+    "approve_plan": _exec_approve_plan,
+    "dismiss_plan": _exec_dismiss_plan,
+    "list_plans": _exec_list_plans,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

@@ -144,6 +144,10 @@ from core.services.good_enough_gate import (
     GOOD_ENOUGH_TOOL_DEFINITIONS,
     _exec_check_good_enough,
 )
+from core.services.delegation_advisor import (
+    DELEGATION_ADVISOR_TOOL_DEFINITIONS,
+    _exec_delegation_advisor,
+)
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
     _exec_list_events,
@@ -1913,6 +1917,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *VERIFY_TOOL_DEFINITIONS,
     *SURPRISE_TOOL_DEFINITIONS,
     *GOOD_ENOUGH_TOOL_DEFINITIONS,
+    *DELEGATION_ADVISOR_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
@@ -5234,6 +5239,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "verify_endpoint_responds": _exec_verify_endpoint_responds,
     "check_surprises": _exec_check_surprises,
     "check_good_enough": _exec_check_good_enough,
+    "delegation_advisor": _exec_delegation_advisor,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

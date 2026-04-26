@@ -447,6 +447,21 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.reasoning_classifier import reasoning_tier_section
+        _awareness_add(22, "reasoning tier recommendation", reasoning_tier_section(user_message))
+    except Exception:
+        pass
+    try:
+        from core.services.verification_gate import verification_gate_section
+        _awareness_add(23, "verification gate signals", verification_gate_section())
+    except Exception:
+        pass
+    try:
+        from core.services.reasoning_escalation import escalation_section
+        _awareness_add(24, "reasoning escalation recommendation", escalation_section(user_message))
+    except Exception:
+        pass
+    try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
     except Exception:

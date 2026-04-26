@@ -465,6 +465,17 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Previous turn's actual changes (ground truth). Keeps self-narration
+    # honest — model sees what it really did vs what it claimed.
+    try:
+        from core.services.turn_changelog import previous_turn_changelog_section
+        prev_section = previous_turn_changelog_section(session_id)
+        if prev_section:
+            parts.append(prev_section)
+            derived_inputs.append("previous turn changelog (ground truth)")
+    except Exception:
+        pass
+
     # Side-tasks queued for later. Lower priority than current todos —
     # these are explicitly "do later", so they shouldn't compete with
     # the active task. Just visibility.

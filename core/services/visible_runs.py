@@ -1315,6 +1315,24 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     pass
 
                 _set_orb_phase("idle")
+                # Phase E6: emit a per-turn changelog as its own SSE event
+                # so MC / dev tools can render "what this turn actually
+                # changed" without trusting the model's own claim. The
+                # model sees the same data on its next turn via a prompt
+                # section so its self-awareness is grounded in fact.
+                try:
+                    from core.services.turn_changelog import build_turn_changelog
+                    _changelog = build_turn_changelog(
+                        run_id=run.run_id,
+                        started_at=controller.started_at,
+                    )
+                    yield _sse("turn_changelog", {
+                        "type": "turn_changelog",
+                        "run_id": run.run_id,
+                        **_changelog,
+                    })
+                except Exception:
+                    pass
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,

@@ -434,8 +434,14 @@ def smoke_cheap_lane(
 def select_cheap_lane_target(
     *, skip_providers: frozenset[str] = frozenset()
 ) -> dict[str, object]:
+    # Phase B (2026-04-26): include ollamafreeapi as last-resort fallback
+    # (priority 95). It used to be excluded entirely, which meant when all
+    # paid providers were exhausted/cooled the whole chain collapsed and
+    # callers got nothing. Now it kicks in *only* after all paid providers
+    # are blocked — paid providers still preferred for quality, free
+    # provider absorbs overflow when they can't.
     candidates = _configured_cheap_candidates(
-        include_public_proxy=False, skip_providers=skip_providers
+        include_public_proxy=True, skip_providers=skip_providers
     )
     blocked: list[dict[str, object]] = []
     for candidate in candidates:

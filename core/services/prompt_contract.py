@@ -805,9 +805,45 @@ def build_visible_chat_prompt_assembly(
         flush=True,
     )
 
+    # P1 instrumentation: measure system-prompt size before returning. Pure
+    # observation — no behavior change. Emits an eventbus event so MC and
+    # the wakeup digest can both surface bloat. Per-part chars logged so
+    # we can see which sections dominate without instrumenting every
+    # parts.append site.
+    _assembled_text = "\n\n".join(part for part in parts if part).strip()
+    _total_chars = len(_assembled_text)
+    _approx_tokens = _total_chars // 4  # rough heuristic — close enough for triage
+    _per_part_chars = [len(p) for p in parts if p]
+    _largest = sorted(
+        ((label, len(parts[i]) if i < len(parts) else 0)
+         for i, label in enumerate(derived_inputs)),
+        key=lambda kv: kv[1], reverse=True,
+    )[:8]
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("prompt.assembly_size", {
+            "mode": "visible_chat",
+            "compact": compact,
+            "total_chars": _total_chars,
+            "approx_tokens": _approx_tokens,
+            "part_count": len(_per_part_chars),
+            "largest_sections": [
+                {"label": label, "chars": chars} for label, chars in _largest if chars > 0
+            ],
+            "assembly_ms": _total_ms,
+        })
+    except Exception:
+        pass
+    print(
+        f"prompt-assembly-size chars={_total_chars} approx_tokens={_approx_tokens} "
+        f"parts={len(_per_part_chars)}",
+        file=_sys_mod.stderr,
+        flush=True,
+    )
+
     return PromptAssembly(
         mode="visible_chat",
-        text="\n\n".join(part for part in parts if part).strip(),
+        text=_assembled_text,
         included_files=included_files,
         conditional_files=conditional_files,
         derived_inputs=derived_inputs,

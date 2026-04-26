@@ -31,10 +31,18 @@ _QUESTION_RATIO_THRESHOLD = 0.4  # fraction of messages that are questions
 # Module-level state
 # ---------------------------------------------------------------------------
 
-_user_model: dict = {}
-_model_summary: str = ""
+from core.runtime.state_store import load_json as _load_state, save_json as _save_state
+
+_STATE_KEY = "user_model"
+_persisted = _load_state(_STATE_KEY, {"model": {}, "summary": ""})
+_user_model: dict = dict(_persisted.get("model", {}))
+_model_summary: str = str(_persisted.get("summary", ""))
 _last_generated_at: datetime | None = None
 _last_tick_at: datetime | None = None
+
+
+def _persist_user_model() -> None:
+    _save_state(_STATE_KEY, {"model": _user_model, "summary": _model_summary})
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -88,6 +96,7 @@ def tick_user_model_daemon(recent_messages: list[str]) -> dict:
     _model_summary = summary
     _last_generated_at = now
     _last_tick_at = now
+    _persist_user_model()
 
     _store_model(summary, now)
 

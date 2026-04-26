@@ -159,6 +159,10 @@ from core.services.clarification_classifier import (
     CLARIFICATION_TOOL_DEFINITIONS,
     _exec_classify_clarification,
 )
+from core.services.reasoning_classifier import (
+    REASONING_CLASSIFIER_TOOL_DEFINITIONS,
+    _exec_reasoning_classify,
+)
 from core.services.side_tasks import (
     SIDE_TASK_TOOL_DEFINITIONS,
     _exec_flag_side_task,
@@ -1942,6 +1946,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *DELEGATION_ADVISOR_TOOL_DEFINITIONS,
     *PLAN_PROPOSALS_TOOL_DEFINITIONS,
     *CLARIFICATION_TOOL_DEFINITIONS,
+    *REASONING_CLASSIFIER_TOOL_DEFINITIONS,
     *SIDE_TASK_TOOL_DEFINITIONS,
     *SMART_OUTLINE_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
@@ -5292,6 +5297,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "dismiss_plan": _exec_dismiss_plan,
     "list_plans": _exec_list_plans,
     "classify_clarification": _exec_classify_clarification,
+    "reasoning_classify": _exec_reasoning_classify,
     "flag_side_task": _exec_flag_side_task,
     "list_side_tasks": _exec_list_side_tasks,
     "dismiss_side_task": _exec_dismiss_side_task,

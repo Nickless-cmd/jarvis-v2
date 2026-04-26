@@ -62,8 +62,11 @@ def _safe_gate() -> dict[str, Any]:
 
 def _recommend_path(tier: str, failed: int, unverified: int, signals: list[str]) -> dict[str, Any]:
     """Pick the escalation path that fits the situation."""
-    # Heavy verify failures → critic agent for independent review
-    if failed >= 2:
+    # Any failed verify → critic agent for independent review.
+    # R3.1: lowered from >=2 to >=1 — a single failed verify is already
+    # hard evidence that a claim doesn't hold, and we found a live case
+    # where 1 failed verify + fast-tier message left the section silent.
+    if failed >= 1:
         return {
             "path": "spawn_agent_task",
             "role": "critic",
@@ -116,18 +119,25 @@ def evaluate_escalation(message: str = "") -> dict[str, Any]:
     unverified = int(gate_info.get("unverified_count") or 0)
     signals = list(tier_info.get("signals") or [])
 
-    # Trigger logic
+    # Trigger logic — STATE-based (not tied to current message tier).
+    # R3.1 fix: a failed verify or pile of unverified mutations from a
+    # previous turn must keep surfacing even when the user's *current*
+    # message is something simple like "what's the weather". Otherwise
+    # an active danger state silently disappears the moment a fast-tier
+    # question is asked. Tier still shapes the *recommendation*, not
+    # whether to escalate at all.
     triggered = False
     triggers: list[str] = []
-    if tier == "deep" and failed > 0:
+    if failed >= 1:
         triggered = True
-        triggers.append(f"deep tier + {failed} failed verify(s)")
-    if tier == "deep" and unverified >= 3:
+        triggers.append(f"{failed} failed verify(s) in recent window")
+    if unverified >= 3:
         triggered = True
-        triggers.append(f"deep tier + {unverified} unverified mutations")
-    if tier == "reasoning" and failed >= 2:
+        triggers.append(f"{unverified} unverified mutations")
+    if tier == "deep" and not triggered:
+        # Deep tier alone (no gate signals yet) — still worth a planner hint.
         triggered = True
-        triggers.append(f"reasoning tier + {failed} failed verify(s)")
+        triggers.append("deep tier without verification evidence")
 
     if not triggered:
         return {

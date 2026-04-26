@@ -438,6 +438,19 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Clarification classifier — score the latest user message for
+    # ambiguity and surface a "ask before acting" reminder when high.
+    # Sits next to plan-mode because both push toward "stop and consult"
+    # rather than execute-on-instinct.
+    try:
+        from core.services.clarification_classifier import clarification_prompt_section
+        clar_section = clarification_prompt_section(user_message)
+        if clar_section:
+            parts.append(clar_section)
+            derived_inputs.append("clarification ambiguity flag")
+    except Exception:
+        pass
+
     # Active todos for this session — externalized working memory. Sits
     # right after interrupt-resume because once interruption is acknowledged
     # the next thing the model needs to know is "what was I in the middle of

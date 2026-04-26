@@ -159,6 +159,13 @@ from core.services.clarification_classifier import (
     CLARIFICATION_TOOL_DEFINITIONS,
     _exec_classify_clarification,
 )
+from core.services.side_tasks import (
+    SIDE_TASK_TOOL_DEFINITIONS,
+    _exec_flag_side_task,
+    _exec_list_side_tasks,
+    _exec_dismiss_side_task,
+    _exec_activate_side_task,
+)
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
     _exec_list_events,
@@ -1931,6 +1938,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *DELEGATION_ADVISOR_TOOL_DEFINITIONS,
     *PLAN_PROPOSALS_TOOL_DEFINITIONS,
     *CLARIFICATION_TOOL_DEFINITIONS,
+    *SIDE_TASK_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
@@ -5279,6 +5287,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "dismiss_plan": _exec_dismiss_plan,
     "list_plans": _exec_list_plans,
     "classify_clarification": _exec_classify_clarification,
+    "flag_side_task": _exec_flag_side_task,
+    "list_side_tasks": _exec_list_side_tasks,
+    "dismiss_side_task": _exec_dismiss_side_task,
+    "activate_side_task": _exec_activate_side_task,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

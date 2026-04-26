@@ -465,6 +465,18 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Side-tasks queued for later. Lower priority than current todos —
+    # these are explicitly "do later", so they shouldn't compete with
+    # the active task. Just visibility.
+    try:
+        from core.services.side_tasks import side_tasks_prompt_section
+        side_section = side_tasks_prompt_section()
+        if side_section:
+            parts.append(side_section)
+            derived_inputs.append("flagged side-tasks")
+    except Exception:
+        pass
+
     # Subagents that finished since this session last looked. Mirrors
     # Claude Code's "Agent returned with X" surfacing: the parent sees
     # subagent results inline rather than having to remember to poll

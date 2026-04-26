@@ -447,6 +447,11 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.reasoning_classifier import reasoning_tier_section
+        _awareness_add(22, "reasoning tier recommendation", reasoning_tier_section(user_message))
+    except Exception:
+        pass
+    try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
     except Exception:

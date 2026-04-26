@@ -104,6 +104,9 @@ from core.tools.process_tools import (
     _exec_process_list,
     _exec_disk_usage,
     _exec_memory_usage,
+    _exec_tail_log,
+    _exec_gpu_status,
+    _exec_run_pytest,
 )
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
@@ -5089,6 +5092,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "process_list": _exec_process_list,
     "disk_usage": _exec_disk_usage,
     "memory_usage": _exec_memory_usage,
+    "tail_log": _exec_tail_log,
+    "gpu_status": _exec_gpu_status,
+    "run_pytest": _exec_run_pytest,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

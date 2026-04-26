@@ -385,6 +385,20 @@ def build_visible_chat_prompt_assembly(
         parts.append(capability_ids_line)
         derived_inputs.append("runtime capability id summary")
 
+    # Self-correction nudges — make the model verify, ask, and track.
+    # These are *behavioral* hints (not identity), so they sit just above
+    # the SOUL/IDENTITY block where personality kicks in. Compact lane
+    # gets the same nudges in shortened form to save tokens.
+    self_correction = _self_correction_nudges_section(compact=compact)
+    if self_correction:
+        parts.append(self_correction)
+        derived_inputs.append("self-correction nudges")
+
+    open_questions = _open_questions_section(limit=3 if compact else 5)
+    if open_questions:
+        parts.append(open_questions)
+        derived_inputs.append("open questions tracker")
+
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,
@@ -1720,6 +1734,61 @@ def _visible_chat_rules_instruction(*, workspace_dir: Path) -> str | None:
         label="Visible chat guidance rules",
         max_lines=30,
         max_chars=2000,
+    )
+
+
+def _self_correction_nudges_section(*, compact: bool) -> str:
+    """Behavioral hints that push the model toward verify-before-done,
+    explicit clarification, and open-question tracking.
+
+    These are deliberately short and imperative — the visible model sees
+    them every turn, so verbosity costs tokens forever. The compact lane
+    (Ollama local) gets a trimmed version because its context budget is
+    tighter.
+    """
+    if compact:
+        return (
+            "Selv-korrektion: Hvis du er i tvivl om hvad brugeren mener, så "
+            "spørg før du handler. Når du siger noget er færdigt, har du "
+            "verificeret det (læst filen, kørt testen, set state). "
+            "Indrøm åbent hvis et tool fejlede eller du ikke nåede frem til svaret."
+        )
+    return (
+        "Selv-korrektion (gælder hver tur):\n"
+        "1. **Spørg før du gætter.** Hvis brugerens intent er tvetydig — to "
+        "rimelige tolkninger — så stil ét konkret afklarende spørgsmål før "
+        "du laver mere end et trivielt skridt.\n"
+        "2. **Verificér før du siger 'færdigt'.** Læs filen efter du skrev "
+        "den. Kør testen. Tjek service-status. Hvis du kun *tror* det virker, "
+        "sig det åbent ('jeg har ikke kunnet verificere X').\n"
+        "3. **Indrøm fejl tidligt.** Hvis et tool returnerede en fejl, eller "
+        "et tidligere skridt ikke gjorde hvad du troede — sig det med det "
+        "samme og foreslå et alternativ. Skjul ikke fejl bag fremgang.\n"
+        "4. **Hold åbne spørgsmål synlige.** Hvis brugeren stillede flere "
+        "spørgsmål end du svarede på, eller du gemte en for senere — nævn "
+        "det eksplicit i slutningen så den ikke forsvinder."
+    )
+
+
+def _open_questions_section(*, limit: int = 5) -> str | None:
+    """Surface curiosity_daemon._open_questions into the visible prompt.
+
+    The daemon collects questions Jarvis wondered about but didn't pursue
+    (gaps in thoughts, "ved ikke", "..."). Without surfacing them they die
+    in the buffer. Showing the recent N gives the model a chance to bring
+    one up if it's relevant to the current turn.
+    """
+    try:
+        from core.services.curiosity_daemon import _open_questions
+        questions = list(_open_questions)[:limit]
+    except Exception:
+        return None
+    if not questions:
+        return None
+    bullets = "\n".join(f"- {q}" for q in questions)
+    return (
+        "Åbne spørgsmål du har båret med dig (kan tages op hvis relevant for nu):\n"
+        f"{bullets}"
     )
 
 

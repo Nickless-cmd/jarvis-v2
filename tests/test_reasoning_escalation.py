@@ -30,11 +30,23 @@ def test_no_escalation_for_fast_tier():
     assert result["escalate"] is False
 
 
-def test_no_escalation_for_deep_without_failures():
+def test_deep_without_failures_still_recommends_planner():
+    """R3.1: deep tier alone (no gate failures) still surfaces a planner hint."""
     with patch("core.services.reasoning_escalation._safe_tier", return_value=_stub_tier("deep")), \
          patch("core.services.reasoning_escalation._safe_gate", return_value=_stub_gate()):
         result = evaluate_escalation("design ny arkitektur")
-    assert result["escalate"] is False
+    assert result["escalate"] is True
+    assert result["recommendation"]["role"] == "planner"
+
+
+def test_state_based_failed_verify_surfaces_on_fast_message():
+    """R3.1 regression test: a failed verify from a previous turn must still
+    surface even when the user's current message is fast-tier."""
+    with patch("core.services.reasoning_escalation._safe_tier", return_value=_stub_tier("fast")), \
+         patch("core.services.reasoning_escalation._safe_gate", return_value=_stub_gate(failed=1)):
+        result = evaluate_escalation("hvad er klokken?")
+    assert result["escalate"] is True
+    assert any("failed verify" in t for t in result["triggers"])
 
 
 def test_escalation_for_deep_plus_failed_verify():

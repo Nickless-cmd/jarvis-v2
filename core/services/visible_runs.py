@@ -842,10 +842,21 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
                             continue
                         if run.trust_all:
-                            # User has set "Trust all" — auto-approve without prompting
-                            _resolved_result_texts[_idx] = str(sr["result"].get("result_text") or "")
-                            yield _sse("capability", {"type": "tool_approved", "tool": sr["tool_name"], "auto": True})
-                            continue
+                            # Trust gradient (E8): even in trust mode, DESTRUCTIVE
+                            # tool calls (rm -rf, force-push, drop table, etc.)
+                            # require explicit user approval. The bash tool tags
+                            # those with classification="destructive" in its
+                            # result; same for any future tool that adopts the
+                            # convention. Reversible/normal calls auto-approve
+                            # as before.
+                            _classification = str(sr["result"].get("classification", "") or "")
+                            if _classification == "destructive":
+                                # Fall through to approval-card path below.
+                                pass
+                            else:
+                                _resolved_result_texts[_idx] = str(sr["result"].get("result_text") or "")
+                                yield _sse("capability", {"type": "tool_approved", "tool": sr["tool_name"], "auto": True})
+                                continue
                         approval_id = f"approval-{uuid4().hex[:12]}"
                         created_at = datetime.now(UTC).isoformat()
                         _PENDING_APPROVALS[approval_id] = {
@@ -1182,9 +1193,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 })
                                 continue
                             if run.trust_all:
-                                _a_resolved[_a_idx] = str(_a_sr["result"].get("result_text") or "")
-                                yield _sse("capability", {"type": "tool_approved", "tool": _a_sr["tool_name"], "auto": True})
-                                continue
+                                # Trust gradient (E8): destructive calls always
+                                # require approval, even in trust mode.
+                                _a_classification = str(_a_sr["result"].get("classification", "") or "")
+                                if _a_classification == "destructive":
+                                    pass  # fall through to approval-card path
+                                else:
+                                    _a_resolved[_a_idx] = str(_a_sr["result"].get("result_text") or "")
+                                    yield _sse("capability", {"type": "tool_approved", "tool": _a_sr["tool_name"], "auto": True})
+                                    continue
                             _a_apid = f"approval-{uuid4().hex[:12]}"
                             _a_created_at = datetime.now(UTC).isoformat()
                             _PENDING_APPROVALS[_a_apid] = {

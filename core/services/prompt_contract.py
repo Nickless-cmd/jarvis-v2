@@ -399,138 +399,73 @@ def build_visible_chat_prompt_assembly(
         parts.append(open_questions)
         derived_inputs.append("open questions tracker")
 
-    # Eventbus wake-up digest — surface notable background events (errors,
-    # bridge failures, pending approvals, failed tools) that fired while
-    # this session was idle. Without this every turn starts cold and the
-    # model can't react to state it should know about.
+    # P3: Awareness-section budget. Operational awareness blocks (plan,
+    # interrupt, todos, monitors, wake-up digest, self-monitor, side-tasks,
+    # subagent digest, scheduled tasks, prev-turn changelog) collect into a
+    # bounded list; if total chars exceed _AWARENESS_BUDGET, lowest-priority
+    # sections are dropped. Identity (SOUL/IDENTITY/STANDING_ORDERS),
+    # nudges, capability truth, etc. are NOT awareness — they live above.
+    _awareness: list[tuple[int, str, str]] = []  # (priority, label, content)
+    _AWARENESS_BUDGET = 6000  # chars; ~1.5 KT max for the whole awareness block
+
+    def _awareness_add(priority: int, label: str, content: str | None) -> None:
+        if not content:
+            return
+        _awareness.append((priority, label, content))
+
+    # Eventbus wake-up digest — also goes through the awareness budget.
     try:
         from core.services.session_wakeup import wakeup_digest
-        wake_section = wakeup_digest(session_id)
-        if wake_section:
-            parts.append(wake_section)
-            derived_inputs.append("eventbus wake-up digest")
+        _awareness_add(55, "eventbus wake-up digest", wakeup_digest(session_id))
     except Exception:
         pass
 
-    # Resume-after-interrupt: if a previous visible run for this session
-    # never reached its finally-block (crash, restart, cancel), surface
-    # what we were doing so the user can be asked whether to continue.
-    # Sits highest among awareness sections — interruption is the most
-    # urgent thing to clarify before doing new work.
+    # P3: Operational awareness sections — gathered into _awareness with
+    # priority numbers (lower = more important). After collection, the
+    # budget cap below drops lowest-priority sections if total chars
+    # exceed _AWARENESS_BUDGET. Identity (SOUL/IDENTITY/STANDING_ORDERS),
+    # nudges, capability truth, etc. are NOT awareness — they live above
+    # and below this block and are never trimmed by the budget.
     try:
         from core.services.in_flight_runs import interruption_prompt_section
-        interrupt_section = interruption_prompt_section(session_id)
-        if interrupt_section:
-            parts.append(interrupt_section)
-            derived_inputs.append("resume-after-interrupt notice")
+        _awareness_add(10, "resume-after-interrupt notice", interruption_prompt_section(session_id))
     except Exception:
         pass
-
-    # Pending plan awaiting user approval (plan-mode). Highest authority
-    # of all the awareness sections aside from interruption: until the
-    # user resolves the plan, the model must not execute its steps.
     try:
         from core.services.plan_proposals import pending_plan_section
-        plan_section = pending_plan_section(session_id)
-        if plan_section:
-            parts.append(plan_section)
-            derived_inputs.append("pending plan awaiting approval")
+        _awareness_add(15, "pending plan awaiting approval", pending_plan_section(session_id))
     except Exception:
         pass
-
-    # Clarification classifier — score the latest user message for
-    # ambiguity and surface a "ask before acting" reminder when high.
-    # Sits next to plan-mode because both push toward "stop and consult"
-    # rather than execute-on-instinct.
-    try:
-        from core.services.clarification_classifier import clarification_prompt_section
-        clar_section = clarification_prompt_section(user_message)
-        if clar_section:
-            parts.append(clar_section)
-            derived_inputs.append("clarification ambiguity flag")
-    except Exception:
-        pass
-
-    # Active todos for this session — externalized working memory. Sits
-    # right after interrupt-resume because once interruption is acknowledged
-    # the next thing the model needs to know is "what was I in the middle of
-    # planning". Mirrors Claude Code's TodoWrite pattern: ONE in_progress
-    # at a time, list visible every turn.
-    try:
-        from core.services.agent_todos import todos_prompt_section
-        todos_section = todos_prompt_section(session_id)
-        if todos_section:
-            parts.append(todos_section)
-            derived_inputs.append("active todos")
-    except Exception:
-        pass
-
-    # Previous turn's actual changes (ground truth). Keeps self-narration
-    # honest — model sees what it really did vs what it claimed.
-    try:
-        from core.services.turn_changelog import previous_turn_changelog_section
-        prev_section = previous_turn_changelog_section(session_id)
-        if prev_section:
-            parts.append(prev_section)
-            derived_inputs.append("previous turn changelog (ground truth)")
-    except Exception:
-        pass
-
-    # Side-tasks queued for later. Lower priority than current todos —
-    # these are explicitly "do later", so they shouldn't compete with
-    # the active task. Just visibility.
-    try:
-        from core.services.side_tasks import side_tasks_prompt_section
-        side_section = side_tasks_prompt_section()
-        if side_section:
-            parts.append(side_section)
-            derived_inputs.append("flagged side-tasks")
-    except Exception:
-        pass
-
-    # Subagents that finished since this session last looked. Mirrors
-    # Claude Code's "Agent returned with X" surfacing: the parent sees
-    # subagent results inline rather than having to remember to poll
-    # list_agents. The digest module advances its own per-session mark.
-    try:
-        from core.services.subagent_digest import subagent_digest_section
-        subagent_section = subagent_digest_section(session_id)
-        if subagent_section:
-            parts.append(subagent_section)
-            derived_inputs.append("subagent completion digest")
-    except Exception:
-        pass
-
-    # Pinned monitors — anything the model asked to keep an eye on. Each
-    # monitor (eventbus family or file tail) reports new matches since
-    # the previous turn. Equivalent of Claude Code's Monitor tool but
-    # surfaced once per turn rather than as live notifications.
-    try:
-        from core.services.monitor_streams import monitor_digest_section
-        monitor_section = monitor_digest_section(session_id)
-        if monitor_section:
-            parts.append(monitor_section)
-            derived_inputs.append("pinned monitor digest")
-    except Exception:
-        pass
-
-    # Self-monitor: warn the model about its own anti-patterns from recent
-    # tool history. Repeating a failing call, thrashing without progress.
-    # Higher priority than awareness/wake-ups: if the model is looping it
-    # needs to break out before doing anything new.
     try:
         from core.services.self_monitor import self_monitor_section
-        sm_section = self_monitor_section()
-        if sm_section:
-            parts.append(sm_section)
-            derived_inputs.append("self-monitor warnings")
+        _awareness_add(20, "self-monitor warnings", self_monitor_section())
     except Exception:
         pass
-
-    # Upcoming self-scheduled wake-ups. Mirrors Claude Code's ScheduleWakeup
-    # — when the model says "schedule_task in 30 min: check the build", it
-    # should see that pending wake-up at the top of every subsequent turn
-    # so it doesn't re-schedule the same thing or forget it's coming.
+    try:
+        from core.services.clarification_classifier import clarification_prompt_section
+        _awareness_add(25, "clarification ambiguity flag", clarification_prompt_section(user_message))
+    except Exception:
+        pass
+    try:
+        from core.services.agent_todos import todos_prompt_section
+        _awareness_add(30, "active todos", todos_prompt_section(session_id))
+    except Exception:
+        pass
+    try:
+        from core.services.turn_changelog import previous_turn_changelog_section
+        _awareness_add(40, "previous turn changelog (ground truth)", previous_turn_changelog_section(session_id))
+    except Exception:
+        pass
+    try:
+        from core.services.subagent_digest import subagent_digest_section
+        _awareness_add(50, "subagent completion digest", subagent_digest_section(session_id))
+    except Exception:
+        pass
+    try:
+        from core.services.monitor_streams import monitor_digest_section
+        _awareness_add(60, "pinned monitor digest", monitor_digest_section(session_id))
+    except Exception:
+        pass
     try:
         from core.services.scheduled_tasks import get_scheduled_tasks_state
         sched_state = get_scheduled_tasks_state()
@@ -543,13 +478,33 @@ def build_visible_chat_prompt_assembly(
                 focus = str(t.get("focus", ""))[:120]
                 lines.append(f"⏰ {run_at}  {focus}")
             extra = f"  (+{len(pending) - len(shown)} mere)" if len(pending) > len(shown) else ""
-            parts.append(
+            _awareness_add(70, "upcoming scheduled tasks",
                 "Kommende self-scheduled wake-ups (du har sat dem selv):\n"
-                + "\n".join(lines) + extra
-            )
-            derived_inputs.append("upcoming scheduled tasks")
+                + "\n".join(lines) + extra)
     except Exception:
         pass
+    try:
+        from core.services.side_tasks import side_tasks_prompt_section
+        _awareness_add(80, "flagged side-tasks", side_tasks_prompt_section())
+    except Exception:
+        pass
+
+    # Apply the budget cap. Highest-priority sections always survive (even
+    # if alone they exceed the budget); later/lower-priority entries are
+    # dropped to make room. Dropped labels logged via derived_inputs so MC
+    # can see what got squeezed out this turn.
+    _awareness.sort(key=lambda x: x[0])
+    _used = 0
+    _dropped: list[str] = []
+    for _prio, _label, _content in _awareness:
+        if _used > 0 and _used + len(_content) > _AWARENESS_BUDGET:
+            _dropped.append(_label)
+            continue
+        parts.append(_content)
+        derived_inputs.append(_label)
+        _used += len(_content)
+    if _dropped:
+        derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
 
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(

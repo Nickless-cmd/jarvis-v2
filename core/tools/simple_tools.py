@@ -155,6 +155,10 @@ from core.services.plan_proposals import (
     _exec_dismiss_plan,
     _exec_list_plans,
 )
+from core.services.clarification_classifier import (
+    CLARIFICATION_TOOL_DEFINITIONS,
+    _exec_classify_clarification,
+)
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
     _exec_list_events,
@@ -1926,6 +1930,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GOOD_ENOUGH_TOOL_DEFINITIONS,
     *DELEGATION_ADVISOR_TOOL_DEFINITIONS,
     *PLAN_PROPOSALS_TOOL_DEFINITIONS,
+    *CLARIFICATION_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
@@ -5252,6 +5257,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "approve_plan": _exec_approve_plan,
     "dismiss_plan": _exec_dismiss_plan,
     "list_plans": _exec_list_plans,
+    "classify_clarification": _exec_classify_clarification,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

@@ -426,6 +426,18 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Pending plan awaiting user approval (plan-mode). Highest authority
+    # of all the awareness sections aside from interruption: until the
+    # user resolves the plan, the model must not execute its steps.
+    try:
+        from core.services.plan_proposals import pending_plan_section
+        plan_section = pending_plan_section(session_id)
+        if plan_section:
+            parts.append(plan_section)
+            derived_inputs.append("pending plan awaiting approval")
+    except Exception:
+        pass
+
     # Active todos for this session — externalized working memory. Sits
     # right after interrupt-resume because once interruption is acknowledged
     # the next thing the model needs to know is "what was I in the middle of

@@ -51,6 +51,7 @@ _NOTABLE_KINDS = (
     "self_review.flagged",
     "incident.opened",
     "incident.escalated",
+    "surprise.detected",
 )
 
 

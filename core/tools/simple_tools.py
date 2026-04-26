@@ -136,6 +136,10 @@ from core.tools.verify_tools import (
     _exec_verify_service_active,
     _exec_verify_endpoint_responds,
 )
+from core.services.surprise_detector import (
+    SURPRISE_TOOL_DEFINITIONS,
+    _exec_check_surprises,
+)
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
     _exec_list_events,
@@ -1903,6 +1907,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *AGENT_TODO_TOOL_DEFINITIONS,
     *MONITOR_TOOL_DEFINITIONS,
     *VERIFY_TOOL_DEFINITIONS,
+    *SURPRISE_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
@@ -5222,6 +5227,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "verify_file_contains": _exec_verify_file_contains,
     "verify_service_active": _exec_verify_service_active,
     "verify_endpoint_responds": _exec_verify_endpoint_responds,
+    "check_surprises": _exec_check_surprises,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

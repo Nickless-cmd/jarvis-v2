@@ -14,9 +14,17 @@ logger = logging.getLogger(__name__)
 _MAX_PENDING = 10
 _MAX_RESOLVED = 20
 
-_pending_proposals: list[dict] = []
-_resolved_proposals: list[dict] = []
+from core.runtime.state_store import load_json as _load_state, save_json as _save_state
+
+_STATE_KEY = "thought_action_proposals"
+_persisted = _load_state(_STATE_KEY, {"pending": [], "resolved": []})
+_pending_proposals: list[dict] = list(_persisted.get("pending", []))
+_resolved_proposals: list[dict] = list(_persisted.get("resolved", []))
 _last_classified_fragment: str = ""
+
+
+def _persist_proposals() -> None:
+    _save_state(_STATE_KEY, {"pending": _pending_proposals, "resolved": _resolved_proposals})
 
 # Diagnose counters for why the daemon appears silent
 _classify_total: int = 0
@@ -69,6 +77,7 @@ def tick_thought_action_proposal_daemon(fragment: str) -> dict[str, object]:
         "created_at": datetime.now(UTC).isoformat(),
     }
     _pending_proposals.append(proposal)
+    _persist_proposals()
 
     try:
         insert_private_brain_record(
@@ -113,6 +122,7 @@ def resolve_proposal(proposal_id: str, decision: str) -> bool:
             _resolved_proposals.insert(0, resolved)
             if len(_resolved_proposals) > _MAX_RESOLVED:
                 _resolved_proposals = _resolved_proposals[:_MAX_RESOLVED]
+            _persist_proposals()
             try:
                 event_bus.publish(
                     "thought_action_proposal.resolved",

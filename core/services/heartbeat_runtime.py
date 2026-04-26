@@ -2342,6 +2342,15 @@ def _build_influence_trace(
     except Exception:
         pass
 
+    # --- Surprise-detector pass: scan recent eventbus for anomalies and
+    # publish surprise.detected events so the next visible turn surfaces
+    # them via the wake-up digest. Cheap; runs once per heartbeat tick.
+    try:
+        from core.services.surprise_detector import check_surprises
+        check_surprises()
+    except Exception:
+        pass
+
     # ── Group 1: Hardware/energy + thought foundation (Ollama KV-cache friendly) ──
 
     # Somatic phrase

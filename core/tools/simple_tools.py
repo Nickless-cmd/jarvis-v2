@@ -356,21 +356,26 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Make a surgical find-and-replace edit in a file. Always call this tool directly — the runtime handles approval automatically.",
+            "description": (
+                "Surgical find-and-replace in a file. Strict by default: errors "
+                "if old_text isn't found, errors if it matches more than once "
+                "(forces you to anchor with surrounding context). Pass "
+                "replace_all=true for an explicit rename across all occurrences. "
+                "Pass expected_replacements=N to assert exactly N matches."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Absolute file path to edit",
+                    "path": {"type": "string", "description": "Absolute file path to edit."},
+                    "old_text": {"type": "string", "description": "Exact text to find."},
+                    "new_text": {"type": "string", "description": "Replacement text."},
+                    "replace_all": {
+                        "type": "boolean",
+                        "description": "Replace every occurrence instead of failing on multi-match. Default false.",
                     },
-                    "old_text": {
-                        "type": "string",
-                        "description": "Exact text to find (must match exactly)",
-                    },
-                    "new_text": {
-                        "type": "string",
-                        "description": "Replacement text",
+                    "expected_replacements": {
+                        "type": "integer",
+                        "description": "Assert exactly this many matches; fail otherwise.",
                     },
                 },
                 "required": ["path", "old_text", "new_text"],
@@ -2307,6 +2312,8 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     path = str(args.get("path") or "").strip()
     old_text = str(args.get("old_text") or "")
     new_text = str(args.get("new_text") or "")
+    replace_all = bool(args.get("replace_all", False))
+    expected_replacements = args.get("expected_replacements")
     if not path or not old_text:
         return {"error": "path and old_text are required", "status": "error"}
 
@@ -2334,17 +2341,35 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "old_text not found in file", "status": "error"}
 
     count = content.count(old_text)
-    if count > 1:
-        return {"error": f"old_text matches {count} locations — be more specific", "status": "error"}
+    if count > 1 and not replace_all:
+        return {
+            "error": f"old_text matches {count} locations — be more specific, "
+                     f"or pass replace_all=true to rename every occurrence",
+            "status": "error",
+            "match_count": count,
+        }
 
-    new_content = content.replace(old_text, new_text, 1)
+    if expected_replacements is not None:
+        try:
+            expected = int(expected_replacements)
+        except Exception:
+            return {"error": "expected_replacements must be an integer", "status": "error"}
+        if count != expected:
+            return {
+                "error": f"expected {expected} matches but found {count}",
+                "status": "error",
+                "match_count": count,
+            }
+
+    replacements = count if replace_all else 1
+    new_content = content.replace(old_text, new_text, -1 if replace_all else 1)
     target.write_text(new_content, encoding="utf-8")
     try:
         from core.services.self_mutation_lineage import record_self_mutation
         record_self_mutation(target_path=str(target), change_type="edit")
     except Exception:
         pass
-    result = {"status": "ok", "path": str(target), "replacements": 1}
+    result = {"status": "ok", "path": str(target), "replacements": replacements}
     if redirected_from:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"

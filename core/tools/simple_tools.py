@@ -108,6 +108,13 @@ from core.tools.process_tools import (
     _exec_gpu_status,
     _exec_run_pytest,
 )
+from core.tools.bash_session import (
+    BASH_SESSION_TOOL_DEFINITIONS,
+    _exec_bash_session_open,
+    _exec_bash_session_run,
+    _exec_bash_session_close,
+    _exec_bash_session_list,
+)
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
     _exec_list_events,
@@ -212,15 +219,22 @@ _AUTO_APPROVE_WRITE_PREFIXES = [
     str(WORKSPACE_DIR) + "/",                          # all runtime workspace files
     str(Path(PROJECT_ROOT) / "workspace" / "default") + "/",  # repo workspace template
     "/tmp/",                                            # safe temp directory
-    "/media/projects/mini-jarvis/",                    # Bjørn's mini-jarvis
-    # training project — explicit project dir for Jarvis' own custom-model
-    # work. Auto-approving here lets Jarvis write training scripts, manifest
-    # files, dataset preparers without an approval-card per file. Does NOT
-    # cover other /media/projects/* dirs (e.g. jarvis-v2 source itself) —
-    # those still go through approval for safety.
+    str(Path(JARVIS_HOME)) + "/",                       # all of ~/.jarvis-v2/ (state, logs, cache)
+    "/media/projects/",                                 # Bjørn's project root — mini-jarvis,
+                                                        # jarvis-v2, custom-model training,
+                                                        # everything he iterates on. The
+                                                        # blocked-patterns list still protects
+                                                        # /.git/ /.env /credentials /.ssh.
     str(Path(JARVIS_HOME) / "workspaces" / "michelle") + "/",
     # Michelle's workspace — separate persona space, owned by her.
-    # Same auto-approve treatment as default workspace.
+    # Inconsistency this fixes: ``bash`` can already do ``echo foo > /any/path``
+    # because ``echo`` is in _READ_ONLY_COMMAND_PREFIXES (no redirect awareness).
+    # ``write_file`` was much stricter, silently turning into approval_needed
+    # cards that didn't always reach the user. Net effect: Jarvis would say
+    # "I wrote the file" while it was actually pending an approval that never
+    # surfaced. Auto-approving the same paths bash effectively can write to
+    # closes the gap; the structural blocks (.git, .env, credentials, .ssh,
+    # node_modules, __pycache__) still protect the dangerous spots.
 ]
 _BLOCKED_WRITE_PATTERNS = [
     "/.git/",
@@ -1855,6 +1869,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GITHUB_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
+    *BASH_SESSION_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
@@ -5095,6 +5110,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "tail_log": _exec_tail_log,
     "gpu_status": _exec_gpu_status,
     "run_pytest": _exec_run_pytest,
+    "bash_session_open": _exec_bash_session_open,
+    "bash_session_run": _exec_bash_session_run,
+    "bash_session_close": _exec_bash_session_close,
+    "bash_session_list": _exec_bash_session_list,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

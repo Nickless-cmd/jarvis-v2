@@ -105,10 +105,19 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _weekly_manifest_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Rewrite WEEKLY_MANIFEST.md with this week's self-reflection."""
+        try:
+            from core.services.weekly_manifest import build_weekly_manifest
+            return {"status": "ok", "kind": "weekly_manifest_refresh", "result": build_weekly_manifest()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
         "dream_distillation_sweep": _dream_distillation_handler,
+        "weekly_manifest_refresh": _weekly_manifest_handler,
     }
 
     for job_type, handler in handlers.items():

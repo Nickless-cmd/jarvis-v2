@@ -123,6 +123,12 @@ from core.tools.agent_todo_tools import (
     _exec_todo_update_status,
     _exec_todo_remove,
 )
+from core.tools.monitor_tools import (
+    MONITOR_TOOL_DEFINITIONS,
+    _exec_monitor_open,
+    _exec_monitor_close,
+    _exec_monitor_list,
+)
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
     _exec_list_events,
@@ -1884,6 +1890,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *PROCESS_TOOL_DEFINITIONS,
     *BASH_SESSION_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
+    *MONITOR_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
@@ -5153,6 +5160,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "todo_add": _exec_todo_add,
     "todo_update_status": _exec_todo_update_status,
     "todo_remove": _exec_todo_remove,
+    "monitor_open": _exec_monitor_open,
+    "monitor_close": _exec_monitor_close,
+    "monitor_list": _exec_monitor_list,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

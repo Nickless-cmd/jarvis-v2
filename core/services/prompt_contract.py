@@ -453,6 +453,19 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Pinned monitors — anything the model asked to keep an eye on. Each
+    # monitor (eventbus family or file tail) reports new matches since
+    # the previous turn. Equivalent of Claude Code's Monitor tool but
+    # surfaced once per turn rather than as live notifications.
+    try:
+        from core.services.monitor_streams import monitor_digest_section
+        monitor_section = monitor_digest_section(session_id)
+        if monitor_section:
+            parts.append(monitor_section)
+            derived_inputs.append("pinned monitor digest")
+    except Exception:
+        pass
+
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,

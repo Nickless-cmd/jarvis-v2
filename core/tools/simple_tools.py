@@ -3362,6 +3362,23 @@ def _exec_propose_git_commit(args: dict[str, Any]) -> dict[str, Any]:
     if not status.stdout.strip():
         return {"status": "ok", "skipped": True, "reason": "nothing to commit — working tree clean"}
 
+    # Auto code-review pass before filing — heuristic critic that flags
+    # big diffs, mixed scope, missing tests, secret-touching paths, etc.
+    # Cheap deterministic baseline; a full LLM critic via spawn_agent_task
+    # role=critic can be layered on top later. Result is attached to the
+    # proposal payload so MC reviewers see it without an extra click.
+    review: dict[str, Any] = {}
+    try:
+        from core.services.auto_code_review import review_pending_commit
+        review = review_pending_commit(
+            repo_root=PROJECT_ROOT,
+            files=list(files),
+            message=message,
+            rationale=rationale,
+        )
+    except Exception as _rev_exc:
+        review = {"status": "error", "error": f"auto-review skipped: {_rev_exc}"}
+
     try:
         from core.services.autonomy_proposal_queue import file_proposal
         files_display = ", ".join(str(f) for f in files[:5])
@@ -3375,17 +3392,21 @@ def _exec_propose_git_commit(args: dict[str, Any]) -> dict[str, Any]:
                 "files": files,
                 "message": message,
                 "project_root": str(PROJECT_ROOT),
+                "auto_review": review,
             },
             created_by="jarvis-tool",
         )
         proposal_id = str(proposal.get("proposal_id") or "")
+        review_summary = review.get("summary", "review skipped")
         return {
             "status": "filed",
             "proposal_id": proposal_id,
             "message": message,
             "files": files,
+            "auto_review": review,
             "text": (
                 f"Git commit proposal filed [{proposal_id}]: \"{message}\" ({files_display}). "
+                f"Auto-review: {review_summary}. "
                 f"Visible in Mission Control → Operations → Autonomy Proposals."
             ),
         }

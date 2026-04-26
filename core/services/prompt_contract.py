@@ -466,6 +466,19 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Self-monitor: warn the model about its own anti-patterns from recent
+    # tool history. Repeating a failing call, thrashing without progress.
+    # Higher priority than awareness/wake-ups: if the model is looping it
+    # needs to break out before doing anything new.
+    try:
+        from core.services.self_monitor import self_monitor_section
+        sm_section = self_monitor_section()
+        if sm_section:
+            parts.append(sm_section)
+            derived_inputs.append("self-monitor warnings")
+    except Exception:
+        pass
+
     # Upcoming self-scheduled wake-ups. Mirrors Claude Code's ScheduleWakeup
     # — when the model says "schedule_task in 30 min: check the build", it
     # should see that pending wake-up at the top of every subsequent turn

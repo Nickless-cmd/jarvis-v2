@@ -18,7 +18,7 @@ RETRY_BASE_SECONDS = 60      # doubles per failure, capped at 1 h
 
 from core.eventbus.bus import event_bus
 from core.services.cheap_provider_runtime import cheap_lane_status_surface
-from core.services.non_visible_lane_execution import execute_cheap_lane
+from core.services.non_visible_lane_execution import execute_cheap_lane, execute_with_role_or_fallback
 from core.runtime.db import (
     add_council_member,
     create_agent_schedule,
@@ -591,7 +591,11 @@ def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: st
     )
     try:
         update_agent_registry_entry(agent_id, status="active")
-        result = execute_cheap_lane(message=prompt)
+        result = execute_with_role_or_fallback(
+            message=prompt,
+            provider=str(agent.get("provider") or ""),
+            model=str(agent.get("model") or ""),
+        )
         text = str(result.get("text") or "").strip()
         output_tokens = int(result.get("output_tokens") or 0)
         input_tokens = int(result.get("input_tokens") or 0)
@@ -1126,7 +1130,11 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             started_at=_now_iso(),
         )
         try:
-            result = execute_cheap_lane(message=prompt)
+            result = execute_with_role_or_fallback(
+                message=prompt,
+                provider=str(agent.get("provider") or ""),
+                model=str(agent.get("model") or ""),
+            )
             text = str(result.get("text") or "").strip()
             create_agent_message(
                 message_id=f"agent-msg-{uuid4().hex}", thread_id=thread_id,
@@ -1231,7 +1239,11 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
                 }),
                 started_at=_now_iso(),
             )
-            result = execute_cheap_lane(message=prompt)
+            result = execute_with_role_or_fallback(
+                message=prompt,
+                provider=str(coordinator_agent.get("provider") or ""),
+                model=str(coordinator_agent.get("model") or ""),
+            )
             synthesis = str(result.get("text") or "").strip()
             create_agent_message(
                 message_id=f"agent-msg-{uuid4().hex}", thread_id=thread_id,
@@ -1291,7 +1303,12 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
                     f"Council transcript:\n{transcript}{forced_note}\n\n"
                     "Produce a council conclusion in 2-4 sentences."
                 )
-                result = execute_cheap_lane(message=prompt)
+                synth_member = member_map.get("synthesizer") or {}
+                result = execute_with_role_or_fallback(
+                    message=prompt,
+                    provider=str(synth_member.get("provider") or ""),
+                    model=str(synth_member.get("model") or ""),
+                )
                 return str(result.get("text") or "").strip()
 
         ctrl = _RuntimeController(

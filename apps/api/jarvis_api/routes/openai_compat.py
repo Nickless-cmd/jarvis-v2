@@ -106,21 +106,18 @@ async def chat_completions(request: Request) -> JSONResponse | StreamingResponse
             media_type="text/event-stream",
         )
 
-    # Non-streaming
-    result = execute_visible_model(
-        message=user_message,
-        provider=provider,
-        model=model,
-        session_id=session_id,
-    )
-    append_chat_message(session_id=session_id, role="assistant", content=result.text)
+    # Non-streaming — drain the agentic loop and assemble final text.
+    # Mirrors _stream_response so tool calls actually run; calling
+    # execute_visible_model directly here would silently drop tool_calls
+    # (same class of bug we fixed for the streaming path).
+    full_text = _drain_visible_run_text(message=user_message, session_id=session_id)
     return JSONResponse(
         content=_build_completion_response(
             run_id=run_id,
             model=model,
-            content=result.text,
-            input_tokens=result.input_tokens,
-            output_tokens=result.output_tokens,
+            content=full_text,
+            input_tokens=0,
+            output_tokens=0,
         )
     )
 
@@ -181,6 +178,37 @@ def _stream_response(
     finally:
         loop.close()
     yield "data: [DONE]\n\n"
+
+
+def _drain_visible_run_text(*, message: str, session_id: str) -> str:
+    """Run the visible pipeline to completion and return the assembled prose.
+
+    Used by the non-streaming /v1/chat/completions branch. Same translation
+    rules as ``_stream_response`` — internal frames suppressed, only delta
+    text accumulated, terminal ``done`` event ends the loop.
+    """
+    full_text = ""
+    loop = asyncio.new_event_loop()
+    try:
+        agen = start_visible_run(
+            message=message, session_id=session_id, approval_mode="trust"
+        ).__aiter__()
+        while True:
+            try:
+                frame = loop.run_until_complete(agen.__anext__())
+            except StopAsyncIteration:
+                break
+            event_type, data = _parse_sse_frame(frame)
+            if event_type == "delta":
+                full_text += str(data.get("delta") or data.get("text") or "")
+            elif event_type == "done":
+                break
+    except Exception as exc:
+        logger.exception("openai_compat non-stream drain failed: %s", exc)
+        full_text = full_text or f"[jarvis-proxy-error: {exc}]"
+    finally:
+        loop.close()
+    return full_text
 
 
 def _parse_sse_frame(frame: str) -> tuple[str, dict]:

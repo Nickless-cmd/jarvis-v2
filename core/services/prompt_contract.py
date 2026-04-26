@@ -399,6 +399,19 @@ def build_visible_chat_prompt_assembly(
         parts.append(open_questions)
         derived_inputs.append("open questions tracker")
 
+    # Eventbus wake-up digest — surface notable background events (errors,
+    # bridge failures, pending approvals, failed tools) that fired while
+    # this session was idle. Without this every turn starts cold and the
+    # model can't react to state it should know about.
+    try:
+        from core.services.session_wakeup import wakeup_digest
+        wake_section = wakeup_digest(session_id)
+        if wake_section:
+            parts.append(wake_section)
+            derived_inputs.append("eventbus wake-up digest")
+    except Exception:
+        pass
+
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,

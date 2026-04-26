@@ -466,6 +466,30 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Upcoming self-scheduled wake-ups. Mirrors Claude Code's ScheduleWakeup
+    # — when the model says "schedule_task in 30 min: check the build", it
+    # should see that pending wake-up at the top of every subsequent turn
+    # so it doesn't re-schedule the same thing or forget it's coming.
+    try:
+        from core.services.scheduled_tasks import get_scheduled_tasks_state
+        sched_state = get_scheduled_tasks_state()
+        pending = sched_state.get("pending") or []
+        if pending:
+            shown = pending[:5]
+            lines = []
+            for t in shown:
+                run_at = str(t.get("run_at", ""))[:16].replace("T", " ")
+                focus = str(t.get("focus", ""))[:120]
+                lines.append(f"⏰ {run_at}  {focus}")
+            extra = f"  (+{len(pending) - len(shown)} mere)" if len(pending) > len(shown) else ""
+            parts.append(
+                "Kommende self-scheduled wake-ups (du har sat dem selv):\n"
+                + "\n".join(lines) + extra
+            )
+            derived_inputs.append("upcoming scheduled tasks")
+    except Exception:
+        pass
+
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,

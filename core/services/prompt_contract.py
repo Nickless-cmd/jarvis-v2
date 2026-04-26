@@ -412,6 +412,20 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Resume-after-interrupt: if a previous visible run for this session
+    # never reached its finally-block (crash, restart, cancel), surface
+    # what we were doing so the user can be asked whether to continue.
+    # Sits highest among awareness sections — interruption is the most
+    # urgent thing to clarify before doing new work.
+    try:
+        from core.services.in_flight_runs import interruption_prompt_section
+        interrupt_section = interruption_prompt_section(session_id)
+        if interrupt_section:
+            parts.append(interrupt_section)
+            derived_inputs.append("resume-after-interrupt notice")
+    except Exception:
+        pass
+
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,

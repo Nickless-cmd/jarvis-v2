@@ -555,6 +555,17 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     controller = register_visible_run(run)
     trace = _start_visible_execution_trace(run)
     _set_orb_phase("think")
+    # Phase 5: track in-flight runs so an interruption (crash, restart,
+    # cancel) leaves a trail the next visible turn can surface to the user.
+    try:
+        from core.services.in_flight_runs import mark_started as _mark_run_started
+        _mark_run_started(
+            run_id=run.run_id,
+            session_id=run.session_id,
+            user_message=run.user_message,
+        )
+    except Exception:
+        pass
     event_bus.publish(
         "runtime.visible_run_started",
         {
@@ -1672,6 +1683,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
             threading.Thread(target=_post_process, daemon=True).start()
         else:
             unregister_visible_run(run.run_id)
+
+        # Phase 5: clear in-flight record. Runs reaching this finally block
+        # have either completed, failed cleanly, or been cancelled — all
+        # equally "no longer hanging", so the next prompt build won't
+        # surface a stale "you were interrupted" notice.
+        try:
+            from core.services.in_flight_runs import mark_completed as _mark_run_completed
+            _mark_run_completed(run.run_id)
+        except Exception:
+            pass
 
 
 def _preview_text(text: str, limit: int = 320) -> str:

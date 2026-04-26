@@ -440,6 +440,19 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Subagents that finished since this session last looked. Mirrors
+    # Claude Code's "Agent returned with X" surfacing: the parent sees
+    # subagent results inline rather than having to remember to poll
+    # list_agents. The digest module advances its own per-session mark.
+    try:
+        from core.services.subagent_digest import subagent_digest_section
+        subagent_section = subagent_digest_section(session_id)
+        if subagent_section:
+            parts.append(subagent_section)
+            derived_inputs.append("subagent completion digest")
+    except Exception:
+        pass
+
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,

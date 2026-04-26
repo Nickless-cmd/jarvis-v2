@@ -153,28 +153,52 @@ def jarvis_chat(message: str, session_id: str = "") -> str:
     if not session_id:
         session_id = _get_or_create_mcp_session()
 
-    from core.services.visible_model import execute_visible_model
-    from core.runtime.provider_router import resolve_provider_router_target
+    # Delegate to the full visible-run pipeline so tool calls actually execute.
+    # Calling execute_visible_model directly would bypass the agentic loop in
+    # visible_runs._stream_visible_run — the same gap that broke opencode
+    # before commit 41582a5. Tools auto-approve here because MCP transport
+    # has no approval UI; risky tools still hit the policy gate downstream.
+    import asyncio
+    import json as _json
 
-    target = resolve_provider_router_target(lane="visible")
-    provider = str(target.get("provider", ""))
-    model = str(target.get("model", ""))
+    from core.services.visible_runs import start_visible_run
 
-    result = execute_visible_model(
-        message=message,
-        provider=provider,
-        model=model,
-        session_id=session_id,
-    )
+    full_text = ""
+    loop = asyncio.new_event_loop()
+    try:
+        agen = start_visible_run(
+            message=message,
+            session_id=session_id,
+            approval_mode="trust",
+        ).__aiter__()
+        while True:
+            try:
+                frame = loop.run_until_complete(agen.__anext__())
+            except StopAsyncIteration:
+                break
+            event_type = ""
+            data_json = ""
+            for line in frame.splitlines():
+                if line.startswith("event: "):
+                    event_type = line[len("event: "):].strip()
+                elif line.startswith("data: "):
+                    data_json = line[len("data: "):]
+            try:
+                data = _json.loads(data_json) if data_json else {}
+            except Exception:
+                data = {}
+            if event_type == "delta":
+                full_text += str(data.get("delta") or data.get("text") or "")
+            elif event_type == "done":
+                break
+    finally:
+        loop.close()
 
     event_bus.publish(
         "tool.mcp_completed",
-        {
-            "tool": "jarvis_chat",
-            "tokens": result.input_tokens + result.output_tokens,
-        },
+        {"tool": "jarvis_chat", "chars": len(full_text)},
     )
-    return result.text
+    return full_text
 
 
 # ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import html
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -392,18 +393,21 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search",
-            "description": "Search file contents with regex. Returns matching lines with file paths and line numbers. Searches project root by default.",
+            "description": (
+                "Search file contents with regex. Uses ripgrep when available "
+                "(.gitignore-aware, fast, type-detection) with grep as fallback. "
+                "Optional 'glob' filter restricts to matching files (e.g. '*.py'); "
+                "optional 'multiline' allows patterns to span lines; "
+                "'ignore_case' for case-insensitive matching."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "pattern": {
-                        "type": "string",
-                        "description": "Regex search pattern",
-                    },
-                    "path": {
-                        "type": "string",
-                        "description": "Directory or file to search in (default: project root)",
-                    },
+                    "pattern": {"type": "string", "description": "Regex search pattern."},
+                    "path": {"type": "string", "description": "Directory to search in (default: project root)."},
+                    "glob": {"type": "string", "description": "File glob filter, e.g. '*.py' or '**/*.tsx'."},
+                    "multiline": {"type": "boolean", "description": "Enable multiline (. matches newline)."},
+                    "ignore_case": {"type": "boolean", "description": "Case-insensitive search."},
                 },
                 "required": ["pattern"],
             },
@@ -413,18 +417,19 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "find_files",
-            "description": "Find files by glob pattern. Returns matching file paths with sizes.",
+            "description": (
+                "Find files by glob. Patterns containing '**' or '/' use "
+                "Python's recursive glob and return paths sorted by mtime "
+                "(newest first). Plain filename patterns use find."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "pattern": {
                         "type": "string",
-                        "description": "Glob pattern (e.g. '*.py', 'test_*.py', '**/*.md')",
+                        "description": "Glob pattern: '*.py', 'test_*.py', or '**/*.md' for recursive.",
                     },
-                    "path": {
-                        "type": "string",
-                        "description": "Directory to search in (default: project root)",
-                    },
+                    "path": {"type": "string", "description": "Directory to search in (default: project root)."},
                 },
                 "required": ["pattern"],
             },
@@ -2386,22 +2391,41 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
 def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
     pattern = str(args.get("pattern") or "").strip()
     search_path = str(args.get("path") or "").strip() or str(PROJECT_ROOT)
+    file_glob = str(args.get("glob") or "").strip()
+    multiline = bool(args.get("multiline", False))
+    case_insensitive = bool(args.get("ignore_case", False))
     if not pattern:
         return {"error": "pattern is required", "status": "error"}
 
-    argv = [
-        "grep", "-rn", "--color=never",
-        "--include=*.py", "--include=*.md", "--include=*.json",
-        "--include=*.yaml", "--include=*.yml", "--include=*.toml",
-        "--include=*.ts", "--include=*.tsx", "--include=*.js",
-        "--include=*.css", "--include=*.html",
-        "--exclude-dir=.git", "--exclude-dir=node_modules",
-        "--exclude-dir=__pycache__", "--exclude-dir=.claude",
-        "--exclude-dir=dist", "--exclude-dir=build",
-        "-m", str(MAX_SEARCH_RESULTS),
-        pattern,
-        ".",
-    ]
+    # Prefer ripgrep when present — much faster, smarter defaults
+    # (.gitignore aware, binary-skip, type-detection). Fall back to grep
+    # so the tool still works on machines without rg installed.
+    have_rg = subprocess.run(
+        ["which", "rg"], capture_output=True, text=True
+    ).returncode == 0
+
+    if have_rg:
+        argv = ["rg", "-n", "--color=never", "-m", str(MAX_SEARCH_RESULTS)]
+        if file_glob:
+            argv += ["-g", file_glob]
+        if multiline:
+            argv += ["-U", "--multiline-dotall"]
+        if case_insensitive:
+            argv += ["-i"]
+        argv += [pattern, "."]
+    else:
+        argv = [
+            "grep", "-rn", "--color=never",
+            "--exclude-dir=.git", "--exclude-dir=node_modules",
+            "--exclude-dir=__pycache__", "--exclude-dir=.claude",
+            "--exclude-dir=dist", "--exclude-dir=build",
+            "-m", str(MAX_SEARCH_RESULTS),
+        ]
+        if file_glob:
+            argv += [f"--include={file_glob}"]
+        if case_insensitive:
+            argv += ["-i"]
+        argv += [pattern, "."]
     try:
         result = subprocess.run(
             argv,
@@ -2427,6 +2451,31 @@ def _exec_find_files(args: dict[str, Any]) -> dict[str, Any]:
     search_path = str(args.get("path") or "").strip() or str(PROJECT_ROOT)
     if not pattern:
         return {"error": "pattern is required", "status": "error"}
+
+    # Use Python's pathlib.glob for proper recursive ** support and to sort
+    # results by modification time (newest first — matches Claude Code's
+    # Glob tool behavior). Falls back to find for non-recursive plain
+    # patterns to keep behavior predictable for old call sites.
+    if "**" in pattern or "/" in pattern:
+        try:
+            base = Path(search_path).expanduser().resolve()
+            matches = sorted(
+                (p for p in base.glob(pattern) if p.is_file()),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            paths = [str(p) for p in matches[:MAX_FIND_RESULTS]]
+            entries: list[str] = []
+            for fp in paths:
+                try:
+                    size = os.path.getsize(fp)
+                    entries.append(f"{fp} ({size}B)")
+                except OSError:
+                    entries.append(fp)
+            text = "\n".join(entries) if entries else "[no matches]"
+            return {"text": text, "match_count": len(entries), "status": "ok"}
+        except Exception as exc:
+            return {"error": f"glob failed: {exc}", "status": "error"}
 
     argv = [
         "find", search_path,

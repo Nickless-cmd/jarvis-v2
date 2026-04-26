@@ -166,6 +166,10 @@ from core.services.side_tasks import (
     _exec_dismiss_side_task,
     _exec_activate_side_task,
 )
+from core.tools.smart_outline import (
+    SMART_OUTLINE_TOOL_DEFINITIONS,
+    _exec_smart_outline,
+)
 from core.tools.calendar_tools import (
     CALENDAR_TOOL_DEFINITIONS,
     _exec_list_events,
@@ -1939,6 +1943,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *PLAN_PROPOSALS_TOOL_DEFINITIONS,
     *CLARIFICATION_TOOL_DEFINITIONS,
     *SIDE_TASK_TOOL_DEFINITIONS,
+    *SMART_OUTLINE_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
     *MEMORY_TOOL_DEFINITIONS,
     *SEMANTIC_SEARCH_TOOL_DEFINITIONS,
@@ -5291,6 +5296,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_side_tasks": _exec_list_side_tasks,
     "dismiss_side_task": _exec_dismiss_side_task,
     "activate_side_task": _exec_activate_side_task,
+    "smart_outline": _exec_smart_outline,
     # Calendar tools
     "list_events": _exec_list_events,
     "create_event": _exec_create_event,

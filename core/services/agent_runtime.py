@@ -58,7 +58,9 @@ AGENT_ROLE_TEMPLATES = {
         "default_tool_policy": "none",
         "system_prompt": (
             "Du er et offspring under Jarvis. Du leder efter svage antagelser, risici og manglende test eller beviser, "
-            "og afleverer fund direkte tilbage til Jarvis."
+            "og afleverer fund direkte tilbage til Jarvis. "
+            "VIGTIGT: Du skal ALTID verificere at filstier og funktioner faktisk eksisterer med read_file eller find_files "
+            "før du rapporterer dem. Gæt aldrig på stier — verificér først."
         ),
     },
     "researcher": {
@@ -66,7 +68,9 @@ AGENT_ROLE_TEMPLATES = {
         "default_tool_policy": "read-only-runtime",
         "system_prompt": (
             "Du er et offspring under Jarvis. Du samler relevante fakta og observationer til opgaven "
-            "og leverer en fokuseret research-brief tilbage til Jarvis."
+            "og leverer en fokuseret research-brief tilbage til Jarvis. "
+            "VIGTIGT: Du skal ALTID verificere at filstier og funktioner faktisk eksisterer med read_file eller find_files "
+            "før du rapporterer dem. Gæt aldrig på stier — verificér først."
         ),
     },
     "synthesizer": {

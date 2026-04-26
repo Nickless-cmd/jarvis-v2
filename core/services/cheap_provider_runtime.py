@@ -33,29 +33,14 @@ _OPENAI_COMPATIBLE_PROVIDERS = {
 }
 
 CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
-    "groq": {
-        "label": "Groq",
-        "priority": 10,
-        "base_url": "https://api.groq.com/openai/v1",
-        "auth_kind": "bearer",
-        "protocol": "openai-chat",
-        "models_endpoint": "/models",
-        "rpm_limit": 30,
-        "daily_limit": 10000,
-    },
-    "gemini": {
-        "label": "Gemini",
-        "priority": 20,
-        "base_url": "https://generativelanguage.googleapis.com/v1beta",
-        "auth_kind": "api-key-query",
-        "protocol": "gemini-native",
-        "models_endpoint": "/models",
-        "rpm_limit": 15,
-        "daily_limit": 1000,
-    },
+    # Phase A re-prioritization (2026-04-26): groq was hogging the chain
+    # with priority=10 even though it's frequently rate-limited and in
+    # cooldown. Spread load across nvidia-nim / openrouter / sambanova /
+    # mistral first; let groq be a backup. Re-prioritize on observed
+    # capacity, not historical assumption.
     "nvidia-nim": {
         "label": "NVIDIA NIM",
-        "priority": 30,
+        "priority": 10,
         "base_url": "https://integrate.api.nvidia.com/v1",
         "auth_kind": "bearer",
         "protocol": "openai-chat",
@@ -65,7 +50,7 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     },
     "openrouter": {
         "label": "OpenRouter",
-        "priority": 40,
+        "priority": 20,
         "base_url": "https://openrouter.ai/api/v1",
         "auth_kind": "bearer",
         "protocol": "openai-chat",
@@ -73,9 +58,19 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": 20,
         "daily_limit": 100,
     },
+    "sambanova": {
+        "label": "SambaNova",
+        "priority": 30,
+        "base_url": "https://api.sambanova.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 100,
+    },
     "mistral": {
         "label": "Mistral",
-        "priority": 50,
+        "priority": 40,
         "base_url": "https://api.mistral.ai/v1",
         "auth_kind": "bearer",
         "protocol": "openai-chat",
@@ -83,15 +78,25 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": 10,
         "daily_limit": 200,
     },
-    "sambanova": {
-        "label": "SambaNova",
+    "gemini": {
+        "label": "Gemini",
+        "priority": 50,
+        "base_url": "https://generativelanguage.googleapis.com/v1beta",
+        "auth_kind": "api-key-query",
+        "protocol": "gemini-native",
+        "models_endpoint": "/models",
+        "rpm_limit": 15,
+        "daily_limit": 1000,
+    },
+    "groq": {
+        "label": "Groq",
         "priority": 60,
-        "base_url": "https://api.sambanova.ai/v1",
+        "base_url": "https://api.groq.com/openai/v1",
         "auth_kind": "bearer",
         "protocol": "openai-chat",
         "models_endpoint": "/models",
-        "rpm_limit": 10,
-        "daily_limit": 100,
+        "rpm_limit": 30,
+        "daily_limit": 10000,
     },
     "cloudflare": {
         "label": "Cloudflare Workers AI",

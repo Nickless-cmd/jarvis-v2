@@ -426,6 +426,20 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
 
+    # Active todos for this session — externalized working memory. Sits
+    # right after interrupt-resume because once interruption is acknowledged
+    # the next thing the model needs to know is "what was I in the middle of
+    # planning". Mirrors Claude Code's TodoWrite pattern: ONE in_progress
+    # at a time, list visible every turn.
+    try:
+        from core.services.agent_todos import todos_prompt_section
+        todos_section = todos_prompt_section(session_id)
+        if todos_section:
+            parts.append(todos_section)
+            derived_inputs.append("active todos")
+    except Exception:
+        pass
+
     for filename in ("SOUL.md", "IDENTITY.md", "STANDING_ORDERS.md", "USER.md"):
         section = _workspace_file_section(
             workspace_dir / filename,

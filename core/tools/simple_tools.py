@@ -163,6 +163,10 @@ from core.services.reasoning_classifier import (
     REASONING_CLASSIFIER_TOOL_DEFINITIONS,
     _exec_reasoning_classify,
 )
+from core.services.verification_gate import (
+    VERIFICATION_GATE_TOOL_DEFINITIONS,
+    _exec_verification_status,
+)
 from core.services.side_tasks import (
     SIDE_TASK_TOOL_DEFINITIONS,
     _exec_flag_side_task,
@@ -1947,6 +1951,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *PLAN_PROPOSALS_TOOL_DEFINITIONS,
     *CLARIFICATION_TOOL_DEFINITIONS,
     *REASONING_CLASSIFIER_TOOL_DEFINITIONS,
+    *VERIFICATION_GATE_TOOL_DEFINITIONS,
     *SIDE_TASK_TOOL_DEFINITIONS,
     *SMART_OUTLINE_TOOL_DEFINITIONS,
     *CALENDAR_TOOL_DEFINITIONS,
@@ -5298,6 +5303,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_plans": _exec_list_plans,
     "classify_clarification": _exec_classify_clarification,
     "reasoning_classify": _exec_reasoning_classify,
+    "verification_status": _exec_verification_status,
     "flag_side_task": _exec_flag_side_task,
     "list_side_tasks": _exec_list_side_tasks,
     "dismiss_side_task": _exec_dismiss_side_task,

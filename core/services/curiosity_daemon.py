@@ -10,9 +10,17 @@ from core.runtime.db import insert_private_brain_record
 _CADENCE_MINUTES = 5
 _OPEN_MAX = 5
 
+from core.runtime.state_store import load_json as _load_state, save_json as _save_state
+
+_STATE_KEY = "curiosity_open_questions"
+
 _last_tick_at: datetime | None = None
 _cached_curiosity: str = ""
-_open_questions: list[str] = []
+_open_questions: list[str] = list(_load_state(_STATE_KEY, []))
+
+
+def _persist_open_questions() -> None:
+    _save_state(_STATE_KEY, _open_questions)
 
 _GAP_PATTERNS: list[tuple[str, str]] = [
     ("question", "?"),
@@ -109,6 +117,7 @@ def _store_curiosity(signal: str) -> None:
     _open_questions.insert(0, signal)
     if len(_open_questions) > _OPEN_MAX:
         _open_questions = _open_questions[:_OPEN_MAX]
+    _persist_open_questions()
     now_iso = datetime.now(UTC).isoformat()
     try:
         insert_private_brain_record(

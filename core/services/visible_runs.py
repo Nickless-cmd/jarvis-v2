@@ -228,8 +228,18 @@ CAPABILITY_CALL_PREFIX = '<capability-call id="'
 CAPABILITY_CALL_SUFFIX = '" />'
 VISIBLE_CAPABILITY_ARG_NAMES = {"command_text", "target_path", "write_content"}
 
-# Pending tool approvals — keyed by approval_id
-_PENDING_APPROVALS: dict[str, dict] = {}
+# Pending tool approvals — keyed by approval_id. Persisted across restart so
+# an approval card the user opened pre-restart can still be honored when the
+# service comes back. Without persistence the user sees a stale card with no
+# matching state and the approval silently no-ops.
+from core.runtime.state_store import load_json as _load_approvals_state, save_json as _save_approvals_state
+
+_APPROVALS_STATE_KEY = "pending_approvals"
+_PENDING_APPROVALS: dict[str, dict] = dict(_load_approvals_state(_APPROVALS_STATE_KEY, {}))
+
+
+def _persist_pending_approvals() -> None:
+    _save_approvals_state(_APPROVALS_STATE_KEY, _PENDING_APPROVALS)
 _VISIBLE_RUN_CONTROL_PREFIX = "visible_runs.control."
 _VISIBLE_RUN_ACTIVE_KEY = "visible_runs.active_run"
 _VISIBLE_RUN_APPROVAL_PREFIX = "visible_runs.approval."
@@ -835,6 +845,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             "session_id": run.session_id,
                             "created_at": created_at,
                         }
+                        _persist_pending_approvals()
                         _set_visible_approval_state(approval_id, {
                             "approval_id": approval_id,
                             "status": "pending",
@@ -1173,6 +1184,7 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 "session_id": run.session_id,
                                 "created_at": _a_created_at,
                             }
+                            _persist_pending_approvals()
                             _set_visible_approval_state(_a_apid, {
                                 "approval_id": _a_apid,
                                 "status": "pending",
@@ -2457,6 +2469,8 @@ def resolve_pending_approval(approval_id: str, *, approved: bool) -> dict:
     from core.tools.simple_tools import execute_tool_force, format_tool_result_for_model
 
     pending = _PENDING_APPROVALS.pop(approval_id, None)
+    if pending is not None:
+        _persist_pending_approvals()
     shared_pending = _get_visible_approval_state(approval_id)
     if not pending and shared_pending:
         pending = shared_pending

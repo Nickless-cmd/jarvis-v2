@@ -38,8 +38,15 @@ _SIGNAL_TYPE_MAP = {
 # Module-level state
 # ---------------------------------------------------------------------------
 
-_appetites: dict[str, dict] = {}     # appetite_id → appetite record
+from core.runtime.state_store import load_json as _load_state, save_json as _save_state
+
+_STATE_KEY = "desire_appetites"
+_appetites: dict[str, dict] = _load_state(_STATE_KEY, {})  # appetite_id → appetite record
 _last_generated_at: datetime | None = None
+
+
+def _persist_appetites() -> None:
+    _save_state(_STATE_KEY, _appetites)
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -81,6 +88,7 @@ def tick_desire_daemon(signals: dict[str, str]) -> dict:
                 generated = True
                 _last_generated_at = now
 
+    _persist_appetites()
     return {"generated": generated, "active_count": len(_appetites)}
 
 

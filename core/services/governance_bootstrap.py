@@ -355,4 +355,10 @@ def bootstrap_all() -> dict[str, Any]:
         result["warmup_job"] = ensure_warmup_job()
     except Exception as exc:
         result["warmup_error"] = str(exc)
+    try:
+        from core.services.skyoffice_council_viz import subscribe_council_visualization
+        subscribe_council_visualization()
+        result["skyoffice_viz_subscribed"] = True
+    except Exception as exc:
+        result["skyoffice_viz_error"] = str(exc)
     return result

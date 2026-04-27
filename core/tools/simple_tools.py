@@ -330,6 +330,13 @@ from core.services.cross_agent_memory import (
     CROSS_AGENT_TOOL_DEFINITIONS,
     _exec_cross_agent_recall,
 )
+from core.services.self_wakeup import (
+    SELF_WAKEUP_TOOL_DEFINITIONS,
+    _exec_schedule_self_wakeup,
+    _exec_list_self_wakeups,
+    _exec_cancel_self_wakeup,
+    _exec_mark_wakeup_consumed,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2099,6 +2106,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *AGENT_SKILL_TOOL_DEFINITIONS,
     *AGENT_OBSERVATION_TOOL_DEFINITIONS,
     *CROSS_AGENT_TOOL_DEFINITIONS,
+    *SELF_WAKEUP_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5522,6 +5530,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_agent_observations": _exec_list_agent_observations,
     "get_agent_observation": _exec_get_agent_observation,
     "cross_agent_recall": _exec_cross_agent_recall,
+    "schedule_self_wakeup": _exec_schedule_self_wakeup,
+    "list_self_wakeups": _exec_list_self_wakeups,
+    "cancel_self_wakeup": _exec_cancel_self_wakeup,
+    "mark_wakeup_consumed": _exec_mark_wakeup_consumed,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

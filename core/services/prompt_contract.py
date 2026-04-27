@@ -493,6 +493,11 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.self_wakeup import self_wakeup_section
+        _awareness_add(12, "fired self-wakeups", self_wakeup_section())
+    except Exception:
+        pass
+    try:
         from core.services.personality_drift import personality_drift_section
         _awareness_add(45, "personality drift signal", personality_drift_section())
     except Exception:

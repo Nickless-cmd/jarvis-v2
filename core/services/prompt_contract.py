@@ -483,6 +483,11 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.provider_health_check import health_section
+        _awareness_add(28, "provider health status", health_section())
+    except Exception:
+        pass
+    try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
     except Exception:

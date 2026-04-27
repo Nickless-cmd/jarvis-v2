@@ -261,6 +261,14 @@ from core.services.heartbeat_phases import (
     _exec_phased_tick,
     _exec_sense_only,
 )
+from core.services.proactive_context_governor import (
+    PROACTIVE_CONTEXT_TOOL_DEFINITIONS,
+    _exec_should_auto_compact,
+    _exec_auto_compact_if_needed,
+    _exec_build_subagent_context,
+    _exec_list_context_versions,
+    _exec_recall_context_version,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2018,6 +2026,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *PERSONALITY_DRIFT_TOOL_DEFINITIONS,
     *TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
     *HEARTBEAT_PHASES_TOOL_DEFINITIONS,
+    *PROACTIVE_CONTEXT_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5408,6 +5417,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "mine_tool_patterns": _exec_mine_tool_patterns,
     "phased_heartbeat_tick": _exec_phased_tick,
     "heartbeat_sense": _exec_sense_only,
+    "auto_compact_check": _exec_should_auto_compact,
+    "auto_compact_run": _exec_auto_compact_if_needed,
+    "build_subagent_context": _exec_build_subagent_context,
+    "list_context_versions": _exec_list_context_versions,
+    "recall_context_version": _exec_recall_context_version,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

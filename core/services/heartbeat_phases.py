@@ -159,6 +159,25 @@ def reflect_phase(signals: dict[str, Any]) -> dict[str, Any]:
         "priorities": priorities,
         "reflection_kind": "heuristic",
     }
+    # Recall-before-act: pull warm-tier + (optional cold) memories tied to
+    # current priorities. Cheap when priorities empty; meaningful otherwise.
+    try:
+        from core.services.memory_hierarchy import recall_before_act
+        # Build a query from active goals + priorities for targeted recall
+        query_parts: list[str] = []
+        for g in (signals.get("active_goals") or [])[:2]:
+            if g.get("title"):
+                query_parts.append(str(g.get("title")))
+        query_parts.extend(priorities[:2])
+        query = " ".join(query_parts)[:200]
+        if query.strip():
+            reflection["memory_recall"] = recall_before_act(
+                query=query,
+                include_cold=bool(priorities),  # only spend on cold if action warranted
+                cold_max=4,
+            )
+    except Exception:
+        pass
     # Recommend next-tick interval based on activity
     if activity == "high":
         reflection["suggested_next_interval_seconds"] = 300   # 5 min
@@ -217,6 +236,16 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
             res = find_candidate_composites(max_results=3)
             if res.get("candidates"):
                 actions.append(f"composite_candidates:{len(res['candidates'])}")
+        except Exception:
+            pass
+
+    # 5. Memory consolidation — Phase 2: idle-tick is good time to merge dupes
+    if _budget_left():
+        try:
+            from core.services.memory_search import invalidate_index
+            # Cheap: invalidate stale embedding cache so next search rebuilds fresh
+            invalidate_index()
+            actions.append("memory_index_invalidated")
         except Exception:
             pass
 

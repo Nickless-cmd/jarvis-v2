@@ -196,6 +196,8 @@ export function useUnifiedShell() {
         'jarvis-notify',
         'boredom-bridge',
         'scheduled-task',
+        // 2026-04-27: surface self-wakeup notifications without manual refresh
+        'self-wakeup',
       ])
       if (!proactiveSources.has(String(payload.source || ''))) return
       if (String(payload.session_id || '') !== String(activeSessionId || '')) return

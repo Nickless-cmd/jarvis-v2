@@ -34,7 +34,7 @@ class ChatForward(BaseModel):
 def _verify_token(x_bridge_token: str | None) -> None:
     try:
         from core.runtime.secrets import read_runtime_key
-        expected = read_runtime_key("skyoffice_bridge_token", default="") or ""
+        expected = str(read_runtime_key("skyoffice_bridge_token") or "")
     except Exception:
         expected = ""
     if not expected:

@@ -29,13 +29,7 @@ _TIMEOUT = 2.0
 def _bridge_token() -> str:
     try:
         from core.runtime.secrets import read_runtime_key
-        return read_runtime_key("skyoffice_bridge_token", default="") or ""
-    except TypeError:
-        try:
-            from core.runtime.secrets import read_runtime_key
-            return read_runtime_key("skyoffice_bridge_token") or ""
-        except Exception:
-            return ""
+        return str(read_runtime_key("skyoffice_bridge_token") or "")
     except Exception:
         return ""
 
@@ -43,7 +37,7 @@ def _bridge_token() -> str:
 def _base_url() -> str:
     try:
         from core.runtime.secrets import read_runtime_key
-        return read_runtime_key("skyoffice_base_url", default=_DEFAULT_BASE_URL) or _DEFAULT_BASE_URL
+        return str(read_runtime_key("skyoffice_base_url") or _DEFAULT_BASE_URL)
     except Exception:
         return _DEFAULT_BASE_URL
 

@@ -320,6 +320,12 @@ from core.services.agent_skill_library import (
     _exec_list_skill_mutations,
     _exec_list_known_roles,
 )
+from core.services.agent_observation_compressor import (
+    AGENT_OBSERVATION_TOOL_DEFINITIONS,
+    _exec_compress_agent_run,
+    _exec_list_agent_observations,
+    _exec_get_agent_observation,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2087,6 +2093,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *EXPERIMENT_RUNNER_TOOL_DEFINITIONS,
     *IDENTITY_MUTATION_TOOL_DEFINITIONS,
     *AGENT_SKILL_TOOL_DEFINITIONS,
+    *AGENT_OBSERVATION_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5506,6 +5513,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "rollback_skill_mutation": _exec_rollback_skill_mutation,
     "list_skill_mutations": _exec_list_skill_mutations,
     "list_skill_roles": _exec_list_known_roles,
+    "compress_agent_run": _exec_compress_agent_run,
+    "list_agent_observations": _exec_list_agent_observations,
+    "get_agent_observation": _exec_get_agent_observation,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

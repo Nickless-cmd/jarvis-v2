@@ -64,6 +64,7 @@ export function Composer({
   onChange,
   onSend,
   onCancel,
+  onSteer,
   isStreaming,
   selection,
   onSelectionChange,
@@ -105,12 +106,13 @@ export function Composer({
   const [isDragOver, setIsDragOver] = useState(false)
 
   const doneAttachments = attachments.filter((a) => a.status === 'done')
-  // Allow sending while streaming so the user can queue a follow-up.
-  // Don't allow if a queued message is already pending — keep one slot.
   const canSend = (
     (Boolean(value.trim()) || doneAttachments.length > 0)
     && !queuedMessage
   )
+  // While streaming, the same button steers the active run mid-flight
+  // (injects the message between agentic rounds) instead of queueing.
+  const canSteer = isStreaming && Boolean(value.trim()) && Boolean(onSteer)
 
   useEffect(() => {
     setProvider(selection?.currentProvider || '')
@@ -222,6 +224,13 @@ export function Composer({
     }))
     onSend(msg, { approvalMode, thinkingMode, attachmentIds, attachmentMeta })
     setAttachments([])
+  }
+
+  function handleSteer() {
+    if (!canSteer) return
+    const msg = value.trim()
+    onSteer(msg)
+    onChange('')
   }
 
   function handleDragOver(e) {
@@ -476,8 +485,18 @@ export function Composer({
 
             {isStreaming ? (
               <>
-                <button className="send-btn" onClick={handleSend} disabled={!canSend}
-                  title={canSend ? 'Queue follow-up — sends when Jarvis finishes' : 'Already queued'}>
+                <button
+                  className="send-btn steer"
+                  onClick={canSteer ? handleSteer : handleSend}
+                  disabled={!canSteer && !canSend}
+                  title={
+                    canSteer
+                      ? 'Steer mid-flight — Jarvis sees this between tool rounds'
+                      : canSend
+                        ? 'Queue follow-up — sends when Jarvis finishes'
+                        : 'Already queued'
+                  }
+                >
                   <ArrowUp size={16} />
                 </button>
                 <button className="send-btn cancel" onClick={onCancel} title="Stop generating">

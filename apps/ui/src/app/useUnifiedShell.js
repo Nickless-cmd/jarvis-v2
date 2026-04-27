@@ -395,6 +395,16 @@ export function useUnifiedShell() {
     }
   }
 
+  async function handleSteer(content) {
+    if (!activeRunId || !content?.trim()) return
+    try {
+      await backend.steerRun(activeRunId, content.trim())
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('steer failed', err)
+    }
+  }
+
   async function handleRenameSession(title) {
     if (!activeSessionId || !title?.trim()) return
     try {
@@ -470,6 +480,7 @@ export function useUnifiedShell() {
     handleSelectionChange,
     handleSend,
     handleCancel,
+    handleSteer,
     handleRenameSession,
     handleDeleteSession,
     handleCreateSession,

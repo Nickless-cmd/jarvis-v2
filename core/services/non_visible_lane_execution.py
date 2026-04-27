@@ -52,8 +52,14 @@ def execute_cheap_lane(*, message: str) -> dict[str, object]:
     return execute_cheap_lane_via_pool(message=message)
 
 
+_PROVIDERS_WITHOUT_TOOL_SUPPORT: frozenset[str] = frozenset({
+    "ollamafreeapi",  # client.chat(prompt, model) — pure text, no tool calling
+})
+
+
 def execute_with_role_or_fallback(
-    *, message: str, provider: str = "", model: str = ""
+    *, message: str, provider: str = "", model: str = "",
+    requires_tools: bool = False,
 ) -> dict[str, object]:
     """Run the message on the role's preferred provider/model first, fall
     through to the cheap-lane chain on failure.
@@ -64,11 +70,34 @@ def execute_with_role_or_fallback(
     has an ollamafreeapi last-resort fallback (Phase B), so a primary
     failure can still land on the free pool when paid options are
     exhausted.
+
+    requires_tools: When True, skip providers that lack tool-call support
+    (e.g. ollamafreeapi). Set this for tool-using agent roles (researcher,
+    critic, planner, executor, devils_advocate) to avoid hallucinated
+    tool-output prose.
     """
     primary_provider = (provider or "").strip()
     primary_model = (model or "").strip()
     if not primary_provider or not primary_model:
         return execute_cheap_lane_via_pool(message=message)
+
+    # Tool-support guard: skip primary if it can't actually use tools and
+    # the caller needs them. Falls through to cheap_lane chain which has
+    # tool-supporting providers (nvidia-nim, openrouter, etc).
+    if requires_tools and primary_provider in _PROVIDERS_WITHOUT_TOOL_SUPPORT:
+        try:
+            from core.eventbus.bus import event_bus
+            event_bus.publish(
+                "runtime.role_primary_skipped_no_tool_support",
+                {"provider": primary_provider, "model": primary_model,
+                 "reason": "agent requires tool calls; provider only supports text"},
+            )
+        except Exception:
+            pass
+        return execute_cheap_lane_via_pool(
+            message=message,
+            skip_providers=frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT),
+        )
 
     # Circuit breaker: skip primary if it's been failing repeatedly.
     # Prevents wasting 5+ seconds per call on a known-dead endpoint.
@@ -83,7 +112,8 @@ def execute_with_role_or_fallback(
                 )
             except Exception:
                 pass
-            return execute_cheap_lane_via_pool(message=message)
+            skip = frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT) if requires_tools else frozenset()
+            return execute_cheap_lane_via_pool(message=message, skip_providers=skip)
     except Exception:
         pass
 
@@ -152,7 +182,8 @@ def execute_with_role_or_fallback(
             )
         except Exception:
             pass
-        return execute_cheap_lane_via_pool(message=message)
+        skip = frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT) if requires_tools else frozenset()
+        return execute_cheap_lane_via_pool(message=message, skip_providers=skip)
 
     # Primary succeeded — clear any prior failure tracking.
     try:

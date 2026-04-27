@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from datetime import UTC, datetime
 from dataclasses import dataclass, field
 from typing import AsyncIterator
@@ -891,16 +892,33 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         # Block the generator until user approves or denies (5 min timeout)
                         _resolved = None
                         _deadline = asyncio.get_running_loop().time() + 300.0
+                        logger.info(
+                            "approval-wait-start run_id=%s round=0 approval_id=%s tool=%s",
+                            run.run_id, approval_id, sr["tool_name"],
+                        )
                         while asyncio.get_running_loop().time() < _deadline:
                             _approval_state = _get_visible_approval_state(approval_id)
                             _status = str(_approval_state.get("status") or "")
                             if _status == "approved":
                                 _resolved = str(_approval_state.get("result_text") or "")
+                                logger.info(
+                                    "approval-resolved run_id=%s approval_id=%s result_chars=%d",
+                                    run.run_id, approval_id, len(_resolved),
+                                )
                                 break
                             if _status in {"denied", "expired"}:
                                 _resolved = None
+                                logger.info(
+                                    "approval-rejected run_id=%s approval_id=%s status=%s",
+                                    run.run_id, approval_id, _status,
+                                )
                                 break
                             await asyncio.sleep(0.25)
+                        else:
+                            logger.warning(
+                                "approval-timeout run_id=%s approval_id=%s",
+                                run.run_id, approval_id,
+                            )
                         if _resolved is None:
                             _resolved_result_texts[_idx] = f"[{sr['tool_name']}]: Tool call denied by user."
                             yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
@@ -1006,12 +1024,26 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 _provider_supports_followup = (
                     (run.provider or "").strip().lower() in _supported_followup_providers
                 )
+                logger.info(
+                    "agentic-loop-entry run_id=%s provider=%s supports_followup=%s exchange_count=%d",
+                    run.run_id, run.provider, _provider_supports_followup, len(_followup_exchanges),
+                )
 
                 _consecutive_empty_text_rounds = 0
                 _MAX_EMPTY_TEXT_ROUNDS = 4
+                _agentic_loop_exit_reason = "completed"
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:
+                        logger.warning(
+                            "agentic-loop-skip run_id=%s reason=provider-not-supported provider=%s",
+                            run.run_id, run.provider,
+                        )
+                        _agentic_loop_exit_reason = "provider-not-supported"
                         break
+                    logger.info(
+                        "agentic-round-start run_id=%s round=%d exchanges=%d",
+                        run.run_id, _agentic_round + 1, len(_followup_exchanges),
+                    )
                     _a_parts = []
                     _a_tool_calls: list[dict] = []
                     _a_queue: asyncio.Queue = asyncio.Queue()
@@ -1059,6 +1091,12 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         finally:
                             loop.call_soon_threadsafe(q.put_nowait, sentinel)
 
+                    logger.info(
+                        "agentic-followup-pump-start run_id=%s round=%d provider=%s model=%s "
+                        "tool_defs=%s",
+                        run.run_id, _agentic_round + 1, run.provider, run.model,
+                        "yes" if _round_tool_definitions else "no(force-summary)",
+                    )
                     loop.run_in_executor(None, _pump_agentic)
 
                     while True:
@@ -1177,8 +1215,21 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                 "status": "running",
                             })
 
+                    _a_exec_start = time.monotonic()
+                    logger.info(
+                        "agentic-tools-execute-start run_id=%s round=%d tool_count=%d names=%s",
+                        run.run_id, _agentic_round + 1, len(_a_tool_calls),
+                        [str((tc.get("function") or {}).get("name") or tc.get("name") or "?")
+                         for tc in _a_tool_calls][:6],
+                    )
                     _a_results = _execute_simple_tool_calls(
                         _a_tool_calls, force=run.autonomous, run_id=run.run_id,
+                    )
+                    logger.info(
+                        "agentic-tools-execute-end run_id=%s round=%d duration_ms=%d results=%d",
+                        run.run_id, _agentic_round + 1,
+                        int((time.monotonic() - _a_exec_start) * 1000),
+                        len(_a_results),
                     )
                     _a_resolved: dict[int, str] = {}
 
@@ -1235,16 +1286,33 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             })
                             _a_res = None
                             _a_deadline = asyncio.get_running_loop().time() + 300.0
+                            logger.info(
+                                "approval-wait-start run_id=%s round=%d approval_id=%s tool=%s",
+                                run.run_id, _agentic_round + 1, _a_apid, _a_sr["tool_name"],
+                            )
                             while asyncio.get_running_loop().time() < _a_deadline:
                                 _a_state = _get_visible_approval_state(_a_apid)
                                 _a_status = str(_a_state.get("status") or "")
                                 if _a_status == "approved":
                                     _a_res = str(_a_state.get("result_text") or "")
+                                    logger.info(
+                                        "approval-resolved run_id=%s approval_id=%s "
+                                        "result_chars=%d", run.run_id, _a_apid, len(_a_res),
+                                    )
                                     break
                                 if _a_status in {"denied", "expired"}:
                                     _a_res = None
+                                    logger.info(
+                                        "approval-rejected run_id=%s approval_id=%s status=%s",
+                                        run.run_id, _a_apid, _a_status,
+                                    )
                                     break
                                 await asyncio.sleep(0.25)
+                            else:
+                                logger.warning(
+                                    "approval-timeout run_id=%s approval_id=%s",
+                                    run.run_id, _a_apid,
+                                )
                             if _a_res is None:
                                 _a_resolved[_a_idx] = (
                                     f"[{_a_sr['tool_name']}]: Tool call denied by user."
@@ -1298,6 +1366,18 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                             ),
                         )
                     )
+                    logger.info(
+                        "agentic-round-end run_id=%s round=%d text_chars=%d "
+                        "tool_calls=%d resolved=%d",
+                        run.run_id, _agentic_round + 1,
+                        sum(len(p) for p in _a_parts),
+                        len(_a_tool_calls), len(_a_resolved),
+                    )
+                logger.info(
+                    "agentic-loop-exit run_id=%s reason=%s rounds_done=%d",
+                    run.run_id, _agentic_loop_exit_reason,
+                    locals().get("_agentic_round", -1) + 1,
+                )
 
                 # ── End agentic loop ───────────────────────────────────────────────
 

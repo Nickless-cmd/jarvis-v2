@@ -291,6 +291,21 @@ from core.services.agent_self_evaluation import (
     _exec_detect_stale_goals,
     _exec_decision_adherence,
 )
+from core.services.auto_improvement_proposer import (
+    AUTO_IMPROVEMENT_TOOL_DEFINITIONS,
+    _exec_generate_improvement_proposals,
+)
+from core.services.prompt_variant_tracker import (
+    PROMPT_VARIANT_TOOL_DEFINITIONS,
+    _exec_log_variant_outcome,
+    _exec_variant_performance,
+)
+from core.services.experiment_runner import (
+    EXPERIMENT_RUNNER_TOOL_DEFINITIONS,
+    _exec_start_experiment,
+    _exec_conclude_experiment,
+    _exec_list_experiments,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2053,6 +2068,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *PROVIDER_RETRY_TOOL_DEFINITIONS,
     *PROVIDER_HEALTH_TOOL_DEFINITIONS,
     *SELF_EVALUATION_TOOL_DEFINITIONS,
+    *AUTO_IMPROVEMENT_TOOL_DEFINITIONS,
+    *PROMPT_VARIANT_TOOL_DEFINITIONS,
+    *EXPERIMENT_RUNNER_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5458,6 +5476,12 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "tick_quality_summary": _exec_tick_quality_summary,
     "detect_stale_goals": _exec_detect_stale_goals,
     "decision_adherence_summary": _exec_decision_adherence,
+    "generate_improvement_proposals": _exec_generate_improvement_proposals,
+    "log_variant_outcome": _exec_log_variant_outcome,
+    "variant_performance": _exec_variant_performance,
+    "start_prompt_experiment": _exec_start_experiment,
+    "conclude_prompt_experiment": _exec_conclude_experiment,
+    "list_prompt_experiments": _exec_list_experiments,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

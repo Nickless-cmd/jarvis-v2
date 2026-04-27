@@ -56,35 +56,44 @@ class Resident:
         self.kind_label = kind_label  # 'self' | 'daemon' | 'agent'
 
 
-# Permanent residents. Kept manageable — too many makes the office cramped
-# and Phaser slow. Add to this list as more daemons earn their seat.
+# Permanent residents. Coordinates correspond to ACTUAL chair positions
+# read from client/public/assets/map/map.json — agents sit on real
+# furniture, not floating in the void. The default Player spawn is
+# (705, 500), so anything in that ballpark is interior.
+#
+# Layout:
+#   Jarvis at the solo manager's chair (960, 192)
+#   Two council chairs around the central 2x2 table at y≈305 (used during
+#   council viz, not as residents' homes)
+#   Seven daemons across the workstation row at y=416 (x=224..576)
+#   Eighth daemon at the right-bench station (1184, 480)
+
 _RESIDENTS: list[Resident] = [
-    # Jarvis himself — the "command station" upper-right
     Resident(
         agent_id="agent:jarvis",
         name="Jarvis",
         role="self",
-        desk_x=1100, desk_y=200,
+        desk_x=960, desk_y=192,
         kind_label="self",
     ),
-    # Daemon row 1 (left workspace, x=200)
+    # Workstation row — y=416 is the row of 7 chairs in the open office
     Resident(agent_id="daemon:thought_stream", name="Thought Stream",
-             role="researcher", desk_x=200, desk_y=200),
+             role="researcher", desk_x=224, desk_y=416),
     Resident(agent_id="daemon:meta_reflection", name="Meta Reflection",
-             role="researcher", desk_x=200, desk_y=320),
+             role="researcher", desk_x=256, desk_y=416),
     Resident(agent_id="daemon:reflection_cycle", name="Reflection Cycle",
-             role="researcher", desk_x=200, desk_y=440),
+             role="researcher", desk_x=288, desk_y=416),
     Resident(agent_id="daemon:user_model", name="User Model",
-             role="researcher", desk_x=200, desk_y=560),
-    # Daemon row 2 (x=320)
+             role="researcher", desk_x=480, desk_y=416),
     Resident(agent_id="daemon:development_narrative", name="Dev Narrative",
-             role="worker", desk_x=320, desk_y=200),
+             role="worker", desk_x=512, desk_y=416),
     Resident(agent_id="daemon:current_pull", name="Current Pull",
-             role="worker", desk_x=320, desk_y=320),
+             role="worker", desk_x=544, desk_y=416),
     Resident(agent_id="daemon:goal_signal_synthesizer", name="Goal Synthesizer",
-             role="worker", desk_x=320, desk_y=440),
+             role="worker", desk_x=576, desk_y=416),
+    # Solo bench at right side of office
     Resident(agent_id="daemon:code_aesthetic", name="Code Aesthetic",
-             role="worker", desk_x=320, desk_y=560),
+             role="worker", desk_x=1184, desk_y=480),
 ]
 
 

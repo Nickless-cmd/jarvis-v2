@@ -198,6 +198,22 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _skill_distillation_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services.agent_skill_distiller import distill_all_known_roles
+            return {"status": "ok", "kind": "skill_distillation",
+                    "result": distill_all_known_roles(days=7)}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
+    def _arc_rule_extraction_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services.arc_rule_extractor import extract_rules_for_unprocessed_arcs
+            return {"status": "ok", "kind": "arc_rule_extraction",
+                    "result": extract_rules_for_unprocessed_arcs()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
@@ -214,6 +230,8 @@ def ensure_default_job_handlers() -> list[str]:
         "monthly_arc": _monthly_arc_handler,
         "quarterly_arc": _quarterly_arc_handler,
         "annual_arc": _annual_arc_handler,
+        "skill_distillation": _skill_distillation_handler,
+        "arc_rule_extraction": _arc_rule_extraction_handler,
     }
 
     for job_type, handler in handlers.items():

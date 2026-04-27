@@ -40,6 +40,9 @@ _SCHEDULE: dict[str, timedelta] = {
     "monthly_arc": timedelta(days=28),  # monthly narrative
     "quarterly_arc": timedelta(days=91),  # quarterly arc
     "annual_arc": timedelta(days=365),  # annual transformation doc
+    # System-intelligence growth (2026-04-27)
+    "skill_distillation": timedelta(days=7),  # weekly principle extraction per role
+    "arc_rule_extraction": timedelta(days=7),  # weekly rule extraction from new arcs
 }
 
 

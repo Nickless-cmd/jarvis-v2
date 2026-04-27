@@ -257,6 +257,14 @@ def _residency_tick() -> None:
             if res.get("status") == "ok":
                 placed += 1
                 _last_applied[r.agent_id] = dict(desired)
+                if first_time and not in_meeting:
+                    # Seed the walker's current-position belief so future
+                    # walks (council move, etc.) interpolate from here.
+                    try:
+                        from core.services.skyoffice_walk import set_known_position
+                        set_known_position(r.agent_id, r.desk_x, r.desk_y)
+                    except Exception:
+                        pass
         except Exception as exc:
             logger.debug("residency tick: upsert %s failed: %s", r.agent_id, exc)
     if placed:

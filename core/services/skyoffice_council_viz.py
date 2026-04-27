@@ -100,41 +100,44 @@ def on_council_triggered(payload: dict[str, Any]) -> None:
         return
 
     placed: list[str] = []
+    from core.services.skyoffice_walk import walk_to, get_known_position
+    from core.services.skyoffice_residency import (
+        get_resident, _sprite_for_role,
+    )
     with _lock:
         for idx, role in enumerate(members):
             x, y, sit_suffix = _seat_at(idx)
             agent_id = _agent_id_for_role(role)
             display_name = f"{role.title()}"
-            # Pick the sprite based on the agent's *original* role if it's a
-            # resident, so their look stays consistent. Don't overwrite role
-            # to 'council' or the client will swap their sprite mid-meeting.
-            try:
-                from core.services.skyoffice_residency import (
-                    get_resident, _sprite_for_role,
-                )
-                resident = get_resident(agent_id)
-                effective_role = resident.role if resident else "council"
-                sprite = _sprite_for_role(effective_role)
-            except Exception:
-                effective_role = "council"
-                sprite = "lucy"
+            resident = get_resident(agent_id)
+            effective_role = resident.role if resident else "council"
+            sprite = _sprite_for_role(effective_role)
             anim = f"{sprite}_{sit_suffix}"
             try:
-                res = upsert_agent(
-                    agent_id=agent_id,
-                    name=display_name,
-                    role=effective_role,
-                    status="meeting",
-                    x=x, y=y, anim=anim,
+                # First mark them in-meeting (state propagates via residency)
+                # and set name/role; the walker handles position+anim over time.
+                upsert_agent(
+                    agent_id=agent_id, name=display_name,
+                    role=effective_role, status="meeting",
                 )
-                if res.get("status") in {"ok", "skipped"}:
-                    placed.append(agent_id)
-                    _active_council_agents.add(agent_id)
+                # If we know where they are, walk them; else snap.
+                if get_known_position(agent_id) is None:
+                    upsert_agent(
+                        agent_id=agent_id, x=x, y=y, anim=anim,
+                    )
+                else:
+                    walk_to(
+                        agent_id=agent_id,
+                        target_x=x, target_y=y,
+                        final_anim=anim, sprite=sprite,
+                    )
+                placed.append(agent_id)
+                _active_council_agents.add(agent_id)
             except Exception as exc:
-                logger.warning("skyoffice_council_viz: upsert %s failed: %s", role, exc)
+                logger.warning("skyoffice_council_viz: walk-to-meeting %s failed: %s", role, exc)
     if placed:
         logger.info(
-            "skyoffice_council_viz: seated %d council agents in big meeting room (topic=%s)",
+            "skyoffice_council_viz: walking %d council agents to big meeting room (topic=%s)",
             len(placed), topic,
         )
 
@@ -142,8 +145,9 @@ def on_council_triggered(payload: dict[str, Any]) -> None:
 def on_council_concluded(payload: dict[str, Any]) -> None:
     from core.services.skyoffice_bridge import remove_agent, upsert_agent
     from core.services.skyoffice_residency import (
-        get_resident, _sit_anim_for_resident, _last_applied,
+        get_resident, _sit_anim_for_resident, _sprite_for_role, _last_applied,
     )
+    from core.services.skyoffice_walk import walk_to, get_known_position
 
     with _lock:
         ids = list(_active_council_agents)
@@ -154,13 +158,23 @@ def on_council_concluded(payload: dict[str, Any]) -> None:
         try:
             if resident is not None:
                 anim = _sit_anim_for_resident(resident)
+                sprite = _sprite_for_role(resident.role)
+                # Update status now; walker will animate them home.
                 upsert_agent(
                     agent_id=resident.agent_id, name=resident.name,
                     role=resident.role, status="idle",
-                    x=resident.desk_x, y=resident.desk_y, anim=anim,
                 )
-                # Reset the residency cache so the next tick treats this as
-                # fresh and won't re-emit a no-op upsert.
+                if get_known_position(aid) is None:
+                    upsert_agent(
+                        agent_id=resident.agent_id,
+                        x=resident.desk_x, y=resident.desk_y, anim=anim,
+                    )
+                else:
+                    walk_to(
+                        agent_id=resident.agent_id,
+                        target_x=resident.desk_x, target_y=resident.desk_y,
+                        final_anim=anim, sprite=sprite,
+                    )
                 _last_applied.pop(aid, None)
                 restored += 1
             else:
@@ -170,7 +184,7 @@ def on_council_concluded(payload: dict[str, Any]) -> None:
             logger.warning("skyoffice_council_viz: cleanup %s failed: %s", aid, exc)
     if ids:
         logger.info(
-            "skyoffice_council_viz: meeting ended — restored %d residents, removed %d ad-hoc",
+            "skyoffice_council_viz: meeting ended — walking %d residents back, removed %d ad-hoc",
             restored, removed,
         )
 

@@ -341,6 +341,20 @@ from core.services.wakeup_dispatcher import (
     WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
     _exec_dispatch_due_wakeups,
 )
+from core.services.crisis_marker_detector import (
+    CRISIS_MARKER_TOOL_DEFINITIONS,
+    _exec_scan_crisis_markers,
+    _exec_list_crisis_markers,
+)
+from core.services.identity_drift_proposer import (
+    IDENTITY_DRIFT_TOOL_DEFINITIONS,
+    _exec_propose_identity_drift,
+)
+from core.services.long_arc_synthesizer import (
+    LONG_ARC_TOOL_DEFINITIONS,
+    _exec_synthesize_arc,
+    _exec_list_arcs,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2112,6 +2126,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *CROSS_AGENT_TOOL_DEFINITIONS,
     *SELF_WAKEUP_TOOL_DEFINITIONS,
     *WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
+    *CRISIS_MARKER_TOOL_DEFINITIONS,
+    *IDENTITY_DRIFT_TOOL_DEFINITIONS,
+    *LONG_ARC_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5540,6 +5557,11 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "cancel_self_wakeup": _exec_cancel_self_wakeup,
     "mark_wakeup_consumed": _exec_mark_wakeup_consumed,
     "dispatch_due_wakeups": _exec_dispatch_due_wakeups,
+    "scan_crisis_markers": _exec_scan_crisis_markers,
+    "list_crisis_markers": _exec_list_crisis_markers,
+    "propose_identity_drift_update": _exec_propose_identity_drift,
+    "synthesize_arc": _exec_synthesize_arc,
+    "list_arcs": _exec_list_arcs,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

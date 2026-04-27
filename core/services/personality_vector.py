@@ -40,6 +40,36 @@ def _should_apply_decay() -> bool:
         return (time.monotonic() - _last_decay_ts) >= _DECAY_DEBOUNCE_SECONDS
 
 
+def _get_evolved_baseline() -> dict[str, float]:
+    """Compute long-term baseline targets from accumulated snapshots.
+
+    If 90+ days of personality_drift snapshots exist, the rolling mean
+    becomes the new decay target — letting the baseline shift over time.
+    Falls back to {0.5, 0.5} when insufficient data.
+
+    This is what makes Jarvis able to GROW in a direction. His neutral
+    is no longer fixed — it's whatever his neutral has actually been
+    over the last 3 months.
+    """
+    try:
+        from core.services.personality_drift import compute_baseline
+        baseline = compute_baseline(lookback_days=90)
+    except Exception:
+        return {"curiosity": 0.5, "confidence": 0.5}
+    if not baseline:
+        return {"curiosity": 0.5, "confidence": 0.5}
+    out = {"curiosity": 0.5, "confidence": 0.5}
+    for dim in ("curiosity", "confidence"):
+        info = baseline.get(dim) or {}
+        n = int(info.get("n") or 0)
+        # Only trust baseline shift if we have ≥30 samples
+        if n >= 30:
+            mean = float(info.get("mean") or 0.5)
+            # Clamp to reasonable range — don't let it run to extremes
+            out[dim] = max(0.2, min(0.85, mean))
+    return out
+
+
 def _record_decay_timestamp() -> None:
     """Record that decay was just applied."""
     import time
@@ -214,18 +244,20 @@ def _deterministic_update(
         except Exception:
             decay_factor = 0.97
         before = {k: float(baseline.get(k, 0.0)) for k in ("confidence", "curiosity", "fatigue", "frustration")}
+        # 2026-04-27 evolution: baselines themselves can drift over months.
+        # If a long-term baseline has been computed (from personality_drift
+        # 90-day window), decay toward THAT, not the static 0.5. This is
+        # what lets him grow — his neutral isn't fixed forever.
+        evolved_baseline = _get_evolved_baseline()
+        target_curiosity = float(evolved_baseline.get("curiosity", 0.5))
+        target_confidence = float(evolved_baseline.get("confidence", 0.5))
+
         baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) * decay_factor)
         baseline["frustration"] = max(0.0, float(baseline.get("frustration", 0.0)) * decay_factor)
-        # 2026-04-27 fix: curiosity decays toward 0.5 (neutral baseline), NOT
-        # toward 0. The old behaviour gave curiosity no upward path — outcome
-        # bumps below only touch confidence/fatigue/frustration. Result:
-        # curiosity got stuck below 0.15 after a few decay cycles. Now
-        # curiosity drifts back to neutral when nothing pushes it.
-        cur = float(baseline.get("curiosity", 0.5))
-        baseline["curiosity"] = cur + (0.5 - cur) * (1.0 - decay_factor)
-        # confidence decays toward 0.5 (neutral) rather than toward 0
-        conf = float(baseline.get("confidence", 0.5))
-        baseline["confidence"] = conf + (0.5 - conf) * (1.0 - decay_factor)
+        cur = float(baseline.get("curiosity", target_curiosity))
+        baseline["curiosity"] = cur + (target_curiosity - cur) * (1.0 - decay_factor)
+        conf = float(baseline.get("confidence", target_confidence))
+        baseline["confidence"] = conf + (target_confidence - conf) * (1.0 - decay_factor)
         after = {k: float(baseline.get(k, 0.0)) for k in ("confidence", "curiosity", "fatigue", "frustration")}
         logger.info(
             "personality_vector: decay applied (factor=%.3f) before=%s after=%s",

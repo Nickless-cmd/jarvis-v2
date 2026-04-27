@@ -1147,19 +1147,47 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     )
                     loop.run_in_executor(None, _pump_agentic)
 
+                    # Mid-stream steer support: poll the queue with a short
+                    # timeout so we can also check for steers between chunks.
+                    # If a steer arrives mid-token, we abandon the in-flight
+                    # provider call (executor thread completes in background;
+                    # its later events go to a queue we no longer drain) and
+                    # restart the next round with the steer in base_messages.
+                    _round_start_t = time.monotonic()
+                    _round_overall_timeout_s = 100.0
+                    _mid_round_steers: list[dict[str, object]] = []
                     while True:
                         try:
-                            _a_item = await asyncio.wait_for(_a_queue.get(), timeout=100)
+                            _a_item = await asyncio.wait_for(_a_queue.get(), timeout=1.0)
                         except asyncio.TimeoutError:
-                            if not _a_failure:
-                                _a_failure.update(
-                                    {
+                            if (time.monotonic() - _round_start_t) > _round_overall_timeout_s:
+                                if not _a_failure:
+                                    _a_failure.update({
                                         "round": _agentic_round + 1,
                                         "error": "timed out waiting for provider stream item",
                                         "summary": f"agentic-round-{_agentic_round + 1}-timeout",
-                                    }
+                                    })
+                                break
+                            # Check for mid-stream steers
+                            try:
+                                _new_steers = consume_visible_run_steers(run.run_id)
+                            except Exception:
+                                _new_steers = []
+                            if _new_steers:
+                                _mid_round_steers.extend(_new_steers)
+                                yield _sse("steer_received", {
+                                    "type": "steer_received",
+                                    "run_id": run.run_id,
+                                    "mid_stream": True,
+                                    "count": len(_new_steers),
+                                    "content": str(_new_steers[0].get("content") or "")[:200],
+                                })
+                                logger.info(
+                                    "agentic-mid-stream-interrupt run_id=%s round=%d steers=%d",
+                                    run.run_id, _agentic_round + 1, len(_new_steers),
                                 )
-                            break
+                                break
+                            continue
                         if _a_item is _a_sentinel:
                             break
                         if isinstance(_a_item, _vf.FollowupDelta):
@@ -1192,6 +1220,33 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                                     "delta": _a_item.text,
                                 })
                             continue
+
+                    # If mid-round steers landed, inject them as user messages
+                    # and skip tool execution this round — the LLM call was
+                    # abandoned mid-token; we'll re-enter the loop with the
+                    # steer added so the next round picks up where we steered.
+                    if _mid_round_steers:
+                        for s in _mid_round_steers:
+                            content = str(s.get("content") or "").strip()
+                            if not content:
+                                continue
+                            base_messages.append({"role": "user", "content": content})
+                            stop_words = ("stop", "stop.", "cancel", "afbryd", "abort", "stop nu")
+                            if content.strip().lower() in stop_words:
+                                _agentic_loop_exit_reason = "user-steer-stop-mid-stream"
+                                break
+                        # Record the abandoned partial as an empty exchange so
+                        # the next prompt has a clean slate (no half-tool-calls
+                        # leaked into the followup history).
+                        _followup_exchanges.append(
+                            _vf.ToolExchange(
+                                text="".join(_a_parts) or "",
+                                tool_calls=[], results=[],
+                            )
+                        )
+                        if _agentic_loop_exit_reason == "user-steer-stop-mid-stream":
+                            break
+                        continue  # re-enter for-loop next round
 
                     if _a_failure:
                         _failure_summary = str(_a_failure.get("summary") or "agentic-round-provider-error")

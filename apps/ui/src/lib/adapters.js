@@ -4365,6 +4365,16 @@ export const backend = {
     return res.json()
   },
 
+  async steerRun(runId, content) {
+    const res = await fetch(`/chat/runs/${runId}/steer`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ content }),
+    })
+    if (!res.ok) throw new Error(`Steer failed: ${res.status}`)
+    return res.json()
+  },
+
   async renameSession(sessionId, title) {
     return requestJson(`/chat/sessions/${sessionId}/rename`, {
       method: 'PUT',

@@ -139,3 +139,17 @@ async def chat_cancel_run(run_id: str) -> dict:
         "run_id": run_id,
         "status": "cancelled",
     }
+
+
+@router.post("/runs/{run_id}/steer")
+async def chat_steer_run(run_id: str, body: dict) -> dict:
+    """Mid-flight steer: inject a user message into a running visible-run.
+    The agentic loop picks it up at the next round boundary."""
+    from core.services.visible_runs import append_visible_run_steer
+    content = str((body or {}).get("content") or "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="content required")
+    ok = append_visible_run_steer(run_id, content)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Visible run not active")
+    return {"ok": True, "run_id": run_id, "queued": True}

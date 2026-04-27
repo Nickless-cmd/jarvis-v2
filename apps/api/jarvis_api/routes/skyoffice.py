@@ -68,17 +68,18 @@ def _generate_reply(author: str, content: str) -> str:
         return ""
 
 
-def _broadcast_back(text: str) -> None:
+def _broadcast_back(text: str) -> dict:
     if not text:
-        return
+        return {"status": "skipped", "reason": "empty"}
     try:
         from core.services.skyoffice_bridge import _post
-        _post("/agents/chat-broadcast", {
+        return _post("/agents/chat-broadcast", {
             "agentId": "agent:jarvis",
             "content": text,
         })
     except Exception as exc:
         logger.warning("skyoffice chat broadcast failed: %s", exc)
+        return {"status": "error", "error": str(exc)}
 
 
 def _handle_chat_async(author: str, content: str) -> None:
@@ -87,10 +88,14 @@ def _handle_chat_async(author: str, content: str) -> None:
     feel responsive."""
     def _run() -> None:
         try:
+            print(f"[skyoffice-chat] thread start author={author!r} text={content[:60]!r}", flush=True)
             reply = _generate_reply(author, content)
+            print(f"[skyoffice-chat] llm reply: {reply!r}", flush=True)
             if reply:
-                _broadcast_back(reply)
+                res = _broadcast_back(reply)
+                print(f"[skyoffice-chat] broadcast result: {res}", flush=True)
         except Exception as exc:
+            print(f"[skyoffice-chat] handler crashed: {type(exc).__name__}: {exc}", flush=True)
             logger.warning("skyoffice chat async handler failed: %s", exc)
     threading.Thread(target=_run, name="skyoffice-chat-reply",
                      daemon=True).start()

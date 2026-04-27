@@ -170,6 +170,42 @@ def _poll_loop() -> None:
             logger.warning("skyoffice_council_viz: handler error: %s", exc)
 
 
+def _db_watermark_loop() -> None:
+    """Backup: poll the events DB so council events published from OTHER
+    processes (jarvis-api, ad-hoc scripts) also drive the visualization.
+    Watermarks by event id so each event fires at most once."""
+    import time as _time
+    try:
+        from core.eventbus.bus import event_bus
+    except Exception:
+        return
+    last_id = 0
+    # Seed at current max so we don't replay history on every restart.
+    try:
+        recent = event_bus.recent(limit=1) or []
+        if recent:
+            last_id = int(recent[0].get("id") or 0)
+    except Exception:
+        pass
+    while True:
+        try:
+            recent = event_bus.recent(limit=50) or []
+        except Exception:
+            recent = []
+        # recent is newest-first; iterate oldest-first to preserve order
+        new_items = [r for r in reversed(recent) if int(r.get("id") or 0) > last_id]
+        for item in new_items:
+            try:
+                kind = str(item.get("kind") or "")
+                handler = _HANDLERS.get(kind)
+                if handler:
+                    handler(item.get("payload") or {})
+            except Exception as exc:
+                logger.debug("skyoffice_council_viz: db-poll handler err: %s", exc)
+            last_id = max(last_id, int(item.get("id") or 0))
+        _time.sleep(2.0)
+
+
 def subscribe_council_visualization() -> None:
     """Idempotent — start a daemon thread that pulls council events from the bus
     and pushes them to SkyOffice as agent presence updates."""
@@ -177,5 +213,9 @@ def subscribe_council_visualization() -> None:
     if _subscribed:
         return
     _subscribed = True
-    t = threading.Thread(target=_poll_loop, name="skyoffice-council-viz", daemon=True)
-    t.start()
+    threading.Thread(
+        target=_poll_loop, name="skyoffice-council-viz", daemon=True,
+    ).start()
+    threading.Thread(
+        target=_db_watermark_loop, name="skyoffice-council-db-poll", daemon=True,
+    ).start()

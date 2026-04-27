@@ -479,6 +479,20 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.pushback import (
+            doubt_signal_section, disagreement_invite_section, direction_confirm_section,
+        )
+        from core.services.reasoning_classifier import classify_reasoning_tier
+        _ptier = str(classify_reasoning_tier(user_message).get("tier") or "fast")
+        _awareness_add(75, "doubt signal", doubt_signal_section(user_message))
+        _awareness_add(70, "disagreement invite", disagreement_invite_section())
+        _awareness_add(85, "direction confirm gate",
+                       direction_confirm_section(
+                           user_message=user_message, reasoning_tier=_ptier,
+                       ))
+    except Exception:
+        pass
+    try:
         from core.services.reasoning_escalation import escalation_section
         _awareness_add(24, "reasoning escalation recommendation", escalation_section(user_message))
     except Exception:

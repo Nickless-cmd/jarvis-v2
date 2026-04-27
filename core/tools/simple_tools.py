@@ -269,6 +269,13 @@ from core.services.proactive_context_governor import (
     _exec_list_context_versions,
     _exec_recall_context_version,
 )
+from core.services.memory_hierarchy import (
+    MEMORY_HIERARCHY_TOOL_DEFINITIONS,
+    _exec_recall_before_act,
+    _exec_hot_tier,
+    _exec_warm_tier,
+    _exec_cold_tier,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2027,6 +2034,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
     *HEARTBEAT_PHASES_TOOL_DEFINITIONS,
     *PROACTIVE_CONTEXT_TOOL_DEFINITIONS,
+    *MEMORY_HIERARCHY_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5422,6 +5430,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "build_subagent_context": _exec_build_subagent_context,
     "list_context_versions": _exec_list_context_versions,
     "recall_context_version": _exec_recall_context_version,
+    "recall_before_act": _exec_recall_before_act,
+    "memory_hot_tier": _exec_hot_tier,
+    "memory_warm_tier": _exec_warm_tier,
+    "memory_cold_tier": _exec_cold_tier,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

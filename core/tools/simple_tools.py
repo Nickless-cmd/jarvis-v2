@@ -312,6 +312,24 @@ from core.services.identity_mutation_log import (
     _exec_rollback_identity_mutation,
     _exec_identity_mutation_status,
 )
+from core.services.agent_skill_library import (
+    AGENT_SKILL_TOOL_DEFINITIONS,
+    _exec_get_agent_skills,
+    _exec_append_skill,
+    _exec_rollback_skill_mutation,
+    _exec_list_skill_mutations,
+    _exec_list_known_roles,
+)
+from core.services.agent_observation_compressor import (
+    AGENT_OBSERVATION_TOOL_DEFINITIONS,
+    _exec_compress_agent_run,
+    _exec_list_agent_observations,
+    _exec_get_agent_observation,
+)
+from core.services.cross_agent_memory import (
+    CROSS_AGENT_TOOL_DEFINITIONS,
+    _exec_cross_agent_recall,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2078,6 +2096,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *PROMPT_VARIANT_TOOL_DEFINITIONS,
     *EXPERIMENT_RUNNER_TOOL_DEFINITIONS,
     *IDENTITY_MUTATION_TOOL_DEFINITIONS,
+    *AGENT_SKILL_TOOL_DEFINITIONS,
+    *AGENT_OBSERVATION_TOOL_DEFINITIONS,
+    *CROSS_AGENT_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5492,6 +5513,15 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_identity_mutations": _exec_list_identity_mutations,
     "rollback_identity_mutation": _exec_rollback_identity_mutation,
     "identity_mutation_status": _exec_identity_mutation_status,
+    "get_agent_skills": _exec_get_agent_skills,
+    "append_skill_observation": _exec_append_skill,
+    "rollback_skill_mutation": _exec_rollback_skill_mutation,
+    "list_skill_mutations": _exec_list_skill_mutations,
+    "list_skill_roles": _exec_list_known_roles,
+    "compress_agent_run": _exec_compress_agent_run,
+    "list_agent_observations": _exec_list_agent_observations,
+    "get_agent_observation": _exec_get_agent_observation,
+    "cross_agent_recall": _exec_cross_agent_recall,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

@@ -217,6 +217,45 @@ from core.tools.smart_compact_tools import (
     _exec_smart_compact,
     _exec_context_size_check,
 )
+from core.services.context_window_manager import (
+    CONTEXT_WINDOW_TOOL_DEFINITIONS,
+    _exec_context_pressure,
+    _exec_manage_context_window,
+)
+from core.services.autonomous_goals import (
+    AUTONOMOUS_GOALS_TOOL_DEFINITIONS,
+    _exec_goal_create,
+    _exec_goal_list,
+    _exec_goal_decompose,
+    _exec_goal_update_status,
+)
+from core.services.memory_recall_engine import (
+    UNIFIED_RECALL_TOOL_DEFINITIONS,
+    _exec_unified_recall,
+)
+from core.services.role_registry import (
+    ROLE_REGISTRY_TOOL_DEFINITIONS,
+    _exec_list_roles,
+    _exec_register_custom_role,
+)
+from core.services.agent_relay import (
+    AGENT_RELAY_TOOL_DEFINITIONS,
+    _exec_relay_message,
+    _exec_relay_to_role,
+)
+from core.services.emotion_tagging import (
+    EMOTION_TAGGING_TOOL_DEFINITIONS,
+    _exec_capture_emotion_tag,
+)
+from core.services.personality_drift import (
+    PERSONALITY_DRIFT_TOOL_DEFINITIONS,
+    _exec_personality_drift_check,
+    _exec_personality_drift_snapshot,
+)
+from core.services.tool_pattern_miner import (
+    TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
+    _exec_mine_tool_patterns,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -1965,6 +2004,14 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *NOTIFY_OUT_TOOL_DEFINITIONS,
     *DAEMON_ALERT_TOOL_DEFINITIONS,
     *SMART_COMPACT_TOOL_DEFINITIONS,
+    *CONTEXT_WINDOW_TOOL_DEFINITIONS,
+    *AUTONOMOUS_GOALS_TOOL_DEFINITIONS,
+    *UNIFIED_RECALL_TOOL_DEFINITIONS,
+    *ROLE_REGISTRY_TOOL_DEFINITIONS,
+    *AGENT_RELAY_TOOL_DEFINITIONS,
+    *EMOTION_TAGGING_TOOL_DEFINITIONS,
+    *PERSONALITY_DRIFT_TOOL_DEFINITIONS,
+    *TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5338,6 +5385,21 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Smart compaction
     "smart_compact": _exec_smart_compact,
     "context_size_check": _exec_context_size_check,
+    "context_pressure": _exec_context_pressure,
+    "manage_context_window": _exec_manage_context_window,
+    "goal_create": _exec_goal_create,
+    "goal_list": _exec_goal_list,
+    "goal_decompose": _exec_goal_decompose,
+    "goal_update_status": _exec_goal_update_status,
+    "unified_recall": _exec_unified_recall,
+    "list_agent_roles": _exec_list_roles,
+    "register_custom_role": _exec_register_custom_role,
+    "agent_relay_message": _exec_relay_message,
+    "agent_relay_to_role": _exec_relay_to_role,
+    "capture_emotion_tag": _exec_capture_emotion_tag,
+    "personality_drift_check": _exec_personality_drift_check,
+    "personality_drift_snapshot": _exec_personality_drift_snapshot,
+    "mine_tool_patterns": _exec_mine_tool_patterns,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

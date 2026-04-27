@@ -462,6 +462,21 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.context_window_manager import context_window_section
+        _awareness_add(26, "context window degradation signal", context_window_section())
+    except Exception:
+        pass
+    try:
+        from core.services.autonomous_goals import goals_prompt_section
+        _awareness_add(35, "active autonomous goals", goals_prompt_section())
+    except Exception:
+        pass
+    try:
+        from core.services.personality_drift import personality_drift_section
+        _awareness_add(45, "personality drift signal", personality_drift_section())
+    except Exception:
+        pass
+    try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
     except Exception:

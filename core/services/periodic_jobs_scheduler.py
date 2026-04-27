@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 _SCHEDULE: dict[str, timedelta] = {
     "chronicle_refresh": timedelta(hours=24),
     "weekly_manifest_refresh": timedelta(days=7),
+    "goal_synthesis": timedelta(days=7),
+    "personality_snapshot": timedelta(hours=4),  # 6x/day for stable baseline
 }
 
 

@@ -18,6 +18,7 @@ export function App() {
     handleSelectionChange,
     handleSend,
     handleCancel,
+    handleSteer,
     handleRenameSession,
     handleDeleteSession,
     handleCreateSession,
@@ -76,6 +77,7 @@ export function App() {
           onRefresh={refreshShell}
           onSend={handleSend}
           onCancel={handleCancel}
+          onSteer={handleSteer}
           onRename={handleRenameSession}
           onDelete={handleDeleteSession}
           isRefreshing={isRefreshing}

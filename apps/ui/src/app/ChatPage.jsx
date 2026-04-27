@@ -12,6 +12,7 @@ export function ChatPage({
   onRefresh,
   onSend,
   onCancel,
+  onSteer,
   onRename,
   onDelete,
   isRefreshing,
@@ -79,6 +80,12 @@ export function ChatPage({
             setDraft('')
           }}
           onCancel={onCancel}
+          onSteer={(msg) => {
+            if (onSteer) {
+              onSteer(msg)
+              setDraft('')
+            }
+          }}
           selection={selection}
           onSelectionChange={onSelectionChange}
           lastRunTokens={lastRunTokens}

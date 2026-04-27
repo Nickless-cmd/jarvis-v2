@@ -276,6 +276,15 @@ from core.services.memory_hierarchy import (
     _exec_warm_tier,
     _exec_cold_tier,
 )
+from core.services.provider_retry_policy import (
+    PROVIDER_RETRY_TOOL_DEFINITIONS,
+    _exec_test_retry,
+)
+from core.services.provider_health_check import (
+    PROVIDER_HEALTH_TOOL_DEFINITIONS,
+    _exec_run_health_check,
+    _exec_get_health_snapshot,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2035,6 +2044,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *HEARTBEAT_PHASES_TOOL_DEFINITIONS,
     *PROACTIVE_CONTEXT_TOOL_DEFINITIONS,
     *MEMORY_HIERARCHY_TOOL_DEFINITIONS,
+    *PROVIDER_RETRY_TOOL_DEFINITIONS,
+    *PROVIDER_HEALTH_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5434,6 +5445,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "memory_hot_tier": _exec_hot_tier,
     "memory_warm_tier": _exec_warm_tier,
     "memory_cold_tier": _exec_cold_tier,
+    "test_retry_policy": _exec_test_retry,
+    "provider_health_check": _exec_run_health_check,
+    "provider_health_status": _exec_get_health_snapshot,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

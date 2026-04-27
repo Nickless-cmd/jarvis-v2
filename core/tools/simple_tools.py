@@ -217,6 +217,11 @@ from core.tools.smart_compact_tools import (
     _exec_smart_compact,
     _exec_context_size_check,
 )
+from core.services.context_window_manager import (
+    CONTEXT_WINDOW_TOOL_DEFINITIONS,
+    _exec_context_pressure,
+    _exec_manage_context_window,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -1965,6 +1970,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *NOTIFY_OUT_TOOL_DEFINITIONS,
     *DAEMON_ALERT_TOOL_DEFINITIONS,
     *SMART_COMPACT_TOOL_DEFINITIONS,
+    *CONTEXT_WINDOW_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5338,6 +5344,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Smart compaction
     "smart_compact": _exec_smart_compact,
     "context_size_check": _exec_context_size_check,
+    "context_pressure": _exec_context_pressure,
+    "manage_context_window": _exec_manage_context_window,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

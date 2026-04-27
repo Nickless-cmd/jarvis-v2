@@ -70,6 +70,23 @@ def execute_with_role_or_fallback(
     if not primary_provider or not primary_model:
         return execute_cheap_lane_via_pool(message=message)
 
+    # Circuit breaker: skip primary if it's been failing repeatedly.
+    # Prevents wasting 5+ seconds per call on a known-dead endpoint.
+    try:
+        from core.services.provider_circuit_breaker import should_skip as _cb_should_skip
+        if _cb_should_skip(primary_provider, primary_model):
+            try:
+                from core.eventbus.bus import event_bus
+                event_bus.publish(
+                    "runtime.role_primary_skipped_breaker_open",
+                    {"provider": primary_provider, "model": primary_model},
+                )
+            except Exception:
+                pass
+            return execute_cheap_lane_via_pool(message=message)
+    except Exception:
+        pass
+
     # Lazy imports — keep this module light for places that just want
     # the legacy execute_cheap_lane.
     from core.services.cheap_provider_runtime import (
@@ -116,6 +133,11 @@ def execute_with_role_or_fallback(
         except Exception:
             pass
         try:
+            from core.services.provider_circuit_breaker import record_failure as _cb_failure
+            cb_state = _cb_failure(primary_provider, primary_model)
+        except Exception:
+            cb_state = {}
+        try:
             from core.eventbus.bus import event_bus
             event_bus.publish(
                 "runtime.role_primary_failed_over",
@@ -124,11 +146,20 @@ def execute_with_role_or_fallback(
                     "from_model": primary_model,
                     "reason": type(exc).__name__,
                     "error": str(exc)[:200],
+                    "circuit_opened": bool(cb_state.get("opened")),
+                    "failure_count": int(cb_state.get("failure_count") or 0),
                 },
             )
         except Exception:
             pass
         return execute_cheap_lane_via_pool(message=message)
+
+    # Primary succeeded — clear any prior failure tracking.
+    try:
+        from core.services.provider_circuit_breaker import record_success as _cb_success
+        _cb_success(primary_provider, primary_model)
+    except Exception:
+        pass
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result.get("text") or ""))
     return {

@@ -373,4 +373,10 @@ def bootstrap_all() -> dict[str, Any]:
         result["skyoffice_walker_started"] = True
     except Exception as exc:
         result["skyoffice_walker_error"] = str(exc)
+    try:
+        from core.services.skyoffice_activity import start_activity
+        start_activity()
+        result["skyoffice_activity_started"] = True
+    except Exception as exc:
+        result["skyoffice_activity_error"] = str(exc)
     return result

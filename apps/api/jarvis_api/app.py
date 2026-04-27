@@ -72,6 +72,7 @@ from apps.api.jarvis_api.routes.openai_compat import router as openai_compat_rou
 from apps.api.jarvis_api.routes.openai_auth import router as openai_auth_router
 from apps.api.jarvis_api.routes.system_health import router as system_health_router
 from apps.api.jarvis_api.routes.internal_discord import router as internal_discord_router
+from apps.api.jarvis_api.routes.skyoffice import router as skyoffice_router
 from apps.api.jarvis_api.mcp_server import create_mcp_app
 from core.eventbus.bus import event_bus
 from core.identity.workspace_bootstrap import ensure_default_workspace
@@ -188,6 +189,7 @@ def create_app() -> FastAPI:
     app.include_router(openai_compat_router)
     app.include_router(openai_auth_router)
     app.include_router(internal_discord_router)
+    app.include_router(skyoffice_router)
     app.mount("/mcp", mcp_app)
 
     # Serve the built React UI from apps/ui/dist — must be LAST so API routes

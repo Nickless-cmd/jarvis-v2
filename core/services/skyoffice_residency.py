@@ -210,8 +210,32 @@ def _residency_tick() -> None:
     upsert for this resident. Re-sending x/y every tick made the avatars
     teleport-shake. Now position is set ONCE (when the resident is first
     placed or moves between desk/meeting); subsequent ticks only update
-    status when activity transitions idle→working or back."""
-    from core.services.skyoffice_bridge import upsert_agent
+    status when activity transitions idle→working or back.
+
+    Self-heal: if SkyOffice was restarted (room state cleared) since our
+    last tick, our _last_applied cache is stale and we'd never re-place
+    the residents. So we GET /agents first and forget any cache entries
+    for residents no longer present in the room."""
+    from core.services.skyoffice_bridge import upsert_agent, list_agents
+    try:
+        roster = list_agents()
+        present_ids: set[str] = {
+            str(a.get("id") or "") for a in (roster.get("agents") or [])
+        }
+    except Exception:
+        present_ids = set()
+    if present_ids:
+        for r in _RESIDENTS:
+            if r.agent_id not in present_ids and r.agent_id in _last_applied:
+                _last_applied.pop(r.agent_id, None)
+                # Also forget walker-known position so first re-placement is
+                # a snap (no walk from imaginary position).
+                try:
+                    from core.services.skyoffice_walk import _positions, _lock as _wlock
+                    with _wlock:
+                        _positions.pop(r.agent_id, None)
+                except Exception:
+                    pass
     activity = _recent_daemon_activity_window()
     placed = 0
     for r in _RESIDENTS:

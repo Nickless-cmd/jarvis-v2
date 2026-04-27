@@ -252,6 +252,10 @@ from core.services.personality_drift import (
     _exec_personality_drift_check,
     _exec_personality_drift_snapshot,
 )
+from core.services.tool_pattern_miner import (
+    TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
+    _exec_mine_tool_patterns,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2007,6 +2011,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *AGENT_RELAY_TOOL_DEFINITIONS,
     *EMOTION_TAGGING_TOOL_DEFINITIONS,
     *PERSONALITY_DRIFT_TOOL_DEFINITIONS,
+    *TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5394,6 +5399,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "capture_emotion_tag": _exec_capture_emotion_tag,
     "personality_drift_check": _exec_personality_drift_check,
     "personality_drift_snapshot": _exec_personality_drift_snapshot,
+    "mine_tool_patterns": _exec_mine_tool_patterns,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

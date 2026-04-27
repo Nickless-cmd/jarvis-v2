@@ -316,6 +316,19 @@ def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
         check_and_enqueue_due_periodic_jobs()
     except Exception as _exc:
         _log_debug("periodic jobs check failed", error=str(_exc))
+
+    # 2026-04-27: ALSO process the queue. Bug discovered: jobs were enqueued
+    # but never run — run_next_job had no caller. Now drain up to 3 jobs per
+    # poll so the queue doesn't grow unbounded. Each call is bounded by the
+    # individual handler's own behaviour.
+    try:
+        from core.services.jobs_engine import run_next_job
+        for _ in range(3):
+            result = run_next_job()
+            if result is None:
+                break
+    except Exception as _exc:
+        _log_debug("jobs queue drain failed", error=str(_exc))
     _log_debug(
         "heartbeat schedule poll",
         name=name,

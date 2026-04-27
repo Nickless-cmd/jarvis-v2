@@ -325,6 +325,20 @@ def spawn_agent_task(
     system_prompt = str(system_prompt or template["system_prompt"])
     tool_policy = str(tool_policy or template["default_tool_policy"])
     if not provider or not model:
+        # First: check council_models.json for the role's preferred config.
+        # Without this, single-role spawns (quick_council_check, ad-hoc
+        # spawn_agent_task) bypass the per-role mapping and just default
+        # to cheap_lane primary — defeating the whole council_models.json.
+        try:
+            role_models = _load_council_model_config()
+            role_match = next((m for m in role_models if str(m.get("role") or "") == role), None)
+            if role_match:
+                provider = str(provider or role_match.get("provider") or "")
+                model = str(model or role_match.get("model") or "")
+        except Exception:
+            pass
+    if not provider or not model:
+        # Fallback: cheap_lane current default.
         selected = cheap_lane_status_surface().get("selected_target") or {}
         provider = str(provider or selected.get("provider") or "")
         model = str(model or selected.get("model") or "")

@@ -234,7 +234,32 @@ def self_evaluation_section() -> str | None:
         avg = summary["avg_score"]
         trend = summary.get("trend", "")
         emoji = {"improving": "📈", "degrading": "📉", "stable": "➡"}.get(trend, "")
-        parts.append(f"{emoji} Tick-kvalitet (sidste 7d): {avg}/100 ({trend})")
+        line = f"{emoji} Tick-kvalitet (sidste 7d): {avg}/100 ({trend})"
+        # Escalation: when the score has been stuck low for a while, surface
+        # a sharper line so any active decisions about quality have something
+        # concrete to fire against. Without this, quality data is descriptive
+        # but never actionable.
+        try:
+            avg_f = float(avg)
+            if avg_f < 50.0:
+                line = (
+                    f"⚠ TICK-KVALITET LAV: {avg}/100 over {summary.get('count')} ticks "
+                    f"({trend}). Hvis du har en decision om at evaluere kvalitet, "
+                    "er det nu den skal aktiveres."
+                )
+                # Fire eventbus alarm so other subscribers (council activator,
+                # etc.) can react too.
+                try:
+                    from core.eventbus.bus import event_bus
+                    event_bus.publish("tick_quality.alarm", {
+                        "avg": avg, "trend": trend,
+                        "count": summary.get("count"),
+                    })
+                except Exception:
+                    pass
+        except (TypeError, ValueError):
+            pass
+        parts.append(line)
 
     # Decision adherence
     adherence = decision_adherence_summary()

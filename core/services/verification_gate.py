@@ -164,6 +164,19 @@ def verification_gate_section() -> str | None:
     if not failed and unverified <= 0:
         return None
 
+    # Record this surface for R2 telemetry — we want to know whether this
+    # warning gets heeded (followed by a verify_*) or ignored.
+    try:
+        from core.services.verification_gate_telemetry import record_surface
+        record_surface(
+            failed_verify_count=int(result.get("failed_verify_count") or 0),
+            unverified_count=int(result.get("unverified_count") or 0),
+            mutation_count=int(result.get("mutation_count") or 0),
+            verify_count=int(result.get("verify_count") or 0),
+        )
+    except Exception:
+        pass
+
     lines: list[str] = []
     if failed:
         lines.append(

@@ -397,4 +397,16 @@ def bootstrap_all() -> dict[str, Any]:
         result["skyoffice_activity_started"] = True
     except Exception as exc:
         result["skyoffice_activity_error"] = str(exc)
+    try:
+        from core.services.verification_gate_telemetry import subscribe as r2_subscribe
+        r2_subscribe()
+        result["r2_telemetry_subscribed"] = True
+    except Exception as exc:
+        result["r2_telemetry_error"] = str(exc)
+    try:
+        from core.services.decision_enforcement import subscribe as decision_subscribe
+        decision_subscribe()
+        result["decision_enforcement_subscribed"] = True
+    except Exception as exc:
+        result["decision_enforcement_error"] = str(exc)
     return result

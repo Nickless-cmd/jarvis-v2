@@ -88,14 +88,14 @@ def _handle_chat_async(author: str, content: str) -> None:
     feel responsive."""
     def _run() -> None:
         try:
-            print(f"[skyoffice-chat] thread start author={author!r} text={content[:60]!r}", flush=True)
             reply = _generate_reply(author, content)
-            print(f"[skyoffice-chat] llm reply: {reply!r}", flush=True)
             if reply:
                 res = _broadcast_back(reply)
-                print(f"[skyoffice-chat] broadcast result: {res}", flush=True)
+                if (res or {}).get("status") not in {"ok", "skipped"}:
+                    logger.warning("skyoffice chat broadcast non-ok: %s", res)
+            else:
+                logger.info("skyoffice chat: empty LLM reply for %r", author)
         except Exception as exc:
-            print(f"[skyoffice-chat] handler crashed: {type(exc).__name__}: {exc}", flush=True)
             logger.warning("skyoffice chat async handler failed: %s", exc)
     threading.Thread(target=_run, name="skyoffice-chat-reply",
                      daemon=True).start()

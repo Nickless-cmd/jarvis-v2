@@ -32,6 +32,7 @@ _SCHEDULE: dict[str, timedelta] = {
     "personality_snapshot": timedelta(hours=4),  # 6x/day for stable baseline
     "provider_health_check": timedelta(minutes=5),  # 12x/hour proactive ping
     "auto_improvement_proposals": timedelta(hours=24),  # daily check + propose
+    "agent_observation_decay": timedelta(hours=24),  # daily stale-marking
 }
 
 

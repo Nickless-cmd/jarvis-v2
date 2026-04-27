@@ -326,6 +326,10 @@ from core.services.agent_observation_compressor import (
     _exec_list_agent_observations,
     _exec_get_agent_observation,
 )
+from core.services.cross_agent_memory import (
+    CROSS_AGENT_TOOL_DEFINITIONS,
+    _exec_cross_agent_recall,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2094,6 +2098,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *IDENTITY_MUTATION_TOOL_DEFINITIONS,
     *AGENT_SKILL_TOOL_DEFINITIONS,
     *AGENT_OBSERVATION_TOOL_DEFINITIONS,
+    *CROSS_AGENT_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5516,6 +5521,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "compress_agent_run": _exec_compress_agent_run,
     "list_agent_observations": _exec_list_agent_observations,
     "get_agent_observation": _exec_get_agent_observation,
+    "cross_agent_recall": _exec_cross_agent_recall,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

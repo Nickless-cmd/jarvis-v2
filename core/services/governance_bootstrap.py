@@ -129,6 +129,14 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _provider_health_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Ping all cheap-lane providers proactively."""
+        try:
+            from core.services.provider_health_check import health_check_all_providers
+            return {"status": "ok", "kind": "provider_health_check", "result": health_check_all_providers()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
@@ -136,6 +144,7 @@ def ensure_default_job_handlers() -> list[str]:
         "weekly_manifest_refresh": _weekly_manifest_handler,
         "goal_synthesis": _goal_synthesis_handler,
         "personality_snapshot": _personality_snapshot_handler,
+        "provider_health_check": _provider_health_handler,
     }
 
     for job_type, handler in handlers.items():

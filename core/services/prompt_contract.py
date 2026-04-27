@@ -466,6 +466,12 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(26, "context window degradation signal", context_window_section())
     except Exception:
         pass
+    # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)
+    try:
+        from core.services.proactive_context_governor import auto_compact_if_needed
+        auto_compact_if_needed()  # silent — runs only if needed
+    except Exception:
+        pass
     try:
         from core.services.autonomous_goals import goals_prompt_section
         _awareness_add(35, "active autonomous goals", goals_prompt_section())
@@ -474,6 +480,16 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.personality_drift import personality_drift_section
         _awareness_add(45, "personality drift signal", personality_drift_section())
+    except Exception:
+        pass
+    try:
+        from core.services.provider_health_check import health_section
+        _awareness_add(28, "provider health status", health_section())
+    except Exception:
+        pass
+    try:
+        from core.services.agent_self_evaluation import self_evaluation_section
+        _awareness_add(85, "self-evaluation summary", self_evaluation_section())
     except Exception:
         pass
     try:

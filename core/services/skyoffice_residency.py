@@ -69,31 +69,31 @@ class Resident:
 #   Eighth daemon at the right-bench station (1184, 480)
 
 _RESIDENTS: list[Resident] = [
+    # Jarvis at the solo manager chair upper-middle
     Resident(
-        agent_id="agent:jarvis",
-        name="Jarvis",
-        role="self",
-        desk_x=960, desk_y=192,
-        kind_label="self",
+        agent_id="agent:jarvis", name="Jarvis", role="self",
+        desk_x=960, desk_y=192, kind_label="self",
     ),
-    # Workstation row — y=416 is the row of 7 chairs in the open office
+    # Right-side workstation rows — chairs facing computers at y=576 and y=736
+    # Top workstation row
     Resident(agent_id="daemon:thought_stream", name="Thought Stream",
-             role="researcher", desk_x=224, desk_y=416),
+             role="researcher", desk_x=992, desk_y=576),
     Resident(agent_id="daemon:meta_reflection", name="Meta Reflection",
-             role="researcher", desk_x=256, desk_y=416),
+             role="researcher", desk_x=1088, desk_y=576),
     Resident(agent_id="daemon:reflection_cycle", name="Reflection Cycle",
-             role="researcher", desk_x=288, desk_y=416),
+             role="researcher", desk_x=1184, desk_y=576),
+    # Middle pair (chairs at y=480)
     Resident(agent_id="daemon:user_model", name="User Model",
-             role="researcher", desk_x=480, desk_y=416),
-    Resident(agent_id="daemon:development_narrative", name="Dev Narrative",
-             role="worker", desk_x=512, desk_y=416),
-    Resident(agent_id="daemon:current_pull", name="Current Pull",
-             role="worker", desk_x=544, desk_y=416),
-    Resident(agent_id="daemon:goal_signal_synthesizer", name="Goal Synthesizer",
-             role="worker", desk_x=576, desk_y=416),
-    # Solo bench at right side of office
+             role="researcher", desk_x=1088, desk_y=480),
     Resident(agent_id="daemon:code_aesthetic", name="Code Aesthetic",
              role="worker", desk_x=1184, desk_y=480),
+    # Bottom workstation row at y=736
+    Resident(agent_id="daemon:development_narrative", name="Dev Narrative",
+             role="worker", desk_x=992, desk_y=736),
+    Resident(agent_id="daemon:current_pull", name="Current Pull",
+             role="worker", desk_x=1088, desk_y=736),
+    Resident(agent_id="daemon:goal_signal_synthesizer", name="Goal Synthesizer",
+             role="worker", desk_x=1184, desk_y=736),
 ]
 
 

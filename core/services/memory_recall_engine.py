@@ -49,10 +49,11 @@ _MOOD_BOOST_PATTERNS: dict[str, list[str]] = {
 
 def _current_mood() -> dict[str, float]:
     try:
-        from core.services.mood_runtime import current_mood
-        m = current_mood() or {}
-        if isinstance(m, dict):
-            return {k: float(v) for k, v in m.items() if isinstance(v, (int, float))}
+        from core.services.mood_oscillator import get_current_mood, get_mood_intensity
+        mood_name = str(get_current_mood() or "")
+        intensity = float(get_mood_intensity() or 0.0)
+        if mood_name:
+            return {mood_name: intensity}
     except Exception:
         pass
     return {}

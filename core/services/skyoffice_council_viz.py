@@ -40,8 +40,23 @@ _lock = threading.Lock()
 _subscribed = False
 
 
+def is_in_meeting(agent_id: str) -> bool:
+    """Public — used by skyoffice_residency to skip repositioning agents
+    that the council viz has moved to the meeting table."""
+    with _lock:
+        return agent_id in _active_council_agents
+
+
 def _agent_id_for_role(role: str) -> str:
     role = (role or "").strip().lower().replace(" ", "_") or "member"
+    # Prefer matching an existing resident by role for visual continuity.
+    try:
+        from core.services.skyoffice_residency import list_residents
+        for r in list_residents():
+            if r.role == role:
+                return r.agent_id
+    except Exception:
+        pass
     return f"agent:council:{role}"
 
 
@@ -101,18 +116,35 @@ def on_council_triggered(payload: dict[str, Any]) -> None:
 
 
 def on_council_concluded(payload: dict[str, Any]) -> None:
-    from core.services.skyoffice_bridge import remove_agent
+    from core.services.skyoffice_bridge import remove_agent, upsert_agent
+    from core.services.skyoffice_residency import get_resident
 
     with _lock:
         ids = list(_active_council_agents)
         _active_council_agents.clear()
+    restored = removed = 0
     for aid in ids:
+        resident = get_resident(aid)
         try:
-            remove_agent(aid)
+            if resident is not None:
+                # Send them back to their desk; don't despawn permanent residents.
+                upsert_agent(
+                    agent_id=resident.agent_id, name=resident.name,
+                    role=resident.role, status="idle",
+                    x=resident.desk_x, y=resident.desk_y,
+                )
+                restored += 1
+            else:
+                # Ad-hoc council member — clean up.
+                remove_agent(aid)
+                removed += 1
         except Exception as exc:
-            logger.warning("skyoffice_council_viz: remove %s failed: %s", aid, exc)
+            logger.warning("skyoffice_council_viz: cleanup %s failed: %s", aid, exc)
     if ids:
-        logger.info("skyoffice_council_viz: dismissed %d council agents", len(ids))
+        logger.info(
+            "skyoffice_council_viz: meeting ended — restored %d residents, removed %d ad-hoc",
+            restored, removed,
+        )
 
 
 def on_agent_recruited(payload: dict[str, Any]) -> None:

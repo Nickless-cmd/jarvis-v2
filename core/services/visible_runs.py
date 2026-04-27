@@ -339,6 +339,51 @@ def _mark_visible_run_cancelled(run_id: str, *, cancelled: bool = True) -> None:
     _set_visible_run_control(run_id, state)
 
 
+def append_visible_run_steer(run_id: str, content: str) -> bool:
+    """Append a mid-flight 'steer' message that the agentic loop will pick
+    up between rounds. Cross-worker safe (state lives in DB).
+
+    Used by POST /chat/runs/{run_id}/steer so the user can interject mid
+    tool-loop without cancelling — Jarvis sees the steer at the next round
+    boundary and either redirects, acknowledges, or stops."""
+    state = _get_visible_run_control(run_id)
+    if not state:
+        return False
+    queue = state.get("steers")
+    if not isinstance(queue, list):
+        queue = []
+    queue.append({
+        "content": str(content or "").strip(),
+        "at": datetime.now(UTC).isoformat(),
+        "consumed": False,
+    })
+    state["steers"] = queue
+    state["updated_at"] = datetime.now(UTC).isoformat()
+    _set_visible_run_control(run_id, state)
+    return True
+
+
+def consume_visible_run_steers(run_id: str) -> list[dict[str, object]]:
+    """Pop unread steers for this run. Marks them consumed in shared state
+    so they aren't re-consumed if the loop re-checks."""
+    state = _get_visible_run_control(run_id)
+    if not state:
+        return []
+    queue = state.get("steers")
+    if not isinstance(queue, list):
+        return []
+    fresh = [s for s in queue if isinstance(s, dict) and not s.get("consumed")]
+    if not fresh:
+        return []
+    for s in queue:
+        if isinstance(s, dict) and not s.get("consumed"):
+            s["consumed"] = True
+    state["steers"] = queue
+    state["updated_at"] = datetime.now(UTC).isoformat()
+    _set_visible_run_control(run_id, state)
+    return fresh
+
+
 def _set_visible_approval_state(approval_id: str, payload: dict[str, object]) -> None:
     set_runtime_state_value(_visible_run_approval_key(approval_id), payload)
 
@@ -1376,6 +1421,39 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                         sum(len(p) for p in _a_parts),
                         len(_a_tool_calls), len(_a_resolved),
                     )
+
+                    # ── Mid-flight steer ────────────────────────────────────
+                    # Pick up any user messages that landed via
+                    # POST /chat/runs/{id}/steer since the previous round.
+                    # Inject them as user-role messages in base_messages so
+                    # the next agentic round sees them; "stop"/"cancel"
+                    # steers break the loop cleanly.
+                    try:
+                        steers = consume_visible_run_steers(run.run_id)
+                    except Exception:
+                        steers = []
+                    if steers:
+                        for s in steers:
+                            content = str(s.get("content") or "").strip()
+                            if not content:
+                                continue
+                            base_messages.append({"role": "user", "content": content})
+                            yield _sse("steer_received", {
+                                "type": "steer_received",
+                                "run_id": run.run_id,
+                                "content": content,
+                                "at": s.get("at"),
+                            })
+                            logger.info(
+                                "agentic-steer run_id=%s round=%d injected=%d_chars",
+                                run.run_id, _agentic_round + 1, len(content),
+                            )
+                            stop_words = ("stop", "stop.", "cancel", "afbryd", "abort", "stop nu")
+                            if content.strip().lower() in stop_words:
+                                _agentic_loop_exit_reason = "user-steer-stop"
+                                break
+                        if _agentic_loop_exit_reason == "user-steer-stop":
+                            break
                 logger.info(
                     "agentic-loop-exit run_id=%s reason=%s rounds_done=%d",
                     run.run_id, _agentic_loop_exit_reason,

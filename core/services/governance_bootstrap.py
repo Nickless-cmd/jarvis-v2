@@ -137,6 +137,14 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _auto_improvement_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Daily auto-improvement proposals via plan_proposals."""
+        try:
+            from core.services.auto_improvement_proposer import generate_improvement_proposals
+            return {"status": "ok", "kind": "auto_improvement", "result": generate_improvement_proposals()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
@@ -145,6 +153,7 @@ def ensure_default_job_handlers() -> list[str]:
         "goal_synthesis": _goal_synthesis_handler,
         "personality_snapshot": _personality_snapshot_handler,
         "provider_health_check": _provider_health_handler,
+        "auto_improvement_proposals": _auto_improvement_handler,
     }
 
     for job_type, handler in handlers.items():

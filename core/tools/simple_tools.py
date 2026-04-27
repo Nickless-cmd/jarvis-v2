@@ -229,6 +229,10 @@ from core.services.autonomous_goals import (
     _exec_goal_decompose,
     _exec_goal_update_status,
 )
+from core.services.memory_recall_engine import (
+    UNIFIED_RECALL_TOOL_DEFINITIONS,
+    _exec_unified_recall,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -1979,6 +1983,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *SMART_COMPACT_TOOL_DEFINITIONS,
     *CONTEXT_WINDOW_TOOL_DEFINITIONS,
     *AUTONOMOUS_GOALS_TOOL_DEFINITIONS,
+    *UNIFIED_RECALL_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5358,6 +5363,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "goal_list": _exec_goal_list,
     "goal_decompose": _exec_goal_decompose,
     "goal_update_status": _exec_goal_update_status,
+    "unified_recall": _exec_unified_recall,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

@@ -128,6 +128,34 @@ def pending_plan_section(session_id: str | None) -> str | None:
     )
 
 
+def all_pending_plans_section() -> str | None:
+    """Show ALL pending plans (incl. auto-improvement proposals from
+    session_id=None). Without this, auto-generated proposals sit in
+    the queue forever because they're not in any user session."""
+    all_pending = [
+        r for r in _load_all().values()
+        if r.get("status") == "awaiting_approval"
+    ]
+    if not all_pending:
+        return None
+    # Sort by created_at descending
+    all_pending.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
+    lines = [f"📥 {len(all_pending)} plan(er) venter på godkendelse:"]
+    for rec in all_pending[:5]:
+        plan_id = str(rec.get("plan_id") or "?")
+        title = str(rec.get("title") or "(uden titel)")
+        sid = str(rec.get("session_id") or "?")
+        sid_label = "" if sid == "_default" else f" (session: {sid[:8]})"
+        lines.append(f"  • {plan_id}: {title}{sid_label}")
+    if len(all_pending) > 5:
+        lines.append(f"  ... og {len(all_pending) - 5} mere")
+    lines.append(
+        "Brug `list_plans` for detaljer, `approve_plan` for at godkende, "
+        "`dismiss_plan` for at afvise."
+    )
+    return "\n".join(lines)
+
+
 def _exec_propose_plan(args: dict[str, Any]) -> dict[str, Any]:
     return propose_plan(
         session_id=args.get("session_id"),

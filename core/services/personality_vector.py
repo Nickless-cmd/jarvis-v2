@@ -216,7 +216,13 @@ def _deterministic_update(
         before = {k: float(baseline.get(k, 0.0)) for k in ("confidence", "curiosity", "fatigue", "frustration")}
         baseline["fatigue"] = max(0.0, float(baseline.get("fatigue", 0.0)) * decay_factor)
         baseline["frustration"] = max(0.0, float(baseline.get("frustration", 0.0)) * decay_factor)
-        baseline["curiosity"] = max(0.0, float(baseline.get("curiosity", 0.0)) * decay_factor)
+        # 2026-04-27 fix: curiosity decays toward 0.5 (neutral baseline), NOT
+        # toward 0. The old behaviour gave curiosity no upward path — outcome
+        # bumps below only touch confidence/fatigue/frustration. Result:
+        # curiosity got stuck below 0.15 after a few decay cycles. Now
+        # curiosity drifts back to neutral when nothing pushes it.
+        cur = float(baseline.get("curiosity", 0.5))
+        baseline["curiosity"] = cur + (0.5 - cur) * (1.0 - decay_factor)
         # confidence decays toward 0.5 (neutral) rather than toward 0
         conf = float(baseline.get("confidence", 0.5))
         baseline["confidence"] = conf + (0.5 - conf) * (1.0 - decay_factor)
@@ -230,9 +236,13 @@ def _deterministic_update(
     if outcome_status in ("completed", "success"):
         baseline["confidence"] = min(1.0, float(baseline.get("confidence", 0.5)) + 0.02)
         baseline["fatigue"] = min(1.0, float(baseline.get("fatigue", 0.0)) + 0.01)
+        # Successful outcomes also feed curiosity (we learned something new)
+        baseline["curiosity"] = min(1.0, float(baseline.get("curiosity", 0.5)) + 0.015)
     elif outcome_status in ("failed", "error"):
         baseline["confidence"] = max(0.0, float(baseline.get("confidence", 0.5)) - 0.05)
         baseline["frustration"] = min(1.0, float(baseline.get("frustration", 0.0)) + 0.03)
+        # Errors slightly bump curiosity too — something unexpected happened
+        baseline["curiosity"] = min(1.0, float(baseline.get("curiosity", 0.5)) + 0.01)
 
     # Fix 3: Apply residue from recently expired emotion concepts (15% of their
     # peak influence), so prolonged states leave a small trace in the baseline.

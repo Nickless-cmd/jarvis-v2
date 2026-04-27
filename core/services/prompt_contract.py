@@ -437,6 +437,11 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.plan_proposals import all_pending_plans_section
+        _awareness_add(17, "all pending plans (incl. auto-proposals)", all_pending_plans_section())
+    except Exception:
+        pass
+    try:
         from core.services.self_monitor import self_monitor_section
         _awareness_add(20, "self-monitor warnings", self_monitor_section())
     except Exception:
@@ -464,6 +469,16 @@ def build_visible_chat_prompt_assembly(
     try:
         from core.services.context_window_manager import context_window_section
         _awareness_add(26, "context window degradation signal", context_window_section())
+    except Exception:
+        pass
+    # Fix 2 (2026-04-27): recall_before_act in visible runs — was only used
+    # in heartbeat phases. Surface relevant memories tied to user_message so
+    # Jarvis answers from memory, not stub-context.
+    try:
+        from core.services.memory_hierarchy import recall_before_act_summary
+        if user_message and len(user_message.strip()) >= 8:
+            _awareness_add(27, "recall-before-act (user-message memories)",
+                           recall_before_act_summary(query=user_message))
     except Exception:
         pass
     # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)

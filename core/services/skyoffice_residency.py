@@ -22,7 +22,6 @@ The two modules cooperate via the shared registry in this file.
 from __future__ import annotations
 
 import logging
-import random
 import threading
 import time
 from datetime import UTC, datetime, timedelta
@@ -174,47 +173,94 @@ def _resident_status(resident: Resident, activity: dict[str, datetime]) -> str:
 
 _residency_started = False
 _TICK_INTERVAL_SECONDS = 30.0
+# Track last applied state per resident so we only re-upsert when something
+# changed. Re-upserting with new x/y every tick was producing the "rysteri"
+# (teleport-shake) effect — Phaser snaps the sprite each time.
+_last_applied: dict[str, dict[str, Any]] = {}
+
+
+def _sprite_for_role(role: str) -> str:
+    """Mirror the client-side ROLE_SPRITES map so the anim key has the right
+    prefix. Must stay in sync with client/src/scenes/Game.ts."""
+    role = (role or "").strip().lower()
+    return {
+        "council": "lucy",
+        "researcher": "ash",
+        "worker": "nancy",
+        "observer": "adam",
+        "self": "adam",
+    }.get(role, "adam")
+
+
+def _sit_anim_for_resident(r: "Resident") -> str:
+    """Pick the right sit animation. Workstation chairs face up (toward the
+    computer to their north); the conference table at y=640/740 has chairs
+    on both sides. Default to sit_down — most chairs read fine that way."""
+    sprite = _sprite_for_role(r.role)
+    if 540 <= r.desk_y <= 600 or 720 <= r.desk_y <= 760:
+        # Top of a workstation row: face up toward the screen
+        return f"{sprite}_sit_up"
+    return f"{sprite}_sit_down"
 
 
 def _residency_tick() -> None:
-    """One pass: upsert every resident at their desk with current status."""
+    """One pass: upsert every resident at their desk with current status.
+
+    Critical: only sends fields that CHANGED since the last successful
+    upsert for this resident. Re-sending x/y every tick made the avatars
+    teleport-shake. Now position is set ONCE (when the resident is first
+    placed or moves between desk/meeting); subsequent ticks only update
+    status when activity transitions idle→working or back."""
     from core.services.skyoffice_bridge import upsert_agent
     activity = _recent_daemon_activity_window()
     placed = 0
-    skipped = 0
     for r in _RESIDENTS:
-        # If this resident is currently in the meeting (council viz moved them)
-        # we leave their position alone — only refresh status.
         from core.services.skyoffice_council_viz import is_in_meeting
         in_meeting = is_in_meeting(r.agent_id)
         status = "meeting" if in_meeting else _resident_status(r, activity)
+        sit_anim = _sit_anim_for_resident(r)
+
+        # Build the FULL desired state for this resident.
+        desired: dict[str, Any] = {
+            "agent_id": r.agent_id,
+            "name": r.name,
+            "role": r.role,
+            "status": status,
+            # Don't set x/y/anim during meeting — council viz controls those
+        }
+        if not in_meeting:
+            desired["x"] = r.desk_x
+            desired["y"] = r.desk_y
+            desired["anim"] = sit_anim
+
+        # Diff against last applied. If nothing changed, skip the upsert.
+        prev = _last_applied.get(r.agent_id) or {}
+        delta: dict[str, Any] = {}
+        for k, v in desired.items():
+            if k == "agent_id":
+                continue
+            if prev.get(k) != v:
+                delta[k] = v
+        if not delta and r.agent_id in _last_applied:
+            continue
+
+        # First placement (or change): include agent_id + delta. On first
+        # placement we send everything so the avatar appears correctly.
+        first_time = r.agent_id not in _last_applied
+        kwargs: dict[str, Any] = {"agent_id": r.agent_id}
+        if first_time:
+            kwargs.update(desired)
+        else:
+            kwargs.update(delta)
         try:
-            kwargs: dict[str, Any] = dict(
-                agent_id=r.agent_id, name=r.name, role=r.role, status=status,
-            )
-            if not in_meeting:
-                # Idle residents wander a little around their desk so the
-                # office feels alive. Working residents stay put — focused.
-                if status == "idle":
-                    kwargs["x"] = r.desk_x + random.randint(-40, 40)
-                    kwargs["y"] = r.desk_y + random.randint(-30, 30)
-                    # Pick a facing direction roughly aligned with the move.
-                    kwargs["anim"] = random.choice([
-                        "adam_idle_left", "adam_idle_right",
-                        "adam_idle_up", "adam_idle_down",
-                    ])
-                else:
-                    kwargs["x"] = r.desk_x
-                    kwargs["y"] = r.desk_y
             res = upsert_agent(**kwargs)
             if res.get("status") == "ok":
                 placed += 1
-            else:
-                skipped += 1
+                _last_applied[r.agent_id] = dict(desired)
         except Exception as exc:
             logger.debug("residency tick: upsert %s failed: %s", r.agent_id, exc)
     if placed:
-        logger.debug("skyoffice_residency: placed=%d skipped=%d", placed, skipped)
+        logger.debug("skyoffice_residency: applied changes for %d residents", placed)
 
 
 def _residency_loop() -> None:

@@ -462,6 +462,23 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.verification_gate_telemetry import telemetry_section
+        _awareness_add(24, "R2 gate telemetry", telemetry_section())
+    except Exception:
+        pass
+    try:
+        from core.services.r2_5_blocking_gate import r2_5_block_section
+        from core.services.reasoning_classifier import classify_reasoning_tier
+        _tier = str(classify_reasoning_tier(user_message).get("tier") or "fast")
+        _awareness_add(95, "R2.5 conditional block", r2_5_block_section(_tier))
+    except Exception:
+        pass
+    try:
+        from core.services.decision_enforcement import enforcement_section
+        _awareness_add(90, "active commitments enforcement", enforcement_section())
+    except Exception:
+        pass
+    try:
         from core.services.reasoning_escalation import escalation_section
         _awareness_add(24, "reasoning escalation recommendation", escalation_section(user_message))
     except Exception:

@@ -113,11 +113,20 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _goal_synthesis_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Propose new candidate goals from recent dreams/chronicle/questions."""
+        try:
+            from core.services.goal_signal_synthesizer import synthesize_candidate_goals
+            return {"status": "ok", "kind": "goal_synthesis", "result": synthesize_candidate_goals()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
         "dream_distillation_sweep": _dream_distillation_handler,
         "weekly_manifest_refresh": _weekly_manifest_handler,
+        "goal_synthesis": _goal_synthesis_handler,
     }
 
     for job_type, handler in handlers.items():

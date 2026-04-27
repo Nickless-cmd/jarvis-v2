@@ -467,6 +467,11 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.autonomous_goals import goals_prompt_section
+        _awareness_add(35, "active autonomous goals", goals_prompt_section())
+    except Exception:
+        pass
+    try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
     except Exception:

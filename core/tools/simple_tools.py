@@ -222,6 +222,13 @@ from core.services.context_window_manager import (
     _exec_context_pressure,
     _exec_manage_context_window,
 )
+from core.services.autonomous_goals import (
+    AUTONOMOUS_GOALS_TOOL_DEFINITIONS,
+    _exec_goal_create,
+    _exec_goal_list,
+    _exec_goal_decompose,
+    _exec_goal_update_status,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -1971,6 +1978,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *DAEMON_ALERT_TOOL_DEFINITIONS,
     *SMART_COMPACT_TOOL_DEFINITIONS,
     *CONTEXT_WINDOW_TOOL_DEFINITIONS,
+    *AUTONOMOUS_GOALS_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5346,6 +5354,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "context_size_check": _exec_context_size_check,
     "context_pressure": _exec_context_pressure,
     "manage_context_window": _exec_manage_context_window,
+    "goal_create": _exec_goal_create,
+    "goal_list": _exec_goal_list,
+    "goal_decompose": _exec_goal_decompose,
+    "goal_update_status": _exec_goal_update_status,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

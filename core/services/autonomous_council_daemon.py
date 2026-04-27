@@ -10,7 +10,7 @@ from typing import Any
 
 from core.eventbus.bus import event_bus
 
-_THRESHOLD = 0.35
+_THRESHOLD = 0.25  # was 0.35; lowered 2026-04-27 — council was never firing
 _CADENCE_MINUTES = 30
 _COOLDOWN_MINUTES = 20
 _MAX_LARGE_COUNCILS_PER_DAY = 3

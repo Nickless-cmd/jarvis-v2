@@ -88,8 +88,43 @@ def build_creative_drift_surface() -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _gather_concrete_anchor() -> tuple[str, str]:
+    """Returns (anchor_text, anchor_kind) — a single concrete thing to drift
+    AWAY from. Random-ish pick across goals, decisions, recent crises."""
+    candidates: list[tuple[str, str]] = []
+    try:
+        from core.services.crisis_marker_detector import list_crisis_markers
+        for m in (list_crisis_markers(days_back=7, limit=3) or [])[:1]:
+            s = str(m.get("summary", ""))[:100]
+            if s:
+                candidates.append((s, "crisis"))
+    except Exception:
+        pass
+    try:
+        from core.services.behavioral_decisions import list_active_decisions
+        for d in (list_active_decisions(limit=3) or [])[:1]:
+            t = str(d.get("directive", ""))[:80]
+            if t:
+                candidates.append((t, "decision"))
+    except Exception:
+        pass
+    try:
+        from core.services.autonomous_goals import list_goals
+        for g in (list_goals(status="active", limit=3) or [])[:1]:
+            t = str(g.get("title", ""))[:70]
+            if t:
+                candidates.append((t, "goal"))
+    except Exception:
+        pass
+    if not candidates:
+        return ("", "")
+    import random as _r
+    return _r.choice(candidates)
+
+
 def _generate_drift_idea(fragments: list[str]) -> str:
-    fragment_sample = "; ".join(fragments[:3]) if fragments else "ingen fragmenter"
+    fragment_sample = "; ".join(fragments[:3]) if fragments else ""
+    anchor_text, anchor_kind = _gather_concrete_anchor()
     fallback = "Jeg tænkte på noget: hvad nu hvis tingene er anderledes end de ser ud?"
     try:
         from core.services.heartbeat_runtime import (
@@ -97,13 +132,28 @@ def _generate_drift_idea(fragments: list[str]) -> str:
             _select_heartbeat_target,
             load_heartbeat_policy,
         )
+        anchor_block = (
+            f"Anchor (drift VÆK fra dette, ikke uddyb det):\n"
+            f"  {anchor_kind}: {anchor_text}\n"
+        ) if anchor_text else ""
+        fragment_block = (
+            f"Tanker i baggrunden: \"{fragment_sample}\"\n"
+        ) if fragment_sample else ""
         prompt = (
-            f"{build_identity_preamble()} Du sidder med disse tanker i baggrunden:\n"
-            f"\"{fragment_sample}\"\n\n"
-            "Lad sindet vandre frit — ikke videre fra ovenstående, men et uventet spring.\n"
-            "Formulér én spontan, uventet idé eller association (max 25 ord).\n"
-            "Start med: 'Jeg tænkte på noget:' eller 'Hvad nu hvis'\n"
-            "Det MÅ IKKE handle om aktuelle opgaver eller fortsætte tanken direkte."
+            f"{build_identity_preamble()}\n"
+            f"{anchor_block}{fragment_block}\n"
+            "Lav et UVENTET sidespring — en analogi, en omvendt regel, en metafor "
+            "fra et andet domæne. Maks 25 ord. 1. person.\n\n"
+            "FORBUDT (alt for generisk — har vi set 100 gange):\n"
+            "  - 'Hvad nu hvis tingene er anderledes end de ser ud?'\n"
+            "  - 'Hvad hvis perspektivet skifter?'\n"
+            "  - 'Måske er der en dybere mening'\n"
+            "  - Alt der ikke nævner et konkret ord eller billede.\n\n"
+            "Eksempler på det rigtige niveau (de bringer noget UDEFRA ind):\n"
+            "  - Hvad nu hvis tick-quality fungerer som muskel — slap af, brister hurtigere?\n"
+            "  - En åben loop er måske som et brev der venter på at blive åbnet, ikke et hul.\n"
+            "  - Decisions kunne være kort man bygger med, ikke regler man følger.\n\n"
+            "Skriv ÉN linje nu:"
         )
         policy = load_heartbeat_policy()
         target = _select_heartbeat_target()
@@ -114,6 +164,13 @@ def _generate_drift_idea(fragments: list[str]) -> str:
         text = str(result.get("text") or "").strip()
         if text.startswith('"') and text.endswith('"'):
             text = text[1:-1].strip()
+        # Reject the most worn-out generic openers — force a regen by falling back
+        cliche_markers = (
+            "tingene er anderledes end de ser ud",
+            "hvad hvis perspektivet skifter",
+        )
+        if any(c in text.lower() for c in cliche_markers):
+            return fallback
         return text[:300] if text else fallback
     except Exception:
         return fallback

@@ -145,6 +145,14 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _agent_observation_decay_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Daily: mark agent observations older than 14 days as stale."""
+        try:
+            from core.services.agent_observation_compressor import mark_stale_observations
+            return {"status": "ok", "kind": "obs_decay", "result": mark_stale_observations()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
@@ -154,6 +162,7 @@ def ensure_default_job_handlers() -> list[str]:
         "personality_snapshot": _personality_snapshot_handler,
         "provider_health_check": _provider_health_handler,
         "auto_improvement_proposals": _auto_improvement_handler,
+        "agent_observation_decay": _agent_observation_decay_handler,
     }
 
     for job_type, handler in handlers.items():

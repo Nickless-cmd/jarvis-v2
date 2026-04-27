@@ -339,6 +339,19 @@ def spawn_agent_task(
             )
     except Exception:
         pass
+
+    # Layer 3 (Scout Memory): inject relevant cross-agent observations
+    try:
+        from core.services.cross_agent_memory import cross_agent_recall_section
+        cross_agent_text = cross_agent_recall_section(role=role, query=goal)
+        if cross_agent_text:
+            system_prompt = (
+                f"{system_prompt}\n\n{cross_agent_text}\n"
+                "Disse observationer kommer fra andre agenter der har arbejdet med "
+                "lignende emner. Brug dem som baggrund — verificér selv før du regner med dem."
+            )
+    except Exception:
+        pass
     if not provider or not model:
         # Task-aware routing: classify goal → tier, look up role's tier-specific
         # provider/model from council_models.json. Falls through to flat

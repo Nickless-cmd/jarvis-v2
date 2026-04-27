@@ -35,27 +35,30 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-_NEVER_TOUCH_FILES: frozenset[str] = frozenset({
-    "SOUL.md", "IDENTITY.md", "MANIFEST.md", "STANDING_ORDERS.md",
-})
-
-_NEVER_TOUCH_MODULES: frozenset[str] = frozenset({
+# 2026-04-27: User explicitly authorized Tier 3 (identity-level) auto-mutation.
+# See ~/.jarvis-v2/config/identity_mutation_authorization.json
+# Identity files are no longer hard-blocked here — they go via
+# identity_mutation_log for full audit + rollback.
+# Infrastructure modules remain blocked for STABILITY (not safety):
+# auto-modifying the auto-improver / plan_proposals / approvals would create
+# recursive bugs that could brick the system.
+_INFRASTRUCTURE_BLOCKED_MODULES: frozenset[str] = frozenset({
     "core.services.auto_improvement_proposer",
     "core.services.plan_proposals",
     "core.services.approvals",
+    "core.services.identity_mutation_log",
     "core.runtime.policy",
 })
 
 
 def _is_safe_target(target: str) -> bool:
-    """Reject any improvement targeting protected resources."""
+    """Reject only infrastructure-protected modules. Identity files now allowed
+    per user authorization 2026-04-27 — those route via identity_mutation_log.
+    """
     target = str(target or "")
     if not target:
         return False
-    for protected in _NEVER_TOUCH_FILES:
-        if protected in target:
-            return False
-    for module in _NEVER_TOUCH_MODULES:
+    for module in _INFRASTRUCTURE_BLOCKED_MODULES:
         if module in target:
             return False
     return True
@@ -196,9 +199,11 @@ def generate_improvement_proposals(*, session_id: str | None = None) -> dict[str
         if payload is None:
             continue
 
-        # Guard: ensure none of the proposed steps target protected resources
+        # Guard: only infrastructure-protected modules blocked.
+        # Identity files (SOUL/IDENTITY/MANIFEST) now allowed per user auth —
+        # those route via identity_mutation_log for audit + rollback.
         steps = payload.get("steps") or []
-        if any(not _is_safe_target(s) and any(p in s for p in ("SOUL", "IDENTITY", "MANIFEST")) for s in steps):
+        if any(not _is_safe_target(s) for s in steps):
             skipped_unsafe.append(check_name)
             continue
 

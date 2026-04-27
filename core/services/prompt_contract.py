@@ -479,6 +479,11 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.development_sense import development_sense_section
+        _awareness_add(52, "developmental sense", development_sense_section())
+    except Exception:
+        pass
+    try:
         from core.services.pushback import (
             doubt_signal_section, disagreement_invite_section, direction_confirm_section,
         )

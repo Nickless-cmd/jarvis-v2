@@ -310,6 +310,13 @@ def tick_with_phases(*, name: str = "default", trigger: str = "phased") -> dict[
         },
         "elapsed_ms": elapsed_ms,
     }
+    # Phase 5: self-evaluate this tick's quality (observation only, no mutation)
+    try:
+        from core.services.agent_self_evaluation import evaluate_tick_quality
+        evaluation = evaluate_tick_quality(tick_result=result)
+        result["evaluation"] = evaluation
+    except Exception:
+        pass
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish(
@@ -319,6 +326,7 @@ def tick_with_phases(*, name: str = "default", trigger: str = "phased") -> dict[
                 "priorities": reflection.get("priorities"),
                 "act_kind": action.get("kind"),
                 "elapsed_ms": elapsed_ms,
+                "quality_score": (result.get("evaluation") or {}).get("score"),
             },
         )
     except Exception:

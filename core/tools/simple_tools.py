@@ -285,6 +285,12 @@ from core.services.provider_health_check import (
     _exec_run_health_check,
     _exec_get_health_snapshot,
 )
+from core.services.agent_self_evaluation import (
+    SELF_EVALUATION_TOOL_DEFINITIONS,
+    _exec_tick_quality_summary,
+    _exec_detect_stale_goals,
+    _exec_decision_adherence,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2046,6 +2052,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *MEMORY_HIERARCHY_TOOL_DEFINITIONS,
     *PROVIDER_RETRY_TOOL_DEFINITIONS,
     *PROVIDER_HEALTH_TOOL_DEFINITIONS,
+    *SELF_EVALUATION_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5448,6 +5455,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "test_retry_policy": _exec_test_retry,
     "provider_health_check": _exec_run_health_check,
     "provider_health_status": _exec_get_health_snapshot,
+    "tick_quality_summary": _exec_tick_quality_summary,
+    "detect_stale_goals": _exec_detect_stale_goals,
+    "decision_adherence_summary": _exec_decision_adherence,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

@@ -139,17 +139,43 @@ def on_agent_recruited(payload: dict[str, Any]) -> None:
         logger.warning("skyoffice_council_viz: recruit %s failed: %s", role, exc)
 
 
+_HANDLERS: dict[str, Any] = {
+    "council.autonomous_triggered": on_council_triggered,
+    "council.autonomous_concluded": on_council_concluded,
+    "council.agent_recruited": on_agent_recruited,
+}
+
+
+def _poll_loop() -> None:
+    """Daemon thread: pull events off the bus queue and dispatch to handlers."""
+    try:
+        from core.eventbus.bus import event_bus
+    except Exception as exc:
+        logger.warning("skyoffice_council_viz: eventbus import failed: %s", exc)
+        return
+    queue = event_bus.subscribe()
+    logger.info("skyoffice_council_viz: subscribed to eventbus, polling for council.*")
+    while True:
+        item = queue.get()
+        if item is None:
+            return
+        try:
+            kind = str(item.get("kind") or "")
+            handler = _HANDLERS.get(kind)
+            if handler is None:
+                continue
+            payload = item.get("payload") or {}
+            handler(payload)
+        except Exception as exc:
+            logger.warning("skyoffice_council_viz: handler error: %s", exc)
+
+
 def subscribe_council_visualization() -> None:
-    """Idempotent — subscribe to council eventbus topics for SkyOffice viz."""
+    """Idempotent — start a daemon thread that pulls council events from the bus
+    and pushes them to SkyOffice as agent presence updates."""
     global _subscribed
     if _subscribed:
         return
-    try:
-        from core.eventbus.bus import event_bus
-        event_bus.subscribe("council.autonomous_triggered", on_council_triggered)
-        event_bus.subscribe("council.autonomous_concluded", on_council_concluded)
-        event_bus.subscribe("council.agent_recruited", on_agent_recruited)
-        _subscribed = True
-        logger.info("skyoffice_council_viz: subscribed to 3 council topics")
-    except Exception as exc:
-        logger.warning("skyoffice_council_viz: subscribe failed: %s", exc)
+    _subscribed = True
+    t = threading.Thread(target=_poll_loop, name="skyoffice-council-viz", daemon=True)
+    t.start()

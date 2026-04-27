@@ -34,6 +34,12 @@ _SCHEDULE: dict[str, timedelta] = {
     "auto_improvement_proposals": timedelta(hours=24),  # daily check + propose
     "agent_observation_decay": timedelta(hours=24),  # daily stale-marking
     "wakeup_dispatch": timedelta(seconds=60),  # poll every 60s for fired wakeups
+    # Identity formation infrastructure (2026-04-27)
+    "crisis_scan": timedelta(hours=24),  # daily — find friction moments
+    "identity_drift_proposal": timedelta(days=7),  # weekly — file proposal if drifted
+    "monthly_arc": timedelta(days=28),  # monthly narrative
+    "quarterly_arc": timedelta(days=91),  # quarterly arc
+    "annual_arc": timedelta(days=365),  # annual transformation doc
 }
 
 

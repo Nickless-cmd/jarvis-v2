@@ -161,6 +161,43 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _crisis_scan_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Daily: scan for identity-forming crisis markers."""
+        try:
+            from core.services.crisis_marker_detector import scan_for_crisis_markers
+            return {"status": "ok", "kind": "crisis_scan", "result": scan_for_crisis_markers()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
+    def _identity_drift_proposer_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Weekly: if drift sustained, propose IDENTITY.md update."""
+        try:
+            from core.services.identity_drift_proposer import propose_identity_update_if_drifted
+            return {"status": "ok", "kind": "identity_drift_proposal", "result": propose_identity_update_if_drifted()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
+    def _monthly_arc_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services.long_arc_synthesizer import synthesize_arc
+            return {"status": "ok", "kind": "monthly_arc", "result": synthesize_arc(period="monthly")}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
+    def _quarterly_arc_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services.long_arc_synthesizer import synthesize_arc
+            return {"status": "ok", "kind": "quarterly_arc", "result": synthesize_arc(period="quarterly")}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
+    def _annual_arc_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services.long_arc_synthesizer import synthesize_arc
+            return {"status": "ok", "kind": "annual_arc", "result": synthesize_arc(period="annual")}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
@@ -172,6 +209,11 @@ def ensure_default_job_handlers() -> list[str]:
         "auto_improvement_proposals": _auto_improvement_handler,
         "agent_observation_decay": _agent_observation_decay_handler,
         "wakeup_dispatch": _wakeup_dispatch_handler,
+        "crisis_scan": _crisis_scan_handler,
+        "identity_drift_proposal": _identity_drift_proposer_handler,
+        "monthly_arc": _monthly_arc_handler,
+        "quarterly_arc": _quarterly_arc_handler,
+        "annual_arc": _annual_arc_handler,
     }
 
     for job_type, handler in handlers.items():

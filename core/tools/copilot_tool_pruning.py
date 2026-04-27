@@ -72,6 +72,44 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     "classify_clarification",
     "flag_side_task", "list_side_tasks", "dismiss_side_task", "activate_side_task",
     "smart_outline",
+    # Today's additions (2026-04-27) — must be Tier 1 or pruning hides them
+    # Reasoning layer (R1/R2/R3)
+    "reasoning_classify", "verification_status", "recommend_escalation",
+    # Context engineering
+    "context_pressure", "manage_context_window",
+    "auto_compact_check", "auto_compact_run", "build_subagent_context",
+    "list_context_versions", "recall_context_version",
+    # Memory hierarchy + recall
+    "unified_recall", "recall_before_act",
+    "memory_hot_tier", "memory_warm_tier", "memory_cold_tier",
+    # Autonomous goals
+    "goal_create", "goal_list", "goal_decompose", "goal_update_status",
+    # Multi-agent
+    "list_agent_roles", "register_custom_role",
+    "agent_relay_message", "agent_relay_to_role",
+    # Emotion + drift
+    "capture_emotion_tag", "personality_drift_check", "personality_drift_snapshot",
+    # Tool patterns
+    "mine_tool_patterns",
+    # Heartbeat phases
+    "phased_heartbeat_tick", "heartbeat_sense",
+    # Provider robustness
+    "provider_health_check", "provider_health_status",
+    # Self-evaluation
+    "tick_quality_summary", "detect_stale_goals", "decision_adherence_summary",
+    # Auto-improvement loop
+    "generate_improvement_proposals",
+    "log_variant_outcome", "variant_performance",
+    "start_prompt_experiment", "conclude_prompt_experiment", "list_prompt_experiments",
+    # Identity mutation
+    "list_identity_mutations", "rollback_identity_mutation", "identity_mutation_status",
+    # Scout Memory
+    "get_agent_skills", "append_skill_observation",
+    "rollback_skill_mutation", "list_skill_mutations", "list_skill_roles",
+    "compress_agent_run", "list_agent_observations", "get_agent_observation",
+    "cross_agent_recall",
+    # Self-wakeup
+    "schedule_self_wakeup", "list_self_wakeups", "cancel_self_wakeup", "mark_wakeup_consumed",
 })
 
 
@@ -287,16 +325,16 @@ def select_tools_for_visible(
     *,
     user_message: str = "",
     session_id: str | None = None,
-    max_tools: int = 140,
+    max_tools: int = 200,
 ) -> list[dict]:
     """Provider-neutral pruning wrapper for the visible lane.
 
-    Same scoring as ``select_tools_for_copilot`` but with a softer cap (140
+    Same scoring as ``select_tools_for_copilot`` but with a softer cap (200
     instead of 128) since non-Copilot providers don't have a hard 128-tool
-    limit. Conservative default — ~165 → ~140 saves roughly 7 KB / 2 KT
-    per turn while every Tier-1 tool (including the new T/X/E/P series)
-    stays visible. Bump max_tools higher if a model starts noticeably
-    forgetting capabilities.
+    limit. 2026-04-27: bumped from 140 → 200 because Tier 1 alone grew to
+    ~183 with today's reasoning/scout-memory/self-wakeup additions, and
+    the user explicitly noticed when schedule_self_wakeup got pruned.
+    Trade-off: ~3 KT extra per turn vs every important tool available.
     """
     return select_tools_for_copilot(
         tools, user_message=user_message, session_id=session_id, max_tools=max_tools,

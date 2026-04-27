@@ -328,6 +328,34 @@ def spawn_agent_task(
     template = AGENT_ROLE_TEMPLATES.get(role, AGENT_ROLE_TEMPLATES["researcher"])
     system_prompt = str(system_prompt or template["system_prompt"])
     tool_policy = str(tool_policy or template["default_tool_policy"])
+    # Layer 2 (Scout Memory): inject role's learned skills.md if present
+    try:
+        from core.services.agent_skill_library import get_skills
+        skills_info = get_skills(role)
+        if skills_info.get("exists") and skills_info.get("content"):
+            skills_text = str(skills_info["content"])[:3000]
+            system_prompt = (
+                f"{system_prompt}\n\n"
+                "## Lærte mønstre (cross-session skills.md)\n"
+                f"{skills_text}\n"
+                "Brug `append_skill_observation` ved completion hvis du opdager "
+                "et nyt mønster der er værd at huske."
+            )
+    except Exception:
+        pass
+
+    # Layer 3 (Scout Memory): inject relevant cross-agent observations
+    try:
+        from core.services.cross_agent_memory import cross_agent_recall_section
+        cross_agent_text = cross_agent_recall_section(role=role, query=goal)
+        if cross_agent_text:
+            system_prompt = (
+                f"{system_prompt}\n\n{cross_agent_text}\n"
+                "Disse observationer kommer fra andre agenter der har arbejdet med "
+                "lignende emner. Brug dem som baggrund — verificér selv før du regner med dem."
+            )
+    except Exception:
+        pass
     if not provider or not model:
         # Task-aware routing: classify goal → tier, look up role's tier-specific
         # provider/model from council_models.json. Falls through to flat

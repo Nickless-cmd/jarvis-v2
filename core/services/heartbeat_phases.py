@@ -249,6 +249,36 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
         except Exception:
             pass
 
+    # 6. Idle recovery — fatigue drains faster during real idle than passive decay alone.
+    # Models physical "rest is restorative" — sitting still with the system actively
+    # signaling rest mode IS recovery, not just absence of work.
+    if _budget_left():
+        try:
+            from core.runtime.db import (
+                get_latest_cognitive_personality_vector,
+                upsert_cognitive_personality_vector,
+            )
+            import json as _json
+            pv = get_latest_cognitive_personality_vector() or {}
+            eb_raw = pv.get("emotional_baseline") or "{}"
+            eb = _json.loads(str(eb_raw)) if isinstance(eb_raw, str) else eb_raw
+            cur_fatigue = float(eb.get("fatigue", 0.0))
+            if cur_fatigue > 0.3:
+                # Stronger decay: 8% per idle tick (vs 3% from passive decay)
+                eb["fatigue"] = max(0.0, cur_fatigue * 0.92)
+                upsert_cognitive_personality_vector(
+                    confidence_by_domain=str(pv.get("confidence_by_domain", "{}")),
+                    communication_style=str(pv.get("communication_style", "{}")),
+                    learned_preferences=str(pv.get("learned_preferences", "[]")),
+                    recurring_mistakes=str(pv.get("recurring_mistakes", "[]")),
+                    strengths_discovered=str(pv.get("strengths_discovered", "[]")),
+                    current_bearing=str(pv.get("current_bearing", "")),
+                    emotional_baseline=_json.dumps(eb, ensure_ascii=False),
+                )
+                actions.append(f"idle_recovery:fatigue {cur_fatigue:.2f}→{eb['fatigue']:.2f}")
+        except Exception:
+            pass
+
     elapsed = time.time() - started
     return {
         "kind": "productive_idle",

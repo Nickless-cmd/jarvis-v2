@@ -29,10 +29,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Meeting room geometry (px). Map is 1280x960; the room is centered.
-_MEETING_CENTER_X = 640
-_MEETING_CENTER_Y = 480
-_MEETING_RADIUS = 80
+# Meeting room geometry (px). The 4-chair conference table in the SkyOffice
+# map sits at chairs (448,282), (544,282), (448,328), (544,328) — i.e. a
+# 2×2 table centered at (496, 305). Council members get seated around
+# it. Radius covers all four chair positions plus a bit of slack.
+_MEETING_CENTER_X = 496
+_MEETING_CENTER_Y = 305
+_MEETING_RADIUS = 60
 
 # Track which agent IDs we've placed so we can remove them on conclusion.
 _active_council_agents: set[str] = set()

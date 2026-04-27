@@ -256,6 +256,41 @@ from core.services.tool_pattern_miner import (
     TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
     _exec_mine_tool_patterns,
 )
+from core.services.heartbeat_phases import (
+    HEARTBEAT_PHASES_TOOL_DEFINITIONS,
+    _exec_phased_tick,
+    _exec_sense_only,
+)
+from core.services.proactive_context_governor import (
+    PROACTIVE_CONTEXT_TOOL_DEFINITIONS,
+    _exec_should_auto_compact,
+    _exec_auto_compact_if_needed,
+    _exec_build_subagent_context,
+    _exec_list_context_versions,
+    _exec_recall_context_version,
+)
+from core.services.memory_hierarchy import (
+    MEMORY_HIERARCHY_TOOL_DEFINITIONS,
+    _exec_recall_before_act,
+    _exec_hot_tier,
+    _exec_warm_tier,
+    _exec_cold_tier,
+)
+from core.services.provider_retry_policy import (
+    PROVIDER_RETRY_TOOL_DEFINITIONS,
+    _exec_test_retry,
+)
+from core.services.provider_health_check import (
+    PROVIDER_HEALTH_TOOL_DEFINITIONS,
+    _exec_run_health_check,
+    _exec_get_health_snapshot,
+)
+from core.services.agent_self_evaluation import (
+    SELF_EVALUATION_TOOL_DEFINITIONS,
+    _exec_tick_quality_summary,
+    _exec_detect_stale_goals,
+    _exec_decision_adherence,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2012,6 +2047,12 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *EMOTION_TAGGING_TOOL_DEFINITIONS,
     *PERSONALITY_DRIFT_TOOL_DEFINITIONS,
     *TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
+    *HEARTBEAT_PHASES_TOOL_DEFINITIONS,
+    *PROACTIVE_CONTEXT_TOOL_DEFINITIONS,
+    *MEMORY_HIERARCHY_TOOL_DEFINITIONS,
+    *PROVIDER_RETRY_TOOL_DEFINITIONS,
+    *PROVIDER_HEALTH_TOOL_DEFINITIONS,
+    *SELF_EVALUATION_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5400,6 +5441,23 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "personality_drift_check": _exec_personality_drift_check,
     "personality_drift_snapshot": _exec_personality_drift_snapshot,
     "mine_tool_patterns": _exec_mine_tool_patterns,
+    "phased_heartbeat_tick": _exec_phased_tick,
+    "heartbeat_sense": _exec_sense_only,
+    "auto_compact_check": _exec_should_auto_compact,
+    "auto_compact_run": _exec_auto_compact_if_needed,
+    "build_subagent_context": _exec_build_subagent_context,
+    "list_context_versions": _exec_list_context_versions,
+    "recall_context_version": _exec_recall_context_version,
+    "recall_before_act": _exec_recall_before_act,
+    "memory_hot_tier": _exec_hot_tier,
+    "memory_warm_tier": _exec_warm_tier,
+    "memory_cold_tier": _exec_cold_tier,
+    "test_retry_policy": _exec_test_retry,
+    "provider_health_check": _exec_run_health_check,
+    "provider_health_status": _exec_get_health_snapshot,
+    "tick_quality_summary": _exec_tick_quality_summary,
+    "detect_stale_goals": _exec_detect_stale_goals,
+    "decision_adherence_summary": _exec_decision_adherence,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

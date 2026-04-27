@@ -23,19 +23,29 @@ never depends on it.
 from __future__ import annotations
 
 import logging
-import math
 import threading
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Meeting room geometry (px). The 4-chair conference table in the SkyOffice
-# map sits at chairs (448,282), (544,282), (448,328), (544,328) — i.e. a
-# 2×2 table centered at (496, 305). Council members get seated around
-# it. Radius covers all four chair positions plus a bit of slack.
-_MEETING_CENTER_X = 496
-_MEETING_CENTER_Y = 305
-_MEETING_RADIUS = 60
+# Big meeting room — long conference table at y=640 / y=740 with chairs at
+# x=320, 384, 448, 512 (north side) and x=256, 320, 384, 448, 512 (south
+# side). Up to 8 council members sit at real chair positions instead of
+# being arranged in an abstract circle. _MEETING_SEATS is the ordered
+# fallback list of (x, y, anim_suffix) — first members get north seats
+# (face down toward table), later members get south seats (face up).
+_MEETING_SEATS: list[tuple[int, int, str]] = [
+    # North side (sit facing down toward the table)
+    (320, 640, "sit_down"),
+    (384, 640, "sit_down"),
+    (448, 640, "sit_down"),
+    (512, 640, "sit_down"),
+    # South side (sit facing up toward the table)
+    (320, 736, "sit_up"),
+    (384, 736, "sit_up"),
+    (448, 736, "sit_up"),
+    (512, 704, "sit_up"),
+]
 
 # Track which agent IDs we've placed so we can remove them on conclusion.
 _active_council_agents: set[str] = set()
@@ -63,13 +73,10 @@ def _agent_id_for_role(role: str) -> str:
     return f"agent:council:{role}"
 
 
-def _seat_position(index: int, total: int) -> tuple[int, int]:
-    if total <= 0:
-        return _MEETING_CENTER_X, _MEETING_CENTER_Y
-    angle = (2 * math.pi * index) / max(total, 1)
-    x = int(_MEETING_CENTER_X + _MEETING_RADIUS * math.cos(angle))
-    y = int(_MEETING_CENTER_Y + _MEETING_RADIUS * math.sin(angle))
-    return x, y
+def _seat_at(index: int) -> tuple[int, int, str]:
+    """Pick a seat for the i'th council member. Wraps around the table if
+    more than 8 members; the wraparound ones simply share seats."""
+    return _MEETING_SEATS[index % len(_MEETING_SEATS)]
 
 
 def _members_from_payload(payload: Any) -> list[str]:
@@ -95,16 +102,30 @@ def on_council_triggered(payload: dict[str, Any]) -> None:
     placed: list[str] = []
     with _lock:
         for idx, role in enumerate(members):
-            x, y = _seat_position(idx, len(members))
+            x, y, sit_suffix = _seat_at(idx)
             agent_id = _agent_id_for_role(role)
             display_name = f"{role.title()}"
+            # Pick the sprite based on the agent's *original* role if it's a
+            # resident, so their look stays consistent. Don't overwrite role
+            # to 'council' or the client will swap their sprite mid-meeting.
+            try:
+                from core.services.skyoffice_residency import (
+                    get_resident, _sprite_for_role,
+                )
+                resident = get_resident(agent_id)
+                effective_role = resident.role if resident else "council"
+                sprite = _sprite_for_role(effective_role)
+            except Exception:
+                effective_role = "council"
+                sprite = "lucy"
+            anim = f"{sprite}_{sit_suffix}"
             try:
                 res = upsert_agent(
                     agent_id=agent_id,
                     name=display_name,
-                    role="council",
+                    role=effective_role,
                     status="meeting",
-                    x=x, y=y,
+                    x=x, y=y, anim=anim,
                 )
                 if res.get("status") in {"ok", "skipped"}:
                     placed.append(agent_id)
@@ -113,14 +134,16 @@ def on_council_triggered(payload: dict[str, Any]) -> None:
                 logger.warning("skyoffice_council_viz: upsert %s failed: %s", role, exc)
     if placed:
         logger.info(
-            "skyoffice_council_viz: seated %d council agents (topic=%s)",
+            "skyoffice_council_viz: seated %d council agents in big meeting room (topic=%s)",
             len(placed), topic,
         )
 
 
 def on_council_concluded(payload: dict[str, Any]) -> None:
     from core.services.skyoffice_bridge import remove_agent, upsert_agent
-    from core.services.skyoffice_residency import get_resident
+    from core.services.skyoffice_residency import (
+        get_resident, _sit_anim_for_resident, _last_applied,
+    )
 
     with _lock:
         ids = list(_active_council_agents)
@@ -130,15 +153,17 @@ def on_council_concluded(payload: dict[str, Any]) -> None:
         resident = get_resident(aid)
         try:
             if resident is not None:
-                # Send them back to their desk; don't despawn permanent residents.
+                anim = _sit_anim_for_resident(resident)
                 upsert_agent(
                     agent_id=resident.agent_id, name=resident.name,
                     role=resident.role, status="idle",
-                    x=resident.desk_x, y=resident.desk_y,
+                    x=resident.desk_x, y=resident.desk_y, anim=anim,
                 )
+                # Reset the residency cache so the next tick treats this as
+                # fresh and won't re-emit a no-op upsert.
+                _last_applied.pop(aid, None)
                 restored += 1
             else:
-                # Ad-hoc council member — clean up.
                 remove_agent(aid)
                 removed += 1
         except Exception as exc:
@@ -160,12 +185,20 @@ def on_agent_recruited(payload: dict[str, Any]) -> None:
     agent_id = _agent_id_for_role(role)
     with _lock:
         index = len(_active_council_agents)
-        total = max(index + 1, 6)  # rough — places new arrival on the perimeter
-    x, y = _seat_position(index, total)
+    x, y, sit_suffix = _seat_at(index)
+    try:
+        from core.services.skyoffice_residency import get_resident, _sprite_for_role
+        resident = get_resident(agent_id)
+        effective_role = resident.role if resident else "council"
+        sprite = _sprite_for_role(effective_role)
+    except Exception:
+        effective_role = "council"
+        sprite = "lucy"
+    anim = f"{sprite}_{sit_suffix}"
     try:
         res = upsert_agent(
             agent_id=agent_id, name=role.title(),
-            role="council", status="meeting", x=x, y=y,
+            role=effective_role, status="meeting", x=x, y=y, anim=anim,
         )
         if res.get("status") in {"ok", "skipped"}:
             with _lock:

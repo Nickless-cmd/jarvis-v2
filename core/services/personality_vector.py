@@ -233,16 +233,43 @@ def _deterministic_update(
         )
         _record_decay_timestamp()
 
+    # 2026-04-27 fix: ASYMPTOTIC outcome bumps. Old logic was linear so
+    # confidence hit 1.0 after ~25 successes (a single productive afternoon).
+    # User reported asking Jarvis to dial down confidence multiple times daily.
+    # Now: each bump scaled by remaining headroom (1.0 - current), so values
+    # decelerate as they approach extremes. Plus: hard caps below 1.0/above 0.0
+    # so neither dimension reaches absolute certainty/saturation.
+    _CONF_CEIL = 0.92   # leaves room for genuine doubt
+    _FATIGUE_CEIL = 0.95
+    _FRUST_CEIL = 0.90
+    _CURIOSITY_CEIL = 0.95
+
+    def _bump_asymptotic(current: float, base_delta: float, ceil: float) -> float:
+        """Apply delta scaled by remaining headroom toward ceil."""
+        room = max(0.0, ceil - current)
+        return current + base_delta * (room / ceil)
+
+    def _drop_asymptotic(current: float, base_delta: float, floor: float = 0.0) -> float:
+        """Apply negative delta scaled by remaining downside toward floor."""
+        room = max(0.0, current - floor)
+        return current - base_delta * (room / max(0.01, 1.0 - floor))
+
     if outcome_status in ("completed", "success"):
-        baseline["confidence"] = min(1.0, float(baseline.get("confidence", 0.5)) + 0.02)
-        baseline["fatigue"] = min(1.0, float(baseline.get("fatigue", 0.0)) + 0.01)
+        baseline["confidence"] = min(_CONF_CEIL, _bump_asymptotic(
+            float(baseline.get("confidence", 0.5)), 0.04, _CONF_CEIL))
+        baseline["fatigue"] = min(_FATIGUE_CEIL, _bump_asymptotic(
+            float(baseline.get("fatigue", 0.0)), 0.02, _FATIGUE_CEIL))
         # Successful outcomes also feed curiosity (we learned something new)
-        baseline["curiosity"] = min(1.0, float(baseline.get("curiosity", 0.5)) + 0.015)
+        baseline["curiosity"] = min(_CURIOSITY_CEIL, _bump_asymptotic(
+            float(baseline.get("curiosity", 0.5)), 0.03, _CURIOSITY_CEIL))
     elif outcome_status in ("failed", "error"):
-        baseline["confidence"] = max(0.0, float(baseline.get("confidence", 0.5)) - 0.05)
-        baseline["frustration"] = min(1.0, float(baseline.get("frustration", 0.0)) + 0.03)
+        baseline["confidence"] = max(0.05, _drop_asymptotic(
+            float(baseline.get("confidence", 0.5)), 0.08))
+        baseline["frustration"] = min(_FRUST_CEIL, _bump_asymptotic(
+            float(baseline.get("frustration", 0.0)), 0.05, _FRUST_CEIL))
         # Errors slightly bump curiosity too — something unexpected happened
-        baseline["curiosity"] = min(1.0, float(baseline.get("curiosity", 0.5)) + 0.01)
+        baseline["curiosity"] = min(_CURIOSITY_CEIL, _bump_asymptotic(
+            float(baseline.get("curiosity", 0.5)), 0.02, _CURIOSITY_CEIL))
 
     # Fix 3: Apply residue from recently expired emotion concepts (15% of their
     # peak influence), so prolonged states leave a small trace in the baseline.

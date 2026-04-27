@@ -518,6 +518,26 @@ def build_visible_chat_prompt_assembly(
     except Exception:
         pass
     try:
+        from core.services.self_model_predictive import predictive_self_model_section
+        _awareness_add(82, "predictive self-model (empirical)", predictive_self_model_section())
+    except Exception:
+        pass
+    try:
+        from core.services.priors_feedback import priors_feedback_section
+        _awareness_add(55, "priors from your own data", priors_feedback_section())
+    except Exception:
+        pass
+    try:
+        from core.services.arc_rule_extractor import arc_rules_section
+        _awareness_add(60, "rules learned from arcs", arc_rules_section())
+    except Exception:
+        pass
+    try:
+        from core.services.memory_hierarchy import recall_before_act_summary
+        _awareness_add(52, "recall before act (relevant past)", recall_before_act_summary() or "")
+    except Exception:
+        pass
+    try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
     except Exception:

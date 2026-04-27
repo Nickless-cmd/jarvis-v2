@@ -243,6 +243,15 @@ from core.services.agent_relay import (
     _exec_relay_message,
     _exec_relay_to_role,
 )
+from core.services.emotion_tagging import (
+    EMOTION_TAGGING_TOOL_DEFINITIONS,
+    _exec_capture_emotion_tag,
+)
+from core.services.personality_drift import (
+    PERSONALITY_DRIFT_TOOL_DEFINITIONS,
+    _exec_personality_drift_check,
+    _exec_personality_drift_snapshot,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -1996,6 +2005,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *UNIFIED_RECALL_TOOL_DEFINITIONS,
     *ROLE_REGISTRY_TOOL_DEFINITIONS,
     *AGENT_RELAY_TOOL_DEFINITIONS,
+    *EMOTION_TAGGING_TOOL_DEFINITIONS,
+    *PERSONALITY_DRIFT_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5380,6 +5391,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "register_custom_role": _exec_register_custom_role,
     "agent_relay_message": _exec_relay_message,
     "agent_relay_to_role": _exec_relay_to_role,
+    "capture_emotion_tag": _exec_capture_emotion_tag,
+    "personality_drift_check": _exec_personality_drift_check,
+    "personality_drift_snapshot": _exec_personality_drift_snapshot,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

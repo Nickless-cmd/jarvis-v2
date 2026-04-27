@@ -329,16 +329,15 @@ def spawn_agent_task(
     system_prompt = str(system_prompt or template["system_prompt"])
     tool_policy = str(tool_policy or template["default_tool_policy"])
     if not provider or not model:
-        # First: check council_models.json for the role's preferred config.
-        # Without this, single-role spawns (quick_council_check, ad-hoc
-        # spawn_agent_task) bypass the per-role mapping and just default
-        # to cheap_lane primary — defeating the whole council_models.json.
+        # Task-aware routing: classify goal → tier, look up role's tier-specific
+        # provider/model from council_models.json. Falls through to flat
+        # role-default if config has no tiers, or to cheap_lane defaults
+        # below if no role match.
         try:
-            role_models = _load_council_model_config()
-            role_match = next((m for m in role_models if str(m.get("role") or "") == role), None)
-            if role_match:
-                provider = str(provider or role_match.get("provider") or "")
-                model = str(model or role_match.get("model") or "")
+            from core.services.role_model_resolver import resolve_role_model
+            resolved = resolve_role_model(role=role, goal=goal)
+            provider = str(provider or resolved.get("provider") or "")
+            model = str(model or resolved.get("model") or "")
         except Exception:
             pass
     if not provider or not model:

@@ -214,6 +214,22 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _signal_surface_gc_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services.signal_surface_gc import collect
+            return {"status": "ok", "kind": "signal_surface_gc",
+                    "result": collect()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
+    def _decision_review_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services.decision_review_prompter import review_pending_decisions
+            return {"status": "ok", "kind": "decision_review",
+                    "result": review_pending_decisions()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
@@ -232,6 +248,8 @@ def ensure_default_job_handlers() -> list[str]:
         "annual_arc": _annual_arc_handler,
         "skill_distillation": _skill_distillation_handler,
         "arc_rule_extraction": _arc_rule_extraction_handler,
+        "signal_surface_gc": _signal_surface_gc_handler,
+        "decision_review": _decision_review_handler,
     }
 
     for job_type, handler in handlers.items():

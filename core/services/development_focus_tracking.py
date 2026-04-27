@@ -188,13 +188,21 @@ def _explicit_learning_focus(message: str) -> dict[str, object] | None:
     if not any(marker in lower for marker in explicit_markers):
         return None
 
-    topic = _after_marker(lower, explicit_markers) or lower
-    topic = re.sub(r"^[^a-zæøå]+", "", topic).strip(" .,:;")
+    raw_topic = _after_marker(lower, explicit_markers) or ""
+    topic = re.sub(r"^[^a-zæøå]+", "", raw_topic).strip(" .,:;")
     if topic.startswith("at "):
         topic = topic[3:].strip()
     if topic.startswith("to "):
         topic = topic[3:].strip()
-    topic = topic[:120] or "the requested improvement area"
+    topic = topic[:120].strip()
+    # Reject when the topic is missing or noise. Without this gate, "Du skal
+    # blive bedre til <runtime word salad>" turned the entire trailing
+    # message into a goal title, polluting goal-signal surfaces.
+    from core.services.signal_noise_guard import (
+        is_noisy_signal_text, looks_like_substantive_runtime_topic,
+    )
+    if not topic or is_noisy_signal_text(topic) or not looks_like_substantive_runtime_topic(topic):
+        return None
     canonical_topic = re.sub(r"[^a-z0-9]+", "-", topic).strip("-")[:72] or "explicit-improvement"
     return {
         "focus_type": "user-directed-improvement",

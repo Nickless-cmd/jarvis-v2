@@ -337,6 +337,10 @@ from core.services.self_wakeup import (
     _exec_cancel_self_wakeup,
     _exec_mark_wakeup_consumed,
 )
+from core.services.wakeup_dispatcher import (
+    WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
+    _exec_dispatch_due_wakeups,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2107,6 +2111,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *AGENT_OBSERVATION_TOOL_DEFINITIONS,
     *CROSS_AGENT_TOOL_DEFINITIONS,
     *SELF_WAKEUP_TOOL_DEFINITIONS,
+    *WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5534,6 +5539,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_self_wakeups": _exec_list_self_wakeups,
     "cancel_self_wakeup": _exec_cancel_self_wakeup,
     "mark_wakeup_consumed": _exec_mark_wakeup_consumed,
+    "dispatch_due_wakeups": _exec_dispatch_due_wakeups,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

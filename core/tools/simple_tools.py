@@ -256,6 +256,11 @@ from core.services.tool_pattern_miner import (
     TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
     _exec_mine_tool_patterns,
 )
+from core.services.heartbeat_phases import (
+    HEARTBEAT_PHASES_TOOL_DEFINITIONS,
+    _exec_phased_tick,
+    _exec_sense_only,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2012,6 +2017,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *EMOTION_TAGGING_TOOL_DEFINITIONS,
     *PERSONALITY_DRIFT_TOOL_DEFINITIONS,
     *TOOL_PATTERN_MINER_TOOL_DEFINITIONS,
+    *HEARTBEAT_PHASES_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5400,6 +5406,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "personality_drift_check": _exec_personality_drift_check,
     "personality_drift_snapshot": _exec_personality_drift_snapshot,
     "mine_tool_patterns": _exec_mine_tool_patterns,
+    "phased_heartbeat_tick": _exec_phased_tick,
+    "heartbeat_sense": _exec_sense_only,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

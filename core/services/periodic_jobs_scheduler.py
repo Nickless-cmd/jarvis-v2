@@ -33,6 +33,7 @@ _SCHEDULE: dict[str, timedelta] = {
     "provider_health_check": timedelta(minutes=5),  # 12x/hour proactive ping
     "auto_improvement_proposals": timedelta(hours=24),  # daily check + propose
     "agent_observation_decay": timedelta(hours=24),  # daily stale-marking
+    "wakeup_dispatch": timedelta(seconds=60),  # poll every 60s for fired wakeups
 }
 
 

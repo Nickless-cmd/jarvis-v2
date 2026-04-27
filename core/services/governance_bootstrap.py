@@ -153,6 +153,14 @@ def ensure_default_job_handlers() -> list[str]:
         except Exception as exc:
             return {"status": "error", "error": str(exc)}
 
+    def _wakeup_dispatch_handler(payload: dict[str, Any]) -> dict[str, Any]:
+        """Every 60s: dispatch fired self-wakeups (webchat push + heartbeat trigger)."""
+        try:
+            from core.services.wakeup_dispatcher import dispatch_due_wakeups
+            return {"status": "ok", "kind": "wakeup_dispatch", "result": dispatch_due_wakeups()}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)}
+
     handlers = {
         "chronicle_refresh": _chronicle_refresh_handler,
         "memory_decay_sweep": _memory_decay_handler,
@@ -163,6 +171,7 @@ def ensure_default_job_handlers() -> list[str]:
         "provider_health_check": _provider_health_handler,
         "auto_improvement_proposals": _auto_improvement_handler,
         "agent_observation_decay": _agent_observation_decay_handler,
+        "wakeup_dispatch": _wakeup_dispatch_handler,
     }
 
     for job_type, handler in handlers.items():

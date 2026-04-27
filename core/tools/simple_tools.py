@@ -306,6 +306,12 @@ from core.services.experiment_runner import (
     _exec_conclude_experiment,
     _exec_list_experiments,
 )
+from core.services.identity_mutation_log import (
+    IDENTITY_MUTATION_TOOL_DEFINITIONS,
+    _exec_list_identity_mutations,
+    _exec_rollback_identity_mutation,
+    _exec_identity_mutation_status,
+)
 from core.tools.recurring_scheduler_tools import (
     RECURRING_TOOL_DEFINITIONS,
     _exec_schedule_recurring,
@@ -2071,6 +2077,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *AUTO_IMPROVEMENT_TOOL_DEFINITIONS,
     *PROMPT_VARIANT_TOOL_DEFINITIONS,
     *EXPERIMENT_RUNNER_TOOL_DEFINITIONS,
+    *IDENTITY_MUTATION_TOOL_DEFINITIONS,
     *RECURRING_TOOL_DEFINITIONS,
     *WEBHOOK_TOOL_DEFINITIONS,
     *HEALTH_MONITOR_TOOL_DEFINITIONS,
@@ -5482,6 +5489,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "start_prompt_experiment": _exec_start_experiment,
     "conclude_prompt_experiment": _exec_conclude_experiment,
     "list_prompt_experiments": _exec_list_experiments,
+    "list_identity_mutations": _exec_list_identity_mutations,
+    "rollback_identity_mutation": _exec_rollback_identity_mutation,
+    "identity_mutation_status": _exec_identity_mutation_status,
     # Recurring scheduler
     "schedule_recurring": _exec_schedule_recurring,
     "list_recurring": _exec_list_recurring,

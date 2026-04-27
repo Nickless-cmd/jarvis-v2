@@ -11,16 +11,21 @@ import core.services.experiment_runner as exr
 # ── auto_improvement_proposer ──
 
 
-def test_is_safe_target_blocks_protected_files():
-    assert aip._is_safe_target("update SOUL.md") is False
-    assert aip._is_safe_target("modify IDENTITY.md") is False
-    assert aip._is_safe_target("rewrite MANIFEST.md") is False
+def test_is_safe_target_blocks_only_infrastructure_after_authorization():
+    # Per 2026-04-27 user authorization, identity files are now allowed —
+    # they route via identity_mutation_log for audit + rollback.
+    assert aip._is_safe_target("update SOUL.md") is True  # routed via mutation_log
+    assert aip._is_safe_target("modify IDENTITY.md") is True
+    assert aip._is_safe_target("rewrite MANIFEST.md") is True
     assert aip._is_safe_target("change tool description") is True
 
 
-def test_is_safe_target_blocks_protected_modules():
+def test_is_safe_target_still_blocks_infrastructure():
+    # Stability blocks remain — these would create recursive bugs
     assert aip._is_safe_target("core.services.auto_improvement_proposer:foo") is False
     assert aip._is_safe_target("core.services.plan_proposals:bar") is False
+    assert aip._is_safe_target("core.services.identity_mutation_log:x") is False
+    assert aip._is_safe_target("core.services.approvals:y") is False
     assert aip._is_safe_target("core.services.context_window_manager:baz") is True
 
 

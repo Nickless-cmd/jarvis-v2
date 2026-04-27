@@ -55,6 +55,11 @@ from core.runtime.db import (
 )
 
 _STALE_AFTER_DAYS = 7
+# Force-close loops older than this regardless of activity (touches keep
+# 'updated_at' fresh so the stale check above never fires for actively
+# poked-but-never-resolved loops). 21 days is past anything we'd legit-
+# imately keep open — closer ties get re-opened naturally.
+_FORCE_CLOSE_AFTER_DAYS = 21
 _CONFIDENCE_RANKS = {"low": 0, "medium": 1, "high": 2}
 _WEIGHT_RANKS = {"low": 0, "medium": 1, "high": 2}
 _STATE_RANKS = {
@@ -91,8 +96,40 @@ def track_runtime_proactive_loop_lifecycle_signals_for_visible_turn(
 def refresh_runtime_proactive_loop_lifecycle_signal_statuses() -> dict[str, int]:
     now = datetime.now(UTC)
     refreshed = 0
+    force_closed = 0
     for item in list_runtime_proactive_loop_lifecycle_signals(limit=40):
-        if str(item.get("status") or "") not in {"active", "softening"}:
+        status = str(item.get("status") or "")
+        if status not in {"active", "softening", "stale"}:
+            continue
+        # Force-close uses created_at so touches can't keep an old loop alive.
+        created_at = _parse_dt(str(item.get("created_at") or item.get("updated_at") or ""))
+        if (
+            status in {"active", "softening", "stale"}
+            and created_at is not None
+            and created_at <= now - timedelta(days=_FORCE_CLOSE_AFTER_DAYS)
+        ):
+            closed_item = update_runtime_proactive_loop_lifecycle_signal_status(
+                str(item.get("signal_id") or ""),
+                status="closed",
+                updated_at=now.isoformat(),
+                status_reason=(
+                    f"Force-closed after {_FORCE_CLOSE_AFTER_DAYS}d since creation — "
+                    "loop never resolved through normal channels."
+                ),
+            )
+            if closed_item is not None:
+                force_closed += 1
+                event_bus.publish(
+                    "proactive_loop_lifecycle.force_closed",
+                    {
+                        "signal_id": closed_item.get("signal_id"),
+                        "signal_type": closed_item.get("signal_type"),
+                        "summary": closed_item.get("summary"),
+                        "age_days": (now - created_at).days,
+                    },
+                )
+            continue
+        if status not in {"active", "softening"}:
             continue
         updated_at = _parse_dt(str(item.get("updated_at") or item.get("created_at") or ""))
         if updated_at is None or updated_at > now - timedelta(days=_STALE_AFTER_DAYS):
@@ -116,7 +153,7 @@ def refresh_runtime_proactive_loop_lifecycle_signal_statuses() -> dict[str, int]
                 "status_reason": refreshed_item.get("status_reason"),
             },
         )
-    return {"stale_marked": refreshed}
+    return {"stale_marked": refreshed, "force_closed": force_closed}
 
 
 def build_runtime_proactive_loop_lifecycle_surface(*, limit: int = 8) -> dict[str, object]:

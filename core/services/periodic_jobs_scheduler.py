@@ -43,6 +43,8 @@ _SCHEDULE: dict[str, timedelta] = {
     # System-intelligence growth (2026-04-27)
     "skill_distillation": timedelta(days=7),  # weekly principle extraction per role
     "arc_rule_extraction": timedelta(days=7),  # weekly rule extraction from new arcs
+    "signal_surface_gc": timedelta(hours=1),   # hourly trim of stale/old signal surfaces
+    "decision_review": timedelta(hours=24),    # daily LLM-led self-review of active decisions
 }
 
 

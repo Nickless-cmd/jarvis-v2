@@ -1167,6 +1167,35 @@ def _list_ollamafreeapi_models() -> list[dict[str, object]]:
     return [{"id": model, "label": model} for model in list_ollamafreeapi_models()]
 
 
+_OFA_CB_FAILURES = 0
+_OFA_CB_OPEN_UNTIL = 0.0
+_OFA_CB_THRESHOLD = 3        # open after 3 consecutive fails
+_OFA_CB_OPEN_DURATION_S = 300.0  # stay open 5 minutes
+_OFA_CB_LOCK = __import__("threading").Lock()
+
+
+def _ofa_circuit_open() -> bool:
+    import time as _t
+    with _OFA_CB_LOCK:
+        return _t.time() < _OFA_CB_OPEN_UNTIL
+
+
+def _ofa_circuit_record_failure() -> None:
+    import time as _t
+    global _OFA_CB_FAILURES, _OFA_CB_OPEN_UNTIL
+    with _OFA_CB_LOCK:
+        _OFA_CB_FAILURES += 1
+        if _OFA_CB_FAILURES >= _OFA_CB_THRESHOLD:
+            _OFA_CB_OPEN_UNTIL = _t.time() + _OFA_CB_OPEN_DURATION_S
+            _OFA_CB_FAILURES = 0  # reset for next window
+
+
+def _ofa_circuit_record_success() -> None:
+    global _OFA_CB_FAILURES
+    with _OFA_CB_LOCK:
+        _OFA_CB_FAILURES = 0
+
+
 def _execute_ollamafreeapi_chat(
     *,
     model: str,
@@ -1174,14 +1203,27 @@ def _execute_ollamafreeapi_chat(
 ) -> dict[str, object]:
     from core.runtime.ollamafreeapi_provider import call_ollamafreeapi
 
+    if _ofa_circuit_open():
+        raise CheapProviderError(
+            provider="ollamafreeapi",
+            code="circuit-open",
+            message=(
+                f"ollamafreeapi circuit breaker open (after "
+                f"{_OFA_CB_THRESHOLD}+ consecutive failures, retrying in "
+                f"{int(_OFA_CB_OPEN_DURATION_S/60)}m)"
+            ),
+        )
+
     try:
         data = call_ollamafreeapi(model=model, prompt=message, timeout=_DEFAULT_TIMEOUT_SECONDS)
     except Exception as exc:
+        _ofa_circuit_record_failure()
         raise CheapProviderError(
             provider="ollamafreeapi",
             code="provider-error",
             message=str(exc),
         ) from exc
+    _ofa_circuit_record_success()
     text = str((data.get("message") or {}).get("content") or "").strip()
     return {
         "text": text,

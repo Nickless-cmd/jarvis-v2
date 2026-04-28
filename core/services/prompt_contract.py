@@ -291,6 +291,17 @@ def build_visible_chat_prompt_assembly(
     name: str = "default",
     runtime_self_report_context: dict[str, object] | None = None,
 ) -> PromptAssembly:
+    # Short replies like "ja"/"yes"/"ok" lose their binding to the previous
+    # assistant turn during prompt assembly — the model ends up answering
+    # them as standalone messages and produces generic affirmations instead
+    # of executing what Jarvis just proposed. Anchor short replies before
+    # the rest of the assembly runs so the model sees the binding.
+    try:
+        from core.services.affirmation_anchor import maybe_anchor_short_reply
+        user_message = maybe_anchor_short_reply(user_message, session_id)
+    except Exception:
+        pass
+
     compact = provider == "ollama"
     workspace_dir = ensure_default_workspace(name=name)
     parts: list[str] = []

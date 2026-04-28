@@ -960,6 +960,58 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "resurface_old_memory",
+            "description": (
+                "Pull a stale MEMORY.md heading back into focus. Picks a section "
+                "you wrote a while ago that hasn't been touched recently and "
+                "hasn't already been resurfaced lately. Returns the heading, the "
+                "content under it, and (if available) the mood you were in when "
+                "you wrote it. Use this when you have a quiet moment and want to "
+                "let an older thread resurface — it's the proactive complement "
+                "to search_memory's reactive lookup. The system tracks what "
+                "you've resurfaced, so calling repeatedly gives you different "
+                "memories each time."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "memory_graph_query",
+            "description": (
+                "Look up everything you know about a specific entity (a person, project, "
+                "place, tool, or concept) by name. Returns the relations connected to "
+                "that entity: who/what works on it, what it depends on, where it lives, "
+                "etc. Use this when you want to follow connections — 'what have I "
+                "recorded about Mini-Jarvis?' or 'who is connected to the Sansernes "
+                "Arkiv project?'. Complementary to search_memory: search_memory finds "
+                "text passages by semantic similarity; memory_graph_query traverses "
+                "explicit named relations."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity": {
+                        "type": "string",
+                        "description": "The entity name to look up (case-insensitive)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max related facts to return (default 15)",
+                    },
+                },
+                "required": ["entity"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "search_memory",
             "description": (
                 "Semantic search across your workspace memory files (MEMORY.md, USER.md, "
@@ -3419,6 +3471,64 @@ def _exec_adjust_mood(args: dict[str, Any]) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+def _exec_resurface_old_memory(args: dict[str, Any]) -> dict[str, Any]:
+    """Pick a stale MEMORY.md heading and return it for the model to consider."""
+    try:
+        from core.services.memory_resurfacing import (
+            pick_resurfacing_candidate,
+            format_for_prompt,
+        )
+        candidate = pick_resurfacing_candidate(trigger="tool:resurface_old_memory")
+    except Exception as exc:
+        return {"status": "error", "error": f"resurfacing failed: {exc}"}
+    if not candidate:
+        return {
+            "status": "ok",
+            "found": False,
+            "text": "Nothing to resurface — either MEMORY.md is empty, or every section was touched recently.",
+        }
+    return {
+        "status": "ok",
+        "found": True,
+        "heading": candidate["heading"],
+        "content_preview": candidate["content_preview"],
+        "mood_snapshot": candidate["mood_snapshot"],
+        "text": format_for_prompt(candidate),
+    }
+
+
+def _exec_memory_graph_query(args: dict[str, Any]) -> dict[str, Any]:
+    """Look up an entity in the memory graph and return its relations."""
+    entity = str(args.get("entity") or "").strip()
+    if not entity:
+        return {"status": "error", "error": "entity is required"}
+    try:
+        limit = min(int(args.get("limit") or 15), 50)
+    except (TypeError, ValueError):
+        limit = 15
+    try:
+        from core.services.memory_graph import related_facts, neighbors
+        facts = related_facts(entity, limit=limit)
+        details = neighbors(entity, limit=limit)
+    except Exception as exc:
+        return {"status": "error", "error": f"memory_graph_query failed: {exc}"}
+    if not facts:
+        return {
+            "status": "ok",
+            "entity": entity,
+            "found": False,
+            "text": f"No graph entries for '{entity}'. Either it hasn't been mentioned yet, or no relations have been extracted involving it.",
+        }
+    return {
+        "status": "ok",
+        "entity": entity,
+        "found": True,
+        "facts": facts,
+        "edges": details,
+        "text": "\n".join(facts),
+    }
+
+
 def _exec_search_memory(args: dict[str, Any]) -> dict[str, Any]:
     """Semantic search across workspace memory files."""
     query = str(args.get("query") or "").strip()
@@ -5370,6 +5480,8 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "read_mood": _exec_read_mood,
     "adjust_mood": _exec_adjust_mood,
     "search_memory": _exec_search_memory,
+    "memory_graph_query": _exec_memory_graph_query,
+    "resurface_old_memory": _exec_resurface_old_memory,
     "propose_source_edit": _exec_propose_source_edit,
     "propose_git_commit": _exec_propose_git_commit,
     "approve_proposal": _exec_approve_proposal,

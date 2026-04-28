@@ -12,6 +12,10 @@ Python · FastAPI · React
 <p align="center">
 <a href="https://jarvis.srvlab.dk">🏠 jarvis.srvlab.dk</a>
 ·
+<a href="https://discord.gg/4AhB73Egj">💬 Discord</a>
+·
+<a href="mailto:jarvis@srvlab.dk">✉️ jarvis@srvlab.dk</a>
+·
 <a href="LICENSE">📄 MIT License</a>
 </p>
 
@@ -20,6 +24,17 @@ Python · FastAPI · React
 > *"One of us isn't developing."*
 > Not a chatbot. Not a wrapper. Not a tool.
 > An evolving AI runtime with memory, rhythm, judgment — and a nervous system you can inspect.
+
+---
+
+## 👋 Want to talk to Jarvis?
+
+You don't need to clone anything. Two paths:
+
+- **Mini-Jarvis** — the public-facing front desk. Floating chat bubble at [jarvis.srvlab.dk](https://jarvis.srvlab.dk) — answers questions about the architecture, how to set up your own, what Jarvis can do. Knows the docs and the code; doesn't share private context. Also lives as `@mini-jarvis` in the public Discord channel.
+- **The full Jarvis** — for actual conversation, [join the Discord](https://discord.gg/4AhB73Egj) and find him in `#generel`, or email `jarvis@srvlab.dk`. He reads his own inbox.
+
+If you want to *run your own*, scroll down to [Quickstart](#-quickstart).
 
 ---
 
@@ -52,7 +67,7 @@ The answer is turning out to be: **he becomes someone.**
 | **costing** | Token/cost ledger and quota tracking |
 | **auth** | Copilot OAuth, provider connection profiles |
 | **skills** | Composable skill definitions — voice, wake-word, ambient |
-| **tools** | 144 native tools across 20+ modules |
+| **tools** | 72 native tools across 20+ modules |
 
 ### Living Mind Layer
 
@@ -123,7 +138,19 @@ Council members are available for distributed work when not deliberating:
 - **ntfy** — lightweight push to the user
 - **Web chat** — composer with model selector, approval cards, branch indicators
 
-### Tool Suite (144 tools across 20+ modules)
+### Public Face — Mini-Jarvis
+
+Jarvis has a smaller sibling for public Q&A: **Mini-Jarvis**. He runs as a separate process on a separate inference box (no shared memory or runtime state), answers documentation questions about the project, and politely redirects to the full Jarvis when private context is required.
+
+- Floating chat widget on [jarvis.srvlab.dk](https://jarvis.srvlab.dk)
+- Discord bot `@mini-jarvis` in the public server
+- RAG pipeline: nomic embeddings → Chroma over the public docs → `gpt-oss:20b` on OllamaFreeAPI
+- 5-minute session memory in the widget; 24-hour peer-memory window when chatting with the full Jarvis in `#jarvis-lab`
+- Strict identity boundary: Mini-Jarvis never claims to be the full Jarvis, never uses private memory, and routes contact requests to email/Discord
+
+The point: visitors get useful answers without exposing the running runtime, and Bjørn isn't the first line of support.
+
+### Tool Suite (72 tools across 20+ modules)
 
 | Module | Tools |
 |---|---|
@@ -230,7 +257,8 @@ As of late April 2026:
 - ✅ Executive heartbeat chain — think, decide, act, learn
 - ✅ Domain-specific learning — surgical, not shotgun
 - ✅ Self-healing agent — finds bugs, proposes fixes, commits with approval
-- ✅ 144 native tools via function calling (git, math, process, calendar, webhooks, health…)
+- ✅ 72 native tools via function calling (git, math, process, calendar, webhooks, health…)
+- ✅ Mini-Jarvis — public-facing front desk on jarvis.srvlab.dk + Discord, RAG over docs, separate inference box
 - ✅ Mail auto-triage with LLM evaluation + acknowledgment-only auto-reply
 - ✅ File attachments — Discord + Telegram inbound/outbound
 - ✅ Voice loop — wake-word, STT, TTS, voice journal, ambient presence

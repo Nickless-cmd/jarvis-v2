@@ -11,6 +11,8 @@ Python · FastAPI · React
 
 <p align="center">
 <a href="https://jarvis.srvlab.dk">🏠 jarvis.srvlab.dk</a>
+·
+<a href="LICENSE">📄 MIT License</a>
 </p>
 
 ---

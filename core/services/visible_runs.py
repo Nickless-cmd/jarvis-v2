@@ -1078,7 +1078,15 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 )
 
                 _consecutive_empty_text_rounds = 0
-                _MAX_EMPTY_TEXT_ROUNDS = 4
+                # Bumped from 4 → 8 (2026-04-28) because Jarvis routinely needs
+                # to read 6–8 files in a row when investigating his own runtime
+                # (e.g. mood_tone fix in Sansernes Arkiv). At 4, he'd get
+                # force-stopped mid-investigation and have to apologize on the
+                # next turn. 8 keeps the runaway-loop guard intact (big-pickle
+                # 30+ tool-spam still gets caught) without amputating his
+                # natural reading flow. Proper long-term fix is for him to
+                # narrate between tool calls — this just buys him room.
+                _MAX_EMPTY_TEXT_ROUNDS = 8
                 _agentic_loop_exit_reason = "completed"
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:

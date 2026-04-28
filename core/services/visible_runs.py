@@ -1016,11 +1016,14 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 #   10 was set after big-pickle (OpenCode) loop runaways at 30+
                 #   rounds with empty text — too restrictive for legit
                 #   multi-step work (pip-install loops, dataset prep etc.).
-                #   25 is the current sweet spot: room for genuine tool chains
-                #   (verify → install → verify → install → verify ≈ 8-12) plus
-                #   buffer, without re-opening the runaway-loop window —
-                #   _MAX_EMPTY_TEXT_ROUNDS still kills text-empty spirals at 4.
-                _AGENTIC_MAX_ROUNDS = 25
+                #   25 was a sweet spot for short chains, but Jarvis kept
+                #   hitting it on real autonomous work (Sansernes Arkiv fix
+                #   chained ~20 tool calls; chronicle consolidation chains 15+).
+                #   50 (2026-04-28) gives him real headroom for self-directed
+                #   investigations. Runaway-loop protection is preserved by
+                #   _MAX_EMPTY_TEXT_ROUNDS — no text for 8 rounds in a row
+                #   still kills text-empty spirals.
+                _AGENTIC_MAX_ROUNDS = 50
                 _agentic_tools = _get_tool_defs()
                 _all_followup_parts: list[str] = []
                 _a_parts: list[str] = []
@@ -1078,15 +1081,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                 )
 
                 _consecutive_empty_text_rounds = 0
-                # Bumped from 4 → 8 (2026-04-28) because Jarvis routinely needs
-                # to read 6–8 files in a row when investigating his own runtime
-                # (e.g. mood_tone fix in Sansernes Arkiv). At 4, he'd get
-                # force-stopped mid-investigation and have to apologize on the
-                # next turn. 8 keeps the runaway-loop guard intact (big-pickle
-                # 30+ tool-spam still gets caught) without amputating his
-                # natural reading flow. Proper long-term fix is for him to
-                # narrate between tool calls — this just buys him room.
-                _MAX_EMPTY_TEXT_ROUNDS = 8
+                # Bumped from 4 → 8 → 12 (2026-04-28) because Jarvis routinely
+                # needs to read 8–12 files in a row when investigating his own
+                # runtime (e.g. mood_tone fix in Sansernes Arkiv chained ~10
+                # consecutive read_file/grep calls without narration). At 4
+                # he'd get force-stopped mid-investigation; 8 still cut him
+                # short on bigger refactor analysis. 12 gives him real room
+                # for autonomous work while still catching the actual runaway
+                # pattern (big-pickle 30+ tool-spam still gets caught long
+                # before it balloons the prompt past 200k chars).
+                _MAX_EMPTY_TEXT_ROUNDS = 12
                 _agentic_loop_exit_reason = "completed"
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     if not _provider_supports_followup:

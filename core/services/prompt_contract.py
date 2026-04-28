@@ -282,6 +282,15 @@ def _safe_build_cognitive_state_for_prompt(*, compact: bool) -> str | None:
         return None
 
 
+def _safe_build_self_state_block() -> str | None:
+    try:
+        from core.services.visible_self_state_summary import build_self_state_block
+        block = build_self_state_block()
+        return block or None
+    except Exception:
+        return None
+
+
 def build_visible_chat_prompt_assembly(
     *,
     provider: str,
@@ -339,6 +348,7 @@ def build_visible_chat_prompt_assembly(
     future_cognitive_state = executor.submit(
         _safe_build_cognitive_state_for_prompt, compact=compact
     )
+    future_self_state = executor.submit(_safe_build_self_state_block)
     future_frame = executor.submit(frame_fn)
     future_self_report = executor.submit(
         _runtime_self_report_instruction,
@@ -832,11 +842,17 @@ def build_visible_chat_prompt_assembly(
     # --- Cognitive State (accumulated personality, bearing, taste, rhythm) ---
     # Submitted as a future at function entry; resolve here.
     cognitive_state_content = _timed_result(future_cognitive_state, "cognitive_state")
+    # Real-time self-state numbers (decision adherence, goal progress, tick
+    # quality). Without this Jarvis confabulates pessimistic answers when
+    # asked introspective questions in chat — claims 0% adherence when DB
+    # shows 60%, claims stale goals when none are stale, etc.
+    self_state_content = _timed_result(future_self_state, "self_state")
 
     raw_sections = {
         "capability_truth": capability_truth,
         "cognitive_frame": frame_content,
         "cognitive_state": cognitive_state_content,
+        "self_state": self_state_content,
         "self_report": self_report_content,
         "inner_visible_bridge": bridge_content,
         "support_signals": support_content,
@@ -861,6 +877,7 @@ def build_visible_chat_prompt_assembly(
             else "bounded cognitive frame (mode, salience, affordances)"
         ),
         "cognitive_state": "accumulated cognitive state (personality, bearing, taste, rhythm)",
+        "self_state": "real-time self-state numbers (decisions, goals, tick quality)",
         "self_report": "grounded runtime self-report support",
         "inner_visible_bridge": "bounded inner visible prompt bridge",
         "support_signals": "bounded runtime support signals",
@@ -870,6 +887,7 @@ def build_visible_chat_prompt_assembly(
         "capability_truth",
         "cognitive_frame",
         "cognitive_state",
+        "self_state",
         "self_report",
         "inner_visible_bridge",
         "support_signals",

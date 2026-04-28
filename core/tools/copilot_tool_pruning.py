@@ -82,6 +82,10 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     # Memory hierarchy + recall
     "unified_recall", "recall_before_act",
     "memory_hot_tier", "memory_warm_tier", "memory_cold_tier",
+    # Graph memory — relational lookups complement semantic search
+    "memory_graph_query",
+    # Proactive recall — resurface old memory headings
+    "resurface_old_memory",
     # Autonomous goals
     "goal_create", "goal_list", "goal_decompose", "goal_update_status",
     # Multi-agent

@@ -3880,7 +3880,17 @@ class PresentationInvariantError(RuntimeError):
 
 _PRESENTATION_INVARIANT_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*\[Completed(?:[:\]]|$)"),
-    re.compile(r"^\s*\[[a-z_][a-z0-9_]*\]\s*:", re.IGNORECASE),
+    # [tool_name]: ... at start of message (bare or wrapped in (...))
+    re.compile(r"^\s*[\(\[]?\s*\[[a-z_][a-z0-9_]*\]\s*:", re.IGNORECASE),
+)
+
+# Tool-call signature anywhere in the text — e.g. "([send_webchat_message]: {"
+# or "[send_mail]: {". A literal `[name]: {` followed by JSON-ish payload is
+# never legitimate user-visible content; it's the model emitting a tool call
+# as prose instead of a structured tool_calls field.
+_TOOL_CALL_LEAK_PATTERN = re.compile(
+    r"\[[a-z_][a-z0-9_]*\]\s*:\s*\{",
+    re.IGNORECASE,
 )
 
 
@@ -3890,10 +3900,23 @@ def _assert_presentation_invariant(text: str) -> None:
         return
     for pattern in _PRESENTATION_INVARIANT_PATTERNS:
         if pattern.match(stripped):
+            logger.warning(
+                "presentation-invariant-leak kind=marker preview=%r",
+                stripped[:120],
+            )
             raise PresentationInvariantError(
                 f"internal runtime marker leaked into user-visible text: "
                 f"{stripped[:80]!r}"
             )
+    if _TOOL_CALL_LEAK_PATTERN.search(stripped):
+        logger.warning(
+            "presentation-invariant-leak kind=tool-call-as-prose preview=%r",
+            stripped[:200],
+        )
+        raise PresentationInvariantError(
+            f"tool-call emitted as prose instead of structured tool_calls: "
+            f"{stripped[:120]!r}"
+        )
 
 
 _TOOL_LABELS: dict[str, str] = {

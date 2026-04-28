@@ -4247,7 +4247,15 @@ _DISCORD_FETCH_MAX_PER_MINUTE = 10
 
 
 def _exec_discord_channel(args: dict[str, Any]) -> dict[str, Any]:
-    """Interact with Discord guild channels: search, fetch, or send."""
+    """Interact with Discord guild channels: search, fetch, or send.
+
+    The Discord gateway lives in the runtime process (port 8011) — not the
+    api process (port 80). When this tool runs in a process that doesn't
+    own the gateway (i.e. _client is None), forward the call via the
+    internal HTTP dispatch endpoint to the gateway-owning process. Without
+    this, search/fetch silently appears as "gateway not running" even when
+    Discord is fully connected.
+    """
     import time as _time
     action = str(args.get("action") or "").strip()
     channel_id_str = str(args.get("channel_id") or "").strip()
@@ -4258,9 +4266,26 @@ def _exec_discord_channel(args: dict[str, Any]) -> dict[str, Any]:
     channel_id = int(channel_id_str)
 
     try:
-        from core.services.discord_gateway import _client, _loop
+        from core.services.discord_gateway import (
+            _client,
+            _dispatch_to_runtime,
+            _is_gateway_owner,
+            _loop,
+        )
     except ImportError as exc:
         return {"status": "error", "error": f"Discord gateway unavailable: {exc}"}
+
+    # Cross-process forwarding: if we don't own the gateway in this process,
+    # POST the entire call to the runtime process which does. The dispatch
+    # endpoint there re-invokes _exec_discord_channel, where _is_gateway_owner()
+    # returns True and the local path runs.
+    if not _is_gateway_owner():
+        result = _dispatch_to_runtime("discord_channel", args)
+        # _dispatch_to_runtime returns the dispatch envelope; if the runtime
+        # successfully executed, it nests the tool result under "result".
+        if isinstance(result, dict) and "result" in result:
+            return result["result"]
+        return result
 
     if _client is None or _loop is None:
         return {"status": "error", "error": "Discord gateway not running"}

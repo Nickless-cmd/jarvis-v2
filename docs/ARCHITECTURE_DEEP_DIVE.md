@@ -83,7 +83,7 @@ Jarvis kan handle selv — men med grænser.
 ├────────────────────────────────────────┤
 │  • Heartbeat Scheduler (15 min cycle)  │
 │  • Agent Runtime (sub-agents)          │
-│  • Tool Executor (50+ tools)           │
+│  • Tool Executor (70+ tools)           │
 │  • Eventbus (internal pub/sub)         │
 └────────────────────────────────────────┘
 ```
@@ -320,9 +320,9 @@ Event Source → Eventbus → Event Handlers → Event Log
 
 ### Isolation
 
-- Jarvis kører i eget brugeraccount (bs_jarvis)
-- Web root er isoleret (~/web/)
+- Runtime state er isoleret i `~/.jarvis-v2/` (config, db, logs, workspaces)
 - Database er local-only (ingen remote access)
+- Secrets læses kun via `core.runtime.secrets` (ingen hard-coding)
 
 ---
 

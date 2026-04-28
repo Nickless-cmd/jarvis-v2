@@ -20,7 +20,7 @@ Jarvis er ikke en chatbot. Han er en **persistent digital entitet** der:
 
 ## 🛠️ Tool Capabilities (50+)
 
-Jarvis har adgang til 50+ native tools. Her er de vigtigste kategorier:
+Jarvis har adgang til 70+ native tools. Her er de vigtigste kategorier:
 
 ### 📁 Fil-system
 

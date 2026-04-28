@@ -117,6 +117,8 @@ def append_chat_message(
     created_at: str | None = None,
     tool_name: str | None = None,
     tool_arguments: dict[str, object] | None = None,
+    user_id: str | None = None,
+    workspace_name: str | None = None,
 ) -> dict[str, object]:
     normalized_session = (session_id or "").strip()
     if not normalized_session:
@@ -161,19 +163,27 @@ def append_chat_message(
         if exists is None:
             raise ValueError("chat session not found")
 
-        # Pull user_id + workspace_name fra ContextVar — discord_gateway
-        # har sat dem før start_autonomous_run. Tom streng hvis ikke sat.
-        _user_id = ""
-        _workspace_name = ""
-        try:
-            from core.identity.workspace_context import (
-                current_user_id as _cuid,
-                current_workspace_name as _cwn,
-            )
-            _user_id = _cuid() or ""
-            _workspace_name = _cwn() or ""
-        except Exception:
-            pass
+        # Resolve user_id + workspace_name in this priority order:
+        # 1. Explicit caller-provided values (used by discord_gateway when
+        #    persisting the inbound user message *before* the worker thread
+        #    sets the workspace_context — without this, user-authored rows
+        #    end up with empty user_id and the model can't tell speakers apart).
+        # 2. Current ContextVar (set by start_autonomous_run for assistant turns).
+        # 3. Empty fallback.
+        _user_id = (user_id or "").strip()
+        _workspace_name = (workspace_name or "").strip()
+        if not _user_id or not _workspace_name:
+            try:
+                from core.identity.workspace_context import (
+                    current_user_id as _cuid,
+                    current_workspace_name as _cwn,
+                )
+                if not _user_id:
+                    _user_id = _cuid() or ""
+                if not _workspace_name:
+                    _workspace_name = _cwn() or ""
+            except Exception:
+                pass
 
         conn.execute(
             """

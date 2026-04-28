@@ -61,5 +61,10 @@ def dispatch(req: DispatchRequest, request: Request) -> dict:
             str(args["text"]),
             float(args.get("timeout", 10.0)),
         )
+    if action == "discord_channel":
+        # Re-invoke the tool here, where _is_gateway_owner() is True so the
+        # local search/fetch/send path runs against the in-memory _client.
+        from core.tools.simple_tools import _exec_discord_channel
+        return {"result": _exec_discord_channel(args)}
 
     raise HTTPException(status_code=400, detail=f"unknown action: {action}")

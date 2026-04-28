@@ -221,7 +221,7 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
     with connect() as conn:
         rows = conn.execute(
             """
-            SELECT role, content, created_at
+            SELECT role, content, created_at, user_id
             FROM chat_messages
             WHERE session_id = ? AND role != 'compact_marker'
             ORDER BY id DESC
@@ -234,6 +234,7 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
             "role": str(row["role"]),
             "content": str(row["content"]),
             "created_at": str(row["created_at"]),
+            "user_id": str(row["user_id"] or ""),
         }
         for row in reversed(rows)
     ]

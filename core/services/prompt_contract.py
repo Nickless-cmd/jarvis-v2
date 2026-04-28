@@ -3597,6 +3597,30 @@ def _recent_transcript_section(
     return "\n".join(lines)
 
 
+_SPEAKER_CACHE: dict[str, str] = {}
+
+
+def _resolve_speaker_display(user_id: str) -> str:
+    """Map a chat_messages.user_id (Discord ID, etc.) to a display name.
+
+    Cached in-process. Returns empty string if no match — callers should treat
+    that as "no prefix needed". Used only for multi-user prompt awareness in
+    shared channels; never persisted into chat history itself.
+    """
+    if not user_id:
+        return ""
+    if user_id in _SPEAKER_CACHE:
+        return _SPEAKER_CACHE[user_id]
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(user_id)
+        name = (u.name if u is not None else "") or ""
+    except Exception:
+        name = ""
+    _SPEAKER_CACHE[user_id] = name
+    return name
+
+
 def _build_structured_transcript_messages(
     session_id: str | None,
     *,
@@ -3645,6 +3669,16 @@ def _build_structured_transcript_messages(
             # Truncate user messages
             if len(content) > 1600:
                 content = content[:1597].rstrip() + "…"
+            # Multi-user awareness: when a user_id is recorded for the message,
+            # resolve to display name and prefix the content. Without this, in a
+            # shared channel (Discord public, multi-member workspace) the model
+            # cannot tell which human is speaking — Bjørn vs Michelle look
+            # identical to it. The prefix is plain prose, not a marker.
+            uid = str(item.get("user_id") or "").strip()
+            if uid:
+                speaker = _resolve_speaker_display(uid)
+                if speaker:
+                    content = f"{speaker}: {content}"
             merged.append({"role": "user", "content": content})
         else:
             # assistant — use higher truncation limit

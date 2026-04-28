@@ -119,6 +119,23 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": None,
         "daily_limit": None,
     },
+    "arko": {
+        # Third-party agent platform (https://arko.arcaelas.com). Used as a
+        # cheap-lane fallback alongside ollamafreeapi. Auth via API key
+        # stored in runtime.json (arko_api_key + arko_cheap_agent_id) — not
+        # via the auth_profile system. Priority 90 sits between OpenCode (80)
+        # and OllamaFreeAPI (95): tried before OFA when Groq is rate-limited
+        # but after the providers we trust most.
+        "label": "Arko Studio",
+        "priority": 90,
+        "base_url": "https://arko.arcaelas.com",
+        "auth_kind": "runtime-key",
+        "protocol": "arko",
+        "models_endpoint": "",
+        "rpm_limit": None,
+        "daily_limit": None,
+        "static_models": ["jarvis-cheap-lane"],
+    },
     "opencode": {
         "label": "OpenCode Zen",
         "priority": 80,
@@ -178,6 +195,10 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
         return False
     if normalized_provider == "ollamafreeapi":
         return True
+    if normalized_provider == "arko":
+        # Arko's credentials live in runtime.json, not in auth profiles.
+        from core.runtime.arko_provider import is_configured as arko_is_configured
+        return arko_is_configured()
     if not profile:
         return False
     credentials = get_provider_credentials(profile=profile, provider=normalized_provider)
@@ -669,7 +690,9 @@ def _configured_cheap_candidates(
             continue
         provider = str(item.get("provider") or "").strip()
         model = str(item.get("model") or "").strip()
-        if provider == "ollamafreeapi" and not include_public_proxy:
+        if provider in ("ollamafreeapi", "arko") and not include_public_proxy:
+            # Both are third-party public-proxy lanes — only enabled when
+            # callers explicitly opt in (e.g. final-fallback chains).
             continue
         if skip_providers and provider in skip_providers:
             continue
@@ -959,6 +982,8 @@ def _execute_provider_chat(
             model=model,
             message=message,
         )
+    if provider == "arko":
+        return _execute_arko_chat(message=message)
     raise CheapProviderError(
         provider=provider,
         code="unsupported-provider",
@@ -1224,6 +1249,70 @@ def _execute_ollamafreeapi_chat(
             message=str(exc),
         ) from exc
     _ofa_circuit_record_success()
+    text = str((data.get("message") or {}).get("content") or "").strip()
+    return {
+        "text": text,
+        "output_tokens": _estimate_tokens(text),
+        "cost_usd": 0.0,
+    }
+
+
+# ── Arko circuit breaker (mirror of the OllamaFreeAPI one) ────────────────
+_ARKO_CB_THRESHOLD = 3        # consecutive failures before opening
+_ARKO_CB_OPEN_DURATION_S = 180  # stay open for 3 minutes before retrying
+_arko_cb_failures = 0
+_arko_cb_opened_at: float = 0.0
+
+
+def _arko_circuit_open() -> bool:
+    global _arko_cb_failures, _arko_cb_opened_at
+    if _arko_cb_failures < _ARKO_CB_THRESHOLD:
+        return False
+    if (time.time() - _arko_cb_opened_at) >= _ARKO_CB_OPEN_DURATION_S:
+        # Cooldown elapsed — let one probe through.
+        _arko_cb_failures = 0
+        _arko_cb_opened_at = 0.0
+        return False
+    return True
+
+
+def _arko_circuit_record_failure() -> None:
+    global _arko_cb_failures, _arko_cb_opened_at
+    _arko_cb_failures += 1
+    if _arko_cb_failures >= _ARKO_CB_THRESHOLD and _arko_cb_opened_at == 0.0:
+        _arko_cb_opened_at = time.time()
+
+
+def _arko_circuit_record_success() -> None:
+    global _arko_cb_failures, _arko_cb_opened_at
+    _arko_cb_failures = 0
+    _arko_cb_opened_at = 0.0
+
+
+def _execute_arko_chat(*, message: str) -> dict[str, object]:
+    from core.runtime.arko_provider import call_arko
+
+    if _arko_circuit_open():
+        raise CheapProviderError(
+            provider="arko",
+            code="circuit-open",
+            message=(
+                f"arko circuit breaker open (after {_ARKO_CB_THRESHOLD}+ "
+                f"consecutive failures, retrying in "
+                f"{int(_ARKO_CB_OPEN_DURATION_S/60)}m)"
+            ),
+        )
+
+    try:
+        data = call_arko(prompt=message, timeout=_DEFAULT_TIMEOUT_SECONDS)
+    except Exception as exc:
+        _arko_circuit_record_failure()
+        raise CheapProviderError(
+            provider="arko",
+            code="provider-error",
+            message=str(exc),
+        ) from exc
+    _arko_circuit_record_success()
     text = str((data.get("message") or {}).get("content") or "").strip()
     return {
         "text": text,

@@ -3675,11 +3675,21 @@ def _build_structured_transcript_messages(
     merged: list[dict[str, str]] = []
     for index, item in enumerate(window):
         raw_role = str(item.get("role") or "")
-        content = render_tool_result_for_prompt(
-            str(item.get("content") or ""),
-            expand=index in expanded_tool_indexes,
-            max_chars=1200 if index in expanded_tool_indexes else 240,
-        )
+        # render_tool_result_for_prompt was being called for *all* roles with
+        # max_chars=240, which silently chopped any user/assistant message
+        # over 240 chars (Mini-Jarvis's 467-char replies showed up to Jarvis
+        # as "tjekke nær…"). The tool-summary truncation only makes sense for
+        # actual tool messages — apply it only there. User/assistant text
+        # gets normal whitespace normalization and the per-role cap below.
+        raw_content = str(item.get("content") or "")
+        if raw_role == "tool":
+            content = render_tool_result_for_prompt(
+                raw_content,
+                expand=index in expanded_tool_indexes,
+                max_chars=1200 if index in expanded_tool_indexes else 240,
+            )
+        else:
+            content = " ".join(raw_content.split()).strip()
         if not content:
             continue
 

@@ -538,6 +538,25 @@ async def _run_client(config: dict) -> None:
                     return
                 if message.channel.id not in allowed_channel_ids:
                     return
+                # Don't barge in when the user is talking to a different bot.
+                # If the message @-mentions another bot AND not us, the human
+                # is addressing them — stay out. Mentioning no bots OR us
+                # explicitly OR a mix that includes us → we participate.
+                try:
+                    mentioned = list(message.mentions or [])
+                    other_bots_mentioned = [
+                        u for u in mentioned
+                        if getattr(u, "bot", False) and u.id != _client.user.id
+                    ]
+                    we_are_mentioned = _client.user in mentioned
+                    if other_bots_mentioned and not we_are_mentioned:
+                        logger.info(
+                            "discord on_message: skipping — another bot mentioned (%s) not us",
+                            ",".join(str(u) for u in other_bots_mentioned),
+                        )
+                        return
+                except Exception:
+                    pass
             # User resolution — lookup in users.json (multi-user support).
             # Owner via owner_discord_id is always allowed. Other registered
             # users (role=member) are allowed in DM. Unknown users: accepted

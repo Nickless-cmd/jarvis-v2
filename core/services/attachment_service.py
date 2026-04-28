@@ -31,8 +31,22 @@ _ALLOWED_SEND_ROOTS: list[Path] = [
 # Internal helpers (monkeypatchable in tests)
 # ---------------------------------------------------------------------------
 
+_DEFAULT_DOWNLOAD_HEADERS = {
+    # Discord CDN (and Telegram via Bot API) reject the default Python-urllib
+    # User-Agent as a bot. Use a stable Mozilla UA so attachments fetch.
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "*/*",
+}
+
+
 def _http_download(url: str, headers: dict[str, str] | None) -> bytes:
-    req = urllib.request.Request(url, headers=headers or {})
+    merged = dict(_DEFAULT_DOWNLOAD_HEADERS)
+    if headers:
+        merged.update(headers)
+    req = urllib.request.Request(url, headers=merged)
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read()
 
@@ -97,11 +111,21 @@ def _call_vision(image_b64: str, *, model: str, prompt: str | None = None) -> st
 
 
 def _vision_model() -> str:
+    # Pull from runtime.json — single source of truth for which model handles
+    # vision. Falls back to a model that actually exists on the local Ollama
+    # box (3b, not 7b — 7b was the historical default but isn't installed).
+    try:
+        from core.runtime.secrets import read_runtime_key
+        cfg_model = read_runtime_key("vision_model_name")
+        if cfg_model:
+            return str(cfg_model)
+    except Exception:
+        pass
     try:
         from core.services.visual_memory import _DEFAULT_MODEL
         return _DEFAULT_MODEL
     except Exception:
-        return "qwen2.5vl:7b"
+        return "qwen2.5vl:3b"
 
 
 # ---------------------------------------------------------------------------

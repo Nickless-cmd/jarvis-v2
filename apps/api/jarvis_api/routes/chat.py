@@ -82,19 +82,59 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
         raise HTTPException(status_code=400, detail="session_id must be a non-empty string")
     if get_chat_session(session_id) is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
+    print(
+        f"[chat/stream] session={session_id[:20]} "
+        f"attachment_ids={list(request.attachment_ids or [])} "
+        f"message_len={len(request.message)}",
+        flush=True,
+    )
 
-    # Build attachment context block and prepend to message
+    # Build attachment context block and prepend to message.
+    # Be explicit about HOW to look at the file — without a directive, the
+    # model reads "[Attached files: ...]" as flavour text and claims it cannot
+    # see images, even though the path is right there and analyze_image is
+    # available.
     effective_message = request.message
     if request.attachment_ids:
         from apps.api.jarvis_api.routes.attachments import get_attachment
-        parts: list[str] = []
+
+        # Use pre-formatted blocks where the path is the prominent line and
+        # the model is directed to copy it verbatim. Earlier formats put the
+        # path in a parenthetical, which the model truncated at the first space
+        # in the filename — producing image_path='Skærmbillede fra ...' with
+        # no leading directory.
+        image_lines: list[str] = []
+        other_lines: list[str] = []
         for aid in request.attachment_ids:
             meta = get_attachment(aid)
-            if meta:
-                size_mb = f"{meta.size_bytes / 1_048_576:.1f}MB"
-                parts.append(f"{meta.filename} ({meta.mime_type}, {size_mb}, path={meta.server_path})")
-        if parts:
-            effective_message = "[Attached files: " + ", ".join(parts) + "]\n\n" + request.message
+            if not meta:
+                continue
+            if meta.mime_type.startswith("image/"):
+                image_lines.append(
+                    f"To see the image '{meta.filename}', call:\n"
+                    f"  analyze_image(image_path={meta.server_path!r})\n"
+                    f"Use that exact absolute path verbatim — do not abbreviate it."
+                )
+            else:
+                other_lines.append(
+                    f"To read the file '{meta.filename}', call:\n"
+                    f"  read_file(path={meta.server_path!r})"
+                )
+
+        prefix_parts: list[str] = []
+        if image_lines:
+            prefix_parts.append(
+                "[The user attached image(s) to this message. You CAN see "
+                "images by using the analyze_image tool. Do NOT claim you "
+                "cannot see images — the tool exists and works.]\n\n"
+                + "\n\n".join(image_lines)
+            )
+        if other_lines:
+            prefix_parts.append(
+                "[The user attached file(s):]\n\n" + "\n\n".join(other_lines)
+            )
+        if prefix_parts:
+            effective_message = "\n\n".join(prefix_parts) + "\n\n---\n\n" + request.message
 
     append_chat_message(session_id=session_id, role="user", content=effective_message)
     from core.services.notification_bridge import pin_session

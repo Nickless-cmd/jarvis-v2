@@ -121,7 +121,7 @@ def _record(
             {
                 "id": record["id"],
                 "modality": modality,
-                "mood_tone": mood_tone,
+                "mood_tone": final_mood,
                 "timestamp": record["timestamp"],
             },
         )

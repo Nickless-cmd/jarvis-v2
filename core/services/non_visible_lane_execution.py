@@ -48,8 +48,18 @@ def cheap_lane_execution_truth() -> dict[str, object]:
     }
 
 
-def execute_cheap_lane(*, message: str) -> dict[str, object]:
-    return execute_cheap_lane_via_pool(message=message)
+def execute_cheap_lane(
+    *, message: str, task_kind: str = "default",
+) -> dict[str, object]:
+    """Run a message through the cheap lane.
+
+    task_kind tiers the routing:
+      "background"  → public proxies first (OFA, Arko, OpenCode), round-robin.
+                       Saves Groq/NVIDIA/Gemini quota for important work.
+      "default"     → historical: paid first, public fallback.
+      "important"   → paid only.
+    """
+    return execute_cheap_lane_via_pool(message=message, task_kind=task_kind)
 
 
 _PROVIDERS_WITHOUT_TOOL_SUPPORT: frozenset[str] = frozenset({

@@ -452,18 +452,76 @@ def smoke_cheap_lane(
     }
 
 
+# ── Task-kind tiering for cheap-lane routing ─────────────────────────────
+# The cheap lane has many consumers — relevance scoring, memory selection,
+# inner voice, dreams, daemon_llm calls, graph extraction, etc. Without
+# tiering, all of them queue behind Groq/NVIDIA/Gemini and burn the best
+# free quotas on background work. By the time the visible lane wants real
+# inference, the good providers are rate-limited.
+#
+# task_kind="background"  inner-layer noise. PREFERS public proxies
+#                         (OllamaFreeAPI, Arko, OpenCode) so paid quotas
+#                         are saved for meaningful work. Falls through to
+#                         paid only if every public provider is blocked.
+# task_kind="default"     historical behaviour: paid first, public as
+#                         fallback. Use this when the call shape isn't
+#                         strongly background but still doesn't deserve
+#                         visible-lane treatment.
+# task_kind="important"   paid only, no public fallback. For council
+#                         deliberation, agent reasoning, anywhere quality
+#                         matters and we'd rather fail than degrade.
+
+_PUBLIC_PROXY_PROVIDERS = ("ollamafreeapi", "arko", "opencode")
+
+# Round-robin counter so consecutive background calls spread across the
+# public-proxy providers rather than draining one. Module-level + thread-
+# safe enough for single-process Jarvis runtime; if we ever scale out,
+# replace with a DB-backed counter or a hash on request_id.
+import itertools as _itertools
+_BACKGROUND_ROTATOR = _itertools.cycle(_PUBLIC_PROXY_PROVIDERS)
+
+
+def _is_public_proxy(provider: str) -> bool:
+    return str(provider or "").strip().lower() in _PUBLIC_PROXY_PROVIDERS
+
+
 def select_cheap_lane_target(
-    *, skip_providers: frozenset[str] = frozenset()
+    *,
+    skip_providers: frozenset[str] = frozenset(),
+    task_kind: str = "default",
 ) -> dict[str, object]:
-    # Phase B (2026-04-26): include ollamafreeapi as last-resort fallback
-    # (priority 95). It used to be excluded entirely, which meant when all
-    # paid providers were exhausted/cooled the whole chain collapsed and
-    # callers got nothing. Now it kicks in *only* after all paid providers
-    # are blocked — paid providers still preferred for quality, free
-    # provider absorbs overflow when they can't.
+    """Pick a cheap-lane provider. See task_kind notes above for routing.
+
+    Phase B (2026-04-26): public-proxies are kept in the candidate list
+    so that callers fall through gracefully instead of collapsing when
+    paid quotas are blown.
+    Phase C (2026-04-28): task_kind tiering so background callers prefer
+    public proxies up front, saving paid quota for meaningful work.
+    """
+    kind = (task_kind or "default").strip().lower()
+
     candidates = _configured_cheap_candidates(
         include_public_proxy=True, skip_providers=skip_providers
     )
+
+    # For "important" calls, drop public proxies entirely.
+    if kind == "important":
+        candidates = [c for c in candidates if not _is_public_proxy(c.get("provider", ""))]
+
+    # For "background" calls, reorder so public proxies come first and rotate
+    # which one is preferred this call.
+    if kind == "background" and candidates:
+        preferred_first = next(_BACKGROUND_ROTATOR)
+        public = [c for c in candidates if _is_public_proxy(c.get("provider", ""))]
+        paid = [c for c in candidates if not _is_public_proxy(c.get("provider", ""))]
+        # Within the public group, put the rotator's choice first; keep the
+        # rest in their stable priority order so quota state still matters.
+        public.sort(key=lambda c: (
+            0 if str(c.get("provider", "")).lower() == preferred_first else 1,
+            int(c.get("priority") or 9999),
+        ))
+        candidates = public + paid
+
     blocked: list[dict[str, object]] = []
     for candidate in candidates:
         if not bool(candidate.get("credentials_ready")):
@@ -490,21 +548,29 @@ def select_cheap_lane_target(
             **candidate,
             "effective_priority": adaptive["effective_priority"],
             "adaptive_penalty": adaptive["adaptive_penalty"],
-            "selection_reason": "healthy-headroom",
+            "selection_reason": f"healthy-headroom:{kind}",
+            "task_kind": kind,
             "blocked_candidates": blocked,
         }
     return {
         "active": False,
         "lane": "cheap",
         "status": "no-healthy-provider",
+        "task_kind": kind,
         "blocked_candidates": blocked,
     }
 
 
 def execute_cheap_lane_via_pool(
-    *, message: str, skip_providers: frozenset[str] = frozenset()
+    *,
+    message: str,
+    skip_providers: frozenset[str] = frozenset(),
+    task_kind: str = "default",
 ) -> dict[str, object]:
-    target = select_cheap_lane_target(skip_providers=skip_providers)
+    target = select_cheap_lane_target(
+        skip_providers=skip_providers,
+        task_kind=task_kind,
+    )
     if not bool(target.get("active", True)) or not str(target.get("provider") or "").strip():
         raise RuntimeError("cheap lane not executable: no-healthy-provider")
 

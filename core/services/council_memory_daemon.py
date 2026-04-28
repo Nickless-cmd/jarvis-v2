@@ -88,7 +88,7 @@ def _call_similarity_llm(*, recent_context: str, index_text: str) -> str:
         "Hvilke indgange (maks 2) er mest relevante for den nuværende kontekst? "
         "Svar med indgangsnumre adskilt af komma (f.eks. '1, 3'), eller 'ingen' hvis ingen er relevante."
     )
-    result = execute_cheap_lane(message=prompt)
+    result = execute_cheap_lane(message=prompt, task_kind="background")
     return str(result.get("text") or "ingen").strip()
 
 

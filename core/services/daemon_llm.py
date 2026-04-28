@@ -155,7 +155,12 @@ def _daemon_llm_call_impl(
                 execute_cheap_lane,
             )
 
-            result = execute_cheap_lane(message=prompt)
+            # Daemons are inner-layer noise — relevance scoring, mood
+            # introspection, dream distillation, etc. They run on every
+            # heartbeat tick. Send them through the public-proxy tier so
+            # they don't drain Groq/NVIDIA/Gemini quotas that the visible
+            # lane and council deliberation actually need.
+            result = execute_cheap_lane(message=prompt, task_kind="background")
         text = str(result.get("text") or "").strip()
         provider = str(
             result.get("provider") or ("public-safe" if public_safe else "cheap")

@@ -16,16 +16,16 @@ Dette dokument giver et overblik over Jarvis' backend-arkitektur — hvordan alt
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
 │  │   Web UI    │  │  REST API   │  │  Heartbeat  │         │
 │  │  (React)    │  │  (FastAPI)  │  │  Scheduler  │         │
-│  │  :8400      │  │  :80        │  │  (15 min)   │         │
+│  │  /mc        │  │  :80        │  │  (15 min)   │         │
 │  └─────────────┘  └─────────────┘  └─────────────┘         │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              Core Services Layer                     │   │
 │  │  • Memory Service (SQLite + embeddings)             │   │
-│  │  • Tool Registry (50+ native tools)                 │   │
+│  │  • Tool Registry (70+ native tools)                 │   │
 │  │  • Agent Runtime (sub-agents, councils)             │   │
 │  │  • Eventbus (internal pub/sub)                      │   │
-│  │  • Daemon Manager (20 background tasks)             │   │
+│  │  • Daemon Manager (40+ background daemons)          │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
@@ -49,8 +49,8 @@ Dette dokument giver et overblik over Jarvis' backend-arkitektur — hvordan alt
 │   ├── daemons/             # Baggrundstjenester
 │   └── models/              # Data modeller
 ├── apps/
-│   └── api/                 # FastAPI REST API
-├── web/                     # React frontend
+│   ├── api/                 # FastAPI REST API
+│   └── ui/                  # React frontend (Mission Control + webchat)
 ├── docs/                    # Dokumentation
 ├── tests/                   # Testsuite
 └── scripts/                 # Utility scripts
@@ -67,7 +67,7 @@ Jarvis' "hjerteslag" — kører hvert 15. minut og:
 - **Reflect:** Analyserer tilstand og træffer beslutninger
 - **Act:** Udfører handlinger (tools, agents, notifications)
 
-**Fil:** `core/services/heartbeat_scheduler.py`
+**Fil:** `core/services/heartbeat_runtime.py`
 
 ### 2. Memory System
 
@@ -76,11 +76,11 @@ Tre-tier hukommelse:
 - **Warm:** Workspace-filer + chronicles (lokal disk)
 - **Cold:** Semantisk søgning på tværs af alt (embeddings)
 
-**Fil:** `core/services/memory_service.py`
+**Filer:** `core/services/memory_recall_engine.py`, `memory_search.py`, `memory_hierarchy.py` m.fl.
 
 ### 3. Tool Registry
 
-50+ native tools tilgængelige via function calling:
+70+ native tools tilgængelige via function calling:
 - Fil-system (`read_file`, `write_file`, `edit_file`)
 - Shell (`bash`, `bash_session_*`)
 - Web (`web_search`, `web_fetch`, `web_scrape`)
@@ -88,7 +88,7 @@ Tre-tier hukommelse:
 - Hjemmeautomatisering (`home_assistant`)
 - Og mange flere...
 
-**Fil:** `core/tools/tool_registry.py`
+**Fil:** `core/tools/simple_tools.py`
 
 ### 4. Agent System
 
@@ -110,7 +110,7 @@ Internt pub/sub system der tracker alt:
 - Agent events
 - User interactions
 
-**Fil:** `core/services/eventbus.py`
+**Fil:** `core/eventbus/bus.py`
 
 ---
 
@@ -143,7 +143,7 @@ Jarvis bruger **SQLite** som primær database:
 
 ### WebSocket
 
-- **URL:** `ws://jarvis.srvlab.ws/ws`
+- **URL:** `wss://jarvis.srvlab.dk/ws`
 - **Brug:** Realtime chat, live events
 
 ---
@@ -166,7 +166,7 @@ Jarvis bruger **SQLite** som primær database:
 
 ## 📊 Monitoring
 
-### Mission Control (jarvis.srvlab.dk:8400)
+### Mission Control (jarvis.srvlab.dk/mc)
 
 Dashboard der viser:
 - Active sessions
@@ -184,7 +184,7 @@ Dashboard der viser:
 ## 🚀 Deployment
 
 ### Krav
-- Python 3.10+
+- Python 3.11+
 - SQLite 3.35+
 - Node.js 18+ (til frontend)
 - NVIDIA GPU (valgfrit, til lokal inference)
@@ -200,10 +200,10 @@ cd jarvis-v2
 pip install -r requirements.txt
 
 # Start API
-python -m uvicorn apps.api.main:app --reload
+python -m uvicorn apps.api.jarvis_api.app:app --reload
 
 # Start frontend (separate terminal)
-cd web && npm install && npm run dev
+cd apps/ui && npm install && npm run dev
 ```
 
 ### Environment Variables

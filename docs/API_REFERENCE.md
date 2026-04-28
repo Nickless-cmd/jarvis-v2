@@ -660,14 +660,14 @@ Content-Type: application/json
 
 {
   "username": "admin",
-  "password": "secret"  // pragma: allowlist secret
+  "password": "<your-password>"
 }
 ```
 
 **Response:**
 ```json
 {
-  "api_key": "sk-abc123...",  // pragma: allowlist secret
+  "api_key": "<your-generated-key>",
   "expires_at": "2026-05-28T00:00:00Z"
 }
 ```
@@ -730,7 +730,7 @@ X-RateLimit-Reset: 1682683200
 ```python
 import requests
 
-API_KEY = "sk-your-api-key"  # pragma: allowlist secret
+API_KEY = "<your-api-key>"
 BASE_URL = "https://jarvis.srvlab.dk/api"
 
 # Hent status
@@ -754,7 +754,7 @@ curl https://jarvis.srvlab.dk/api/status
 
 # Send besked
 curl -X POST https://jarvis.srvlab.dk/api/chat \
-  -H "Authorization: Bearer YOUR_API_KEY" \  # pragma: allowlist secret
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"message": "Hvad er vejret?"}'
 ```

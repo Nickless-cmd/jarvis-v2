@@ -127,7 +127,7 @@ def _call_recurrence_llm(content: str) -> str:
         from core.services.non_visible_lane_execution import (
             execute_cheap_lane,
         )
-        result = execute_cheap_lane(message=prompt)
+        result = execute_cheap_lane(message=prompt, task_kind="background")
         text = str(result.get("text") or result.get("content") or "").strip()
         if text:
             return text

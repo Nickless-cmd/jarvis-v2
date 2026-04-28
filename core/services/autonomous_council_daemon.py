@@ -116,7 +116,7 @@ def _increment_daily_count() -> None:
 
 def _call_llm(prompt: str) -> str:
     from core.services.non_visible_lane_execution import execute_cheap_lane
-    result = execute_cheap_lane(message=prompt)
+    result = execute_cheap_lane(message=prompt, task_kind="background")
     return str(result.get("text") or "").strip()
 
 

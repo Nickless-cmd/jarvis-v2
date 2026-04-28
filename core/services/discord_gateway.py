@@ -604,9 +604,29 @@ async def _run_client(config: dict) -> None:
             with _discord_sessions_lock:
                 _discord_sessions[session_id] = channel_id
 
-            # Persist user message
+            # Resolve workspace + display BEFORE persisting so the inbound
+            # user message gets stamped with the correct user_id and workspace
+            # (otherwise the worker thread sets context too late, the row gets
+            # empty user_id, and the model can't tell speakers apart).
+            if registered_user is not None:
+                workspace_name = registered_user.workspace
+                user_display = registered_user.name
+            elif is_owner_id_match:
+                workspace_name = "default"
+                user_display = "Bjørn"
+            else:
+                workspace_name = "public"
+                user_display = str(getattr(message.author, "name", author_id_str))
+
+            # Persist user message with explicit speaker identity
             from core.services.chat_sessions import append_chat_message
-            append_chat_message(session_id=session_id, role="user", content=content)
+            append_chat_message(
+                session_id=session_id,
+                role="user",
+                content=content,
+                user_id=author_id_str,
+                workspace_name=workspace_name,
+            )
 
             # Publish received event
             from core.eventbus.bus import event_bus
@@ -622,19 +642,7 @@ async def _run_client(config: dict) -> None:
                 _typing_channels.add(channel_id)
             asyncio.ensure_future(_typing_loop(channel_id))
 
-            # Resolve workspace binding based on user lookup
-            if registered_user is not None:
-                workspace_name = registered_user.workspace
-                user_display = registered_user.name
-            elif is_owner_id_match:
-                # Owner known via owner_discord_id but not in users.json yet
-                # (bootstrap case) — use 'default' workspace
-                workspace_name = "default"
-                user_display = "Bjørn"
-            else:
-                # Public channel with unregistered user → shared public workspace
-                workspace_name = "public"
-                user_display = str(getattr(message.author, "name", author_id_str))
+            # workspace_name + user_display already resolved above before persist
 
             # Trigger autonomous run with workspace context bound
             def _run_in_context(

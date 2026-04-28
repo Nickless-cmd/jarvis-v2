@@ -976,16 +976,24 @@ def _apply_thinking_mode(payload: dict, thinking_mode: str) -> None:
 # Raise here when we move to bigger sessions or longer agentic loops.
 _VISIBLE_OLLAMA_NUM_CTX = 262_144
 
+# Visible-lane num_predict (max output tokens). Ollama's default for cloud
+# models is restrictive — DeepSeek-v4 (and other reasoners) get cut off
+# mid-sentence at ~128–256 tokens. 8192 lets a full coherent answer through
+# without wasting anything: the model still stops at its natural EOS, this
+# is just a ceiling. Bump if we ever see legitimate truncation again.
+_VISIBLE_OLLAMA_NUM_PREDICT = 8192
+
 
 def _apply_visible_ollama_options(payload: dict) -> None:
     """Set ollama generation options for the visible lane.
 
-    Currently only num_ctx (context window). Larger num_ctx costs more memory
-    and attention compute per token — keep this conservative relative to the
-    model's max so we don't burn latency on context we never use.
+    num_ctx — input context window. Larger costs more attention memory.
+    num_predict — output token cap. Without this, Ollama's defaults can
+                  cut DeepSeek/Qwen reasoners off mid-thought.
     """
     options = dict(payload.get("options") or {})
     options.setdefault("num_ctx", _VISIBLE_OLLAMA_NUM_CTX)
+    options.setdefault("num_predict", _VISIBLE_OLLAMA_NUM_PREDICT)
     payload["options"] = options
 
 

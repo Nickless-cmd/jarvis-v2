@@ -77,24 +77,65 @@ def _disk_pressure() -> dict[str, Any]:
 
 
 def _network_latency() -> dict[str, Any]:
-    """Lightweight proxy for network health — avoid actual outbound pings.
-    Uses whether recent eventbus activity suggests connectivity. This is a
-    stub; a proper ping test can be added later if needed."""
-    # For now: just flag unknown
-    return {"status": "unknown"}
+    """Lightweight network health check.
+
+    Tests reachability to Ollama (internal) and checks for recent
+    network-related errors in the eventbus. No external pings —
+    stays within known infrastructure.
+    """
+    result: dict[str, Any] = {"status": "unknown", "ollama_ms": None, "errors_recent": 0}
+
+    # 1) Internal: ping Ollama (known endpoint)
+    try:
+        import socket
+        ollama_host = os.environ.get("OLLAMA_HOST", "10.0.0.25")
+        ollama_port = int(os.environ.get("OLLAMA_PORT", "11434"))
+        start = datetime.now(UTC).timestamp()
+        sock = socket.create_connection((ollama_host, ollama_port), timeout=2.0)
+        elapsed_ms = round((datetime.now(UTC).timestamp() - start) * 1000, 1)
+        sock.close()
+        result["ollama_ms"] = elapsed_ms
+        result["status"] = "ok" if elapsed_ms < 100 else "slow"
+    except Exception:
+        result["status"] = "degraded"
+        result["ollama_ms"] = None
+
+    # 2) Recent network errors from eventbus
+    try:
+        from core.eventbus.bus import event_bus
+        recent = list(event_bus.recent(limit=50, kind="runtime"))
+        err_count = sum(
+            1 for e in recent
+            if isinstance(e, dict)
+            and any(kw in str(e.get("kind", "")).lower() for kw in ("fail", "error", "timeout"))
+            and any(kw in str(e.get("payload", "")).lower() for kw in ("network", "connect", "timeout", "dns"))
+        )
+        result["errors_recent"] = err_count
+        if err_count > 3 and result["status"] == "ok":
+            result["status"] = "unstable"
+    except Exception:
+        pass
+
+    return result
 
 
 def _api_cost_today() -> float:
-    """Sum of today's API costs (stub — wire to actual cost tracker if available)."""
+    """Sum of today's API costs via the costs ledger."""
     try:
-        from core.services.cost_tracker import get_cost_today  # type: ignore
-        return float(get_cost_today() or 0.0)
+        from core.costing.ledger import telemetry_summary
+        summary = telemetry_summary()
+        return float(summary.get("total_cost_usd", 0.0))
     except Exception:
         pass
+    # Fallback: direct DB query
     try:
-        from core.runtime.db import recent_visible_runs
-        # Very rough proxy: no direct cost per run; return 0.0
-        return 0.0
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(cost_usd), 0) AS total "
+                "FROM costs WHERE date(created_at) = date('now')"
+            ).fetchone()
+            return float(row["total"] or 0.0)
     except Exception:
         return 0.0
 

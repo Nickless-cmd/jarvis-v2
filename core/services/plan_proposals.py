@@ -61,10 +61,32 @@ def propose_plan(
     plan_id = f"plan-{uuid4().hex[:10]}"
     now = datetime.now(UTC).isoformat()
 
+    data = _load_all()
+
+    # Deduplicate: if an awaiting_approval plan with the same title already
+    # exists (any session), skip creating a duplicate. This prevents the
+    # auto-improvement proposer from spawning endless identical plans.
+    normalized_title = title[:160].strip().lower()
+    for rec in data.values():
+        if (
+            rec.get("status") == "awaiting_approval"
+            and (rec.get("title") or "").strip().lower() == normalized_title
+        ):
+            logger.info(
+                "Skipping duplicate plan proposal — title '%s' already pending as %s",
+                title[:80],
+                rec.get("plan_id"),
+            )
+            return {
+                "status": "skipped_duplicate",
+                "existing_plan_id": rec.get("plan_id"),
+                "awaiting": True,
+                "session_id": sid,
+            }
+
     # Supersede any earlier still-pending plan for this session — only one
     # plan can be open per session at a time, otherwise the surface gets
     # cluttered and the model gets ambiguous instructions.
-    data = _load_all()
     for pid, rec in data.items():
         if rec.get("session_id") == sid and rec.get("status") == "awaiting_approval":
             rec["status"] = "superseded"

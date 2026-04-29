@@ -551,6 +551,29 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+        # Temporal Depth — predictive coding for how history/anticipation
+        # modulates current experience.
+        # Fase 8 (2026-04-29): Friston's free energy principle — the brain
+        # actively predicts and compares expectations with observation.
+        # When recall is strong: history bleeds into now (↑ momentum or ↓ surprise).
+        # When anticipation is violated: surprise signal.
+        # When rhythm aligns: steady cadence felt.
+        # This is NOT explicit memory retrieval — it's subtle modulation of
+        # how current signals are interpreted, not what they contain.
+        # Killswitch-gated. Falls back gracefully if module fails.
+        try:
+            from core.services.temporal_depth import get_temporal_depth
+            from datetime import UTC, datetime
+            now_iso = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+            assembly_state = {"pressure_summary": [], "cognitive_cadence": {}}
+            td = get_temporal_depth()
+            temporal = td.assess(assembly_state, now_iso)
+            if temporal and temporal.summary:
+                parts.append(f"horizon: {temporal.summary}")
+                sources_used.append("temporal_depth")
+        except Exception:
+            pass
+
         sources_used.append(f"personality_v{version}")
 
     # --- Taste Profile (code/design/communication preferences) ---

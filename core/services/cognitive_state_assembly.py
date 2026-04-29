@@ -612,6 +612,34 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+        # Metacognitive Integration — the overarching self-model.
+        # Fase 11 (2026-04-29): Based on Nelson & Nooks' metacognition
+        # framework: metacognition is "thinking about thinking" — not
+        # a separate process, but the integration that makes isolated
+        # signals into a coherent self-state. This is the CAPSTONE layer.
+        # It doesn't add new signals — it INTEGRATES existing ones into
+        # a metacognitive assessment: coherence (are my signals aligned?),
+        # integration quality (how many layers are active?), readiness
+        # (am I in a good state to respond?), and regulation (should I
+        # slow down, reflect, or proceed?). Without this, the 7 layers
+        # are independent appendages. With it, the system can answer:
+        # "How do I feel about the way I feel?"
+        # Killswitch-gated. Falls back gracefully if module fails.
+        try:
+            from core.services.metacognitive_integration import get_metacognitive_line
+            # Build a partial state dict from already-assembled parts
+            _partial_state = {}
+            for part in parts:
+                if ":" in part:
+                    k, _, v = part.partition(":")
+                    _partial_state[k.strip().lower()] = v.strip()
+            meta_line = get_metacognitive_line(_partial_state)
+            if meta_line:
+                parts.append(meta_line)
+                sources_used.append("metacognitive_integration")
+        except Exception:
+            pass
+
         sources_used.append(f"personality_v{version}")
 
     # --- Taste Profile (code/design/communication preferences) ---

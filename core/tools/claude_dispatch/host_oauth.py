@@ -36,16 +36,49 @@ _TOKEN_ENV_KEY = "CLAUDE_CODE_OAUTH_TOKEN"
 _HOST_HINT_ENV_KEYS = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT")
 
 
+def _process_start_time(pid: str) -> float:
+    """Return process start time (seconds since boot) from /proc/<pid>/stat.
+
+    Field 22 of /proc/<pid>/stat is starttime in clock ticks since boot.
+    Higher value = newer process. Returns 0.0 on any failure so the
+    process sorts to the end of a "newest first" list (de-prioritised).
+    """
+    try:
+        stat_text = (Path("/proc") / pid / "stat").read_text(encoding="utf-8")
+    except (FileNotFoundError, PermissionError, OSError):
+        return 0.0
+    # The comm field (field 2) can contain spaces/parens, so we have to
+    # split after the last ')'.
+    rparen = stat_text.rfind(")")
+    if rparen < 0:
+        return 0.0
+    fields = stat_text[rparen + 1:].split()
+    # After comm: state(0), ppid(1), pgrp(2), session(3), tty_nr(4),
+    # tpgid(5), flags(6), minflt(7), cminflt(8), majflt(9), cmajflt(10),
+    # utime(11), stime(12), cutime(13), cstime(14), priority(15), nice(16),
+    # num_threads(17), itrealvalue(18), starttime(19) — i.e., index 19
+    # into the post-comm split.
+    if len(fields) <= 19:
+        return 0.0
+    try:
+        return float(fields[19])
+    except (ValueError, IndexError):
+        return 0.0
+
+
 def find_host_oauth_token() -> str | None:
     """Return a live host CLAUDE_CODE_OAUTH_TOKEN, or None if no host is running.
 
     Strategy:
-      1. Walk /proc looking for processes owned by our UID
-      2. Read each one's environ
-      3. Return the first non-empty CLAUDE_CODE_OAUTH_TOKEN found that is
-         accompanied by a Claude Code host hint (CLAUDECODE=1 or
-         CLAUDE_CODE_ENTRYPOINT set), so we don't pick up some unrelated
-         process that happens to have the var set.
+      1. Walk /proc, gather every Claude Code host process owned by our
+         UID that has a non-empty CLAUDE_CODE_OAUTH_TOKEN
+      2. Sort by process start time, newest first
+      3. Return the token from the most recently started host
+
+    Why "newest first": OAuth tokens rotate when host sessions refresh
+    or new sessions start. An older process can hold a stale (expired)
+    token while a newer process holds a valid one — picking the newest
+    is the cheapest correct heuristic without making a probe API call.
     """
     our_uid = os.getuid()
 
@@ -53,12 +86,13 @@ def find_host_oauth_token() -> str | None:
     if not proc_root.is_dir():
         return None
 
+    candidates: list[tuple[float, str, str]] = []  # (starttime, pid, token)
+
     for entry in proc_root.iterdir():
         if not entry.name.isdigit():
             continue
         pid = entry.name
 
-        # Cheap UID gate — skip other users' processes early
         try:
             stat = entry.stat()
         except (FileNotFoundError, PermissionError, OSError):
@@ -92,10 +126,17 @@ def find_host_oauth_token() -> str | None:
         if not any(env_pairs.get(k) for k in _HOST_HINT_ENV_KEYS):
             continue
 
-        logger.debug(
-            "dispatch.host_oauth: found token via pid=%s (entrypoint=%s)",
-            pid, env_pairs.get("CLAUDE_CODE_ENTRYPOINT", "?"),
-        )
-        return token
+        candidates.append((_process_start_time(pid), pid, token))
 
-    return None
+    if not candidates:
+        return None
+
+    # Newest process first — its token is most likely valid.
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    starttime, pid, token = candidates[0]
+    logger.debug(
+        "dispatch.host_oauth: selected token from pid=%s starttime=%.0f "
+        "(of %d Claude Code host candidates)",
+        pid, starttime, len(candidates),
+    )
+    return token

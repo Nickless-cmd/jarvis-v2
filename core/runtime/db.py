@@ -1100,6 +1100,8 @@ def init_db() -> None:
         _ensure_runtime_initiatives_table(conn)
         _ensure_autonomy_proposals_table(conn)
         _ensure_scheduled_tasks_table(conn)
+        from core.runtime.db_claude_dispatch import ensure_claude_dispatch_tables
+        ensure_claude_dispatch_tables(conn)
         conn.commit()
 
 

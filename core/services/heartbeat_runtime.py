@@ -2784,6 +2784,15 @@ def _build_influence_trace(
         except Exception:
             pass
 
+    # Memory maintenance daemon — periodic dedup and health of MEMORY.md
+    if _dm.is_enabled("memory_maintenance"):
+        try:
+            from core.services.memory_maintenance_daemon import tick_memory_maintenance_daemon
+            _mm_result = tick_memory_maintenance_daemon()
+            _dm.record_daemon_tick("memory_maintenance", _mm_result or {})
+        except Exception:
+            pass
+
     # Signal decay daemon — archive and delete stale signals
     if _dm.is_enabled("signal_decay"):
         try:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -673,6 +673,14 @@ def _append_workspace_contract_line(
         next_text = _insert_under_heading(existing, heading, normalized_line)
 
     path.write_text(next_text, encoding="utf-8")
+
+    # Lag 4: Repeat-writer trap — emit eventbus alarm if same canonical_key
+    # content has been written 3+ times in 24h (sign of a stuck writer).
+    try:
+        _check_repeat_writer_trap(target_file, normalized_line)
+    except Exception:
+        pass  # Never block the write
+
     return {
         "write_status": "written",
         "path": str(path),
@@ -875,3 +883,58 @@ def _single_line(value: object) -> str:
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Lag 4: Repeat-writer trap
+# ---------------------------------------------------------------------------
+
+# In-memory counter: tracks how many times each (target_file, content_line)
+# pair has been written within the last 24h. Emits an eventbus alarm when
+# the count crosses 3 — a sign that the auto-apply pipeline is stuck in a
+# loop writing the same fact over and over.
+_REPEAT_WRITER_WINDOW_HOURS = 24
+_REPEAT_WRITER_THRESHOLD = 3
+
+_repeat_writer_log: list[tuple[str, str, datetime]] = []  # (target_file, content_line_snippet, timestamp)
+
+
+def _check_repeat_writer_trap(target_file: str, content_line: str) -> None:
+    """Check if the same content has been written too many times. Alarm if stuck."""
+    global _repeat_writer_log
+
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(hours=_REPEAT_WRITER_WINDOW_HOURS)
+
+    # Prune old entries
+    _repeat_writer_log = [
+        (tf, cl, ts) for tf, cl, ts in _repeat_writer_log if ts > cutoff
+    ]
+
+    # Add this write
+    snippet = content_line[:80]  # Truncate for comparison
+    _repeat_writer_log.append((target_file, snippet, now))
+
+    # Count recent writes of this content
+    recent_matches = [
+        (tf, cl, ts) for tf, cl, ts in _repeat_writer_log
+        if tf == target_file and cl == snippet
+    ]
+
+    if len(recent_matches) >= _REPEAT_WRITER_THRESHOLD:
+        event_bus.publish(
+            "memory.repeat_writer_detected",
+            {
+                "target_file": target_file,
+                "content_snippet": snippet,
+                "count": len(recent_matches),
+                "threshold": _REPEAT_WRITER_THRESHOLD,
+                "window_hours": _REPEAT_WRITER_WINDOW_HOURS,
+                "timestamp": now.isoformat(),
+                "message": (
+                    f"Repeat-writer trap: '{snippet[:40]}...' written {len(recent_matches)} "
+                    f"times to {target_file} in {_REPEAT_WRITER_WINDOW_HOURS}h. "
+                    f"This may indicate a stuck auto-apply pipeline."
+                ),
+            },
+        )

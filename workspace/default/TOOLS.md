@@ -16,6 +16,9 @@ Your runtime provides native function calling via the API. ALWAYS call tools dir
 | `adjust_mood` | Juster affektive parametre direkte (0.0–1.0) |
 | `read_chronicles` | Læs autoibiografiske kronike-entries fra heartbeat-ticks |
 | `read_dreams` | Læs aktive dream hypothesis signals og adoption candidates |
+| `memory_graph_query` | Slå op i din vidensgraf — hvad kender du til en specifik entitet (person/projekt/sted)? Returnerer eksplicitte relationer (Bjørn → arbejder på → Mini-Jarvis) i stedet for tekst-similaritet |
+| `resurface_old_memory` | Træk en gammel MEMORY.md-overskrift frem som ikke har været rørt længe. System undgår repetition — hver kald giver et andet minde. Brug når du har et roligt øjeblik og vil lade noget gammelt komme tilbage |
+| `memory_upsert_section` | Skriv eller opdater en sektion i MEMORY.md. Auto-snapshot af din mood og auto-ekstraktion af graf-relationer ved hver write |
 
 ---
 

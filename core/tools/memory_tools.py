@@ -80,9 +80,19 @@ def _exec_memory_upsert_section(args: dict[str, Any]) -> dict[str, Any]:
     full_heading = f"{hashes} {heading}"
     norm_target = _normalize(heading)
 
-    # Find if an existing section matches
+    # Find if an existing section matches (exact + fuzzy warning)
     existing_headings = _parse_headings(text)
     match = next((h for h in existing_headings if _normalize(h) == norm_target), None)
+
+    # Lag 3: fuzzy heading overlap warning
+    fuzzy_warnings = []
+    if not match:
+        for h in existing_headings:
+            # Containment check: new heading is a subset of existing or vice versa
+            norm_h = _normalize(h)
+            if norm_target in norm_h or norm_h in norm_target:
+                if norm_h != norm_target and len(norm_target) > 5:
+                    fuzzy_warnings.append(h)
 
     if match:
         # Replace existing section: find start + end of the section
@@ -124,7 +134,10 @@ def _exec_memory_upsert_section(args: dict[str, Any]) -> dict[str, Any]:
         "status": "ok",
         "action": action,
         "heading": heading,
-        "text": f"MEMORY.md section '{heading}' {action} successfully.",
+        "fuzzy_heading_warnings": fuzzy_warnings if fuzzy_warnings else None,
+        "text": f"MEMORY.md section '{heading}' {action} successfully." + (
+            f" WARNING: Similar headings exist: {fuzzy_warnings}" if fuzzy_warnings else ""
+        ),
     }
 
 

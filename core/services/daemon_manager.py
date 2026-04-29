@@ -146,6 +146,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 1440,
         "description": "Selective forgetting + re-discovery of signals",
     },
+    "memory_maintenance": {
+        "module": "core.services.memory_maintenance_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 720,
+        "description": "Periodic MEMORY.md dedup: Tier A auto-merge duplicates, Tier B flag overlaps",
+    },
     "user_model": {
         "module": "core.services.user_model_daemon",
         "reset_var": "_last_tick_at",

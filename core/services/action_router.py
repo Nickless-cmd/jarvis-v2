@@ -450,6 +450,22 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
 
     # Generative autonomy chain
     chain_result = {}
+
+    # 0. Spor-1 signal source: longing-toward-user
+    # Runs BEFORE pressure_accumulator so its emitted signal can be ingested
+    # in the same tick. Internally killswitch-gated; no-op when disabled.
+    try:
+        from core.services.longing_signal_daemon import run_longing_signal_daemon_tick
+        longing_snap = run_longing_signal_daemon_tick()
+        chain_result["longing"] = {
+            "status": longing_snap.get("status"),
+            "emitted": longing_snap.get("emitted", False),
+            "intensity": longing_snap.get("intensity"),
+        }
+    except Exception as exc:
+        logger.debug(f"Longing daemon tick failed: {exc}")
+        chain_result["longing"] = {"error": str(exc)[:120]}
+
     try:
         from core.services.signal_pressure_accumulator import run_pressure_accumulator_tick
         pressure_snap = run_pressure_accumulator_tick()

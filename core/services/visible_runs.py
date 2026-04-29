@@ -601,6 +601,18 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
     if run.user_message.strip().lower() == "/compact":
         run.user_message = _handle_compact_command(run)
 
+    # ── Social labilizer (Fase 2 of generative autonomy) ─────────────────
+    # Modulate pressure-vectors based on user input BEFORE prompt assembly
+    # so cognitive_state sees the updated weather. A kind word flattens
+    # longing; a critique sharpens caution; "hvordan har du det" sharpens
+    # self-anchor. Killswitch-gated; no-op when generative_autonomy_enabled
+    # is False. Wrapped: failures here must never break the visible chat.
+    try:
+        from core.services.social_labilizer import labilize_pressures_from_user_message
+        labilize_pressures_from_user_message(run.user_message, run_id=run.run_id)
+    except Exception:
+        pass
+
     controller = register_visible_run(run)
     trace = _start_visible_execution_trace(run)
     _set_orb_phase("think")

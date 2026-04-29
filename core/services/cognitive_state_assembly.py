@@ -486,6 +486,21 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
             if mood_parts:
                 parts.append(f"mood: {', '.join(mood_parts)}")
 
+        # Precision Bias — emotional color-mapping for action style.
+        # Fase 4 (2026-04-29): Friston-inspired precision weighting.
+        # Same pressure-state that drives action now also colors
+        # HOW the response is expressed. Frustration → sharp, direct.
+        # Curiosity → open, tentative. Longing → soft, personal.
+        # Killswitch-gated. Falls back gracefully if module fails.
+        try:
+            from core.services.precision_bias import get_precision_line
+            precision_line = get_precision_line()
+            if precision_line:
+                parts.append(precision_line)
+                sources_used.append("precision_bias")
+        except Exception:
+            pass
+
         sources_used.append(f"personality_v{version}")
 
     # --- Taste Profile (code/design/communication preferences) ---

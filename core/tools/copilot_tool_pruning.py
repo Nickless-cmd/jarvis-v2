@@ -25,95 +25,47 @@ from typing import Iterable
 MAX_TOOLS = 128
 
 
+# Tier 1 — tools that are always included in the pruned set, regardless of
+# user message or recent usage. Goal: cover Jarvis' daily-driver toolkit so
+# pruning never hides something he reaches for routinely.
+#
+# Last regenerated: 2026-04-29 (data-driven from 30-day usage).
+# Composition: tools used >= 3 times in the last 30 days, UNIONed with a
+# safety floor (notify_user, approve_proposal, etc.) that must always be
+# available regardless of past usage.
+#
+# To regenerate after Jarvis' tool habits drift:
+#   conda activate ai
+#   python scripts/regenerate_tier1.py [--apply]
+#
+# Trimmed from 185 -> 103 tools on 2026-04-29 (saved ~7,500 tokens / call).
 TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
-    "read_file", "write_file", "edit_file", "search", "find_files", "bash",
-    "publish_file", "read_tool_result", "read_attachment", "list_attachments",
-    "read_self_docs", "read_self_state", "read_mood", "read_model_config",
-    "read_chronicles", "read_dreams", "adjust_mood",
-    "search_memory", "recall_memories", "memory_upsert_section",
-    "memory_list_headings", "memory_check_duplicate", "memory_consolidate",
-    "record_sensory_memory", "recall_sensory_memories", "search_chat_history",
-    "search_sessions",
-    "git_log", "git_diff", "git_status", "git_branch", "git_blame",
-    "schedule_task", "list_scheduled_tasks", "cancel_task", "edit_task",
-    "list_initiatives", "push_initiative", "queue_followup",
-    "propose_source_edit", "propose_git_commit", "approve_proposal",
-    "list_proposals",
-    "goal_create", "goal_update", "goal_list", "goal_get",
-    "decision_create", "decision_review", "decision_list", "decision_get",
-    "decision_revoke",
-    "composite_propose", "composite_list", "composite_get", "composite_invoke",
-    "composite_approve", "composite_revoke",
-    "heartbeat_status", "trigger_heartbeat_tick", "eventbus_recent",
-    "update_setting", "internal_api", "db_query", "deep_analyze",
-    "semantic_search_code",
-    "smart_compact", "compact_context", "context_size_check",
-    "list_signal_surfaces", "read_signal_surface",
-    "my_project_status", "my_project_journal_write",
-    "my_project_accept_proposal", "my_project_declare",
-    "web_fetch", "web_search", "web_scrape",
-    "calculate", "unit_convert", "percentage", "wolfram_query",
-    "service_status", "process_list", "disk_usage", "memory_usage",
-    "notify_user", "send_webchat_message", "send_ntfy",
-    "daemon_status",
-    "read_archive", "get_weather", "get_exchange_rate", "get_news",
-    "convene_council", "quick_council_check", "recall_council_conclusions",
-    "read_visual_memory",
-    # New core ergonomics from T/X/E/P-series — must always be visible
-    # otherwise Jarvis "forgets" he has them after pruning kicks in.
-    "bash_session_open", "bash_session_run", "bash_session_close", "bash_session_list",
-    "todo_list", "todo_set", "todo_add", "todo_update_status", "todo_remove",
-    "tail_log", "gpu_status", "run_pytest",
-    "verify_file_contains", "verify_service_active", "verify_endpoint_responds",
-    "monitor_open", "monitor_close", "monitor_list",
-    "check_surprises", "check_good_enough",
-    "delegation_advisor",
-    "propose_plan", "approve_plan", "dismiss_plan", "list_plans",
-    "classify_clarification",
-    "flag_side_task", "list_side_tasks", "dismiss_side_task", "activate_side_task",
-    "smart_outline",
-    # Today's additions (2026-04-27) — must be Tier 1 or pruning hides them
-    # Reasoning layer (R1/R2/R3)
-    "reasoning_classify", "verification_status", "recommend_escalation",
-    # Context engineering
-    "context_pressure", "manage_context_window",
-    "auto_compact_check", "auto_compact_run", "build_subagent_context",
-    "list_context_versions", "recall_context_version",
-    # Memory hierarchy + recall
-    "unified_recall", "recall_before_act",
-    "memory_hot_tier", "memory_warm_tier", "memory_cold_tier",
-    # Graph memory — relational lookups complement semantic search
-    "memory_graph_query",
-    # Proactive recall — resurface old memory headings
-    "resurface_old_memory",
-    # Autonomous goals
-    "goal_create", "goal_list", "goal_decompose", "goal_update_status",
-    # Multi-agent
-    "list_agent_roles", "register_custom_role",
-    "agent_relay_message", "agent_relay_to_role",
-    # Emotion + drift
-    "capture_emotion_tag", "personality_drift_check", "personality_drift_snapshot",
-    # Tool patterns
-    "mine_tool_patterns",
-    # Heartbeat phases
-    "phased_heartbeat_tick", "heartbeat_sense",
-    # Provider robustness
-    "provider_health_check", "provider_health_status",
-    # Self-evaluation
-    "tick_quality_summary", "detect_stale_goals", "decision_adherence_summary",
-    # Auto-improvement loop
-    "generate_improvement_proposals",
-    "log_variant_outcome", "variant_performance",
-    "start_prompt_experiment", "conclude_prompt_experiment", "list_prompt_experiments",
-    # Identity mutation
-    "list_identity_mutations", "rollback_identity_mutation", "identity_mutation_status",
-    # Scout Memory
-    "get_agent_skills", "append_skill_observation",
-    "rollback_skill_mutation", "list_skill_mutations", "list_skill_roles",
-    "compress_agent_run", "list_agent_observations", "get_agent_observation",
-    "cross_agent_recall",
-    # Self-wakeup
-    "schedule_self_wakeup", "list_self_wakeups", "cancel_self_wakeup", "mark_wakeup_consumed",
+    "adjust_mood", "analyze_image", "approve_proposal", "bash",
+    "bash_session_open", "bash_session_run", "browser_click", "browser_navigate",
+    "browser_read", "browser_screenshot", "browser_type", "cancel_agent",
+    "cancel_task", "comfyui_history", "comfyui_objects", "comfyui_status",
+    "comfyui_workflow", "compact_context", "control_daemon", "convene_council",
+    "daemon_status", "db_query", "decision_create", "decision_list",
+    "deep_analyze", "discord_channel", "discord_status", "edit_file",
+    "edit_task", "eventbus_recent", "find_files", "get_news",
+    "get_weather", "git_diff", "git_log", "git_status",
+    "goal_create", "goal_list", "heartbeat_status", "hf_vision_analyze",
+    "home_assistant", "internal_api", "list_agents", "list_events",
+    "list_initiatives", "list_plans", "list_proposals", "list_recurring",
+    "list_scheduled_tasks", "list_self_wakeups", "list_signal_surfaces", "look_around",
+    "mark_wakeup_consumed", "memory_check_duplicate", "memory_list_headings", "memory_upsert_section",
+    "my_project_journal_write", "my_project_status", "notify_user", "propose_git_commit",
+    "propose_source_edit", "publish_file", "push_initiative", "quick_council_check",
+    "read_chronicles", "read_dreams", "read_file", "read_mail",
+    "read_model_config", "read_mood", "read_self_docs", "read_self_state",
+    "read_signal_surface", "read_tool_result", "read_visual_memory", "recall_before_act",
+    "recall_memories", "recall_sensory_memories", "schedule_self_wakeup", "schedule_task",
+    "search", "search_chat_history", "search_memory", "search_sessions",
+    "semantic_search_code", "send_discord_dm", "send_ntfy", "send_webchat_message",
+    "service_status", "smart_outline", "spawn_agent_task", "tiktok_analytics",
+    "tiktok_login", "tiktok_show", "tiktok_upload", "todo_update_status",
+    "trigger_heartbeat_tick", "verify_file_contains", "web_fetch", "web_scrape",
+    "web_search", "wolfram_query", "write_file",
 })
 
 
@@ -329,16 +281,19 @@ def select_tools_for_visible(
     *,
     user_message: str = "",
     session_id: str | None = None,
-    max_tools: int = 200,
+    max_tools: int = 128,
 ) -> list[dict]:
     """Provider-neutral pruning wrapper for the visible lane.
 
-    Same scoring as ``select_tools_for_copilot`` but with a softer cap (200
-    instead of 128) since non-Copilot providers don't have a hard 128-tool
-    limit. 2026-04-27: bumped from 140 → 200 because Tier 1 alone grew to
-    ~183 with today's reasoning/scout-memory/self-wakeup additions, and
-    the user explicitly noticed when schedule_self_wakeup got pruned.
-    Trade-off: ~3 KT extra per turn vs every important tool available.
+    Same scoring as ``select_tools_for_copilot``. Cap history:
+      - 140 (initial) — fitted Tier 1 + a small Tier 2 cushion
+      - 200 (2026-04-27) — bumped because Tier 1 had grown to ~183 and
+        the user noticed schedule_self_wakeup getting pruned
+      - 128 (2026-04-29) — restored after Tier 1 was data-driven trimmed
+        from 185 → 103 tools. The new Tier 1 already covers actually-used
+        tools; the remaining 25 slots go to keyword-matched Tier 2 plus
+        comfort defaults. Saves ~8K tokens per visible-chat call vs 200
+        cap, while still leaving keyword-routed headroom.
     """
     return select_tools_for_copilot(
         tools, user_message=user_message, session_id=session_id, max_tools=max_tools,

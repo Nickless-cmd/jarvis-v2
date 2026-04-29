@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import UTC, datetime
 
 from core.services.cognitive_state_narrativizer import (
@@ -556,9 +556,22 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         # The scoring call was kicked off earlier in parallel with fast DB
         # reads. Resolve it now so _active_memories is populated before
         # build_recall_prompt_section reads it.
+        #
+        # Fix 2026-04-29: bounded await. The scoring LLM call inside
+        # recall_for_message can take 15s on cold Ollama (the call's own
+        # timeout). Blocking forever on it dominated total cognitive_state
+        # latency on cache-miss paths. Cap the wait at 2s — if scoring isn't
+        # back by then, skip recall this turn. The future keeps running in
+        # the background and populates _active_memories for the *next* turn,
+        # which then gets the recall content essentially for free.
         if future_recall_for_message is not None:
             try:
-                future_recall_for_message.result()
+                future_recall_for_message.result(timeout=2.0)
+            except FuturesTimeoutError:
+                logger.info(
+                    "cognitive_state_assembly: recall_for_message exceeded 2s, "
+                    "skipping recall section this turn (will be ready next turn)"
+                )
             except Exception:
                 pass
 

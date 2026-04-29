@@ -434,9 +434,57 @@ def _drain_eventbus(limit: int = 50) -> int:
 
 
 def tick(_seconds: float = 0.0) -> dict[str, Any]:
-    """Heartbeat hook — drain eventbus + route."""
+    """Heartbeat hook — drain eventbus + route + run generative autonomy chain.
+
+    The generative autonomy chain (pressure → threshold → impulse → action)
+    runs AFTER the traditional eventbus routing. This means:
+    1. Traditional signals are routed (mood, warnings, creative).
+    2. Internal pressures are accumulated from all active signals.
+    3. Pressures that cross thresholds become impulses.
+    4. Impulses are executed as concrete actions.
+
+    This closes the loop: signal → pressure → threshold → impulse → action.
+    """
+    # Traditional routing
     processed = _drain_eventbus(limit=30)
-    return {"processed": processed}
+
+    # Generative autonomy chain
+    chain_result = {}
+    try:
+        from core.services.signal_pressure_accumulator import run_pressure_accumulator_tick
+        pressure_snap = run_pressure_accumulator_tick()
+        chain_result["pressure"] = {
+            "vectors": pressure_snap.get("total_vectors", 0),
+            "dominant": len(pressure_snap.get("dominant", [])),
+        }
+    except Exception as exc:
+        logger.debug(f"Pressure accumulator tick failed: {exc}")
+        chain_result["pressure"] = {"error": str(exc)[:120]}
+
+    try:
+        from core.services.pressure_threshold_gate import run_threshold_gate_tick
+        gate_result = run_threshold_gate_tick()
+        chain_result["threshold"] = {
+            "evaluated": gate_result.get("pressures_evaluated", 0),
+            "new_impulses": gate_result.get("new_impulses", 0),
+            "pending": gate_result.get("pending_impulses", 0),
+        }
+    except Exception as exc:
+        logger.debug(f"Threshold gate tick failed: {exc}")
+        chain_result["threshold"] = {"error": str(exc)[:120]}
+
+    try:
+        from core.services.impulse_executor import run_impulse_executor_tick
+        exec_result = run_impulse_executor_tick()
+        chain_result["impulse"] = {
+            "executed": exec_result.get("impulses_executed", 0),
+            "actions": exec_result.get("actions", []),
+        }
+    except Exception as exc:
+        logger.debug(f"Impulse executor tick failed: {exc}")
+        chain_result["impulse"] = {"error": str(exc)[:120]}
+
+    return {"processed": processed, "generative_chain": chain_result}
 
 
 # ─── Read / surface ───────────────────────────────────────────────────

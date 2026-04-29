@@ -153,6 +153,13 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "default_cadence_minutes": 720,
         "description": "Periodic MEMORY.md dedup: Tier A auto-merge duplicates, Tier B flag overlaps",
     },
+    "longing_signal": {
+        "module": "core.services.longing_signal_daemon",
+        "reset_var": "_last_tick_at",
+        "reset_value": None,
+        "default_cadence_minutes": 10,
+        "description": "Generative autonomy Spor-1: longing-toward-user pressure signal (gated by generative_autonomy_enabled)",
+    },
     "user_model": {
         "module": "core.services.user_model_daemon",
         "reset_var": "_last_tick_at",

@@ -574,6 +574,24 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+        # Embodied Presence — situational grounding in the physical now.
+        # Fase 9 (2026-04-29): Based on embodied cognition (Varela et al.):
+        # cognition is shaped by the body's situation in an environment.
+        # Without situational context, the agent is "floating" — detached
+        # from the reality of the room, the time of day, the ambient energy.
+        # This reads sensory memories (visual, audio, atmosphere) and time
+        # to produce a grounding signal: how rooted am I? how alert? what
+        # part of the day is it? This modulates how all other layers feel.
+        # Killswitch-gated. Falls back gracefully if module fails.
+        try:
+            from core.services.embodied_presence import get_presence_line
+            presence_line = get_presence_line(db_conn=None)
+            if presence_line:
+                parts.append(presence_line)
+                sources_used.append("embodied_presence")
+        except Exception:
+            pass
+
         sources_used.append(f"personality_v{version}")
 
     # --- Taste Profile (code/design/communication preferences) ---

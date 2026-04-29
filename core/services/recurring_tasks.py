@@ -209,6 +209,11 @@ def _fire_due() -> None:
         focus = str(task["focus"])
         interval_minutes = int(task["interval_minutes"])
         try:
+            # Use autonomous run as the PRIMARY execution path.
+            # Push to initiative queue only as a fallback signal — but do NOT
+            # let both paths produce a user-visible message independently.
+            # Dedup: if start_autonomous_run succeeds, initiative is redundant
+            # for user-facing delivery, so we skip it to avoid double messages.
             start_autonomous_run(message=focus, session_id=None)
             _advance(task_id, interval_minutes, now)
             logger.info(
@@ -216,20 +221,6 @@ def _fire_due() -> None:
                 task_id,
                 interval_minutes,
             )
-            try:
-                from core.services.initiative_queue import push_initiative
-                push_initiative(
-                    focus=focus,
-                    source="recurring-task",
-                    source_id=task_id,
-                    priority="medium",
-                )
-            except Exception as exc:
-                logger.warning(
-                    "recurring_tasks: initiative push failed for %s: %s",
-                    task_id,
-                    exc,
-                )
         except Exception as exc:
             logger.error("recurring_tasks: error firing %s: %s", task_id, exc)
 

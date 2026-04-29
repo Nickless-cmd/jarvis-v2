@@ -24,10 +24,14 @@ def build_temporal_context() -> dict[str, object]:
     is_weekend = weekday >= 5
     is_peak_focus = 9 <= hour <= 13 and not is_weekend
 
+    _en = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    _da = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"]
+
     return {
         "time_of_day": f"{hour:02d}:00",
         "day_phase": phase,
-        "weekday": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][weekday],
+        "weekday": _en[weekday],
+        "weekday_da": _da[weekday],
         "is_weekend": is_weekend,
         "is_peak_focus": is_peak_focus,
         "hour": hour,
@@ -39,7 +43,7 @@ def build_temporal_context_surface() -> dict[str, object]:
     return {
         "active": True,
         "current": ctx,
-        "summary": f"{ctx['weekday']} {ctx['time_of_day']} — {ctx['day_phase']}",
+        "summary": f"{ctx['weekday_da']} {ctx['time_of_day']} — {ctx['day_phase']}",
     }
 
 

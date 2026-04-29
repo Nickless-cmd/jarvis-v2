@@ -457,6 +457,26 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         if bearing:
             parts.append(f"bearing: {bearing[:80]}")
 
+        # Fase 3 (2026-04-29): Phenomenological merge — what's pressing
+        # right now. Same pressure-state that drives the impulse pipeline
+        # is now also visible to Jarvis in his cognitive_state. When he
+        # introspects ("how do I feel?"), he reads from the same table
+        # that's about to drive his action. One signal-weather, not two.
+        try:
+            from core.services.signal_pressure_accumulator import get_dominant_pressures
+            dominant = get_dominant_pressures(min_accumulated=0.30)
+            if dominant:
+                # Show top 2 to avoid clutter; flowing Danish, not mechanical.
+                # The LLM integrates "noget trækker mod X" into its voice naturally.
+                top_lines = [
+                    f"{p.direction} mod {p.topic} ({p.accumulated:.2f})"
+                    for p in dominant[:2]
+                ]
+                parts.append(f"presning: {' og '.join(top_lines)}")
+                sources_used.append("pressure_state")
+        except Exception:
+            pass
+
         if emotional_baseline and not compact:
             mood_parts = []
             for key in ("curiosity", "confidence", "fatigue", "frustration"):

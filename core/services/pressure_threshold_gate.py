@@ -43,6 +43,10 @@ _DIRECTION_THRESHOLDS: dict[str, float] = {
     "act":         0.35,   # initiative should be accessible
     "investigate": 0.40,   # emergent investigation
     "respond":     0.30,   # warnings should trigger fast
+    # Spor-1 (2026-04-29): reach_out is real, requires real pressure.
+    # 0.55 is high — Bjorn would need to be away ~5+ hours before this
+    # crosses, given longing-build-curve (start=2h, max=12h, decay 0.88/tick).
+    "reach_out":   0.55,
 }
 
 _DEFAULT_THRESHOLD = 0.45
@@ -162,7 +166,7 @@ def evaluate_pressures(pressures: list) -> list[Impulse]:
             )
 
             # Emit event
-            event_bus.emit("impulse.generated", {
+            event_bus.publish("impulse.generated", {
                 "impulse_id": impulse.id,
                 "direction": pv.direction,
                 "topic": pv.topic,

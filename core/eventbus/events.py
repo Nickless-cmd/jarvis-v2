@@ -71,6 +71,9 @@ ALLOWED_EVENT_FAMILIES = {
     "incident",
     "private_brain",
     "session_distillation",
+    # Generative autonomy (2026-04-29 — Jarvis-built foundation + Spor-1)
+    "pressure",
+    "impulse",
     # Cognitive architecture event families
     "cognitive_personality",
     "cognitive_taste",

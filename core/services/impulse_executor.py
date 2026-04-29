@@ -79,6 +79,12 @@ _ACTION_MAP: dict[str, list[dict[str, Any]]] = {
         {"action": "notify_problem",   "desc": "Notificér brugeren om advarsel",                   "min_strength": 0.10},
         {"action": "deep_analyze",     "desc": "Kør deep_analyze på advarslen",                    "min_strength": 0.15},
     ],
+    # Spor-1 (2026-04-29): reach_out is the action shape for longing-toward-user.
+    # Only one action: compose a coherent message and send it. Cooldown lives
+    # in pressure_threshold_gate; killswitch lives in outreach_composer.
+    "reach_out": [
+        {"action": "compose_outreach", "desc": "Skriv en kort, koherent besked til brugeren der reflekterer signalet", "min_strength": 0.05},
+    ],
 }
 
 
@@ -194,7 +200,7 @@ def execute_impulse(impulse) -> ExecutedAction | None:
         _execution_log.pop(0)
 
     # Emit event
-    event_bus.emit("impulse.executed", {
+    event_bus.publish("impulse.executed", {
         "impulse_id": impulse.id,
         "direction": direction,
         "topic": topic,
@@ -224,6 +230,8 @@ def _perform_action(action_type: str, direction: str, topic: str, strength: floa
             return _action_adjust_mood(direction)
         elif action_type == "my_project_journal":
             return _action_journal(topic, strength)
+        elif action_type == "compose_outreach":
+            return _action_compose_outreach(direction, topic, strength)
         else:
             return ("skipped", f"Unknown action type: {action_type}")
     except Exception as e:
@@ -241,7 +249,7 @@ def _action_push_initiative(direction: str, topic: str, strength: float) -> tupl
     priority = "high" if strength > 0.2 else "medium"
     # We emit an event instead of calling the tool directly —
     # the heartbeat tick will pick it up
-    event_bus.emit("impulse.push_initiative", {
+    event_bus.publish("impulse.push_initiative", {
         "focus": focus,
         "priority": priority,
         "direction": direction,
@@ -253,7 +261,7 @@ def _action_push_initiative(direction: str, topic: str, strength: float) -> tupl
 
 def _action_search_memory(topic: str) -> tuple[str, str]:
     """Search memory for related information."""
-    event_bus.emit("impulse.search_memory", {
+    event_bus.publish("impulse.search_memory", {
         "query": topic,
         "source": "impulse_executor",
     })
@@ -262,7 +270,7 @@ def _action_search_memory(topic: str) -> tuple[str, str]:
 
 def _action_deep_analyze(topic: str) -> tuple[str, str]:
     """Trigger a deep analysis."""
-    event_bus.emit("impulse.deep_analyze", {
+    event_bus.publish("impulse.deep_analyze", {
         "goal": f"Investigate: {topic}",
         "source": "impulse_executor",
     })
@@ -271,7 +279,7 @@ def _action_deep_analyze(topic: str) -> tuple[str, str]:
 
 def _action_propose_edit(topic: str) -> tuple[str, str]:
     """Propose a source edit."""
-    event_bus.emit("impulse.propose_source_edit", {
+    event_bus.publish("impulse.propose_source_edit", {
         "topic": topic,
         "source": "impulse_executor",
     })
@@ -280,7 +288,7 @@ def _action_propose_edit(topic: str) -> tuple[str, str]:
 
 def _action_notify(action_type: str, direction: str, topic: str, strength: float) -> tuple[str, str]:
     """Notify the user about an impulse."""
-    event_bus.emit("impulse.notify_user", {
+    event_bus.publish("impulse.notify_user", {
         "action_type": action_type,
         "direction": direction,
         "topic": topic,
@@ -291,7 +299,7 @@ def _action_notify(action_type: str, direction: str, topic: str, strength: float
 
 def _action_adjust_mood(direction: str) -> tuple[str, str]:
     """Adjust mood based on retreat impulse."""
-    event_bus.emit("impulse.adjust_mood", {
+    event_bus.publish("impulse.adjust_mood", {
         "direction": direction,
         "adjustment": "caution",
     })
@@ -300,11 +308,33 @@ def _action_adjust_mood(direction: str) -> tuple[str, str]:
 
 def _action_journal(topic: str, strength: float) -> tuple[str, str]:
     """Write a project journal entry."""
-    event_bus.emit("impulse.journal", {
+    event_bus.publish("impulse.journal", {
         "topic": topic,
         "strength": strength,
     })
     return ("success", f"Journal entry triggered for: {topic}")
+
+
+def _action_compose_outreach(direction: str, topic: str, strength: float) -> tuple[str, str]:
+    """Spor-1: compose and send an outreach message via outreach_composer.
+
+    Synchronous call (not eventbus) so we get back the actual result and
+    can mark the impulse correctly. Composer is gated by
+    generative_autonomy_enabled — second line of defense.
+    """
+    try:
+        from core.services.outreach_composer import compose_and_send_outreach
+        result = compose_and_send_outreach(
+            direction=direction, topic=topic, strength=strength,
+        )
+        if result.get("status") == "ok":
+            return ("success", f"Outreach sent: {result.get('summary', '')[:80]}")
+        if result.get("status") == "disabled":
+            return ("skipped", "generative_autonomy_enabled=False")
+        return ("failed", str(result.get("error") or "compose failed"))
+    except Exception as e:
+        logger.exception("compose_outreach action failed")
+        return ("failed", f"{type(e).__name__}: {e}")
 
 
 # ---------------------------------------------------------------------------

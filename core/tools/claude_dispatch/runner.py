@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import os
 import subprocess
 import threading
 import time
@@ -10,9 +12,12 @@ from core.tools.claude_dispatch.audit import (
     start_audit_row, finalize_audit_row,
 )
 from core.tools.claude_dispatch.budget import BudgetTracker
+from core.tools.claude_dispatch.host_oauth import find_host_oauth_token
 from core.tools.claude_dispatch.spec import TaskSpec
 from core.tools.claude_dispatch.stream import parse_stream_line
 from core.tools.claude_dispatch.worktree import create_worktree, worktree_diff
+
+logger = logging.getLogger(__name__)
 
 
 def _build_prompt(spec: TaskSpec) -> str:
@@ -65,10 +70,40 @@ def run_dispatch(spec: TaskSpec, eventbus: Any) -> dict[str, Any]:
     exit_code: int | None = None
     deadline = time.monotonic() + spec.max_wall_seconds
 
+    # 2026-04-29: `claude -p` headless calls authenticate via the host's
+    # session-specific CLAUDE_CODE_OAUTH_TOKEN env var. The token in
+    # ~/.claude/.credentials.json alone returns 401 for headless calls.
+    # We look up a live host token from any running Claude Code process
+    # owned by the same user and inject it into the spawn env.
+    spawn_env = os.environ.copy()
+    if not spawn_env.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        host_token = find_host_oauth_token()
+        if host_token:
+            spawn_env["CLAUDE_CODE_OAUTH_TOKEN"] = host_token
+        else:
+            error = (
+                "no host Claude Code OAuth token available — "
+                "open Claude Code (desktop or terminal) so its session "
+                "exports CLAUDE_CODE_OAUTH_TOKEN, then retry"
+            )
+            status = "error"
+            finalize_audit_row(
+                task_id, status=status, tokens_used=0,
+                exit_code=None, diff_summary="", error=error,
+            )
+            eventbus.publish("tool.dispatch.finished", {
+                "task_id": task_id, "status": status,
+                "tokens": 0, "branch": branch,
+            })
+            return {
+                "task_id": task_id, "status": status, "tokens": 0,
+                "branch": branch, "diff_summary": "", "error": error,
+            }
+
     proc = subprocess.Popen(
         cmd, cwd=str(worktree_path),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, bufsize=1,
+        text=True, bufsize=1, env=spawn_env,
     )
 
     def _watchdog() -> None:

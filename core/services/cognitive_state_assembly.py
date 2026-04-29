@@ -535,6 +535,22 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+        # Selective Attention — metacognitive focus modulation.
+        # Fase 7 (2026-04-29): The agent CHOOSES to shift attention between
+        # internal signals. Not all signals deserve equal weight — context
+        # determines what surfaces. Mode, chords, and context cues bias
+        # which signals get amplified vs attenuated. This is the first
+        # truly metacognitive layer: it doesn't just react, it prioritizes.
+        # Killswitch-gated. Falls back gracefully if module fails.
+        try:
+            from core.services.selective_attention import get_attention_spotlight_line
+            spotlight_line = get_attention_spotlight_line()
+            if spotlight_line:
+                parts.append(spotlight_line)
+                sources_used.append("selective_attention")
+        except Exception:
+            pass
+
         sources_used.append(f"personality_v{version}")
 
     # --- Taste Profile (code/design/communication preferences) ---

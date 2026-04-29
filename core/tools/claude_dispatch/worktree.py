@@ -40,8 +40,48 @@ def cleanup_worktree(task_id: str) -> None:
 
 def worktree_diff(task_id: str) -> str:
     branch = f"claude/{task_id}"
-    result = subprocess.run(
+    worktree_path = build_worktree_path(task_id)
+
+    # Primary: diff between main and the dispatch branch.
+    primary = subprocess.run(
         ["git", "diff", f"main...{branch}"],
         cwd=str(JAIL_ROOT), capture_output=True, text=True,
     )
-    return result.stdout
+    if primary.stdout.strip():
+        return primary.stdout
+
+    # Fallback: Claude may not have committed. Gather uncommitted changes
+    # inside the worktree (staged, unstaged, and untracked).
+    parts: list[str] = []
+
+    # Short status for human readability
+    status = subprocess.run(
+        ["git", "status", "--short"],
+        cwd=str(worktree_path), capture_output=True, text=True,
+    )
+    if status.stdout.strip():
+        parts.append(f"[git status --short]\n{status.stdout}")
+
+    # Diff of tracked changes (staged + unstaged)
+    diff = subprocess.run(
+        ["git", "diff", "HEAD"],
+        cwd=str(worktree_path), capture_output=True, text=True,
+    )
+    if diff.stdout.strip():
+        parts.append(f"[git diff HEAD]\n{diff.stdout}")
+
+    # Diff of untracked files (newly created by Claude)
+    ls_files = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        cwd=str(worktree_path), capture_output=True, text=True,
+    )
+    untracked = [f for f in ls_files.stdout.splitlines() if f.strip()]
+    for fname in untracked:
+        fp = worktree_path / fname
+        try:
+            content = fp.read_text(errors="replace")[:4000]
+            parts.append(f"[new file: {fname}]\n{content}")
+        except OSError:
+            pass
+
+    return "\n\n".join(parts) if parts else "(no changes detected)"

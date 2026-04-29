@@ -34,7 +34,12 @@ def _build_prompt(spec: TaskSpec) -> str:
     parts += [
         "",
         "Operate strictly within SCOPE. Do not modify files outside it.",
-        "When done, summarize what you changed in one paragraph.",
+        "",
+        "When you have finished writing or editing files, you MUST commit "
+        "your changes with a short descriptive commit message. Use: "
+        "git add -A && git commit -m '<short summary>'",
+        "",
+        "After committing, summarize what you changed in one paragraph.",
     ]
     return "\n".join(parts)
 

@@ -299,7 +299,16 @@ def _build_scoring_prompt(
 
 
 def _call_scoring_llm(target: dict[str, object], prompt: str) -> str:
-    """Call local LLM with scoring prompt. Timeout 15s."""
+    """Call local LLM with scoring prompt.
+
+    Timeout 2026-04-29: reduced from 15s to 3s. The 15s value was extreme
+    for what should be a fast public-safe scoring task (15 candidates,
+    300 tokens out). On a warm Ollama with GPU passthrough this returns
+    in <1s; the long timeout only mattered on cold-model loads, which
+    cascaded into 15s tail latencies on visible chat. The cognitive_state
+    caller now applies its own 2s budget on top, so this 3s ceiling is
+    a defense-in-depth rather than the load-bearing limit.
+    """
     provider = str(target.get("provider") or "")
     model = str(target.get("model") or "")
     base_url = str(target.get("base_url") or "")
@@ -315,7 +324,7 @@ def _call_scoring_llm(target: dict[str, object], prompt: str) -> str:
         req = urllib_request.Request(
             url, data=payload, headers={"Content-Type": "application/json"}
         )
-        with urllib_request.urlopen(req, timeout=15) as resp:
+        with urllib_request.urlopen(req, timeout=3) as resp:
             result = json.loads(resp.read())
         return str(result.get("message", {}).get("content", ""))
     return ""

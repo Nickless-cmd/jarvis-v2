@@ -595,6 +595,36 @@ def _default_apply_status_reason(
     return "Equivalent content already present in workspace file."
 
 
+def _fuzzy_line_match(line: str, existing_text: str, threshold: float = 0.85) -> bool:
+    """Check if *line* is already present in *existing_text* (fuzzy).
+
+    Uses normalized token overlap (Jaccard) to catch near-duplicates that
+    differ only in punctuation, word order, or minor rephrasing.  Threshold
+    0.85 means ~85 % of the meaningful tokens must overlap to consider it a
+    duplicate — aggressive enough to stop the 80× repeat bug, conservative
+    enough to preserve genuinely different facts.
+    """
+    import re as _re
+
+    def _tokens(text: str) -> set[str]:
+        return {t for t in _re.findall(r"\w+", text.lower()) if len(t) > 2}
+
+    line_tokens = _tokens(line)
+    if len(line_tokens) < 3:
+        # Very short lines — fall back to exact match only
+        return line in existing_text
+
+    for existing_line in existing_text.splitlines():
+        existing_tokens = _tokens(existing_line)
+        if not existing_tokens:
+            continue
+        intersection = line_tokens & existing_tokens
+        union = line_tokens | existing_tokens
+        if union and (len(intersection) / len(union)) >= threshold:
+            return True
+    return False
+
+
 def _append_workspace_contract_line(
     *,
     target_file: str,
@@ -612,6 +642,14 @@ def _append_workspace_contract_line(
     if normalized_line in existing:
         return {
             "write_status": "already-present",
+            "path": str(path),
+            "content_line": normalized_line,
+        }
+
+    # Fuzzy dedup: catch near-duplicates that differ in phrasing/punctuation
+    if _fuzzy_line_match(normalized_line, existing, threshold=0.85):
+        return {
+            "write_status": "already-present-fuzzy",
             "path": str(path),
             "content_line": normalized_line,
         }

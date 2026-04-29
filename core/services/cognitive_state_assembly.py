@@ -501,6 +501,22 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+        # Emotional Chords — emergent qualities from signal combinations.
+        # Fase 5 (2026-04-29): When two signals are active simultaneously,
+        # a qualitatively different experience emerges — not the sum of parts,
+        # but a new quality. frustration+curiosity = stubborn inquiry.
+        # longing+curiosity = nostalgic exploration. Distinct from
+        # precision_bias: chords say WHAT I feel, precision says HOW I say it.
+        # Killswitch-gated. Falls back gracefully if module fails.
+        try:
+            from core.services.emotional_chords import get_chord_lines
+            chord_lines = get_chord_lines()
+            if chord_lines:
+                parts.append(chord_lines)
+                sources_used.append("emotional_chords")
+        except Exception:
+            pass
+
         sources_used.append(f"personality_v{version}")
 
     # --- Taste Profile (code/design/communication preferences) ---

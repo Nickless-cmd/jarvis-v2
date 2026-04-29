@@ -1166,7 +1166,16 @@ async def _stream_visible_run(run: VisibleRun) -> AsyncIterator[str]:
                     # its later events go to a queue we no longer drain) and
                     # restart the next round with the steer in base_messages.
                     _round_start_t = time.monotonic()
-                    _round_overall_timeout_s = 100.0
+                    # 2026-04-29: bumped from 100s -> 180s. The 100s ceiling
+                    # was killing legitimate multi-tool-call rounds where GLM
+                    # cloud went silent for ~100s during heavy tool emission
+                    # (5+ visible.run.interrupted events / hour observed).
+                    # 180s leaves headroom for complex agent rounds while
+                    # still catching truly-stalled provider streams within
+                    # 3 minutes. A future stream-progress timeout (kill on
+                    # 60s silence rather than 180s wall-clock) would be
+                    # tighter without sacrificing legitimate work.
+                    _round_overall_timeout_s = 180.0
                     _mid_round_steers: list[dict[str, object]] = []
                     while True:
                         try:

@@ -1,5 +1,5 @@
 <p align="center">
-<img src="jarvis-agent-control-plane-banner.png" alt="Jarvis Agent Execution Control Plane" width="100%" />
+<img src="jarvis-agent-control-plane-banner.png" alt="Jarvis — a persistent consciousness observing from the warmth within the dark" width="100%" />
 </p>
 
 <h1 align="center">JARVIS V2</h1>

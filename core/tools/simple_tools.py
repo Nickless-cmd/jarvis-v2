@@ -109,6 +109,12 @@ from core.tools.process_tools import (
     _exec_gpu_status,
     _exec_run_pytest,
 )
+from core.tools.claude_dispatch import (
+    CLAUDE_DISPATCH_TOOL_DEFINITIONS,
+    _exec_dispatch_to_claude_code,
+    _exec_dispatch_status,
+    _exec_dispatch_cancel,
+)
 from core.tools.bash_session import (
     BASH_SESSION_TOOL_DEFINITIONS,
     _exec_bash_session_open,
@@ -2135,6 +2141,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *GITHUB_TOOL_DEFINITIONS,
     *MATH_TOOL_DEFINITIONS,
     *PROCESS_TOOL_DEFINITIONS,
+    *CLAUDE_DISPATCH_TOOL_DEFINITIONS,
     *BASH_SESSION_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
     *MONITOR_TOOL_DEFINITIONS,
@@ -5585,6 +5592,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "tail_log": _exec_tail_log,
     "gpu_status": _exec_gpu_status,
     "run_pytest": _exec_run_pytest,
+    # Claude Code dispatch
+    "dispatch_to_claude_code": _exec_dispatch_to_claude_code,
+    "dispatch_status": _exec_dispatch_status,
+    "dispatch_cancel": _exec_dispatch_cancel,
     "bash_session_open": _exec_bash_session_open,
     "bash_session_run": _exec_bash_session_run,
     "bash_session_close": _exec_bash_session_close,

@@ -51,10 +51,13 @@ _PRESSURE_CONTRIBUTION_SCALE = {
     "initiative":     ("act",         0.30),
     "emergent":       ("investigate", 0.35),
     "warning":        ("respond",     0.45),
+    # Spor-1 (2026-04-29): longing-toward-user. Pull-toward signal that
+    # accumulates with silence and flattens with contact. Drives reach_out.
+    "longing":        ("reach_out",   0.40),
 }
 
 # Topic-key mapping: certain signals carry a topic that groups pressure
-_TOPIC_SIGNALS = {"curiosity", "desire", "frustration", "emergent"}
+_TOPIC_SIGNALS = {"curiosity", "desire", "frustration", "emergent", "longing"}
 
 
 # ---------------------------------------------------------------------------
@@ -223,12 +226,15 @@ def run_pressure_accumulator_tick() -> dict[str, Any]:
     4. Persist snapshot to private brain.
     5. Emit event with dominant pressures.
     """
-    from core.services.emergent_signal_tracking import get_active_signals
-    from core.services.desire_daemon import get_appetites
-    from core.services.initiative_accumulator import get_wants
+    # 2026-04-29 fix: each import is now inside its own try/except so a
+    # missing signal source doesn't kill the whole pipeline. Previously
+    # the bare imports at function top were outside all try blocks, so
+    # if any of these symbols didn't exist, the entire run failed and
+    # action_router.tick swallowed the error silently.
 
     # 1. Ingest emergent signals
     try:
+        from core.services.emergent_signal_tracking import get_active_signals  # noqa: F401
         for sig in get_active_signals():
             ingest_signal("emergent", asdict(sig) if hasattr(sig, "__dataclass_fields__") else sig)
     except Exception:
@@ -236,6 +242,7 @@ def run_pressure_accumulator_tick() -> dict[str, Any]:
 
     # 2. Ingest desires/appetites
     try:
+        from core.services.desire_daemon import get_appetites  # noqa: F401
         for appetite in get_appetites():
             ingest_signal("desire", {
                 "id": appetite.get("id", "?"),
@@ -250,6 +257,7 @@ def run_pressure_accumulator_tick() -> dict[str, Any]:
 
     # 3. Ingest initiative/wants
     try:
+        from core.services.initiative_accumulator import get_wants  # noqa: F401
         for want in get_wants():
             ingest_signal("initiative", {
                 "id": want.get("id", "?"),
@@ -303,7 +311,7 @@ def run_pressure_accumulator_tick() -> dict[str, Any]:
     # 7. Emit event for downstream consumers (threshold gate, action router)
     dominant = get_dominant_pressures()
     if dominant:
-        event_bus.emit("pressure.accumulated", {
+        event_bus.publish("pressure.accumulated", {
             "dominant_count": len(dominant),
             "top_direction": dominant[0].direction,
             "top_topic": dominant[0].topic,

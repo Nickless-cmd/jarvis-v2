@@ -52,6 +52,16 @@ class RuntimeSettings:
     memory_scoring_ollamafreeapi_model: str = "gpt-oss:20b"
     memory_scoring_ollamafreeapi_timeout: int = 2
     memory_scoring_ollama_timeout: int = 3
+    # Generative autonomy (Spor-1: longing-toward-Bjorn). When False, the
+    # longing daemon emits no signals and the outreach composer refuses to
+    # send. The pressure-accumulator pipeline (built 2026-04-29 as the
+    # foundation) keeps running for observability but produces no user-
+    # facing actions while this is False. Default off — opt-in.
+    generative_autonomy_enabled: bool = False
+    longing_daemon_cadence_minutes: int = 10
+    outreach_cooldown_minutes: int = 240
+    longing_build_start_hours: float = 2.0
+    longing_build_max_hours: float = 12.0
     relevance_mistral_model: str = "mistral-small-latest"
     relevance_mistral_timeout: int = 5
     relevance_nvidia_nim_model: str = "meta/llama-3.1-8b-instruct"
@@ -172,6 +182,21 @@ def load_settings() -> RuntimeSettings:
         ),
         memory_scoring_ollama_timeout=int(
             data.get("memory_scoring_ollama_timeout", defaults.memory_scoring_ollama_timeout)
+        ),
+        generative_autonomy_enabled=bool(
+            data.get("generative_autonomy_enabled", defaults.generative_autonomy_enabled)
+        ),
+        longing_daemon_cadence_minutes=int(
+            data.get("longing_daemon_cadence_minutes", defaults.longing_daemon_cadence_minutes)
+        ),
+        outreach_cooldown_minutes=int(
+            data.get("outreach_cooldown_minutes", defaults.outreach_cooldown_minutes)
+        ),
+        longing_build_start_hours=float(
+            data.get("longing_build_start_hours", defaults.longing_build_start_hours)
+        ),
+        longing_build_max_hours=float(
+            data.get("longing_build_max_hours", defaults.longing_build_max_hours)
         ),
         relevance_mistral_model=str(
             data.get("relevance_mistral_model", defaults.relevance_mistral_model)

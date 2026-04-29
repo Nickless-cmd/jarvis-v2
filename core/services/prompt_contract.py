@@ -589,11 +589,11 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(60, "rules learned from arcs", arc_rules_section())
     except Exception:
         pass
-    try:
-        from core.services.memory_hierarchy import recall_before_act_summary
-        _awareness_add(52, "recall before act (relevant past)", recall_before_act_summary() or "")
-    except Exception:
-        pass
+    # Removed 2026-04-29: redundant unconditional recall_before_act_summary() call.
+    # With no query, that function returns only the "active goals" hot-tier slice,
+    # which is already surfaced separately at prio 35 via goals_prompt_section().
+    # The user-message-keyed call at prio 27 above remains — that one does real
+    # cold-tier semantic recall and is the load-bearing one.
     try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))

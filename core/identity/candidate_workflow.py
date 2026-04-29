@@ -620,7 +620,15 @@ def _fuzzy_line_match(line: str, existing_text: str, threshold: float = 0.85) ->
             continue
         intersection = line_tokens & existing_tokens
         union = line_tokens | existing_tokens
+        # Jaccard similarity: overlap relative to union
         if union and (len(intersection) / len(union)) >= threshold:
+            return True
+        # Containment check: if ALL tokens in the new line already appear
+        # in an existing line, it's a near-duplicate even if Jaccard is
+        # below threshold (e.g. "Bjørn er ikke en ticket" inside
+        # "Bjørn er ikke en ticket — han er en partner").  This catches
+        # the incremental-repetition bug that created 80+ duplicates.
+        if line_tokens and line_tokens <= existing_tokens:
             return True
     return False
 

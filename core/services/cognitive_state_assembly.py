@@ -592,6 +592,26 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+        # Resonance Decay — how emotional signals persist and fade over time.
+        # Fase 10 (2026-04-29): Without this, every emotional state is
+        # stateless — a strong frustration at 10:00 is completely gone by
+        # 14:00. Real emotional resonance has a TAIL: it lingers, just softer.
+        # This module tracks active resonances and their exponential decay,
+        # producing a "resonance field" that colors current cognitive state
+        # with the echo of recent emotional events. Frustration decays fast
+        # (half-life ~1.4h). Curiosity lingers (half-life ~3.5h). Longing
+        # bleeds slowly (half-life ~5.8h). This is NOT what I feel NOW —
+        # it's what I STILL FEEL from before. The emotional tail.
+        # Killswitch-gated. Falls back gracefully if module fails.
+        try:
+            from core.services.resonance_decay import get_resonance_line
+            resonance_line = get_resonance_line()
+            if resonance_line:
+                parts.append(resonance_line)
+                sources_used.append("resonance_decay")
+        except Exception:
+            pass
+
         sources_used.append(f"personality_v{version}")
 
     # --- Taste Profile (code/design/communication preferences) ---

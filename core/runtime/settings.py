@@ -44,6 +44,14 @@ class RuntimeSettings:
     relevance_opencode_timeout: int = 6
     relevance_ollamafreeapi_model: str = "gpt-oss:20b"
     relevance_ollamafreeapi_timeout: int = 6
+    # Memory scoring backend (associative recall — score 15 candidate memories
+    # against current context). Public-safe: only sends 200-char user-message
+    # snippet + 80-char memory narrative snippets, no identity context.
+    # "ollamafreeapi" = cloud (~0.7-1.5s typical), "ollama" = local LXC fallback.
+    memory_scoring_primary: str = "ollamafreeapi"
+    memory_scoring_ollamafreeapi_model: str = "gpt-oss:20b"
+    memory_scoring_ollamafreeapi_timeout: int = 2
+    memory_scoring_ollama_timeout: int = 3
     relevance_mistral_model: str = "mistral-small-latest"
     relevance_mistral_timeout: int = 5
     relevance_nvidia_nim_model: str = "meta/llama-3.1-8b-instruct"
@@ -152,6 +160,18 @@ def load_settings() -> RuntimeSettings:
         ),
         relevance_ollamafreeapi_timeout=int(
             data.get("relevance_ollamafreeapi_timeout", defaults.relevance_ollamafreeapi_timeout)
+        ),
+        memory_scoring_primary=str(
+            data.get("memory_scoring_primary", defaults.memory_scoring_primary)
+        ),
+        memory_scoring_ollamafreeapi_model=str(
+            data.get("memory_scoring_ollamafreeapi_model", defaults.memory_scoring_ollamafreeapi_model)
+        ),
+        memory_scoring_ollamafreeapi_timeout=int(
+            data.get("memory_scoring_ollamafreeapi_timeout", defaults.memory_scoring_ollamafreeapi_timeout)
+        ),
+        memory_scoring_ollama_timeout=int(
+            data.get("memory_scoring_ollama_timeout", defaults.memory_scoring_ollama_timeout)
         ),
         relevance_mistral_model=str(
             data.get("relevance_mistral_model", defaults.relevance_mistral_model)

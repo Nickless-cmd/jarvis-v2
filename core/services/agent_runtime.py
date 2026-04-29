@@ -847,26 +847,53 @@ def cleanup_stale_agents(
     *,
     waiting_timeout_minutes: int = 120,
     failed_timeout_minutes: int = 30,
+    active_timeout_minutes: int = 90,
+    starting_timeout_minutes: int = 15,
+    blocked_timeout_minutes: int = 120,
     max_per_run: int = 20,
 ) -> dict[str, object]:
-    """Auto-cancel agents hanging in waiting or failed state for too long.
+    """Auto-cancel agents hanging in non-terminal states for too long.
 
     Rules:
-    - status='waiting' og updated_at < now - waiting_timeout_minutes → cancelled
-    - status='failed' og updated_at < now - failed_timeout_minutes → cancelled
+    - status='waiting'  + updated_at < now - waiting_timeout_minutes  → cancelled
+    - status='failed'   + updated_at < now - failed_timeout_minutes   → cancelled
+    - status='active'   + updated_at < now - active_timeout_minutes   → cancelled
+    - status='starting' + updated_at < now - starting_timeout_minutes → cancelled
+    - status='blocked'  + updated_at < now - blocked_timeout_minutes  → cancelled
 
-    Cancelled agents få last_error='auto_cleanup_stale_{state}' + status='cancelled'.
-    Fire-and-forget safe — fejl per agent logges men stopper ikke loopet.
+    The original implementation only handled waiting/failed; an agent that
+    crashed silently mid-execution (LLM hang, thread death, etc.) would
+    sit in 'active' forever and count toward MAX_CONCURRENT_AGENTS, eating
+    a slot until process restart. 2026-04-29: extended to cover the three
+    other non-terminal states with conservative timeouts so genuinely
+    long-running work isn't killed.
 
-    Returns dict med cancelled-counts + liste af cancelled agent_ids.
+    Defaults:
+        active=90min   — long enough for legit multi-step work, short
+                         enough to free slots when an agent has truly hung
+        starting=15min — a real agent should leave 'starting' fast; if
+                         it's stuck here it's almost certainly broken
+        blocked=120min — same as waiting; might be holding for human
+                         approval or external resource
+
+    Cancelled agents get last_error='auto_cleanup_stale_{state}' +
+    status='cancelled'. Fire-and-forget safe.
+
+    Returns dict with cancelled counts + lists of cancelled agent_ids.
     """
     now = datetime.now(UTC)
     waiting_cutoff = now - timedelta(minutes=max(1, int(waiting_timeout_minutes)))
     failed_cutoff = now - timedelta(minutes=max(1, int(failed_timeout_minutes)))
+    active_cutoff = now - timedelta(minutes=max(1, int(active_timeout_minutes)))
+    starting_cutoff = now - timedelta(minutes=max(1, int(starting_timeout_minutes)))
+    blocked_cutoff = now - timedelta(minutes=max(1, int(blocked_timeout_minutes)))
     now_iso = _now_iso()
 
     cancelled_waiting: list[str] = []
     cancelled_failed: list[str] = []
+    cancelled_active: list[str] = []
+    cancelled_starting: list[str] = []
+    cancelled_blocked: list[str] = []
     errors: list[str] = []
 
     def _parse_ts(value: object) -> datetime | None:
@@ -953,15 +980,62 @@ def cleanup_stale_agents(
         except Exception as exc:
             errors.append(f"{agent_id}:{exc}")
 
+    # Process active/starting/blocked agents — silent-crash recovery
+    for state, cutoff, sink in (
+        ("active", active_cutoff, cancelled_active),
+        ("starting", starting_cutoff, cancelled_starting),
+        ("blocked", blocked_cutoff, cancelled_blocked),
+    ):
+        try:
+            agents = list_agent_registry_entries(status=state, limit=int(max_per_run))
+        except Exception as exc:
+            errors.append(f"list_{state}_failed: {exc}")
+            continue
+        for agent in agents:
+            agent_id = str(agent.get("agent_id") or "")
+            if not agent_id:
+                continue
+            updated = _parse_ts(agent.get("updated_at"))
+            if updated is None or updated > cutoff:
+                continue
+            age_minutes = int((now - updated).total_seconds() / 60)
+            try:
+                update_agent_registry_entry(
+                    agent_id,
+                    status="cancelled",
+                    last_error=f"auto_cleanup_stale_{state}_after_{age_minutes}min",
+                    completed_at=now_iso,
+                )
+                sink.append(agent_id)
+                try:
+                    event_bus.publish("runtime.agent_auto_cancelled", {
+                        "agent_id": agent_id,
+                        "reason": f"stale_{state}",
+                        "age_minutes": age_minutes,
+                    })
+                except Exception:
+                    pass
+            except Exception as exc:
+                errors.append(f"{agent_id}:{exc}")
+
     return {
         "cancelled_waiting_count": len(cancelled_waiting),
         "cancelled_failed_count": len(cancelled_failed),
+        "cancelled_active_count": len(cancelled_active),
+        "cancelled_starting_count": len(cancelled_starting),
+        "cancelled_blocked_count": len(cancelled_blocked),
         "cancelled_waiting_ids": cancelled_waiting,
         "cancelled_failed_ids": cancelled_failed,
+        "cancelled_active_ids": cancelled_active,
+        "cancelled_starting_ids": cancelled_starting,
+        "cancelled_blocked_ids": cancelled_blocked,
         "errors": errors,
         "thresholds": {
             "waiting_timeout_minutes": int(waiting_timeout_minutes),
             "failed_timeout_minutes": int(failed_timeout_minutes),
+            "active_timeout_minutes": int(active_timeout_minutes),
+            "starting_timeout_minutes": int(starting_timeout_minutes),
+            "blocked_timeout_minutes": int(blocked_timeout_minutes),
         },
         "ran_at": now_iso,
     }

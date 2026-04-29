@@ -429,6 +429,81 @@ def build_visible_chat_prompt_assembly(
     _awareness: list[tuple[int, str, str]] = []  # (priority, label, content)
     _AWARENESS_BUDGET = 6000  # chars; ~1.5 KT max for the whole awareness block
 
+    # P3.5 (2026-04-29): awareness categories — instead of 30+ flat sections,
+    # group by purpose so the model sees a small number of named lanes.
+    # Lower _AWARENESS_CATEGORY_ORDER index = appears earlier in output.
+    # Categorization is by label substring; unknown labels fall into "general".
+    _AWARENESS_CATEGORY_RULES: list[tuple[str, str]] = [
+        # self-monitor: drift, crisis, self-eval, predictive self-model, dev sense
+        ("personality drift", "self-monitor"),
+        ("crisis markers", "self-monitor"),
+        ("self-evaluation", "self-monitor"),
+        ("predictive self-model", "self-monitor"),
+        ("developmental sense", "self-monitor"),
+        # verification: gates, commitments, direction confirm, self-monitor warnings
+        ("self-monitor warnings", "verification"),
+        ("verification gate", "verification"),
+        ("active commitments", "verification"),
+        ("direction confirm", "verification"),
+        ("R2.5 conditional", "verification"),
+        # reasoning: tier, escalation, R2 telemetry
+        ("reasoning tier", "reasoning"),
+        ("reasoning escalation", "reasoning"),
+        ("R2 gate telemetry", "reasoning"),
+        # routing: clarification, context window, provider health
+        ("clarification ambiguity", "routing"),
+        ("context window", "routing"),
+        ("provider health", "routing"),
+        # memory: recall, priors, arc rules
+        ("recall-before-act", "memory"),
+        ("recall before act", "memory"),
+        ("priors from your own data", "memory"),
+        ("rules learned from arcs", "memory"),
+        # calibration: doubt, disagreement
+        ("doubt signal", "calibration"),
+        ("disagreement invite", "calibration"),
+        # operational: todos, plans, wakeups, scheduled, side-tasks, monitor,
+        # subagent, prev-turn, interrupt, eventbus wake-up, autonomous goals
+        ("resume-after-interrupt", "operational"),
+        ("pending plan", "operational"),
+        ("all pending plans", "operational"),
+        ("active todos", "operational"),
+        ("active autonomous goals", "operational"),
+        ("fired self-wakeups", "operational"),
+        ("previous turn changelog", "operational"),
+        ("subagent completion", "operational"),
+        ("pinned monitor", "operational"),
+        ("upcoming scheduled", "operational"),
+        ("flagged side-tasks", "operational"),
+        ("eventbus wake-up", "operational"),
+    ]
+    _AWARENESS_CATEGORY_ORDER = [
+        "self-monitor",
+        "verification",
+        "reasoning",
+        "routing",
+        "memory",
+        "calibration",
+        "operational",
+        "general",
+    ]
+    _AWARENESS_CATEGORY_HEADERS = {
+        "self-monitor": "[SELF-MONITOR]",
+        "verification": "[VERIFICATION]",
+        "reasoning": "[REASONING]",
+        "routing": "[ROUTING]",
+        "memory": "[MEMORY-RECALL]",
+        "calibration": "[CALIBRATION]",
+        "operational": "[OPERATIONAL]",
+        "general": "[AWARENESS]",
+    }
+
+    def _awareness_category_for(label: str) -> str:
+        for needle, category in _AWARENESS_CATEGORY_RULES:
+            if needle in label:
+                return category
+        return "general"
+
     def _awareness_add(priority: int, label: str, content: str | None) -> None:
         if not content:
             return
@@ -589,11 +664,11 @@ def build_visible_chat_prompt_assembly(
         _awareness_add(60, "rules learned from arcs", arc_rules_section())
     except Exception:
         pass
-    try:
-        from core.services.memory_hierarchy import recall_before_act_summary
-        _awareness_add(52, "recall before act (relevant past)", recall_before_act_summary() or "")
-    except Exception:
-        pass
+    # Removed 2026-04-29: redundant unconditional recall_before_act_summary() call.
+    # With no query, that function returns only the "active goals" hot-tier slice,
+    # which is already surfaced separately at prio 35 via goals_prompt_section().
+    # The user-message-keyed call at prio 27 above remains — that one does real
+    # cold-tier semantic recall and is the load-bearing one.
     try:
         from core.services.agent_todos import todos_prompt_section
         _awareness_add(30, "active todos", todos_prompt_section(session_id))
@@ -641,16 +716,39 @@ def build_visible_chat_prompt_assembly(
     # if alone they exceed the budget); later/lower-priority entries are
     # dropped to make room. Dropped labels logged via derived_inputs so MC
     # can see what got squeezed out this turn.
-    _awareness.sort(key=lambda x: x[0])
+    #
+    # P3.5 (2026-04-29): items are grouped by category. Sort key is
+    # (category-order, priority) so categories appear in a predictable
+    # sequence and items within a category preserve priority ordering.
+    # A short header is emitted before the first surviving item of each
+    # category, giving the model structural cues without changing content.
+    _category_order_index = {c: i for i, c in enumerate(_AWARENESS_CATEGORY_ORDER)}
+    _awareness.sort(
+        key=lambda x: (
+            _category_order_index.get(_awareness_category_for(x[1]), 99),
+            x[0],
+        )
+    )
     _used = 0
     _dropped: list[str] = []
+    _last_category: str | None = None
     for _prio, _label, _content in _awareness:
-        if _used > 0 and _used + len(_content) > _AWARENESS_BUDGET:
+        _category = _awareness_category_for(_label)
+        _pending_header = (
+            _AWARENESS_CATEGORY_HEADERS.get(_category, "")
+            if _category != _last_category else ""
+        )
+        _needed = len(_content) + (len(_pending_header) + 2 if _pending_header else 0)
+        if _used > 0 and _used + _needed > _AWARENESS_BUDGET:
             _dropped.append(_label)
             continue
+        if _pending_header:
+            parts.append(_pending_header)
+            _used += len(_pending_header) + 2  # +2 for "\n\n" join overhead
         parts.append(_content)
         derived_inputs.append(_label)
         _used += len(_content)
+        _last_category = _category
     if _dropped:
         derived_inputs.append(f"awareness budget dropped: {', '.join(_dropped)}")
 

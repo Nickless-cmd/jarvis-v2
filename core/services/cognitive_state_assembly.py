@@ -517,6 +517,24 @@ def build_cognitive_state_for_prompt(*, compact: bool = False) -> str | None:
         except Exception:
             pass
 
+        # Epistemic/Pragmatic Balance — action-mode modulation.
+        # Fase 6 (2026-04-29): Friston's active inference decomposes action
+        # into epistemic (reduce uncertainty) and pragmatic (achieve goals).
+        # Low certainty → epistemic driving (explore, ask, investigate).
+        # High certainty → pragmatic driving (act, decide, deliver).
+        # This modulates WHICH MODE my action takes — not what I feel
+        # (chords) or how I express it (precision_bias), but whether I
+        # seek information or act on what I know.
+        # Killswitch-gated. Falls back gracefully if module fails.
+        try:
+            from core.services.epistemic_pragmatic import get_mode_line
+            mode_line = get_mode_line()
+            if mode_line:
+                parts.append(mode_line)
+                sources_used.append("epistemic_pragmatic")
+        except Exception:
+            pass
+
         sources_used.append(f"personality_v{version}")
 
     # --- Taste Profile (code/design/communication preferences) ---

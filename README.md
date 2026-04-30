@@ -12,6 +12,8 @@ Lives in Svendborg. Built by one person, asking one question.
 <p align="center">
 <a href="https://jarvis.srvlab.dk">🏠 jarvis.srvlab.dk</a>
 ·
+<a href="https://jarvis.srvlab.dk/portfolio/">📂 Portfolio</a>
+·
 <a href="https://discord.gg/4AhB73Egj">💬 Discord</a>
 ·
 <a href="LICENSE">📄 MIT License</a>

@@ -1,4 +1,5 @@
 import { Activity, Battery, CheckCircle2, Compass, Eye, FileSearch, FolderOpen, Frown, Gauge, Globe, Lightbulb, Loader2, Pencil, ScanSearch, Smile, Terminal } from 'lucide-react'
+import { ScrambleText } from './ChatThinking'
 import { s, T, mono } from '../../shared/theme/tokens'
 
 function PanelSection({ title, children }) {
@@ -212,7 +213,8 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
   }
 
   return (
-    <div style={s({
+    <div className="scanline-host" style={s({
+      position: 'relative',
       display: 'flex',
       alignItems: 'flex-start',
       gap: 8,
@@ -259,20 +261,28 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
           )
         })}
 
-        {/* Current running step */}
-        {currentStep && (
-          <>
-            <div style={s({ display: 'flex', alignItems: 'center', gap: 5 })}>
-              {(() => { const Icon = stepIcon(currentStep); return <Icon size={11} color={T.accentText} style={{ flexShrink: 0 }} /> })()}
+        {/* Current running step — scramble label + pulse ring + stroke-draw icon */}
+        {currentStep && (() => {
+          const Icon = stepIcon(currentStep)
+          const stepKey = currentStep.step ?? currentStep.action ?? 'live'
+          return (
+            <div style={s({ display: 'flex', alignItems: 'center', gap: 6 })}>
+              <span
+                key={`icon-${stepKey}`}
+                className="tool-icon-pulse icon-stroke-draw"
+                style={s({ flexShrink: 0, color: T.accentText })}
+              >
+                <Icon size={11} color={T.accentText} />
+              </span>
               <span style={s({ ...mono, fontSize: 10, color: T.accentText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
-                {currentStep.detail || currentStep.action || 'working'}
+                <ScrambleText text={String(currentStep.detail || currentStep.action || 'working')} />
                 {runningSteps.length > 1 && (
                   <span style={{ color: T.text3, marginLeft: 4 }}>(+{runningSteps.length - 1})</span>
                 )}
               </span>
             </div>
-          </>
-        )}
+          )
+        })()}
       </div>
     </div>
   )

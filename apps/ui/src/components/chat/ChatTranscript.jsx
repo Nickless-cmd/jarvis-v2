@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Copy, Check, ThumbsUp, Globe } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ApprovalCard } from './ApprovalCard'
+import { ThinkingBar } from './ChatThinking'
 
 const SMILEY_REPLACEMENTS = [
   [/:\-\)/g, '😊'], [/:\)/g, '😊'],
@@ -67,22 +68,7 @@ function MessageWithActions({ message, workingSteps }) {
     <div className="message-group">
       <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
         {message.pending && !message.content ? (
-          workingSteps?.some(s => s.status === 'running') ? (
-            <span className="working-shimmer">
-              {(() => {
-                const running = workingSteps.filter(s => s.status === 'running')
-                const latest = running[running.length - 1]
-                const label = latest?.detail || latest?.action || 'working…'
-                return running.length > 1 ? `${label} (+${running.length - 1})` : label
-              })()}
-            </span>
-          ) : (
-            <div className="thinking-indicator">
-              <div className="thinking-dot" />
-              <div className="thinking-dot" />
-              <div className="thinking-dot" />
-            </div>
-          )
+          <ThinkingBar workingSteps={workingSteps} isStreaming={true} />
         ) : null}
         {message.content ? (
           <div className="message-content">

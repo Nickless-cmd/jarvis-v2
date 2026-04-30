@@ -1484,3 +1484,126 @@ button { cursor: pointer; }
   align-items: center;
 }
 .composer-queued-cancel:hover { color: #e53e3e; }
+
+/* ───────────────────────────────────────────────────────────
+   FUTURISTIC: scramble text + scanline + stroke-draw icons
+   Used in ChatTranscript (thinking bar) and ChatSupportRail
+   (workspace scan panel) to give a "live system" feel.
+   ─────────────────────────────────────────────────────────── */
+
+/* ── Thinking bar: replaces the 3 bouncing dots ────────────── */
+.thinking-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 4px 0;
+}
+.thinking-bar-track {
+  position: relative;
+  width: 84px;
+  height: 1px;
+  background: linear-gradient(90deg,
+    rgba(90,184,160,0) 0%,
+    rgba(90,184,160,.18) 12%,
+    rgba(90,184,160,.18) 88%,
+    rgba(90,184,160,0) 100%);
+  flex-shrink: 0;
+}
+.thinking-bar-rider {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #5ab8a0;
+  box-shadow: 0 0 6px #5ab8a0, 0 0 14px rgba(90,184,160,.55);
+  animation: thinkingRide 1.6s cubic-bezier(.42,0,.58,1) infinite;
+}
+@keyframes thinkingRide {
+  0%   { left: 0%;  transform: translateX(0)    scale(1);   }
+  48%  { left: 100%; transform: translateX(-100%) scale(1.15); }
+  50%  { left: 100%; transform: translateX(-100%) scale(1);   }
+  98%  { left: 0%;  transform: translateX(0)    scale(1.15); }
+  100% { left: 0%;  transform: translateX(0)    scale(1);   }
+}
+.thinking-bar-label {
+  font-size: 11px;
+  color: #8b909e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ── Char-scramble: cell that flickers chars before locking ── */
+.scramble-text { font-variant-numeric: tabular-nums; }
+.scramble-char {
+  display: inline-block;
+  min-width: 0.55em;
+  text-align: left;
+}
+.scramble-char.locked { color: inherit; }
+.scramble-char.scrambling {
+  color: #5ab8a0;
+  opacity: 0.85;
+  text-shadow: 0 0 4px rgba(90,184,160,0.5);
+}
+
+/* ── Scanline overlay on workspace scan panel ─────────────── */
+.scanline-host {
+  position: relative;
+  overflow: hidden;
+}
+.scanline-host::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 18px;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(90,184,160,0) 0%,
+    rgba(90,184,160,.08) 35%,
+    rgba(90,184,160,.18) 50%,
+    rgba(90,184,160,.08) 65%,
+    rgba(90,184,160,0) 100%);
+  animation: scanlineSweep 3.4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes scanlineSweep {
+  0%   { transform: translateY(-20px); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(420px); opacity: 0; }
+}
+
+/* ── Stroke-draw icons: animates lucide SVG strokes ──────── */
+.icon-stroke-draw svg {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: iconStrokeDraw .55s ease-out forwards;
+}
+@keyframes iconStrokeDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ── Subtle glow ring around running tool icon ──────────── */
+.tool-icon-pulse {
+  position: relative;
+  display: inline-flex;
+}
+.tool-icon-pulse::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid rgba(90,184,160,.4);
+  animation: toolIconPulse 1.6s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes toolIconPulse {
+  0%   { transform: scale(0.8); opacity: 0.9; }
+  100% { transform: scale(1.6); opacity: 0;   }
+}

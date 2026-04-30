@@ -149,6 +149,52 @@ def _fire_due_tasks() -> None:
                         logger.info("scheduled_tasks: pushed %s to initiative queue", task_id)
                     except Exception as init_exc:
                         logger.warning("scheduled_tasks: failed to push %s to initiative queue: %s", task_id, init_exc)
+
+                    # EXECUTE the reminder as a self-directive run — without
+                    # this the reminder just lands as text in chat and Jarvis
+                    # describes it instead of acting on it. Same pattern as
+                    # the self-wakeup dispatcher's C-step.
+                    if focus.strip():
+                        try:
+                            from core.services.visible_runs import start_autonomous_run
+                            from core.services.notification_bridge import get_pinned_session_id
+                            from core.services.chat_sessions import (
+                                get_chat_session,
+                                list_chat_sessions,
+                            )
+
+                            target_session = get_pinned_session_id() or ""
+                            if not target_session:
+                                for s in list_chat_sessions():
+                                    sid = str((s or {}).get("id") or "").strip()
+                                    if not sid:
+                                        continue
+                                    full = get_chat_session(sid)
+                                    if full and any(
+                                        m.get("role") == "user"
+                                        for m in (full.get("messages") or [])
+                                    ):
+                                        target_session = sid
+                                        break
+
+                            self_directive = (
+                                f"[SCHEDULED REMINDER FIRED — task_id={task_id}]\n"
+                                f"Du planlagde: {focus}\n\n"
+                                "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
+                                "Hvis det handler om at tjekke noget (Discord, en fil, "
+                                "en status), så BRUG værktøjet. "
+                                "Når du er færdig, rapportér resultatet kort til Bjørn."
+                            )
+                            start_autonomous_run(
+                                self_directive,
+                                session_id=target_session or None,
+                            )
+                            logger.info("scheduled_tasks: dispatched %s as autonomous run", task_id)
+                        except Exception as run_exc:
+                            logger.warning(
+                                "scheduled_tasks: autonomous run trigger failed for %s: %s",
+                                task_id, run_exc,
+                            )
                 else:
                     # Delivery failed (no active session etc.) — leave pending, retry next poll
                     logger.warning(

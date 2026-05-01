@@ -8,6 +8,7 @@ import {
   AlertCircle,
   FileEdit,
   FilePlus,
+  Eye,
 } from 'lucide-react'
 
 interface StagedEdit {
@@ -40,6 +41,7 @@ interface CommitResp {
 interface Props {
   apiBaseUrl: string
   sessionId: string | null
+  onReview?: () => void
 }
 
 /**
@@ -50,7 +52,7 @@ interface Props {
  * the tools, but a human-in-the-loop button means Bjørn can preview a
  * batch before letting it land — the whole point of the stage primitive.
  */
-export function StagedEditsStrip({ apiBaseUrl, sessionId }: Props) {
+export function StagedEditsStrip({ apiBaseUrl, sessionId, onReview }: Props) {
   const [data, setData] = useState<StagedListResp | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -160,6 +162,15 @@ export function StagedEditsStrip({ apiBaseUrl, sessionId }: Props) {
             {data.edits.length > 3 && ` +${data.edits.length - 3} more`}
           </span>
         </button>
+        {onReview && (
+          <button
+            onClick={onReview}
+            title="Åbn review-panel for at læse hele diffen før commit"
+            className="flex items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-2.5 py-1 text-[10px] font-semibold text-warn hover:bg-warn/20"
+          >
+            <Eye size={10} /> Review
+          </button>
+        )}
         <button
           onClick={() => discard()}
           disabled={busy}

@@ -10,6 +10,8 @@ import { DashboardView } from './components/views/DashboardView'
 import { ChannelsView } from './components/views/ChannelsView'
 import { SchedulingView } from './components/views/SchedulingView'
 import { SettingsView } from './components/SettingsView'
+import { KeyboardShortcutsOverlay } from './components/KeyboardShortcutsOverlay'
+import { matchShortcut, isTypingTarget } from './lib/shortcuts'
 
 interface AppConfig {
   apiBaseUrl: string
@@ -33,6 +35,13 @@ export default function App() {
   const [view, setView] = useState<ViewKey>('chat')
   const [config, setConfig] = useState<AppConfig>(FALLBACK_CONFIG)
   const [role, setRole] = useState<'owner' | 'member' | 'guest'>('owner')  // optimistic owner; downgraded after whoami fetch
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const [sidebarHidden, setSidebarHidden] = useState<boolean>(() => {
+    return localStorage.getItem('jarvisx:sidebar-hidden') === '1'
+  })
+  useEffect(() => {
+    localStorage.setItem('jarvisx:sidebar-hidden', sidebarHidden ? '1' : '0')
+  }, [sidebarHidden])
 
   // Single shell instance shared across views — sessions list lives in
   // Settings (under "Recent chats"), and the active session drives the
@@ -82,15 +91,74 @@ export default function App() {
     } catch { /* ignore */ }
   }, [config.projectRoot])
 
+  // ── Global keyboard shortcuts ────────────────────────────────
+  // Centralized handler for view-switching, sidebar toggle, and
+  // shortcut overlay. Per-view shortcuts (Ctrl+K search, Ctrl+/ slash,
+  // Ctrl+J terminal, Ctrl+N new chat, Ctrl+L composer) live in their
+  // owning components since they need scoped state.
+  useEffect(() => {
+    const VIEW_BY_DIGIT: Record<number, ViewKey> = {
+      1: 'chat',
+      2: 'mind',
+      3: 'memory',
+      4: 'tools',
+      5: 'dispatches',
+      6: 'dashboard',
+      7: 'channels',
+      8: 'scheduling',
+    }
+    const onKey = (e: KeyboardEvent) => {
+      // Always-allowed: F1 / ? / Esc — even when typing
+      if (e.key === 'F1' || (e.key === '?' && !e.ctrlKey && !e.metaKey)) {
+        e.preventDefault()
+        setShowShortcuts((v) => !v)
+        return
+      }
+      // The rest of the shortcuts use Ctrl/Cmd, so they don't conflict
+      // with normal typing. We still skip when an INPUT element handles
+      // the same combo (e.g. browser-native Ctrl+L "open URL bar" is
+      // dead in Electron, but be safe with text-edit Ctrl+B in inputs).
+      const typing = isTypingTarget(e.target)
+
+      // Ctrl+1..8 → view switch (always works, layout-independent via e.code)
+      for (const digit of [1, 2, 3, 4, 5, 6, 7, 8]) {
+        if (matchShortcut(e, { ctrl: true, shift: false, alt: false, digit })) {
+          e.preventDefault()
+          setView(VIEW_BY_DIGIT[digit])
+          return
+        }
+      }
+      // Ctrl+, → settings
+      if (matchShortcut(e, { ctrl: true, shift: false, alt: false, key: ',' })) {
+        e.preventDefault()
+        setView('settings')
+        return
+      }
+      // Ctrl+B → toggle sidebar (skip when typing — Ctrl+B is bold in
+      // some inputs, though Composer doesn't apply rich-text bold here)
+      if (matchShortcut(e, { ctrl: true, shift: false, alt: false, key: 'b' })) {
+        if (typing) return
+        e.preventDefault()
+        setSidebarHidden((v) => !v)
+        return
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Sidebar
-          active={view}
-          onSelect={setView}
-          userName={config.userName}
-          shell={shell}
-        />
+        {!sidebarHidden && (
+          <Sidebar
+            active={view}
+            onSelect={setView}
+            userName={config.userName}
+            shell={shell}
+            onShowShortcuts={() => setShowShortcuts(true)}
+          />
+        )}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-bg0">
           {view === 'chat' && (
             <ChatView
@@ -116,6 +184,10 @@ export default function App() {
           )}
         </main>
       </div>
+      <KeyboardShortcutsOverlay
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
     </div>
   )
 }

@@ -339,7 +339,12 @@ const AssistantBubble = memo(function AssistantBubble({
           {onAction && prevUserText && (
             <button
               onClick={() => onAction({ type: 'retry', userText: prevUserText })}
-              title="Retry — re-send foregående besked"
+              title={
+                'Replay prompt — sender den foregående user-besked igen.\n' +
+                'Original besked og dette svar bevares uændret i historien.\n' +
+                'Note: runtime-state kan have ændret sig siden — du får ikke ' +
+                'nødvendigvis præcis samme svar.'
+              }
             >
               <RotateCcw size={12} />
             </button>
@@ -347,7 +352,12 @@ const AssistantBubble = memo(function AssistantBubble({
           {onAction && messageId && (
             <button
               onClick={() => onAction({ type: 'fork', messageId })}
-              title="Fork — kloner samtalen op til denne besked"
+              title={
+                'Fork — opretter ny session med kopi af samtalehistorik op til ' +
+                'og med denne besked. Tool-results referencer overlever; staged ' +
+                'edits, pending plans, terminal-processes og file-preview state ' +
+                'følger IKKE med — det bliver en ren samtalegren.'
+              }
             >
               <GitBranch size={12} />
             </button>
@@ -436,19 +446,34 @@ function UserBubble({
           </div>
           {!message.pending && message.content && onAction && (
             <div className="message-actions">
-              <button onClick={startEdit} title="Edit & resend">
+              <button
+                onClick={startEdit}
+                title={
+                  'Edit & resend — sender en redigeret version som NY besked.\n' +
+                  'Den originale besked bliver stående i historikken (audit-' +
+                  'sporet er intakt). Hvis du vil have samtalen til at føle sig ' +
+                  'rettet, brug Fork i stedet.'
+                }
+              >
                 <Pencil size={12} />
               </button>
               <button
                 onClick={() => onAction({ type: 'retry', userText: message.content || '' })}
-                title="Retry — re-send denne besked"
+                title={
+                  'Replay prompt — sender denne tekst igen som ny besked.\n' +
+                  'Original og evt. svar bevares.'
+                }
               >
                 <RotateCcw size={12} />
               </button>
               {messageId && (
                 <button
                   onClick={() => onAction({ type: 'fork', messageId })}
-                  title="Fork — kloner samtalen op til denne besked"
+                  title={
+                    'Fork — ny session med samtalehistorik op til og med denne ' +
+                    'besked. Ren gren — ingen aktive processes/plans/edits ' +
+                    'følger med.'
+                  }
                 >
                   <GitBranch size={12} />
                 </button>

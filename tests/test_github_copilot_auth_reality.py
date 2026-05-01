@@ -152,6 +152,147 @@ def test_copilot_can_be_set_as_visible_provider(isolated_runtime) -> None:
     assert summary["router"]["visible_primary"]["model"] == "gpt-4.1"
 
 
+def test_openai_codex_can_be_set_as_visible_provider(isolated_runtime) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+    provider_router = isolated_runtime.provider_router
+
+    auth_profiles.save_provider_credentials(
+        profile="codex",
+        provider="openai-codex",
+        credentials={
+            "access_token": "codex_test_token",
+            "token_type": "bearer",
+        },
+    )
+    result = provider_router.configure_provider_router_entry(
+        provider="openai-codex",
+        model="gpt-5.3-codex",
+        auth_mode="oauth",
+        auth_profile="codex",
+        base_url="https://chatgpt.com/backend-api",
+        api_key="",
+        lane="visible",
+        set_visible=True,
+    )
+
+    assert result["visible_updated"] is True
+    assert result["provider"] == "openai-codex"
+    assert result["model"] == "gpt-5.3-codex"
+    assert result["auth_profile"] == "codex"
+
+
+def test_openai_codex_visible_execution_uses_codex_runtime_adapter(
+    isolated_runtime,
+    monkeypatch,
+) -> None:
+    auth_profiles = isolated_runtime.auth_profiles
+    provider_router = isolated_runtime.provider_router
+    visible_model = isolated_runtime.visible_model
+
+    auth_profiles.save_provider_credentials(
+        profile="codex",
+        provider="openai-codex",
+        credentials={"access_token": "codex_test_token"},
+    )
+    provider_router.configure_provider_router_entry(
+        provider="openai-codex",
+        model="gpt-5.3-codex",
+        auth_mode="oauth",
+        auth_profile="codex",
+        base_url="https://chatgpt.com/backend-api",
+        api_key="",
+        lane="visible",
+        set_visible=True,
+    )
+
+    captured = {}
+
+    def fake_execute_codex_chat(*, model, auth_profile, base_url, message):
+        captured["model"] = model
+        captured["auth_profile"] = auth_profile
+        captured["base_url"] = base_url
+        captured["message"] = message
+        return {
+            "text": "codex visible ok",
+            "input_tokens": 12,
+            "output_tokens": 3,
+        }
+
+    import core.services.cheap_provider_runtime as cheap_provider_runtime
+
+    monkeypatch.setattr(
+        cheap_provider_runtime,
+        "_execute_openai_codex_chat",
+        fake_execute_codex_chat,
+    )
+    monkeypatch.setattr(
+        visible_model,
+        "_build_openai_codex_visible_prompt",
+        lambda message, model, session_id=None: message,
+    )
+
+    result = visible_model.execute_visible_model(
+        message="hej",
+        provider="openai-codex",
+        model="gpt-5.3-codex",
+    )
+
+    assert result.text == "codex visible ok"
+    assert result.input_tokens == 12
+    assert result.output_tokens == 3
+    assert captured["model"] == "gpt-5.3-codex"
+    assert captured["auth_profile"] == "codex"
+    assert captured["base_url"] == "https://chatgpt.com/backend-api"
+    assert captured["message"] == "hej"
+
+
+def test_openai_codex_runtime_uses_typed_responses_input(monkeypatch) -> None:
+    import core.auth.openai_oauth as openai_oauth
+    import core.services.cheap_provider_runtime as cheap_provider_runtime
+
+    captured = {}
+
+    class FakeResponse:
+        status_code = 200
+        headers = {}
+        text = (
+            'data: {"type":"response.output_text.delta","delta":"ok"}\n'
+            'data: {"type":"response.completed","response":{"usage":{"input_tokens":4,"output_tokens":1}}}\n'
+            "data: [DONE]\n"
+        )
+
+    def fake_post(url, *, json, headers, timeout):
+        captured["url"] = url
+        captured["payload"] = json
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        openai_oauth,
+        "get_openai_bearer_token",
+        lambda profile, auto_reimport=True: "oauth-token",
+    )
+    monkeypatch.setattr(cheap_provider_runtime.httpx, "post", fake_post)
+
+    result = cheap_provider_runtime._execute_openai_codex_chat(
+        model="gpt-5.4",
+        auth_profile="codex",
+        base_url="https://chatgpt.com/backend-api",
+        message="hej",
+    )
+
+    assert result["text"] == "ok"
+    assert captured["url"] == "https://chatgpt.com/backend-api/codex/responses"
+    assert captured["headers"]["Authorization"] == "Bearer oauth-token"
+    assert captured["payload"]["input"] == [
+        {
+            "role": "user",
+            "content": [{"type": "input_text", "text": "hej"}],
+        }
+    ]
+
+
 def test_main_agent_selection_accepts_live_github_model_not_preconfigured(
     isolated_runtime,
     monkeypatch,

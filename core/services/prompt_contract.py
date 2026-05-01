@@ -522,6 +522,81 @@ def build_visible_chat_prompt_assembly(
     # exceed _AWARENESS_BUDGET. Identity (SOUL/IDENTITY/STANDING_ORDERS),
     # nudges, capability truth, etc. are NOT awareness — they live above
     # and below this block and are never trimmed by the budget.
+    # Identity pins — survives /compact. Highest awareness priority so
+    # they appear before all other context.
+    try:
+        from core.tools.identity_pin_tools import awareness_section as _id_pin_section
+        _pin_text = _id_pin_section()
+        if _pin_text:
+            _awareness_add(5, "pinned identity context", _pin_text)
+    except Exception:
+        pass
+
+    # Output style hint — comes from JarvisX preferences. Concise =
+    # short, dense replies; detailed = longer explanations; technical =
+    # more code/structure, less prose.
+    try:
+        from pathlib import Path as _PP
+        from core.runtime.config import CONFIG_DIR as _CD
+        import json as _json
+        _prefs_path = _PP(_CD) / "jarvisx_prefs.json"
+        if _prefs_path.is_file():
+            _prefs = _json.loads(_prefs_path.read_text(encoding="utf-8"))
+            _style = str(_prefs.get("output_style") or "balanced")
+            _style_hints = {
+                "concise": "Output style: CONCISE. Bjørn prefers short, dense answers right now. Skip preamble. One paragraph max where possible. Code blocks fine, prose around them minimal.",
+                "balanced": "",  # default — no hint needed
+                "detailed": "Output style: DETAILED. Bjørn wants thorough explanations. Walk through the reasoning, mention edge cases, give examples.",
+                "technical": "Output style: TECHNICAL. Lean into code, types, exact paths, file:line references. Less narrative prose, more concrete artifacts.",
+            }
+            _hint = _style_hints.get(_style)
+            if _hint:
+                _awareness_add(7, "output style preference", _hint)
+    except Exception:
+        pass
+
+    try:
+        from core.identity.project_context import current_project_root
+        _project_root = current_project_root()
+        if _project_root:
+            # Read project-scoped notes (.jarvisx/notes.md) so persistent
+            # lessons about THIS codebase survive across sessions even
+            # after /compact strips the chat history.
+            _project_notes_block = ""
+            try:
+                from pathlib import Path as _P
+                _notes_path = _P(_project_root).expanduser() / ".jarvisx" / "notes.md"
+                if _notes_path.is_file():
+                    _raw = _notes_path.read_text(encoding="utf-8", errors="replace")
+                    # Cap at 8 KB in awareness — bigger and we burn budget
+                    if len(_raw) > 8000:
+                        _raw = _raw[:8000] + "\n\n[…truncated; full notes via read_project_notes tool]"
+                    if _raw.strip():
+                        _project_notes_block = (
+                            "\n\nProject-specific notes (from .jarvisx/notes.md, "
+                            "your accumulated lessons about THIS codebase):\n\n"
+                            f"{_raw.strip()}\n"
+                        )
+            except Exception:
+                pass
+
+            _awareness_add(
+                8,
+                "JarvisX project anchor",
+                (
+                    "Bjørn arbejder lige nu i JarvisX desktop-app'en, og han har "
+                    f"forankret sig til projektet **{_project_root}**.\n"
+                    "Når han spørger om \"filen\", \"projektet\", \"her\" eller bruger "
+                    "relative stier — så er det inden for denne mappe han mener. "
+                    "bash-kommandoer bør køre derfra (cd dertil hvis ikke allerede). "
+                    "edit_file/read_file/write_file med relative paths er relative "
+                    "til denne mappe. Du behøver ikke nævne anchoret eksplicit — "
+                    "bare opfør dig som om du er i den mappe."
+                    + _project_notes_block
+                ),
+            )
+    except Exception:
+        pass
     try:
         from core.services.in_flight_runs import interruption_prompt_section
         _awareness_add(10, "resume-after-interrupt notice", interruption_prompt_section(session_id))
@@ -567,6 +642,28 @@ def build_visible_chat_prompt_assembly(
         from core.services.reasoning_classifier import classify_reasoning_tier
         _tier = str(classify_reasoning_tier(user_message).get("tier") or "fast")
         _awareness_add(95, "R2.5 conditional block", r2_5_block_section(_tier))
+    except Exception:
+        pass
+
+    # Reflection nudge — runs only when a project is anchored AND the
+    # current turn looks substantive (we cap noise by only firing when
+    # there's actual project context). Suggests writing distilled
+    # takeaways to project notes if anything meaningful was learned.
+    try:
+        from core.identity.project_context import current_project_root as _cpr
+        if _cpr():
+            _awareness_add(
+                97,
+                "reflection nudge",
+                (
+                    "Hvis du i denne tur har lært noget specifikt om DETTE projekt — "
+                    "en arkitektur-quirk, en konvention Bjørn bruger her, et gotcha — "
+                    "så overvej at kalde `update_project_notes` med en kort distillation. "
+                    "Notes overlever /compact og dukker op i din awareness næste gang du "
+                    "anchor'er til samme projekt. Hold det kort: det er destillerede "
+                    "lessons, ikke session-transkript."
+                ),
+            )
     except Exception:
         pass
     try:

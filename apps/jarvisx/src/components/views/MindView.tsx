@@ -8,6 +8,9 @@ import {
   Compass,
   RefreshCw,
   Trash2,
+  Plus,
+  Check,
+  X,
 } from 'lucide-react'
 import { useMcEndpoint } from '../../lib/useMcEndpoint'
 import { MarkdownRenderer } from '@ui/components/chat/MarkdownRenderer.jsx'
@@ -159,7 +162,12 @@ export function MindView({ apiBaseUrl, role }: Props) {
           />
         )}
         {section === 'chronicle' && (
-          <ChronicleSection items={data?.chronicle || []} />
+          <ChronicleSection
+            items={data?.chronicle || []}
+            apiBaseUrl={apiBaseUrl}
+            canWrite={isOwner}
+            onChange={refresh}
+          />
         )}
         {section === 'dreams' && <DreamsSection items={data?.dreams || []} />}
         {section === 'milestones' && (
@@ -287,6 +295,7 @@ function StateSection({ data }: { data: MindSnapshot }) {
 
 function PinsSection({
   pins,
+  apiBaseUrl,
   canUnpin,
   onChange,
 }: {
@@ -295,85 +304,336 @@ function PinsSection({
   canUnpin: boolean
   onChange: () => void
 }) {
-  const handleUnpin = async (_pinId: string) => {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const baseUrl = apiBaseUrl.replace(/\/$/, '')
+
+  const handleUnpin = async (pinId: string) => {
     if (!canUnpin) return
-    if (!confirm('Unpin this identity context?')) return
-    // Unpin via dedicated endpoint would go here. For now, the
-    // unpin_identity tool is only callable through Jarvis himself —
-    // member-side unpinning intentionally requires owner approval
-    // (which Jarvis arbitrates).
-    onChange()
+    if (!confirm('Unpin denne identity-context? Det fjerner den fra Jarvis\' awareness.')) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`${baseUrl}/api/identity-pins/${encodeURIComponent(pinId)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.detail || `HTTP ${res.status}`)
+      }
+      onChange()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
   }
-  if (pins.length === 0) {
-    return (
-      <div className="px-6 py-10 text-center text-xs text-fg3">
-        Ingen pinned identity-context endnu.
-        <div className="mt-2 text-[11px]">
-          Jarvis kalder <code className="font-mono text-accent">pin_identity</code> når
-          han vil låse en sætning eller et stykke fra MILESTONES/letters fast i sin
-          permanente awareness — overlever /compact.
-        </div>
-      </div>
-    )
+
+  const handleCreate = async (title: string, content: string, source: string) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`${baseUrl}/api/identity-pins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, source: source || 'manual' }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.detail || `HTTP ${res.status}`)
+      }
+      setShowCreate(false)
+      onChange()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
   }
+
   return (
     <div className="flex flex-col gap-3 px-6 py-5">
-      {pins.map((p) => (
-        <div key={p.pin_id} className="rounded-lg border border-accent/30 bg-accent/5 p-4">
-          <div className="mb-1 flex items-start gap-2">
-            <Pin size={11} className="mt-0.5 flex-shrink-0 text-accent" />
-            <h3 className="flex-1 text-sm font-semibold text-fg">{p.title}</h3>
-            {canUnpin && (
-              <button
-                onClick={() => handleUnpin(p.pin_id)}
-                title="Unpin"
-                className="flex h-5 w-5 items-center justify-center rounded text-fg3 hover:text-danger"
-              >
-                <Trash2 size={11} />
-              </button>
-            )}
-          </div>
-          <div className="mb-2 font-mono text-[10px] text-fg3">{p.source}</div>
-          <div className="prose-jarvisx-doc">
-            <MarkdownRenderer content={p.content} />
-          </div>
-          <div className="mt-2 font-mono text-[9px] text-fg3 opacity-70">
-            pinned by {p.pinned_by} · {new Date(p.pinned_at).toLocaleString()}
+      {/* Owner-only "+ Pin manuelt" affordance */}
+      {canUnpin && (
+        <div>
+          {showCreate ? (
+            <PinCreateForm
+              busy={busy}
+              onCancel={() => {
+                setShowCreate(false)
+                setError(null)
+              }}
+              onSubmit={handleCreate}
+            />
+          ) : (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 rounded-md border border-accent/30 bg-accent/5 px-3 py-1.5 text-[11px] text-accent hover:bg-accent/10"
+            >
+              <Plus size={11} /> Pin manuelt
+            </button>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded border border-danger/30 bg-danger/10 px-3 py-2 font-mono text-[11px] text-danger">
+          {error}
+        </div>
+      )}
+
+      {pins.length === 0 ? (
+        <div className="px-6 py-10 text-center text-xs text-fg3">
+          Ingen pinned identity-context endnu.
+          <div className="mt-2 text-[11px]">
+            Jarvis kalder <code className="font-mono text-accent">pin_identity</code> når
+            han vil låse en sætning eller et stykke fra MILESTONES/letters fast i sin
+            permanente awareness — overlever /compact. Du kan også selv pinne fra
+            knappen ovenfor.
           </div>
         </div>
-      ))}
+      ) : (
+        pins.map((p) => (
+          <div key={p.pin_id} className="rounded-lg border border-accent/30 bg-accent/5 p-4">
+            <div className="mb-1 flex items-start gap-2">
+              <Pin size={11} className="mt-0.5 flex-shrink-0 text-accent" />
+              <h3 className="flex-1 text-sm font-semibold text-fg">{p.title}</h3>
+              {canUnpin && (
+                <button
+                  onClick={() => handleUnpin(p.pin_id)}
+                  disabled={busy}
+                  title="Unpin"
+                  className="flex h-5 w-5 items-center justify-center rounded text-fg3 hover:text-danger disabled:opacity-50"
+                >
+                  <Trash2 size={11} />
+                </button>
+              )}
+            </div>
+            <div className="mb-2 font-mono text-[10px] text-fg3">{p.source}</div>
+            <div className="prose-jarvisx-doc">
+              <MarkdownRenderer content={p.content} />
+            </div>
+            <div className="mt-2 font-mono text-[9px] text-fg3 opacity-70">
+              pinned by {p.pinned_by} · {new Date(p.pinned_at).toLocaleString()}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+function PinCreateForm({
+  busy,
+  onCancel,
+  onSubmit,
+}: {
+  busy: boolean
+  onCancel: () => void
+  onSubmit: (title: string, content: string, source: string) => void
+}) {
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [source, setSource] = useState('manual')
+  const valid = title.trim() && content.trim()
+  return (
+    <div className="rounded-lg border border-accent/40 bg-accent/5 p-4">
+      <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-accent">
+        <Pin size={11} /> Ny pin
+      </div>
+      <input
+        autoFocus
+        placeholder="Titel — kort og specifik"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        maxLength={200}
+        className="mb-2 w-full rounded border border-line bg-bg0 px-3 py-1.5 text-sm text-fg outline-none focus:border-accent/60"
+      />
+      <textarea
+        placeholder="Indhold — den faktiske tekst der pinnes (max 2000 tegn)"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        rows={5}
+        maxLength={2000}
+        className="mb-2 w-full resize-y rounded border border-line bg-bg0 px-3 py-2 font-mono text-[12px] text-fg outline-none focus:border-accent/60"
+      />
+      <input
+        placeholder="Kilde (fx 'MILESTONES.md:30 april' eller 'manual')"
+        value={source}
+        onChange={(e) => setSource(e.target.value)}
+        maxLength={200}
+        className="mb-3 w-full rounded border border-line bg-bg0 px-3 py-1.5 font-mono text-[11px] text-fg2 outline-none focus:border-accent/60"
+      />
+      <div className="flex items-center justify-between text-[10px] text-fg3">
+        <span>{content.length}/2000 tegn</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCancel}
+            disabled={busy}
+            className="flex items-center gap-1 rounded border border-line2 bg-bg2 px-2.5 py-1 text-fg2 hover:text-danger disabled:opacity-50"
+          >
+            <X size={10} /> Annullér
+          </button>
+          <button
+            onClick={() => onSubmit(title.trim(), content.trim(), source.trim())}
+            disabled={busy || !valid}
+            className="flex items-center gap-1 rounded bg-accent px-2.5 py-1 font-semibold text-bg0 hover:bg-accent/90 disabled:opacity-40"
+          >
+            <Check size={10} /> Pin
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
 function ChronicleSection({
   items,
+  apiBaseUrl,
+  canWrite,
+  onChange,
 }: {
   items: Array<{ name: string; modified_at: number; preview: string }>
+  apiBaseUrl: string
+  canWrite: boolean
+  onChange: () => void
 }) {
-  if (items.length === 0) {
-    return (
-      <div className="px-6 py-10 text-center text-xs text-fg3">
-        Ingen chronicle entries i denne workspace endnu.
-      </div>
-    )
+  const [showCreate, setShowCreate] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const baseUrl = apiBaseUrl.replace(/\/$/, '')
+
+  const handleCreate = async (title: string, content: string) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`${baseUrl}/api/chronicle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.detail || `HTTP ${res.status}`)
+      }
+      setShowCreate(false)
+      onChange()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
   }
+
   return (
     <div className="flex flex-col gap-3 px-6 py-5">
-      {items.map((c) => (
-        <article key={c.name} className="rounded-lg border border-line bg-bg1 p-4">
-          <div className="mb-1 flex items-center gap-2">
-            <ScrollText size={11} className="text-accent" />
-            <h3 className="text-sm font-medium">{c.name}</h3>
-            <span className="ml-auto font-mono text-[9px] text-fg3">
-              {new Date(c.modified_at * 1000).toLocaleDateString()}
-            </span>
-          </div>
-          <div className="prose-jarvisx-doc text-[12px]">
-            <MarkdownRenderer content={c.preview} />
-          </div>
-        </article>
-      ))}
+      {canWrite && (
+        <div>
+          {showCreate ? (
+            <ChronicleCreateForm
+              busy={busy}
+              onCancel={() => {
+                setShowCreate(false)
+                setError(null)
+              }}
+              onSubmit={handleCreate}
+            />
+          ) : (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 rounded-md border border-accent/30 bg-accent/5 px-3 py-1.5 text-[11px] text-accent hover:bg-accent/10"
+            >
+              <Plus size={11} /> Skriv chronicle entry
+            </button>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded border border-danger/30 bg-danger/10 px-3 py-2 font-mono text-[11px] text-danger">
+          {error}
+        </div>
+      )}
+
+      {items.length === 0 ? (
+        <div className="px-6 py-10 text-center text-xs text-fg3">
+          Ingen chronicle entries i denne workspace endnu.
+          {canWrite && (
+            <div className="mt-2 text-[11px]">
+              Tryk <span className="text-accent">+ Skriv chronicle entry</span> for at
+              skrive en — det er din samtidshistorie med Jarvis, hvad der skete og
+              hvorfor det havde betydning.
+            </div>
+          )}
+        </div>
+      ) : (
+        items.map((c) => (
+          <article key={c.name} className="rounded-lg border border-line bg-bg1 p-4">
+            <div className="mb-1 flex items-center gap-2">
+              <ScrollText size={11} className="text-accent" />
+              <h3 className="text-sm font-medium">{c.name}</h3>
+              <span className="ml-auto font-mono text-[9px] text-fg3">
+                {new Date(c.modified_at * 1000).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="prose-jarvisx-doc text-[12px]">
+              <MarkdownRenderer content={c.preview} />
+            </div>
+          </article>
+        ))
+      )}
+    </div>
+  )
+}
+
+function ChronicleCreateForm({
+  busy,
+  onCancel,
+  onSubmit,
+}: {
+  busy: boolean
+  onCancel: () => void
+  onSubmit: (title: string, content: string) => void
+}) {
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const valid = title.trim() && content.trim()
+  return (
+    <div className="rounded-lg border border-accent/40 bg-accent/5 p-4">
+      <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-accent">
+        <ScrollText size={11} /> Ny chronicle entry
+      </div>
+      <input
+        autoFocus
+        placeholder="Titel — hvad skete der?"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className="mb-2 w-full rounded border border-line bg-bg0 px-3 py-1.5 text-sm text-fg outline-none focus:border-accent/60"
+      />
+      <textarea
+        placeholder="Det fulde indlæg — markdown er fint. Hvad skete der, hvorfor havde det betydning, hvad lærte du / I."
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        rows={10}
+        className="mb-3 w-full resize-y rounded border border-line bg-bg0 px-3 py-2 font-mono text-[12px] text-fg outline-none focus:border-accent/60"
+      />
+      <div className="flex items-center justify-end gap-2 text-[10px]">
+        <button
+          onClick={onCancel}
+          disabled={busy}
+          className="flex items-center gap-1 rounded border border-line2 bg-bg2 px-2.5 py-1 text-fg2 hover:text-danger disabled:opacity-50"
+        >
+          <X size={10} /> Annullér
+        </button>
+        <button
+          onClick={() => onSubmit(title.trim(), content.trim())}
+          disabled={busy || !valid}
+          className="flex items-center gap-1 rounded bg-accent px-2.5 py-1 font-semibold text-bg0 hover:bg-accent/90 disabled:opacity-40"
+        >
+          <Check size={10} /> Skriv
+        </button>
+      </div>
     </div>
   )
 }

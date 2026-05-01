@@ -1269,3 +1269,91 @@ def get_dispatch_diff(task_id: str) -> dict[str, Any]:
         "diff": diff_text,
         "diff_summary": row.get("diff_summary"),
     }
+
+
+# ── Identity pin + chronicle mutations (owner-only) ───────────────
+# Lets JarvisX' Mind view drive write-side actions Bjørn previously
+# could only trigger through tool calls Jarvis ran on his behalf.
+
+
+class _PinPayload(BaseModel):
+    title: str
+    content: str
+    source: str | None = None
+
+
+@router.post("/identity-pins")
+def add_identity_pin(payload: _PinPayload) -> dict[str, Any]:
+    """Pin a piece of text as permanent awareness. Owner-only.
+
+    Mirrors the pin_identity tool but lets Bjørn pin from the Mind UI
+    directly. pinned_by is recorded as 'user' so Jarvis can tell at a
+    glance which pins came from him vs Bjørn.
+    """
+    _require_owner()
+    from core.tools.identity_pin_tools import add_pin
+    out = add_pin(
+        title=payload.title,
+        content=payload.content,
+        source=(payload.source or "manual"),
+        pinned_by="user",
+    )
+    if out.get("status") != "ok":
+        raise HTTPException(status_code=400, detail=out.get("error") or "pin failed")
+    return out
+
+
+@router.delete("/identity-pins/{pin_id}")
+def remove_identity_pin(pin_id: str) -> dict[str, Any]:
+    """Unpin by pin_id. Owner-only."""
+    _require_owner()
+    from core.tools.identity_pin_tools import remove_pin
+    out = remove_pin(pin_id)
+    if out.get("status") != "ok":
+        raise HTTPException(status_code=404, detail=out.get("error") or "pin not found")
+    return out
+
+
+class _ChroniclePayload(BaseModel):
+    title: str
+    content: str
+    workspace: str | None = None
+
+
+@router.post("/chronicle")
+def write_chronicle_entry(payload: _ChroniclePayload) -> dict[str, Any]:
+    """Append a new chronicle entry to the workspace's chronicle/ dir.
+
+    Owner-only. Writes a date-prefixed markdown file. If a file with
+    the same date+slug exists, suffixes -2, -3, etc. so we never
+    silently overwrite Jarvis' own entries.
+    """
+    _require_owner()
+    title = payload.title.strip()
+    content = payload.content.strip()
+    if not title or not content:
+        raise HTTPException(status_code=400, detail="title and content required")
+    ws_dir = _resolve_workspace(payload.workspace)
+    chron_dir = ws_dir / "chronicle"
+    chron_dir.mkdir(parents=True, exist_ok=True)
+
+    # Date-prefixed filename, slug from title (alnum + hyphens, lowercased)
+    date = datetime.utcnow().strftime("%Y-%m-%d")
+    slug = "".join(c.lower() if c.isalnum() else "-" for c in title)
+    slug = "-".join(filter(None, slug.split("-")))[:60] or "entry"
+    base = f"{date}-{slug}"
+    suffix = ""
+    counter = 2
+    while (chron_dir / f"{base}{suffix}.md").exists():
+        suffix = f"-{counter}"
+        counter += 1
+    out_path = chron_dir / f"{base}{suffix}.md"
+
+    body = f"# {title}\n\n*written by user via JarvisX · {datetime.utcnow().isoformat()}Z*\n\n{content}\n"
+    out_path.write_text(body, encoding="utf-8")
+    return {
+        "status": "ok",
+        "name": out_path.name,
+        "workspace": ws_dir.name,
+        "size_bytes": out_path.stat().st_size,
+    }

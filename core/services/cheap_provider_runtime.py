@@ -1588,6 +1588,167 @@ def _execute_openai_codex_chat(
     }
 
 
+def _iter_openai_codex_chat_events(
+    *,
+    model: str,
+    auth_profile: str,
+    base_url: str,
+    message: str,
+):
+    """Stream raw SSE events from the OpenAI Codex Responses API.
+
+    Yields dicts with shape:
+      {"kind": "delta", "text": "..."}                — text token
+      {"kind": "done", "input_tokens": N,
+                       "output_tokens": M,
+                       "model_used": "...",
+                       "full_text": "..."}            — final event
+
+    Uses httpx.stream() so deltas reach the consumer as the server
+    emits them — the previous _execute_openai_codex_chat collects
+    the entire response body before parsing, which made the visible
+    lane look frozen for 5–30s while gpt-5.4 wrote.
+
+    Caller is responsible for handling CheapProviderError; we raise
+    the same shape as the sync version.
+    """
+    from core.auth.openai_oauth import get_openai_bearer_token
+
+    root = str(base_url or "https://chatgpt.com/backend-api").rstrip("/")
+    bearer_token = get_openai_bearer_token(profile=auth_profile, auto_reimport=True)
+
+    headers = {
+        "Authorization": f"Bearer {bearer_token}",
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+    }
+    payload: dict[str, object] = {
+        "model": model,
+        "instructions": "You are a helpful assistant. Respond concisely.",
+        "input": [
+            {
+                "role": "user",
+                "content": [{"type": "input_text", "text": message}],
+            }
+        ],
+        "store": False,
+        "stream": True,
+    }
+    url = f"{root}/codex/responses"
+
+    text_parts: list[str] = []
+    input_tokens = 0
+    output_tokens = 0
+    model_used = model
+
+    try:
+        with httpx.stream(
+            "POST", url, json=payload, headers=headers,
+            timeout=httpx.Timeout(_DEFAULT_TIMEOUT_SECONDS, read=None),
+        ) as response:
+            if response.status_code == 401:
+                raise CheapProviderError(
+                    provider=_OPENAI_CODEX_PROVIDER,
+                    code="auth-failed",
+                    message="OAuth bearer token rejected (HTTP 401). Token may be expired.",
+                )
+            if response.status_code == 403:
+                raise CheapProviderError(
+                    provider=_OPENAI_CODEX_PROVIDER,
+                    code="forbidden",
+                    message="Access denied (HTTP 403). Account may lack codex scope.",
+                )
+            if response.status_code == 429:
+                retry_after = int(response.headers.get("retry-after", "60") or "60")
+                raise CheapProviderError(
+                    provider=_OPENAI_CODEX_PROVIDER,
+                    code="rate-limited",
+                    message="Rate limited (HTTP 429)",
+                    retry_after_seconds=retry_after,
+                    status_code=429,
+                )
+            if response.status_code >= 400:
+                # Read the body so we can report something useful
+                body_bytes = b""
+                for chunk in response.iter_bytes():
+                    body_bytes += chunk
+                    if len(body_bytes) > 2000:
+                        break
+                raise CheapProviderError(
+                    provider=_OPENAI_CODEX_PROVIDER,
+                    code="provider-error",
+                    message=f"HTTP {response.status_code}: {body_bytes.decode('utf-8', errors='replace')[:500]}",
+                    status_code=response.status_code,
+                )
+
+            # Iterate SSE lines as they arrive
+            for line in response.iter_lines():
+                line = (line or "").strip()
+                if not line.startswith("data: "):
+                    continue
+                data_str = line[6:]
+                if data_str == "[DONE]":
+                    break
+                try:
+                    event = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
+                event_type = str(event.get("type") or "")
+                if event_type == "response.output_text.delta":
+                    delta = str(event.get("delta") or "")
+                    if delta:
+                        text_parts.append(delta)
+                        yield {"kind": "delta", "text": delta}
+                elif event_type == "response.output_text.done":
+                    full_text = str(event.get("text") or "")
+                    if full_text and not text_parts:
+                        # Server didn't emit deltas, only a single done
+                        text_parts.append(full_text)
+                        yield {"kind": "delta", "text": full_text}
+                elif event_type == "response.completed":
+                    response_obj = event.get("response") or event.get("result") or {}
+                    usage = response_obj.get("usage") or {}
+                    input_tokens = int(usage.get("input_tokens") or 0)
+                    output_tokens = int(usage.get("output_tokens") or 0)
+                    model_from_response = str(response_obj.get("model") or "").strip()
+                    if model_from_response:
+                        model_used = model_from_response
+    except httpx.ConnectError as exc:
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="connection-error",
+            message=f"Cannot connect to {url}: {exc}",
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="timeout",
+            message=f"Request timed out after {_DEFAULT_TIMEOUT_SECONDS}s",
+            retry_after_seconds=60,
+        ) from exc
+
+    full_text = "".join(text_parts).strip()
+    if not full_text and not text_parts:
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="empty-response",
+            message="Codex Responses API returned no text content",
+        )
+
+    if not input_tokens:
+        input_tokens = _estimate_tokens(message)
+    if not output_tokens:
+        output_tokens = _estimate_tokens(full_text)
+
+    yield {
+        "kind": "done",
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "model_used": model_used,
+        "full_text": full_text,
+    }
+
+
 def _execute_public_safe_local_ollama(*, message: str) -> dict[str, object]:
     target = resolve_provider_router_target(lane="local")
     if not bool(target.get("active")) or str(target.get("provider") or "").strip() != "ollama":

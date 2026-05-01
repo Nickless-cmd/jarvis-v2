@@ -5,6 +5,7 @@ import { ChatView } from './components/ChatView'
 import { MindView } from './components/views/MindView'
 import { MemoryView } from './components/views/MemoryView'
 import { ToolsView } from './components/views/ToolsView'
+import { ClaudeDispatchesView } from './components/views/ClaudeDispatchesView'
 import { DashboardView } from './components/views/DashboardView'
 import { ChannelsView } from './components/views/ChannelsView'
 import { SchedulingView } from './components/views/SchedulingView'
@@ -106,6 +107,7 @@ export default function App() {
           {view === 'mind' && <MindView apiBaseUrl={config.apiBaseUrl} role={role} />}
           {view === 'memory' && <MemoryView apiBaseUrl={config.apiBaseUrl} />}
           {view === 'tools' && <ToolsView apiBaseUrl={config.apiBaseUrl} />}
+          {view === 'dispatches' && <ClaudeDispatchesView apiBaseUrl={config.apiBaseUrl} />}
           {view === 'dashboard' && <DashboardView apiBaseUrl={config.apiBaseUrl} />}
           {view === 'channels' && <ChannelsView apiBaseUrl={config.apiBaseUrl} />}
           {view === 'scheduling' && <SchedulingView apiBaseUrl={config.apiBaseUrl} />}

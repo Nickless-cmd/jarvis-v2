@@ -8,6 +8,7 @@ import {
   Clock,
   Plus,
   Settings as SettingsIcon,
+  Workflow,
 } from 'lucide-react'
 import { SessionList } from './native/SessionList'
 
@@ -16,6 +17,7 @@ export type ViewKey =
   | 'mind'
   | 'memory'
   | 'tools'
+  | 'dispatches'
   | 'dashboard'
   | 'channels'
   | 'scheduling'
@@ -42,6 +44,7 @@ const NAV: { key: ViewKey; label: string; Icon: typeof MessageSquare; hint?: str
   { key: 'mind', label: 'Mind', Icon: Sparkles, hint: 'Hans indre liv: tilstand, drømme, milepæle, identitet' },
   { key: 'memory', label: 'Hukommelse', Icon: Brain, hint: 'Workspace-filer, MEMORY, daily notes' },
   { key: 'tools', label: 'Værktøjer', Icon: Wrench, hint: 'Daemoner og skills' },
+  { key: 'dispatches', label: 'Claude jobs', Icon: Workflow, hint: 'Parallelle Claude Code-instanser dispatched af Jarvis' },
   { key: 'dashboard', label: 'Dashboard', Icon: BarChart3, hint: 'CPU, ticks, signal weather' },
   { key: 'channels', label: 'Channels', Icon: Radio, hint: 'Discord, Telegram, WhatsApp' },
   { key: 'scheduling', label: 'Planlægning', Icon: Clock, hint: 'Scheduled tasks & wakeups' },

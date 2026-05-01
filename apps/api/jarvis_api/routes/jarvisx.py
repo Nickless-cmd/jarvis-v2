@@ -1418,3 +1418,45 @@ def whoami_token(authorization: str | None = Header(default=None)) -> dict[str, 
         "expires_at": claims.get("exp"),
         "issuer": claims.get("iss"),
     }
+
+
+# ── Plan proposals (interactive plan-mode) ────────────────────────
+# When Jarvis enters plan-mode he writes a structured proposal via the
+# propose_plan tool instead of executing. These endpoints let JarvisX
+# surface those proposals as interactive cards (approve/dismiss buttons)
+# rather than the user having to type the approval into chat.
+
+
+@router.get("/plans")
+def list_plans(
+    session_id: str = Query(..., description="Chat session id"),
+    include_resolved: bool = Query(default=False),
+) -> dict[str, Any]:
+    """Pending plan proposals for a session (optionally including resolved)."""
+    from core.services.plan_proposals import list_session_plans
+    plans = list_session_plans(session_id)
+    if not include_resolved:
+        plans = [p for p in plans if p.get("status") == "awaiting_approval"]
+    return {"session_id": session_id, "count": len(plans), "plans": plans}
+
+
+@router.post("/plans/{plan_id}/approve")
+def approve_plan(plan_id: str) -> dict[str, Any]:
+    """Mark a plan as approved. Owner-only."""
+    _require_owner()
+    from core.services.plan_proposals import resolve_plan
+    out = resolve_plan(plan_id, decision="approved")
+    if out.get("status") == "error":
+        raise HTTPException(status_code=404, detail=out.get("error") or "plan not found")
+    return out
+
+
+@router.post("/plans/{plan_id}/dismiss")
+def dismiss_plan(plan_id: str) -> dict[str, Any]:
+    """Mark a plan as dismissed. Owner-only."""
+    _require_owner()
+    from core.services.plan_proposals import resolve_plan
+    out = resolve_plan(plan_id, decision="dismissed")
+    if out.get("status") == "error":
+        raise HTTPException(status_code=404, detail=out.get("error") or "plan not found")
+    return out

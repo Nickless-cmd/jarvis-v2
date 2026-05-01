@@ -1038,3 +1038,73 @@ def workspace_read(
         "size_bytes": p.stat().st_size,
         "truncated": truncated,
     }
+
+
+# ── Process supervisor surface ────────────────────────────────────
+# Backs the JarvisX bottom-drawer terminal panel: list managed
+# background processes Jarvis has spawned, tail their logs, stop them.
+# Only `owner` can stop/remove — members observe.
+
+
+def _require_owner() -> None:
+    """Raise 403 if the current request isn't from the owner."""
+    snap = current_context_snapshot()
+    user_id = snap.get("user_id") or ""
+    if not user_id:
+        # No identity bound — refuse mutating ops.
+        raise HTTPException(status_code=403, detail="owner role required")
+    try:
+        from core.identity.users import find_user_by_discord_id
+        u = find_user_by_discord_id(user_id)
+    except Exception:
+        u = None
+    if not u or getattr(u, "role", "") != "owner":
+        raise HTTPException(status_code=403, detail="owner role required")
+
+
+@router.get("/processes")
+def list_managed_processes(include_stopped: bool = Query(default=True)) -> dict[str, Any]:
+    """List processes Jarvis has spawned via the process_supervisor."""
+    from core.services.process_supervisor import list_processes
+    return list_processes(include_stopped=include_stopped)
+
+
+@router.get("/processes/{name}/log")
+def tail_managed_process_log(
+    name: str,
+    lines: int = Query(default=200, ge=1, le=2000),
+) -> dict[str, Any]:
+    """Return the tail of a managed process's combined stdout/stderr log.
+
+    Used by the JarvisX terminal drawer for polling-based live tail.
+    """
+    from core.services.process_supervisor import tail_process_log
+    out = tail_process_log(name, lines=lines)
+    if out.get("status") == "error":
+        raise HTTPException(status_code=404, detail=out.get("error") or "log unavailable")
+    return out
+
+
+@router.post("/processes/{name}/stop")
+def stop_managed_process(name: str, grace: int = Query(default=5, ge=0, le=60)) -> dict[str, Any]:
+    """SIGTERM (then SIGKILL after grace) a managed process. Owner-only."""
+    _require_owner()
+    from core.services.process_supervisor import stop_process
+    out = stop_process(name, grace=grace)
+    if out.get("status") == "error":
+        raise HTTPException(status_code=400, detail=out.get("error") or "stop failed")
+    return out
+
+
+@router.delete("/processes/{name}")
+def remove_managed_process(name: str) -> dict[str, Any]:
+    """Remove a stopped process from the registry. Owner-only.
+
+    Refuses if the process is still alive — caller must stop first.
+    """
+    _require_owner()
+    from core.services.process_supervisor import remove_process
+    out = remove_process(name)
+    if out.get("status") == "error":
+        raise HTTPException(status_code=400, detail=out.get("error") or "remove failed")
+    return out

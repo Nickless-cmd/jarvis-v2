@@ -153,25 +153,43 @@ export function ChatView({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const ctrlOrMeta = e.ctrlKey || e.metaKey
-      if (ctrlOrMeta && e.key === 'k' && !e.shiftKey) {
+      if (!ctrlOrMeta) return
+      if (e.key === 'k' && !e.shiftKey) {
         e.preventDefault()
         setShowSearch(true)
-      } else if (ctrlOrMeta && e.key === '/') {
+      } else if (e.key === '/') {
         e.preventDefault()
         setShowSlashPalette(true)
       } else if (
-        ctrlOrMeta &&
         !e.shiftKey &&
         !e.altKey &&
         (e.code === 'Backquote' || e.key === '`' || e.key === 'j' || e.key === 'J')
       ) {
         e.preventDefault()
         setTerminalOpen((v) => !v)
+      } else if (e.key === 'n' || e.key === 'N') {
+        // Ctrl+N → new chat session. Skip if Shift held (Ctrl+Shift+N
+        // is "open new window" on most desktops; we don't want to steal
+        // that even though Electron handles it differently).
+        if (e.shiftKey || e.altKey) return
+        e.preventDefault()
+        shell.handleCreateSession?.()
+      } else if (e.key === 'l' || e.key === 'L') {
+        // Ctrl+L → focus the composer textarea. Composer doesn't expose
+        // a ref to us, so we find it by class — apps/ui sets
+        // .composer-shell on the wrapper and the textarea inside is
+        // the first <textarea>. Cheap and stable.
+        if (e.shiftKey || e.altKey) return
+        e.preventDefault()
+        const ta = document.querySelector(
+          '.jarvisx-composer-host textarea',
+        ) as HTMLTextAreaElement | null
+        ta?.focus()
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  }, [shell])
 
   // Build the slash command list — each command is just a name + an
   // action callback. Adding new commands later means adding entries

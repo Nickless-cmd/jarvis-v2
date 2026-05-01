@@ -37,6 +37,7 @@ interface SidebarProps {
   onSelect: (key: ViewKey) => void
   userName: string
   shell?: ShellLike
+  onShowShortcuts?: () => void
 }
 
 const NAV: { key: ViewKey; label: string; Icon: typeof MessageSquare; hint?: string }[] = [
@@ -51,7 +52,7 @@ const NAV: { key: ViewKey; label: string; Icon: typeof MessageSquare; hint?: str
   { key: 'settings', label: 'Indstillinger', Icon: SettingsIcon, hint: 'Model, providers, tema' },
 ]
 
-export function Sidebar({ active, onSelect, userName, shell }: SidebarProps) {
+export function Sidebar({ active, onSelect, userName, shell, onShowShortcuts }: SidebarProps) {
   const sessions = Array.isArray(shell?.sessions) ? shell!.sessions : []
   const handleSessionClick = (id: string) => {
     shell?.handleSessionSelect?.(id)
@@ -149,8 +150,20 @@ export function Sidebar({ active, onSelect, userName, shell }: SidebarProps) {
         </div>
       </div>
 
-      <div className="flex-shrink-0 border-t border-line px-4 py-2 text-[10px] text-fg3">
-        v0.1.0-poc
+      <div className="flex flex-shrink-0 items-center justify-between border-t border-line px-4 py-2 text-[10px] text-fg3">
+        <span>v0.1.0-poc</span>
+        {onShowShortcuts && (
+          <button
+            onClick={onShowShortcuts}
+            title="Vis keyboard genveje (F1)"
+            className="flex h-5 items-center gap-1 rounded px-1.5 text-fg3 hover:bg-bg2 hover:text-fg"
+          >
+            <kbd className="rounded border border-line2 bg-bg2 px-1 font-mono text-[9px]">
+              F1
+            </kbd>
+            <span>shortcuts</span>
+          </button>
+        )}
       </div>
     </aside>
   )

@@ -289,7 +289,7 @@ def refresh_openai_access_token(*, profile: str) -> dict[str, Any]:
     return stored
 
 
-def get_openai_bearer_token(*, profile: str) -> str:
+def get_openai_bearer_token(*, profile: str, auto_reimport: bool = True) -> str:
     credentials = get_provider_credentials(profile=profile, provider=PROVIDER_ID) or {}
     api_key = str(credentials.get("api_key") or "").strip()
     if api_key:
@@ -298,10 +298,23 @@ def get_openai_bearer_token(*, profile: str) -> str:
     expires_at_raw = str(credentials.get("expires_at") or "").strip()
     if access_token and not _is_expired(expires_at_raw):
         return access_token
-    refreshed = refresh_openai_access_token(profile=profile)
-    refreshed_token = str(refreshed.get("access_token") or "").strip()
-    if refreshed_token:
-        return refreshed_token
+    # Try refresh; on refresh_token_reused error, auto-reimport from Codex CLI
+    try:
+        refreshed = refresh_openai_access_token(profile=profile)
+        refreshed_token = str(refreshed.get("access_token") or "").strip()
+        if refreshed_token:
+            return refreshed_token
+    except RuntimeError as exc:
+        err_msg = str(exc)
+        if auto_reimport and "refresh_token_reused" in err_msg:
+            # The refresh token was already consumed (likely by Codex CLI).
+            # Re-import fresh tokens from ~/.codex/auth.json automatically.
+            if _CODEX_AUTH_PATH.exists():
+                imported = import_openai_codex_session(profile=profile)
+                imported_token = str(imported.get("access_token") or "").strip()
+                if imported_token:
+                    return imported_token
+        raise
     raise RuntimeError("OpenAI credentials missing usable api_key or oauth access_token")
 
 
@@ -444,3 +457,151 @@ def _is_expired(expires_at_raw: str) -> bool:
         return datetime.now(UTC) >= datetime.fromisoformat(expires_at_raw)
     except ValueError:
         return False
+
+
+# ---------------------------------------------------------------------------
+# Codex Responses API — chatgpt.com/backend-api/codex/responses
+# ---------------------------------------------------------------------------
+
+_CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
+_CODEX_DEFAULT_MODEL = "gpt-5.3-codex"
+_CODEX_SUPPORTED_MODELS = frozenset({
+    "gpt-5.4",
+    "gpt-5.3-codex",
+    "gpt-5.1-codex-mini",
+    "codex-mini-latest",
+    "o3",
+    "o3-mini",
+    "o4-mini",
+})
+
+
+def execute_codex_responses(
+    *,
+    message: str,
+    model: str = _CODEX_DEFAULT_MODEL,
+    profile: str = "codex",
+    instructions: str = "You are a helpful assistant.",
+    timeout: int = 120,
+) -> dict[str, Any]:
+    """Execute a prompt via the Codex Responses API (chatgpt.com).
+
+    This uses the ChatGPT Plus OAuth token to call the Codex-specific
+    responses endpoint, which accepts models like gpt-5.3-codex and gpt-5.4.
+
+    Returns a dict with keys: text, model, status, usage, raw_output.
+    """
+    bearer_token = get_openai_bearer_token(profile=profile, auto_reimport=True)
+
+    if model not in _CODEX_SUPPORTED_MODELS:
+        model = _CODEX_DEFAULT_MODEL
+
+    payload = json.dumps({
+        "model": model,
+        "instructions": instructions,
+        "input": [{"type": "message", "role": "user", "content": message}],
+        "store": False,
+        "stream": True,
+    }).encode("utf-8")
+
+    req = urllib_request.Request(
+        _CODEX_RESPONSES_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    collected_text_parts: list[str] = []
+    response_model = model
+    response_status = "unknown"
+    usage: dict[str, int] = {}
+    output_items: list[dict[str, Any]] = []
+
+    try:
+        with urllib_request.urlopen(req, timeout=timeout) as resp:
+            full_body = resp.read().decode("utf-8")
+    except urllib_error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
+        raise RuntimeError(
+            f"Codex Responses API failed: HTTP {exc.code}: {error_body[:500]}"
+        )
+
+    # Parse SSE lines
+    for line in full_body.split("\n"):
+        line = line.strip()
+        if not line.startswith("data: "):
+            continue
+        data_str = line[6:]
+        if data_str.strip() == "[DONE]":
+            continue
+        try:
+            event = json.loads(data_str)
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+        event_type = str(event.get("type") or "")
+
+        if event_type == "response.output_text.delta":
+            delta = str(event.get("delta") or "")
+            if delta:
+                collected_text_parts.append(delta)
+
+        elif event_type == "response.output_text.done":
+            # Final complete text chunk
+            text = str(event.get("text") or "")
+            if text:
+                # Replace collected deltas with the final done text
+                collected_text_parts = [text]
+
+        elif event_type == "response.completed":
+            resp_obj = event.get("response") or {}
+            response_model = str(resp_obj.get("model") or model)
+            response_status = str(resp_obj.get("status") or "unknown")
+            usage = resp_obj.get("usage") or {}
+            output_items = resp_obj.get("output") or []
+
+    # Fallback: extract text from output items if no delta/done events
+    final_text = "".join(collected_text_parts)
+    if not final_text and output_items:
+        for item in output_items:
+            if str(item.get("type") or "") == "message":
+                for content_item in item.get("content") or []:
+                    if str(content_item.get("type") or "") == "output_text":
+                        final_text = str(content_item.get("text") or "")
+
+    return {
+        "text": final_text,
+        "model": response_model,
+        "status": response_status,
+        "usage": usage,
+        "raw_output": output_items,
+    }
+
+
+def codex_responses_health_check(*, profile: str = "codex") -> dict[str, Any]:
+    """Quick health check: verify Codex Responses API is reachable with valid auth.
+
+    Sends a minimal prompt and returns status info without caring about the
+    actual response content.
+    """
+    try:
+        result = execute_codex_responses(
+            message="ping",
+            model=_CODEX_DEFAULT_MODEL,
+            profile=profile,
+            instructions="Reply with exactly: ok",
+            timeout=30,
+        )
+        return {
+            "healthy": True,
+            "model": result.get("model", ""),
+            "status": result.get("status", ""),
+        }
+    except Exception as exc:
+        return {
+            "healthy": False,
+            "error": str(exc)[:200],
+        }

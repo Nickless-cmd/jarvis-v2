@@ -32,6 +32,10 @@ _OPENAI_COMPATIBLE_PROVIDERS = {
     "opencode",
 }
 
+# Codex uses a distinct responses-based protocol via chatgpt.com/backend-api.
+# NOT OpenAI-compatible — separate dispatch path.
+_OPENAI_CODEX_PROVIDER = "openai-codex"
+
 CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     # Phase A re-prioritization (2026-04-26): groq was hogging the chain
     # with priority=10 even though it's frequently rate-limited and in
@@ -153,6 +157,20 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
             "ling-2.6-flash-free",
         ],
     },
+    "openai-codex": {
+        "label": "OpenAI Codex (ChatGPT Plus OAuth)",
+        "priority": 15,
+        "base_url": "https://chatgpt.com/backend-api",
+        "auth_kind": "oauth",
+        "protocol": "openai-codex-responses",
+        "models_endpoint": "",
+        "rpm_limit": None,
+        "daily_limit": None,
+        "static_models": [
+            "gpt-5.3-codex",
+            "gpt-5.4",
+        ],
+    },
 }
 
 
@@ -199,6 +217,15 @@ def provider_auth_ready(*, provider: str, auth_profile: str) -> bool:
         # Arko's credentials live in runtime.json, not in auth profiles.
         from core.runtime.arko_provider import is_configured as arko_is_configured
         return arko_is_configured()
+    if normalized_provider == _OPENAI_CODEX_PROVIDER:
+        # Codex uses OAuth tokens imported from ~/.codex/auth.json.
+        # Check that the auth profile exists and has usable credentials.
+        from core.auth.openai_oauth import get_openai_bearer_token
+        try:
+            token = get_openai_bearer_token(profile=profile, auto_reimport=False)
+            return bool(token)
+        except Exception:
+            return False
     if not profile:
         return False
     credentials = get_provider_credentials(profile=profile, provider=normalized_provider)
@@ -260,6 +287,8 @@ def list_provider_models(
             models = _list_gemini_models(auth_profile=profile, base_url=root)
         elif normalized_provider == "cloudflare":
             models = _list_cloudflare_models(auth_profile=profile, base_url=root)
+        elif normalized_provider == _OPENAI_CODEX_PROVIDER:
+            models = _list_openai_codex_models()
         else:
             models = []
     except CheapProviderError as exc:
@@ -1050,6 +1079,13 @@ def _execute_provider_chat(
         )
     if provider == "arko":
         return _execute_arko_chat(message=message)
+    if provider == _OPENAI_CODEX_PROVIDER:
+        return _execute_openai_codex_chat(
+            model=model,
+            auth_profile=auth_profile,
+            base_url=base_url,
+            message=message,
+        )
     raise CheapProviderError(
         provider=provider,
         code="unsupported-provider",
@@ -1258,6 +1294,18 @@ def _list_ollamafreeapi_models() -> list[dict[str, object]]:
     return [{"id": model, "label": model} for model in list_ollamafreeapi_models()]
 
 
+def _list_openai_codex_models() -> list[dict[str, object]]:
+    """Static model list for OpenAI Codex (ChatGPT Plus OAuth).
+
+    The chatgpt.com/backend-api does not expose a /models endpoint.
+    Models are discovered through Codex CLI and documentation.
+    """
+    static_models = provider_runtime_defaults(_OPENAI_CODEX_PROVIDER).get(
+        "static_models", ["gpt-5.3-codex", "gpt-5.4"]
+    )
+    return [{"id": m, "label": m} for m in static_models]
+
+
 _OFA_CB_FAILURES = 0
 _OFA_CB_OPEN_UNTIL = 0.0
 _OFA_CB_THRESHOLD = 3        # open after 3 consecutive fails
@@ -1384,6 +1432,154 @@ def _execute_arko_chat(*, message: str) -> dict[str, object]:
         "text": text,
         "output_tokens": _estimate_tokens(text),
         "cost_usd": 0.0,
+    }
+
+
+def _execute_openai_codex_chat(
+    *,
+    model: str,
+    auth_profile: str,
+    base_url: str,
+    message: str,
+) -> dict[str, object]:
+    """Execute a chat call via OpenAI's Codex Responses API.
+
+    Uses OAuth bearer token obtained via get_openai_bearer_token() (which
+    auto-reimports from ~/.codex/auth.json when the refresh token is stale).
+    The endpoint is chatgpt.com/backend-api/codex/responses with SSE streaming.
+    """
+    from core.auth.openai_oauth import get_openai_bearer_token
+
+    root = str(base_url or "https://chatgpt.com/backend-api").rstrip("/")
+    bearer_token = get_openai_bearer_token(profile=auth_profile, auto_reimport=True)
+
+    headers = {
+        "Authorization": f"Bearer {bearer_token}",
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+    }
+    payload: dict[str, object] = {
+        "model": model,
+        "instructions": "You are a helpful assistant. Respond concisely.",
+        "input": [{"role": "user", "content": message}],
+        "store": False,
+        "stream": True,
+    }
+    # Codex Responses API lives under /codex/responses on chatgpt.com.
+    # The plain /responses endpoint requires api.responses.write scope
+    # which ChatGPT OAuth tokens don't include. The /codex/responses
+    # endpoint accepts ChatGPT Plus OAuth bearer tokens (same path the
+    # official Codex CLI uses). See OpenClaw issue #64133.
+    url = f"{root}/codex/responses"
+
+    try:
+        response = httpx.post(
+            url,
+            json=payload,
+            headers=headers,
+            timeout=_DEFAULT_TIMEOUT_SECONDS,
+        )
+    except httpx.ConnectError as exc:
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="connection-error",
+            message=f"Cannot connect to {url}: {exc}",
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="timeout",
+            message=f"Request timed out after {_DEFAULT_TIMEOUT_SECONDS}s",
+            retry_after_seconds=60,
+        ) from exc
+
+    if response.status_code == 401:
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="auth-failed",
+            message="OAuth bearer token rejected (HTTP 401). Token may be expired.",
+        )
+    if response.status_code == 403:
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="forbidden",
+            message="Access denied (HTTP 403). Account may lack codex scope.",
+        )
+    if response.status_code == 429:
+        retry_after = int(response.headers.get("retry-after", "60") or "60")
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="rate-limited",
+            message="Rate limited (HTTP 429)",
+            retry_after_seconds=retry_after,
+            status_code=429,
+        )
+    if response.status_code >= 400:
+        body = response.text[:500]
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="provider-error",
+            message=f"HTTP {response.status_code}: {body}",
+            status_code=response.status_code,
+        )
+
+    # Parse SSE stream to extract text and usage
+    text_parts: list[str] = []
+    input_tokens = 0
+    output_tokens = 0
+    model_used = model
+
+    for line in response.text.splitlines():
+        line = line.strip()
+        if not line.startswith("data: "):
+            continue
+        data_str = line[6:]
+        if data_str == "[DONE]":
+            break
+        try:
+            event = json.loads(data_str)
+        except json.JSONDecodeError:
+            continue
+
+        event_type = str(event.get("type") or "")
+        if event_type == "response.output_text.delta":
+            delta = str(event.get("delta") or "")
+            text_parts.append(delta)
+        elif event_type == "response.output_text.done":
+            # Full text aggregation event — override accumulated deltas
+            full_text = str(event.get("text") or "")
+            if full_text:
+                text_parts = [full_text]
+        elif event_type == "response.completed":
+            # Final event with usage and model info
+            response_obj = event.get("response") or event.get("result") or {}
+            usage = response_obj.get("usage") or {}
+            input_tokens = int(usage.get("input_tokens") or 0)
+            output_tokens = int(usage.get("output_tokens") or 0)
+            model_from_response = str(response_obj.get("model") or "").strip()
+            if model_from_response:
+                model_used = model_from_response
+
+    full_text = "".join(text_parts).strip()
+    if not full_text and not text_parts:
+        raise CheapProviderError(
+            provider=_OPENAI_CODEX_PROVIDER,
+            code="empty-response",
+            message="Codex Responses API returned no text content",
+        )
+
+    # Fall back to estimation if usage wasn't provided
+    if not input_tokens:
+        input_tokens = _estimate_tokens(message)
+    if not output_tokens:
+        output_tokens = _estimate_tokens(full_text)
+
+    return {
+        "text": full_text,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cost_usd": 0.0,  # Codex via ChatGPT Plus has no per-token billing
+        "model_used": model_used,
     }
 
 

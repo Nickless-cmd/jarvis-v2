@@ -1544,3 +1544,36 @@ def fork_session(payload: _ForkPayload) -> dict[str, Any]:
         "messages_copied": copied,
         "found_target": found_target,
     }
+
+
+# ── Process spawn (owner-only) ────────────────────────────────────
+# Lets the JarvisX TaskBar trigger predefined commands via the
+# process_supervisor. Read/list/stop already public above.
+
+
+class _SpawnPayload(BaseModel):
+    name: str
+    command: str
+    cwd: str | None = None
+    replace_if_running: bool = True
+
+
+@router.post("/processes")
+def spawn_managed_process(payload: _SpawnPayload) -> dict[str, Any]:
+    """Spawn a managed background process. Owner-only.
+
+    Wraps process_supervisor.spawn_process. Caller-supplied cwd is
+    used verbatim; the supervisor itself handles env, log routing,
+    and the reaper thread.
+    """
+    _require_owner()
+    from core.services.process_supervisor import spawn_process
+    out = spawn_process(
+        name=payload.name,
+        command=payload.command,
+        cwd=payload.cwd,
+        replace_if_running=payload.replace_if_running,
+    )
+    if out.get("status") == "error":
+        raise HTTPException(status_code=400, detail=out.get("error") or "spawn failed")
+    return out

@@ -61,6 +61,18 @@ export function TerminalDrawer({ open, onClose, apiBaseUrl, role }: Props) {
   const wasNearBottomRef = useRef(true)
   const dragStartRef = useRef<{ y: number; h: number } | null>(null)
 
+  // ── Cross-app channel: TaskBar dispatches `jarvisx:open-terminal`
+  // with { detail: { name } } to jump straight to that process tab.
+  // Drawer-open is handled upstream in ChatView.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ name?: string }>).detail
+      if (detail?.name) setActiveName(detail.name)
+    }
+    window.addEventListener('jarvisx:open-terminal', onOpen)
+    return () => window.removeEventListener('jarvisx:open-terminal', onOpen)
+  }, [])
+
   // ── Polling: list of processes ─────────────────────────────────
   const refreshList = useCallback(async () => {
     try {

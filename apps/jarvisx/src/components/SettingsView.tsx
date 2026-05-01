@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { Save, Wifi, WifiOff } from 'lucide-react'
+import { AuthPanel } from './AuthPanel'
 
 interface SettingsConfig {
   apiBaseUrl: string
   userId: string
   userName: string
   mode: 'dev' | 'thin-client' | 'standalone'
+  authToken?: string
+  authTokenUserId?: string
+  authTokenRole?: string
+  authTokenExpiresAt?: string
 }
 
 interface Props {
@@ -152,6 +157,17 @@ export function SettingsView({ config, onChange, role = 'owner' }: Props) {
           )}
         </div>
 
+        <AuthPanel
+          apiBaseUrl={config.apiBaseUrl}
+          auth={{
+            authToken: config.authToken,
+            authTokenUserId: config.authTokenUserId,
+            authTokenRole: config.authTokenRole,
+            authTokenExpiresAt: config.authTokenExpiresAt,
+          }}
+          isOwner={isOwner}
+          onChange={onChange}
+        />
       </div>
     </div>
   )

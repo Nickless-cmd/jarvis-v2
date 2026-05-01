@@ -44,7 +44,18 @@ class ChatSessionRenameRequest(BaseModel):
 
 @router.get("/sessions")
 async def chat_sessions() -> dict:
-    return {"items": list_chat_sessions()}
+    """List chat sessions.
+
+    When the request carries an X-JarvisX-User header (set by the
+    JarvisX desktop app), only sessions that user has actually
+    participated in are returned — this is what keeps Bjørn's and
+    Mikkel's chat histories from bleeding into each other in the
+    sidebar. Webchat without the header returns the unfiltered list,
+    same as before.
+    """
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or None
+    return {"items": list_chat_sessions(user_id=uid)}
 
 
 @router.post("/sessions")

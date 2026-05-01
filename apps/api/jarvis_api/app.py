@@ -64,6 +64,7 @@ from apps.api.jarvis_api.routes.attachments import router as attachments_router
 from apps.api.jarvis_api.routes.files import router as files_router
 from apps.api.jarvis_api.routes.chat import router as chat_router
 from apps.api.jarvis_api.routes.health import router as health_router
+from apps.api.jarvis_api.routes.jarvisx import router as jarvisx_router
 from apps.api.jarvis_api.routes.status import router as status_router
 from apps.api.jarvis_api.routes.sensory import router as sensory_router
 from apps.api.jarvis_api.routes.live import router as live_router
@@ -177,10 +178,19 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Jarvis V2 API", lifespan=lifespan)
 
+    # JarvisX user-routing — binds workspace ContextVars from the
+    # X-JarvisX-User header injected by the desktop app. Webchat / Discord
+    # / Telegram paths are unaffected (no header → default context).
+    from apps.api.jarvis_api.middleware.jarvisx_user_routing import (
+        jarvisx_user_routing_middleware,
+    )
+    app.middleware("http")(jarvisx_user_routing_middleware)
+
     app.include_router(attachments_router)
     app.include_router(files_router)
     app.include_router(chat_router)
     app.include_router(health_router)
+    app.include_router(jarvisx_router)
     app.include_router(status_router)
     app.include_router(sensory_router)
     app.include_router(mc_router)

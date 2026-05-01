@@ -122,6 +122,34 @@ from core.tools.bash_session import (
     _exec_bash_session_close,
     _exec_bash_session_list,
 )
+from core.tools.staged_edits_tools import (
+    STAGED_EDITS_TOOL_DEFINITIONS,
+    STAGED_EDITS_TOOL_HANDLERS,
+)
+from core.tools.project_notes_tools import (
+    PROJECT_NOTES_TOOL_DEFINITIONS,
+    PROJECT_NOTES_TOOL_HANDLERS,
+)
+from core.tools.process_supervisor_tools import (
+    PROCESS_SUPERVISOR_TOOL_DEFINITIONS,
+    PROCESS_SUPERVISOR_TOOL_HANDLERS,
+)
+from core.tools.pause_and_ask_tools import (
+    PAUSE_AND_ASK_TOOL_DEFINITIONS,
+    PAUSE_AND_ASK_TOOL_HANDLERS,
+)
+from core.tools.code_navigation_tools import (
+    CODE_NAVIGATION_TOOL_DEFINITIONS,
+    CODE_NAVIGATION_TOOL_HANDLERS,
+)
+from core.tools.worktree_tools import (
+    WORKTREE_TOOL_DEFINITIONS,
+    WORKTREE_TOOL_HANDLERS,
+)
+from core.tools.identity_pin_tools import (
+    IDENTITY_PIN_TOOL_DEFINITIONS,
+    IDENTITY_PIN_TOOL_HANDLERS,
+)
 from core.tools.agent_todo_tools import (
     AGENT_TODO_TOOL_DEFINITIONS,
     _exec_todo_list,
@@ -635,7 +663,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "bash",
-            "description": "Run a shell command on the host machine. Always call this tool directly — the runtime handles approval automatically for mutations and destructive commands.",
+            "description": "Run a shell command on the host machine. Backed by a persistent shared shell — your cd, env-vars, virtualenvs, and sourced files persist across calls. Default 120s timeout. Use bash_session_open + bash_session_run only when you explicitly need an isolated session. Approval is handled automatically for mutations and destructive commands.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -2143,6 +2171,13 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *PROCESS_TOOL_DEFINITIONS,
     *CLAUDE_DISPATCH_TOOL_DEFINITIONS,
     *BASH_SESSION_TOOL_DEFINITIONS,
+    *STAGED_EDITS_TOOL_DEFINITIONS,
+    *PROJECT_NOTES_TOOL_DEFINITIONS,
+    *PROCESS_SUPERVISOR_TOOL_DEFINITIONS,
+    *PAUSE_AND_ASK_TOOL_DEFINITIONS,
+    *CODE_NAVIGATION_TOOL_DEFINITIONS,
+    *WORKTREE_TOOL_DEFINITIONS,
+    *IDENTITY_PIN_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
     *MONITOR_TOOL_DEFINITIONS,
     *VERIFY_TOOL_DEFINITIONS,
@@ -2795,6 +2830,47 @@ def _exec_find_files(args: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "file_count": len(entries), "status": "ok"}
 
 
+# ── Default bash session (for the one-shot `bash` tool) ──────────────
+# We keep a single per-process default session id. The bash_session
+# daemon is shared across workers (Unix socket singleton), so even if
+# one worker's reference goes stale, the daemon keeps the session alive
+# while another worker is using it. Stale-session retries are handled
+# in _exec_bash via _reset_default_bash_session.
+import threading as _threading_for_bash
+_DEFAULT_BASH_SESSION_ID: str | None = None
+_DEFAULT_BASH_SESSION_LOCK = _threading_for_bash.Lock()
+
+
+def _get_or_open_default_bash_session() -> str | None:
+    global _DEFAULT_BASH_SESSION_ID
+    with _DEFAULT_BASH_SESSION_LOCK:
+        sid = _DEFAULT_BASH_SESSION_ID
+        if sid:
+            # Verify the daemon still knows this session.
+            listed = _exec_bash_session_list({})
+            if listed.get("status") == "ok":
+                alive_ids = {
+                    str(s.get("session_id"))
+                    for s in (listed.get("sessions") or [])
+                    if s.get("alive")
+                }
+                if sid in alive_ids:
+                    return sid
+            # Otherwise: fall through and re-open below.
+            _DEFAULT_BASH_SESSION_ID = None
+        result = _exec_bash_session_open({})
+        if result.get("status") == "ok" and result.get("session_id"):
+            _DEFAULT_BASH_SESSION_ID = str(result["session_id"])
+            return _DEFAULT_BASH_SESSION_ID
+        return None
+
+
+def _reset_default_bash_session() -> None:
+    global _DEFAULT_BASH_SESSION_ID
+    with _DEFAULT_BASH_SESSION_LOCK:
+        _DEFAULT_BASH_SESSION_ID = None
+
+
 def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     command = str(args.get("command") or "").strip()
     if not command:
@@ -2821,7 +2897,56 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
             "classification": "mutation",
         }
 
-    # Auto-approved (read-only)
+    # Auto-approved (read-only). Route through the bash_session daemon so
+    # we get:
+    #   • A persistent shared shell (cd, env-vars, virtualenvs persist
+    #     across calls) — no more "lost cwd" between bash invocations.
+    #   • A 300s default timeout instead of MAX_BASH_SECONDS=15s.
+    #   • Auto-recovery if the daemon died (session re-opened on next call).
+    # The legacy subprocess path is kept as a fallback if the daemon
+    # really cannot be reached.
+    try:
+        sid = _get_or_open_default_bash_session()
+    except Exception as exc:
+        sid = None
+        logger.debug("bash: default session resolve failed: %s", exc)
+
+    if sid:
+        run_result = _exec_bash_session_run({
+            "session_id": sid,
+            "command": command,
+            "timeout": 120.0,  # bump from 15s — most ops need more
+        })
+        # If the session died between resolve and run (rare but possible),
+        # transparently retry with a fresh session once.
+        err = str(run_result.get("error") or "")
+        if "unknown session_id" in err or "session terminated" in err:
+            _reset_default_bash_session()
+            try:
+                sid2 = _get_or_open_default_bash_session()
+            except Exception:
+                sid2 = None
+            if sid2:
+                run_result = _exec_bash_session_run({
+                    "session_id": sid2,
+                    "command": command,
+                    "timeout": 120.0,
+                })
+        # Normalize bash_session_run shape -> bash shape
+        if run_result.get("status") in ("ok", None) and "exit_code" in run_result:
+            output = str(run_result.get("output") or "").strip()
+            if len(output) > MAX_BASH_OUTPUT_CHARS:
+                output = output[:MAX_BASH_OUTPUT_CHARS - 1] + "…"
+            return {
+                "text": output or "[no output]",
+                "exit_code": run_result.get("exit_code"),
+                "status": "ok",
+            }
+        # Daemon-side error — fall through to subprocess fallback so a
+        # transient daemon problem doesn't break bash entirely.
+        logger.warning("bash: session path errored, falling back to subprocess: %s", err)
+
+    # Fallback: legacy one-shot subprocess.
     try:
         result = subprocess.run(
             ["bash", "-c", command],
@@ -5600,6 +5725,13 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "bash_session_run": _exec_bash_session_run,
     "bash_session_close": _exec_bash_session_close,
     "bash_session_list": _exec_bash_session_list,
+    **STAGED_EDITS_TOOL_HANDLERS,
+    **PROJECT_NOTES_TOOL_HANDLERS,
+    **PROCESS_SUPERVISOR_TOOL_HANDLERS,
+    **PAUSE_AND_ASK_TOOL_HANDLERS,
+    **CODE_NAVIGATION_TOOL_HANDLERS,
+    **WORKTREE_TOOL_HANDLERS,
+    **IDENTITY_PIN_TOOL_HANDLERS,
     "todo_list": _exec_todo_list,
     "todo_set": _exec_todo_set,
     "todo_add": _exec_todo_add,

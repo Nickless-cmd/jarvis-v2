@@ -21,6 +21,20 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 
+// electron-updater is CommonJS — import via createRequire pattern so
+// it works under our type:module package.json without breaking dev.
+import { createRequire } from 'node:module'
+const require = createRequire(import.meta.url)
+type UpdateInfo = { version: string; releaseDate?: string; releaseName?: string }
+type UpdaterStatus =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'available'; info: UpdateInfo }
+  | { kind: 'not-available'; current: string }
+  | { kind: 'downloading'; percent: number }
+  | { kind: 'downloaded'; info: UpdateInfo }
+  | { kind: 'error'; error: string }
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 interface AppConfig {
@@ -108,6 +122,96 @@ function startPingLoop(): void {
   }
   void tick()
   pingTimer = setInterval(tick, 8000)
+}
+
+// ── Auto-update plumbing ──────────────────────────────────────────
+// Uses electron-updater; the publish target is set via electron-builder's
+// `build.publish` in package.json (GitHub Releases by default in our
+// config). When no publish target is configured, all check-* calls
+// no-op gracefully — fine for dev / unsigned local builds.
+//
+// Renderer subscribes to 'updater-status' events and calls
+// 'updater-check' / 'updater-install' via IPC.
+
+let updaterStatus: UpdaterStatus = { kind: 'idle' }
+
+function emitUpdaterStatus(s: UpdaterStatus) {
+  updaterStatus = s
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('updater-status', s)
+  }
+}
+
+function setupAutoUpdater(): void {
+  // Only run in packaged production builds — no point pinging GitHub
+  // when running `npm run dev:electron` against vite.
+  if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+    return
+  }
+  let autoUpdater: any
+  try {
+    // electron-updater is CJS, so destructure off the require() result
+    autoUpdater = require('electron-updater').autoUpdater
+  } catch (e) {
+    console.warn('[updater] electron-updater not available:', e)
+    return
+  }
+  // Don't auto-download — let the user decide. We just notify when
+  // an update is available, and they click "Install" to proceed.
+  autoUpdater.autoDownload = false
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('checking-for-update', () => emitUpdaterStatus({ kind: 'checking' }))
+  autoUpdater.on('update-available', (info: UpdateInfo) =>
+    emitUpdaterStatus({ kind: 'available', info }),
+  )
+  autoUpdater.on('update-not-available', () =>
+    emitUpdaterStatus({ kind: 'not-available', current: app.getVersion() }),
+  )
+  autoUpdater.on('error', (err: Error) =>
+    emitUpdaterStatus({ kind: 'error', error: err.message }),
+  )
+  autoUpdater.on('download-progress', (p: { percent: number }) =>
+    emitUpdaterStatus({ kind: 'downloading', percent: Math.round(p.percent) }),
+  )
+  autoUpdater.on('update-downloaded', (info: UpdateInfo) =>
+    emitUpdaterStatus({ kind: 'downloaded', info }),
+  )
+
+  // Initial check 30s after startup so we don't compete with first-paint
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((e: Error) => {
+      console.warn('[updater] initial check failed:', e.message)
+    })
+  }, 30_000)
+  // And every 6 hours after that — keep it light
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch(() => undefined)
+  }, 6 * 60 * 60 * 1000)
+
+  // IPC handlers — renderer requests check / download / install
+  ipcMain.handle('jarvisx:updater-check', async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates()
+      return { ok: true, version: result?.updateInfo?.version }
+    } catch (e: unknown) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+  ipcMain.handle('jarvisx:updater-download', async () => {
+    try {
+      await autoUpdater.downloadUpdate()
+      return { ok: true }
+    } catch (e: unknown) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+  ipcMain.handle('jarvisx:updater-install', () => {
+    // quit + install. App will restart at the new version.
+    autoUpdater.quitAndInstall(false, true)
+    return { ok: true }
+  })
+  ipcMain.handle('jarvisx:updater-status', () => updaterStatus)
 }
 
 // API paths that must be redirected to the Jarvis backend in packaged
@@ -333,6 +437,7 @@ app.whenReady().then(async () => {
   })
 
   await createWindow()
+  setupAutoUpdater()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void createWindow()

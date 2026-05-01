@@ -99,3 +99,74 @@ The runtime currently resolves the workspace from Discord ID via
 3. Binds `workspace_name` + `user_id` ContextVars for the request
 
 This is the same pattern `discord_gateway.py` already does on its side.
+
+## Code signing & notarization
+
+JarvisX' build pipeline is wired for signed releases on macOS and
+Windows. **It auto-skips signing when the required env vars are
+missing**, so local `npm run package` builds work uncertified — but
+distribution-ready releases need certificates and a one-time setup.
+
+### macOS (`.dmg`, `.app`)
+
+You need:
+- An **Apple Developer Program** membership ($99/yr,
+  developer.apple.com)
+- A **Developer ID Application** certificate in your local Keychain
+- An **app-specific password** (appleid.apple.com → Sign-In and
+  Security → App-Specific Passwords)
+- Your **Team ID** (developer.apple.com → Membership)
+
+Then before `npm run package:mac`:
+
+```bash
+export APPLE_ID="you@example.com"
+export APPLE_APP_SPECIFIC_PASSWORD="abcd-efgh-ijkl-mnop"  # pragma: allowlist secret
+export APPLE_TEAM_ID="ABCDE12345"
+npm install --save-dev @electron/notarize  # one-time
+npm run package
+```
+
+The `signing/notarize.cjs` afterSign hook submits the app to Apple's
+notary service and staples the result. Without this, macOS users
+see "developer cannot be verified" on first launch.
+
+### Windows (`.exe`)
+
+You need:
+- An **EV (Extended Validation) Code-Signing Certificate** from a CA
+  like DigiCert, Sectigo, or SSL.com. ~$300/year. EV is required for
+  immediate SmartScreen reputation; standard OV certs work but new
+  builds get a "downloaded few times, may not be safe" warning until
+  they accumulate trust.
+- The cert installed on the build machine (USB token for EV) or
+  exported as `.pfx` for CI use.
+
+Set env vars before `npm run package:win`:
+
+```bash
+export CSC_LINK="path/to/cert.pfx"           # or USB-token via WIN_CSC_LINK
+export CSC_KEY_PASSWORD="…"
+npm run package
+```
+
+`signingHashAlgorithms: ["sha256"]` and the digicert timestamp server
+are pre-configured. Without these env vars, the build emits unsigned
+`.exe` files — fine for testing, will trigger SmartScreen for users.
+
+### Linux (`.deb`, `.AppImage`)
+
+Linux signing is optional and conventionally handled per-distro. The
+default `electron-builder` output is unsigned; AppImage users
+typically don't care. If you want GPG-signed `.deb`, configure your
+GPG key in `~/.gnupg` and add `electron-builder --linux deb -- --gpg-key=YOUR_KEY_ID` to your release flow.
+
+### CI integration
+
+For GitHub Actions, set the env vars above as repository secrets.
+`scripts/release.sh` (TODO if you write one) can call
+`electron-builder --publish always` with the right env loaded — see
+`build.publish` in `package.json` for the GitHub Releases target.
+Without `GH_TOKEN`, electron-builder won't actually upload, but a
+local signed `.dmg`/`.exe` ends up under `release/`.
+

@@ -29,6 +29,7 @@ import { VoiceButton } from './VoiceButton'
 import { TerminalDrawer } from './native/TerminalDrawer'
 import { DiffReviewPanel } from './native/DiffReviewPanel'
 import { ConnectionPill } from './ConnectionPill'
+import { PendingPlansStrip } from './PendingPlansStrip'
 
 // Cap how many messages we render at once. The active prod session has
 // 1674 messages — rendering all of them blows up every keystroke because
@@ -455,6 +456,11 @@ export function ChatView({
         apiBaseUrl={apiBaseUrl}
         sessionId={(shell.activeSessionId ?? null) as string | null}
         onReview={() => setShowDiffReview(true)}
+      />
+      <PendingPlansStrip
+        apiBaseUrl={apiBaseUrl}
+        sessionId={(shell.activeSessionId ?? null) as string | null}
+        isOwner={role === 'owner'}
       />
       <PinnedStrip />
       {planMode && (

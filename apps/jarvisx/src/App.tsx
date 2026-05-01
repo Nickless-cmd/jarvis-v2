@@ -11,6 +11,7 @@ import { ChannelsView } from './components/views/ChannelsView'
 import { SchedulingView } from './components/views/SchedulingView'
 import { SettingsView } from './components/SettingsView'
 import { KeyboardShortcutsOverlay } from './components/KeyboardShortcutsOverlay'
+import { OnboardingModal } from './components/OnboardingModal'
 import { matchShortcut, isTypingTarget } from './lib/shortcuts'
 
 interface AppConfig {
@@ -36,6 +37,10 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig>(FALLBACK_CONFIG)
   const [role, setRole] = useState<'owner' | 'member' | 'guest'>('owner')  // optimistic owner; downgraded after whoami fetch
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    // Show on first launch (no completed flag in localStorage)
+    return localStorage.getItem('jarvisx:onboarding-done') !== '1'
+  })
   const [sidebarHidden, setSidebarHidden] = useState<boolean>(() => {
     return localStorage.getItem('jarvisx:sidebar-hidden') === '1'
   })
@@ -187,6 +192,19 @@ export default function App() {
       <KeyboardShortcutsOverlay
         open={showShortcuts}
         onClose={() => setShowShortcuts(false)}
+      />
+      <OnboardingModal
+        open={showOnboarding}
+        apiBaseUrl={config.apiBaseUrl}
+        defaultUserName={config.userName}
+        onComplete={async (patch) => {
+          await updateConfig(patch)
+          localStorage.setItem('jarvisx:onboarding-done', '1')
+        }}
+        onSkip={() => {
+          localStorage.setItem('jarvisx:onboarding-done', '1')
+          setShowOnboarding(false)
+        }}
       />
     </div>
   )

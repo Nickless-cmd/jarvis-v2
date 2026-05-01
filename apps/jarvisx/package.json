@@ -62,11 +62,26 @@
       ],
       "category": "Office"
     },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "signing/entitlements.mac.plist",
+      "entitlementsInherit": "signing/entitlements.mac.plist",
+      "notarize": {
+        "teamId": "${env.APPLE_TEAM_ID}"
+      }
+    },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
+      "rfc3161TimeStampServer": "http://timestamp.digicert.com"
     },
+    "afterSign": "signing/notarize.cjs",
     "publish": [
       {
         "provider": "github",

@@ -71,9 +71,16 @@ function convertSmileys(t: string) {
  */
 export function MessageList({ messages, workingSteps, isStreaming, sessionId, onAction }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLElement>(null)
+  // wasNearBottom is the user-intent signal: are they parked at the
+  // bottom (= want auto-follow) or scrolled up reading (= leave them
+  // alone). Initialized true so first paint of a fresh session lands
+  // at the bottom.
   const wasNearBottomRef = useRef(true)
   const prevCountRef = useRef(messages.length)
+  const isFirstPaintRef = useRef(true)
 
+  // Track scroll position so we know whether to auto-follow.
   useEffect(() => {
     const node = containerRef.current
     if (!node) return
@@ -85,36 +92,50 @@ export function MessageList({ messages, workingSteps, isStreaming, sessionId, on
     return () => node.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Auto-scroll on:
-  //   1. first mount (initial paint of an existing session)
-  //   2. new message arriving (count went up — always scroll)
-  //   3. streaming content growing in the last message (scroll only
-  //      if user is near the bottom — don't yank them while reading)
-  //
-  // The trick that was missing: dependency on the *last message's
-  // content* so token-by-token streaming actually fires the effect.
-  // We also defer to rAF so layout has settled before measuring
-  // scrollHeight — saves a one-frame jitter on long messages.
-  const lastMsgKey = (() => {
-    const m = messages[messages.length - 1]
-    if (!m) return ''
-    const id = m.id ?? m.message_id ?? ''
-    return `${id}::${(m.content || '').length}`
-  })()
+  // ResizeObserver on the inner section catches every height change
+  // — markdown reflow, streaming tokens, image loads, syntax-highlight
+  // settling, ANYTHING. This is what makes auto-scroll bulletproof:
+  // it doesn't matter whether React.memo blocked a render or whether
+  // the message array reference changed — if the rendered DOM grew,
+  // we react. Same trick most chat apps end up with after the
+  // dependency-array approach fails them.
   useEffect(() => {
-    const node = containerRef.current
-    if (!node) return
-    const isFirstPaint = prevCountRef.current === 0 && messages.length > 0
-    const grew = messages.length > prevCountRef.current
-    const shouldScroll = isFirstPaint || grew || wasNearBottomRef.current
-    if (shouldScroll) {
-      requestAnimationFrame(() => {
-        const n = containerRef.current
-        if (n) n.scrollTop = n.scrollHeight
-      })
+    const container = containerRef.current
+    const inner = innerRef.current
+    if (!container || !inner) return
+    const observer = new ResizeObserver(() => {
+      if (wasNearBottomRef.current || isFirstPaintRef.current) {
+        // Defer to next frame so layout has fully settled
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight
+            isFirstPaintRef.current = false
+          }
+        })
+      }
+    })
+    observer.observe(inner)
+    return () => observer.disconnect()
+  }, [])
+
+  // New-message arrival (count went up) is a hard signal: always
+  // scroll, even if the user was scrolled up. The reasoning: a new
+  // message you sent should bring you back to the bottom; an
+  // assistant message arriving means the conversation moved on.
+  // (Streaming token growth is handled by ResizeObserver above with
+  // user-intent gating.)
+  useEffect(() => {
+    if (messages.length > prevCountRef.current) {
+      wasNearBottomRef.current = true  // override stale "scrolled up"
+      const node = containerRef.current
+      if (node) {
+        requestAnimationFrame(() => {
+          if (node) node.scrollTop = node.scrollHeight
+        })
+      }
     }
     prevCountRef.current = messages.length
-  }, [messages.length, lastMsgKey, isStreaming])
+  }, [messages.length])
 
   // Hide raw tool messages (their results render inline via [tool_result:..]
   // refs in the assistant message). Empty system messages are hidden too.
@@ -142,6 +163,7 @@ export function MessageList({ messages, workingSteps, isStreaming, sessionId, on
       style={{ scrollBehavior: 'auto' }}
     >
       <section
+        ref={innerRef}
         className="transcript mx-auto"
         style={{ width: '100%', maxWidth: 880, padding: '16px 24px' }}
       >

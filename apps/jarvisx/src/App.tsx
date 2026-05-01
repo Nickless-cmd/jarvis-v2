@@ -120,8 +120,11 @@ export default function App() {
       8: 'scheduling',
     }
     const onKey = (e: KeyboardEvent) => {
-      // Always-allowed: F1 / ? / Esc — even when typing
-      if (e.key === 'F1' || (e.key === '?' && !e.ctrlKey && !e.metaKey)) {
+      // F1 toggles shortcut overlay — works even while typing.
+      // (Used to also accept `?` but on Danish/German layouts ? is
+      // Shift+-, which collides with regular typing in the composer.
+      // F1 is universally safe.)
+      if (e.key === 'F1') {
         e.preventDefault()
         setShowShortcuts((v) => !v)
         return

@@ -39,6 +39,9 @@ export const SHORTCUTS: Shortcut[] = [
   { keys: ['Ctrl', 'J'], label: 'Toggle terminal-drawer', scope: 'global' },
   { keys: ['Ctrl', 'B'], label: 'Skjul/vis sidebar', scope: 'global' },
   { keys: ['F1'], label: 'Vis denne genvejsoversigt', scope: 'global' },
+  // Note: we used to also accept '?' (Shift+/ on US, Shift+- on dansk)
+  // but it collides with typing ? in the composer on dansk/tysk
+  // layouts. F1 is the canonical trigger.
   { keys: ['Esc'], label: 'Luk åbne dialoger / overlays', scope: 'global' },
 
   // Chat-scoped

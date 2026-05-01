@@ -92,9 +92,15 @@ def configure_provider_router_entry(
     visible_updated = False
     if set_visible:
         settings = load_settings()
-        if provider_id not in {"phase1-runtime", "openai", "github-copilot"}:
+        if provider_id not in {
+            "phase1-runtime",
+            "openai",
+            "openai-codex",
+            "github-copilot",
+        }:
             raise ValueError(
-                "set_visible currently supports only phase1-runtime, openai, or github-copilot"
+                "set_visible currently supports only phase1-runtime, openai, "
+                "openai-codex, or github-copilot"
             )
         update_visible_execution_settings(
             visible_model_provider=provider_id,

@@ -353,6 +353,10 @@ def execute_visible_model(
         return _execute_openai_model(
             message=message, model=model, session_id=session_id
         )
+    if provider == "openai-codex":
+        return _execute_openai_codex_model(
+            message=message, model=model, session_id=session_id
+        )
     if provider == "ollama":
         return _execute_ollama_model(
             message=message, model=model, session_id=session_id
@@ -405,6 +409,16 @@ def stream_visible_model(
             session_id=session_id,
             controller=controller,
         )
+        return
+    if provider == "openai-codex":
+        result = _execute_openai_codex_model(
+            message=message,
+            model=model,
+            session_id=session_id,
+        )
+        for chunk in _chunk_text(result.text):
+            yield VisibleModelDelta(delta=chunk)
+        yield VisibleModelStreamDone(result=result)
         return
     if provider == "ollama":
         yield from _stream_ollama_model(
@@ -565,6 +579,28 @@ def visible_execution_readiness() -> dict[str, str | bool | None]:
             "provider_status": provider_status,
             "probe_cache": probe_cache,
             "checked_at": checked_at,
+        }
+
+    if provider == "openai-codex":
+        provider_config = _provider_router_config(provider="openai-codex")
+        profile = (
+            str(provider_config.get("auth_profile") or "").strip()
+            or configured_profile
+            or "codex"
+        )
+        status = _provider_profile_status(provider="openai-codex", profile=profile)
+        return {
+            "provider": provider,
+            "model": model,
+            "mode": "provider-backed",
+            "auth_ready": status == "ready",
+            "auth_status": status,
+            "auth_profile": profile,
+            "provider_reachable": status == "ready",
+            "live_verified": False,
+            "provider_status": "not-probed" if status == "ready" else "auth-not-ready",
+            "probe_cache": "not-run",
+            "checked_at": None,
         }
 
     if provider == "ollama":
@@ -746,6 +782,50 @@ def _execute_openai_model(
             output_tokens=output_tokens,
         ),
     )
+
+
+def _execute_openai_codex_model(
+    *, message: str, model: str, session_id: str | None = None
+) -> VisibleModelResult:
+    from core.services.cheap_provider_runtime import _execute_openai_codex_chat
+
+    provider_config = _provider_router_config(provider="openai-codex")
+    profile = str(provider_config.get("auth_profile") or "").strip() or "codex"
+    raw = _execute_openai_codex_chat(
+        model=model,
+        auth_profile=profile,
+        base_url=str(provider_config.get("base_url") or "").strip(),
+        message=_build_openai_codex_visible_prompt(
+            message=message,
+            model=model,
+            session_id=session_id,
+        ),
+    )
+    text = str(raw.get("text") or "")
+    return VisibleModelResult(
+        text=text,
+        input_tokens=int(raw.get("input_tokens") or _estimate_tokens(message)),
+        output_tokens=int(raw.get("output_tokens") or _estimate_tokens(text)),
+        cost_usd=0.0,
+    )
+
+
+def _build_openai_codex_visible_prompt(
+    *, message: str, model: str, session_id: str | None
+) -> str:
+    messages = _build_visible_chat_messages_for_github(
+        message=message,
+        session_id=session_id,
+        provider="openai-codex",
+        model=model,
+    )
+    parts: list[str] = []
+    for item in messages:
+        role = str(item.get("role") or "user").strip() or "user"
+        content = str(item.get("content") or "").strip()
+        if content:
+            parts.append(f"{role.upper()}:\n{content}")
+    return "\n\n".join(parts).strip() or message
 
 
 def _execute_ollama_model(
@@ -1256,9 +1336,38 @@ def _openai_profile_status(profile: str) -> tuple[str | None, str]:
     return profile, "ready"
 
 
-def _post_openai_responses(*, payload: dict, api_key: str) -> dict:
+def _provider_profile_status(*, provider: str, profile: str) -> str:
+    state = get_provider_state(profile=profile, provider=provider)
+    if state is None:
+        return "missing-profile"
+    if state.get("status") != "active":
+        return "inactive-profile"
+    credentials_path = Path(str(state.get("credentials_path", "")))
+    if not credentials_path.exists():
+        return "missing-credentials"
+    credentials = json.loads(credentials_path.read_text(encoding="utf-8"))
+    api_key = str(credentials.get("api_key") or credentials.get("access_token") or "")
+    if not api_key:
+        return "missing-credentials"
+    return "ready"
+
+
+def _provider_router_config(*, provider: str) -> dict[str, object]:
+    registry = load_provider_router_registry()
+    for item in registry.get("providers") or []:
+        if not bool(item.get("enabled", True)):
+            continue
+        if str(item.get("provider") or "").strip() == provider:
+            return dict(item)
+    return {}
+
+
+def _post_openai_responses(
+    *, payload: dict, api_key: str, base_url: str = "https://api.openai.com/v1"
+) -> dict:
+    root = (base_url or "https://api.openai.com/v1").rstrip("/")
     req = urllib_request.Request(
-        "https://api.openai.com/v1/responses",
+        f"{root}/responses",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",

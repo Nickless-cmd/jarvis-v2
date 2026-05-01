@@ -466,7 +466,13 @@ from core.tools.workspace_capabilities import (
 )
 
 router = APIRouter(prefix="/mc", tags=["mission-control"])
-SUPPORTED_VISIBLE_PROVIDERS = ("phase1-runtime", "openai", "github-copilot", "ollama")
+SUPPORTED_VISIBLE_PROVIDERS = (
+    "phase1-runtime",
+    "openai",
+    "openai-codex",
+    "github-copilot",
+    "ollama",
+)
 VISIBLE_RUN_EVENT_KINDS = (
     "runtime.visible_run_started",
     "runtime.visible_run_completed",

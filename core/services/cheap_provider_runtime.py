@@ -1461,7 +1461,12 @@ def _execute_openai_codex_chat(
     payload: dict[str, object] = {
         "model": model,
         "instructions": "You are a helpful assistant. Respond concisely.",
-        "input": [{"role": "user", "content": message}],
+        "input": [
+            {
+                "role": "user",
+                "content": [{"type": "input_text", "text": message}],
+            }
+        ],
         "store": False,
         "stream": True,
     }

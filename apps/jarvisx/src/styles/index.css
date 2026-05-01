@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Lock the shell's overscroll/zoom so it feels like a real native app. */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+/* Iframe content needs select to work */
+iframe {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* Custom scrollbar — slim and dark to match the shell */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+/* Streaming cursor at end of last token in pending bubbles */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #5ab8a0;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  animation: streamingCursor 0.8s step-end infinite;
+}
+@keyframes streamingCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Thinking bar (rider that bounces while LLM is generating) */
+.thinking-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+}
+.thinking-bar-track {
+  position: relative;
+  width: 84px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(90, 184, 160, 0) 0%,
+    rgba(90, 184, 160, 0.18) 12%,
+    rgba(90, 184, 160, 0.18) 88%,
+    rgba(90, 184, 160, 0) 100%
+  );
+  flex-shrink: 0;
+}
+.thinking-bar-rider {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #5ab8a0;
+  box-shadow: 0 0 6px #5ab8a0, 0 0 14px rgba(90, 184, 160, 0.55);
+  animation: thinkingRide 1.6s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+}
+@keyframes thinkingRide {
+  0%, 100% { left: 0%; transform: translateX(0) scale(1); }
+  48% { left: 100%; transform: translateX(-100%) scale(1.15); }
+  50% { left: 100%; transform: translateX(-100%) scale(1); }
+  98% { left: 0%; transform: translateX(0) scale(1.15); }
+}
+.thinking-bar-label {
+  font-size: 11px;
+  color: #8b909e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Markdown chat content polish */
+.prose-jarvisx {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: inherit;
+}
+.prose-jarvisx p { margin: 0.4em 0; }
+.prose-jarvisx p:first-child { margin-top: 0; }
+.prose-jarvisx p:last-child { margin-bottom: 0; }
+.prose-jarvisx h1, .prose-jarvisx h2, .prose-jarvisx h3 {
+  font-weight: 600;
+  margin: 0.7em 0 0.3em;
+  line-height: 1.3;
+}
+.prose-jarvisx h1 { font-size: 1.2em; }
+.prose-jarvisx h2 { font-size: 1.1em; }
+.prose-jarvisx h3 { font-size: 1.0em; }
+.prose-jarvisx ul, .prose-jarvisx ol { margin: 0.4em 0; padding-left: 1.4em; }
+.prose-jarvisx li { margin: 0.15em 0; }
+.prose-jarvisx blockquote {
+  border-left: 3px solid #30363d;
+  padding-left: 0.8em;
+  margin: 0.4em 0;
+  color: #9da7b3;
+}
+.prose-jarvisx hr { border: 0; border-top: 1px solid #21262d; margin: 1em 0; }
+.prose-jarvisx table {
+  border-collapse: collapse;
+  margin: 0.4em 0;
+  font-size: 0.92em;
+}
+.prose-jarvisx th, .prose-jarvisx td {
+  border: 1px solid #21262d;
+  padding: 4px 8px;
+}
+.prose-jarvisx th {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+}
+
+/* Composer override for JarvisX native chat surface.
+   apps/ui's Composer was built to float over the bottom of the
+   transcript (position: absolute) with a gradient fade-in. In our
+   native flex layout the composer is just another flex child — it
+   shouldn't pop out of flow. Scoping these overrides to
+   .jarvisx-composer-host keeps webchat unaffected. */
+.jarvisx-composer-host {
+  position: relative;
+}
+/* Soft fade above the composer — replaces the hard divider with a
+   subtle gradient so the message scroll appears to flow under it. */
+.jarvisx-composer-host::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -16px;
+  height: 16px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(13, 17, 23, 0), rgba(13, 17, 23, 0.85));
+}
+.jarvisx-composer-host .composer-shell {
+  position: static !important;
+  background: transparent !important;
+  padding: 8px 16px 12px !important;
+  z-index: auto !important;
+}
+.jarvisx-composer-host .composer-card {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+}

@@ -1,0 +1,70 @@
+{
+  "name": "jarvisx",
+  "private": true,
+  "version": "0.1.0-poc",
+  "description": "JarvisX — Electron desktop app wrapping Jarvis V2",
+  "main": "dist-electron/main.js",
+  "type": "module",
+  "scripts": {
+    "postinstall": "node scripts/fix-sandbox.cjs",
+    "dev": "vite",
+    "dev:electron": "concurrently -k -n vite,electron -c blue,green \"vite\" \"wait-on http://localhost:5173 && npm run build:electron && cross-env NODE_ENV=development electron .\"",
+    "build:renderer": "tsc -b && vite build",
+    "build:electron": "tsc -p electron/tsconfig.json && node scripts/build-preload.cjs",
+    "build": "npm run build:renderer && npm run build:electron",
+    "package": "npm run build && electron-builder",
+    "package:linux": "npm run build && electron-builder --linux",
+    "package:win": "npm run build && electron-builder --win",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "lucide-react": "^0.460.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.1",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "dk.srvlab.jarvisx",
+    "productName": "JarvisX",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "category": "Office"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
+  }
+}

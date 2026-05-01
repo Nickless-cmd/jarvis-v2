@@ -1,5 +1,13 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { Copy, Check, ThumbsUp } from 'lucide-react'
+import {
+  Copy,
+  Check,
+  ThumbsUp,
+  RotateCcw,
+  Pencil,
+  GitBranch,
+  X,
+} from 'lucide-react'
 import { MarkdownRenderer } from '@ui/components/chat/MarkdownRenderer.jsx'
 import { ThinkingBar } from '@ui/components/chat/ChatThinking.jsx'
 import { ApprovalCard } from '@ui/components/chat/ApprovalCard.jsx'
@@ -22,11 +30,17 @@ interface WorkingStep {
   detail?: string
 }
 
+export type MessageAction =
+  | { type: 'retry'; userText: string }
+  | { type: 'edit-resend'; messageId: string; newText: string }
+  | { type: 'fork'; messageId: string }
+
 interface Props {
   messages: ChatMessage[]
   workingSteps?: WorkingStep[]
   isStreaming?: boolean
   sessionId?: string | null
+  onAction?: (a: MessageAction) => void
 }
 
 const SMILEYS: Array<[RegExp, string]> = [
@@ -55,7 +69,7 @@ function convertSmileys(t: string) {
  * layout (max-width, bg, scroll behaviour) — we just match its DOM
  * shape so apps/ui's global.css applies the same animations.
  */
-export function MessageList({ messages, workingSteps, isStreaming, sessionId }: Props) {
+export function MessageList({ messages, workingSteps, isStreaming, sessionId, onAction }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const wasNearBottomRef = useRef(true)
   const prevCountRef = useRef(messages.length)
@@ -126,14 +140,27 @@ export function MessageList({ messages, workingSteps, isStreaming, sessionId }: 
           </div>
         )}
 
-        {visible.map((m, i) => (
-          <Row
-            key={m.id ?? m.message_id ?? `${m.role}-${i}`}
-            message={m}
-            workingSteps={workingSteps}
-            sessionId={sessionId}
-          />
-        ))}
+        {visible.map((m, i) => {
+          // Find the most-recent user message preceding this one — retry
+          // re-fires that exact text in the session
+          let prevUserText = ''
+          for (let j = i - 1; j >= 0; j--) {
+            if (visible[j].role === 'user') {
+              prevUserText = visible[j].content || ''
+              break
+            }
+          }
+          return (
+            <Row
+              key={m.id ?? m.message_id ?? `${m.role}-${i}`}
+              message={m}
+              workingSteps={workingSteps}
+              sessionId={sessionId}
+              prevUserText={prevUserText}
+              onAction={onAction}
+            />
+          )
+        })}
 
         {showStandaloneThinking && (
           <article className="message-row assistant">
@@ -153,10 +180,14 @@ const Row = memo(
     message,
     workingSteps,
     sessionId,
+    prevUserText,
+    onAction,
   }: {
     message: ChatMessage
     workingSteps?: WorkingStep[]
     sessionId?: string | null
+    prevUserText?: string
+    onAction?: (a: MessageAction) => void
   }) {
     const role = message.role
 
@@ -181,20 +212,11 @@ const Row = memo(
 
     if (role === 'user') {
       return (
-        <article className="message-row user">
-          <div className="message-name">Du</div>
-          <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
-            {message.attachments && message.attachments.length > 0 && (
-              <AttachmentStrip attachments={message.attachments} sessionId={sessionId} />
-            )}
-            {message.content ? (
-              <div className="message-content">
-                <MarkdownRenderer content={convertSmileys(message.content)} />
-              </div>
-            ) : null}
-          </div>
-          {message.ts && <div className="message-time">{message.ts}</div>}
-        </article>
+        <UserBubble
+          message={message}
+          sessionId={sessionId}
+          onAction={onAction}
+        />
       )
     }
 
@@ -202,7 +224,12 @@ const Row = memo(
     return (
       <article className="message-row assistant">
         <div className="message-name">Jarvis</div>
-        <AssistantBubble message={message} workingSteps={workingSteps} />
+        <AssistantBubble
+          message={message}
+          workingSteps={workingSteps}
+          prevUserText={prevUserText}
+          onAction={onAction}
+        />
         {message.ts && <div className="message-time">{message.ts}</div>}
       </article>
     )
@@ -228,9 +255,13 @@ const Row = memo(
 const AssistantBubble = memo(function AssistantBubble({
   message,
   workingSteps,
+  prevUserText,
+  onAction,
 }: {
   message: ChatMessage
   workingSteps?: WorkingStep[]
+  prevUserText?: string
+  onAction?: (a: MessageAction) => void
 }) {
   const [copied, setCopied] = useState(false)
   const [liked, setLiked] = useState(false)
@@ -241,6 +272,8 @@ const AssistantBubble = memo(function AssistantBubble({
       setTimeout(() => setCopied(false), 1500)
     })
   }
+
+  const messageId = message.id ?? message.message_id ?? ''
 
   return (
     <div className="message-group">
@@ -267,11 +300,131 @@ const AssistantBubble = memo(function AssistantBubble({
           >
             <ThumbsUp size={12} />
           </button>
+          {onAction && prevUserText && (
+            <button
+              onClick={() => onAction({ type: 'retry', userText: prevUserText })}
+              title="Retry — re-send foregående besked"
+            >
+              <RotateCcw size={12} />
+            </button>
+          )}
+          {onAction && messageId && (
+            <button
+              onClick={() => onAction({ type: 'fork', messageId })}
+              title="Fork — kloner samtalen op til denne besked"
+            >
+              <GitBranch size={12} />
+            </button>
+          )}
         </div>
       )}
     </div>
   )
 })
+
+function UserBubble({
+  message,
+  sessionId,
+  onAction,
+}: {
+  message: ChatMessage
+  sessionId?: string | null
+  onAction?: (a: MessageAction) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(message.content || '')
+  const messageId = message.id ?? message.message_id ?? ''
+
+  function startEdit() {
+    setDraft(message.content || '')
+    setEditing(true)
+  }
+  function commitEdit() {
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === (message.content || '').trim()) {
+      setEditing(false)
+      return
+    }
+    onAction?.({ type: 'edit-resend', messageId, newText: trimmed })
+    setEditing(false)
+  }
+
+  return (
+    <article className="message-row user">
+      <div className="message-name">Du</div>
+      {editing ? (
+        <div className="message-bubble" style={{ minWidth: 280 }}>
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setEditing(false)
+              } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault()
+                commitEdit()
+              }
+            }}
+            rows={Math.max(2, Math.min(12, draft.split('\n').length + 1))}
+            className="w-full resize-y rounded border border-accent/40 bg-bg0 px-2 py-1.5 font-mono text-[12px] text-fg outline-none"
+          />
+          <div className="mt-1.5 flex items-center justify-end gap-2 text-[10px]">
+            <span className="mr-auto text-fg3">Ctrl+Enter sender · Esc fortryder</span>
+            <button
+              onClick={() => setEditing(false)}
+              className="flex items-center gap-1 rounded border border-line2 bg-bg2 px-2 py-1 text-fg2 hover:text-fg"
+            >
+              <X size={10} /> Annullér
+            </button>
+            <button
+              onClick={commitEdit}
+              disabled={!draft.trim()}
+              className="flex items-center gap-1 rounded bg-accent px-2.5 py-1 font-semibold text-bg0 hover:bg-accent/90 disabled:opacity-40"
+            >
+              <Check size={10} /> Send
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="message-group">
+          <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
+            {message.attachments && message.attachments.length > 0 && (
+              <AttachmentStrip attachments={message.attachments} sessionId={sessionId} />
+            )}
+            {message.content ? (
+              <div className="message-content">
+                <MarkdownRenderer content={convertSmileys(message.content)} />
+              </div>
+            ) : null}
+          </div>
+          {!message.pending && message.content && onAction && (
+            <div className="message-actions">
+              <button onClick={startEdit} title="Edit & resend">
+                <Pencil size={12} />
+              </button>
+              <button
+                onClick={() => onAction({ type: 'retry', userText: message.content || '' })}
+                title="Retry — re-send denne besked"
+              >
+                <RotateCcw size={12} />
+              </button>
+              {messageId && (
+                <button
+                  onClick={() => onAction({ type: 'fork', messageId })}
+                  title="Fork — kloner samtalen op til denne besked"
+                >
+                  <GitBranch size={12} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {message.ts && <div className="message-time">{message.ts}</div>}
+    </article>
+  )
+}
 
 function AttachmentStrip({
   attachments,

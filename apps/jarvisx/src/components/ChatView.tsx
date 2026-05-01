@@ -550,6 +550,37 @@ export function ChatView({
             workingSteps={shell.workingSteps as never}
             isStreaming={isStreaming}
             sessionId={(shell.activeSessionId ?? null) as string | null}
+            onAction={async (a) => {
+              if (a.type === 'retry') {
+                if (a.userText.trim()) {
+                  shell.handleSend?.(a.userText.trim())
+                }
+              } else if (a.type === 'edit-resend') {
+                if (a.newText.trim()) {
+                  shell.handleSend?.(a.newText.trim())
+                }
+              } else if (a.type === 'fork') {
+                const sessionId = shell.activeSessionId
+                if (!sessionId || !a.messageId) return
+                try {
+                  const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/sessions/fork`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      source_session_id: sessionId,
+                      up_to_message_id: a.messageId,
+                    }),
+                  })
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                  const j = await res.json()
+                  if (j?.new_session_id) {
+                    shell.handleSessionSelect?.(j.new_session_id)
+                  }
+                } catch (e) {
+                  console.error('[fork] failed:', e)
+                }
+              }
+            }}
           />
 
           {/* Terminal drawer — shows live output from any process Jarvis

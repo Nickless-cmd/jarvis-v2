@@ -1460,3 +1460,87 @@ def dismiss_plan(plan_id: str) -> dict[str, Any]:
     if out.get("status") == "error":
         raise HTTPException(status_code=404, detail=out.get("error") or "plan not found")
     return out
+
+
+# ── Session forking ───────────────────────────────────────────────
+# "Fork from here" = create a new session with a copy of all messages
+# up to and including a given message_id. Useful for exploring a
+# different direction without losing the original conversation.
+
+
+class _ForkPayload(BaseModel):
+    source_session_id: str
+    up_to_message_id: str
+    title: str | None = None
+
+
+@router.post("/sessions/fork")
+def fork_session(payload: _ForkPayload) -> dict[str, Any]:
+    """Clone a session up to a specific message_id.
+
+    Copies user/assistant/tool/compact_marker messages in order until
+    we've copied the target message_id (inclusive), then stops. The new
+    session has its own id; the original is untouched.
+    """
+    from core.services.chat_sessions import (
+        get_chat_session,
+        create_chat_session,
+        append_chat_message,
+    )
+    src = get_chat_session(payload.source_session_id)
+    if src is None:
+        raise HTTPException(status_code=404, detail="source session not found")
+    messages = src.get("messages") or []
+    if not isinstance(messages, list):
+        raise HTTPException(status_code=500, detail="malformed source session")
+
+    # Default title: source title + " (forked)"
+    src_title = str(src.get("title") or "Forked chat")
+    new_title = (payload.title or f"{src_title} (forked)").strip()[:200] or "Forked chat"
+    new_session = create_chat_session(title=new_title)
+    new_id = str(new_session.get("id") or "")
+    if not new_id:
+        raise HTTPException(status_code=500, detail="failed to create session")
+
+    copied = 0
+    found_target = False
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        role = str(m.get("role") or "").strip()
+        # Only copy roles append_chat_message accepts; skip approval_request
+        # and other UI-side virtual roles.
+        if role not in {"user", "assistant", "tool", "compact_marker"}:
+            continue
+        content = str(m.get("content") or "").strip()
+        if not content:
+            continue
+        try:
+            append_chat_message(
+                session_id=new_id,
+                role=role,
+                content=content,
+                created_at=str(m.get("created_at") or m.get("ts") or "") or None,
+            )
+            copied += 1
+        except Exception as exc:
+            logger.warning("fork: skip message: %s", exc)
+        if str(m.get("message_id") or m.get("id") or "") == payload.up_to_message_id:
+            found_target = True
+            break
+
+    if not found_target:
+        # Couldn't find the target message — clean up empty session?
+        # Leave it; the user got *some* fork and can decide.
+        logger.info(
+            "fork: target message %s not found; copied %d messages",
+            payload.up_to_message_id, copied,
+        )
+
+    return {
+        "status": "ok",
+        "new_session_id": new_id,
+        "title": new_title,
+        "messages_copied": copied,
+        "found_target": found_target,
+    }

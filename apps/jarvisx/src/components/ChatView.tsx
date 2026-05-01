@@ -7,6 +7,7 @@ import {
   Pencil,
   Bot,
   Wrench,
+  Terminal as TerminalIcon,
 } from 'lucide-react'
 import { Composer } from '@ui/components/chat/Composer.jsx'
 import { ProjectAnchor } from './ProjectAnchor'
@@ -25,6 +26,7 @@ import { OutputStylePill } from './OutputStylePill'
 import { AgentsPanel } from './AgentsPanel'
 import { ToolInventoryModal } from './ToolInventoryModal'
 import { VoiceButton } from './VoiceButton'
+import { TerminalDrawer } from './native/TerminalDrawer'
 
 // Cap how many messages we render at once. The active prod session has
 // 1674 messages — rendering all of them blows up every keystroke because
@@ -44,6 +46,7 @@ interface ChatViewProps {
     recentProjects?: string[]
   }) => Promise<void> | void
   shell: ShellLike
+  role?: 'owner' | 'member' | 'guest'
 }
 
 // useUnifiedShell return shape — kept permissive because we're crossing
@@ -83,6 +86,7 @@ export function ChatView({
   recentProjects,
   onProjectChange,
   shell,
+  role = 'guest',
 }: ChatViewProps) {
   // pause_and_ask + approval-card listeners — option button clicks in
   // InlineToolResult dispatch CustomEvents that we forward to the
@@ -125,6 +129,12 @@ export function ChatView({
   const [showSlashPalette, setShowSlashPalette] = useState(false)
   const [showAgents, setShowAgents] = useState(false)
   const [showToolInventory, setShowToolInventory] = useState(false)
+  const [terminalOpen, setTerminalOpen] = useState<boolean>(() => {
+    return localStorage.getItem('jarvisx:terminal-open') === '1'
+  })
+  useEffect(() => {
+    localStorage.setItem('jarvisx:terminal-open', terminalOpen ? '1' : '0')
+  }, [terminalOpen])
   const [planMode, setPlanMode] = useState(false)
   const [draft, setDraft] = useState('')
   const [queuedMessage, setQueuedMessage] = useState<{
@@ -132,7 +142,8 @@ export function ChatView({
     opts?: unknown
   } | null>(null)
 
-  // Cmd/Ctrl+K opens search; Cmd/Ctrl+/ opens slash palette.
+  // Cmd/Ctrl+K opens search; Cmd/Ctrl+/ opens slash palette;
+  // Ctrl+` (backtick) toggles the terminal drawer (VS Code parity).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k' && !e.shiftKey) {
@@ -141,6 +152,9 @@ export function ChatView({
       } else if ((e.ctrlKey || e.metaKey) && e.key === '/') {
         e.preventDefault()
         setShowSlashPalette(true)
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '`') {
+        e.preventDefault()
+        setTerminalOpen((v) => !v)
       }
     }
     document.addEventListener('keydown', onKey)
@@ -326,6 +340,18 @@ export function ChatView({
           >
             <SearchIcon size={12} />
           </button>
+          <button
+            onClick={() => setTerminalOpen((v) => !v)}
+            title={terminalOpen ? 'Skjul terminal (Ctrl-`)' : 'Vis terminal (Ctrl-`)'}
+            className={[
+              'flex h-6 w-6 items-center justify-center rounded transition-colors',
+              terminalOpen
+                ? 'bg-accent/15 text-accent ring-1 ring-accent/30'
+                : 'text-fg3 hover:bg-bg2 hover:text-fg',
+            ].join(' ')}
+          >
+            <TerminalIcon size={12} />
+          </button>
           {window.jarvisx && (
             <button
               onClick={() => setShowCapture(true)}
@@ -435,6 +461,17 @@ export function ChatView({
             workingSteps={shell.workingSteps as never}
             isStreaming={isStreaming}
             sessionId={(shell.activeSessionId ?? null) as string | null}
+          />
+
+          {/* Terminal drawer — shows live output from any process Jarvis
+              has spawned via process_supervisor. Sits between the
+              message list and composer so it eats vertical space from
+              the chat (the natural give) instead of overlaying anything. */}
+          <TerminalDrawer
+            open={terminalOpen}
+            onClose={() => setTerminalOpen(false)}
+            apiBaseUrl={apiBaseUrl}
+            role={role}
           />
 
           {/* Composer — reused from apps/ui. The .jarvisx-composer-host

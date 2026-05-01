@@ -31,7 +31,7 @@ const FALLBACK_CONFIG: AppConfig = {
 export default function App() {
   const [view, setView] = useState<ViewKey>('chat')
   const [config, setConfig] = useState<AppConfig>(FALLBACK_CONFIG)
-  const [role, setRole] = useState<string>('owner')  // optimistic owner; downgraded after whoami fetch
+  const [role, setRole] = useState<'owner' | 'member' | 'guest'>('owner')  // optimistic owner; downgraded after whoami fetch
 
   // Single shell instance shared across views — sessions list lives in
   // Settings (under "Recent chats"), and the active session drives the
@@ -53,7 +53,10 @@ export default function App() {
   useEffect(() => {
     fetch(`${config.apiBaseUrl.replace(/\/$/, '')}/api/whoami`)
       .then((r) => r.json())
-      .then((j) => setRole(j.role || 'owner'))
+      .then((j) => {
+        const r = j.role
+        setRole(r === 'owner' || r === 'member' || r === 'guest' ? r : 'owner')
+      })
       .catch(() => setRole('owner'))
   }, [config.apiBaseUrl, config.userId])
 
@@ -97,6 +100,7 @@ export default function App() {
               recentProjects={config.recentProjects}
               onProjectChange={updateConfig}
               shell={shell}
+              role={role}
             />
           )}
           {view === 'mind' && <MindView apiBaseUrl={config.apiBaseUrl} role={role} />}

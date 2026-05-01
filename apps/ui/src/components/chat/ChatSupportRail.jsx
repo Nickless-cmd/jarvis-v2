@@ -1,5 +1,5 @@
 import { Activity, Battery, CheckCircle2, Compass, Eye, FileSearch, FolderOpen, Frown, Gauge, Globe, Lightbulb, Loader2, Pencil, ScanSearch, Smile, Terminal } from 'lucide-react'
-import { ScrambleText } from './ChatThinking'
+import { ScrambleText, ThinkingBar } from './ChatThinking'
 import { s, T, mono } from '../../shared/theme/tokens'
 
 function PanelSection({ title, children }) {
@@ -198,14 +198,7 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
 
   if (!hasActivity) {
     if (isStreaming) {
-      return (
-        <div style={s({ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' })}>
-          <div className="spin" style={s({ color: T.accentText, display: 'flex' })}>
-            <Loader2 size={12} />
-          </div>
-          <span style={s({ ...mono, fontSize: 10, color: T.accentText })}>thinking…</span>
-        </div>
-      )
+      return <ThinkingBar workingSteps={[]} isStreaming={true} compact />
     }
     return (
       <div style={s({ ...mono, fontSize: 10, color: T.text3, padding: '2px 0' })}>idle</div>
@@ -216,8 +209,8 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
     <div className="scanline-host" style={s({
       position: 'relative',
       display: 'flex',
-      alignItems: 'flex-start',
-      gap: 8,
+      flexDirection: 'column',
+      gap: 4,
       padding: '8px 10px',
       background: T.bgRaised,
       border: `1px solid ${T.border1}`,
@@ -225,65 +218,37 @@ function WorkingScan({ workingSteps, capabilityActivity, isStreaming }) {
       borderRadius: 8,
       animation: 'slideUp 0.2s ease both',
     })}>
-      {/* Spinner or done-indicator */}
-      <div
-        className={isStreaming ? 'spin' : ''}
-        style={s({ marginTop: 1, flexShrink: 0, color: isStreaming ? T.accentText : T.text3 })}
-      >
-        <Loader2 size={12} />
-      </div>
+      {/* Done steps from workingSteps */}
+      {doneSteps.map((step, i) => (
+        <div key={`d-${i}`} style={s({ display: 'flex', alignItems: 'center', gap: 6 })}>
+          <CheckCircle2 size={9} color={T.green} style={{ flexShrink: 0 }} />
+          <span style={s({ ...mono, fontSize: 9, color: T.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
+            {step.step === 0 ? 'Tænker' : (step.detail || step.action || step.step)}
+          </span>
+        </div>
+      ))}
 
-      <div style={s({ flex: 1, minWidth: 0 })}>
-        {/* Done steps from workingSteps */}
-        {doneSteps.map((step, i) => (
-          <div key={i} style={s({ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 })}>
-            <CheckCircle2 size={9} color={T.green} style={{ flexShrink: 0 }} />
+      {/* Done activities (capability events) — only when nothing is running */}
+      {!currentStep && activities.map((item, i) => {
+        const Icon = activityIcon(item)
+        const label = activityPrimaryText(item)
+        const ok = item.status === 'executed'
+        return (
+          <div key={`a-${i}`} style={s({ display: 'flex', alignItems: 'center', gap: 6 })}>
+            {ok
+              ? <CheckCircle2 size={9} color={T.green} style={{ flexShrink: 0 }} />
+              : <Icon size={9} color={T.text3} style={{ flexShrink: 0 }} />}
             <span style={s({ ...mono, fontSize: 9, color: T.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
-              {step.step === 0 ? 'Tænker' : (step.detail || step.action || step.step)}
+              {label}
             </span>
           </div>
-        ))}
+        )
+      })}
 
-        {/* Done activities (capability events) */}
-        {!currentStep && activities.map((item, i) => {
-          const Icon = activityIcon(item)
-          const label = activityPrimaryText(item)
-          const ok = item.status === 'executed'
-          return (
-            <div key={i} style={s({ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 })}>
-              {ok
-                ? <CheckCircle2 size={9} color={T.green} style={{ flexShrink: 0 }} />
-                : <Icon size={9} color={T.text3} style={{ flexShrink: 0 }} />}
-              <span style={s({ ...mono, fontSize: 9, color: T.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
-                {label}
-              </span>
-            </div>
-          )
-        })}
-
-        {/* Current running step — scramble label + pulse ring + stroke-draw icon */}
-        {currentStep && (() => {
-          const Icon = stepIcon(currentStep)
-          const stepKey = currentStep.step ?? currentStep.action ?? 'live'
-          return (
-            <div style={s({ display: 'flex', alignItems: 'center', gap: 6 })}>
-              <span
-                key={`icon-${stepKey}`}
-                className="tool-icon-pulse icon-stroke-draw"
-                style={s({ flexShrink: 0, color: T.accentText })}
-              >
-                <Icon size={11} color={T.accentText} />
-              </span>
-              <span style={s({ ...mono, fontSize: 10, color: T.accentText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })}>
-                <ScrambleText text={String(currentStep.detail || currentStep.action || 'working')} />
-                {runningSteps.length > 1 && (
-                  <span style={{ color: T.text3, marginLeft: 4 }}>(+{runningSteps.length - 1})</span>
-                )}
-              </span>
-            </div>
-          )
-        })()}
-      </div>
+      {/* Current running — same bar+rider+icon+scramble look as chat ThinkingBar */}
+      {currentStep && (
+        <ThinkingBar workingSteps={[currentStep, ...runningSteps.slice(0, -1)]} isStreaming compact />
+      )}
     </div>
   )
 }

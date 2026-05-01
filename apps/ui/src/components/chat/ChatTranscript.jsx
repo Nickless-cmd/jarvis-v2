@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { memo, useState, useEffect, useRef } from 'react'
 import { Copy, Check, ThumbsUp, Globe } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ApprovalCard } from './ApprovalCard'
@@ -53,7 +53,13 @@ function BrowserIndicator({ browserBody }) {
 /**
  * Renders a single assistant message bubble with a hover toolbar.
  */
-function MessageWithActions({ message, workingSteps }) {
+// Memoized so that when the parent (ChatTranscript / ChatPage) re-renders
+// — e.g. on every keystroke in the Composer — settled messages aren't
+// re-rendered. This is essential for sessions with hundreds of messages
+// where each bubble owns a MarkdownRenderer + Prism syntax highlighter.
+// We only re-render if the message reference changed or if workingSteps
+// became relevant to a still-pending message.
+const MessageWithActions = memo(function MessageWithActions({ message, workingSteps }) {
   const [copied, setCopied] = useState(false)
   const [liked, setLiked] = useState(false)
 
@@ -93,7 +99,20 @@ function MessageWithActions({ message, workingSteps }) {
       )}
     </div>
   )
-}
+}, (prev, next) => {
+  // Cheap shallow check on the fields that can drive a visible re-render.
+  // Reference equality on `message` is enough for settled bubbles; for the
+  // currently-streaming bubble we also check content/pending so deltas show.
+  if (prev.message !== next.message) {
+    if (prev.message?.content !== next.message?.content) return false
+    if (prev.message?.pending !== next.message?.pending) return false
+    if (prev.message?.message_id !== next.message?.message_id) return false
+  }
+  // workingSteps only matters for pending bubbles — skip the reference
+  // check otherwise. For pending bubbles, identity change forces re-render.
+  if (next.message?.pending && prev.workingSteps !== next.workingSteps) return false
+  return true
+})
 
 /**
  * Renders attachment thumbnails above a user message bubble.

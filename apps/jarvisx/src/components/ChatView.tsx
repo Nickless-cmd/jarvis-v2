@@ -145,16 +145,26 @@ export function ChatView({
   } | null>(null)
 
   // Cmd/Ctrl+K opens search; Cmd/Ctrl+/ opens slash palette;
-  // Ctrl+` (backtick) toggles the terminal drawer (VS Code parity).
+  // Toggle terminal drawer with either Ctrl+J (VS Code "Toggle Panel"
+  // shortcut, works on every keyboard layout) or Ctrl+` (backtick —
+  // on Danish layouts this requires Shift+¨ + space dead-key dance,
+  // so we match by physical key position via e.code === 'Backquote'
+  // which fires regardless of what character that key produces).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k' && !e.shiftKey) {
+      const ctrlOrMeta = e.ctrlKey || e.metaKey
+      if (ctrlOrMeta && e.key === 'k' && !e.shiftKey) {
         e.preventDefault()
         setShowSearch(true)
-      } else if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+      } else if (ctrlOrMeta && e.key === '/') {
         e.preventDefault()
         setShowSlashPalette(true)
-      } else if ((e.ctrlKey || e.metaKey) && e.key === '`') {
+      } else if (
+        ctrlOrMeta &&
+        !e.shiftKey &&
+        !e.altKey &&
+        (e.code === 'Backquote' || e.key === '`' || e.key === 'j' || e.key === 'J')
+      ) {
         e.preventDefault()
         setTerminalOpen((v) => !v)
       }
@@ -344,7 +354,7 @@ export function ChatView({
           </button>
           <button
             onClick={() => setTerminalOpen((v) => !v)}
-            title={terminalOpen ? 'Skjul terminal (Ctrl-`)' : 'Vis terminal (Ctrl-`)'}
+            title={terminalOpen ? 'Skjul terminal (Ctrl+J)' : 'Vis terminal (Ctrl+J)'}
             className={[
               'flex h-6 w-6 items-center justify-center rounded transition-colors',
               terminalOpen

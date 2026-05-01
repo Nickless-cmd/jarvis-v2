@@ -282,7 +282,7 @@ export function TerminalDrawer({ open, onClose, apiBaseUrl, role }: Props) {
           </button>
           <button
             onClick={onClose}
-            title="Skjul terminal (Ctrl-`)"
+            title="Skjul terminal (Ctrl+J)"
             className="flex h-6 w-6 items-center justify-center rounded text-fg3 hover:bg-bg2 hover:text-fg"
           >
             <ChevronDown size={14} />
@@ -374,7 +374,7 @@ export function TerminalDrawer({ open, onClose, apiBaseUrl, role }: Props) {
       {/* Footer (close affordance for very small heights) */}
       <button
         onClick={onClose}
-        title="Skjul (Ctrl-`)"
+        title="Skjul (Ctrl+J)"
         className="absolute right-2 top-2 hidden"
       >
         <X size={12} />

@@ -13,6 +13,7 @@ import { SettingsView } from './components/SettingsView'
 import { KeyboardShortcutsOverlay } from './components/KeyboardShortcutsOverlay'
 import { OnboardingModal } from './components/OnboardingModal'
 import { UpdateBanner } from './components/UpdateBanner'
+import { cachedFetch } from './lib/apiCache'
 import { matchShortcut, isTypingTarget } from './lib/shortcuts'
 
 interface AppConfig {
@@ -66,11 +67,16 @@ export default function App() {
 
   // Resolve role via /api/whoami — drives view-only gating across the
   // app (members can SEE Jarvis's mind but can't unpin or edit settings).
+  // Uses cache-first: cold start with a known last-good value beats
+  // the "Loading… / fallback to owner" flash, and offline launches
+  // still see the right role.
   useEffect(() => {
-    fetch(`${config.apiBaseUrl.replace(/\/$/, '')}/api/whoami`)
+    cachedFetch(`${config.apiBaseUrl.replace(/\/$/, '')}/api/whoami`, {
+      prefer: 'cache-first',
+    })
       .then((r) => r.json())
-      .then((j) => {
-        const r = j.role
+      .then((j: unknown) => {
+        const r = (j as { role?: string }).role
         setRole(r === 'owner' || r === 'member' || r === 'guest' ? r : 'owner')
       })
       .catch(() => setRole('owner'))

@@ -108,6 +108,26 @@ function liveToResponse(status: number, body: string): CachedResponse {
 }
 
 /**
+ * Broadcast cache-state events so UI surfaces (ConnectionPill etc.)
+ * can show a "stale" indicator when responses are being served from
+ * cache because the network failed. Jarvis flagged this as the
+ * worst-class failure mode of an offline cache: "it almost works"
+ * is worse than honest backend-down. Listening components can show
+ * the user the truth.
+ *
+ * Two events:
+ *   jarvisx:cache-served-stale  — network failed, cached value used
+ *   jarvisx:cache-revalidated   — cached then network refreshed
+ *
+ * detail.url is the full URL so listeners can scope to specific
+ * endpoints if they care.
+ */
+function emitCacheEvent(name: 'cache-served-stale' | 'cache-revalidated', url: string) {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(`jarvisx:${name}`, { detail: { url } }))
+}
+
+/**
  * Fetch with stale-while-revalidate semantics. Always tries the
  * network first; on failure, returns cached entry if any, else
  * re-throws. On success, updates the cache and returns the live
@@ -138,7 +158,10 @@ export async function cachedFetch(
         try {
           const res = await fetch(url, init)
           const body = await res.text()
-          if (res.ok) writeCache(url, res.status, body)
+          if (res.ok) {
+            writeCache(url, res.status, body)
+            emitCacheEvent('cache-revalidated', url)
+          }
         } catch {
           // ignore — cached value is what user is seeing
         }
@@ -155,7 +178,10 @@ export async function cachedFetch(
     return liveToResponse(res.status, body)
   } catch (e) {
     const cached = readCache(url)
-    if (cached) return cachedToResponse(cached)
+    if (cached) {
+      emitCacheEvent('cache-served-stale', url)
+      return cachedToResponse(cached)
+    }
     throw e
   }
 }

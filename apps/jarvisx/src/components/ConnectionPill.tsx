@@ -95,14 +95,42 @@ export function ConnectionPill({ apiBaseUrl }: Props) {
     return () => window.removeEventListener('focus', onFocus)
   }, [])
 
+  // Track whether we recently served stale data from cache. This
+  // surfaces the "it almost works" failure mode Jarvis flagged: if
+  // backend dies and consumers serve cached values silently, the
+  // user thinks they're seeing fresh data. Show a subtle dot.
+  const [staleHits, setStaleHits] = useState(0)
+  useEffect(() => {
+    const onStale = () => setStaleHits((n) => n + 1)
+    const onFresh = () => setStaleHits(0)
+    window.addEventListener('jarvisx:cache-served-stale', onStale)
+    window.addEventListener('jarvisx:cache-revalidated', onFresh)
+    return () => {
+      window.removeEventListener('jarvisx:cache-served-stale', onStale)
+      window.removeEventListener('jarvisx:cache-revalidated', onFresh)
+    }
+  }, [])
+  // Decay the stale count after 30s of no new stale events so a
+  // transient hiccup doesn't pin the badge forever
+  useEffect(() => {
+    if (staleHits === 0) return
+    const id = window.setTimeout(() => setStaleHits(0), 30_000)
+    return () => window.clearTimeout(id)
+  }, [staleHits])
+
   const display = renderStatus(status)
   const host = apiBaseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '') || '?'
 
+  const tooltip =
+    staleHits > 0
+      ? `${display.tooltip}\n${apiBaseUrl}\n\n⚠ ${staleHits} response(s) served from cache — backend may be lagging`
+      : `${display.tooltip}\n${apiBaseUrl}`
+
   return (
     <span
-      title={`${display.tooltip}\n${apiBaseUrl}`}
+      title={tooltip}
       className={[
-        'flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-mono ring-1 transition-colors',
+        'relative flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-mono ring-1 transition-colors',
         display.cls,
       ].join(' ')}
     >
@@ -110,6 +138,12 @@ export function ConnectionPill({ apiBaseUrl }: Props) {
       <span>{display.label}</span>
       {(status.kind === 'local' || status.kind === 'remote') && (
         <span className="opacity-60">{host}</span>
+      )}
+      {staleHits > 0 && (
+        <span
+          className="ml-0.5 h-1.5 w-1.5 flex-shrink-0 animate-pulse rounded-full bg-warn"
+          title="Serving cached data — network had a hiccup"
+        />
       )}
     </span>
   )

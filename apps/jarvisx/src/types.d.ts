@@ -4,6 +4,15 @@
  * to backend health pings. We deliberately keep this small — Phase 0
  * doesn't need much from main.
  */
+export type UpdaterStatus =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'available'; info: { version: string; releaseDate?: string; releaseName?: string } }
+  | { kind: 'not-available'; current: string }
+  | { kind: 'downloading'; percent: number }
+  | { kind: 'downloaded'; info: { version: string; releaseDate?: string; releaseName?: string } }
+  | { kind: 'error'; error: string }
+
 export interface JarvisXBridge {
   getConfig: () => Promise<{
     apiBaseUrl: string
@@ -12,6 +21,10 @@ export interface JarvisXBridge {
     mode: 'dev' | 'thin-client' | 'standalone'
     projectRoot: string
     recentProjects: string[]
+    authToken?: string
+    authTokenUserId?: string
+    authTokenRole?: string
+    authTokenExpiresAt?: string
   }>
   setConfig: (cfg: {
     apiBaseUrl?: string
@@ -20,6 +33,10 @@ export interface JarvisXBridge {
     mode?: 'dev' | 'thin-client' | 'standalone'
     projectRoot?: string
     recentProjects?: string[]
+    authToken?: string
+    authTokenUserId?: string
+    authTokenRole?: string
+    authTokenExpiresAt?: string
   }) => Promise<void>
   pingBackend: (url?: string) => Promise<{ ok: boolean; latencyMs: number; error?: string }>
   pickProjectRoot: () => Promise<{ projectRoot: string; recentProjects: string[] } | null>
@@ -33,6 +50,12 @@ export interface JarvisXBridge {
     | { error: string }
   >
   onBackendStatus: (cb: (status: { up: boolean; latencyMs?: number }) => void) => () => void
+  // Auto-updater
+  updaterCheck: () => Promise<{ ok: boolean; version?: string; error?: string }>
+  updaterDownload: () => Promise<{ ok: boolean; error?: string }>
+  updaterInstall: () => Promise<{ ok: boolean }>
+  updaterStatus: () => Promise<UpdaterStatus>
+  onUpdaterStatus: (cb: (status: UpdaterStatus) => void) => () => void
 }
 
 declare global {

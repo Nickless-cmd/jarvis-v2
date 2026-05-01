@@ -20,4 +20,16 @@ contextBridge.exposeInMainWorld('jarvisx', {
       ipcRenderer.removeListener('backend-status', listener)
     }
   },
+  // Auto-updater
+  updaterCheck: () => ipcRenderer.invoke('jarvisx:updater-check'),
+  updaterDownload: () => ipcRenderer.invoke('jarvisx:updater-download'),
+  updaterInstall: () => ipcRenderer.invoke('jarvisx:updater-install'),
+  updaterStatus: () => ipcRenderer.invoke('jarvisx:updater-status'),
+  onUpdaterStatus: (cb: (status: unknown) => void) => {
+    const listener = (_evt: unknown, status: unknown) => cb(status)
+    ipcRenderer.on('updater-status', listener)
+    return () => {
+      ipcRenderer.removeListener('updater-status', listener)
+    }
+  },
 })

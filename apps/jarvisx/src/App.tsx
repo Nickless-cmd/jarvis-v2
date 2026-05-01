@@ -12,6 +12,7 @@ import { SchedulingView } from './components/views/SchedulingView'
 import { SettingsView } from './components/SettingsView'
 import { KeyboardShortcutsOverlay } from './components/KeyboardShortcutsOverlay'
 import { OnboardingModal } from './components/OnboardingModal'
+import { UpdateBanner } from './components/UpdateBanner'
 import { matchShortcut, isTypingTarget } from './lib/shortcuts'
 
 interface AppConfig {
@@ -154,6 +155,7 @@ export default function App() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <UpdateBanner />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {!sidebarHidden && (
           <Sidebar

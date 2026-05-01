@@ -28,6 +28,7 @@ import { ToolInventoryModal } from './ToolInventoryModal'
 import { VoiceButton } from './VoiceButton'
 import { TerminalDrawer } from './native/TerminalDrawer'
 import { DiffReviewPanel } from './native/DiffReviewPanel'
+import { ConnectionPill } from './ConnectionPill'
 
 // Cap how many messages we render at once. The active prod session has
 // 1674 messages — rendering all of them blows up every keystroke because
@@ -356,6 +357,7 @@ export function ChatView({
           />
         </div>
         <div className="flex flex-shrink-0 items-center gap-3 font-mono text-[10px] text-fg3">
+          <ConnectionPill apiBaseUrl={apiBaseUrl} />
           <MoodPill apiBaseUrl={apiBaseUrl} />
           <PresencePill apiBaseUrl={apiBaseUrl} />
           <OutputStylePill apiBaseUrl={apiBaseUrl} />

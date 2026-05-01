@@ -117,6 +117,40 @@ export function SettingsView({ config, onChange, role = 'owner' }: Props) {
               </span>
             )}
           </div>
+
+          <details className="rounded-md border border-line/60 bg-bg0/30 px-3 py-2 text-[11px]">
+            <summary className="cursor-pointer text-fg2 hover:text-fg">
+              Remote backend setup
+            </summary>
+            <div className="mt-2 flex flex-col gap-2 text-fg3">
+              <p>
+                For at give andre brugere adgang til <em>din</em> Jarvis fra deres
+                egen computer, skal serveren:
+              </p>
+              <ol className="ml-4 list-decimal space-y-1">
+                <li>
+                  Bindes til en routebar adresse (fx <code>0.0.0.0</code> bag en
+                  reverse proxy med TLS, eller via Tailscale/Wireguard)
+                </li>
+                <li>
+                  Have <code className="text-fg2">JARVISX_AUTH_REQUIRED=1</code> sat
+                  så X-JarvisX-User fallback bliver afvist
+                </li>
+                <li>
+                  Du minter en token til hver bruger via{' '}
+                  <strong>Authentication → Issue token</strong> nedenfor og leverer
+                  den ud-af-bånd
+                </li>
+                <li>
+                  Brugeren paster din URL ovenfor + token i deres Authentication-panel
+                </li>
+              </ol>
+              <p className="mt-1 text-fg3/80">
+                Standalone (bundled Python) kommer i en senere fase. Lige nu kan
+                JarvisX kun køre som klient mod en eksisterende Jarvis-backend.
+              </p>
+            </div>
+          </details>
         </Section>
 
         <Section title="Identity">

@@ -34,7 +34,53 @@ def create_chat_session(*, title: str = "New chat") -> dict[str, object]:
     }
 
 
-def list_chat_sessions() -> list[dict[str, object]]:
+def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]:
+    """List chat sessions, optionally filtered to one user.
+
+    When user_id is given, only returns sessions that have AT LEAST ONE
+    message stamped with that user_id. This is the privacy guard for
+    multi-user JarvisX: Bjørn shouldn't see Mikkel's chats and vice
+    versa. Sessions where no user_id was ever recorded (older webchat
+    rows) are EXCLUDED from a filtered query — they're either ambiguous
+    or owner-only and should be approached explicitly via the unfiltered
+    API.
+
+    user_id=None preserves the legacy behavior (return everything) so
+    Mission Control and other internal callers aren't affected.
+    """
+    uid = (user_id or "").strip()
+    if uid:
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    s.session_id,
+                    s.title,
+                    s.created_at,
+                    s.updated_at,
+                    COALESCE((
+                        SELECT content
+                        FROM chat_messages m
+                        WHERE m.session_id = s.session_id
+                        ORDER BY m.id DESC
+                        LIMIT 1
+                    ), '') AS last_message,
+                    COALESCE((
+                        SELECT COUNT(*)
+                        FROM chat_messages m2
+                        WHERE m2.session_id = s.session_id
+                    ), 0) AS message_count
+                FROM chat_sessions s
+                WHERE EXISTS (
+                    SELECT 1 FROM chat_messages mu
+                    WHERE mu.session_id = s.session_id
+                      AND mu.user_id = ?
+                )
+                ORDER BY s.updated_at DESC, s.id DESC
+                """,
+                (uid,),
+            ).fetchall()
+        return [_session_summary(dict(row)) for row in rows]
     with connect() as conn:
         rows = conn.execute(
             """

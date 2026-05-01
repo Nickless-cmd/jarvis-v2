@@ -411,14 +411,12 @@ def stream_visible_model(
         )
         return
     if provider == "openai-codex":
-        result = _execute_openai_codex_model(
+        yield from _stream_openai_codex_model(
             message=message,
             model=model,
             session_id=session_id,
+            controller=controller,
         )
-        for chunk in _chunk_text(result.text):
-            yield VisibleModelDelta(delta=chunk)
-        yield VisibleModelStreamDone(result=result)
         return
     if provider == "ollama":
         yield from _stream_ollama_model(
@@ -782,6 +780,67 @@ def _execute_openai_model(
             output_tokens=output_tokens,
         ),
     )
+
+
+def _stream_openai_codex_model(
+    *,
+    message: str,
+    model: str,
+    session_id: str | None = None,
+    controller=None,
+) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+    """Real token-by-token streaming for the openai-codex provider.
+
+    Bridges _iter_openai_codex_chat_events (which uses httpx.stream and
+    yields raw SSE deltas as they arrive) into the VisibleModel*
+    discriminated union the visible-runs pump expects.
+
+    Without this, gpt-5.4 chats appeared frozen for 5–30s while the
+    sync httpx.post collected the entire response before any token
+    surfaced — the visible lane "didn't show what he was doing".
+    """
+    from core.services.cheap_provider_runtime import _iter_openai_codex_chat_events
+
+    provider_config = _provider_router_config(provider="openai-codex")
+    profile = str(provider_config.get("auth_profile") or "").strip() or "codex"
+    base_url = str(provider_config.get("base_url") or "").strip()
+    prompt = _build_openai_codex_visible_prompt(
+        message=message, model=model, session_id=session_id,
+    )
+
+    try:
+        for ev in _iter_openai_codex_chat_events(
+            model=model,
+            auth_profile=profile,
+            base_url=base_url,
+            message=prompt,
+        ):
+            if controller is not None and controller.is_cancelled():
+                raise VisibleModelStreamCancelled("visible-run-cancelled")
+            kind = ev.get("kind")
+            if kind == "delta":
+                delta = str(ev.get("text") or "")
+                if delta:
+                    yield VisibleModelDelta(delta=delta)
+            elif kind == "done":
+                full_text = str(ev.get("full_text") or "")
+                input_tokens = int(ev.get("input_tokens") or _estimate_tokens(prompt))
+                output_tokens = int(ev.get("output_tokens") or _estimate_tokens(full_text))
+                yield VisibleModelStreamDone(
+                    result=VisibleModelResult(
+                        text=full_text,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                        cost_usd=0.0,  # Codex via ChatGPT Plus has no per-token billing
+                    )
+                )
+                return
+    except VisibleModelStreamCancelled:
+        raise
+    except Exception:
+        if controller is not None and controller.is_cancelled():
+            raise VisibleModelStreamCancelled("visible-run-cancelled")
+        raise
 
 
 def _execute_openai_codex_model(

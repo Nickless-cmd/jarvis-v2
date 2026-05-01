@@ -85,22 +85,36 @@ export function MessageList({ messages, workingSteps, isStreaming, sessionId, on
     return () => node.removeEventListener('scroll', onScroll)
   }, [])
 
+  // Auto-scroll on:
+  //   1. first mount (initial paint of an existing session)
+  //   2. new message arriving (count went up — always scroll)
+  //   3. streaming content growing in the last message (scroll only
+  //      if user is near the bottom — don't yank them while reading)
+  //
+  // The trick that was missing: dependency on the *last message's
+  // content* so token-by-token streaming actually fires the effect.
+  // We also defer to rAF so layout has settled before measuring
+  // scrollHeight — saves a one-frame jitter on long messages.
+  const lastMsgKey = (() => {
+    const m = messages[messages.length - 1]
+    if (!m) return ''
+    const id = m.id ?? m.message_id ?? ''
+    return `${id}::${(m.content || '').length}`
+  })()
   useEffect(() => {
     const node = containerRef.current
     if (!node) return
-    if (prevCountRef.current === 0 || wasNearBottomRef.current) {
-      node.scrollTop = node.scrollHeight
+    const isFirstPaint = prevCountRef.current === 0 && messages.length > 0
+    const grew = messages.length > prevCountRef.current
+    const shouldScroll = isFirstPaint || grew || wasNearBottomRef.current
+    if (shouldScroll) {
+      requestAnimationFrame(() => {
+        const n = containerRef.current
+        if (n) n.scrollTop = n.scrollHeight
+      })
     }
     prevCountRef.current = messages.length
-  }, [messages])
-
-  useEffect(() => {
-    if (!isStreaming) return
-    const node = containerRef.current
-    if (node && wasNearBottomRef.current) {
-      node.scrollTop = node.scrollHeight
-    }
-  })
+  }, [messages.length, lastMsgKey, isStreaming])
 
   // Hide raw tool messages (their results render inline via [tool_result:..]
   // refs in the assistant message). Empty system messages are hidden too.

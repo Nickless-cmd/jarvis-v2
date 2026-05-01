@@ -788,18 +788,25 @@ def _stream_openai_codex_model(
     model: str,
     session_id: str | None = None,
     controller=None,
-) -> Iterator[VisibleModelDelta | VisibleModelStreamDone]:
+) -> Iterator[VisibleModelDelta | VisibleModelStreamDone | VisibleModelToolCalls]:
     """Real token-by-token streaming for the openai-codex provider.
 
     Bridges _iter_openai_codex_chat_events (which uses httpx.stream and
     yields raw SSE deltas as they arrive) into the VisibleModel*
     discriminated union the visible-runs pump expects.
 
-    Without this, gpt-5.4 chats appeared frozen for 5–30s while the
-    sync httpx.post collected the entire response before any token
-    surfaced — the visible lane "didn't show what he was doing".
+    Now also passes the simple_tools registry as native function tools
+    so gpt-5.4 / gpt-5.3-codex can actually call them — without that,
+    the visible lane couldn't show "thinking → reading file → ..." for
+    Codex models because they had no tools to call.
+
+    Tool-call events from the SSE stream get accumulated (function name
+    + streamed argument deltas) and yielded as a single
+    VisibleModelToolCalls when each tool call completes.
     """
     from core.services.cheap_provider_runtime import _iter_openai_codex_chat_events
+    from core.tools.simple_tools import get_tool_definitions
+    from core.tools.copilot_tool_pruning import select_tools_for_visible
 
     provider_config = _provider_router_config(provider="openai-codex")
     profile = str(provider_config.get("auth_profile") or "").strip() or "codex"
@@ -807,6 +814,11 @@ def _stream_openai_codex_model(
     prompt = _build_openai_codex_visible_prompt(
         message=message, model=model, session_id=session_id,
     )
+    tools = select_tools_for_visible(
+        get_tool_definitions(), user_message=message, session_id=session_id,
+    )
+
+    collected_tool_calls: list[dict] = []
 
     try:
         for ev in _iter_openai_codex_chat_events(
@@ -814,6 +826,7 @@ def _stream_openai_codex_model(
             auth_profile=profile,
             base_url=base_url,
             message=prompt,
+            tools=tools or None,
         ):
             if controller is not None and controller.is_cancelled():
                 raise VisibleModelStreamCancelled("visible-run-cancelled")
@@ -822,7 +835,25 @@ def _stream_openai_codex_model(
                 delta = str(ev.get("text") or "")
                 if delta:
                     yield VisibleModelDelta(delta=delta)
+            elif kind == "tool_call":
+                # Build the Chat-Completions-shaped tool_call dict the
+                # rest of visible_runs expects (it normalises via
+                # _parse_tc_args / _execute_simple_tool_calls).
+                tc = {
+                    "id": str(ev.get("id") or ""),
+                    "type": "function",
+                    "function": {
+                        "name": str(ev.get("name") or ""),
+                        "arguments": str(ev.get("arguments") or ""),
+                    },
+                }
+                collected_tool_calls.append(tc)
             elif kind == "done":
+                # If we collected tool calls, surface them BEFORE the
+                # stream-done event so visible_runs picks them up while
+                # _collected_native_tool_calls is being populated.
+                if collected_tool_calls:
+                    yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
                 full_text = str(ev.get("full_text") or "")
                 input_tokens = int(ev.get("input_tokens") or _estimate_tokens(prompt))
                 output_tokens = int(ev.get("output_tokens") or _estimate_tokens(full_text))
@@ -835,6 +866,10 @@ def _stream_openai_codex_model(
                     )
                 )
                 return
+            # tool_call_start events are informational only; the
+            # consumer doesn't need a separate "started" signal because
+            # working_step is emitted later by visible_runs once the
+            # full tool_call lands.
     except VisibleModelStreamCancelled:
         raise
     except Exception:

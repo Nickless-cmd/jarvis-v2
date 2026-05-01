@@ -32,6 +32,7 @@ import { DiffReviewPanel } from './native/DiffReviewPanel'
 import { FilePreviewPane } from './native/FilePreviewPane'
 import { ConnectionPill } from './ConnectionPill'
 import { PendingPlansStrip } from './PendingPlansStrip'
+import { TaskBar } from './TaskBar'
 
 // Cap how many messages we render at once. The active prod session has
 // 1674 messages — rendering all of them blows up every keystroke because
@@ -166,6 +167,14 @@ export function ChatView({
     }
     window.addEventListener('jarvisx:preview-file', onPreview)
     return () => window.removeEventListener('jarvisx:preview-file', onPreview)
+  }, [])
+
+  // jarvisx:open-terminal opens the bottom drawer (TerminalDrawer also
+  // listens to set its active tab from the same event)
+  useEffect(() => {
+    const onOpenTerm = () => setTerminalOpen(true)
+    window.addEventListener('jarvisx:open-terminal', onOpenTerm)
+    return () => window.removeEventListener('jarvisx:open-terminal', onOpenTerm)
   }, [])
   const [planMode, setPlanMode] = useState(false)
   const [draft, setDraft] = useState('')
@@ -500,6 +509,11 @@ export function ChatView({
       <PendingPlansStrip
         apiBaseUrl={apiBaseUrl}
         sessionId={(shell.activeSessionId ?? null) as string | null}
+        isOwner={role === 'owner'}
+      />
+      <TaskBar
+        apiBaseUrl={apiBaseUrl}
+        projectRoot={projectRoot}
         isOwner={role === 'owner'}
       />
       <PinnedStrip />

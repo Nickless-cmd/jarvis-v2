@@ -29,8 +29,9 @@ function applySmileys(text) {
   }
   return result
 }
-import { ArrowUp, Square, Plus, GitBranch, GitCommit, ShieldCheck, Layers, Activity, Check, X, Monitor } from 'lucide-react'
+import { ArrowUp, Square, Plus, GitBranch, GitCommit, ShieldCheck, Layers, Activity, Check, X, Monitor, FileText } from 'lucide-react'
 import { backend } from '../../lib/adapters'
+import { useFileMentions } from './useFileMentions'
 
 function formatTokens(n) {
   if (!n && n !== 0) return null
@@ -77,6 +78,28 @@ export function Composer({
   const textareaRef = useRef(null)
   const commitInputRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  // @file autocomplete — only active when JarvisX has anchored a project.
+  // Webchat without an anchor: hook returns active=false, no UI shows.
+  const mentions = useFileMentions()
+
+  const insertMention = (file) => {
+    const ta = textareaRef.current
+    if (!ta) return
+    const cursor = ta.selectionStart ?? value.length
+    const ins = mentions.buildInsertion(value, cursor, file)
+    if (!ins) return
+    const next =
+      value.slice(0, ins.replaceFrom) + ins.text + value.slice(ins.replaceTo)
+    onChange(next)
+    mentions.cancel()
+    // Restore cursor after the inserted text
+    requestAnimationFrame(() => {
+      const newPos = ins.replaceFrom + ins.text.length
+      ta.focus()
+      ta.setSelectionRange(newPos, newPos)
+    })
+  }
 
   const [planMode, setPlanMode] = useState(false)
   const [approvalMode, setApprovalMode] = useState('auto')
@@ -411,6 +434,36 @@ export function Composer({
           </div>
         )}
 
+        {mentions.active && (
+          <div className="mentions-popover">
+            <div className="mentions-popover-header">
+              <FileText size={10} />
+              <span className="mono">files in project</span>
+              <span className="mentions-popover-count mono">
+                {mentions.matches.length}
+              </span>
+            </div>
+            <div className="mentions-popover-list">
+              {mentions.matches.map((f, i) => (
+                <button
+                  key={f.path}
+                  type="button"
+                  onMouseDown={(e) => {
+                    // Prevent textarea blur before our click handler runs
+                    e.preventDefault()
+                    insertMention(f)
+                  }}
+                  className={`mentions-item ${i === mentions.highlightIdx ? 'highlighted' : ''}`}
+                >
+                  <span className="mentions-item-path mono">{f.rel}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mentions-popover-hint mono">
+              ↑↓ navigate · Enter/Tab pick · Esc cancel
+            </div>
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           className="composer-textarea"
@@ -420,8 +473,52 @@ export function Composer({
             // Convert smileys that are now followed by whitespace
             const converted = applySmileys(raw)
             onChange(converted)
+            // Update @file autocomplete state based on cursor position
+            requestAnimationFrame(() => {
+              const ta = textareaRef.current
+              if (!ta) return
+              mentions.detect(ta.value, ta.selectionStart ?? ta.value.length)
+            })
+          }}
+          onKeyUp={(e) => {
+            // Also re-detect on arrow keys / clicks so cursor moves
+            // through an existing @ token correctly
+            if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+              const ta = textareaRef.current
+              if (ta) mentions.detect(ta.value, ta.selectionStart ?? ta.value.length)
+            }
+          }}
+          onClick={() => {
+            const ta = textareaRef.current
+            if (ta) mentions.detect(ta.value, ta.selectionStart ?? ta.value.length)
           }}
           onKeyDown={(e) => {
+            // @file menu navigation has priority when active
+            if (mentions.active) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                mentions.moveHighlight(1)
+                return
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                mentions.moveHighlight(-1)
+                return
+              }
+              if (e.key === 'Enter' || e.key === 'Tab') {
+                const f = mentions.matches[mentions.highlightIdx]
+                if (f) {
+                  e.preventDefault()
+                  insertMention(f)
+                  return
+                }
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                mentions.cancel()
+                return
+              }
+            }
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               handleSend()

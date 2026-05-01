@@ -5,6 +5,61 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { Copy, Check } from 'lucide-react'
 import mermaid from 'mermaid'
+import { InlineToolResult } from './InlineToolResult'
+
+// Match a single line that introduces a tool_result reference:
+//   [tool_result:tool-result-XXXXXXXXXXXXXXXX]
+// followed (optionally) by one summary line like:
+//   [edit_file]: Edited /path/to/file.py (1 replacement)
+// We intercept the pair and replace with an expandable card that
+// lazy-fetches the full result via /api/tool-result/{id}.
+const TOOL_RESULT_LINE = /^\[tool_result:(tool-result-[a-f0-9]+)\]\s*$/
+const TOOL_USE_HINT = /^Use read_tool_result with result_id="[^"]+" to inspect the full output\.\s*$/
+
+/**
+ * Splits a content string into segments — markdown text vs tool_result
+ * blocks. Each tool_result block carries its result_id and optional
+ * summary line for compact display.
+ */
+function splitToolResults(content) {
+  if (!content) return [{ type: 'text', value: '' }]
+  const lines = content.split('\n')
+  const segments = []
+  let buffer = []
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(TOOL_RESULT_LINE)
+    if (!m) {
+      buffer.push(lines[i])
+      continue
+    }
+    // Flush text buffer
+    if (buffer.length > 0) {
+      segments.push({ type: 'text', value: buffer.join('\n') })
+      buffer = []
+    }
+    const resultId = m[1]
+    // The next line (if present) is usually the summary like "[edit_file]: ..."
+    let summary = ''
+    let consumed = 1
+    if (i + 1 < lines.length && lines[i + 1].trim() && !TOOL_RESULT_LINE.test(lines[i + 1])) {
+      summary = lines[i + 1]
+      consumed = 2
+    }
+    // Skip the trailing "Use read_tool_result with result_id=..." hint line if any
+    if (
+      i + consumed < lines.length &&
+      TOOL_USE_HINT.test(lines[i + consumed])
+    ) {
+      consumed += 1
+    }
+    segments.push({ type: 'tool_result', resultId, summary })
+    i += consumed - 1
+  }
+  if (buffer.length > 0) {
+    segments.push({ type: 'text', value: buffer.join('\n') })
+  }
+  return segments
+}
 
 mermaid.initialize({ startOnLoad: false, theme: 'dark' })
 
@@ -137,6 +192,36 @@ function CodeBlock({ language, code }) {
 export function MarkdownRenderer({ content, streaming = false }) {
   if (!content) return null
 
+  // Intercept tool_result blocks before passing to Markdown — render
+  // each as an expandable InlineToolResult card with surrounding text
+  // segments still flowing through Markdown.
+  const segments = splitToolResults(content)
+  if (segments.length > 1 || segments[0]?.type === 'tool_result') {
+    return (
+      <>
+        {segments.map((seg, i) =>
+          seg.type === 'tool_result' ? (
+            <InlineToolResult
+              key={`tr-${seg.resultId}-${i}`}
+              resultId={seg.resultId}
+              summary={seg.summary}
+            />
+          ) : seg.value ? (
+            <MarkdownRendererInner
+              key={`txt-${i}`}
+              content={seg.value}
+              streaming={streaming}
+            />
+          ) : null,
+        )}
+      </>
+    )
+  }
+
+  return <MarkdownRendererInner content={content} streaming={streaming} />
+}
+
+function MarkdownRendererInner({ content, streaming }) {
   return (
     <Markdown
       remarkPlugins={[remarkGfm]}

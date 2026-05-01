@@ -1,4 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
+import {
+  Brain,
+  Eye,
+  FileSearch,
+  FolderOpen,
+  Globe,
+  Pencil,
+  ScanSearch,
+  Terminal,
+} from 'lucide-react'
+
+/**
+ * Resolve a working step (or capability activity) to a lucide icon.
+ * Shared by ThinkingBar in chat and the workspace scan rail so both
+ * use the same vocabulary: run-command → terminal, read → magnifier,
+ * edit/write → pencil, browse → globe, generic search → scansearch.
+ */
+export function resolveStepIcon(step) {
+  if (!step) return Brain
+  const text = `${step.action || ''} ${step.detail || ''} ${step.step || ''}`.toLowerCase()
+  if (/run|exec|bash|shell|command|terminal|invoke/.test(text)) return Terminal
+  if (/edit|write|patch|apply|modify/.test(text)) return Pencil
+  if (/read|inspect|cat|view|search_memory|search/.test(text)) return FileSearch
+  if (/dir|folder|path|workspace|repo|list/.test(text)) return FolderOpen
+  if (/web|browse|http|url|fetch|google/.test(text)) return Globe
+  if (/scan|trace|monitor|watch/.test(text)) return ScanSearch
+  if (/think|reason|consider|plan/.test(text)) return Brain
+  if (/look|see|read.*file/.test(text)) return Eye
+  return ScanSearch
+}
 
 /**
  * Char-by-char scramble effect: when `text` changes, each char briefly
@@ -76,7 +106,7 @@ const FALLBACK_PHASES = [
   'komponerer',
 ]
 
-export function ThinkingBar({ workingSteps, isStreaming }) {
+export function ThinkingBar({ workingSteps, isStreaming, compact = false }) {
   const running = (workingSteps || []).filter((s) => s.status === 'running')
   const latest = running[running.length - 1] || null
 
@@ -94,12 +124,22 @@ export function ThinkingBar({ workingSteps, isStreaming }) {
   const label = latest
     ? (latest.detail || latest.action || 'arbejder')
     : FALLBACK_PHASES[phaseIdx]
+  const Icon = latest ? resolveStepIcon(latest) : Brain
 
   return (
-    <div className="thinking-bar" aria-label={`Jarvis ${label}`}>
+    <div
+      className={`thinking-bar ${compact ? 'thinking-bar-compact' : ''}`}
+      aria-label={`Jarvis ${label}`}
+    >
       <div className="thinking-bar-track">
         <span className="thinking-bar-rider" />
       </div>
+      <span
+        key={`icon-${latest?.step ?? latest?.action ?? 'idle'}`}
+        className="thinking-bar-icon"
+      >
+        <Icon size={11} />
+      </span>
       <span className="thinking-bar-label">
         <ScrambleText text={String(label)} />
         {running.length > 1 && (

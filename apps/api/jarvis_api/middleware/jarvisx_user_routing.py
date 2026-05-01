@@ -1,28 +1,36 @@
-"""JarvisX user-routing middleware.
+"""JarvisX user-routing + bearer-token auth middleware.
 
-The Electron desktop app (apps/jarvisx/) injects three headers on every
-outbound request from the renderer + embedded iframe:
+The Electron desktop app injects identity on every request. v1 of this
+middleware trusted X-JarvisX-User as plaintext identity — fine for
+solo localhost use but a forge-anywhere hole the moment the API listens
+on anything but 127.0.0.1.
 
-    X-JarvisX-User       — discord_id of the speaker (used to resolve workspace)
-    X-JarvisX-User-Name  — url-encoded display name (informational only)
-    X-JarvisX-Client     — client identifier (e.g. "jarvisx-electron/0.1.0-poc")
+v2 (this version) prefers a signed bearer token:
 
-This middleware reads the user header, resolves the user via
-find_user_by_discord_id, and binds the workspace ContextVars so all
-downstream services (chat sessions, prompt assembly, memory paths,
-heartbeat ticks initiated from the request) automatically use the right
-workspace — exactly the same pattern discord_gateway uses on its side.
+    Authorization: Bearer <jwt>      ← signed identity (trusted)
+    X-JarvisX-User: <discord_id>     ← legacy plaintext (untrusted)
+    X-JarvisX-User-Name: …           ← informational only
+    X-JarvisX-Client:  …             ← informational only
+    X-JarvisX-Project: …             ← workspace anchor (no identity claim)
 
-When the header is absent (e.g. webchat from a browser without JarvisX,
-internal calls, MC polling) the request runs with the default context
-unchanged — full backwards compatibility.
+Resolution order:
+  1. If `Authorization: Bearer …` is present and verifies → use the
+     token's claims as canonical identity. Header X-JarvisX-User is
+     ignored (a forged value can't bypass a verified one).
+  2. If no token AND auth_required() → reject with 401.
+  3. If no token AND auth_required() is false → fall back to the legacy
+     X-JarvisX-User header (dev mode / single-user localhost). Logged
+     so the operator notices when their box is running unauthenticated.
 
 Failure modes:
-  • Unknown discord_id → fall back to the "public" workspace, which is
-    the same behaviour user_context() applies for unknown Discord users.
-    This avoids leaking Bjørn's workspace to unauthenticated callers.
-  • Lookup raises → log and proceed with default context. We never let a
-    middleware error break a request.
+  • Token expired/forged AND auth required → 401, no fallback. The
+    client must reissue.
+  • Unknown user_id (token or header) → bind to "public" workspace.
+    This avoids leaking Bjørn's workspace to anyone who happens to
+    know his discord_id.
+  • Lookup raises → log and proceed with default context. We never
+    let a middleware error break the request — the worst case should
+    be "as if no identity was supplied".
 """
 from __future__ import annotations
 
@@ -30,6 +38,7 @@ import logging
 from typing import Awaitable, Callable
 
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
@@ -37,16 +46,73 @@ USER_HEADER = "x-jarvisx-user"
 USER_NAME_HEADER = "x-jarvisx-user-name"
 CLIENT_HEADER = "x-jarvisx-client"
 PROJECT_HEADER = "x-jarvisx-project"
+AUTH_HEADER = "authorization"
+
+# Endpoints that must remain unauthenticated even when auth is required —
+# otherwise the client can't bootstrap or recover from a stale token.
+# Token issuance itself IS protected (owner-only), via _require_owner()
+# inside the route handler.
+_PUBLIC_PATHS = (
+    "/health",
+    "/api/auth/whoami-token",  # let clients self-check token validity
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+)
+
+
+def _is_public_path(path: str) -> bool:
+    for p in _PUBLIC_PATHS:
+        if path == p or path.startswith(p + "/"):
+            return True
+    return False
 
 
 async def jarvisx_user_routing_middleware(
     request: Request,
     call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
-    user_id = (request.headers.get(USER_HEADER) or "").strip()
     project_root = (request.headers.get(PROJECT_HEADER) or "").strip()
+    raw_auth = request.headers.get(AUTH_HEADER) or ""
+    legacy_user_id = (request.headers.get(USER_HEADER) or "").strip()
+
+    # ── Step 1: try to verify a bearer token (canonical identity) ─
+    token_claims: dict | None = None
+    token_error: str | None = None
+    if raw_auth.lower().startswith("bearer "):
+        try:
+            from core.runtime.jarvisx_auth import verify_token
+            token_claims = verify_token(raw_auth)
+        except Exception as exc:
+            token_error = str(exc)
+            token_claims = None
+
+    # ── Step 2: enforce auth_required() globally ──────────────────
+    # If we require auth and the request didn't bring a valid token,
+    # block it before any context binding happens.
+    if not token_claims and not _is_public_path(request.url.path):
+        try:
+            from core.runtime.jarvisx_auth import auth_required
+            require = auth_required()
+        except Exception:
+            require = False
+        if require:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "detail": "authentication required",
+                    "error": token_error or "missing or invalid bearer token",
+                },
+            )
+
+    # ── Step 3: resolve effective identity ────────────────────────
+    if token_claims:
+        user_id = str(token_claims.get("sub") or "").strip()
+    else:
+        user_id = legacy_user_id
+
     if not user_id and not project_root:
-        # No JarvisX headers at all → default context, fast path.
+        # No identity at all + no project anchor → default context, fast path.
         return await call_next(request)
 
     # Resolve the workspace. We import lazily so this module is cheap to

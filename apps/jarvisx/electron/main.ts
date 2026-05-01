@@ -30,6 +30,14 @@ interface AppConfig {
   mode: 'dev' | 'thin-client' | 'standalone'
   projectRoot: string
   recentProjects: string[]
+  // Bearer token (signed JWT) issued by the backend. When present,
+  // every outbound request to apiBaseUrl carries Authorization: Bearer.
+  // Stored in app userData/config.json — same security boundary as
+  // the rest of the config. Future: move to OS keychain.
+  authToken?: string
+  authTokenUserId?: string  // for UI to show whose token this is
+  authTokenRole?: string    // for UI to show role granted by token
+  authTokenExpiresAt?: string
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -158,19 +166,29 @@ function installRequestHooks(): void {
   // (current working directory in the desktop app sense).
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const url = details.url
-    if (
-      currentConfig.userId &&
-      (url.startsWith(currentConfig.apiBaseUrl) ||
-        url.startsWith('http://localhost') ||
-        url.startsWith('http://127.0.0.1'))
-    ) {
-      details.requestHeaders['X-JarvisX-User'] = currentConfig.userId
-      details.requestHeaders['X-JarvisX-User-Name'] = encodeURIComponent(
-        currentConfig.userName,
-      )
-      details.requestHeaders['X-JarvisX-Client'] = 'jarvisx-electron/0.1.0-poc'
+    const isApiCall =
+      url.startsWith(currentConfig.apiBaseUrl) ||
+      url.startsWith('http://localhost') ||
+      url.startsWith('http://127.0.0.1')
+    if (isApiCall) {
+      // Always carry the project anchor (no identity claim, just routing)
       if (currentConfig.projectRoot) {
         details.requestHeaders['X-JarvisX-Project'] = currentConfig.projectRoot
+      }
+      details.requestHeaders['X-JarvisX-Client'] = 'jarvisx-electron/0.1.0-poc'
+
+      if (currentConfig.authToken) {
+        // Preferred: signed bearer token. Backend's middleware will
+        // verify the signature and bind identity from the claims —
+        // X-JarvisX-User would be ignored even if we sent it.
+        details.requestHeaders['Authorization'] = `Bearer ${currentConfig.authToken}`
+      } else if (currentConfig.userId) {
+        // Legacy fallback for localhost dev where auth_required() is false.
+        // Will be rejected with 401 the moment the backend enforces auth.
+        details.requestHeaders['X-JarvisX-User'] = currentConfig.userId
+        details.requestHeaders['X-JarvisX-User-Name'] = encodeURIComponent(
+          currentConfig.userName,
+        )
       }
     }
     callback({ requestHeaders: details.requestHeaders })
